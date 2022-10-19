@@ -1,0 +1,57 @@
+{
+  "langpack_id": "ko",
+  "manifest_version": 2,
+  "applications": {
+    "gecko": {
+      "id": "langpack-ko@thunderbird.mozilla.org",
+      "strict_min_version": "91.0",
+      "strict_max_version": "91.*"
+    }
+  },
+  "name": "Korean (KR) Language Pack",
+  "description": "Language pack for Thunderbird for ko",
+  "version": "91.0buildid20211101223011",
+  "languages": {
+    "ko": {
+      "version": "20211018001300",
+      "chrome_resources": {
+        "alerts": "chrome/ko/locale/ko/alerts/",
+        "autoconfig": "chrome/ko/locale/ko/autoconfig/",
+        "branding": "chrome/ko/locale/ko/branding/",
+        "calendar": "chrome/ko/locale/ko/calendar/",
+        "chat": "chrome/ko/locale/ko/chat/",
+        "communicator": "chrome/ko/locale/ko/communicator/",
+        "devtools": "chrome/ko/locale/ko/devtools/client/",
+        "devtools-shared": "chrome/ko/locale/ko/devtools/shared/",
+        "devtools-startup": "chrome/ko/locale/ko/devtools/startup/",
+        "global": "chrome/ko/locale/ko/global/",
+        "global-platform": {
+          "macosx": "chrome/ko/locale/ko/global-platform/mac/",
+          "linux": "chrome/ko/locale/ko/global-platform/unix/",
+          "android": "chrome/ko/locale/ko/global-platform/unix/",
+          "win": "chrome/ko/locale/ko/global-platform/win/"
+        },
+        "lightning": "chrome/ko/locale/ko/lightning/",
+        "messenger": "chrome/ko/locale/ko/messenger/",
+        "messenger-mapi": "chrome/ko/locale/ko/messenger-mapi/",
+        "messenger-newsblog": "chrome/ko/locale/ko/messenger-newsblog/",
+        "messenger-region": "chrome/ko/locale/ko/messenger-region/",
+        "messenger-smime": "chrome/ko/locale/ko/messenger-smime/",
+        "mozapps": "chrome/ko/locale/ko/mozapps/",
+        "mozldap": "chrome/ko/locale/ko/mozldap/",
+        "necko": "chrome/ko/locale/ko/necko/",
+        "passwordmgr": "chrome/ko/locale/ko/passwordmgr/",
+        "pdf.js": "chrome/ko/locale/pdfviewer/",
+        "pipnss": "chrome/ko/locale/ko/pipnss/",
+        "pippki": "chrome/ko/locale/ko/pippki/",
+        "places": "chrome/ko/locale/ko/places/"
+      }
+    }
+  },
+  "sources": {
+    "browser": {
+      "base_path": "browser/"
+    }
+  },
+  "author": "한글 Mozilla 프로젝트(mozilla.or.kr) (contributors: Seokchan Yun, JoungKyun Kim)"
+}

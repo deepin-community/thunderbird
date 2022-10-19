@@ -1,0 +1,54 @@
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
+/* ===== messageHeader.css ==============================================
+  == Styles for the header toolbars of a mail message.
+  ======================================================================= */
+
+@import url("chrome://messenger/skin/shared/messageHeader.css");
+
+/* ::::: msg header toolbars ::::: */
+
+.inline-toolbox {
+  padding-inline-end: 3px;
+}
+
+#mail-notification-top > .notificationbox-stack {
+  background-color: transparent;
+}
+
+/* ::::: msg header captions ::::: */
+
+.dateLabel {
+  margin-inline-end: 3px;
+}
+
+.headerName {
+  margin-top: 0;
+}
+
+.headerName,
+#attachmentSize {
+  color: #a1a1a1; /* lower contrast */
+}
+
+mail-messageids-headerfield button.icon-button.email-action-button {
+  margin-inline: 1px 3px;
+}
+
+/* ::::: collapsed view styles ::::: */
+
+.message-security-label {
+  /* Necessary to not cut the background icon */
+  min-height: 16px;
+}
+
+.button-focusable:focus-visible:not(:hover) {
+  outline-offset: -2px;
+}
+
+button.button-focusable:focus-visible:not(:hover) {
+  outline: none;
+  box-shadow: 0 0 0 3px -moz-mac-focusring;
+}

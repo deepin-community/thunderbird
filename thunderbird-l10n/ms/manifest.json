@@ -1,0 +1,57 @@
+{
+  "langpack_id": "ms",
+  "manifest_version": 2,
+  "applications": {
+    "gecko": {
+      "id": "langpack-ms@thunderbird.mozilla.org",
+      "strict_min_version": "91.0",
+      "strict_max_version": "91.*"
+    }
+  },
+  "name": "Bahasa Melayu (ms) Language Pack",
+  "description": "Language pack for Thunderbird for ms",
+  "version": "91.0buildid20211101223011",
+  "languages": {
+    "ms": {
+      "version": "20211001122915",
+      "chrome_resources": {
+        "alerts": "chrome/ms/locale/ms/alerts/",
+        "autoconfig": "chrome/ms/locale/ms/autoconfig/",
+        "branding": "chrome/ms/locale/ms/branding/",
+        "calendar": "chrome/ms/locale/ms/calendar/",
+        "chat": "chrome/ms/locale/ms/chat/",
+        "communicator": "chrome/ms/locale/ms/communicator/",
+        "devtools": "chrome/ms/locale/ms/devtools/client/",
+        "devtools-shared": "chrome/ms/locale/ms/devtools/shared/",
+        "devtools-startup": "chrome/ms/locale/ms/devtools/startup/",
+        "global": "chrome/ms/locale/ms/global/",
+        "global-platform": {
+          "macosx": "chrome/ms/locale/ms/global-platform/mac/",
+          "linux": "chrome/ms/locale/ms/global-platform/unix/",
+          "android": "chrome/ms/locale/ms/global-platform/unix/",
+          "win": "chrome/ms/locale/ms/global-platform/win/"
+        },
+        "lightning": "chrome/ms/locale/ms/lightning/",
+        "messenger": "chrome/ms/locale/ms/messenger/",
+        "messenger-mapi": "chrome/ms/locale/ms/messenger-mapi/",
+        "messenger-newsblog": "chrome/ms/locale/ms/messenger-newsblog/",
+        "messenger-region": "chrome/ms/locale/ms/messenger-region/",
+        "messenger-smime": "chrome/ms/locale/ms/messenger-smime/",
+        "mozapps": "chrome/ms/locale/ms/mozapps/",
+        "mozldap": "chrome/ms/locale/ms/mozldap/",
+        "necko": "chrome/ms/locale/ms/necko/",
+        "passwordmgr": "chrome/ms/locale/ms/passwordmgr/",
+        "pdf.js": "chrome/ms/locale/pdfviewer/",
+        "pipnss": "chrome/ms/locale/ms/pipnss/",
+        "pippki": "chrome/ms/locale/ms/pippki/",
+        "places": "chrome/ms/locale/ms/places/"
+      }
+    }
+  },
+  "sources": {
+    "browser": {
+      "base_path": "browser/"
+    }
+  },
+  "author": "mozilla.org (contributors: Joe Solon, Suzy Solon)"
+}

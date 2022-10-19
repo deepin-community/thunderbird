@@ -1,0 +1,31 @@
+# ignoring files within the test cases
+source: source-is-missing devtools/*
+source: source-is-missing testing/*
+source: source-is-missing */tests/*
+source: source-is-missing */test/*
+
+# TexZilla isn't packaged yet too
+source: source-is-missing comm/suite/editor/components/texzilla/content/TeXZilla.js *
+
+# files are under MPL-2 license with some long lines
+source: source-is-missing comm/mail/components/compose/content/cloudAttachmentLinkManager.js *
+
+# needed by TB, some various long lines
+source: source-is-missing browser/components/newtab/aboutwelcome/content/aboutwelcome.bundle.js *
+source: source-is-missing browser/components/newtab/data/content/activity-stream.bundle.js *
+source: source-is-missing browser/components/newtab/vendor/*.js *
+source: source-is-missing browser/components/pocket/content/panels/js/* 
+source: source-is-missing browser/extensions/screenshots/build/*.js *
+source: source-is-missing comm/chat/protocols/matrix/lib/* *
+source: source-is-missing comm/mail/components/compose/texzilla/TeXZilla.js *
+source: source-is-missing dom/svg/crashtests/1507961-1.html *
+source: source-is-missing gfx/wr/wrench/script/reftest-analyzer.xhtml *
+source: source-is-missing remote/marionette/atom.js *
+source: source-is-missing third_party/webkit/PerformanceTests/*
+source: source-is-missing toolkit/components/certviewer/content/vendor/* *
+source: source-is-missing toolkit/components/pdfjs/content/build/pdf.js *
+source: source-is-missing toolkit/components/pdfjs/content/build/pdf.worker.js *
+source: source-is-missing toolkit/components/utils/mozjexl.js *
+
+# Lintian is confused by the XML structure, no issue at all.
+source: duplicate-globbing-patterns debian/logo/icedove/icedove_icon_plain.svg *

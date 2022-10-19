@@ -1,0 +1,107 @@
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
+@namespace html url("http://www.w3.org/1999/xhtml");
+
+.editContactPanel_rowLabel {
+  text-align: end;
+}
+
+#editContactPanel {
+  margin-inline-start: 0;
+  --arrowpanel-padding: 0;
+}
+
+#editContactHeader {
+  padding: 10px;
+  border-bottom: 1px solid var(--panel-separator-color)
+}
+
+#editContactPanelIcon {
+  -moz-context-properties: fill;
+  fill: var(--toolbarbutton-icon-fill-attention);
+  width: 20px;
+  height: 20px;
+  margin: 4px;
+}
+
+#editContactPanelTitle {
+  font-size: 130%;
+  font-weight: bold;
+  margin-inline-start: 9px;
+  margin-inline-end: 12px;
+}
+
+#editContactContent {
+  padding: 20px 10px;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+}
+
+#editContactEmail {
+  min-width: 20em;
+}
+
+html|input.editContactTextbox {
+  appearance: none;
+  cursor: text;
+  border-radius: var(--toolbarbutton-border-radius);
+  border: 1px solid rgba(0, 0, 0, 0.3);
+  padding: 3px 8px;
+  width: 20em;
+}
+
+html|input.editContactTextbox:focus {
+  border-color: var(--focus-outline-color);
+  outline: 1px solid var(--focus-outline-color);
+}
+
+html|input.editContactTextbox[readonly] {
+  border-color: transparent !important;
+  background-color: inherit !important;
+  box-shadow: none;
+  color: inherit;
+  outline: none !important;
+}
+
+:root[lwt-tree] html|input.editContactTextbox {
+  background-color: var(--lwt-toolbar-field-background-color);
+  color: var(--lwt-toolbar-field-color);
+}
+
+:root[lwt-tree] html|input.editContactTextbox:not([readonly],:focus) {
+  border-color: var(--panel-separator-color);
+}
+
+#contactMoveDisabledText {
+  width: 20em;
+}
+
+#editContactAddressBookList {
+  appearance: none;
+  background-color: var(--arrowpanel-dimmed);
+  background-image: none;
+  border: 1px solid;
+  border-color: var(--panel-separator-color) !important;
+  box-shadow: none;
+  color: inherit;
+}
+
+#editContactAddressBookList:not([disabled="true"],[open="true"]):hover {
+  background-image: linear-gradient(var(--arrowpanel-dimmed),
+                                    var(--arrowpanel-dimmed));
+  background-color: var(--arrowpanel-dimmed);
+}
+
+#editContactAddressBookList[open="true"] {
+  background-image: linear-gradient(var(--arrowpanel-dimmed-further),
+                                    var(--arrowpanel-dimmed-further));
+  box-shadow: 0 1px 0 hsla(210, 4%, 10%, .05) inset;
+}
+
+/* Make all buttons the same width. */
+#editContactPanelDoneButton {
+  flex: 0%;
+}

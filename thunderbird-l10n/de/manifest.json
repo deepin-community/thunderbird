@@ -1,0 +1,57 @@
+{
+  "langpack_id": "de",
+  "manifest_version": 2,
+  "applications": {
+    "gecko": {
+      "id": "langpack-de@thunderbird.mozilla.org",
+      "strict_min_version": "91.0",
+      "strict_max_version": "91.*"
+    }
+  },
+  "name": "Deutsch (DE) Language Pack",
+  "description": "Language pack for Thunderbird for de",
+  "version": "91.0buildid20211101223011",
+  "languages": {
+    "de": {
+      "version": "20211017204458",
+      "chrome_resources": {
+        "alerts": "chrome/de/locale/de/alerts/",
+        "autoconfig": "chrome/de/locale/de/autoconfig/",
+        "branding": "chrome/de/locale/de/branding/",
+        "calendar": "chrome/de/locale/de/calendar/",
+        "chat": "chrome/de/locale/de/chat/",
+        "communicator": "chrome/de/locale/de/communicator/",
+        "devtools": "chrome/de/locale/de/devtools/client/",
+        "devtools-shared": "chrome/de/locale/de/devtools/shared/",
+        "devtools-startup": "chrome/de/locale/de/devtools/startup/",
+        "global": "chrome/de/locale/de/global/",
+        "global-platform": {
+          "macosx": "chrome/de/locale/de/global-platform/mac/",
+          "linux": "chrome/de/locale/de/global-platform/unix/",
+          "android": "chrome/de/locale/de/global-platform/unix/",
+          "win": "chrome/de/locale/de/global-platform/win/"
+        },
+        "lightning": "chrome/de/locale/de/lightning/",
+        "messenger": "chrome/de/locale/de/messenger/",
+        "messenger-mapi": "chrome/de/locale/de/messenger-mapi/",
+        "messenger-newsblog": "chrome/de/locale/de/messenger-newsblog/",
+        "messenger-region": "chrome/de/locale/de/messenger-region/",
+        "messenger-smime": "chrome/de/locale/de/messenger-smime/",
+        "mozapps": "chrome/de/locale/de/mozapps/",
+        "mozldap": "chrome/de/locale/de/mozldap/",
+        "necko": "chrome/de/locale/de/necko/",
+        "passwordmgr": "chrome/de/locale/de/passwordmgr/",
+        "pdf.js": "chrome/de/locale/pdfviewer/",
+        "pipnss": "chrome/de/locale/de/pipnss/",
+        "pippki": "chrome/de/locale/de/pippki/",
+        "places": "chrome/de/locale/de/places/"
+      }
+    }
+  },
+  "sources": {
+    "browser": {
+      "base_path": "browser/"
+    }
+  },
+  "author": "thunderbird-mail.de (contributors: Sebastian Hengst, Alexander Ihrig, Robert Kaiser, Abdulkadir Topal)"
+}

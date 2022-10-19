@@ -1,0 +1,57 @@
+{
+  "langpack_id": "nb-NO",
+  "manifest_version": 2,
+  "applications": {
+    "gecko": {
+      "id": "langpack-nb-NO@thunderbird.mozilla.org",
+      "strict_min_version": "91.0",
+      "strict_max_version": "91.*"
+    }
+  },
+  "name": "Norsk (bokmål) Language Pack",
+  "description": "Language pack for Thunderbird for nb-NO",
+  "version": "91.0buildid20211101223011",
+  "languages": {
+    "nb-NO": {
+      "version": "20211013060824",
+      "chrome_resources": {
+        "alerts": "chrome/nb-NO/locale/nb-NO/alerts/",
+        "autoconfig": "chrome/nb-NO/locale/nb-NO/autoconfig/",
+        "branding": "chrome/nb-NO/locale/nb-NO/branding/",
+        "calendar": "chrome/nb-NO/locale/nb-NO/calendar/",
+        "chat": "chrome/nb-NO/locale/nb-NO/chat/",
+        "communicator": "chrome/nb-NO/locale/nb-NO/communicator/",
+        "devtools": "chrome/nb-NO/locale/nb-NO/devtools/client/",
+        "devtools-shared": "chrome/nb-NO/locale/nb-NO/devtools/shared/",
+        "devtools-startup": "chrome/nb-NO/locale/nb-NO/devtools/startup/",
+        "global": "chrome/nb-NO/locale/nb-NO/global/",
+        "global-platform": {
+          "macosx": "chrome/nb-NO/locale/nb-NO/global-platform/mac/",
+          "linux": "chrome/nb-NO/locale/nb-NO/global-platform/unix/",
+          "android": "chrome/nb-NO/locale/nb-NO/global-platform/unix/",
+          "win": "chrome/nb-NO/locale/nb-NO/global-platform/win/"
+        },
+        "lightning": "chrome/nb-NO/locale/nb-NO/lightning/",
+        "messenger": "chrome/nb-NO/locale/nb-NO/messenger/",
+        "messenger-mapi": "chrome/nb-NO/locale/nb-NO/messenger-mapi/",
+        "messenger-newsblog": "chrome/nb-NO/locale/nb-NO/messenger-newsblog/",
+        "messenger-region": "chrome/nb-NO/locale/nb-NO/messenger-region/",
+        "messenger-smime": "chrome/nb-NO/locale/nb-NO/messenger-smime/",
+        "mozapps": "chrome/nb-NO/locale/nb-NO/mozapps/",
+        "mozldap": "chrome/nb-NO/locale/nb-NO/mozldap/",
+        "necko": "chrome/nb-NO/locale/nb-NO/necko/",
+        "passwordmgr": "chrome/nb-NO/locale/nb-NO/passwordmgr/",
+        "pdf.js": "chrome/nb-NO/locale/pdfviewer/",
+        "pipnss": "chrome/nb-NO/locale/nb-NO/pipnss/",
+        "pippki": "chrome/nb-NO/locale/nb-NO/pippki/",
+        "places": "chrome/nb-NO/locale/nb-NO/places/"
+      }
+    }
+  },
+  "sources": {
+    "browser": {
+      "base_path": "browser/"
+    }
+  },
+  "author": "firefox.no (contributors: Pascual Strømsnæs, Vidar Braut Haarr, Håvar Henriksen, Reidar Djupvik, Jan-Espen Pettersen, Håvard Mork, Lasse Marøen, Martin Joné, Morten Liljegren)"
+}

@@ -1,0 +1,57 @@
+{
+  "langpack_id": "tr",
+  "manifest_version": 2,
+  "applications": {
+    "gecko": {
+      "id": "langpack-tr@thunderbird.mozilla.org",
+      "strict_min_version": "91.0",
+      "strict_max_version": "91.*"
+    }
+  },
+  "name": "Türkçe (TR) Language Pack",
+  "description": "Language pack for Thunderbird for tr",
+  "version": "91.0buildid20211101223011",
+  "languages": {
+    "tr": {
+      "version": "20211011132813",
+      "chrome_resources": {
+        "alerts": "chrome/tr/locale/tr/alerts/",
+        "autoconfig": "chrome/tr/locale/tr/autoconfig/",
+        "branding": "chrome/tr/locale/tr/branding/",
+        "calendar": "chrome/tr/locale/tr/calendar/",
+        "chat": "chrome/tr/locale/tr/chat/",
+        "communicator": "chrome/tr/locale/tr/communicator/",
+        "devtools": "chrome/tr/locale/tr/devtools/client/",
+        "devtools-shared": "chrome/tr/locale/tr/devtools/shared/",
+        "devtools-startup": "chrome/tr/locale/tr/devtools/startup/",
+        "global": "chrome/tr/locale/tr/global/",
+        "global-platform": {
+          "macosx": "chrome/tr/locale/tr/global-platform/mac/",
+          "linux": "chrome/tr/locale/tr/global-platform/unix/",
+          "android": "chrome/tr/locale/tr/global-platform/unix/",
+          "win": "chrome/tr/locale/tr/global-platform/win/"
+        },
+        "lightning": "chrome/tr/locale/tr/lightning/",
+        "messenger": "chrome/tr/locale/tr/messenger/",
+        "messenger-mapi": "chrome/tr/locale/tr/messenger-mapi/",
+        "messenger-newsblog": "chrome/tr/locale/tr/messenger-newsblog/",
+        "messenger-region": "chrome/tr/locale/tr/messenger-region/",
+        "messenger-smime": "chrome/tr/locale/tr/messenger-smime/",
+        "mozapps": "chrome/tr/locale/tr/mozapps/",
+        "mozldap": "chrome/tr/locale/tr/mozldap/",
+        "necko": "chrome/tr/locale/tr/necko/",
+        "passwordmgr": "chrome/tr/locale/tr/passwordmgr/",
+        "pdf.js": "chrome/tr/locale/pdfviewer/",
+        "pipnss": "chrome/tr/locale/tr/pipnss/",
+        "pippki": "chrome/tr/locale/tr/pippki/",
+        "places": "chrome/tr/locale/tr/places/"
+      }
+    }
+  },
+  "sources": {
+    "browser": {
+      "base_path": "browser/"
+    }
+  },
+  "author": "mozilla.org (contributors: Mozilla Türkiye takımı)"
+}

@@ -1,0 +1,1310 @@
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
+@namespace xul url("http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul");
+@namespace html url("http://www.w3.org/1999/xhtml");
+
+:root,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  width: 100%;
+  overflow: clip;
+}
+
+#messengerWindow {
+  text-rendering: optimizeLegibility;
+  min-height: 95px;
+  min-width: 95px;
+}
+
+:root {
+  --autocomplete-popup-background: Field;
+  --autocomplete-popup-color: FieldText;
+  --autocomplete-popup-highlight-background: Highlight;
+  --autocomplete-popup-highlight-color: HighlightText;
+  --button-bgcolor: color-mix(in srgb, currentColor 13%, transparent);
+  --button-hover-bgcolor: color-mix(in srgb, currentColor 17%, transparent);
+  --button-active-bgcolor: color-mix(in srgb, currentColor 30%, transparent);
+  --button-border-color: color-mix(in srgb, currentColor 17%, transparent);
+  --button-color: currentColor;
+  --button-primary-bgcolor: -moz-accent-color;
+  --button-primary-hover-bgcolor: color-mix(in srgb, black 10%, -moz-accent-color);
+  --button-primary-active-bgcolor: color-mix(in srgb, black 20%, -moz-accent-color);
+  --button-primary-color: -moz-accent-color-foreground;
+  --checkbox-border-color: var(--lwt-toolbar-field-border-color, ThreeDDarkShadow);
+  --checkbox-unchecked-bgcolor: var(--lwt-toolbar-field-background-color, Field);
+  --checkbox-unchecked-hover-bgcolor: color-mix(in srgb, -moz-accent-color 4%, var(--checkbox-unchecked-bgcolor));
+  --checkbox-unchecked-active-bgcolor: var(--button-active-bgcolor);
+  --checkbox-checked-border-color: transparent;
+  --checkbox-checked-color: var(--button-primary-color);
+  --checkbox-checked-bgcolor: var(--highlight-color);
+  --checkbox-checked-hover-bgcolor: color-mix(in srgb, black 10%, var(--highlight-color));
+  --checkbox-checked-active-bgcolor: color-mix(in srgb, black 20%, var(--highlight-color));
+  --focus-outline-color: var(--toolbar-field-focus-border-color);
+  --focus-outline-offset: 1px;
+  --input-border-color: color-mix(in srgb, currentColor 41%, transparent);
+  --lwt-header-image: none;
+
+  /* Note: Setting this to 0 (without px) breaks CSS calculations for OSX. */
+  --space-above-tabbar: 0px;
+  --tab-min-height: 33px;
+  --tabs-border-color: rgba(0, 0, 0, .3);
+  --tabs-tabbar-border-size: 1px;
+  --toolbarbutton-border-radius: 3px;
+  --toolbarbutton-icon-fill-opacity: .85;
+  --toolbarbutton-hover-background: rgba(0, 0, 0, .05);
+  --toolbarbutton-hover-bordercolor: rgba(0, 0, 0, .25);
+  --toolbarbutton-header-bordercolor: rgba(0, 0, 0, .25);
+  --toolbarbutton-hover-boxshadow: none;
+  --toolbarbutton-active-background: rgba(0, 0, 0, .1);
+  --toolbarbutton-active-bordercolor: rgba(0, 0, 0, .3);
+  --toolbarbutton-active-boxshadow: 0 1px 1px rgba(0, 0, 0, .1) inset, 0 0 1px rgba(0, 0, 0, .3) inset;
+  --toolbarbutton-checked-background: rgba(200, 200, 200, .5);
+  --toolbarbutton-icon-fill-attention: var(--lwt-toolbarbutton-icon-fill-attention, #0a84ff);
+  --toolbarseparator-color: color-mix(in srgb, currentColor 20%, transparent);
+  --toolbar-field-focus-border-color: -moz-accent-color;
+  --item-focus-selected-border-color: #0060df;
+  --default: #4f526d;
+  --primary: #0a84ff;
+}
+
+@media not (prefers-contrast) {
+  :root:not(:-moz-lwtheme) {
+    --button-bgcolor: rgba(207, 207, 216, 0.33);
+    --button-hover-bgcolor: rgba(207, 207, 216, 0.66);
+    --button-active-bgcolor: rgb(207, 207, 216);
+    --button-primary-bgcolor: rgb(0, 97, 224);
+    --button-primary-hover-bgcolor: rgb(2, 80, 187);
+    --button-primary-active-bgcolor: rgb(5, 62, 148);
+    --button-primary-color: rgb(251, 251, 254);
+    --buttons-secondary-bgcolor: rgb(240, 240, 244);
+    --buttons-secondary-hover-bgcolor: rgb(224, 224, 230);
+    --buttons-secondary-active-bgcolor: rgb(207, 207, 216);
+    --buttons-secondary-color: rgb(21, 20, 26);
+    --arrowpanel-dimmed: color-mix(in srgb, currentColor 12%, transparent);
+    --arrowpanel-dimmed-further: color-mix(in srgb, currentColor 20%, transparent);
+    --arrowpanel-dimmed-even-further: color-mix(in srgb, currentColor 27%, transparent);
+    --error-text-color: #c50042;
+  }
+}
+
+:root:-moz-locale-dir(rtl) {
+  direction: rtl;
+}
+
+@media (min-resolution: 1.5dppx) {
+  :root {
+    --tabs-tabbar-border-size: 0.5px;
+  }
+}
+
+@media (min-resolution: 3dppx) {
+  :root {
+    --tabs-tabbar-border-size: 0.33px;
+  }
+}
+
+/* UI Density customization */
+
+:root[uidensity="compact"] {
+  --tab-min-height: 30px;
+}
+
+:root[uidensity="touch"] {
+  --tab-min-height: 39px;
+}
+
+:root:-moz-lwtheme {
+  --autocomplete-popup-background: #fff;
+  --autocomplete-popup-color: #0c0c0d;
+  --button-background: #d2d2d3;
+  --button-background-hover: #c2c2c3;
+  --button-background-active: #b2b2b3;
+  --toolbar-bgcolor: rgba(255, 255, 255, .4);
+  --toolbar-bgimage: none;
+  --toolbarbutton-icon-fill-opacity: 1;
+  --autocomplete-popup-url-color: hsl(210, 77%, 47%);
+}
+
+:root[lwt-tree] {
+  --select-focus-text-color: var(--sidebar-highlight-text-color,
+                                 var(--sidebar-text-color));
+  --new-focused-folder-color: var(--sidebar-highlight-text-color, var(--sidebar-text-color));
+}
+
+:root[lwt-tree-brighttext] {
+  --item-focus-selected-border-color: #bebebf;
+  --default: #dcdcdc;
+  --primary: #45b1ff;
+}
+
+:root[lwt-popup-brighttext] {
+  --autocomplete-popup-url-color: #0a84ff;
+}
+
+:root[extradragspace][tabsintitlebar]:not([inFullscreen]) {
+  --space-above-tabbar: 8px;
+}
+
+/* Styles for the default system dark theme */
+:root[lwt-default-theme-in-dark-mode] {
+  --button-primary-bgcolor: rgb(0, 97, 224) !important; /* override the default variable */
+  --button-primary-hover-bgcolor: rgb(2, 80, 187) !important;
+  --button-primary-active-bgcolor: rgb(5, 62, 148) !important;
+  --button-primary-color: rgb(251, 251, 254) !important;
+  --lwt-accent-color: rgb(24, 24, 26) !important;
+  --lwt-selected-tab-background-color: #2a2a2e !important;
+  --sidebar-border-color: #606064 !important;
+
+  /* Toolbar buttons */
+  --lwt-toolbarbutton-hover-background: rgba(179, 179, 179, 0.4);
+  --lwt-toolbarbutton-active-background: rgba(179, 179, 179, 0.6);
+
+  /* !important to override LightweightThemeManager.addBuiltInTheme in
+     mailGlue.js */
+  --autocomplete-popup-background: #2a2a2e !important;
+  --autocomplete-popup-highlight-background: #0060df;
+
+  /* composer header fields bottom border */
+  --composer-header-border-color: rgb(127, 127, 128);
+  --lwt-toolbar-field-border-color: #5f5f6d !important;
+  --unread-folder-color: var(--sidebar-text-color);
+}
+
+body {
+  display: -moz-box;
+  -moz-box-orient: vertical;
+  -moz-box-flex: 1;
+}
+
+toolbar[brighttext] {
+  --toolbarbutton-icon-fill-attention: var(--lwt-toolbarbutton-icon-fill-attention, #45a1ff);
+}
+
+#FindToolbar:-moz-lwtheme,
+.themeable-full:-moz-lwtheme,
+.themeable-brighttext:-moz-lwtheme {
+  --toolbarbutton-hover-background: var(--lwt-toolbarbutton-hover-background,
+                                        rgba(0, 0, 0, .1));
+  --toolbarbutton-hover-bordercolor: var(--lwt-toolbarbutton-hover-background,
+                                         rgba(0, 0, 0, .1));
+  --toolbarbutton-active-background: var(--lwt-toolbarbutton-active-background,
+                                         rgba(0, 0, 0, .15));
+  --toolbarbutton-active-bordercolor: var(--lwt-toolbarbutton-active-background,
+                                          rgba(0, 0, 0, .15));
+  --toolbarbutton-active-boxshadow: 0 0 0 1px var(--lwt-toolbarbutton-active-background,
+                                                  rgba(0, 0, 0, .15)) inset;
+  --toolbarbutton-checked-background: var(--lwt-toolbarbutton-hover-background,
+                                                    rgba(0, 0, 0, .15));
+}
+
+.themeable-full[brighttext],
+:root:-moz-lwtheme-brighttext .themeable-full,
+:root[lwt-tree-brighttext] .themeable-brighttext {
+  --toolbarbutton-hover-background: var(--lwt-toolbarbutton-hover-background,
+                                        rgba(255, 255, 255, .25));
+  --toolbarbutton-hover-bordercolor: var(--lwt-toolbarbutton-hover-background,
+                                         rgba(255, 255, 255, .5));
+  --toolbarbutton-header-bordercolor: var(--lwt-toolbarbutton-hover-background,
+                                          rgba(255, 255, 255, .25));
+  --toolbarbutton-active-background: var(--lwt-toolbarbutton-active-background,
+                                         rgba(255, 255, 255, .4));
+  --toolbarbutton-active-bordercolor: var(--lwt-toolbarbutton-active-background,
+                                          rgba(255, 255, 255, .7));
+  --toolbarbutton-active-boxshadow: none;
+  --toolbarbutton-checked-background: rgba(0, 0, 0, .25);
+}
+
+.thread-tree-col-picker image,
+.thread-tree-icon-header img {
+  -moz-context-properties: fill;
+  fill: currentColor;
+}
+
+treechildren::-moz-tree-row(hover) {
+  background-color: hsla(0, 0%, 50%, 0.15);
+}
+
+treechildren::-moz-tree-row(selected) {
+  background-color: -moz-cellhighlight;
+}
+
+treechildren::-moz-tree-row(selected, focus) {
+  background-color: Highlight;
+}
+
+treechildren::-moz-tree-twisty {
+  color: #505050;
+}
+
+treechildren::-moz-tree-twisty(selected, focus) {
+  fill: var(--select-focus-text-color);
+}
+
+/* LW theme tree styling */
+:root[lwt-tree] #threadTree treechildren::-moz-tree-row(untagged, selected),
+:root[lwt-tree]:-moz-window-inactive #threadTree treechildren::-moz-tree-row(selected),
+:root[lwt-tree] tree:not(#threadTree) treechildren::-moz-tree-row(selected) {
+  border-color: var(--sidebar-highlight-background-color, hsla(0, 0%, 80%, .3));
+  background: var(--sidebar-highlight-background-color, hsla(0, 0%, 80%, .3));
+  outline: none;
+}
+
+/* Dark theme adaptions */
+:root[lwt-tree-brighttext] #threadTree treechildren::-moz-tree-row(untagged, selected),
+:root[lwt-tree-brighttext]:-moz-window-inactive #threadTree treechildren::-moz-tree-row(selected),
+:root[lwt-tree-brighttext] tree:not(#threadTree) treechildren::-moz-tree-row(selected) {
+  border-color: var(--sidebar-highlight-background-color, rgba(249, 249, 250, .1));
+  background: var(--sidebar-highlight-background-color, rgba(249, 249, 250, .1));
+}
+
+/* Make the new mail indicator better visible on dark theme */
+:root[lwt-default-theme-in-dark-mode] #folderTree:-moz-lwtheme-brighttext
+  treechildren::-moz-tree-cell-text(folderNameCol, isServer-true, biffState-NewMail),
+:root[lwt-default-theme-in-dark-mode] #folderTree:-moz-lwtheme-brighttext
+  treechildren::-moz-tree-cell-text(folderNameCol, newMessages-true),
+:root[lwt-default-theme-in-dark-mode] #folderTree:-moz-lwtheme-brighttext
+  treechildren::-moz-tree-cell-text(folderNameCol, specialFolder-Inbox, newMessages-true) {
+  color: #0aa5ff !important;
+}
+
+:root[lwt-tree] #threadTree treechildren::-moz-tree-row(untagged, selected, focus, current),
+:root[lwt-tree] tree:not(#threadTree) treechildren::-moz-tree-row(selected, focus, current) {
+  border-color: var(--sidebar-highlight-border-color, var(--item-focus-selected-border-color));
+}
+
+/* Quick-Filter-Bar */
+:root[lwt-default-theme-in-dark-mode] #quick-filter-bar:-moz-lwtheme {
+  background-color: var(--lwt-accent-color);
+  color: var(--lwt-text-color);
+}
+
+:root[lwt-default-theme-in-dark-mode] #quick-filter-bar:-moz-lwtheme-brighttext {
+  --toolbarbutton-hover-background: var(--lwt-toolbarbutton-hover-background);
+  --toolbarbutton-hover-bordercolor: var(--lwt-toolbarbutton-hover-background);
+  --toolbarbutton-checked-background: var(--lwt-toolbarbutton-hover-background);
+  --toolbarbutton-active-background: var(--lwt-toolbarbutton-active-background);
+  --toolbarbutton-active-bordercolor: var(--lwt-toolbarbutton-active-background);
+  --toolbarbutton-active-boxshadow: 0 0 0 1px var(--lwt-toolbarbutton-active-background) inset;
+}
+
+:root[lwt-default-theme-in-dark-mode] #qfb-qs-textbox:-moz-lwtheme {
+  background-color: var(--lwt-toolbar-field-background-color, hsla(0,0%,100%,.8));
+  color: var(--lwt-toolbar-field-color, black);
+}
+
+:root[lwt-default-theme-in-dark-mode] #qfb-qs-textbox:not([focused="true"]):-moz-lwtheme {
+  border-color: var(--lwt-toolbar-field-border-color, hsla(240,5%,5%,.25));
+}
+
+:root[lwt-default-theme-in-dark-mode] #qfb-qs-textbox:-moz-lwtheme:hover {
+  background-color: var(--lwt-toolbar-field-background-color, white);
+}
+
+:root[lwt-default-theme-in-dark-mode] #qfb-qs-textbox:-moz-lwtheme-brighttext:hover {
+  box-shadow: 0 1px 3px rgba(255,255,255,.15);
+}
+
+:root[lwt-default-theme-in-dark-mode] #qfb-qs-textbox:-moz-lwtheme[focused="true"] {
+  background-color: var(--lwt-toolbar-field-focus, var(--lwt-toolbar-field-background-color, white));
+  color: var(--lwt-toolbar-field-focus-color, var(--lwt-toolbar-field-color, black));
+  border-color: var(--toolbar-field-focus-border-color);
+}
+
+/* toolbarbutton */
+
+.toolbarbutton-1 {
+  -moz-box-orient: vertical;
+  margin: 4px 1px;
+  padding: 1px 5px !important;
+  -moz-context-properties: fill, fill-opacity;
+  fill: var(--toolbarbutton-icon-fill, currentColor);
+  fill-opacity: var(--toolbarbutton-icon-fill-opacity);
+}
+
+.toolbarbutton-1,
+.toolbarbutton-menubutton-button {
+  height: 24px;
+  min-width: 32px;
+  margin: 4px 1px;
+  padding: 1px 5px !important;
+}
+
+:root[uidensity="touch"] .toolbarbutton-1:not([type="menu-button"]),
+:root[uidensity="touch"] .toolbarbutton-1 > .toolbarbutton-menubutton-button,
+:root[uidensity="touch"] .toolbarbutton-1 > .toolbarbutton-menubutton-dropmarker {
+  padding: 5px !important;
+}
+
+.toolbarbutton-menubutton-button {
+  -moz-box-align: center;
+  -moz-box-pack: center;
+  -moz-box-orient: vertical;
+}
+
+toolbox[labelalign="end"] .toolbarbutton-1,
+toolbox[labelalign="end"] .toolbarbutton-menubutton-button,
+toolbox:not([mode="full"]) .toolbarbutton-1,
+toolbox:not([mode="full"]) .toolbarbutton-menubutton-button {
+  -moz-box-orient: horizontal;
+}
+
+toolbar[mode="full"] .toolbarbutton-1:not([hideWebExtensionLabel="true"]) {
+  min-width: 55px;
+}
+
+toolbar:not([mode="text"]) .toolbarbutton-1[hideWebExtensionLabel="true"] .toolbarbutton-text {
+  display: none;
+}
+
+#header-view-toolbar .toolbarbutton-1[hideWebExtensionLabel="true"] .toolbarbutton-text {
+  display: none;
+}
+
+.toolbarbutton-1:not([type="menu-button"]),
+.toolbarbutton-1 > .toolbarbutton-menubutton-button,
+.toolbarbutton-1 > .toolbarbutton-menubutton-dropmarker {
+  border: 1px solid transparent;
+  border-radius: var(--toolbarbutton-border-radius);
+  transition: background-color .15s, border-color .15s;
+}
+
+.toolbarbutton-1:not([disabled="true"]):is(:hover,[open="true"]) >
+.toolbarbutton-menubutton-button,
+.toolbarbutton-1:not([disabled="true"]):hover >
+.toolbarbutton-menubutton-dropmarker,
+.toolbarbutton-1:not([type="menu-button"],[disabled="true"],[checked="true"],[open="true"],:active):hover {
+  background-color: var(--toolbarbutton-hover-background);
+  border-color: var(--toolbarbutton-hover-bordercolor);
+  box-shadow: var(--toolbarbutton-hover-boxshadow);
+}
+
+.toolbarbutton-1 > .toolbarbutton-menubutton-button:not([disabled="true"]):hover:active,
+.toolbarbutton-1[open="true"] > .toolbarbutton-menubutton-dropmarker:not([disabled="true"]),
+.toolbarbutton-1:not([type="menu-button"],[disabled="true"]):is([open="true"],[checked="true"],:hover:active) {
+  background-color: var(--toolbarbutton-checked-background);
+  border-color: var(--toolbarbutton-active-bordercolor);
+  box-shadow: var(--toolbarbutton-active-boxshadow);
+  transition-duration: 10ms;
+}
+
+.toolbarbutton-1:not([type="menu-button"],[disabled="true"]):hover:active,
+.toolbarbutton-1:not([type="menu-button"],[disabled="true"])[open="true"],
+.toolbarbutton-1 > .toolbarbutton-menubutton-button:not([disabled="true"]):hover:active,
+.toolbarbutton-1[open="true"] > .toolbarbutton-menubutton-dropmarker:not([disabled="true"]) {
+  background-color: var(--toolbarbutton-active-background) !important;
+}
+
+.toolbarbutton-1[type="menu-button"] > .toolbarbutton-menubutton-button {
+  border-inline-end: none;
+  margin: 0;
+}
+
+.toolbarbutton-1 > .toolbarbutton-menubutton-dropmarker {
+  padding: 1px 5px;
+}
+
+.toolbarbutton-1 .toolbarbutton-menu-dropmarker,
+.toolbarbutton-1 > .toolbarbutton-menubutton-dropmarker {
+  list-style-image: url("chrome://messenger/skin/icons/toolbarbutton-arrow.svg");
+}
+
+.toolbarbutton-1 .toolbarbutton-menu-dropmarker::part(icon),
+.toolbarbutton-1 > .toolbarbutton-menubutton-dropmarker::part(icon) {
+  width: 9px;
+  height: 7px;
+}
+
+/* Separator between menu and split type buttons */
+.toolbarbutton-1:not(:hover,:active,[open],[checked]) >
+.toolbarbutton-menubutton-dropmarker::before,
+.toolbarbutton-1[disabled="true"] >
+.toolbarbutton-menubutton-dropmarker::before {
+  margin-inline: -6px 5px;
+}
+
+.toolbarbutton-1 > .toolbarbutton-menubutton-button:-moz-locale-dir(ltr),
+.toolbarbutton-1 > .toolbarbutton-menubutton-dropmarker:-moz-locale-dir(rtl) {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.toolbarbutton-1 > .toolbarbutton-menubutton-button:-moz-locale-dir(rtl),
+.toolbarbutton-1 > .toolbarbutton-menubutton-dropmarker:-moz-locale-dir(ltr) {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+}
+
+toolbox[labelalign="end"] > toolbar[mode="full"] .toolbarbutton-1 .toolbarbutton-text {
+  padding-inline-start: 2px;
+}
+
+:root[uidensity="touch"] #tabbar-toolbar .toolbarbutton-1,
+:root[uidensity="touch"] #tabbar-toolbar .toolbarbutton-menubutton-button {
+  min-width: 25px;
+}
+
+.toolbarbutton-1 .toolbarbutton-icon {
+  width: 18px;
+  height: 18px;
+}
+
+.toolbarbutton-1 .toolbarbutton-icon,
+.toolbarbutton-menubutton-button > .toolbarbutton-icon {
+  padding: 1px;
+}
+
+/* Separator between menu and split type buttons */
+.toolbarbutton-1:not(:hover,:active,[open],[checked]) >
+.toolbarbutton-menubutton-dropmarker::before,
+.toolbarbutton-1[disabled="true"] >
+.toolbarbutton-menubutton-dropmarker::before {
+  content: "";
+  display: -moz-box;
+  width: 1px;
+  height: 18px;
+  background-image: linear-gradient(currentColor 0, currentColor 100%);
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: 1px 18px;
+  opacity: .2;
+}
+
+toolbox:not([labelalign="end"]) > toolbar[mode="full"]
+  .toolbarbutton-1:not(.button-appmenu)[type="menu"] {
+  padding-inline-end: 12px !important;
+  background-image: url("chrome://messenger/skin/icons/toolbarbutton-arrow.svg");
+  background-size: 9px;
+  background-repeat: no-repeat;
+  background-position: calc(100% - 4px) center;
+  -moz-context-properties: fill, fill-opacity, stroke-opacity;
+  stroke-opacity: 1;
+}
+
+toolbox:not([labelalign="end"]) > toolbar[mode="full"]
+  .toolbarbutton-1:not(.button-appmenu)[type="menu"]:-moz-locale-dir(rtl) {
+  background-position: 4px center;
+}
+
+toolbox:not([labelalign="end"]) > toolbar[mode="full"]
+  .toolbarbutton-1:not(.button-appmenu)[type="menu"][disabled="true"] {
+  stroke-opacity: 0.4;
+}
+
+toolbox:not([labelalign="end"]) > toolbar[mode="full"]
+  .toolbarbutton-1:not(.button-appmenu)[type="menu"] > .toolbarbutton-menu-dropmarker {
+  display: none;
+}
+
+toolbar[brighttext] .toolbarbutton-1:not(:hover,:active,[open]) >
+  .toolbarbutton-menubutton-dropmarker::before {
+  opacity: .3;
+}
+
+#alltabs-button,
+#tabbar-toolbar menulist,
+#tabbar-toolbar .toolbarbutton-1,
+#tabbar-toolbar .toolbarbutton-1[type="menu-button"] {
+  margin-block: 3px;
+}
+
+#palette-box .toolbarbutton-1 {
+  -moz-box-orient: horizontal;
+}
+
+description.error {
+  color: #f00;
+}
+
+.sidebar-header {
+  min-height: 25px;
+  text-shadow: none;
+}
+
+.sidebar-header > xul|label {
+  padding-inline-start: 4px;
+}
+
+menulist {
+  min-height: 24px;
+  margin-block: 4px;
+  border: 1px solid var(--toolbarbutton-hover-bordercolor);
+  border-radius: var(--toolbarbutton-border-radius);
+  background-color: var(--toolbarbutton-hover-background);
+  box-shadow: var(--toolbarbutton-hover-boxshadow);
+  transition-property: background-color, border-color, box-shadow;
+  transition-duration: 150ms;
+}
+
+/* Override the not existing rule in menu.css */
+menulist[disabled="true"]:hover,
+menulist[open="true"]:hover {
+  background-color: var(--toolbarbutton-hover-background);
+}
+
+menulist:not([disabled="true"],[open="true"]):hover {
+  background-color: var(--toolbarbutton-active-background);
+  border-color: var(--toolbarbutton-active-bordercolor);
+}
+
+menulist[open="true"] {
+  background-color: var(--toolbarbutton-active-background);
+  border-color: var(--toolbarbutton-active-bordercolor);
+  box-shadow: var(--toolbarbutton-active-boxshadow);
+}
+
+menulist[disabled="true"] {
+  opacity: 0.6;
+}
+
+menulist::part(label-box) {
+ font-weight: inherit;
+}
+
+/* Buttons */
+
+button {
+  appearance: none;
+  height: 24px;
+  min-width: 5.5em;
+  color: inherit;
+  border: 1px solid var(--button-border-color);
+  border-radius: var(--toolbarbutton-border-radius);
+  background: var(--button-bgcolor);
+  margin: 1px 5px;
+  padding: 0 4px;
+  box-shadow: none;
+}
+
+xul|button:is(:not([disabled="true"])):hover,
+html|button:is(:not([disabled])):hover {
+  border-color: var(--button-border-color);
+  background-color: var(--button-hover-bgcolor);
+}
+
+xul|button:is(:not([disabled="true"])):hover:active,
+html|button:is(:not([disabled])):hover:active,
+xul|button:is(:not([disabled="true"]))[open="true"] {
+  border-color: var(--button-border-color);
+  background-color: var(--button-active-bgcolor);
+}
+
+/* For buttons that only contain a single img. */
+button.icon-button {
+  /* grid display ensures the button only takes up the same room as the
+   * contained icon. */
+  display: inline grid;
+  height: -moz-fit-content;
+  min-width: -moz-fit-content;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: none;
+}
+
+button.icon-button[hidden] {
+  display: none;
+}
+
+button[type="menu-button"] {
+  appearance: none;
+}
+
+button[type="menu-button"] > .button-box > button {
+  appearance: none;
+  min-width: 5.5em;
+  background: transparent;
+  border-color: transparent;
+  border-inline-end-color: var(--toolbarbutton-active-bordercolor);
+  margin-inline: -4px 5px;
+  padding: 0 4px;
+}
+
+button > .button-box > dropmarker {
+  appearance: none;
+  list-style-image: url(chrome://global/skin/icons/arrow-down-12.svg);
+  -moz-context-properties: fill;
+  fill: currentColor;
+}
+
+.popup-notification-button {
+  height: auto;
+  border-style: none;
+  border-radius: 0;
+}
+
+#notification-popup-box > image.notification-anchor-icon {
+  width: 16px;
+  height: 16px;
+  -moz-context-properties: fill, fill-opacity;
+  fill: var(--toolbarbutton-icon-fill, currentColor);
+  fill-opacity: var(--toolbarbutton-icon-fill-opacity);
+}
+
+/* notification anchors should only be visible when their associated
+   notifications are */
+.notification-anchor-icon {
+  -moz-user-focus: normal;
+  margin-inline-start: 9px;
+}
+
+.notification-anchor-icon:not([showing]) {
+  display: none;
+}
+
+.addons-icon {
+  list-style-image: url("chrome://mozapps/skin/extensions/extension.svg");
+}
+
+.popup-notification-icon {
+  width: 32px;
+  height: 32px;
+  margin-inline-end: 12px;
+}
+
+.popup-notification-icon[popupid="xpinstall-disabled"],
+.popup-notification-icon[popupid="addon-install-blocked"],
+.popup-notification-icon[popupid="addon-install-origin-blocked"] {
+  list-style-image: url(chrome://messenger/skin/icons/addon-install-blocked.svg);
+}
+
+.popup-notification-icon[popupid="addon-progress"] {
+  list-style-image: url(chrome://messenger/skin/icons/addon-install-downloading.svg);
+}
+
+.popup-notification-icon[popupid="addon-install-failed"] {
+  list-style-image: url(chrome://messenger/skin/icons/addon-install-error.svg);
+}
+
+.popup-notification-icon[popupid="addon-install-confirmation"] {
+  list-style-image: url(chrome://messenger/skin/icons/addon-install-confirm.svg);
+}
+
+#addon-install-confirmation-notification[warning]
+    .popup-notification-icon[popupid="addon-install-confirmation"] {
+  list-style-image: url(chrome://messenger/skin/icons/addon-install-warning.svg);
+}
+
+.popup-notification-icon[popupid="addon-install-complete"] {
+  list-style-image: url(chrome://messenger/skin/icons/addon-install-installed.svg);
+}
+
+.app-update-icon {
+  list-style-image: url("chrome://messenger/skin/icons/app-update-badge.svg");
+  background-color: #74BF43;
+  border-radius: 50%;
+}
+
+.popup-notification-icon[popupid="app-update"] {
+  background: #74BF43 url("chrome://messenger/skin/icons/app-update.svg") no-repeat center;
+  border-radius: 50%;
+}
+
+.popup-notification-icon[popupid="app-update"].updates-unsupported {
+  background-color: #FFE900;
+}
+
+.popup-notification-body[popupid="addon-progress"],
+.popup-notification-body[popupid="addon-install-confirmation"] {
+  width: 28em;
+  max-width: 28em;
+}
+
+.addon-install-confirmation-name {
+  font-weight: bold;
+}
+
+html|*.addon-webext-perm-list {
+  margin-block-end: 0;
+  padding-inline-start: 10px;
+}
+
+.addon-webext-perm-single-entry {
+  margin-top: 11px;
+}
+
+.addon-webext-perm-text,
+.addon-webext-perm-single-entry {
+  margin-inline-start: 0;
+}
+
+.popup-notification-description[popupid="addon-webext-permissions"],
+.popup-notification-description[popupid="addon-webext-permissions-notification"] {
+  margin-inline-start: -1px;
+}
+
+.addon-webext-perm-notification-content,
+.addon-installed-notification-content {
+  margin-top: 0;
+}
+
+#addon-webext-experiment-warning {
+  margin-top: 11px;
+  margin-inline-start: 0;
+}
+
+#addon-webext-perm-info {
+  margin-inline-start: 0;
+}
+
+#addon-progress-notification-progressmeter {
+  margin: 2px 4px;
+}
+
+.addon-webext-name {
+  display: inline;
+  font-weight: bold;
+  margin: 0;
+}
+
+html|ul.addon-installed-list {
+  margin-top: 0;
+}
+
+#tabbar-toolbar {
+  appearance: none;
+  padding: 0;
+}
+
+#tabbar-toolbar[customizing="true"] {
+  min-width: 16px;
+  min-height: 10px;
+}
+
+.chromeclass-toolbar toolbarseparator {
+  appearance: none;
+  min-width: 1px;
+  background-image: linear-gradient(
+                    transparent 4px,
+                    var(--toolbarseparator-color) 4px,
+                    var(--toolbarseparator-color) calc(100% - 4px),
+                    transparent calc(100% - 4px));
+  margin-left: 1px;
+  margin-right: 1px;
+}
+
+#folderPaneHeader {
+  padding: 3px 6px;
+  color: inherit;
+}
+
+#folderPaneHeader > label {
+  font-weight: bold;
+  margin-inline-start: 1px;
+}
+
+.button-more {
+  list-style-image: url("chrome://messenger/skin/icons/more.svg");
+}
+
+.button-flat {
+  appearance: none;
+  -moz-context-properties: fill, fill-opacity;
+  fill: currentColor;
+  padding: 3px;
+  line-height: 1em;
+  border-radius: var(--toolbarbutton-border-radius);
+  transition: background-color 150ms;
+}
+
+.button-flat:hover {
+  background-color: hsla(0, 0%, 0%, .1);
+  color: inherit;
+}
+
+.button-flat:hover:active {
+  background-color: hsla(0, 0%, 0%, .2);
+}
+
+.button-flat:-moz-lwtheme-brighttext:hover {
+  background-color: hsla(0, 0%, 100%, .2);
+}
+
+.button-flat:-moz-lwtheme-brighttext:hover:active {
+  background-color: hsla(0, 0%, 100%, .3);
+}
+
+.button-flat:focus-visible:not(:hover) {
+  outline: 2px solid Highlight;
+}
+
+:root[lwt-tree] tree,
+:root[lwt-tree] #folderPaneHeader {
+  background-color: var(--sidebar-background-color);
+  color: var(--sidebar-text-color);
+}
+
+:root[lwt-tree]:-moz-lwtheme tree {
+  scrollbar-color: rgba(204,204,204,.5) rgba(230,230,235,.5);
+}
+
+:root[lwt-tree-brighttext]:-moz-lwtheme tree {
+  scrollbar-color: rgba(249,249,250,.4) rgba(20,20,25,.3);
+}
+
+:root[lwt-tree] #folderPaneHeader {
+  border-bottom-color: var(--sidebar-border-color, hsla(0,0%,60%,.4));
+}
+
+:root[lwt-tree-brighttext] #folderPaneHeader {
+  border-bottom-color: var(--sidebar-border-color, rgba(249,249,250,.2));
+}
+
+:root[lwt-tree-brighttext] treechildren::-moz-tree-twisty {
+  color: #d4d4d4;
+}
+
+:root[lwt-tree] treechildren::-moz-tree-image,
+:root[lwt-tree] #threadTree treechildren::-moz-tree-cell-text(untagged),
+:root[lwt-tree] tree:not(#threadTree) treechildren::-moz-tree-cell-text {
+  color: var(--sidebar-text-color);
+}
+
+:root[lwt-tree] treechildren::-moz-tree-image(selected),
+:root[lwt-tree] #threadTree treechildren::-moz-tree-cell-text(untagged, selected),
+:root[lwt-tree] tree:not(#threadTree) treechildren::-moz-tree-cell-text(selected) {
+  color: var(--sidebar-highlight-text-color, var(--sidebar-text-color));
+}
+
+tree:-moz-lwtheme:not(:focus)
+  treechildren::-moz-tree-row(selected) {
+  --sidebar-highlight-background-color: hsla(0, 0%, 50%, 0.2);
+}
+
+:root[lwt-tree] tree:not(:focus) treechildren::-moz-tree-image(selected),
+:root[lwt-tree] #threadTree:not(:focus) treechildren::-moz-tree-cell-text(untagged, selected),
+:root[lwt-tree] tree:not(#threadTree,:focus) treechildren::-moz-tree-cell-text(selected) {
+  color: var(--sidebar-text-color);
+}
+
+:root[lwt-tree] treechildren::-moz-tree-line {
+  border-color: var(--sidebar-text-color);
+}
+
+:root[lwt-tree] treechildren::-moz-tree-line(selected, focus) {
+  border-color: var(--sidebar-highlight-text-color, var(--sidebar-text-color));
+}
+
+tree > treechildren::-moz-tree-row(dropOn) {
+  border-color: HighlightText;
+  background-color: Highlight;
+}
+
+tree > treechildren::-moz-tree-cell-text(primary, dropOn) {
+  color: HighlightText;
+}
+
+tree > treechildren::-moz-tree-image(primary, dropOn) {
+  fill: HighlightText !important;
+}
+
+:root[lwt-tree] treecol:not([hideheader="true"]),
+:root[lwt-tree] treecolpicker:not([hideheader="true"]) {
+  appearance: none;
+  color: inherit;
+  background-color: transparent;
+  padding-block: 2px;
+  border-bottom: 1px solid color-mix(in srgb, var(--sidebar-border-color,
+                                     hsla(0, 0%, 60%, 0.4)) 50%, transparent);
+}
+
+:root[lwt-tree] treecol {
+  border-inline-end: 1px solid color-mix(in srgb, var(--sidebar-border-color,
+                                         hsla(0, 0%, 60%, 0.4)) 50%, transparent);
+}
+
+:root[lwt-tree-brighttext] treecol,
+:root[lwt-tree-brighttext] treecolpicker {
+  border-color: var(--sidebar-border-color, rgba(249, 249, 250, 0.2));
+}
+
+:root[lwt-tree-brighttext] treecol {
+  border-inline-end-color: var(--sidebar-border-color, rgba(249, 249, 250, 0.2));
+}
+
+:root[lwt-tree] treecol:hover,
+:root[lwt-tree] treecolpicker:hover {
+  background-color: hsla(0, 0%, 60%, 0.4);
+}
+
+:root[lwt-tree-brighttext] treecol:hover,
+:root[lwt-tree-brighttext] treecolpicker:hover {
+  background-color: rgba(249, 249, 250, 0.2);
+}
+
+.toolbarbutton-1:not(.qfb-tag-button),
+.toolbarbutton-menubutton-button {
+  color: inherit !important;
+}
+
+/* Don't show a menupopup in customize mode */
+toolbarpaletteitem menulist,
+toolbarpaletteitem toolbarbutton {
+  pointer-events: none;
+}
+
+/* throbber */
+
+#throbber-box {
+  margin: 0 3px;
+  /* Allow image to be center aligned vertically (when in the toolbar) or
+   * horizontally (when in the customize toolbar dialog). */
+  display: grid;
+}
+
+#throbber-box img {
+  width: 16px;
+  height: 16px;
+  align-self: center;
+  justify-self: center;
+}
+
+#throbber-box:not([busy="true"]) .animated-throbber-icon {
+  /* Hide the icon, but still occupy space in the toolbar. */
+  visibility: hidden;
+}
+
+/* When the throbber-box is wrapped by the customizeToolbar dialog, we show the
+ * static image. */
+#wrapper-throbber-box > #throbber-box .animated-throbber-icon {
+  display: none;
+}
+/* Else, we hide the static image. */
+:not(#wrapper-throbber-box) > #throbber-box .static-throbber-icon {
+  display: none;
+}
+
+/* Status panel */
+
+:root[lwt-tree] .statuspanel-label {
+  background-color: var(--lwt-toolbar-field-background-color);
+  color: var(--lwt-toolbar-field-color, -moz-dialogText);
+  border-color: var(--lwt-toolbar-field-border-color);
+}
+
+/* Status bar */
+
+#status-bar:-moz-lwtheme {
+  border-top: 1px solid var(--tabs-border-color);
+}
+
+#status-bar:-moz-lwtheme-brighttext {
+  border-top-color: var(--lwt-accent-color);
+}
+
+#status-bar:-moz-lwtheme toolbarbutton {
+  color: var(--lwt-text-color, inherit);
+}
+
+.statusbarpanel {
+  padding: 0 4px;
+}
+
+label.statusbarpanel {
+  margin-block: 3px;
+}
+
+.statusbarpanel-progress {
+  -moz-box-align: center;
+}
+
+#dialog\.progress,
+#shutdown_progressmeter,
+.progressmeter-statusbar {
+  appearance: none;
+  height: 4px;
+  background-color: hsla(0, 0%, 60%, 0.2);
+  border-style: none;
+  border-radius: 2px;
+}
+
+#dialog\.progress::-moz-progress-bar,
+#shutdown_progressmeter::-moz-progress-bar,
+.progressmeter-statusbar::-moz-progress-bar {
+  appearance: none;
+  background-color: var(--primary);
+  border-radius: 2px;
+}
+
+#dialog\.progress:indeterminate::-moz-progress-bar,
+#shutdown_progressmeter:indeterminate::-moz-progress-bar,
+.progressmeter-statusbar:indeterminate::-moz-progress-bar {
+  /* Make a white reflecting animation.
+     Create a gradient with 2 identical pattern, and enlarge the size to 200%.
+     This allows us to animate background-position with percentage. */
+  background-image: linear-gradient(90deg, transparent 0%,
+                                           rgba(255, 255, 255, 0.5) 25%,
+                                           transparent 50%,
+                                           rgba(255, 255, 255, 0.5) 75%,
+                                           transparent 100%);
+  background-size: 200% 100%;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  #dialog\.progress:indeterminate::-moz-progress-bar,
+  #shutdown_progressmeter:indeterminate::-moz-progress-bar,
+  .progressmeter-statusbar:indeterminate::-moz-progress-bar {
+    animation: progressSlideX 1.5s linear infinite;
+  }
+
+  @keyframes progressSlideX {
+    0% {
+      background-position: 0 0;
+    }
+    100% {
+      background-position: -100% 0;
+    }
+  }
+}
+
+/* online/offline icons */
+
+#offline-status {
+  padding: 0 2px;
+  list-style-image: url("chrome://messenger/skin/icons/online.svg");
+  appearance: none;
+  -moz-context-properties: fill;
+  fill: currentColor;
+}
+
+#offline-status[offline="true"] {
+  list-style-image: url("chrome://messenger/skin/icons/offline.svg");
+}
+
+/* status bar adjustments */
+
+#quotaMeter {
+  min-width: 8em;
+  max-width: 8em;
+  height: 10px;
+  border: 1px solid var(--chrome-content-separator-color);
+}
+
+#quotaPercentageBar {
+  border-color: ThreeDShadow;
+}
+
+#quotaPanel ::-moz-progress-bar {
+  appearance: none;
+  background-color: #45a1ff;
+  opacity: .75;
+  border-radius: 0;
+}
+
+#quotaPanel.alert-warning ::-moz-progress-bar {
+  background-color: orange;
+}
+
+#quotaPanel.alert-critical ::-moz-progress-bar {
+  background-color: red;
+  opacity: .6;
+}
+
+#quotaLabel {
+  text-align: center;
+  margin-block: -1px;
+  font-size: 11px;
+}
+
+/* searchTermOverlay */
+@media (prefers-reduced-motion: no-preference) {
+  #searchTermList > richlistitem[highlight = "true"] {
+    animation: highlight .4s ease-in;
+  }
+
+  @keyframes highlight {
+    from { background-color: Highlight; }
+    to { background-color: transparent; }
+  }
+}
+
+#findbar-beforeReplaceSeparator {
+  height: 16px;
+}
+
+findbar {
+  background-color: var(--toolbar-non-lwt-bgcolor);
+  color: var(--toolbar-non-lwt-textcolor);
+  text-shadow: none;
+}
+
+:root:not([lwtheme-image]) findbar:-moz-lwtheme {
+  background-color: var(--lwt-accent-color);
+  background-image: linear-gradient(var(--toolbar-bgcolor), var(--toolbar-bgcolor));
+  border-top-color: var(--chrome-content-separator-color);
+  color: var(--toolbar-color);
+}
+
+#messagepanebox > findbar > .findbar-container {
+  min-width: 100px;
+}
+
+:is(panel, menupopup)::part(arrow) {
+  display: none;
+}
+
+/* Panel toolbarbuttons */
+
+.panelTitle {
+  margin-top: 8px;
+  margin-inline-start: 7px;
+  margin-bottom: 6px;
+}
+
+.panelButton {
+  appearance: none;
+  min-height: 24px;
+  padding: 4px 6px;
+  background-color: transparent;
+  -moz-context-properties: fill, fill-opacity;
+  fill: currentColor;
+  fill-opacity: var(--toolbarbutton-icon-fill-opacity);
+}
+
+.panelButton:focus {
+  outline: 0;
+}
+
+.panelButton:not([disabled],[open],:active):is(:hover,:focus-visible) {
+  background-color: var(--arrowpanel-dimmed);
+}
+
+.panelButton:not([disabled]):is([open],:hover:active) {
+  background-color: var(--arrowpanel-dimmed-further);
+  box-shadow: 0 1px 0 hsla(210, 4%, 10%, .03) inset;
+}
+
+.panelButton > .toolbarbutton-text {
+  text-align: start;
+  padding-inline-start: 6px;
+  padding-inline-end: 6px;
+}
+
+.panelButton[prettykey]::after {
+  content: attr(prettykey);
+  float: inline-end;
+  color: GrayText;
+}
+
+toolbarpaletteitem toolbarspacer,
+toolbarpaletteitem toolbarspring {
+  -moz-window-dragging: no-drag;
+}
+
+/* MailExtension panels */
+
+.mail-extension-panel {
+  font: menu;
+}
+
+/* Autocomplete labels
+ * These styles match those in chrome://calendar/content/calendar-event-dialog-attendees.css. */
+
+html|span.ac-emphasize-text {
+  font-weight: bold;
+}
+
+.autocomplete-richlistitem[type$="-abook"]:not([ac-comment=""]) > .ac-url,
+.autocomplete-richlistitem[type$="-abook"]:not([ac-comment=""]) > .ac-separator {
+  display: -moz-box;
+}
+
+.autocomplete-richlistitem[type$="-abook"]:not([ac-comment=""]) > .ac-url {
+  -moz-box-ordinal-group: 1;
+}
+
+.autocomplete-richlistitem[type$="-abook"]:not([ac-comment=""]) > .ac-separator {
+  -moz-box-ordinal-group: 2;
+}
+
+.autocomplete-richlistitem[type$="-abook"]:not([ac-comment=""]) > .ac-title {
+  -moz-box-ordinal-group: 3;
+}
+
+.ac-url-text {
+  max-width: unset !important;
+}
+
+/* Date/time picker anchor */
+.popup-anchor {
+  /* should occupy space but not be visible */
+  opacity: 0;
+  pointer-events: none;
+  position: absolute;
+}
+
+html|input[type="number"] {
+  margin: 2px 4px;
+}
+/* sizes: chars + 8px padding + 1px borders + spin buttons 14+0+10px  */
+html|input[type="number"].size2 {
+  width: calc(2ch + 44px);
+}
+html|input[type="number"].size3 {
+  width: calc(3ch + 44px);
+}
+html|input[type="number"].size4 {
+  width: calc(4ch + 44px);
+}
+html|input[type="number"].size5 {
+  width: calc(5ch + 44px);
+}
+
+/* Fix the height of the print preview toolbar */
+#print-preview-toolbar {
+  max-height: 2.5em;
+}
+
+/* Toolbar customization */
+
+toolbarpaletteitem[type="spacer"] toolbarspacer,
+toolbarpaletteitem[type="spring"] toolbarspring {
+  border: 1px solid currentColor;
+  background-color: hsla(0, 0%, 100%, .3) !important;
+}
+
+toolbarpaletteitem[type="spacer"][place="toolbar"] toolbarspacer,
+toolbarpaletteitem[type="spring"][place="toolbar"] toolbarspring {
+  margin: 2px;
+}
+
+toolbarpaletteitem[type="separator"][place="palette"] toolbarseparator {
+  appearance: none;
+  width: 1px;
+  height: 50px;
+  background-color: currentColor;
+}
+
+toolbarpaletteitem[type="spacer"][place="palette"] toolbarspacer,
+toolbarpaletteitem[type="spring"][place="palette"] toolbarspring {
+  margin-bottom: 2px;
+}
+
+toolbarpaletteitem[type="spring"][place="palette"] toolbarspring {
+  background: url("chrome://messenger/skin/icons/spring.svg") no-repeat center;
+  -moz-context-properties: fill;
+  fill: currentColor;
+}
+
+panel[type="arrow"].panel-block-padding::part(content) {
+  padding-block: 6px;
+}
+
+/* Used by the import dialog */
+.wizard-box {
+  padding: 20px 44px 10px;
+}
+
+.image-container > html|img {
+  width: 32px;
+  -moz-context-properties: fill;
+  fill: currentColor;
+}
+
+.text-container description {
+  margin-block-end: 1em;
+}

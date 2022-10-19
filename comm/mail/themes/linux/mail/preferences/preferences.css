@@ -1,0 +1,39 @@
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
+@import url("chrome://messenger/skin/shared/preferences/preferences.css");
+@namespace html "http://www.w3.org/1999/xhtml";
+
+body {
+  font-size: 1.11em;
+}
+
+.treecol-sortdirection {
+  /* override the Linux only toolkit rule */
+  appearance: none;
+}
+
+html|input[type="number"] {
+  min-height: 28px;
+}
+
+html|input[type="number"]::-moz-number-spin-up {
+  min-height: 12px;
+}
+
+html|input[type="number"]::-moz-number-spin-down {
+  min-height: 13px;
+}
+
+tab + tab {
+  margin-inline-start: 0;
+}
+
+/**
+ * Dialog
+ */
+
+#defaultWebSearchPopup > menuitem > .menu-iconic-left {
+  margin-inline: 5px !important;
+}

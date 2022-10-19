@@ -1,0 +1,31 @@
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
+@import url("chrome://messenger/skin/shared/panelUI.css");
+
+.panel-subview-body {
+  scrollbar-color: color-mix(in srgb, currentColor 26%, transparent) transparent;
+}
+
+.restoreallitem > .toolbarbutton-icon {
+  display: none;
+}
+
+panelmultiview .toolbaritem-combined-buttons > spacer.before-label {
+  /* 8px + 18px toolbarbutton margin start/padding + 16px icon + 4px label padding start */
+  width: 46px;
+}
+
+menuitem.subviewbutton-iconic > .menu-iconic-left > .menu-iconic-icon {
+  width: 16px;
+}
+
+menuitem.subviewbutton > .menu-text {
+  margin-inline-start: 16px !important;
+}
+
+menuitem.subviewbutton > .menu-right {
+  margin-inline-end: -4px;
+  appearance: none;
+}

@@ -1,0 +1,57 @@
+{
+  "langpack_id": "da",
+  "manifest_version": 2,
+  "applications": {
+    "gecko": {
+      "id": "langpack-da@thunderbird.mozilla.org",
+      "strict_min_version": "91.0",
+      "strict_max_version": "91.*"
+    }
+  },
+  "name": "Dansk (da) Language Pack",
+  "description": "Language pack for Thunderbird for da",
+  "version": "91.0buildid20211101223011",
+  "languages": {
+    "da": {
+      "version": "20211011130423",
+      "chrome_resources": {
+        "alerts": "chrome/da/locale/da/alerts/",
+        "autoconfig": "chrome/da/locale/da/autoconfig/",
+        "branding": "chrome/da/locale/da/branding/",
+        "calendar": "chrome/da/locale/da/calendar/",
+        "chat": "chrome/da/locale/da/chat/",
+        "communicator": "chrome/da/locale/da/communicator/",
+        "devtools": "chrome/da/locale/da/devtools/client/",
+        "devtools-shared": "chrome/da/locale/da/devtools/shared/",
+        "devtools-startup": "chrome/da/locale/da/devtools/startup/",
+        "global": "chrome/da/locale/da/global/",
+        "global-platform": {
+          "macosx": "chrome/da/locale/da/global-platform/mac/",
+          "linux": "chrome/da/locale/da/global-platform/unix/",
+          "android": "chrome/da/locale/da/global-platform/unix/",
+          "win": "chrome/da/locale/da/global-platform/win/"
+        },
+        "lightning": "chrome/da/locale/da/lightning/",
+        "messenger": "chrome/da/locale/da/messenger/",
+        "messenger-mapi": "chrome/da/locale/da/messenger-mapi/",
+        "messenger-newsblog": "chrome/da/locale/da/messenger-newsblog/",
+        "messenger-region": "chrome/da/locale/da/messenger-region/",
+        "messenger-smime": "chrome/da/locale/da/messenger-smime/",
+        "mozapps": "chrome/da/locale/da/mozapps/",
+        "mozldap": "chrome/da/locale/da/mozldap/",
+        "necko": "chrome/da/locale/da/necko/",
+        "passwordmgr": "chrome/da/locale/da/passwordmgr/",
+        "pdf.js": "chrome/da/locale/pdfviewer/",
+        "pipnss": "chrome/da/locale/da/pipnss/",
+        "pippki": "chrome/da/locale/da/pippki/",
+        "places": "chrome/da/locale/da/places/"
+      }
+    }
+  },
+  "sources": {
+    "browser": {
+      "base_path": "browser/"
+    }
+  },
+  "author": "mozilla.org (contributors: Kim Ludvigsen, Jørgen Rasmussen, Mikkel Herold)"
+}

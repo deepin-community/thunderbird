@@ -1,0 +1,73 @@
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
+:root {
+  --in-content-categories-background: #ebebef;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --in-content-categories-background: rgba(249, 249, 250, 0.1);
+    --in-content-primary-button-background: #45a1ff !important;
+    --in-content-primary-button-background-hover: #65c1ff !important;
+    --in-content-primary-button-background-active: #85e1ff !important;
+  }
+}
+
+#sidebar {
+  background-color: var(--in-content-categories-background);
+}
+
+#sidebar > #categories {
+  padding-inline-end: 0;
+}
+
+/* Hide Plugins category */
+button[name="plugin"] {
+  display: none;
+}
+
+.sidebar-footer-list {
+  margin-bottom: 36px;
+}
+
+.sidebar-footer-link:hover,
+#categories > .category:hover {
+  border-end-end-radius: 0;
+  border-start-end-radius: 0;
+}
+
+/* Hide in extension details the private browsing section */
+section > .addon-detail-row-private-browsing,
+.addon-detail-row-private-browsing + .addon-detail-row.addon-detail-help-row {
+  display: none;
+}
+
+/* Hide the options entry in the options menu, as we have a dedicated button */
+addon-options panel-item[action="preferences"] {
+  display:none;
+}
+
+.extension-options-button {
+  min-width: auto;
+  min-height: auto;
+  width: 24px;
+  height: 24px;
+  margin: 0;
+  margin-inline-start: 8px;
+  -moz-context-properties: fill;
+  fill: currentColor;
+  background-image: url("chrome://messenger/skin/icons/developer.svg");
+  background-repeat: no-repeat;
+  background-position: center center;
+  /* Get the -badged ::after element in the right spot. */
+  padding: 1px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+recommended-addon-card .addon.card:hover {
+  box-shadow: var(--card-shadow-hover);
+  cursor: pointer;
+}

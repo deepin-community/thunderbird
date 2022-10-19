@@ -1,0 +1,867 @@
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
+@import url("chrome://global/skin/in-content/common.css");
+@import url("chrome://messenger/skin/preferences/preferences.css");
+
+:root {
+  --addon-bg: #f8f8f8;
+  --addon-border: #ccc;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --addon-bg: #333;
+    --addon-border: #111;
+  }
+}
+
+:root,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  width: 100%;
+}
+
+body {
+  display: -moz-box;
+  -moz-box-orient: vertical;
+  -moz-box-flex: 1;
+  overflow: auto;
+  background-color: rgba(0, 0, 0, 0.03);
+}
+
+header {
+  margin: 3rem 4rem;
+}
+
+.title {
+  font-size: 2.2rem;
+}
+
+.title.success {
+  padding-inline-start: 24px;
+  background: url("chrome://global/skin/icons/check.svg") 0 center no-repeat;
+  background-size: 22px;
+  -moz-context-properties: fill;
+  fill: #12bc00;
+}
+
+.title.success:dir(rtl) {
+  background-position-x: right;
+}
+
+.description {
+  line-height: 1.45em;
+  margin-block-end: 0;
+}
+
+.description + .description {
+  margin-block-start: 0;
+  margin-block-end: 1em;
+}
+
+.main-container {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  margin: 0 4rem 3rem;
+  max-width: 80rem;
+}
+
+.column {
+  flex: 1;
+  min-width: 400px;
+}
+
+.first-column {
+  max-width: 425px;
+}
+
+.second-column {
+  display: flex;
+  justify-content: center;
+  text-align: center;
+}
+
+@media (max-width: 57rem) {
+  .second-column {
+    max-width: 425px;
+    margin-top: 2rem;
+  }
+
+  .second-column img {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .second-column article {
+    transition: opacity .3s ease, transform .3s ease;
+  }
+
+  .second-column article.hide {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+}
+
+.second-column article p {
+  max-width: 40rem;
+  padding-inline: 4rem;
+}
+
+#form {
+  display: flex;
+  flex-direction: column;
+}
+
+#form label,
+#calendarDialog label {
+  font-size: 0.9em;
+  line-height: 1em;
+  margin-block-end: 3px;
+}
+
+.input-control {
+  display: flex;
+  align-items: center;
+  margin-block-end: 21px;
+}
+
+.input-control.vertical {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+#form .input-field {
+  flex: 1;
+  font-size: 0.9em;
+  margin-inline: 0;
+  padding-block: 0;
+  padding-inline-end: 33px;
+  min-height: 35px;
+  border-radius: 3px;
+}
+
+.form-icon {
+  cursor: pointer;
+  -moz-context-properties: fill, fill-opacity;
+  fill: currentColor;
+  fill-opacity: 0.7;
+  margin-inline: -26px 10px;
+}
+
+.icon-warning {
+  display: none;
+  color: var(--orange-50);
+  fill-opacity: 1;
+}
+
+input:user-invalid ~ .form-icon {
+  display: none;
+}
+
+input:user-invalid ~ .icon-warning {
+  display: inline-block;
+}
+
+.provisioner-button-container {
+  display: flex;
+  justify-content: end;
+}
+
+.btn-link {
+  appearance: none;
+  background-color: transparent !important;
+  color: var(--in-content-link-color) !important;
+  border-style: none;
+  padding: 0 3px;
+  font-size: 0.75em;
+  font-weight: 600;
+  cursor: pointer;
+  min-height: auto;
+  border-radius: 3px;
+}
+
+.btn-link-new-email {
+  margin: -18px 0 2px;
+}
+
+.btn-link:hover {
+  color: var(--in-content-link-color-hover) !important;
+  text-decoration: underline;
+}
+
+.btn-link:focus-visible {
+  outline-offset: 1px;
+}
+
+.password-toggled {
+  color: var(--in-content-primary-button-background);
+  fill: currentColor;
+}
+
+.remember-button-container {
+  display: flex;
+  justify-content: start;
+  margin-block: -15px 24px;
+}
+
+.action-buttons-container {
+  display: flex;
+  justify-content: space-between;
+  margin-inline: -6px;
+}
+
+.action-buttons-container aside {
+  display: flex;
+  align-items: center;
+}
+
+.action-buttons-container button {
+  border-radius: 3px;
+}
+
+.account-setup-notifications {
+  display: flex;
+  flex-direction: column;
+  margin-inline: -4px;
+}
+
+.account-setup-notifications .notificationbox-stack {
+  margin-block-end: 15px;
+  background-color: transparent;
+}
+
+/* Results area */
+
+#resultsArea:not([hidden]) {
+  display: flex;
+  flex-direction: column;
+  margin-block-end: 15px;
+}
+
+.section-title {
+  margin-block: 0 12px;
+}
+
+.autoconfigautoconfig-note {
+  margin-block: 10px 0;
+  font-size: 0.85em;
+}
+
+.content-blocking-category {
+  border-radius: 4px;
+  margin: 3px 0;
+  padding: 9px;
+  border: 1px solid var(--in-content-border-color);
+  background-color: rgba(215, 215, 219, 0.2);
+}
+
+.content-blocking-category.selected {
+  border: 1px solid #45A1FF;
+  background-color: rgba(69, 161, 255, 0.2);
+}
+
+.content-blocking-category.selected .result-details {
+  display: flex;
+}
+
+.result-details {
+  display: none;
+  flex-direction: column;
+  font-size: 0.9em;
+}
+
+.result-details-grid {
+  display: grid;
+  grid-template-columns: auto max-content 1fr;
+  row-gap: 6px;
+  align-items: center;
+  margin-block: 9px;
+  margin-inline-start: 21px;
+}
+
+.result-details-grid img {
+  -moz-context-properties: fill;
+  fill: currentColor;
+  color: inherit;
+  margin-inline-end: 6px;
+}
+
+.result-details-grid h4 {
+  margin-block: 0;
+  margin-inline-end: 12px;
+}
+
+.toggle-container-with-text {
+  flex-wrap: wrap;
+}
+
+.toggle-container-with-text span {
+  flex: 1;
+  line-height: 1.4em;
+}
+
+.strong {
+  font-weight: 600;
+}
+
+.result-indent {
+  margin-inline-start: 21px;
+  margin-block: 0;
+  width: 100%;
+}
+
+/* Confirmation dialog */
+
+.account-setup-dialog {
+  max-width: 500px;
+  border-radius: 6px;
+  border: none;
+  background-color: var(--in-content-page-background);
+  color: var(--in-content-page-color);
+  box-shadow: 0 2px 6px -5px #000;
+}
+
+.account-setup-dialog::backdrop {
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.dialog-container {
+  display: flex;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.dialog-container.vertical {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.dialog-header-image {
+  -moz-context-properties: fill;
+  fill: var(--in-content-primary-button-background);
+  margin-inline-end: 12px;
+  height: 32px;
+}
+
+.dialog-header-image.small {
+  height: 16px;
+}
+
+.dialog-description {
+  margin-block: 0.2em;
+  line-height: 1.4em;
+}
+
+.dialog-menu-container {
+  display: flex;
+  align-items: center;
+  margin-block-end: 0;
+  margin-inline: 0;
+  padding-inline: 0;
+  justify-content: end;
+}
+
+.dialog-menu-container.two-columns {
+  justify-content: space-between;
+}
+
+/* Insecure dialog */
+
+.account-setup-dialog.dialog-critical {
+  max-width: 700px;
+  box-shadow: 0 2px 20px -8px var(--red-70);
+}
+
+.warning-title {
+  display: flex;
+  align-items: center;
+  margin-top: 0;
+  background-color: var(--red-60);
+  color: #fff;
+  border-radius: 3px;
+  padding: 6px;
+}
+
+.warning-icon {
+  fill: #fff;
+}
+
+.insecure-section h3 {
+  margin-top: 0;
+}
+
+.insecure-section-description {
+  font-size: 1.05rem;
+  line-height: 1.5em;
+}
+
+.dialog-footnote {
+  margin-inline: 6px;
+  font-size: 1.05rem;
+  line-height: 1.4em;
+}
+
+/* Manual config area */
+
+#manualConfigArea {
+  margin-block-end: 15px;
+}
+
+#manualConfigArea select,
+#manualConfigArea input:not([type="radio"],[type="checkbox"]) {
+  margin: 0;
+  width: 4em;
+  flex: 1;
+}
+
+#manualConfigArea select {
+  padding-inline-start: 9px;
+  margin-block: 0;
+}
+
+#manualConfigArea select:not([size], [multiple]) {
+  background-position-x: right 10px;
+}
+
+#manualConfigArea select:not([size], [multiple]):dir(rtl) {
+  background-position-x: left 10px;
+}
+
+#manualConfigArea select > option {
+  padding-inline-start: 11px;
+}
+
+#manualConfigArea legend {
+  margin-top: 0;
+  background-color: var(--in-content-primary-button-background);
+  border-radius: var(--in-content-button-border-radius);
+  padding: 2px 6px;
+  font-size: 0.7em;
+  text-transform: uppercase;
+  color: var(--in-content-primary-button-text-color);
+}
+
+#manualConfigArea input[type="number"] {
+  width: calc(2ch + 60px);
+  text-align: end;
+}
+
+.manual-config-grid {
+  display: grid;
+  row-gap: 12px;
+}
+
+.manual-config-grid ~ .manual-config-grid {
+  margin-top: 15px;
+}
+
+.manual-config-grid aside {
+  display: grid;
+  grid-template-columns: 40% 1fr;
+  column-gap: 6px;
+  align-items: center;
+}
+
+.manual-config-grid .input-control {
+  align-items: initial;
+  margin-block-end: 0;
+}
+
+.manual-config-two-columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  column-gap: 12px;
+}
+
+.option-label {
+  font-size: 0.85em;
+  line-height: 1em;
+  font-weight: 500;
+}
+
+.link-row {
+  display: flex;
+  justify-content: end;
+}
+
+#outgoingProtocol {
+  display: flex;
+  height: 100%;
+  align-items: center;
+  font-weight: 500;
+  margin-inline: 4px;
+}
+
+.foot-note {
+  line-height: 1.5em;
+  font-size: 0.85em;
+  margin-block-start: 21px;
+}
+
+/* Result area */
+
+.result-host-info {
+  display: flex;
+  align-items: center;
+  padding-block: 0;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.protocol-type {
+  display: inline-block;
+  text-transform: uppercase;
+  padding: 1px 4px;
+  font-size: 0.8rem;
+  font-weight: bold;
+  border-radius: 2px;
+  background-color: var(--in-content-primary-button-background);
+  color: var(--in-content-primary-button-text-color);
+}
+.result-host-info > .protocol-type {
+  margin-inline-end: 5px;
+}
+
+.result-host-info > span {
+  margin-inline: 0;
+}
+
+.result-host-info > .ssl {
+  margin-inline-start: 0.4em;
+}
+
+.result-host-info > .domain {
+  font-weight: bold;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.result-host-info > .insecure {
+  display: inline-block;
+  padding: 2px 4px;
+  font-size: 0.8rem;
+  margin-inline-end: 5px;
+  font-weight: bold;
+  border-radius: 2px;
+  line-height: 1rem;
+  background-color: var(--red-70);
+  color: var(--in-content-primary-button-text-color);
+}
+
+.cert-status.insecure {
+  margin: 0 0 5px 0;
+  color: var(--red-70);
+}
+
+#installAddonInfo {
+  background-color: var(--addon-bg);
+  padding: 3px 6px;
+  border-radius: 3px;
+  border: 1px solid var(--addon-border);
+}
+
+#resultAddonIntro {
+  margin-block: 3px 12px;
+}
+
+#resultAddonInstallRows .icon {
+  width: 32px;
+  height: 32px;
+  margin-inline-end: 6px;
+}
+
+.addon-container {
+  display: flex;
+  align-items: center;
+}
+
+.link {
+  flex: 1;
+  line-height: 1.2em;
+}
+
+input[disabled],
+select[disabled] {
+  opacity: 0.5;
+}
+
+/* Success view */
+
+.success-column:not([hidden]) {
+  display: flex;
+  flex-direction: column;
+}
+
+.account-success-block {
+  display: grid;
+  grid-template-columns: min-content 1fr min-content;
+  align-items: center;
+  color: inherit;
+  background-color: var(--in-content-box-background);
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.15);
+  column-gap: 6px;
+  padding: 3px 9px;
+  border-radius: 3px;
+  min-height: 39px;
+  line-height: 1em;
+  -moz-context-properties: fill;
+  fill: currentColor;
+}
+
+.account-type-image {
+  color: var(--in-content-link-color);
+}
+
+.linked-services-button {
+  display: flex;
+  align-items: center;
+  background-color: transparent;
+  appearance: none;
+  margin: 0;
+  padding-inline: 0;
+  width: 100%;
+  height: auto;
+}
+
+button.linked-services-button:hover {
+  background-color: transparent;
+  color: var(--in-content-accent-color);
+  cursor: pointer;
+}
+
+button.linked-services-button:hover:active {
+  background-color: transparent;
+  border-color: transparent;
+}
+
+.linked-services-button > aside {
+  display: flex;
+  flex-direction: column;
+  align-items: start;
+  flex: 1;
+  padding: 3px;
+}
+
+.linked-services-description {
+  font-size: 0.9em;
+  margin-block: 0;
+  text-align: start;
+  color: var(--in-content-deemphasized-text);
+}
+
+.account-name {
+  font-size: 0.9em;
+  margin-block-end: 3px;
+  font-weight: 500;
+}
+
+.account-email {
+  font-size: 0.9em;
+  color: var(--in-content-link-color);
+  font-weight: 500;
+}
+
+.quick-links {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-around;
+  margin: 12px 21px 27px;
+}
+
+.quick-link {
+  appearance: none;
+  -moz-context-properties: fill;
+  fill: currentColor;
+  border: none;
+  padding: 6px;
+  padding-inline-start: 27px;
+  margin: 6px 3px;
+  line-height: 1em;
+  background-position: 3px center;
+  background-repeat: no-repeat;
+  background-size: 16px;
+  background-color: transparent;
+  min-height: auto;
+  border-radius: 0;
+  cursor: pointer;
+  text-align: start;
+}
+
+.quick-link:dir(rtl) {
+  background-position-x: right 3px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .quick-link {
+    transition: color .2s ease;
+  }
+}
+
+button.quick-link:hover,
+button.quick-link:hover:active {
+  background-color: transparent;
+  color: var(--in-content-link-color);
+}
+
+#settingsButton {
+  background-image: url("chrome://global/skin/icons/settings.svg");
+}
+
+#signatureButton {
+  background-image: url("chrome://messenger/skin/icons/newmsg.svg");
+}
+
+#encryptionButton {
+  background-image: url("chrome://messenger/skin/icons/encryption-key.svg");
+}
+
+#dictionariesButton {
+  background-image: url("chrome://messenger/skin/icons/file.svg");
+}
+
+#addressBookCardDAVButton,
+#addressBookLDAPButton {
+  background-image: url("chrome://messenger/skin/icons/new-addressbook.svg");
+  align-self: start;
+}
+
+#calendarButton {
+  background-image: url("chrome://messenger/skin/icons/new-calendar.svg");
+  align-self: start;
+}
+
+#linkedServices h3 {
+  font-size: 1.6rem;
+  font-weight: 300;
+  margin-bottom: 0;
+}
+
+#linkedServices p.tip-caption {
+  margin-top: 9px;
+  margin-bottom: 0;
+}
+
+.services-buttons-container {
+  display: flex;
+  flex-direction: column;
+}
+
+.linked-services-container:not([hidden]) {
+  display: flex;
+  flex-direction: column;
+  margin-block-start: 6px;
+}
+
+.linked-services-section {
+  margin-top: 18px;
+}
+
+.linked-services-list {
+  list-style: none;
+  padding-inline: 0;
+  margin-block: 0;
+}
+
+.linked-services-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-inline-start: 4px;
+  border-radius: 3px;
+}
+
+.linked-services-list li span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+.linked-services-list button.small {
+  line-height: 0.9em;
+  padding-block: 0;
+}
+
+.list-item-name {
+  flex: 1;
+  padding-inline: 6px;
+}
+
+.self-center {
+  align-self: center;
+}
+
+.final-buttons-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  margin-block: 18px 12px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .linked-service-dropdown {
+    transition: transform .2s ease;
+  }
+}
+
+.opened .linked-service-dropdown {
+  transform: rotate(90deg);
+}
+
+.linked-service-dropdown:dir(rtl) {
+  transform: rotate(180deg);
+}
+
+.linked-service-dropdown img {
+  -moz-context-properties: fill;
+  fill: currentColor;
+}
+
+button.existing {
+  background: url("chrome://global/skin/icons/check.svg") 0 center no-repeat;
+  background-size: 16px;
+  -moz-context-properties: fill;
+  fill: #12bc00;
+  opacity: 1;
+  padding-inline-start: 18px;
+}
+
+button.existing:dir(rtl) {
+  background-position-x: right;
+}
+
+#calendarDialog {
+  width: 100%;
+}
+
+.calendar-dialog-form {
+  display: grid;
+  grid-template-columns: max-content auto;
+  align-items: center;
+  row-gap: 3px;
+  column-gap: 3px;
+  margin-block-end: 21px;
+}
+
+.input-grow {
+  flex: 1;
+}
+
+#calendarDialog .calendar-dialog-form label,
+.calendar-dialog-form .input-control {
+  margin-block-end: 0;
+}
+
+.calendar-dialog-form select,
+.calendar-dialog-form input[type="color"] {
+  margin-inline: 4px;
+}

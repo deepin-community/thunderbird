@@ -1,0 +1,400 @@
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, you can obtain one at http://mozilla.org/MPL/2.0/. */
+
+@import url("chrome://messenger/skin/shared/preferences/subdialog.css");
+
+:root {
+  --in-content-button-border-radius: 3px;
+  --in-content-button-vertical-padding: 0;
+}
+
+@media not (prefers-contrast) {
+  :root {
+    --in-content-button-background: var(--grey-90-a10);
+    --in-content-button-background-hover: var(--grey-90-a20);
+    --in-content-button-background-active: var(--grey-90-a30);
+    --in-content-categories-background: #ebebef;
+    --in-content-item-selected-unfocused: var(--grey-20);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --in-content-categories-background: rgba(249, 249, 250, 0.1);
+      --in-content-item-selected-unfocused: rgba(249, 249, 250, 0.05);
+      --in-content-button-background: rgba(249, 249, 250, 0.1);
+      --in-content-button-background-hover: rgba(249, 249, 250, 0.15);
+      --in-content-button-background-active: rgba(249, 249, 250, 0.2);
+      --in-content-primary-button-background: #45a1ff;
+      --in-content-primary-button-background-hover: #65c1ff;
+      --in-content-primary-button-background-active: #85e1ff;
+      --in-content-focus-outline-color: #45a1ff;
+    }
+  }
+}
+
+button {
+  --in-content-button-horizontal-padding: 12px;
+}
+
+:root {
+  appearance: none;
+  font: message-box;
+  background-color: var(--in-content-page-background);
+  color: var(--in-content-page-color);
+}
+
+/* Page layout */
+
+body {
+  display: grid;
+  grid-template-rows: min-content auto;
+  grid-template-columns: max-content max-content auto;
+  text-shadow: none;
+}
+
+#dialogStack {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+}
+
+/* Toolbar */
+
+#toolbox {
+  grid-column: 1/4;
+  font: message-box;
+}
+
+#toolbarCreateBook {
+  list-style-image: url("chrome://messenger/skin/icons/address.svg");
+}
+
+#toolbarCreateContact {
+  list-style-image: url("chrome://messenger/skin/icons/addcontact.svg");
+}
+
+#toolbarCreateList {
+  list-style-image: url("chrome://messenger/skin/icons/addlist.svg");
+}
+
+#toolbarImport {
+  list-style-image: url("chrome://messenger/skin/icons/import.svg");
+}
+
+#toolbarExport {
+  list-style-image: url("chrome://messenger/skin/icons/file.svg");
+}
+
+/* Books pane */
+
+#booksPane {
+  width: 18em;
+  padding-block: 30px;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  color: var(--in-content-page-color);
+  background-color: var(--in-content-categories-background);
+}
+
+#books {
+  flex: 1;
+  font-size: 15px;
+  line-height: 30px;
+  scroll-behavior: smooth;
+  -moz-user-select: none;
+}
+
+#books:focus-visible {
+  outline: none;
+}
+
+#books,
+#books ul {
+  flex: 1;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+#allAddressBooks {
+  margin-block-end: 10px;
+}
+
+.bookRow-container,
+.listRow-container {
+  display: flex;
+  align-items: center;
+  -moz-context-properties: fill;
+  margin-inline: 6px;
+  border-radius: var(--in-content-button-border-radius);
+  fill: currentColor;
+  cursor: default;
+}
+
+.bookRow.selected > .bookRow-container,
+.listRow.selected > .listRow-container {
+  background-color: var(--in-content-button-background);
+}
+
+.bookRow > .bookRow-container:hover,
+.listRow > .listRow-container:hover {
+  background-color: var(--in-content-item-hover);
+}
+
+#books:focus .bookRow.selected > .bookRow-container,
+#books:focus .listRow.selected > .listRow-container {
+  background-color: var(--in-content-item-selected);
+  color: var(--in-content-item-selected-text);
+}
+
+.bookRow .twisty {
+  width: 26px;
+  height: 26px;
+}
+
+.bookRow:not(.children) .twisty-icon {
+  display: none;
+}
+
+.bookRow .twisty-icon {
+  margin: 7px;
+}
+
+.bookRow.children.collapsed .twisty-icon {
+  transform: rotate(-90deg);
+}
+
+.bookRow.children.collapsed:dir(rtl) .twisty-icon {
+  transform: rotate(90deg);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .bookRow .twisty-icon {
+    transition: transform 200ms ease;
+  }
+}
+
+.bookRow-icon,
+.listRow-icon {
+  width: 16px;
+  height: 16px;
+  background-image: url("chrome://messenger/skin/icons/address.svg");
+  background-position: center center;
+  background-repeat: no-repeat;
+}
+
+.bookRow.remote .bookRow-icon {
+  background-image: url("chrome://messenger/skin/icons/globe.svg");
+}
+
+.bookRow-name,
+.listRow-name {
+  flex: 1;
+  margin-inline: 7px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow-x: hidden;
+}
+
+.bookRow-children:empty,
+.bookRow.collapsed > .bookRow-children {
+  display: none;
+}
+
+.listRow-container {
+  padding-inline-start: 51px;
+}
+
+.listRow-icon {
+  background-image: url("chrome://messenger/skin/icons/ablist.svg");
+}
+
+/* Cards pane */
+
+#cardsPane {
+  width: 27em;
+  padding-block-start: 30px;
+  display: flex;
+  flex-direction: column;
+  overflow-y: hidden;
+  color: var(--in-content-page-color);
+  background-color: var(--in-content-box-background);
+}
+
+#cardsHeader {
+  display: flex;
+  margin-block-end: 8px;
+  margin-inline: 6px;
+}
+
+#searchInput {
+  height: 30px;
+  flex: 1;
+  margin: 0;
+  margin-inline-end: 8px;
+  padding-inline: 8px;
+  box-sizing: border-box;
+  border: 1px solid var(--in-content-box-border-color);
+  border-radius: var(--in-content-button-border-radius);
+  color: inherit;
+  background-color: var(--in-content-box-background);
+}
+
+#searchInput:focus {
+  border-color: transparent;
+  outline: 2px solid var(--in-content-focus-outline-color);
+  outline-offset: -1px;
+}
+
+#sortButton {
+  min-width: 0;
+  min-height: 0;
+  width: 30px;
+  height: 30px;
+  margin: 0;
+  padding: 6px;
+  -moz-context-properties: fill;
+  fill: currentColor;
+}
+
+#sortButton dropmarker {
+  display: none;
+}
+
+#cards {
+  flex: 1;
+  font-size: 15px;
+  -moz-context-properties: fill;
+  fill: currentColor;
+}
+
+ab-card-listrow {
+  margin-inline: 6px;
+  border-radius: var(--in-content-button-border-radius);
+}
+
+ab-card-listrow:hover {
+  background-color: var(--in-content-item-hover);
+}
+
+/* Details pane */
+
+#detailsPane {
+  padding: 30px 20px;
+  overflow: auto;
+  color: var(--in-content-page-color);
+  background-color: var(--in-content-categories-background);
+}
+
+#detailsHeader {
+  min-width: 27.5em;
+  max-width: 54.5em;
+  display: flex;
+  align-items: center;
+}
+
+#detailsHeader h1 {
+  margin-block: 0 0.25em;
+  flex: 1;
+  font-size: 1.75em;
+  font-weight: 400;
+}
+
+#detailsPane.isEditing .view {
+  display: none;
+}
+
+#detailsPane:not(.isEditing) .edit,
+#detailsPane:not(.isEditing) .noValue {
+  display: none !important;
+}
+
+#photo {
+  width: 150px;
+  height: 150px;
+  margin-inline-start: 1em;
+  border-radius: 100%;
+  background-size: cover;
+  background-position: center;
+  background-color: var(--in-content-button-background);
+  background-image: url("chrome://messenger/skin/icons/contact.svg");
+  box-shadow: 0 0 3px var(--in-content-button-background);
+  -moz-context-properties: fill;
+  fill: var(--in-content-box-background);
+}
+
+#detailsPane h2 {
+  margin-block: 0.75em 0.25em;
+  font-size: 1.25em;
+  font-weight: 400;
+}
+
+.view > ul:empty {
+  display: none;
+}
+
+.editGrid {
+  min-width: 27em;
+  max-width: 54em;
+  display: grid;
+  grid-template-columns: repeat(2, 50%);
+  grid-gap: 0.5em;
+}
+
+.editGrid > div.labelledField {
+  display: flex;
+  flex-direction: column;
+}
+
+.editGrid > div.labelledField > label:first-child {
+  margin-block-end: 0.25em;
+  font-size: 13.333px;
+}
+
+.editGrid > div.spans2columns {
+  grid-column: 1 / 3;
+}
+
+.editGrid > div.inlineField {
+  display: flex;
+  align-items: center;
+}
+
+.editGrid input:not([type="checkbox"]),
+.editGrid textarea {
+  flex: 1;
+  margin: 0;
+}
+
+/* Address fields have two neighbouring inputs. */
+.editGrid input + input {
+  border-top: none;
+}
+
+.editGrid select {
+  line-height: 2;
+  padding-block: 0;
+  padding-inline: 9px 24px;
+}
+
+.editGrid select:not([size], [multiple]) {
+  background-position-x: right 10px;
+}
+
+.editGrid select:not([size], [multiple]):dir(rtl) {
+  background-position-x: left 24px;
+}
+
+.editGrid select > button {
+  padding-block: 0;
+}
+
+.editGrid input:is([type="email"], [type="tel"], [type="text"], [type="password"], [type="url"]) {
+  border-radius: var(--in-content-button-border-radius);
+  padding-block: initial;
+  min-height: 30px; /* it should be 32px but input doesn't include the border */
+}

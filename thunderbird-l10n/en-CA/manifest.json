@@ -1,0 +1,57 @@
+{
+  "langpack_id": "en-CA",
+  "manifest_version": 2,
+  "applications": {
+    "gecko": {
+      "id": "langpack-en-CA@thunderbird.mozilla.org",
+      "strict_min_version": "91.0",
+      "strict_max_version": "91.*"
+    }
+  },
+  "name": "English (CA) Language Pack",
+  "description": "Language pack for Thunderbird for en-CA",
+  "version": "91.0buildid20211101223011",
+  "languages": {
+    "en-CA": {
+      "version": "20211015155600",
+      "chrome_resources": {
+        "alerts": "chrome/en-CA/locale/en-CA/alerts/",
+        "autoconfig": "chrome/en-CA/locale/en-CA/autoconfig/",
+        "branding": "chrome/en-CA/locale/en-CA/branding/",
+        "calendar": "chrome/en-CA/locale/en-CA/calendar/",
+        "chat": "chrome/en-CA/locale/en-CA/chat/",
+        "communicator": "chrome/en-CA/locale/en-CA/communicator/",
+        "devtools": "chrome/en-CA/locale/en-CA/devtools/client/",
+        "devtools-shared": "chrome/en-CA/locale/en-CA/devtools/shared/",
+        "devtools-startup": "chrome/en-CA/locale/en-CA/devtools/startup/",
+        "global": "chrome/en-CA/locale/en-CA/global/",
+        "global-platform": {
+          "macosx": "chrome/en-CA/locale/en-CA/global-platform/mac/",
+          "linux": "chrome/en-CA/locale/en-CA/global-platform/unix/",
+          "android": "chrome/en-CA/locale/en-CA/global-platform/unix/",
+          "win": "chrome/en-CA/locale/en-CA/global-platform/win/"
+        },
+        "lightning": "chrome/en-CA/locale/en-CA/lightning/",
+        "messenger": "chrome/en-CA/locale/en-CA/messenger/",
+        "messenger-mapi": "chrome/en-CA/locale/en-CA/messenger-mapi/",
+        "messenger-newsblog": "chrome/en-CA/locale/en-CA/messenger-newsblog/",
+        "messenger-region": "chrome/en-CA/locale/en-CA/messenger-region/",
+        "messenger-smime": "chrome/en-CA/locale/en-CA/messenger-smime/",
+        "mozapps": "chrome/en-CA/locale/en-CA/mozapps/",
+        "mozldap": "chrome/en-CA/locale/en-CA/mozldap/",
+        "necko": "chrome/en-CA/locale/en-CA/necko/",
+        "passwordmgr": "chrome/en-CA/locale/en-CA/passwordmgr/",
+        "pdf.js": "chrome/en-CA/locale/pdfviewer/",
+        "pipnss": "chrome/en-CA/locale/en-CA/pipnss/",
+        "pippki": "chrome/en-CA/locale/en-CA/pippki/",
+        "places": "chrome/en-CA/locale/en-CA/places/"
+      }
+    }
+  },
+  "sources": {
+    "browser": {
+      "base_path": "browser/"
+    }
+  },
+  "author": "mozilla.org (contributors: Kohei Yoshino)"
+}
