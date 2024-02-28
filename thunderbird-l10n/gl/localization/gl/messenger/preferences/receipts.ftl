@@ -4,48 +4,36 @@
 
 receipts-dialog-window =
     .title = Avisos de recepción
-
-return-receipt-checkbox =
-    .label = Cando se envíen mensaxes pedir sempre aviso de recepción
-    .acceskey = C
-
+receipts-dialog-title = Acusar o recibimento
+return-receipt-checkbox-control =
+    .label = Ao enviar mensaxes, solicitar sempre un aviso de recepción
+    .accesskey = W
 receipt-arrive-label = Cando chegue un aviso:
-
-receipt-leave-radio =
+receipt-leave-radio-control =
     .label = Deixalo na caixa de entrada
-    .acceskey = D
-
-receipt-move-radio =
-    .label = Movelo para o cartafol "Enviados"
-    .acceskey = M
-
+    .accesskey = i
+receipt-move-radio-control =
+    .label = Movelo para o cartafol «Enviados»
+    .accesskey = m
 receipt-request-label = Cando reciba unha solicitude de aviso de recepción:
-
-receipt-return-never-radio =
+receipt-return-never-radio-control =
     .label = Non enviar nunca un aviso de recepción
-    .acceskey = N
-
-receipt-return-some-radio =
+    .accesskey = n
+receipt-return-some-radio-control =
     .label = Permitir o envío de avisos de recepción para algunhas mensaxes
-    .acceskey = P
-
-receipt-not-to-cc =
+    .accesskey = r
+receipt-not-to-cc-label =
     .value = Se non estou en Para ou en CC na mensaxe:
-    .acceskey = e
-
+    .accesskey = f
 receipt-send-never-label =
     .label = Non enviar nunca
-
 receipt-send-always-label =
     .label = Enviar sempre
-
 receipt-send-ask-label =
     .label = Preguntar
-
-sender-outside-domain =
+sender-outside-domain-label =
     .value = Se o/a remitente está fóra do meu dominio:
-    .acceskey = d
-
-other-cases-label =
+    .accesskey = t
+other-cases-text-label =
     .value = Nos demais casos:
-    .acceskey = c
+    .accesskey = a

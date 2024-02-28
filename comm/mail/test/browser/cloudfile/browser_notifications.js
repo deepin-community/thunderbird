@@ -8,13 +8,8 @@
 
 "use strict";
 
-var {
-  gMockFilePicker,
-  gMockFilePickReg,
-  select_attachments,
-} = ChromeUtils.import(
-  "resource://testing-common/mozmill/AttachmentHelpers.jsm"
-);
+var { gMockFilePicker, gMockFilePickReg, select_attachments } =
+  ChromeUtils.import("resource://testing-common/mozmill/AttachmentHelpers.jsm");
 var { gMockCloudfileManager, MockCloudfileAccount } = ChromeUtils.import(
   "resource://testing-common/mozmill/CloudfileHelpers.jsm"
 );
@@ -23,6 +18,7 @@ var {
   add_cloud_attachments,
   close_compose_window,
   open_compose_new_mail,
+  delete_attachment,
 } = ChromeUtils.import("resource://testing-common/mozmill/ComposeHelpers.jsm");
 var { mc } = ChromeUtils.import(
   "resource://testing-common/mozmill/FolderDisplayHelpers.jsm"
@@ -39,8 +35,6 @@ var { gMockPromptService } = ChromeUtils.import(
   "resource://testing-common/mozmill/PromptHelpers.jsm"
 );
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-
 var maxSize, oldInsertNotificationPref;
 
 var kOfferThreshold = "mail.compose.big_attachments.threshold_kb";
@@ -49,7 +43,7 @@ var kInsertNotificationPref =
 
 var kBoxId = "compose-notification-bottom";
 
-add_task(function setupModule(module) {
+add_setup(function () {
   requestLongerTimeout(2);
 
   gMockCloudfileManager.register();
@@ -62,7 +56,7 @@ add_task(function setupModule(module) {
   Services.prefs.setBoolPref(kInsertNotificationPref, true);
 });
 
-registerCleanupFunction(function teardownModule(module) {
+registerCleanupFunction(function () {
   gMockCloudfileManager.unregister();
   gMockFilePickReg.unregister();
   Services.prefs.setBoolPref(
@@ -82,7 +76,7 @@ registerCleanupFunction(function teardownModule(module) {
  */
 function assert_cloudfile_notification_displayed(aController, aDisplayed) {
   assert_notification_displayed(
-    aController,
+    aController.window,
     kBoxId,
     "bigAttachment",
     aDisplayed
@@ -99,7 +93,7 @@ function assert_cloudfile_notification_displayed(aController, aDisplayed) {
  */
 function assert_upload_notification_displayed(aController, aDisplayed) {
   assert_notification_displayed(
-    aController,
+    aController.window,
     kBoxId,
     "bigAttachmentUploading",
     aDisplayed
@@ -119,7 +113,7 @@ function assert_privacy_warning_notification_displayed(
   aDisplayed
 ) {
   assert_notification_displayed(
-    aController,
+    aController.window,
     kBoxId,
     "bigAttachmentPrivacyWarning",
     aDisplayed
@@ -130,28 +124,28 @@ function assert_privacy_warning_notification_displayed(
  * A helper function to close the Filelink upload notification.
  */
 function close_upload_notification(aController) {
-  close_notification(aController, kBoxId, "bigAttachmentUploading");
+  close_notification(aController.window, kBoxId, "bigAttachmentUploading");
 }
 
 /**
  * A helper function to close the Filelink privacy warning notification.
  */
 function close_privacy_warning_notification(aController) {
-  close_notification(aController, kBoxId, "bigAttachmentPrivacyWarning");
+  close_notification(aController.window, kBoxId, "bigAttachmentPrivacyWarning");
 }
 
 add_task(function test_no_notification_for_small_file() {
   let cwc = open_compose_new_mail(mc);
-  add_attachments(cwc, "http://www.example.com/1", 0);
+  add_attachments(cwc, "https://www.example.com/1", 0);
   assert_cloudfile_notification_displayed(cwc, false);
 
-  add_attachments(cwc, "http://www.example.com/2", 1);
+  add_attachments(cwc, "https://www.example.com/2", 1);
   assert_cloudfile_notification_displayed(cwc, false);
 
-  add_attachments(cwc, "http://www.example.com/3", 100);
+  add_attachments(cwc, "https://www.example.com/3", 100);
   assert_cloudfile_notification_displayed(cwc, false);
 
-  add_attachments(cwc, "http://www.example.com/4", 500);
+  add_attachments(cwc, "https://www.example.com/4", 500);
   assert_cloudfile_notification_displayed(cwc, false);
 
   close_compose_window(cwc);
@@ -159,16 +153,16 @@ add_task(function test_no_notification_for_small_file() {
 
 add_task(function test_notification_for_big_files() {
   let cwc = open_compose_new_mail(mc);
-  add_attachments(cwc, "http://www.example.com/1", maxSize);
+  add_attachments(cwc, "https://www.example.com/1", maxSize);
   assert_cloudfile_notification_displayed(cwc, true);
 
-  add_attachments(cwc, "http://www.example.com/2", maxSize + 1000);
+  add_attachments(cwc, "https://www.example.com/2", maxSize + 1000);
   assert_cloudfile_notification_displayed(cwc, true);
 
-  add_attachments(cwc, "http://www.example.com/3", maxSize + 10000);
+  add_attachments(cwc, "https://www.example.com/3", maxSize + 10000);
   assert_cloudfile_notification_displayed(cwc, true);
 
-  add_attachments(cwc, "http://www.example.com/4", maxSize + 100000);
+  add_attachments(cwc, "https://www.example.com/4", maxSize + 100000);
   assert_cloudfile_notification_displayed(cwc, true);
 
   close_compose_window(cwc);
@@ -176,13 +170,13 @@ add_task(function test_notification_for_big_files() {
 
 add_task(function test_graduate_to_notification() {
   let cwc = open_compose_new_mail(mc);
-  add_attachments(cwc, "http://www.example.com/1", maxSize - 100);
+  add_attachments(cwc, "https://www.example.com/1", maxSize - 100);
   assert_cloudfile_notification_displayed(cwc, false);
 
-  add_attachments(cwc, "http://www.example.com/2", maxSize - 25);
+  add_attachments(cwc, "https://www.example.com/2", maxSize - 25);
   assert_cloudfile_notification_displayed(cwc, false);
 
-  add_attachments(cwc, "http://www.example.com/3", maxSize);
+  add_attachments(cwc, "https://www.example.com/3", maxSize);
   assert_cloudfile_notification_displayed(cwc, true);
 
   close_compose_window(cwc);
@@ -192,16 +186,16 @@ add_task(function test_no_notification_if_disabled() {
   Services.prefs.setBoolPref("mail.cloud_files.enabled", false);
   let cwc = open_compose_new_mail(mc);
 
-  add_attachments(cwc, "http://www.example.com/1", maxSize);
+  add_attachments(cwc, "https://www.example.com/1", maxSize);
   assert_cloudfile_notification_displayed(cwc, false);
 
-  add_attachments(cwc, "http://www.example.com/2", maxSize + 1000);
+  add_attachments(cwc, "https://www.example.com/2", maxSize + 1000);
   assert_cloudfile_notification_displayed(cwc, false);
 
-  add_attachments(cwc, "http://www.example.com/3", maxSize + 10000);
+  add_attachments(cwc, "https://www.example.com/3", maxSize + 10000);
   assert_cloudfile_notification_displayed(cwc, false);
 
-  add_attachments(cwc, "http://www.example.com/4", maxSize + 100000);
+  add_attachments(cwc, "https://www.example.com/4", maxSize + 100000);
   assert_cloudfile_notification_displayed(cwc, false);
 
   close_compose_window(cwc);
@@ -285,9 +279,9 @@ add_task(function test_link_insertion_goes_away_on_error() {
   let cwc = open_compose_new_mail(mc);
   add_cloud_attachments(cwc, provider, false);
 
-  wait_for_notification_to_show(cwc, kBoxId, "bigAttachmentUploading");
+  wait_for_notification_to_show(cwc.window, kBoxId, "bigAttachmentUploading");
   gMockCloudfileManager.rejectUploads();
-  wait_for_notification_to_stop(cwc, kBoxId, "bigAttachmentUploading");
+  wait_for_notification_to_stop(cwc.window, kBoxId, "bigAttachmentUploading");
 
   close_compose_window(cwc);
   gMockPromptService.unregister();
@@ -295,9 +289,10 @@ add_task(function test_link_insertion_goes_away_on_error() {
 
 /**
  * Test that we do not show the Filelink offer notification if we convert
- * a Filelink back into a normal attachment.
+ * a Filelink back into a normal attachment. Also test, that the privacy
+ * notification is correctly shown and hidden.
  */
-add_task(function test_no_offer_on_conversion() {
+add_task(async function test_no_offer_on_conversion() {
   const kFiles = ["./data/testFile1", "./data/testFile2"];
   // Set the notification threshold to 0 to ensure that we get it.
   Services.prefs.setIntPref(kOfferThreshold, 0);
@@ -310,9 +305,12 @@ add_task(function test_no_offer_on_conversion() {
   // Override uploadFile to succeed instantaneously so that we don't have
   // to worry about waiting for the onStopRequest method being called
   // asynchronously.
-  provider.uploadFile = function(window, aFile) {
+  provider.uploadFile = function (window, aFile) {
     return Promise.resolve({
       id: 1,
+      url: "https://some.cloud.net/1",
+      path: aFile.path,
+      size: aFile.fileSize,
     });
   };
 
@@ -320,11 +318,20 @@ add_task(function test_no_offer_on_conversion() {
   add_cloud_attachments(cw, provider, false);
 
   assert_cloudfile_notification_displayed(cw, false);
+  assert_privacy_warning_notification_displayed(cw, true);
+
   // Now convert the file back into a normal attachment
   select_attachments(cw, 0);
-  cw.window.convertSelectedToRegularAttachment();
-
+  await cw.window.convertSelectedToRegularAttachment();
   assert_cloudfile_notification_displayed(cw, false);
+  assert_privacy_warning_notification_displayed(cw, true);
+
+  // Convert also the other file, the privacy notification should no longer
+  // be shown as well.
+  select_attachments(cw, 1);
+  await cw.window.convertSelectedToRegularAttachment();
+  assert_cloudfile_notification_displayed(cw, false);
+  assert_privacy_warning_notification_displayed(cw, false);
 
   close_compose_window(cw);
 
@@ -336,7 +343,7 @@ add_task(function test_no_offer_on_conversion() {
  * Test that when we kick off an upload via the offer notification, then
  * the upload notification is shown.
  */
-add_task(function test_offer_then_upload_notifications() {
+add_task(async function test_offer_then_upload_notifications() {
   const kFiles = ["./data/testFile1", "./data/testFile2"];
   // Set the notification threshold to 0 to ensure that we get it.
   Services.prefs.setIntPref(kOfferThreshold, 0);
@@ -355,9 +362,12 @@ add_task(function test_offer_then_upload_notifications() {
   // Override uploadFile to succeed instantaneously so that we don't have
   // to worry about waiting for the onStopRequest method being called
   // asynchronously.
-  provider.uploadFile = function(window, aFile) {
+  provider.uploadFile = function (window, aFile) {
     return Promise.resolve({
       id: 1,
+      url: "https://some.cloud.net/1",
+      path: aFile.path,
+      size: aFile.fileSize,
     });
   };
 
@@ -372,7 +382,7 @@ add_task(function test_offer_then_upload_notifications() {
   // them.
   select_attachments(cw, 0, 1);
   // Convert them.
-  cw.window.convertSelectedToCloudAttachment(provider);
+  await cw.window.convertSelectedToCloudAttachment(provider);
 
   // The offer should now be gone...
   assert_cloudfile_notification_displayed(cw, false);
@@ -402,9 +412,9 @@ add_task(function test_privacy_warning_notification() {
   let cwc = open_compose_new_mail(mc);
   add_cloud_attachments(cwc, provider, false);
 
-  wait_for_notification_to_show(cwc, kBoxId, "bigAttachmentUploading");
+  wait_for_notification_to_show(cwc.window, kBoxId, "bigAttachmentUploading");
   gMockCloudfileManager.resolveUploads();
-  wait_for_notification_to_stop(cwc, kBoxId, "bigAttachmentUploading");
+  wait_for_notification_to_stop(cwc.window, kBoxId, "bigAttachmentUploading");
 
   // Assert that the warning is displayed.
   assert_privacy_warning_notification_displayed(cwc, true);
@@ -419,6 +429,42 @@ add_task(function test_privacy_warning_notification() {
   ]);
   add_cloud_attachments(cwc, provider, false);
   gMockCloudfileManager.resolveUploads();
+  assert_privacy_warning_notification_displayed(cwc, false);
+
+  close_compose_window(cwc);
+  gMockPromptService.unregister();
+});
+
+/**
+ * Test that when all cloud attachments are removed, the privacy warning will
+ * be removed as well.
+ */
+add_task(function test_privacy_warning_notification() {
+  gMockPromptService.register();
+  gMockPromptService.returnValue = false;
+  gMockFilePicker.returnFiles = collectFiles([
+    "./data/testFile1",
+    "./data/testFile2",
+  ]);
+  let provider = new MockCloudfileAccount();
+  provider.init("aKey");
+
+  let cwc = open_compose_new_mail(mc);
+  add_cloud_attachments(cwc, provider, false);
+
+  wait_for_notification_to_show(cwc.window, kBoxId, "bigAttachmentUploading");
+  gMockCloudfileManager.resolveUploads();
+  wait_for_notification_to_stop(cwc.window, kBoxId, "bigAttachmentUploading");
+
+  // Assert that the warning is displayed.
+  assert_privacy_warning_notification_displayed(cwc, true);
+
+  // Assert that the warning is still displayed, if one attachment is removed.
+  delete_attachment(cwc, 1);
+  assert_privacy_warning_notification_displayed(cwc, true);
+
+  // Assert that the warning is not displayed, after both attachments are removed.
+  delete_attachment(cwc, 0);
   assert_privacy_warning_notification_displayed(cwc, false);
 
   close_compose_window(cwc);
@@ -442,9 +488,9 @@ add_task(function test_privacy_warning_notification_no_persist() {
   let cwc = open_compose_new_mail(mc);
   add_cloud_attachments(cwc, provider, false);
 
-  wait_for_notification_to_show(cwc, kBoxId, "bigAttachmentUploading");
+  wait_for_notification_to_show(cwc.window, kBoxId, "bigAttachmentUploading");
   gMockCloudfileManager.resolveUploads();
-  wait_for_notification_to_stop(cwc, kBoxId, "bigAttachmentUploading");
+  wait_for_notification_to_stop(cwc.window, kBoxId, "bigAttachmentUploading");
 
   // Assert that the warning is displayed.
   assert_privacy_warning_notification_displayed(cwc, true);
@@ -479,9 +525,9 @@ add_task(function test_privacy_warning_notification_open_after_close() {
   let cwc = open_compose_new_mail(mc);
   add_cloud_attachments(cwc, provider, false);
 
-  wait_for_notification_to_show(cwc, kBoxId, "bigAttachmentUploading");
+  wait_for_notification_to_show(cwc.window, kBoxId, "bigAttachmentUploading");
   gMockCloudfileManager.resolveUploads();
-  wait_for_notification_to_stop(cwc, kBoxId, "bigAttachmentUploading");
+  wait_for_notification_to_stop(cwc.window, kBoxId, "bigAttachmentUploading");
 
   // Assert that the warning is displayed.
   assert_privacy_warning_notification_displayed(cwc, true);
@@ -500,9 +546,9 @@ add_task(function test_privacy_warning_notification_open_after_close() {
   ]);
   add_cloud_attachments(cwc, provider, false);
 
-  wait_for_notification_to_show(cwc, kBoxId, "bigAttachmentUploading");
+  wait_for_notification_to_show(cwc.window, kBoxId, "bigAttachmentUploading");
   gMockCloudfileManager.resolveUploads();
-  wait_for_notification_to_stop(cwc, kBoxId, "bigAttachmentUploading");
+  wait_for_notification_to_stop(cwc.window, kBoxId, "bigAttachmentUploading");
 
   // Assert that the privacy warning notification is displayed again.
   assert_privacy_warning_notification_displayed(cwc, true);

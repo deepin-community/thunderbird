@@ -29,10 +29,12 @@
   margin: 0;
 }
 
-:root[lwt-tree] #unifinder-searchBox,
-:root[lwt-tree-brighttext] #unifinder-searchBox {
+:root[lwt-tree] #unifinder-searchBox {
   background-color: var(--toolbar-bgcolor);
   background-image: none;
   color: var(--toolbar-color);
-  border-bottom-color: var(--sidebar-border-color, var(--splitter-color));
+}
+
+#unifinder-searchBox:-moz-lwtheme {
+  border-bottom-color: var(--splitter-color);
 }

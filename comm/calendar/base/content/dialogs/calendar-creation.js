@@ -2,10 +2,13 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-var { XPCOMUtils } = ChromeUtils.import("resource://gre/modules/XPCOMUtils.jsm");
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-var { ExtensionParent } = ChromeUtils.import("resource://gre/modules/ExtensionParent.jsm");
+var { XPCOMUtils } = ChromeUtils.importESModule("resource://gre/modules/XPCOMUtils.sys.mjs");
+var { ExtensionParent } = ChromeUtils.importESModule(
+  "resource://gre/modules/ExtensionParent.sys.mjs"
+);
 var { cal } = ChromeUtils.import("resource:///modules/calendar/calUtils.jsm");
+
+ChromeUtils.defineModuleGetter(this, "MsgAuthPrompt", "resource:///modules/MsgAsyncPrompter.jsm");
 
 /* exported checkRequired, fillLocationPlaceholder, selectProvider, updateNoCredentials, */
 
@@ -88,9 +91,10 @@ var gCalendarTypes = new Map([
         // Create a local calendar to use, so we can share code with the calendar
         // preferences dialog.
         if (!gLocalCalendar) {
-          gLocalCalendar = cal
-            .getCalendarManager()
-            .createCalendar("storage", Services.io.newURI("moz-storage-calendar://"));
+          gLocalCalendar = cal.manager.createCalendar(
+            "storage",
+            Services.io.newURI("moz-storage-calendar://")
+          );
 
           initMailIdentitiesRow(gLocalCalendar);
           notifyOnIdentitySelection(gLocalCalendar);
@@ -116,8 +120,8 @@ var gSelectedCalendarType = null;
  * Register a calendar type to offer in the dialog. For add-ons to use. Add-on
  * code should store the returned ID and use it for unregistering the type.
  *
- * @param {CalendarType} type   The type object to register.
- * @return {string}             The generated ID for the type.
+ * @param {CalendarType} type - The type object to register.
+ * @returns {string} The generated ID for the type.
  */
 function registerCalendarType(type) {
   type.id = String(gCalendarTypes.size + 1);
@@ -141,7 +145,7 @@ function registerCalendarType(type) {
 /**
  * Unregister a calendar type. For add-ons to use.
  *
- * @param {string} id   The ID of the type to unregister.
+ * @param {string} id - The ID of the type to unregister.
  */
 function unregisterCalendarType(id) {
   // Don't allow unregistration of built-in types.
@@ -187,7 +191,7 @@ var gProviderUsage = {
    * @param {string[]} providers - Array of provider types to be used (if not filtered out).
    * @param {string} location - Location to use for calendar detection.
    * @param {string} username - Username to use for calendar detection.
-   * @return {string[]} Array of provider types to be filtered out.
+   * @returns {string[]} Array of provider types to be filtered out.
    */
 
   /** @type {ProviderFilter[]} */
@@ -226,8 +230,8 @@ var gProviderUsage = {
   /**
    * Add a preference for one provider type over another provider type.
    *
-   * @param {string} preferredType      The preferred provider type.
-   * @param {string} nonPreferredType   The non-preferred provider type.
+   * @param {string} preferredType - The preferred provider type.
+   * @param {string} nonPreferredType - The non-preferred provider type.
    */
   addPostDetectPreference(preferredType, nonPreferredType) {
     let prefs = this._postDetectPreferences;
@@ -253,10 +257,10 @@ var gProviderUsage = {
    * cause a cycle in the order of preferences. We assume that the preferences
    * do not contain any cycles already.
    *
-   * @param {ProviderPreferences} prefs        The current preferences.
-   * @param {string} preferred                 Potential preferred provider.
-   * @param {string} nonPreferred              Potential non-preferred provider.
-   * @return {boolean}                         True if it would cause a cycle.
+   * @param {ProviderPreferences} prefs - The current preferences.
+   * @param {string} preferred - Potential preferred provider.
+   * @param {string} nonPreferred - Potential non-preferred provider.
+   * @returns {boolean} True if it would cause a cycle.
    */
   detectPreferenceCycle(prefs, preferred, nonPreferred) {
     let cycle = false;
@@ -312,7 +316,7 @@ function selectPanel(id) {
  * Set a specific network loading status for the network settings panel.
  * See the CSS file for appropriate values to set.
  *
- * @param {string} status      The status to set.
+ * @param {string} status - The status to set.
  */
 function selectNetworkStatus(status) {
   for (let row of document.querySelectorAll(".network-status-row")) {
@@ -323,8 +327,8 @@ function selectNetworkStatus(status) {
 /**
  * Update the label, accesskey, and event listener for a dialog button.
  *
- * @param {string} name            The dialog button name, e.g. 'accept', 'extra2'.
- * @param {Element} sourceNode     The source node to take attribute values from.
+ * @param {string} name - The dialog button name, e.g. 'accept', 'extra2'.
+ * @param {Element} sourceNode - The source node to take attribute values from.
  */
 function updateButton(name, sourceNode) {
   let dialog = document.getElementById("calendar-creation-dialog");
@@ -414,7 +418,7 @@ function fillLocationPlaceholder() {
  * Update the select network calendar panel to show or hide the provider
  * selection dropdown.
  *
- * @param {boolean} isSingle     If true, there is just one matching provider.
+ * @param {boolean} isSingle - If true, there is just one matching provider.
  */
 function setSingleProvider(isSingle) {
   document.getElementById("network-selectcalendar-description-single").hidden = !isSingle;
@@ -426,8 +430,8 @@ function setSingleProvider(isSingle) {
  * Fill the providers menulist with the given provider types. The types must
  * correspond to the providers that detected calendars.
  *
- * @param {string[]} providerTypes   An array of provider types.
- * @return {Element}                 The selected menuitem.
+ * @param {string[]} providerTypes - An array of provider types.
+ * @returns {Element} The selected menuitem.
  */
 function fillProviders(providerTypes) {
   let menulist = document.getElementById("network-selectcalendar-providertype-menulist");
@@ -463,9 +467,9 @@ function fillProviders(providerTypes) {
 /**
  * Return true if the intersection of two sets contains at least one item.
  *
- * @param {Set} setA    A set.
- * @param {Set} setB    A set.
- * @return {boolean}
+ * @param {Set} setA - A set.
+ * @param {Set} setB - A set.
+ * @returns {boolean}
  */
 function setsIntersect(setA, setB) {
   for (let item of setA) {
@@ -481,7 +485,7 @@ function setsIntersect(setA, setB) {
  * corresponding calendars. Will use the results from the last findCalendars
  * response.
  *
- * @param {string} type        The provider type to select.
+ * @param {string} type - The provider type to select.
  */
 function selectProvider(type) {
   let providerMap = findCalendars.lastResult;
@@ -494,8 +498,8 @@ function selectProvider(type) {
 /**
  * Empty a calendar list and then fill it with calendars.
  *
- * @param {Element} calendarList        A richlistbox element for listing calendars.
- * @param {calICalendar[]} calendars    An array of calendars to display in the list.
+ * @param {Element} calendarList - A richlistbox element for listing calendars.
+ * @param {calICalendar[]} calendars - An array of calendars to display in the list.
  */
 function renderCalendarList(calendarList, calendars) {
   while (calendarList.hasChildNodes()) {
@@ -544,7 +548,7 @@ function renderCalendarList(calendarList, calendars) {
 /**
  * Update dialog fields based on the value of the "no credentials" checkbox.
  *
- * @param {boolean} noCredentials   True, if "no credentials" is checked.
+ * @param {boolean} noCredentials - True, if "no credentials" is checked.
  */
 function updateNoCredentials(noCredentials) {
   if (noCredentials) {
@@ -576,7 +580,7 @@ function selectCalendarType(event) {
 /**
  * Set up the settings panel for calendar types registered by addons.
  *
- * @param {CalendarType} calendarType   The calendar type.
+ * @param {CalendarType} calendarType - The calendar type.
  */
 function setUpAddonCalendarSettingsPanel(calendarType) {
   function setUpBrowser(browser, src) {
@@ -608,7 +612,7 @@ function setUpAddonCalendarSettingsPanel(calendarType) {
  * Handle change of the email (identity) menu for local calendar creation.
  * Show a notification when "none" is selected.
  *
- * @param {Event} event     The menu selection event.
+ * @param {Event} event - The menu selection event.
  */
 function onChangeIdentity(event) {
   notifyOnIdentitySelection(gLocalCalendar);
@@ -618,8 +622,8 @@ function onChangeIdentity(event) {
  * Prepare the local storage calendar with the information from the dialog.
  * This can be monkeypatched to add additional values.
  *
- * @param {calICalendar} calendar     The calendar to prepare.
- * @return {calICalendar}             The same calendar, prepared with any
+ * @param {calICalendar} calendar - The calendar to prepare.
+ * @returns {calICalendar} The same calendar, prepared with any
  *                                      extra values.
  */
 function prepareLocalCalendar(calendar) {
@@ -639,15 +643,15 @@ function prepareLocalCalendar(calendar) {
  * Registers the local storage calendar and closes the dialog.
  */
 function registerLocalCalendar() {
-  cal.getCalendarManager().registerCalendar(prepareLocalCalendar(gLocalCalendar));
+  cal.manager.registerCalendar(prepareLocalCalendar(gLocalCalendar));
 }
 
 /**
  * Start detection and find any calendars using the information from the
  * network settings panel.
  *
- * @param {string} [password]       The password for this attempt, if any.
- * @param {boolean} [savePassword]  Whether to save the password in the
+ * @param {string} [password] - The password for this attempt, if any.
+ * @param {boolean} [savePassword] - Whether to save the password in the
  *                                    password manager.
  */
 function findCalendars(password, savePassword = false) {
@@ -681,12 +685,7 @@ function findCalendars(password, savePassword = false) {
 function onDetectionSuccess(providerMap) {
   // Disable the calendars the user has already subscribed to. In the future
   // we should show a string when all calendars are already subscribed.
-  let existing = new Set(
-    cal
-      .getCalendarManager()
-      .getCalendars({})
-      .map(calendar => calendar.uri.spec)
-  );
+  let existing = new Set(cal.manager.getCalendars({}).map(calendar => calendar.uri.spec));
 
   let calendarsMap = new Map();
   for (let [provider, calendars] of providerMap.entries()) {
@@ -723,9 +722,9 @@ function onDetectionSuccess(providerMap) {
  * error message, or if the error is an authentication error and no password
  * was entered for this attempt, prompt the user to enter a password.
  *
- * @param {string} [password]   The password entered, if any.
- * @param {string} [location]   The location input from the dialog.
- * @param {Error} error         An error object.
+ * @param {string} [password] - The password entered, if any.
+ * @param {string} [location] - The location input from the dialog.
+ * @param {Error} error - An error object.
  */
 function onDetectionError(password, location, error) {
   if (error instanceof cal.provider.detection.AuthFailedError) {
@@ -755,8 +754,7 @@ function findCalendarsWithPassword(location) {
   let password = { value: "" };
   let savePassword = { value: 1 };
 
-  let okWasClicked = Services.prompt.promptPassword(
-    window,
+  let okWasClicked = new MsgAuthPrompt().promptPassword2(
     null,
     cal.l10n.getAnyString("messenger-mapi", "mapi", "loginText", [location]),
     password,
@@ -776,8 +774,8 @@ function findCalendarsWithPassword(location) {
  * function can be monkeypatched to make general preparations, e.g. for values
  * from additional form fields.
  *
- * @param {calICalendar} calendar           The calendar to prepare.
- * @return {calICalendar}                   The same calendar, prepared with
+ * @param {calICalendar} calendar - The calendar to prepare.
+ * @returns {calICalendar} The same calendar, prepared with
  *                                            any extra values.
  */
 function prepareNetworkCalendar(calendar) {
@@ -799,7 +797,7 @@ function prepareNetworkCalendar(calendar) {
 function createNetworkCalendars() {
   for (let listItem of document.getElementById("network-calendar-list").children) {
     if (listItem.querySelector(".calendar-selected").checked) {
-      cal.getCalendarManager().registerCalendar(listItem.calendar);
+      cal.manager.registerCalendar(listItem.calendar);
     }
   }
 }
@@ -807,20 +805,19 @@ function createNetworkCalendars() {
 /**
  * Open the calendar properties dialog for a calendar in the calendar list.
  *
- * @param {Event} event        The triggering event.
+ * @param {Event} event - The triggering event.
  */
 function openCalendarPropertiesFromEvent(event) {
   let listItem = event.target.closest("richlistitem");
   if (listItem) {
     let calendar = listItem.calendar;
     if (calendar && !calendar.getProperty("disabled")) {
-      cal.window.openCalendarProperties(window, calendar, false);
+      cal.window.openCalendarProperties(window, { calendar, canDisable: false });
 
       // Update the calendar list item.
       listItem.querySelector(".calendar-name").value = calendar.name;
-      listItem.querySelector(".calendar-color").style.backgroundColor = calendar.getProperty(
-        "color"
-      );
+      listItem.querySelector(".calendar-color").style.backgroundColor =
+        calendar.getProperty("color");
     }
   }
 }

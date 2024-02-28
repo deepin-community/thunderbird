@@ -9,8 +9,6 @@
 
 const EXPORTED_SYMBOLS = ["ExtensionSupport"];
 
-const { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-
 var extensionHooks = new Map();
 var openWindowList;
 
@@ -19,8 +17,8 @@ var ExtensionSupport = {
    * Register listening for windows getting opened that will run the specified callback function
    * when a matching window is loaded.
    *
-   * @param aID {String}  Some identification of the caller, usually the extension ID.
-   * @param aExtensionHook {Object}  The object describing the hook the caller wants to register.
+   * @param aID {String} - Some identification of the caller, usually the extension ID.
+   * @param aExtensionHook {Object} - The object describing the hook the caller wants to register.
    *        Members of the object can be (all optional, but one callback must be supplied):
    *        chromeURLs {Array}         An array of strings of document URLs on which
    *                                   the given callback should run. If not specified,
@@ -31,17 +29,17 @@ var ExtensionSupport = {
    *                                   unloads the matching document.
    *        Both callbacks receive the matching window object as argument.
    *
-   * @return {boolean}  True if the passed arguments were valid and the caller could be registered.
+   * @returns {boolean} True if the passed arguments were valid and the caller could be registered.
    *                    False otherwise.
    */
   registerWindowListener(aID, aExtensionHook) {
     if (!aID) {
-      Cu.reportError("No extension ID provided for the window listener");
+      console.error("No extension ID provided for the window listener");
       return false;
     }
 
     if (extensionHooks.has(aID)) {
-      Cu.reportError(
+      console.error(
         "Window listener for extension + '" + aID + "' already registered"
       );
       return false;
@@ -51,7 +49,7 @@ var ExtensionSupport = {
       !("onLoadWindow" in aExtensionHook) &&
       !("onUnloadWindow" in aExtensionHook)
     ) {
-      Cu.reportError(
+      console.error(
         "The extension + '" + aID + "' does not provide any callbacks"
       );
       return false;
@@ -90,20 +88,20 @@ var ExtensionSupport = {
   /**
    * Unregister listening for windows for the given caller.
    *
-   * @param aID {String}  Some identification of the caller, usually the extension ID.
+   * @param aID {String} - Some identification of the caller, usually the extension ID.
    *
-   * @return {boolean}  True if the passed arguments were valid and the caller could be unregistered.
+   * @returns {boolean} True if the passed arguments were valid and the caller could be unregistered.
    *                    False otherwise.
    */
   unregisterWindowListener(aID) {
     if (!aID) {
-      Cu.reportError("No extension ID provided for the window listener");
+      console.error("No extension ID provided for the window listener");
       return false;
     }
 
     let windowListener = extensionHooks.get(aID);
     if (!windowListener) {
-      Cu.reportError(
+      console.error(
         "Couldn't remove window listener for extension + '" + aID + "'"
       );
       return false;
@@ -121,6 +119,9 @@ var ExtensionSupport = {
   },
 
   get openWindows() {
+    if (!openWindowList) {
+      return [];
+    }
     return openWindowList.values();
   },
 
@@ -144,7 +145,7 @@ var ExtensionSupport = {
   /**
    * Set up listeners to run the callbacks on the given window.
    *
-   * @param aWindow {nsIDOMWindow}  The window to set up.
+   * @param aWindow {nsIDOMWindow} - The window to set up.
    * @param aID {String} Optional.  ID of the new caller that has registered right now.
    */
   _waitForLoad(aWindow, aID) {
@@ -152,7 +153,7 @@ var ExtensionSupport = {
     // aWindow.document.location.href will not be "about:blank" any more.
     aWindow.addEventListener(
       "load",
-      function() {
+      function () {
         ExtensionSupport._addToListAndNotify(aWindow, aID);
       },
       { once: true }
@@ -164,14 +165,14 @@ var ExtensionSupport = {
    * add it to our list, attach the "unload" listener to it and notify interested
    * callers.
    *
-   * @param aWindow {nsIDOMWindow}  The window to process.
+   * @param aWindow {nsIDOMWindow} - The window to process.
    * @param aID {String} Optional.  ID of the new caller that has registered right now.
    */
   _addToListAndNotify(aWindow, aID) {
     openWindowList.add(aWindow);
     aWindow.addEventListener(
       "unload",
-      function() {
+      function () {
         ExtensionSupport._checkAndRunMatchingExtensions(aWindow, "unload");
       },
       { once: true }
@@ -182,9 +183,9 @@ var ExtensionSupport = {
   /**
    * Check if the caller matches the given window and run its callback function.
    *
-   * @param aWindow {nsIDOMWindow}  The window to run the callbacks on.
-   * @param aEventType {String}     Which callback to run if caller matches (load/unload).
-   * @param aID {String}            Optional ID of the caller whose callback is to be run.
+   * @param aWindow {nsIDOMWindow} - The window to run the callbacks on.
+   * @param aEventType {String} - Which callback to run if caller matches (load/unload).
+   * @param aID {String} - Optional ID of the caller whose callback is to be run.
    *                                If not given, all registered callers are notified.
    */
   _checkAndRunMatchingExtensions(aWindow, aEventType, aID) {
@@ -200,31 +201,35 @@ var ExtensionSupport = {
      * Check if the single given caller matches the given window
      * and run its callback function.
      *
-     * @param aExtensionHook {Object}  The object describing the hook the caller
+     * @param aExtensionHook {Object} - The object describing the hook the caller
      *                                 has registered.
      */
     function checkAndRunExtensionCode(aExtensionHook) {
-      let windowChromeURL = aWindow.document.location.href;
-      // Check if extension applies to this document URL.
-      if (
-        "chromeURLs" in aExtensionHook &&
-        !aExtensionHook.chromeURLs.some(url => url == windowChromeURL)
-      ) {
-        return;
-      }
+      try {
+        let windowChromeURL = aWindow.document.location.href;
+        // Check if extension applies to this document URL.
+        if (
+          "chromeURLs" in aExtensionHook &&
+          !aExtensionHook.chromeURLs.some(url => url == windowChromeURL)
+        ) {
+          return;
+        }
 
-      // Run the relevant callback.
-      switch (aEventType) {
-        case "load":
-          if ("onLoadWindow" in aExtensionHook) {
-            aExtensionHook.onLoadWindow(aWindow);
-          }
-          break;
-        case "unload":
-          if ("onUnloadWindow" in aExtensionHook) {
-            aExtensionHook.onUnloadWindow(aWindow);
-          }
-          break;
+        // Run the relevant callback.
+        switch (aEventType) {
+          case "load":
+            if ("onLoadWindow" in aExtensionHook) {
+              aExtensionHook.onLoadWindow(aWindow);
+            }
+            break;
+          case "unload":
+            if ("onUnloadWindow" in aExtensionHook) {
+              aExtensionHook.onUnloadWindow(aWindow);
+            }
+            break;
+        }
+      } catch (ex) {
+        console.error(ex);
       }
     }
   },

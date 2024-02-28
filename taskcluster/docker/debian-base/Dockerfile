@@ -42,8 +42,10 @@ RUN /usr/local/sbin/setup_packages.sh $TASKCLUSTER_ROOT_URL $DOCKER_IMAGE_PACKAG
       python3-minimal \
       python3-zstandard \
       python3-psutil \
+      python3-venv \
       vim-tiny \
-      xz-utils
+      xz-utils \
+      zstd
 
 # %include testing/mozharness/external_tools/robustcheckout.py
 COPY topsrcdir/testing/mozharness/external_tools/robustcheckout.py /usr/local/mercurial/robustcheckout.py

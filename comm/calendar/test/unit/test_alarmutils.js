@@ -2,9 +2,8 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 var { cal } = ChromeUtils.import("resource:///modules/calendar/calUtils.jsm");
-var { XPCOMUtils } = ChromeUtils.import("resource://gre/modules/XPCOMUtils.jsm");
+var { XPCOMUtils } = ChromeUtils.importESModule("resource://gre/modules/XPCOMUtils.sys.mjs");
 
 XPCOMUtils.defineLazyModuleGetters(this, {
   CalAlarm: "resource:///modules/CalAlarm.jsm",
@@ -73,7 +72,7 @@ add_task(async function test_setDefaultValues_tasks() {
   let item, alarm;
   let calnow = cal.dtz.now;
   let nowDate = cal.createDateTime("20150815T120000");
-  cal.dtz.now = function() {
+  cal.dtz.now = function () {
     return nowDate;
   };
 
@@ -88,7 +87,7 @@ add_task(async function test_setDefaultValues_tasks() {
   equal(alarm.related, Ci.calIAlarm.ALARM_RELATED_START);
   equal(alarm.action, "DISPLAY");
   equal(alarm.offset.icalString, "-P2DT12H");
-  equal(item.entryDate, nowDate);
+  equal(item.entryDate.icalString, nowDate.icalString);
 
   Services.prefs.setIntPref("calendar.alarms.onfortodos", 1);
   Services.prefs.setStringPref("calendar.alarms.todoalarmunit", "yards");
@@ -169,29 +168,4 @@ add_task(async function test_calculateAlarmDate() {
   alarm = new CalAlarm();
   alarm.related = Ci.calIAlarm.ALARM_RELATED_END;
   equal(calculateAlarmDate(alarm), null);
-});
-
-add_task(async function test_calculateAlarmOffset() {
-  let item = new CalEvent();
-  item.startDate = cal.createDateTime("20150815T120000");
-  item.endDate = cal.createDateTime("20150815T130000");
-
-  let calculateAlarmOffset = cal.alarms.calculateAlarmOffset.bind(cal.alarms, item);
-
-  let alarm = new CalAlarm();
-  alarm.related = Ci.calIAlarm.ALARM_RELATED_ABSOLUTE;
-  alarm.alarmDate = cal.createDateTime("20150815T110000");
-  equal(calculateAlarmOffset(alarm).icalString, "-PT1H");
-  equal(calculateAlarmOffset(alarm, Ci.calIAlarm.ALARM_RELATED_START).icalString, "-PT1H");
-  equal(calculateAlarmOffset(alarm, Ci.calIAlarm.ALARM_RELATED_END).icalString, "-PT2H");
-
-  alarm = new CalAlarm();
-  alarm.related = Ci.calIAlarm.ALARM_RELATED_START;
-  alarm.offset = cal.createDuration("-PT1H");
-  equal(calculateAlarmOffset(alarm).icalString, "-PT1H");
-
-  alarm = new CalAlarm();
-  alarm.related = Ci.calIAlarm.ALARM_RELATED_END;
-  alarm.offset = cal.createDuration("-PT1H");
-  equal(calculateAlarmOffset(alarm).icalString, "-PT1H");
 });

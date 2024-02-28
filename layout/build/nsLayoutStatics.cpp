@@ -9,7 +9,7 @@
 #include "nsLayoutStatics.h"
 #include "nscore.h"
 
-#include "DateTimeFormat.h"
+#include "mozilla/intl/AppDateTimeFormat.h"
 #include "MediaManager.h"
 #include "mozilla/dom/ServiceWorkerRegistrar.h"
 #include "nsAttrValue.h"
@@ -34,8 +34,6 @@
 #include "nsRegion.h"
 #include "nsRepeatService.h"
 #include "nsFloatManager.h"
-#include "nsSprocketLayout.h"
-#include "nsStackLayout.h"
 #include "nsTextControlFrame.h"
 #include "txMozillaXSLTProcessor.h"
 #include "nsTreeSanitizer.h"
@@ -47,7 +45,6 @@
 #include "nsHtml5Module.h"
 #include "nsHTMLTags.h"
 #include "nsFocusManager.h"
-#include "nsListControlFrame.h"
 #include "mozilla/dom/HTMLDNSPrefetch.h"
 #include "mozilla/dom/HTMLInputElement.h"
 #include "mozilla/dom/SVGElementFactory.h"
@@ -60,21 +57,18 @@
 #include "DisplayItemClip.h"
 #include "HitTestInfo.h"
 #include "ActiveLayerTracker.h"
-#include "FrameLayerBuilder.h"
 #include "AnimationCommon.h"
 #include "LayerAnimationInfo.h"
+#include "mozilla/TimelineConsumers.h"
 
 #include "AudioChannelService.h"
 #include "mozilla/dom/PromiseDebugging.h"
 #include "mozilla/dom/nsMixedContentBlocker.h"
 
-#ifdef MOZ_XUL
-#  include "nsXULPopupManager.h"
-#  include "nsXULContentUtils.h"
-#  include "nsXULPrototypeCache.h"
-#  include "nsXULTooltipListener.h"
-
-#endif
+#include "nsXULPopupManager.h"
+#include "nsXULContentUtils.h"
+#include "nsXULPrototypeCache.h"
+#include "nsXULTooltipListener.h"
 
 #include "mozilla/dom/UIDirectionManager.h"
 
@@ -95,6 +89,9 @@
 #include "mozilla/dom/CustomElementRegistry.h"
 #include "mozilla/EventDispatcher.h"
 #include "mozilla/IMEStateManager.h"
+#ifndef MOZ_WIDGET_ANDROID
+#  include "mozilla/Viaduct.h"
+#endif
 #include "mozilla/dom/HTMLVideoElement.h"
 #include "ThirdPartyUtil.h"
 #include "TouchManager.h"
@@ -102,7 +99,6 @@
 #include "MediaDecoder.h"
 #include "mozilla/ClearSiteData.h"
 #include "mozilla/EditorController.h"
-#include "mozilla/Fuzzyfox.h"
 #include "mozilla/HTMLEditorController.h"
 #include "mozilla/ServoBindings.h"
 #include "mozilla/StaticPresData.h"
@@ -110,6 +106,7 @@
 #include "mozilla/dom/Document.h"
 #include "mozilla/dom/WebIDLGlobalNameHash.h"
 #include "mozilla/dom/U2FTokenManager.h"
+#include "mozilla/dom/WebAuthnController.h"
 #ifdef OS_WIN
 #  include "mozilla/dom/WinWebAuthnManager.h"
 #endif
@@ -118,6 +115,7 @@
 #include "mozilla/dom/BlobURLProtocolHandler.h"
 #include "mozilla/dom/ReportingHeader.h"
 #include "mozilla/dom/BrowserParent.h"
+#include "mozilla/dom/MIDIPlatformService.h"
 #include "mozilla/dom/quota/ActorsParent.h"
 #include "mozilla/dom/localstorage/ActorsParent.h"
 #include "mozilla/net/UrlClassifierFeatureFactory.h"
@@ -127,6 +125,10 @@
 #include "mozilla/css/ImageLoader.h"
 #include "gfxUserFontSet.h"
 #include "RestoreTabContentObserver.h"
+#include "mozilla/intl/nsComplexBreaker.h"
+
+#include "nsRLBoxExpatDriver.h"
+#include "RLBoxWOFF2Types.h"
 
 using namespace mozilla;
 using namespace mozilla::net;
@@ -214,13 +216,11 @@ nsresult nsLayoutStatics::Initialize() {
     return rv;
   }
 
-#ifdef MOZ_XUL
   rv = nsXULPopupManager::Init();
   if (NS_FAILED(rv)) {
     NS_ERROR("Could not initialize nsXULPopupManager");
     return rv;
   }
-#endif
 
   rv = nsFocusManager::Init();
   if (NS_FAILED(rv)) {
@@ -243,8 +243,6 @@ nsresult nsLayoutStatics::Initialize() {
 
   ProcessPriorityManager::Init();
 
-  PermissionManager::Startup();
-
   UIDirectionManager::Initialize();
 
   CacheObserver::Init();
@@ -265,6 +263,7 @@ nsresult nsLayoutStatics::Initialize() {
   mozilla::RemoteLazyInputStreamStorage::Initialize();
 
   mozilla::dom::U2FTokenManager::Initialize();
+  mozilla::dom::WebAuthnController::Initialize();
 
 #ifdef OS_WIN
   mozilla::dom::WinWebAuthnManager::Initialize();
@@ -275,8 +274,6 @@ nsresult nsLayoutStatics::Initialize() {
     // fully initialized.
     mozilla::dom::RemoteWorkerService::Initialize();
   }
-
-  mozilla::Fuzzyfox::Start();
 
   ClearSiteData::Initialize();
 
@@ -291,6 +288,22 @@ nsresult nsLayoutStatics::Initialize() {
   ThirdPartyUtil::Startup();
 
   RestoreTabContentObserver::Initialize();
+
+  ComplexBreaker::Initialize();
+
+  RLBoxExpatSandboxPool::Initialize();
+
+  RLBoxWOFF2SandboxPool::Initalize();
+
+  if (XRE_IsParentProcess()) {
+    MIDIPlatformService::InitStatics();
+  }
+
+#ifndef MOZ_WIDGET_ANDROID
+  if (XRE_IsParentProcess()) {
+    InitializeViaduct();
+  }
+#endif
 
   return NS_OK;
 }
@@ -307,9 +320,7 @@ void nsLayoutStatics::Shutdown() {
   Document::Shutdown();
   nsMessageManagerScriptExecutor::Shutdown();
   nsFocusManager::Shutdown();
-#ifdef MOZ_XUL
   nsXULPopupManager::Shutdown();
-#endif
   UIDirectionManager::Shutdown();
   StorageObserver::Shutdown();
   txMozillaXSLTProcessor::Shutdown();
@@ -332,13 +343,9 @@ void nsLayoutStatics::Shutdown() {
   nsColorNames::ReleaseTable();
   nsCSSProps::ReleaseTable();
   nsRepeatService::Shutdown();
-  nsStackLayout::Shutdown();
 
-#ifdef MOZ_XUL
   nsXULContentUtils::Finish();
   nsXULPrototypeCache::ReleaseGlobals();
-  nsSprocketLayout::Shutdown();
-#endif
 
   SVGElementFactory::Shutdown();
   nsMathMLOperators::ReleaseTable();
@@ -358,8 +365,6 @@ void nsLayoutStatics::Shutdown() {
   ShutdownJSEnvironment();
   nsGlobalWindowInner::ShutDown();
   nsGlobalWindowOuter::ShutDown();
-  nsListControlFrame::Shutdown();
-  FrameLayerBuilder::Shutdown();
 
   CubebUtils::ShutdownLibrary();
   WebAudioUtils::Shutdown();
@@ -383,7 +388,7 @@ void nsLayoutStatics::Shutdown() {
   nsHyphenationManager::Shutdown();
   nsDOMMutationObserver::Shutdown();
 
-  DateTimeFormat::Shutdown();
+  mozilla::intl::AppDateTimeFormat::Shutdown();
 
   ContentParent::ShutDown();
 
@@ -401,4 +406,6 @@ void nsLayoutStatics::Shutdown() {
   mozilla::net::UrlClassifierFeatureFactory::Shutdown();
 
   RestoreTabContentObserver::Shutdown();
+
+  ComplexBreaker::Shutdown();
 }

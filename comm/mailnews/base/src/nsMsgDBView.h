@@ -18,7 +18,7 @@
 #include "nsITreeSelection.h"
 #include "nsIMsgFolder.h"
 #include "nsIMsgThread.h"
-#include "DateTimeFormat.h"
+#include "nsMsgUtils.h"
 #include "nsIImapIncomingServer.h"
 #include "nsIMsgFilterPlugin.h"
 #include "nsIStringBundle.h"
@@ -40,19 +40,13 @@ static_assert(nsMsgViewIndex(nsMsgViewIndexArray::NoIndex) ==
 
 enum eFieldType { kCollationKey, kU32 };
 
-enum nsDateFormatSelectorComm : long {
-  kDateFormatNone = mozilla::kDateFormatNone,
-  kDateFormatLong = mozilla::kDateFormatLong,
-  kDateFormatShort = mozilla::kDateFormatShort,
-  kDateFormatUnused = 3,
-  kDateFormatWeekday = 4
-};
-
 // This is used in an nsTArray<> to keep track of a multi-column sort.
 class MsgViewSortColumnInfo {
  public:
   MsgViewSortColumnInfo(const MsgViewSortColumnInfo& other);
-  MsgViewSortColumnInfo() {}
+  MsgViewSortColumnInfo()
+      : mSortType(nsMsgViewSortType::byNone),
+        mSortOrder(nsMsgViewSortOrder::none) {}
   bool operator==(const MsgViewSortColumnInfo& other) const;
   nsMsgViewSortTypeValue mSortType;
   nsMsgViewSortOrderValue mSortOrder;
@@ -63,17 +57,11 @@ class MsgViewSortColumnInfo {
 
 // Reserve some bits in the msg flags for the view-only flags.
 // NOTE: this bit space is shared by nsMsgMessageFlags (and labels).
-#define MSG_VIEW_FLAGS 0xEE000000
-#define MSG_VIEW_FLAG_HASCHILDREN 0x40000000
-#define MSG_VIEW_FLAG_DUMMY 0x20000000
 #define MSG_VIEW_FLAG_ISTHREAD 0x8000000
-#define MSG_VIEW_FLAG_OUTGOING 0x2000000
-#define MSG_VIEW_FLAG_INCOMING 0x1000000
-
-// There currently only 5 labels defined.
-#define PREF_LABELS_MAX 5
-#define PREF_LABELS_DESCRIPTION "mailnews.labels.description."
-#define PREF_LABELS_COLOR "mailnews.labels.color."
+#define MSG_VIEW_FLAG_DUMMY 0x20000000
+#define MSG_VIEW_FLAG_HASCHILDREN 0x40000000
+#define MSG_VIEW_FLAGS \
+  (MSG_VIEW_FLAG_HASCHILDREN | MSG_VIEW_FLAG_DUMMY | MSG_VIEW_FLAG_ISTHREAD)
 
 // Helper struct for sorting by numeric fields.
 // Associates a message with a key for ordering it in the view.
@@ -91,6 +79,17 @@ struct IdKey : public IdUint32 {
   nsTArray<uint8_t> key;
 };
 
+class nsMsgDBViewService final : public nsIMsgDBViewService {
+ public:
+  NS_DECL_ISUPPORTS
+  NS_DECL_NSIMSGDBVIEWSERVICE
+
+  nsMsgDBViewService(){};
+
+ protected:
+  ~nsMsgDBViewService(){};
+};
+
 // This is an abstract implementation class.
 // The actual view objects will be instances of sub-classes of this class.
 class nsMsgDBView : public nsIMsgDBView,
@@ -98,6 +97,7 @@ class nsMsgDBView : public nsIMsgDBView,
                     public nsITreeView,
                     public nsIJunkMailClassificationListener {
  public:
+  friend class nsMsgDBViewService;
   nsMsgDBView();
 
   NS_DECL_ISUPPORTS
@@ -118,21 +118,28 @@ class nsMsgDBView : public nsIMsgDBView,
  protected:
   virtual ~nsMsgDBView();
 
-  static nsrefcnt gInstanceCount;
+  static nsString kHighestPriorityString;
+  static nsString kHighPriorityString;
+  static nsString kLowestPriorityString;
+  static nsString kLowPriorityString;
+  static nsString kNormalPriorityString;
 
-  static char16_t* kHighestPriorityString;
-  static char16_t* kHighPriorityString;
-  static char16_t* kLowestPriorityString;
-  static char16_t* kLowPriorityString;
-  static char16_t* kNormalPriorityString;
+  static nsString kReadString;
+  static nsString kRepliedString;
+  static nsString kForwardedString;
+  static nsString kRedirectedString;
+  static nsString kNewString;
 
-  static char16_t* kReadString;
-  static char16_t* kRepliedString;
-  static char16_t* kForwardedString;
-  static char16_t* kRedirectedString;
-  static char16_t* kNewString;
+  // Used for group views.
+  static nsString kTodayString;
+  static nsString kYesterdayString;
+  static nsString kLastWeekString;
+  static nsString kTwoWeeksAgoString;
+  static nsString kOldMailString;
+  static nsString kFutureDateString;
 
   RefPtr<mozilla::dom::XULTreeElement> mTree;
+  nsCOMPtr<nsIMsgJSTree> mJSTree;
   nsCOMPtr<nsITreeSelection> mTreeSelection;
   // We cache this to determine when to push command status notifications.
   uint32_t mNumSelectedRows;
@@ -144,8 +151,6 @@ class nsMsgDBView : public nsIMsgDBView,
   bool mRemovingRow;
   bool mCommandsNeedDisablingBecauseOfSelection;
   bool mSuppressChangeNotification;
-  bool mGoForwardEnabled;
-  bool mGoBackEnabled;
 
   virtual const char* GetViewName(void) { return "MsgDBView"; }
   nsresult FetchAuthor(nsIMsgDBHdr* aHdr, nsAString& aAuthorString);
@@ -282,7 +287,7 @@ class nsMsgDBView : public nsIMsgDBView,
   virtual nsMsgViewIndex FindKey(nsMsgKey key, bool expand);
   virtual nsresult GetDBForViewIndex(nsMsgViewIndex index, nsIMsgDatabase** db);
   virtual nsCOMArray<nsIMsgFolder>* GetFolders();
-  virtual nsresult GetFolderFromMsgURI(const char* aMsgURI,
+  virtual nsresult GetFolderFromMsgURI(const nsACString& aMsgURI,
                                        nsIMsgFolder** aFolder);
 
   virtual nsresult ListIdsInThread(nsIMsgThread* threadHdr,
@@ -300,9 +305,6 @@ class nsMsgDBView : public nsIMsgDBView,
   uint32_t GetSize(void) { return (m_keys.Length()); }
 
   // For commands.
-  virtual nsresult ApplyCommandToIndices(
-      nsMsgViewCommandTypeValue command,
-      nsTArray<nsMsgViewIndex> const& selection);
   virtual nsresult ApplyCommandToIndicesWithFolder(
       nsMsgViewCommandTypeValue command,
       nsTArray<nsMsgViewIndex> const& selection, nsIMsgFolder* destFolder);
@@ -327,7 +329,6 @@ class nsMsgDBView : public nsIMsgDBView,
                                      nsTArray<nsMsgKey>& keysMarkedRead,
                                      bool read);
   nsresult SetFlaggedByIndex(nsMsgViewIndex index, bool mark);
-  nsresult SetLabelByIndex(nsMsgViewIndex index, nsMsgLabelValue label);
   nsresult OrExtraFlag(nsMsgViewIndex index, uint32_t orflag);
   nsresult AndExtraFlag(nsMsgViewIndex index, uint32_t andflag);
   nsresult SetExtraFlag(nsMsgViewIndex index, uint32_t extraflag);
@@ -361,10 +362,10 @@ class nsMsgDBView : public nsIMsgDBView,
                         uint32_t* result,
                         nsIMsgCustomColumnHandler* colHandler = nullptr);
 
-  static int FnSortIdKey(const void* pItem1, const void* pItem2,
-                         void* privateData);
-  static int FnSortIdUint32(const void* pItem1, const void* pItem2,
-                            void* privateData);
+  static int FnSortIdKey(const IdKey* pItem1, const IdKey* pItem2,
+                         viewSortInfo* sortInfo);
+  static int FnSortIdUint32(const IdUint32* pItem1, const IdUint32* pItem2,
+                            viewSortInfo* sortInfo);
 
   nsresult GetStatusSortValue(nsIMsgDBHdr* msgHdr, uint32_t* result);
   nsresult GetLocationCollationKey(nsIMsgDBHdr* msgHdr,
@@ -397,16 +398,17 @@ class nsMsgDBView : public nsIMsgDBView,
                                bool* resultToggleState);
   bool OfflineMsgSelected(nsTArray<nsMsgViewIndex> const& selection);
   bool NonDummyMsgSelected(nsTArray<nsMsgViewIndex> const& selection);
-  char16_t* GetString(const char16_t* aStringName);
-  nsresult GetPrefLocalizedString(const char* aPrefName, nsString& aResult);
+  static void GetString(const char16_t* aStringName, nsAString& aValue);
+  static nsresult GetPrefLocalizedString(const char* aPrefName,
+                                         nsString& aResult);
   nsresult AppendKeywordProperties(const nsACString& keywords,
                                    nsAString& properties, bool* tagAdded);
-  nsresult InitLabelStrings(void);
+  static nsresult InitLabelStrings(void);
   nsresult CopyDBView(nsMsgDBView* aNewMsgDBView,
                       nsIMessenger* aMessengerInstance,
                       nsIMsgWindow* aMsgWindow,
                       nsIMsgDBViewCommandUpdater* aCmdUpdater);
-  void InitializeLiterals();
+  static void InitializeLiterals();
   virtual int32_t FindLevelInThread(nsIMsgDBHdr* msgHdr,
                                     nsMsgViewIndex startOfThread,
                                     nsMsgViewIndex viewIndex);
@@ -478,12 +480,8 @@ class nsMsgDBView : public nsIMsgDBView,
   nsWeakPtr mMessengerWeak;
   nsWeakPtr mMsgWindowWeak;
   // We push command update notifications to the UI from this.
-  nsCOMPtr<nsIMsgDBViewCommandUpdater> mCommandUpdater;
-  nsCOMPtr<nsIStringBundle> mMessengerStringBundle;
-
-  // Used for the preference labels.
-  nsString mLabelPrefDescriptions[PREF_LABELS_MAX];
-  nsString mLabelPrefColors[PREF_LABELS_MAX];
+  nsWeakPtr mCommandUpdater;
+  static nsCOMPtr<nsIStringBundle> mMessengerStringBundle;
 
   // Used to determine when to start and end junk plugin batches.
   uint32_t mNumMessagesRemainingInBatch;
@@ -526,9 +524,12 @@ class nsMsgDBView : public nsIMsgDBView,
   static nsresult InitDisplayFormats();
 
  private:
+  static bool m_dateFormatsInitialized;
   static nsDateFormatSelectorComm m_dateFormatDefault;
   static nsDateFormatSelectorComm m_dateFormatThisWeek;
   static nsDateFormatSelectorComm m_dateFormatToday;
+  static nsString m_connectorPattern;
+
   bool ServerSupportsFilterAfterTheFact();
 
   nsresult PerformActionsOnJunkMsgs(bool msgsAreJunk);

@@ -14,15 +14,9 @@ connection-dns-over-https-url-custom =
     .accesskey = C
     .tooltiptext = 输入您偏好的 URL，用来完成基于 HTTPS 的 DNS 解析
 connection-dns-over-https-custom-label = 自定义
-connection-dialog-window =
+connection-dialog-window2 =
     .title = 连接设置
-    .style =
-        { PLATFORM() ->
-            [macos] width: 44em !important
-           *[other] width: 49em !important
-        }
-connection-disable-extension =
-    .label = 禁用扩展
+connection-dialog-title = 连接设置
 disable-extension-button = 禁用扩展
 # Variables:
 #   $name (String) - The extension that is controlling the proxy settings.
@@ -41,7 +35,7 @@ proxy-type-system =
     .label = 使用系统代理设置
     .accesskey = U
 proxy-type-manual =
-    .label = 手动配置代理:
+    .label = 手动配置代理
     .accesskey = M
 proxy-http-label =
     .value = HTTP 代理:
@@ -71,13 +65,13 @@ proxy-socks5-label =
     .label = SOCKS v5
     .accesskey = v
 proxy-type-auto =
-    .label = 自动代理配置 URL:
+    .label = 自动代理配置 URL
     .accesskey = A
 proxy-reload-label =
-    .label = 重新载入
+    .label = 重新加载
     .accesskey = l
 no-proxy-label =
-    .value = 不使用代理:
+    .value = 不使用代理
     .accesskey = N
 no-proxy-example = 例如： .mozilla.org.cn, .net.nz, 192.168.1.0/24
 # Do not translate "localhost", "127.0.0.1/8" and "::1". (You can translate "and".)

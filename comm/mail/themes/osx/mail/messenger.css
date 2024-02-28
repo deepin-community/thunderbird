@@ -6,59 +6,19 @@
   == Styles shared throughout the Messenger application.
   ======================================================================= */
 
-@import url("chrome://global/skin/global.css");
-@import url("chrome://messenger/content/messenger.css");
 @import url("chrome://messenger/skin/shared/messenger.css");
 
-:root {
-  --tabline-color: -moz-accent-color;
-  --toolbar-non-lwt-bgcolor: #f9f9fa;
-  --toolbar-non-lwt-textcolor: #0c0c0d;
-  --toolbar-non-lwt-bgimage: none;
-  --chrome-content-separator-color: hsl(0, 0%, 60%);
-  --row-grouped-header-bg-color: #d5d5d5;
-  --row-grouped-header-bg-color-selected: #3874d1;
-  --panel-separator-color: hsla(210, 4%, 10%, .14);
-  --splitter-color: #bdbdbd;
-  --autocomplete-popup-url-color: hsl(210, 77%, 47%);
-  --select-focus-text-color: HighlightText;
-  --noselect-folder-color: gray;
-  --new-folder-color: blue;
-}
-
-:root:not(:-moz-lwtheme) {
-  --tabs-border-color: rgba(0, 0, 0, .2);
-  --chrome-content-separator-color: hsl(0, 0%, 68%);
-}
-
-:root:not(:-moz-lwtheme):-moz-window-inactive {
-  --toolbar-bgcolor: -moz-mac-chrome-inactive;
-  --tabs-border-color: rgba(0, 0, 0, .05);
-  --chrome-content-separator-color: hsl(0, 0%, 85%);
-}
-
-:root[lwt-popup-brighttext] {
-  --panel-separator-color: rgba(249, 249, 250, .1);
-}
-
-:root[lwt-tree] {
-  --splitter-color: var(--sidebar-border-color);
-  --row-grouped-header-bg-color: hsla(0,0%,50%,.15);
-  --row-grouped-header-bg-color-selected: var(--sidebar-highlight-background-color, hsla(0,0%,80%,.6));
-}
-
-:root[lwt-tree-brighttext] {
-  --row-grouped-header-bg-color-selected: var(--sidebar-highlight-background-color, rgba(249,249,250,.3));
+#mail-menubar,
+#mailContext {
+  -moz-context-properties: fill, stroke;
+  fill: color-mix(in srgb, currentColor 20%, transparent);
+  stroke: currentColor;
 }
 
 .sidebar-header {
   background-color: -moz-Dialog;
   color: -moz-dialogText;
   text-shadow: none;
-}
-
-#messengerWindow:not([tabsintitlebar]) #titlebar {
-  height: 22px;
 }
 
 .inline-toolbar,
@@ -68,34 +28,54 @@
   min-height: 14px;
 }
 
-.inline-toolbar toolbarseparator {
+.inline-toolbar > toolbarseparator {
   height: 20px;
   margin-top: 2px;
 }
 
-.inline-toolbar toolbarspacer {
-  height: 22px;
+#navigation-toolbox {
+  appearance: none;
 }
 
-#messengerWindow:not([tabsintitlebar="true"]) #titlebar:not(:-moz-lwtheme),
-#messengerWindow[sizemode="fullscreen"]:not([tabsintitlebar="true"]) #titlebar {
-  display: none;
+/*
+  This is a workaround for Bug 1482157
+  -moz-default-appearance: toolbox; makes the macOS sheets attached to the
+  element's bottom border. We cannot put this property on the toolbox itself as
+  it cancels all backgrounds that are there, so we set it on the toolbox bottom
+  border.
+*/
+#navigation-toolbox::after {
+  content: "";
+  display: flex;
+  appearance: auto;
+  -moz-default-appearance: toolbox;
+  height: 1px;
+  margin-top: -1px;
+  opacity: 0.001;
 }
 
 #titlebar {
   /* Centrally align content items vertically */
-  -moz-box-pack: center;
+  justify-content: center;
+}
+
+.titlebar-button {
+  display: none;
 }
 
 #titlebar:-moz-lwtheme {
   appearance: none;
 }
 
+#toolbar-menubar {
+  visibility: collapse;
+}
+
 /* ::::: toolbarbutton menu-button ::::: */
 
-toolbarbutton[type="menu-button"] {
-  -moz-box-align: stretch;
-  -moz-box-orient: horizontal !important;
+toolbarbutton[is="toolbarbutton-menu-button"] {
+  align-items: stretch;
+  flex-direction: row !important;
   background-color: transparent;
 }
 
@@ -124,18 +104,18 @@ toolbarbutton[type="menu-button"] {
   background: transparent !important;
 }
 
-.toolbarbutton-1[type="menu-button"] {
+.toolbarbutton-1[is="toolbarbutton-menu-button"] {
   padding: 0;
 }
 
 .toolbarbutton-1[disabled="true"] .toolbarbutton-text,
-.toolbarbutton-1[type="menu-button"] > .toolbarbutton-menubutton-button[disabled="true"]
+.toolbarbutton-1[is="toolbarbutton-menu-button"] > .toolbarbutton-menubutton-button[disabled="true"]
   > .toolbarbutton-icon {
   opacity: .4;
 }
 
 .toolbarbutton-1[disabled="true"] .toolbarbutton-icon,
-.toolbarbutton-1[type="menu-button"]
+.toolbarbutton-1[is="toolbarbutton-menu-button"]
   > .toolbarbutton-menubutton-button[disabled="true"] > .toolbarbutton-icon,
 .toolbarbutton-1[disabled="true"] > .toolbarbutton-menu-dropmarker,
 .toolbarbutton-1[disabled="true"] > .toolbarbutton-menubutton-dropmarker,
@@ -148,7 +128,7 @@ toolbarbutton[type="menu-button"] {
 }
 
 .toolbarbutton-1:-moz-window-inactive[disabled="true"] > .toolbarbutton-icon,
-.toolbarbutton-1:-moz-window-inactive[type="menu-button"]
+.toolbarbutton-1:-moz-window-inactive[is="toolbarbutton-menu-button"]
   > .toolbarbutton-menubutton-button[disabled="true"] > .toolbarbutton-icon {
   opacity: .25;
 }
@@ -186,17 +166,6 @@ toolbarbutton > menupopup menuitem {
     margin-inline:5px;
     border-radius: 4px;
   }
-
-  :root:not([lwt-default-theme-in-dark-mode]) menulist >
-     menupopup menu[_moz-menuactive="true"],
-  :root:not([lwt-default-theme-in-dark-mode]) menulist >
-     menupopup menuitem[_moz-menuactive="true"],
-  :root:not([lwt-default-theme-in-dark-mode]) toolbarbutton >
-     menupopup menu[_moz-menuactive="true"],
-  :root:not([lwt-default-theme-in-dark-mode]) toolbarbutton >
-     menupopup menuitem[_moz-menuactive="true"] {
-    background-color: color-mix(in srgb, white 25%, -moz-accent-color);
-  }
 }
 
 menupopup menu[disabled="true"][_moz-menuactive="true"],
@@ -217,16 +186,6 @@ toolbarbutton > menupopup menu .menu-right:-moz-locale-dir(rtl) {
   list-style-image: url(chrome://global/skin/icons/arrow-left-12.svg);
 }
 
-toolbarbutton > menupopup menuitem[checked="true"]::before,
-toolbarbutton > menupopup menuitem[selected="true"]::before {
-  content: '\2713'; /* a checkmark */
-  display: inline-block;
-  vertical-align: middle;
-  line-height: 0;
-  width: 15px;
-  margin-inline-start: -15px;
-}
-
 /* :::::: throbber :::::::::: */
 
 #throbber-box {
@@ -244,8 +203,8 @@ toolbarbutton > menupopup menuitem[selected="true"]::before {
 .up,
 .down {
   min-width: 0;
-  -moz-context-properties: fill, fill-opacity;
-  fill: currentColor;
+  -moz-context-properties: stroke, fill-opacity;
+  stroke: currentColor;
   fill-opacity: 1;
 }
 
@@ -279,13 +238,13 @@ treechildren::-moz-tree-line {
 }
 
 treechildren::-moz-tree-line(selected, focus) {
-  border-color: HighlightText;
+  border-color: var(--selected-item-text-color);
 }
 
 /* message column icons */
 
-:root:not([lwt-tree]) treecol:not([hideheader="true"]),
-:root:not([lwt-tree]) treecolpicker:not([hideheader="true"]) {
+:root:not(:-moz-lwtheme) treecol:not([hideheader="true"]),
+:root:not(:-moz-lwtheme) .tree-columnpicker-button:not([hideheader="true"]) {
   appearance: none;
   color: inherit;
   background-color: transparent;
@@ -293,12 +252,12 @@ treechildren::-moz-tree-line(selected, focus) {
   border-bottom: 1px solid ThreeDShadow;
 }
 
-:root:not([lwt-tree]) treecol {
+:root:not(:-moz-lwtheme) treecol {
   border-inline-end: 1px solid ThreeDShadow;
 }
 
-:root:not([lwt-tree]) treecol:hover:active,
-:root:not([lwt-tree]) treecolpicker:hover:active {
+:root:not(:-moz-lwtheme) treecol:hover:active,
+:root:not(:-moz-lwtheme) .tree-columnpicker-button:hover:active {
   background-color: ThreeDFace;
 }
 
@@ -326,55 +285,51 @@ treecol[sortDirection="descending"]:not([hideheader="true"]) > .treecol-sortdire
 
 /* ::::: Tabs in Titlebar :::::: */
 
-/**
- * For tabs in titlebar on OS X, we stretch the titlebar down so that the
- * tabstrip can overlap it.
- */
-#messengerWindow[tabsintitlebar] #titlebar {
-  min-height: calc(var(--tab-min-height) + var(--space-above-tabbar));
-}
-
 #messengerWindow[tabsintitlebar="true"]:not(:-moz-lwtheme) #titlebar {
   appearance: auto;
   -moz-default-appearance: -moz-window-titlebar;
 }
 
-#messengerWindow:not([tabsintitlebar]) .titlebar-placeholder {
-  visibility: collapse;
+.titlebar-buttonbox-container {
+  align-items: center;
+}
+
+@media not (-moz-mac-rtl) {
+  .titlebar-buttonbox-container:-moz-locale-dir(ltr) {
+    order: -1;
+  }
+}
+
+@media (-moz-mac-rtl) {
+  #unifiedToolbarContainer:-moz-locale-dir(rtl) {
+    flex-direction: row-reverse;
+  }
+
+  .titlebar-buttonbox-container:-moz-locale-dir(rtl) {
+    order: -1;
+  }
 }
 
 /* NB: these would be margin-inline-start/end if it wasn't for the fact that OS X
  * doesn't reverse the order of the items in the titlebar in RTL mode. */
-.titlebar-placeholder[type="caption-buttons"],
-#titlebar-buttonbox {
+.titlebar-buttonbox {
   margin-inline: 12px;
 }
 
-#titlebar-buttonbox {
+.titlebar-buttonbox {
   appearance: auto;
   -moz-default-appearance: -moz-window-button-box;
 }
 
-/* Fullscreen and caption buttons don't move with RTL on OS X so override the automatic ordering. */
-#titlebar-buttonbox-container:-moz-locale-dir(rtl),
-.titlebar-placeholder[type="caption-buttons"]:-moz-locale-dir(rtl) {
-  -moz-box-ordinal-group: 1000;
-}
-
-#titlebar-buttonbox-container:-moz-locale-dir(ltr),
-.titlebar-placeholder[type="caption-buttons"]:-moz-locale-dir(ltr) {
-  -moz-box-ordinal-group: 0;
-}
-
-#messengerWindow[sizemode="fullscreen"] .titlebar-placeholder[type="caption-buttons"] {
+#messengerWindow[sizemode="fullscreen"] .titlebar-buttonbox-container {
   display: none;
 }
 
-button.notification-button[type="menu-button"] {
+button.notification-button[is="toolbarbutton-menu-button"] {
   margin: 0 6px;
 }
 
-button[type="menu-button"] > .button-box > button {
+button[is="toolbarbutton-menu-button"] > .button-box > button {
   margin-block: -4px;
   margin-inline: -7px 2px;
 }
@@ -387,7 +342,7 @@ button dropmarker::part(icon) {
   margin-inline-start: 3px;
 }
 
-button.notification-button[is="button-menu-button"] > .button-box > dropmarker {
+toolbarbutton.notification-button[is="toolbarbutton-menu-button"] > .button-box > dropmarker {
   margin-inline-end: -5px;
 }
 
@@ -404,24 +359,13 @@ button.notification-button[is="button-menu-button"] > .button-box > dropmarker {
   margin: 0 !important;
   /* need to use padding-inline-end when/if bug 631729 gets fixed: */
   padding: 0 16px 1px 1px;
-  appearance: auto;
-  -moz-default-appearance: statusbar;
   text-shadow: rgba(255, 255, 255, 0.4) 0 1px;
 }
 
 .statusbar:-moz-lwtheme {
-  appearance: none;
   background: none;
   border-style: none;
   text-shadow: inherit;
-}
-
-.statusbar:-moz-lwtheme-brighttext {
-  --tabs-border-color: hsla(0,0%,60%,.4);
-}
-
-.statusbarpanel-iconic {
-  padding: 0;
 }
 
 /* Status panel */
@@ -481,6 +425,24 @@ fieldset > hbox,
 fieldset > vbox,
 fieldset > radiogroup {
   width: -moz-available;
+}
+
+.menu-right,
+.menu-accel-container {
+  margin-inline-end: 0;
+}
+
+menupopup[type="arrow"] .menu-accel-container {
+  margin-inline-end: 0;
+}
+
+.menu-accel-container {
+  opacity: 0.5;
+}
+
+menuitem:not([disabled="true"]):hover .menu-accel-container,
+menuitem:not([disabled="true"]):focus .menu-accel-container {
+  opacity: 1;
 }
 
 /* UI Density customization */

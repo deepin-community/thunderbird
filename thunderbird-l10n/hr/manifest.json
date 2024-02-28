@@ -1,29 +1,28 @@
 {
   "langpack_id": "hr",
   "manifest_version": 2,
-  "applications": {
+  "browser_specific_settings": {
     "gecko": {
       "id": "langpack-hr@thunderbird.mozilla.org",
-      "strict_min_version": "91.0",
-      "strict_max_version": "91.*"
+      "strict_min_version": "115.0",
+      "strict_max_version": "115.*"
     }
   },
-  "name": "Hrvatski (HR) Language Pack",
-  "description": "Language pack for Thunderbird for hr",
-  "version": "91.0buildid20211101223011",
+  "name": "Language: Hrvatski (Croatian)",
+  "description": "Thunderbird Language Pack for Hrvatski (hr) – Croatian",
+  "version": "115.8.20240216.174500",
   "languages": {
     "hr": {
-      "version": "20211011131040",
+      "version": "20240216183817",
       "chrome_resources": {
         "alerts": "chrome/hr/locale/hr/alerts/",
         "autoconfig": "chrome/hr/locale/hr/autoconfig/",
-        "branding": "chrome/hr/locale/hr/branding/",
+        "branding": "chrome/hr/locale/branding/",
         "calendar": "chrome/hr/locale/hr/calendar/",
         "chat": "chrome/hr/locale/hr/chat/",
         "communicator": "chrome/hr/locale/hr/communicator/",
         "devtools": "chrome/hr/locale/hr/devtools/client/",
         "devtools-shared": "chrome/hr/locale/hr/devtools/shared/",
-        "devtools-startup": "chrome/hr/locale/hr/devtools/startup/",
         "global": "chrome/hr/locale/hr/global/",
         "global-platform": {
           "macosx": "chrome/hr/locale/hr/global-platform/mac/",

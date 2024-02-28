@@ -4,9 +4,6 @@
 
 var EXPORTED_SYMBOLS = ["CalStartupService"];
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-var { FileSource, L10nRegistry } = ChromeUtils.import("resource://gre/modules/L10nRegistry.jsm");
-
 /**
  * Helper function to asynchronously call a certain method on the objects passed
  * in 'services' in order (i.e wait until the first completes before calling the
@@ -52,13 +49,15 @@ CalStartupService.prototype = {
    * Gets the startup order of services. This is an array of service objects
    * that should be called in order at startup.
    *
-   * @return      The startup order as an array.
+   * @returns The startup order as an array.
    */
   getStartupOrder() {
     let self = this;
+
     let tzService = Cc["@mozilla.org/calendar/timezone-service;1"]
       .getService(Ci.calITimezoneService)
       .QueryInterface(Ci.calIStartupService);
+
     let calMgr = Cc["@mozilla.org/calendar/manager;1"]
       .getService(Ci.calICalendarManager)
       .QueryInterface(Ci.calIStartupService);
@@ -67,12 +66,13 @@ CalStartupService.prototype = {
     let locales = {
       startup(aCompleteListener) {
         let packaged = Services.locale.packagedLocales;
-        let fileSrc = new FileSource(
+        let fileSrc = new L10nFileSource(
           "calendar",
+          "app",
           packaged,
           "resource:///chrome/{locale}/locale/{locale}/calendar/"
         );
-        L10nRegistry.registerSources([fileSrc]);
+        L10nRegistry.getInstance().registerSources([fileSrc]);
         aCompleteListener.onResult(null, Cr.NS_OK);
       },
       shutdown(aCompleteListener) {

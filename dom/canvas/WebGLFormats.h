@@ -12,10 +12,9 @@
 #include "mozilla/UniquePtr.h"
 #include "WebGLTypes.h"
 
-namespace mozilla {
-namespace webgl {
+namespace mozilla::webgl {
 
-typedef uint8_t EffectiveFormatValueT;
+using EffectiveFormatValueT = uint8_t;
 
 enum class EffectiveFormat : EffectiveFormatValueT {
   // GLES 3.0.4, p128-129, "Required Texture Formats"
@@ -288,9 +287,28 @@ struct FormatInfo {
 
 //////////////////////////////////////////////////////////////////////////////////////////
 
+struct PackingInfoInfo final {
+  uint8_t bytesPerElement = 0;
+  uint8_t elementsPerPixel = 0;  // E.g. 1 for LOCAL_GL_UNSIGNED_SHORT_4_4_4_4
+  bool isPacked = false;
+
+  static Maybe<PackingInfoInfo> For(const PackingInfo&);
+
+  inline uint8_t BytesPerPixel() const {
+    return bytesPerElement * elementsPerPixel;
+  }
+};
+
 const FormatInfo* GetFormat(EffectiveFormat format);
-uint8_t BytesPerPixel(const PackingInfo& packing);
-bool GetBytesPerPixel(const PackingInfo& packing, uint8_t* const out_bytes);
+
+inline uint8_t BytesPerPixel(const PackingInfo& packing) {
+  const auto pii = PackingInfoInfo::For(packing);
+  if (MOZ_LIKELY(pii)) return pii->BytesPerPixel();
+
+  gfxCriticalError() << "Bad BytesPerPixel(" << packing << ")";
+  MOZ_CRASH("Bad `packing`.");
+}
+
 /*
 GLint ComponentSize(const FormatInfo* format, GLenum component);
 GLenum ComponentType(const FormatInfo* format);
@@ -413,7 +431,6 @@ class FormatUsageAuthority {
   const FormatUsageInfo* GetUnsizedTexUsage(const PackingInfo& pi) const;
 };
 
-}  // namespace webgl
-}  // namespace mozilla
+}  // namespace mozilla::webgl
 
 #endif  // WEBGL_FORMATS_H_

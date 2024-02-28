@@ -17,7 +17,7 @@ async function openTasksTab() {
   if (tasksMode.tabs.length == 1) {
     tabmail.selectedTab = tasksMode.tabs[0];
   } else {
-    let tasksTabButton = document.getElementById("task-tab-button");
+    let tasksTabButton = document.getElementById("tasksButton");
     EventUtils.synthesizeMouseAtCenter(tasksTabButton, { clickCount: 1 });
   }
 
@@ -45,7 +45,7 @@ async function closeTasksTab() {
  */
 async function selectFolderTab() {
   const tabmail = document.getElementById("tabmail");
-  const folderMode = tabmail.tabModes.folder;
+  const folderMode = tabmail.tabModes.mail3PaneTab;
 
   tabmail.selectedTab = folderMode.tabs[0];
 
@@ -88,7 +88,7 @@ async function closeChatTab() {
  * Opens a new calendar event or task tab.
  *
  * @param {string} tabMode - Mode of the new tab, either `calendarEvent` or `calendarTask`.
- * @return {string} - The id of the new tab's panel element.
+ * @returns {string} - The id of the new tab's panel element.
  */
 async function _openNewCalendarItemTab(tabMode) {
   let tabmail = document.getElementById("tabmail");
@@ -96,8 +96,13 @@ async function _openNewCalendarItemTab(tabMode) {
   let previousTabCount = itemTabs.length;
 
   Services.prefs.setBoolPref("calendar.item.editInTab", true);
-  CalendarTestUtils.openCalendarTab(window);
-  let buttonId = tabMode == "calendarTask" ? "calendar-newtask-button" : "calendar-newevent-button";
+  let buttonId = "sidePanelNewEvent";
+  if (tabMode == "calendarTask") {
+    await openTasksTab();
+    buttonId = "sidePanelNewTask";
+  } else {
+    await CalendarTestUtils.openCalendarTab(window);
+  }
 
   let newItemButton = document.getElementById(buttonId);
   EventUtils.synthesizeMouseAtCenter(newItemButton, { clickCount: 1 });
@@ -183,6 +188,19 @@ async function openPreferencesTab() {
   await new Promise(resolve => setTimeout(resolve));
 }
 
+async function closeAddressBookTab() {
+  let tabmail = document.getElementById("tabmail");
+  let abMode = tabmail.tabModes.addressBookTab;
+
+  if (abMode.tabs.length == 1) {
+    tabmail.closeTab(abMode.tabs[0]);
+  }
+
+  is(abMode.tabs.length, 0, "address book tab is not open");
+
+  await new Promise(resolve => setTimeout(resolve));
+}
+
 async function closePreferencesTab() {
   let tabmail = document.getElementById("tabmail");
   let prefsMode = tabmail.tabModes.preferencesTab;
@@ -228,17 +246,18 @@ async function closeAddonsTab() {
 /**
  * Create a calendar using the "Create New Calendar" dialog.
  *
- * @param {string} name                     Name for the new calendar.
- * @param {Object} [data]                   Data to enter into the dialog.
- * @param {boolean} [data.showReminders]    False to disable reminders.
- * @param {string} [data.email]             An email address.
- * @param {Object} [data.network]           Data for network calendars.
- * @param {string} [data.network.location]  A URI (leave undefined for local ICS file).
- * @param {boolean} [data.network.offline]  False to disable the cache.
+ * @param {string} name - Name for the new calendar.
+ * @param {object} [data] - Data to enter into the dialog.
+ * @param {boolean} [data.showReminders] - False to disable reminders.
+ * @param {string} [data.email] - An email address.
+ * @param {object} [data.network] - Data for network calendars.
+ * @param {string} [data.network.location] - A URI (leave undefined for local ICS file).
+ * @param {boolean} [data.network.offline] - False to disable the cache.
  */
 async function createCalendarUsingDialog(name, data = {}) {
   /**
    * Callback function to interact with the dialog.
+   *
    * @param {nsIDOMWindow} win - The dialog window.
    */
   async function useDialog(win) {
@@ -329,10 +348,13 @@ async function createCalendarUsingDialog(name, data = {}) {
   return dialogWindowPromise;
 }
 
+const calendarViewsInitialState = CalendarTestUtils.saveCalendarViewsState(window);
+
 registerCleanupFunction(async () => {
-  await CalendarTestUtils.closeCalendarTab(window);
+  await CalendarTestUtils.restoreCalendarViewsState(window, calendarViewsInitialState);
   await closeTasksTab();
   await closeChatTab();
+  await closeAddressBookTab();
   await closePreferencesTab();
   await closeAddonsTab();
 
@@ -347,4 +369,6 @@ registerCleanupFunction(async () => {
     await closeCalendarTaskTab(id);
   }
   Services.prefs.setBoolPref("calendar.item.editInTab", false);
+
+  Assert.equal(tabmail.tabInfo.length, 1, "all tabs closed");
 });

@@ -1,29 +1,28 @@
 {
   "langpack_id": "hy-AM",
   "manifest_version": 2,
-  "applications": {
+  "browser_specific_settings": {
     "gecko": {
       "id": "langpack-hy-AM@thunderbird.mozilla.org",
-      "strict_min_version": "91.0",
-      "strict_max_version": "91.*"
+      "strict_min_version": "115.0",
+      "strict_max_version": "115.*"
     }
   },
-  "name": "Armenian (AM) Language Pack",
-  "description": "Language pack for Thunderbird for hy-AM",
-  "version": "91.0buildid20211101223011",
+  "name": "Language: հայերեն (Armenian)",
+  "description": "Thunderbird Language Pack for հայերեն (hy-AM) – Armenian",
+  "version": "115.8.20240216.174500",
   "languages": {
     "hy-AM": {
-      "version": "20211012102022",
+      "version": "20240216183649",
       "chrome_resources": {
         "alerts": "chrome/hy-AM/locale/hy-AM/alerts/",
         "autoconfig": "chrome/hy-AM/locale/hy-AM/autoconfig/",
-        "branding": "chrome/hy-AM/locale/hy-AM/branding/",
+        "branding": "chrome/hy-AM/locale/branding/",
         "calendar": "chrome/hy-AM/locale/hy-AM/calendar/",
         "chat": "chrome/hy-AM/locale/hy-AM/chat/",
         "communicator": "chrome/hy-AM/locale/hy-AM/communicator/",
         "devtools": "chrome/hy-AM/locale/hy-AM/devtools/client/",
         "devtools-shared": "chrome/hy-AM/locale/hy-AM/devtools/shared/",
-        "devtools-startup": "chrome/hy-AM/locale/hy-AM/devtools/startup/",
         "global": "chrome/hy-AM/locale/hy-AM/global/",
         "global-platform": {
           "macosx": "chrome/hy-AM/locale/hy-AM/global-platform/mac/",

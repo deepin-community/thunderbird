@@ -19,6 +19,11 @@ dateformat-long =
 dateformat-short =
     .label = Short: { $date }
 
+use-system-timezone-radio-button =
+    .label = Use system timezone
+set-timezone-manually-radio-button =
+    .label = Set timezone manually
+
 timezone-label =
     .value = Timezone:
 
@@ -123,12 +128,9 @@ previous-weeks-label =
 
 todaypane-legend = Today Pane
 
-# Note: "Upcoming" is the name of a section and the translation must match the
-# translation of that section name (calendar.upcoming.button.label). Also,
-# it should be upper case (as a proper name) if the target language permits.
-soon-label =
-    .value = The Upcoming section shows:
-    .accesskey = U
+agenda-days =
+    .value = The agenda shows:
+    .accesskey = g
 
 event-task-legend = Events and Tasks
 
@@ -163,11 +165,9 @@ edit-intab-label =
     .label = Edit events and tasks in a tab instead of in a dialog window.
     .accesskey = t
 
-accessibility-legend = Accessibility
-
-accessibility-colors-label =
-    .label = Optimize colors for accessibility
-    .accesskey = c
+prompt-delete-label =
+    .label = Prompt before deleting events and tasks.
+    .accesskey = V
 
 reminder-legend = When a Reminder is Due:
 

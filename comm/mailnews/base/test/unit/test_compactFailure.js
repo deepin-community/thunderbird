@@ -1,13 +1,21 @@
-var { MockRegistrar } = ChromeUtils.import(
-  "resource://testing-common/MockRegistrar.jsm"
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
+var { MockRegistrar } = ChromeUtils.importESModule(
+  "resource://testing-common/MockRegistrar.sys.mjs"
 );
 
 /* import-globals-from ../../../test/resources/logHelper.js */
-/* import-globals-from ../../../test/resources/asyncTestUtils.js */
-/* import-globals-from ../../../test/resources/MessageGenerator.jsm */
 load("../../../resources/logHelper.js");
-load("../../../resources/asyncTestUtils.js");
-load("../../../resources/MessageGenerator.jsm");
+var { addMessagesToFolder, MessageGenerator, MessageScenarioFactory } =
+  ChromeUtils.import("resource://testing-common/mailnews/MessageGenerator.jsm");
+var { MessageInjection } = ChromeUtils.import(
+  "resource://testing-common/mailnews/MessageInjection.jsm"
+);
+var { PromiseTestUtils } = ChromeUtils.import(
+  "resource://testing-common/mailnews/PromiseTestUtils.jsm"
+);
 
 Services.prefs.setCharPref(
   "mail.serverDefaultStoreContractID",
@@ -18,25 +26,14 @@ var gTargetFolder;
 var gCid;
 
 // Allow certain xpcom errors.
-logHelperAllowedErrors.push("NS_ERROR_FILE_IS_LOCKED");
-logHelperAllowedErrors.push("NS_ERROR_FILE_TARGET_DOES_NOT_EXIST");
-
-function LockedFileOutputStream() {}
-
-LockedFileOutputStream.prototype = {
-  QueryInterface: ChromeUtils.generateQI(["nsIFileOutputStream"]),
-
-  init(file, ioFlags, perm, behaviorFlags) {
-    throw Components.Exception("", Cr.NS_ERROR_FILE_IS_LOCKED);
-  },
-};
+logHelperAllowedErrors.push("NS_ERROR_FILE_NOT_FOUND");
 
 var MsgDBServiceFailure = {
   QueryInterface: ChromeUtils.generateQI(["nsIMsgDBService"]),
 
   openMailDBFromFile(file, folder, create, leaveInvalidDB) {
     if (folder.name == "ShouldFail") {
-      throw Components.Exception("", Cr.NS_ERROR_FILE_TARGET_DOES_NOT_EXIST);
+      throw Components.Exception("", Cr.NS_ERROR_FILE_NOT_FOUND);
     }
     return this._genuine.openMailDBFromFile(
       file,
@@ -48,12 +45,6 @@ var MsgDBServiceFailure = {
 
   openFolderDB(folder, leaveInvalidDB) {
     return this._genuine.openFolderDB(folder, leaveInvalidDB);
-  },
-  asyncOpenFolderDB(folder, leaveInvalidDB) {
-    return this._genuine.asyncOpenFolderDB(folder, leaveInvalidDB);
-  },
-  openMore(db, timeHint) {
-    return this._genuine.openMore(db, timeHint);
   },
   createNewDB(folder) {
     return this._genuine.createNewDB(folder);
@@ -72,28 +63,6 @@ var MsgDBServiceFailure = {
   },
 };
 
-function setup_output_stream_stub() {
-  gCid = MockRegistrar.register(
-    "@mozilla.org/network/file-output-stream;1",
-    LockedFileOutputStream
-  );
-}
-
-function teardown_output_stream_stub() {
-  MockRegistrar.unregister(gCid);
-}
-
-function setup_db_service_mock() {
-  gCid = MockRegistrar.register(
-    "@mozilla.org/msgDatabase/msgDBService;1",
-    MsgDBServiceFailure
-  );
-}
-
-function teardown_db_service_mock() {
-  MockRegistrar.unregister(gCid);
-}
-
 function generate_messages() {
   let messageGenerator = new MessageGenerator();
   let scenarioFactory = new MessageScenarioFactory(messageGenerator);
@@ -102,72 +71,21 @@ function generate_messages() {
   return messages;
 }
 
-function* setup_target_folder() {
-  gTargetFolder = localAccountUtils.rootFolder.createLocalSubfolder("Target");
-  addMessagesToFolder(generate_messages(), gTargetFolder);
-
-  mailTestUtils.updateFolderAndNotify(gTargetFolder, async_driver);
-  yield false;
-}
-
-function* setup_open_failure_folder() {
-  gTargetFolder = localAccountUtils.rootFolder.createLocalSubfolder(
-    "ShouldFail"
+async function compact_with_exception(expectedException) {
+  let compactor = Cc["@mozilla.org/messenger/foldercompactor;1"].createInstance(
+    Ci.nsIMsgFolderCompactor
   );
-  addMessagesToFolder(generate_messages(), gTargetFolder);
-
-  mailTestUtils.updateFolderAndNotify(gTargetFolder, async_driver);
-  yield false;
-}
-
-function* delete_all_messages() {
-  gTargetFolder.deleteMessages(
-    [...gTargetFolder.messages],
-    null,
-    false,
-    true,
-    asyncCopyListener,
-    false
-  );
-  yield false;
-}
-
-function compact_with_exception(expectedException) {
-  let compactor = Cc[
-    "@mozilla.org/messenger/localfoldercompactor;1"
-  ].createInstance(Ci.nsIMsgFolderCompactor);
-  let listener = new AsyncUrlListener(null, function(url, exitCode) {
-    do_throw("This listener should not be called back.");
-  });
+  let listener = new PromiseTestUtils.PromiseUrlListener();
+  compactor.compactFolders([gTargetFolder], listener, null);
   try {
-    compactor.compact(gTargetFolder, false, listener, null);
-    do_throw("nsIMsgFolderCompactor.compact did not fail.");
-  } catch (ex) {
-    Assert.equal(expectedException, ex.result);
+    await listener.promise;
+    do_throw(
+      "nsIMsgFolderCompactor listener wasn't called with a failure code."
+    );
+  } catch (failureCode) {
+    Assert.equal(expectedException, failureCode);
   }
 }
-
-function test_compact_without_crash() {
-  compact_with_exception(Cr.NS_ERROR_FILE_IS_LOCKED);
-}
-
-function test_compact_without_failure() {
-  compact_with_exception(Cr.NS_ERROR_FILE_TARGET_DOES_NOT_EXIST);
-}
-
-var tests = [
-  setup_target_folder,
-  delete_all_messages,
-  setup_output_stream_stub,
-  test_compact_without_crash,
-  teardown_output_stream_stub,
-
-  setup_open_failure_folder,
-  delete_all_messages,
-  setup_db_service_mock,
-  test_compact_without_failure,
-  teardown_db_service_mock,
-];
 
 function create_local_folders() {
   let rootFolder = localAccountUtils.rootFolder;
@@ -175,9 +93,42 @@ function create_local_folders() {
   localTrashFolder.setFlag(Ci.nsMsgFolderFlags.Trash);
 }
 
-function run_test() {
+async function delete_all_messages() {
+  let promiseCopyListener = new PromiseTestUtils.PromiseCopyListener();
+  gTargetFolder.deleteMessages(
+    [...gTargetFolder.messages],
+    null,
+    false, // Do not delete storage.
+    true, // Is a move.
+    promiseCopyListener,
+    false // Do not allow undo, currently leaks.
+  );
+  await promiseCopyListener.promise;
+}
+
+add_setup(function () {
   localAccountUtils.loadLocalMailAccount();
   create_local_folders();
+});
 
-  async_run_tests(tests);
-}
+add_task(async function test_compact_without_failure() {
+  // Setup open failure folder.
+  gTargetFolder =
+    localAccountUtils.rootFolder.createLocalSubfolder("ShouldFail");
+  addMessagesToFolder(generate_messages(), gTargetFolder);
+
+  await new Promise(resolve => {
+    mailTestUtils.updateFolderAndNotify(gTargetFolder, resolve);
+  });
+  // Delete messages.
+  await delete_all_messages();
+  // Setup db service mock.
+  gCid = MockRegistrar.register(
+    "@mozilla.org/msgDatabase/msgDBService;1",
+    MsgDBServiceFailure
+  );
+  // Test compact without failure.
+  await compact_with_exception(Cr.NS_ERROR_FILE_NOT_FOUND);
+  // Teardown db service mock.
+  MockRegistrar.unregister(gCid);
+});

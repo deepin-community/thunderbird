@@ -12,10 +12,9 @@
 
 using namespace mozilla::css;
 
-namespace mozilla {
-namespace dom {
+namespace mozilla::dom {
 
-CSSSupportsRule::CSSSupportsRule(RefPtr<RawServoSupportsRule> aRawRule,
+CSSSupportsRule::CSSSupportsRule(RefPtr<StyleSupportsRule> aRawRule,
                                  StyleSheet* aSheet, css::Rule* aParentRule,
                                  uint32_t aLine, uint32_t aColumn)
     : css::ConditionRule(Servo_SupportsRule_GetRules(aRawRule).Consume(),
@@ -41,22 +40,24 @@ void CSSSupportsRule::List(FILE* out, int32_t aIndent) const {
 }
 #endif
 
-void CSSSupportsRule::GetConditionText(nsACString& aConditionText) {
-  Servo_SupportsRule_GetConditionText(mRawRule, &aConditionText);
+StyleCssRuleType CSSSupportsRule::Type() const {
+  return StyleCssRuleType::Supports;
 }
 
-void CSSSupportsRule::SetConditionText(const nsACString& aConditionText,
-                                       ErrorResult& aRv) {
-  if (IsReadOnly()) {
-    return;
-  }
-
-  aRv.Throw(NS_ERROR_NOT_IMPLEMENTED);
+void CSSSupportsRule::GetConditionText(nsACString& aConditionText) {
+  Servo_SupportsRule_GetConditionText(mRawRule, &aConditionText);
 }
 
 /* virtual */
 void CSSSupportsRule::GetCssText(nsACString& aCssText) const {
   Servo_SupportsRule_GetCssText(mRawRule, &aCssText);
+}
+
+void CSSSupportsRule::SetRawAfterClone(RefPtr<StyleSupportsRule> aRaw) {
+  mRawRule = std::move(aRaw);
+
+  css::ConditionRule::SetRawAfterClone(
+      Servo_SupportsRule_GetRules(mRawRule).Consume());
 }
 
 /* virtual */
@@ -71,5 +72,4 @@ JSObject* CSSSupportsRule::WrapObject(JSContext* aCx,
   return CSSSupportsRule_Binding::Wrap(aCx, this, aGivenProto);
 }
 
-}  // namespace dom
-}  // namespace mozilla
+}  // namespace mozilla::dom

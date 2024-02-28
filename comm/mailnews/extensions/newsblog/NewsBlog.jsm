@@ -1,5 +1,4 @@
-/* -*- Mode: Java; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*-
- * This Source Code Form is subject to the terms of the Mozilla Public
+/* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
@@ -11,9 +10,6 @@ function FeedDownloader() {}
 FeedDownloader.prototype = {
   downloadFeed(aFolder, aUrlListener, aIsBiff, aMsgWindow) {
     FeedUtils.downloadFeed(aFolder, aUrlListener, aIsBiff, aMsgWindow);
-  },
-  subscribeToFeed(aUrl, aFolder, aMsgWindow) {
-    FeedUtils.subscribeToFeed(aUrl, aFolder, aMsgWindow);
   },
   updateSubscriptionsDS(aFolder, aOrigFolder, aAction) {
     FeedUtils.updateSubscriptionsDS(aFolder, aOrigFolder, aAction);

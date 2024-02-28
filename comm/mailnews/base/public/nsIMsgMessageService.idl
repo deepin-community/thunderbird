@@ -47,10 +47,9 @@ interface nsIMsgMessageService : nsISupports {
    *                     FALSE leaves it as just a copy.
    * @param aUrlListener
    * @param aMsgWindow
-   * @param aURL
    */
-  void CopyMessage(in string aSrcURI, in nsIStreamListener aCopyListener, in boolean aMoveMessage,
-               in nsIUrlListener aUrlListener, in nsIMsgWindow aMsgWindow, out nsIURI aURL);
+  void copyMessage(in AUTF8String aSrcURI, in nsIStreamListener aCopyListener, in boolean aMoveMessage,
+               in nsIUrlListener aUrlListener, in nsIMsgWindow aMsgWindow);
 
   /**
    * Copy multiple messages at a time
@@ -71,7 +70,7 @@ interface nsIMsgMessageService : nsISupports {
                       in nsIMsgWindow aMsgWindow);
 
   /**
-   * When you want a message displayed....
+   * When you want a message displayed.... this loads it into the consumer.
    *
    * @param aMessageURI Is a uri representing the message to display.
    * @param aDisplayConsumer Is (for now) an nsIDocShell which we'll use to load
@@ -79,34 +78,13 @@ interface nsIMsgMessageService : nsISupports {
    *                         XXXbz Should it be an nsIWebNavigation or something?
    * @param aMsgWindow
    * @param aUrlListener
-   * @param aCharsetOverride (optional) character set over ride to force the message to use.
-   * @param aURL
+   * @param aAutodetectCharset (optional) if the characterset should be auto-detected.
    */
-  void DisplayMessage(in string aMessageURI,
+  void loadMessage(in AUTF8String aMessageURI,
             in nsISupports aDisplayConsumer,
             in nsIMsgWindow aMsgWindow,
             in nsIUrlListener aUrlListener,
-            in string aCharsetOverride,
-            out nsIURI aURL);
-
-  /**
-   * When you want an attachment downloaded
-   *
-   * @param aContentType We need to know the content type of the attachment
-   * @param aFileName The name of the attachment.
-   * @param aUrl String representation of the original url associated with the msg.
-   * @param aMessageUri RDF resource that describes the message
-   * @param aDisplayConsumer
-   * @param aMsgWindow Message window
-   * @param aUrlListener
-   */
-  void openAttachment(in string aContentType,
-            in string aFileName,
-            in string aUrl,
-            in string aMessageUri,
-            in nsISupports aDisplayConsumer,
-            in nsIMsgWindow aMsgWindow,
-            in nsIUrlListener aUrlListener);
+            in boolean aAutodetectCharset);
 
   /**
    * When you want to spool a message out to a file on disk.
@@ -122,7 +100,7 @@ interface nsIMsgMessageService : nsISupports {
    * @param canonicalLineEnding
    * @param aMsgWindow
    */
-  void SaveMessageToDisk(in string aMessageURI, in nsIFile aFile,
+  void SaveMessageToDisk(in AUTF8String aMessageURI, in nsIFile aFile,
                          in boolean aGenerateDummyEnvelope,
                          in nsIUrlListener aUrlListener, out nsIURI aURL,
                          in boolean canonicalLineEnding, in nsIMsgWindow aMsgWindow);
@@ -140,22 +118,6 @@ interface nsIMsgMessageService : nsISupports {
   nsIURI getUrlForUri(in AUTF8String aMessageURI, [optional] in nsIMsgWindow aMsgWindow);
 
   /**
-   * When you want a message displayed in a format that is suitable for printing....
-   *
-   * @param aMessageURI A uri representing the message to display.
-   * @param aDisplayConsumer is (for now) a nsIDocShell which we'll use to load
-   *        the message into.
-   *        XXXbz should it be an nsIWebNavigation?
-   * @param aMsgWindow
-   * @param aUrlListener
-   * @param aURL
-   */
-  void DisplayMessageForPrinting(in string aMessageURI, in nsISupports aDisplayConsumer,
-            in nsIMsgWindow aMsgWindow,
-            in nsIUrlListener aUrlListener,
-            out nsIURI aURL);
-
-  /**
    *
    *
    * @param aSearchSession
@@ -163,7 +125,7 @@ interface nsIMsgMessageService : nsISupports {
    * @param aMsgFolder
    * @param aSearchUri
    */
-  void Search(in nsIMsgSearchSession aSearchSession, in nsIMsgWindow aMsgWindow, in nsIMsgFolder aMsgFolder, in string aSearchUri);
+  void Search(in nsIMsgSearchSession aSearchSession, in nsIMsgWindow aMsgWindow, in nsIMsgFolder aMsgFolder, in AUTF8String aSearchUri);
 
   /**
    * This method streams a message to the passed in consumer. If aConvertData is true, it
@@ -185,7 +147,7 @@ interface nsIMsgMessageService : nsISupports {
    *
    * @return the URL that gets run
    */
-  nsIURI streamMessage(in string aMessageURI, in nsISupports aConsumer,
+  nsIURI streamMessage(in AUTF8String aMessageURI, in nsISupports aConsumer,
                     in nsIMsgWindow aMsgWindow,
                     in nsIUrlListener aUrlListener,
                     in boolean aConvertData,
@@ -210,7 +172,7 @@ interface nsIMsgMessageService : nsISupports {
    *
    * @return the URL that gets run, if any.
    */
-  nsIURI streamHeaders(in string aMessageURI, in nsIStreamListener aConsumer,
+  nsIURI streamHeaders(in AUTF8String aMessageURI, in nsIStreamListener aConsumer,
                        in nsIUrlListener aUrlListener,
                        [optional] in boolean aLocalOnly);
 
@@ -258,7 +220,7 @@ interface nsIMsgMessageFetchPartService : nsISupports
    *
    * @return
    */
-  nsIURI fetchMimePart(in nsIURI aURI, in string aMessageUri, in nsISupports aDisplayConsumer,
+  nsIURI fetchMimePart(in nsIURI aURI, in AUTF8String aMessageUri, in nsISupports aDisplayConsumer,
             in nsIMsgWindow aMsgWindow,
             in nsIUrlListener aUrlListener);
 };

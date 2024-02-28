@@ -2,19 +2,17 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-from __future__ import absolute_import, print_function, unicode_literals
-
 import os
 import re
-import six
-import sys
 import subprocess
+import sys
 import traceback
+from pathlib import Path
 from textwrap import dedent
 
+import six
 from mozboot.mozconfig import find_mozconfig
 from mozpack import path as mozpath
-from mozbuild.util import ensure_subprocess_env
 
 MOZCONFIG_BAD_EXIT_CODE = """
 Evaluation of your mozconfig exited with an error. This could be triggered
@@ -79,14 +77,7 @@ class MozconfigLoader(object):
 
     IGNORE_SHELL_VARIABLES = {"_", "BASH_ARGV", "BASH_ARGV0", "BASH_ARGC"}
 
-    ENVIRONMENT_VARIABLES = {
-        "CC",
-        "CXX",
-        "CFLAGS",
-        "CXXFLAGS",
-        "LDFLAGS",
-        "MOZ_OBJDIR",
-    }
+    ENVIRONMENT_VARIABLES = {"CC", "CXX", "CFLAGS", "CXXFLAGS", "LDFLAGS", "MOZ_OBJDIR"}
 
     AUTODETECT = object()
 
@@ -113,6 +104,8 @@ class MozconfigLoader(object):
         """
         if path is self.AUTODETECT:
             path = find_mozconfig(self.topsrcdir)
+        if isinstance(path, Path):
+            path = str(path)
 
         result = {
             "path": path,
@@ -139,23 +132,34 @@ class MozconfigLoader(object):
         # actually leads to two shell executions on Windows. Avoid this by
         # directly calling sh mozconfig_loader.
         shell = "sh"
+        env = dict(os.environ)
+        env["PYTHONIOENCODING"] = "utf-8"
+
         if "MOZILLABUILD" in os.environ:
-            shell = os.environ["MOZILLABUILD"] + "/msys/bin/sh"
+            mozillabuild = os.environ["MOZILLABUILD"]
+            if (Path(mozillabuild) / "msys2").exists():
+                shell = mozillabuild + "/msys2/usr/bin/sh"
+            else:
+                shell = mozillabuild + "/msys/bin/sh"
+            prefer_mozillabuild_path = [
+                os.path.dirname(shell),
+                str(Path(mozillabuild) / "bin"),
+                env["PATH"],
+            ]
+            env["PATH"] = os.pathsep.join(prefer_mozillabuild_path)
         if sys.platform == "win32":
             shell = shell + ".exe"
 
         command = [
-            shell,
+            mozpath.normsep(shell),
             mozpath.normsep(self._loader_script),
             mozpath.normsep(self.topsrcdir),
-            path,
-            sys.executable,
+            mozpath.normsep(path),
+            mozpath.normsep(sys.executable),
             mozpath.join(mozpath.dirname(self._loader_script), "action", "dump_env.py"),
         ]
 
         try:
-            env = dict(os.environ)
-            env["PYTHONIOENCODING"] = "utf-8"
             # We need to capture stderr because that's where the shell sends
             # errors if execution fails.
             output = six.ensure_text(
@@ -163,8 +167,9 @@ class MozconfigLoader(object):
                     command,
                     stderr=subprocess.STDOUT,
                     cwd=self.topsrcdir,
-                    env=ensure_subprocess_env(env),
+                    env=env,
                     universal_newlines=True,
+                    encoding="utf-8",
                 )
             )
         except subprocess.CalledProcessError as e:
@@ -198,12 +203,7 @@ class MozconfigLoader(object):
             added = set2 - set1
             removed = set1 - set2
             maybe_modified = set1 & set2
-            changed = {
-                "added": {},
-                "removed": {},
-                "modified": {},
-                "unmodified": {},
-            }
+            changed = {"added": {}, "removed": {}, "modified": {}, "unmodified": {}}
 
             for key in added:
                 changed["added"][key] = vars_after[key]

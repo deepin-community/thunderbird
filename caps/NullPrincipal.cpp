@@ -18,22 +18,20 @@
 #include "NullPrincipal.h"
 #include "DefaultURI.h"
 #include "nsSimpleURI.h"
-#include "nsMemory.h"
 #include "nsIClassInfoImpl.h"
 #include "nsNetCID.h"
 #include "nsError.h"
+#include "nsEscape.h"
 #include "ContentPrincipal.h"
 #include "nsScriptSecurityManager.h"
 #include "pratom.h"
 #include "nsIObjectInputStream.h"
-#include "mozilla/GkRustUtils.h"
 
 #include "json/json.h"
 
 using namespace mozilla;
 
-NS_IMPL_CLASSINFO(NullPrincipal, nullptr, nsIClassInfo::MAIN_THREAD_ONLY,
-                  NS_NULLPRINCIPAL_CID)
+NS_IMPL_CLASSINFO(NullPrincipal, nullptr, 0, NS_NULLPRINCIPAL_CID)
 NS_IMPL_QUERY_INTERFACE_CI(NullPrincipal, nsIPrincipal)
 NS_IMPL_CI_INTERFACE_GETTER(NullPrincipal, nsIPrincipal)
 
@@ -46,60 +44,16 @@ NullPrincipal::NullPrincipal(nsIURI* aURI, const nsACString& aOriginNoSuffix,
 already_AddRefed<NullPrincipal> NullPrincipal::CreateWithInheritedAttributes(
     nsIPrincipal* aInheritFrom) {
   MOZ_ASSERT(aInheritFrom);
-  return CreateWithInheritedAttributes(
-      Cast(aInheritFrom)->OriginAttributesRef(), false);
-}
-
-/* static */
-already_AddRefed<NullPrincipal> NullPrincipal::CreateWithInheritedAttributes(
-    nsIDocShell* aDocShell, bool aIsFirstParty) {
-  MOZ_ASSERT(aDocShell);
-
-  OriginAttributes attrs = nsDocShell::Cast(aDocShell)->GetOriginAttributes();
-  return CreateWithInheritedAttributes(attrs, aIsFirstParty);
-}
-
-/* static */
-already_AddRefed<NullPrincipal> NullPrincipal::CreateWithInheritedAttributes(
-    const OriginAttributes& aOriginAttributes, bool aIsFirstParty) {
-  return CreateInternal(aOriginAttributes, aIsFirstParty);
+  nsCOMPtr<nsIURI> uri = CreateURI(aInheritFrom);
+  return Create(Cast(aInheritFrom)->OriginAttributesRef(), uri);
 }
 
 /* static */
 already_AddRefed<NullPrincipal> NullPrincipal::Create(
-    const OriginAttributes& aOriginAttributes, nsIURI* aURI) {
-  return CreateInternal(aOriginAttributes, false, aURI);
-}
-
-/* static */
-already_AddRefed<NullPrincipal> NullPrincipal::CreateWithoutOriginAttributes() {
-  return NullPrincipal::Create(OriginAttributes(), nullptr);
-}
-
-already_AddRefed<nsIURI> NullPrincipal::CreateURI() {
-  nsCOMPtr<nsIURIMutator> mutator;
-  if (StaticPrefs::network_url_useDefaultURI()) {
-    mutator = new mozilla::net::DefaultURI::Mutator();
-  } else {
-    mutator = new mozilla::net::nsSimpleURI::Mutator();
-  }
-
-  nsAutoCStringN<NSID_LENGTH> uuid;
-  GkRustUtils::GenerateUUID(uuid);
-
-  nsCOMPtr<nsIURI> uri;
-  MOZ_ALWAYS_SUCCEEDS(NS_MutateURI(mutator)
-                          .SetSpec(NS_NULLPRINCIPAL_SCHEME ":"_ns + uuid)
-                          .Finalize(uri));
-  return uri.forget();
-}
-
-already_AddRefed<NullPrincipal> NullPrincipal::CreateInternal(
-    const OriginAttributes& aOriginAttributes, bool aIsFirstParty,
-    nsIURI* aURI) {
-  nsCOMPtr<nsIURI> uri = aURI;
+    const OriginAttributes& aOriginAttributes, nsIURI* aNullPrincipalURI) {
+  nsCOMPtr<nsIURI> uri = aNullPrincipalURI;
   if (!uri) {
-    uri = NullPrincipal::CreateURI();
+    uri = NullPrincipal::CreateURI(nullptr);
   }
 
   MOZ_RELEASE_ASSERT(uri->SchemeIs(NS_NULLPRINCIPAL_SCHEME));
@@ -108,21 +62,90 @@ already_AddRefed<NullPrincipal> NullPrincipal::CreateInternal(
   DebugOnly<nsresult> rv = uri->GetSpec(originNoSuffix);
   MOZ_ASSERT(NS_SUCCEEDED(rv));
 
-  OriginAttributes attrs(aOriginAttributes);
-  if (aIsFirstParty) {
-    nsAutoCString path;
-    rv = uri->GetPathQueryRef(path);
-    MOZ_ASSERT(NS_SUCCEEDED(rv));
+  RefPtr<NullPrincipal> nullPrin =
+      new NullPrincipal(uri, originNoSuffix, aOriginAttributes);
+  return nullPrin.forget();
+}
 
-    // remove the '{}' characters from both ends.
-    path.Mid(path, 1, path.Length() - 2);
-    path.AppendLiteral(".mozilla");
-    attrs.SetFirstPartyDomain(true, path);
+/* static */
+already_AddRefed<NullPrincipal> NullPrincipal::CreateWithoutOriginAttributes() {
+  return NullPrincipal::Create(OriginAttributes(), nullptr);
+}
+
+void NullPrincipal::EscapePrecursorQuery(nsACString& aPrecursorQuery) {
+  // origins should not contain existing escape sequences, so set `esc_Forced`
+  // to force any `%` in the input to be escaped in addition to non-ascii,
+  // control characters and DEL.
+  nsCString modified;
+  if (NS_EscapeURLSpan(aPrecursorQuery, esc_Query | esc_Forced, modified)) {
+    aPrecursorQuery.Assign(std::move(modified));
+  }
+}
+
+void NullPrincipal::UnescapePrecursorQuery(nsACString& aPrecursorQuery) {
+  nsCString modified;
+  if (NS_UnescapeURL(aPrecursorQuery.BeginReading(), aPrecursorQuery.Length(),
+                     /* aFlags */ 0, modified)) {
+    aPrecursorQuery.Assign(std::move(modified));
+  }
+}
+
+already_AddRefed<nsIURI> NullPrincipal::CreateURI(
+    nsIPrincipal* aPrecursor, const nsID* aNullPrincipalID) {
+  nsCOMPtr<nsIURIMutator> iMutator;
+  if (StaticPrefs::network_url_useDefaultURI()) {
+    iMutator = new mozilla::net::DefaultURI::Mutator();
+  } else {
+    iMutator = new mozilla::net::nsSimpleURI::Mutator();
   }
 
-  RefPtr<NullPrincipal> nullPrin =
-      new NullPrincipal(uri, originNoSuffix, attrs);
-  return nullPrin.forget();
+  nsID uuid = aNullPrincipalID ? *aNullPrincipalID : nsID::GenerateUUID();
+
+  NS_MutateURI mutator(iMutator);
+  mutator.SetSpec(NS_NULLPRINCIPAL_SCHEME ":"_ns +
+                  nsDependentCString(nsIDToCString(uuid).get()));
+
+  // If there's a precursor URI, encode it in the null principal URI's query.
+  if (aPrecursor) {
+    nsAutoCString precursorOrigin;
+    switch (BasePrincipal::Cast(aPrecursor)->Kind()) {
+      case eNullPrincipal: {
+        // If the precursor null principal has a precursor, inherit it.
+        if (nsCOMPtr<nsIURI> nullPrecursorURI = aPrecursor->GetURI()) {
+          MOZ_ALWAYS_SUCCEEDS(nullPrecursorURI->GetQuery(precursorOrigin));
+        }
+        break;
+      }
+      case eContentPrincipal: {
+        MOZ_ALWAYS_SUCCEEDS(aPrecursor->GetOriginNoSuffix(precursorOrigin));
+#ifdef DEBUG
+        nsAutoCString original(precursorOrigin);
+#endif
+        EscapePrecursorQuery(precursorOrigin);
+#ifdef DEBUG
+        nsAutoCString unescaped(precursorOrigin);
+        UnescapePrecursorQuery(unescaped);
+        MOZ_ASSERT(unescaped == original,
+                   "cannot recover original precursor origin after escape");
+#endif
+        break;
+      }
+
+      // For now, we won't track expanded or system principal precursors. We may
+      // want to track expanded principal precursors in the future, but it's
+      // unlikely we'll want to track system principal precursors.
+      case eExpandedPrincipal:
+      case eSystemPrincipal:
+        break;
+    }
+    if (!precursorOrigin.IsEmpty()) {
+      mutator.SetQuery(precursorOrigin);
+    }
+  }
+
+  nsCOMPtr<nsIURI> uri;
+  MOZ_ALWAYS_SUCCEEDS(mutator.Finalize(getter_AddRefs(uri)));
+  return uri.forget();
 }
 
 nsresult NullPrincipal::GetScriptLocation(nsACString& aStr) {
@@ -217,16 +240,12 @@ nsresult NullPrincipal::PopulateJSONObject(Json::Value& aObject) {
   nsAutoCString principalURI;
   nsresult rv = mURI->GetSpec(principalURI);
   NS_ENSURE_SUCCESS(rv, rv);
-  MOZ_ASSERT(principalURI.Length() ==
-                 nsLiteralCString(NS_NULLPRINCIPAL_SCHEME ":").Length() +
-                     NSID_LENGTH - 1,
-             "Length of the URI should be: (scheme, uuid, - nullptr)");
-  aObject[std::to_string(eSpec)] = principalURI.get();
+  SetJSONValue<eSpec>(aObject, principalURI);
 
   nsAutoCString suffix;
   OriginAttributesRef().CreateSuffix(suffix);
   if (suffix.Length() > 0) {
-    aObject[std::to_string(eSuffix)] = suffix.get();
+    SetJSONValue<eSuffix>(aObject, suffix);
   }
 
   return NS_OK;
@@ -267,4 +286,48 @@ already_AddRefed<BasePrincipal> NullPrincipal::FromProperties(
   }
 
   return NullPrincipal::Create(attrs, uri);
+}
+
+NS_IMETHODIMP
+NullPrincipal::GetPrecursorPrincipal(nsIPrincipal** aPrincipal) {
+  *aPrincipal = nullptr;
+
+  nsAutoCString query;
+  if (NS_FAILED(mURI->GetQuery(query)) || query.IsEmpty()) {
+    return NS_OK;
+  }
+  UnescapePrecursorQuery(query);
+
+  nsCOMPtr<nsIURI> precursorURI;
+  if (NS_FAILED(NS_NewURI(getter_AddRefs(precursorURI), query))) {
+    MOZ_ASSERT_UNREACHABLE(
+        "Failed to parse precursor from nullprincipal query");
+    return NS_OK;
+  }
+
+  // If our precursor is another null principal, re-construct it. This can
+  // happen if a null principal without a precursor causes another principal to
+  // be created.
+  if (precursorURI->SchemeIs(NS_NULLPRINCIPAL_SCHEME)) {
+#ifdef DEBUG
+    nsAutoCString precursorQuery;
+    precursorURI->GetQuery(precursorQuery);
+    MOZ_ASSERT(precursorQuery.IsEmpty(),
+               "Null principal with nested precursors?");
+#endif
+    *aPrincipal =
+        NullPrincipal::Create(OriginAttributesRef(), precursorURI).take();
+    return NS_OK;
+  }
+
+  RefPtr<BasePrincipal> contentPrincipal =
+      BasePrincipal::CreateContentPrincipal(precursorURI,
+                                            OriginAttributesRef());
+  // If `CreateContentPrincipal` failed, it will create a new NullPrincipal and
+  // return that instead. We only want to return real content principals here.
+  if (!contentPrincipal || !contentPrincipal->Is<ContentPrincipal>()) {
+    return NS_OK;
+  }
+  contentPrincipal.forget(aPrincipal);
+  return NS_OK;
 }

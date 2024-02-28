@@ -4,19 +4,19 @@
 
 <!-- extracted from am-main.xhtml -->
 
-<!ENTITY accountTitle.label "Nastavenie účtu">
+<!ENTITY accountTitle.label "Nastavenia účtu">
 <!ENTITY accountName.label "Názov účtu:">
 <!ENTITY accountName.accesskey "z">
 <!ENTITY identityTitle.label "Predvolená identita">
 <!ENTITY identityDesc.label "Každý účet má vlastnú identitu, čo sú vlastne informácie o vás, ktoré uvidia príjemcovia vašich správ.">
 <!ENTITY name.label "Vaše meno:">
 <!ENTITY name.accesskey "V">
-<!ENTITY email.label "E-mailová adresa:">
+<!ENTITY email.label "E‑mailová adresa:">
 <!ENTITY email.accesskey "E">
 <!ENTITY catchAll.label "Odpovedať z tejto identity ak sa hlavička zhoduje:">
 <!ENTITY catchAll.accesskey "d">
-<!ENTITY replyTo.label "Kam odpovedať:">
-<!ENTITY replyTo.accesskey "K">
+<!ENTITY replyTo.label "Adresa pre odpoveď:">
+<!ENTITY replyTo.accesskey "A">
 <!ENTITY replyTo.placeholder "Príjemcovia budú odpovedať na túto adresu">
 <!ENTITY organization.label "Organizácia:">
 <!ENTITY organization.accesskey "a">
@@ -35,7 +35,7 @@
 <!ENTITY attachVCard.label "Pripájať k správam moju vizitku (vCard)">
 <!ENTITY attachVCard.accesskey "m">
 
-<!ENTITY manageIdentities.label "Správa identity…">
+<!ENTITY manageIdentities.label "Spravovať identity…">
 <!ENTITY manageIdentities.accesskey "S">
 
 <!-- LOCALIZATION NOTE (smtpName.label) : do not translate "SMTP" in below line -->

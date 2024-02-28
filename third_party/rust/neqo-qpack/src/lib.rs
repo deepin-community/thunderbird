@@ -8,8 +8,6 @@
 #![warn(clippy::pedantic)]
 // This is because of Encoder and Decoder structs. TODO: think about a better namings for crate and structs.
 #![allow(clippy::module_name_repetitions)]
-// We need this because of TransportError.
-#![allow(clippy::pub_enum_variant_names)]
 
 pub mod decoder;
 mod decoder_instructions;
@@ -40,7 +38,7 @@ pub struct QpackSettings {
     pub max_blocked_streams: u16,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Error {
     DecompressionFailed,
     EncoderStream,

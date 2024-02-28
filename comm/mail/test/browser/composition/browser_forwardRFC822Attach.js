@@ -13,6 +13,7 @@ var {
   close_compose_window,
   get_msg_source,
   open_compose_with_forward_as_attachments,
+  save_compose_message,
 } = ChromeUtils.import("resource://testing-common/mozmill/ComposeHelpers.jsm");
 var {
   be_in_folder,
@@ -28,15 +29,14 @@ var { close_window } = ChromeUtils.import(
   "resource://testing-common/mozmill/WindowHelpers.jsm"
 );
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 var { MailServices } = ChromeUtils.import(
   "resource:///modules/MailServices.jsm"
 );
 
 var gDrafts;
 
-add_task(function setupModule(module) {
-  gDrafts = get_special_folder(Ci.nsMsgFolderFlags.Drafts, true);
+add_setup(async function () {
+  gDrafts = await get_special_folder(Ci.nsMsgFolderFlags.Drafts, true);
 });
 
 async function forwardDirect(aFilePath, aExpectedText) {
@@ -45,21 +45,14 @@ async function forwardDirect(aFilePath, aExpectedText) {
 
   let cwc = open_compose_with_forward_as_attachments(msgc);
 
-  // Ctrl+S saves as draft.
-  EventUtils.synthesizeKey(
-    "s",
-    { shiftKey: false, accelKey: true },
-    cwc.window
-  );
-  waitForSaveOperation(cwc);
-
+  await save_compose_message(cwc.window);
   close_compose_window(cwc);
   close_window(msgc);
 
-  be_in_folder(gDrafts);
+  await be_in_folder(gDrafts);
   let draftMsg = select_click_row(0);
 
-  let draftMsgContent = get_msg_source(draftMsg);
+  let draftMsgContent = await get_msg_source(draftMsg);
 
   Assert.ok(
     draftMsgContent.includes(aExpectedText),

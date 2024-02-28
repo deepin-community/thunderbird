@@ -19,13 +19,11 @@
 #include "nsIMsgLocalMailFolder.h"
 #include "nsIMsgDatabase.h"
 #include "nsIMsgHdr.h"
-#include "nsMsgBaseCID.h"
 #include "nsIMsgCopyService.h"
 #include "nsIInputStream.h"
 #include "nsIOutputStream.h"
 #include "nsISafeOutputStream.h"
 #include "nsIMsgComposeService.h"
-#include "nsMsgCompCID.h"
 #include "nsNetUtil.h"
 #include "nsMsgUtils.h"
 #include "nsIMsgMailSession.h"
@@ -38,6 +36,7 @@
 #include "nsIMsgThread.h"
 #include "nsIMsgFilter.h"
 #include "nsIMsgOperationListener.h"
+#include "mozilla/Components.h"
 #include "mozilla/Logging.h"
 
 using namespace mozilla;
@@ -128,9 +127,11 @@ NS_IMETHODIMP nsMsgFilterService::OpenFilterList(
   NS_ENSURE_ARG_POINTER(aFilterFile);
   NS_ENSURE_ARG_POINTER(resultFilterList);
 
+  nsresult rv;
   if (rootFolder) {
     nsCOMPtr<nsIMsgIncomingServer> server;
-    rootFolder->GetServer(getter_AddRefs(server));
+    rv = rootFolder->GetServer(getter_AddRefs(server));
+    NS_ENSURE_SUCCESS(rv, rv);
     nsString serverName;
     server->GetPrettyName(serverName);
     MOZ_LOG(FILTERLOGMODULE, LogLevel::Info,
@@ -145,7 +146,7 @@ NS_IMETHODIMP nsMsgFilterService::OpenFilterList(
            NS_ConvertUTF16toUTF8(fileName).get()));
 
   bool exists = false;
-  nsresult rv = aFilterFile->Exists(&exists);
+  rv = aFilterFile->Exists(&exists);
   if (NS_FAILED(rv) || !exists) {
     rv = aFilterFile->Create(nsIFile::NORMAL_FILE_TYPE, 0644);
     NS_ENSURE_SUCCESS(rv, rv);
@@ -278,7 +279,7 @@ nsresult nsMsgFilterService::GetFilterStringBundle(nsIStringBundle** aBundle) {
   NS_ENSURE_ARG_POINTER(aBundle);
 
   nsCOMPtr<nsIStringBundleService> bundleService =
-      mozilla::services::GetStringBundleService();
+      mozilla::components::StringBundle::Service();
   NS_ENSURE_TRUE(bundleService, NS_ERROR_UNEXPECTED);
   nsCOMPtr<nsIStringBundle> bundle;
   if (bundleService)
@@ -295,7 +296,7 @@ nsresult nsMsgFilterService::ThrowAlertMsg(const char* aMsgName,
   nsCOMPtr<nsIMsgWindow> msgWindow = aMsgWindow;
   if (!msgWindow) {
     nsCOMPtr<nsIMsgMailSession> mailSession(
-        do_GetService(NS_MSGMAILSESSION_CONTRACTID, &rv));
+        do_GetService("@mozilla.org/messenger/services/session;1", &rv));
     if (NS_SUCCEEDED(rv))
       rv = mailSession->GetTopmostMsgWindow(getter_AddRefs(msgWindow));
   }
@@ -455,7 +456,8 @@ nsresult nsMsgFilterAfterTheFact::RunNextFilter() {
     CONTINUE_IF_FAILURE(rv, "Could not get searchTerms");
 
     if (m_searchSession) m_searchSession->UnregisterListener(this);
-    m_searchSession = do_CreateInstance(NS_MSGSEARCHSESSION_CONTRACTID, &rv);
+    m_searchSession =
+        do_CreateInstance("@mozilla.org/messenger/searchSession;1", &rv);
     BREAK_IF_FAILURE(rv, "Failed to get search session");
 
     nsMsgSearchScopeValue searchScope = nsMsgSearchScope::offlineMail;
@@ -763,7 +765,7 @@ nsresult nsMsgFilterAfterTheFact::ApplyFilter() {
                                   "messages, disabling the filter");
           }
           nsCOMPtr<nsIMsgCopyService> copyService =
-              do_GetService(NS_MSGCOPYSERVICE_CONTRACTID, &rv);
+              do_GetService("@mozilla.org/messenger/messagecopyservice;1", &rv);
           BREAK_ACTION_IF_FAILURE(rv, "Could not get copy service");
 
           if (actionType == nsMsgFilterAction::MoveToFolder) {
@@ -831,12 +833,6 @@ nsresult nsMsgFilterAfterTheFact::ApplyFilter() {
             BREAK_ACTION_IF_FAILURE(rv, "Setting message flags failed");
           }
         } break;
-        case nsMsgFilterAction::Label: {
-          nsMsgLabelValue filterLabel;
-          filterAction->GetLabel(&filterLabel);
-          rv = curFolder->SetLabelForMessages(m_searchHitHdrs, filterLabel);
-          BREAK_ACTION_IF_FAILURE(rv, "Setting message flags failed");
-        } break;
         case nsMsgFilterAction::AddTag: {
           nsCString keyword;
           filterAction->GetStrValue(keyword);
@@ -860,7 +856,7 @@ nsresult nsMsgFilterAfterTheFact::ApplyFilter() {
           filterAction->GetStrValue(forwardTo);
           BREAK_ACTION_IF_FALSE(!forwardTo.IsEmpty(), "blank forwardTo URI");
           nsCOMPtr<nsIMsgComposeService> compService =
-              do_GetService(NS_MSGCOMPOSESERVICE_CONTRACTID, &rv);
+              do_GetService("@mozilla.org/messengercompose;1", &rv);
           BREAK_ACTION_IF_FAILURE(rv, "Could not get compose service");
 
           for (auto msgHdr : m_searchHitHdrs) {
@@ -881,10 +877,10 @@ nsresult nsMsgFilterAfterTheFact::ApplyFilter() {
           BREAK_ACTION_IF_FAILURE(rv, "Could not get server");
 
           nsCOMPtr<nsIMsgComposeService> compService =
-              do_GetService(NS_MSGCOMPOSESERVICE_CONTRACTID, &rv);
+              do_GetService("@mozilla.org/messengercompose;1", &rv);
           BREAK_ACTION_IF_FAILURE(rv, "Could not get compose service");
           for (auto msgHdr : m_searchHitHdrs) {
-            rv = compService->ReplyWithTemplate(msgHdr, replyTemplateUri.get(),
+            rv = compService->ReplyWithTemplate(msgHdr, replyTemplateUri,
                                                 m_msgWindow, server);
             if (NS_FAILED(rv)) {
               if (rv == NS_ERROR_ABORT) {
@@ -1268,8 +1264,8 @@ NS_IMETHODIMP nsMsgFilterService::ApplyFilters(
   NS_ENSURE_ARG_POINTER(aFolder);
 
   nsCOMPtr<nsIMsgFilterList> filterList;
-  nsresult rv = aFolder->GetFilterList(aMsgWindow, getter_AddRefs(filterList));
-  NS_ENSURE_SUCCESS(rv, rv);
+  aFolder->GetFilterList(aMsgWindow, getter_AddRefs(filterList));
+  NS_ENSURE_STATE(filterList);
 
   uint32_t filterCount;
   filterList->GetFilterCount(&filterCount);
@@ -1341,7 +1337,7 @@ bool nsMsgFilterAfterTheFact::ContinueExecutionPrompt() {
   if (!m_curFilter) return false;
   nsCOMPtr<nsIStringBundle> bundle;
   nsCOMPtr<nsIStringBundleService> bundleService =
-      mozilla::services::GetStringBundleService();
+      mozilla::components::StringBundle::Service();
   if (!bundleService) return false;
   bundleService->CreateBundle("chrome://messenger/locale/filter.properties",
                               getter_AddRefs(bundle));

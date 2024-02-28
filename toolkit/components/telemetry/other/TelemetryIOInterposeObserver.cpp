@@ -6,7 +6,10 @@
 
 #include "TelemetryIOInterposeObserver.h"
 #include "core/TelemetryCommon.h"
-#include "js/Array.h"  // JS::NewArrayObject
+#include "js/Array.h"               // JS::NewArrayObject
+#include "js/PropertyAndElement.h"  // JS_DefineUCProperty
+#include "js/PropertyDescriptor.h"  // JSPROP_ENUMERATE, JSPROP_READONLY
+#include "js/ValueArray.h"
 #include "nsIFile.h"
 
 namespace mozilla::Telemetry {
@@ -128,7 +131,7 @@ bool TelemetryIOInterposeObserver::ReflectFileStats(FileIOEntryType* entry,
     stats[5].setNumber(fileStats.stats);
 
     // Create jsStats as array of elements above
-    JS::RootedObject jsStats(cx, JS::NewArrayObject(cx, stats));
+    JS::Rooted<JSObject*> jsStats(cx, JS::NewArrayObject(cx, stats));
     if (!jsStats) {
       continue;
     }

@@ -50,12 +50,11 @@ var tests = [
     transaction: ["AUTH", "CAPA", "AUTH CRAM-MD5", "STAT"],
   },
   {
-    title:
-      "Encrypted password, with server only supporting AUTH PLAIN and LOGIN (must fail)",
+    title: "Encrypted password, try CRAM even if if not advertised",
     clientAuthMethod: Ci.nsMsgAuthMethod.passwordEncrypted,
     serverAuthMethods: ["PLAIN", "LOGIN"],
     expectSuccess: false,
-    transaction: ["AUTH", "CAPA"],
+    transaction: ["AUTH", "CAPA", "AUTH CRAM-MD5"],
   },
   {
     title: "Any secure method, with server supporting AUTH PLAIN and CRAM",
@@ -117,11 +116,7 @@ function checkBusy() {
   }
 
   // If the server hasn't quite finished, just delay a little longer.
-  if (
-    incomingServer.serverBusy ||
-    (incomingServer instanceof Ci.nsIPop3IncomingServer &&
-      incomingServer.runningProtocol)
-  ) {
+  if (incomingServer.serverBusy) {
     do_timeout(20, checkBusy);
     return;
   }

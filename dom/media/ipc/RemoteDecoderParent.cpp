@@ -13,11 +13,14 @@ namespace mozilla {
 RemoteDecoderParent::RemoteDecoderParent(
     RemoteDecoderManagerParent* aParent,
     const CreateDecoderParams::OptionSet& aOptions,
-    nsISerialEventTarget* aManagerThread, TaskQueue* aDecodeTaskQueue)
+    nsISerialEventTarget* aManagerThread, TaskQueue* aDecodeTaskQueue,
+    const Maybe<uint64_t>& aMediaEngineId, Maybe<TrackingId> aTrackingId)
     : ShmemRecycleAllocator(this),
       mParent(aParent),
       mOptions(aOptions),
       mDecodeTaskQueue(aDecodeTaskQueue),
+      mTrackingId(aTrackingId),
+      mMediaEngineId(aMediaEngineId),
       mManagerThread(aManagerThread) {
   MOZ_COUNT_CTOR(RemoteDecoderParent);
   MOZ_ASSERT(OnManagerThread());
@@ -61,8 +64,10 @@ mozilla::ipc::IPCResult RemoteDecoderParent::RecvInit(
           bool hardwareAccelerated =
               self->mDecoder->IsHardwareAccelerated(hardwareReason);
           resolver(InitCompletionIPDL{
-              track, self->mDecoder->GetDescriptionName(), hardwareAccelerated,
-              hardwareReason, self->mDecoder->NeedsConversion()});
+              track, self->mDecoder->GetDescriptionName(),
+              self->mDecoder->GetProcessName(), self->mDecoder->GetCodecName(),
+              hardwareAccelerated, hardwareReason,
+              self->mDecoder->NeedsConversion()});
         }
       });
   return IPC_OK();
@@ -124,11 +129,6 @@ void RemoteDecoderParent::DecodeNextSample(
 mozilla::ipc::IPCResult RemoteDecoderParent::RecvDecode(
     ArrayOfRemoteMediaRawData* aData, DecodeResolver&& aResolver) {
   MOZ_ASSERT(OnManagerThread());
-  // XXX: This copies the data into a buffer owned by the MediaRawData. Ideally
-  // we'd just take ownership of the shmem.
-  // Use the passed bufferSize in MediaRawDataIPDL since we can get a Shmem
-  // buffer from ShmemPool larger than the requested size.
-
   // If we are here, we know all previously returned DecodedOutputIPDL got
   // used by the child. We can mark all previously sent ShmemBuffer as
   // available again.

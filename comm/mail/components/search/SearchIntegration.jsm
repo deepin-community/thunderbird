@@ -18,13 +18,12 @@
 
 var EXPORTED_SYMBOLS = ["SearchIntegration"];
 
-const { AppConstants } = ChromeUtils.import(
-  "resource://gre/modules/AppConstants.jsm"
+const { AppConstants } = ChromeUtils.importESModule(
+  "resource://gre/modules/AppConstants.sys.mjs"
 );
 const { MailServices } = ChromeUtils.import(
   "resource:///modules/MailServices.jsm"
 );
-const { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 
 var PERM_DIRECTORY = 0o755;
 var PERM_FILE = 0o644;
@@ -37,13 +36,13 @@ var SearchSupport = {
    */
   __lastFolderIndexedUri: null,
   set _lastFolderIndexedUri(uri) {
-    this._prefBranch.setCharPref("lastFolderIndexedUri", uri);
+    this._prefBranch.setStringPref("lastFolderIndexedUri", uri);
     this.__lastFolderIndexedUri = uri;
   },
   get _lastFolderIndexedUri() {
     // If we don't know about it, get it from the pref branch
     if (this.__lastFolderIndexedUri === null) {
-      this.__lastFolderIndexedUri = this._prefBranch.getCharPref(
+      this.__lastFolderIndexedUri = this._prefBranch.getStringPref(
         "lastFolderIndexedUri",
         ""
       );
@@ -399,9 +398,10 @@ var SearchSupport = {
         value.status = reindexTime;
         searchTerm.value = value;
         searchTerms.push(searchTerm);
-        this._headerEnumerator = this._currentFolderToIndex.msgDatabase.getFilterEnumerator(
-          searchTerms
-        );
+        this._headerEnumerator =
+          this._currentFolderToIndex.msgDatabase.getFilterEnumerator(
+            searchTerms
+          );
       }
 
       // iterate over the folder finding the next message to index
@@ -562,7 +562,7 @@ var SearchSupport = {
         // This is a hack to handle this case
         let timer = Cc["@mozilla.org/timer;1"].createInstance(Ci.nsITimer);
         timer.initWithCallback(
-          function() {
+          function () {
             SearchIntegration._handleRegisterFailure(!prefEnabled);
           },
           200,
@@ -716,7 +716,7 @@ var SearchSupport = {
    * _getSupportFile method below.
    *
    * @param aFile the file passed in by the command line
-   * @return the nsIMsgDBHdr corresponding to the file passed in
+   * @returns the nsIMsgDBHdr corresponding to the file passed in
    */
   handleResult(aFile) {
     // The file path has two components -- the search path, which needs to be
@@ -820,9 +820,7 @@ var SearchSupport = {
           SearchIntegration._log.debug("file path = " + file.path);
           file.create(0, PERM_FILE);
           let uri = folder.getUriForMsg(msgHdr);
-          let msgService = SearchIntegration._messenger.messageServiceFromURI(
-            uri
-          );
+          let msgService = MailServices.messageServiceFromURI(uri);
           this._msgHdr = msgHdr;
           this._outputFile = file;
           this._reindexTime = reindexTime;

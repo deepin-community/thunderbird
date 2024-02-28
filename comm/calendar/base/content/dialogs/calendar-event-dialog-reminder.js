@@ -8,10 +8,9 @@
 
 /* import-globals-from ../calendar-ui-utils.js */
 
-var { PluralForm } = ChromeUtils.import("resource://gre/modules/PluralForm.jsm");
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
+var { PluralForm } = ChromeUtils.importESModule("resource://gre/modules/PluralForm.sys.mjs");
 var { cal } = ChromeUtils.import("resource:///modules/calendar/calUtils.jsm");
-var { XPCOMUtils } = ChromeUtils.import("resource://gre/modules/XPCOMUtils.jsm");
+var { XPCOMUtils } = ChromeUtils.importESModule("resource://gre/modules/XPCOMUtils.sys.mjs");
 
 XPCOMUtils.defineLazyModuleGetters(this, {
   CalAlarm: "resource:///modules/CalAlarm.jsm",
@@ -190,10 +189,12 @@ function setupMaxReminders() {
 
   if (hitMaxReminders) {
     let notification = gReminderNotification.appendNotification(
-      pluralErrorLabel,
       "reminderNotification",
-      null,
-      gReminderNotification.PRIORITY_WARNING_MEDIUM
+      {
+        label: pluralErrorLabel,
+        priority: gReminderNotification.PRIORITY_WARNING_MEDIUM,
+      },
+      null
     );
     notification.closeButton.hidden = true;
   } else {
@@ -208,7 +209,7 @@ function setupMaxReminders() {
  *                                   passed, a new listitem will be created.
  * @param aReminder     The calIAlarm to display in this listitem
  * @param aItem         The item the alarm is set up on.
- * @return              The  XUL listitem node showing the passed reminder, or
+ * @returns The  XUL listitem node showing the passed reminder, or
  *   null if no list item should be shown.
  */
 function setupListItem(aListItem, aReminder, aItem) {
@@ -216,15 +217,15 @@ function setupListItem(aListItem, aReminder, aItem) {
   let l10nId;
   switch (aReminder.action) {
     case "DISPLAY":
-      src = "chrome://calendar/skin/shared/icons/alarm.svg";
+      src = "chrome://messenger/skin/icons/new/bell.svg";
       l10nId = "calendar-event-reminder-icon-display";
       break;
     case "EMAIL":
-      src = "chrome://calendar/skin/shared/icons/email.svg";
+      src = "chrome://messenger/skin/icons/new/mail-sm.svg";
       l10nId = "calendar-event-reminder-icon-email";
       break;
     case "AUDIO":
-      src = "chrome://global/skin/media/audio.svg";
+      src = "chrome://messenger/skin/icons/new/bell-ring.svg";
       l10nId = "calendar-event-reminder-icon-audio";
       break;
     default:
@@ -404,7 +405,7 @@ function updateReminder(event) {
  * appends the item type, i.e |aPrefix + "Event"|.
  *
  * @param aPrefix       The prefix to prepend to the item type
- * @return              The full string name.
+ * @returns The full string name.
  */
 function getItemBundleStringName(aPrefix) {
   if (window.arguments[0].item.isEvent()) {

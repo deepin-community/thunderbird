@@ -5,6 +5,7 @@
 troubleshoot-mode-window =
     .title = Modd Datrys Problemau { -brand-short-name }
     .style = width: 37em;
+troubleshoot-mode-dialog-title = Modd Datrys Problemau { -brand-short-name }
 troubleshoot-mode-description = Defnyddiwch y modd arbennig hwn o { -brand-short-name } i ddatrys materion. Bydd eich estyniadau a'ch cyfaddasiadau yn cael eu hanalluogi dros dro.
 troubleshoot-mode-description2 = Gallwch wneud rhai neu'r cyfan o'r newidiadau hyn yn rhai parhaol:
 troubleshoot-mode-disable-addons =
@@ -27,6 +28,6 @@ troubleshoot-mode-quit =
         }
     .accesskey =
         { PLATFORM() ->
-            [windows] a
+            [windows] G
            *[other] o
         }

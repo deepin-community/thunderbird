@@ -1,29 +1,28 @@
 {
   "langpack_id": "is",
   "manifest_version": 2,
-  "applications": {
+  "browser_specific_settings": {
     "gecko": {
       "id": "langpack-is@thunderbird.mozilla.org",
-      "strict_min_version": "91.0",
-      "strict_max_version": "91.*"
+      "strict_min_version": "115.0",
+      "strict_max_version": "115.*"
     }
   },
-  "name": "Icelandic (IS) Language Pack",
-  "description": "Language pack for Thunderbird for is",
-  "version": "91.0buildid20211101223011",
+  "name": "Language: Islenska (Icelandic)",
+  "description": "Thunderbird Language Pack for Islenska (is) – Icelandic",
+  "version": "115.8.20240216.174500",
   "languages": {
     "is": {
-      "version": "20211001121707",
+      "version": "20240216183819",
       "chrome_resources": {
         "alerts": "chrome/is/locale/is/alerts/",
         "autoconfig": "chrome/is/locale/is/autoconfig/",
-        "branding": "chrome/is/locale/is/branding/",
+        "branding": "chrome/is/locale/branding/",
         "calendar": "chrome/is/locale/is/calendar/",
         "chat": "chrome/is/locale/is/chat/",
         "communicator": "chrome/is/locale/is/communicator/",
         "devtools": "chrome/is/locale/is/devtools/client/",
         "devtools-shared": "chrome/is/locale/is/devtools/shared/",
-        "devtools-startup": "chrome/is/locale/is/devtools/startup/",
         "global": "chrome/is/locale/is/global/",
         "global-platform": {
           "macosx": "chrome/is/locale/is/global-platform/mac/",
@@ -53,5 +52,5 @@
       "base_path": "browser/"
     }
   },
-  "author": "mozilla.org"
+  "author": "mozilla.org (contributors: Kristján Bjarni Guðmundsson, Sveinn í Felli)"
 }

@@ -4,22 +4,29 @@
 
 const EXPORTED_SYMBOLS = ["CardDAVUtils", "NotificationCallbacks"];
 
+const { MailServices } = ChromeUtils.import(
+  "resource:///modules/MailServices.jsm"
+);
 const { DNS } = ChromeUtils.import("resource:///modules/DNS.jsm");
-const { XPCOMUtils } = ChromeUtils.import(
-  "resource://gre/modules/XPCOMUtils.jsm"
+const { XPCOMUtils } = ChromeUtils.importESModule(
+  "resource://gre/modules/XPCOMUtils.sys.mjs"
 );
 
-XPCOMUtils.defineLazyModuleGetters(this, {
-  CardDAVDirectory: "resource:///modules/CardDAVDirectory.jsm",
+const lazy = {};
+
+ChromeUtils.defineESModuleGetters(lazy, {
   ContextualIdentityService:
-    "resource://gre/modules/ContextualIdentityService.jsm",
-  MailServices: "resource:///modules/MailServices.jsm",
+    "resource://gre/modules/ContextualIdentityService.sys.mjs",
+});
+
+XPCOMUtils.defineLazyModuleGetters(lazy, {
+  CardDAVDirectory: "resource:///modules/CardDAVDirectory.jsm",
+  MsgAuthPrompt: "resource:///modules/MsgAsyncPrompter.jsm",
   OAuth2: "resource:///modules/OAuth2.jsm",
   OAuth2Providers: "resource:///modules/OAuth2Providers.jsm",
-  Services: "resource://gre/modules/Services.jsm",
 });
 XPCOMUtils.defineLazyServiceGetter(
-  this,
+  lazy,
   "nssErrorsService",
   "@mozilla.org/nss_errors_service;1",
   "nsINSSErrorsService"
@@ -55,8 +62,8 @@ var CardDAVUtils = {
    * userContextId is set on a principal, this allows the use of multiple
    * usernames on the same server without the networking code causing issues.
    *
-   * @param {String} username
-   * @return {integer}
+   * @param {string} username
+   * @returns {integer}
    */
   contextForUsername(username) {
     if (username && CardDAVUtils._contextMap.has(username)) {
@@ -65,7 +72,7 @@ var CardDAVUtils = {
 
     // This could be any 32-bit integer, as long as it isn't already in use.
     let nextId = 25000 + CardDAVUtils._contextMap.size;
-    ContextualIdentityService.remove(nextId);
+    lazy.ContextualIdentityService.remove(nextId);
     CardDAVUtils._contextMap.set(username, nextId);
     return nextId;
   },
@@ -74,19 +81,19 @@ var CardDAVUtils = {
    * Make an HTTP request. If the request needs a username and password, the
    * given authPrompt is called.
    *
-   * @param {String}  uri
-   * @param {Object}  details
-   * @param {String}  [details.method]
-   * @param {Object}  [details.headers]
-   * @param {String}  [details.body]
-   * @param {String}  [details.contentType]
+   * @param {string}  uri
+   * @param {object}  details
+   * @param {string}  [details.method]
+   * @param {object}  [details.headers]
+   * @param {string}  [details.body]
+   * @param {string}  [details.contentType]
    * @param {msgIOAuth2Module}  [details.oAuth] - If this is present the
    *     request will use OAuth2 authorization.
    * @param {NotificationCallbacks} [details.callbacks] - Handles usernames
    *     and passwords for this request.
    * @param {integer} [details.userContextId] - See _contextForUsername.
    *
-   * @return {Promise<Object>} - Resolves to an object with getters for:
+   * @returns {Promise<object>} - Resolves to an object with getters for:
    *    - status, the HTTP response code
    *    - statusText, the HTTP response message
    *    - text, the returned data as a String
@@ -114,9 +121,7 @@ var CardDAVUtils = {
               // `token` is a base64-encoded string for SASL XOAUTH2. That is
               // not what we want, extract just the Bearer token part.
               // (See OAuth2Module.connect.)
-              atob(token)
-                .split("\x01")[1]
-                .slice(5)
+              atob(token).split("\x01")[1].slice(5)
             );
           },
           onFailure: reject,
@@ -143,11 +148,10 @@ var CardDAVUtils = {
         channel.setRequestHeader(name, value, false);
       }
       if (body !== null) {
-        let converter = Cc[
-          "@mozilla.org/intl/scriptableunicodeconverter"
-        ].createInstance(Ci.nsIScriptableUnicodeConverter);
-        converter.charset = "UTF-8";
-        let stream = converter.convertToInputStream(body.toString());
+        let stream = Cc["@mozilla.org/io/string-input-stream;1"].createInstance(
+          Ci.nsIStringInputStream
+        );
+        stream.setUTF8Data(body, body.length);
 
         channel.QueryInterface(Ci.nsIUploadChannel);
         channel.setUploadStream(stream, contentType, -1);
@@ -164,7 +168,7 @@ var CardDAVUtils = {
           if (!Components.isSuccessCode(status)) {
             let isCertError = false;
             try {
-              let errorType = nssErrorsService.getErrorClass(status);
+              let errorType = lazy.nssErrorsService.getErrorClass(status);
               if (errorType == Ci.nsINSSErrorsService.ERROR_CLASS_BAD_CERT) {
                 isCertError = true;
               }
@@ -181,7 +185,7 @@ var CardDAVUtils = {
                 exceptionAdded: false,
                 securityInfo: secInfo,
                 prefetchCert: true,
-                location: finalChannel.originalURI.displayHost,
+                location: finalChannel.originalURI.displayHostPort,
               };
               Services.wm
                 .getMostRecentWindow("")
@@ -246,7 +250,7 @@ var CardDAVUtils = {
    * @typedef foundBook
    * @property {URL} url - The address for this address book.
    * @param {string} name - The name of this address book on the server.
-   * @param {function} create - A callback to add this address book locally.
+   * @param {Function} create - A callback to add this address book locally.
    */
 
   /**
@@ -304,6 +308,14 @@ var CardDAVUtils = {
           url.pathname = txtRecords[0].data.substr(5);
           log.log(`Found a DNS TXT record pointing to ${url.href}`);
         }
+      } else {
+        let mxRecords = await DNS.mx(url.hostname);
+        if (mxRecords.some(r => /\bgoogle\.com$/.test(r.host))) {
+          log.log(
+            `Found a DNS MX record for Google, using preset URL for ${url}`
+          );
+          url = new URL(PRESETS["gmail.com"]);
+        }
       }
     }
 
@@ -327,23 +339,12 @@ var CardDAVUtils = {
         </propfind>`,
     };
 
-    let details = OAuth2Providers.getHostnameDetails(url.host);
+    let details = lazy.OAuth2Providers.getHostnameDetails(url.host);
     if (details) {
       let [issuer, scope] = details;
-      let [
-        clientId,
-        clientSecret,
-        authorizationEndpoint,
-        tokenEndpoint,
-      ] = OAuth2Providers.getIssuerDetails(issuer);
+      let issuerDetails = lazy.OAuth2Providers.getIssuerDetails(issuer);
 
-      oAuth = new OAuth2(
-        authorizationEndpoint,
-        tokenEndpoint,
-        scope,
-        clientId,
-        clientSecret
-      );
+      oAuth = new lazy.OAuth2(scope, issuerDetails);
       oAuth._isNew = true;
       oAuth._loginOrigin = `oauth://${issuer}`;
       oAuth._scope = scope;
@@ -505,10 +506,7 @@ var CardDAVUtils = {
       let name = r.querySelector("displayname")?.textContent;
       if (!name) {
         // The server didn't give a name, let's make one from the path.
-        name = url.pathname
-          .replace(/\/$/, "")
-          .split("/")
-          .slice(-1)[0];
+        name = url.pathname.replace(/\/$/, "").split("/").slice(-1)[0];
       }
       if (!name) {
         // That didn't work either, use the hostname.
@@ -549,7 +547,7 @@ var CardDAVUtils = {
               try {
                 Services.logins.addLogin(newLoginInfo);
               } catch (ex) {
-                Cu.reportError(ex);
+                console.error(ex);
               }
               oAuth._isNew = false;
             }
@@ -563,7 +561,7 @@ var CardDAVUtils = {
             callbacks.saveAuth();
           }
 
-          let dir = CardDAVDirectory.forFile(book.fileName);
+          let dir = lazy.CardDAVDirectory.forFile(book.fileName);
           // Pass the context to the created address book. This prevents asking
           // for a username/password again in the case that we didn't save it.
           // The user won't be prompted again until Thunderbird is restarted.
@@ -590,8 +588,8 @@ var CardDAVUtils = {
  */
 class NotificationCallbacks {
   /**
-   * @param {String}  [username] - Used to pre-fill any auth dialogs.
-   * @param {String}  [password] - Used to pre-fill any auth dialogs.
+   * @param {string}  [username] - Used to pre-fill any auth dialogs.
+   * @param {string}  [password] - Used to pre-fill any auth dialogs.
    * @param {boolean} [forcePrompt] - Skips checking the password manager for
    *     a password, even if username is given. The user will be prompted.
    */
@@ -646,8 +644,8 @@ class NotificationCallbacks {
         .GetStringFromName("rememberPassword");
       savePassword.value = true;
     }
-    let returnValue = Services.prompt.promptAuth(
-      Services.wm.getMostRecentWindow(""),
+
+    let returnValue = new lazy.MsgAuthPrompt().promptAuth(
       channel,
       level,
       authInfo,
@@ -676,7 +674,7 @@ class NotificationCallbacks {
       try {
         Services.logins.addLogin(newLoginInfo);
       } catch (ex) {
-        Cu.reportError(ex);
+        console.error(ex);
       }
     }
   }
@@ -684,7 +682,7 @@ class NotificationCallbacks {
     /**
      * Copy the given header from the old channel to the new one, ignoring missing headers
      *
-     * @param {String} header - The header to copy
+     * @param {string} header - The header to copy
      */
     function copyHeader(header) {
       try {

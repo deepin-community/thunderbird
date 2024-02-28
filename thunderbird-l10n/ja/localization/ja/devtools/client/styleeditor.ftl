@@ -8,15 +8,19 @@ styleeditor-new-button =
 styleeditor-import-button =
     .tooltiptext = 既存のスタイルシートをドキュメントにインポートする
     .accesskey = I
+styleeditor-filter-input =
+    .placeholder = スタイルシートを検索
 styleeditor-visibility-toggle =
     .tooltiptext = スタイルシートのオン/オフを切り替える
     .accesskey = S
+styleeditor-visibility-toggle-system =
+    .tooltiptext = システムのスタイルシートは無効にできません
 styleeditor-save-button = 保存
     .tooltiptext = このスタイルシートをファイルに保存する
     .accesskey = S
 styleeditor-options-button =
     .tooltiptext = スタイルエディターのオプション
-styleeditor-media-rules = メディアクエリー
+styleeditor-at-rules = @ 規則
 styleeditor-editor-textbox =
     .data-placeholder = ここに CSS を入力します。
 styleeditor-no-stylesheet = このページにはスタイルシートがありません。
@@ -25,3 +29,24 @@ styleeditor-open-link-new-tab =
     .label = リンクを新しいタブで開く
 styleeditor-copy-url =
     .label = URL をコピー
+styleeditor-find =
+    .label = 検索
+    .accesskey = F
+styleeditor-find-again =
+    .label = 次を検索
+    .accesskey = g
+styleeditor-go-to-line =
+    .label = 指定行へ移動...
+    .accesskey = J
+# Label displayed when searching a term that is not found in any stylesheet path
+styleeditor-stylesheet-all-filtered = 一致するスタイルシートが見つかりません。
+# This string is shown in the style sheets list
+# Variables:
+#   $ruleCount (Integer) - The number of rules in the stylesheet.
+styleeditor-stylesheet-rule-count = { $ruleCount } 個のルール
+# Title for the pretty print button in the editor footer.
+styleeditor-pretty-print-button =
+    .title = スタイルシートを整形します
+# Title for the pretty print button in the editor footer, when it's disabled
+styleeditor-pretty-print-button-disabled =
+    .title = CSS ファイル以外は整形できません

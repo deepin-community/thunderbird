@@ -11,7 +11,7 @@ interface nsIMsgFolder;
 /**
  * nsIMsgFolderListener defines the callbacks which are invoked by
  * nsIMsgFolderNotificationService.
- * 
+ *
  * This is similar to nsIFolderListener, but with slightly different semantics,
  * especially w.r.t. moving messages and folders.  Some listeners want to know
  * about moves, instead of getting an itemAdded and itemRemoved notification.
@@ -203,11 +203,9 @@ interface nsIMsgFolderListener : nsISupports {
 
 
   /**
-   * Called when nsIMsgFolderCompactor has completed compaction of
-   * the folder. This notification will be generated immediately prior to
-   * the nsIFolderListener::itemEvent() notification with a
-   * "CompactCompleted" atom.  At this point, the folder semaphore has been
-   * released and the database has been committed.
+   * Called when nsIMsgFolderCompactor has completed compaction of the folder.
+   * At this point, the folder semaphore has been released and the database
+   * has been committed.
    *
    * @param {nsIMsgFolder} folder - Target folder of the compaction.
    */
@@ -218,7 +216,7 @@ interface nsIMsgFolderListener : nsISupports {
    * Following this notification, the database will be closed, backed up
    * (so that header properties can be propagated), and then rebuilt from the
    * source. The rebuild is triggered by a call to updateFolder, so an
-   * nsIFolderListener OnItemEvent(folder, FolderLoaded atom) notification
+   * nsIFolderListener OnFolderEvent(folder, FolderLoaded atom) notification
    * will be received if you want to know when this is all completed.
    * Note: this event is only generated for Thunderbird because the event
    * currently comes from Thunderbird-specific code.

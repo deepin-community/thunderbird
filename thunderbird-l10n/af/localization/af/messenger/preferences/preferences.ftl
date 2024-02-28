@@ -147,10 +147,6 @@ bigger-size-item =
 smaller-size-item =
     .label = Kleiner
 
-
-
-
-
 save-to-label =
     .label = Stoor lêers na
     .accesskey = S
@@ -277,12 +273,6 @@ restore-html-label =
     .label = Laai verstek terug
     .accesskey = L
 
-format-description = Stel teksformaatgedrag op
-
-send-options-label =
-    .label = Stuuropsies…
-    .accesskey = S
-
 autocomplete-description = Wanneer boodskappe geskryf word, soek resultate in:
 
 ab-label =
@@ -398,4 +388,6 @@ chat-browse-sound-button =
     .accesskey = B
 
 ## Preferences UI Search Results
+
+## Settings UI Search Results
 

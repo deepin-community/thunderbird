@@ -1,29 +1,28 @@
 {
   "langpack_id": "ko",
   "manifest_version": 2,
-  "applications": {
+  "browser_specific_settings": {
     "gecko": {
       "id": "langpack-ko@thunderbird.mozilla.org",
-      "strict_min_version": "91.0",
-      "strict_max_version": "91.*"
+      "strict_min_version": "115.0",
+      "strict_max_version": "115.*"
     }
   },
-  "name": "Korean (KR) Language Pack",
-  "description": "Language pack for Thunderbird for ko",
-  "version": "91.0buildid20211101223011",
+  "name": "Language: 한국어 (Korean)",
+  "description": "Thunderbird Language Pack for 한국어 (ko) – Korean",
+  "version": "115.8.20240216.174500",
   "languages": {
     "ko": {
-      "version": "20211018001300",
+      "version": "20240216184022",
       "chrome_resources": {
         "alerts": "chrome/ko/locale/ko/alerts/",
         "autoconfig": "chrome/ko/locale/ko/autoconfig/",
-        "branding": "chrome/ko/locale/ko/branding/",
+        "branding": "chrome/ko/locale/branding/",
         "calendar": "chrome/ko/locale/ko/calendar/",
         "chat": "chrome/ko/locale/ko/chat/",
         "communicator": "chrome/ko/locale/ko/communicator/",
         "devtools": "chrome/ko/locale/ko/devtools/client/",
         "devtools-shared": "chrome/ko/locale/ko/devtools/shared/",
-        "devtools-startup": "chrome/ko/locale/ko/devtools/startup/",
         "global": "chrome/ko/locale/ko/global/",
         "global-platform": {
           "macosx": "chrome/ko/locale/ko/global-platform/mac/",

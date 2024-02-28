@@ -6,7 +6,7 @@
  * Ensures that attachment events are fired properly
  */
 
-/* globals gFolderTreeView */
+/* eslint-disable @microsoft/sdl/no-insecure-url */
 
 "use strict";
 
@@ -16,16 +16,12 @@ var { select_attachments } = ChromeUtils.import(
 var { mc } = ChromeUtils.import(
   "resource://testing-common/mozmill/FolderDisplayHelpers.jsm"
 );
-var {
-  add_attachments,
-  close_compose_window,
-  open_compose_new_mail,
-} = ChromeUtils.import("resource://testing-common/mozmill/ComposeHelpers.jsm");
+var utils = ChromeUtils.import("resource://testing-common/mozmill/utils.jsm");
+var { add_attachments, close_compose_window, open_compose_new_mail } =
+  ChromeUtils.import("resource://testing-common/mozmill/ComposeHelpers.jsm");
 var { gMockPromptService } = ChromeUtils.import(
   "resource://testing-common/mozmill/PromptHelpers.jsm"
 );
-
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 
 var kAttachmentsAdded = "attachments-added";
 var kAttachmentsRemoved = "attachments-removed";
@@ -36,19 +32,19 @@ var kAttachmentRenamed = "attachment-renamed";
  * attachment.
  */
 add_task(function test_attachments_added_on_single() {
-  gFolderTreeView.selectFolder(gFolderTreeView._enumerateFolders[1]);
-
   // Prepare to listen for attachments-added
   let eventCount = 0;
   let lastEvent;
-  let listener = function(event) {
+  let listener = function (event) {
     eventCount++;
     lastEvent = event;
   };
 
   // Open up the compose window
   let cw = open_compose_new_mail(mc);
-  cw.e("attachmentBucket").addEventListener(kAttachmentsAdded, listener);
+  cw.window.document
+    .getElementById("attachmentBucket")
+    .addEventListener(kAttachmentsAdded, listener);
 
   // Attach a single file
   add_attachments(cw, "http://www.example.com/1", 0, false);
@@ -73,7 +69,9 @@ add_task(function test_attachments_added_on_single() {
   add_attachments(cw, "http://www.example.com/2", null, false);
   Assert.equal(2, eventCount);
 
-  cw.e("attachmentBucket").removeEventListener(kAttachmentsAdded, listener);
+  cw.window.document
+    .getElementById("attachmentBucket")
+    .removeEventListener(kAttachmentsAdded, listener);
   close_compose_window(cw);
 });
 
@@ -85,7 +83,7 @@ add_task(function test_attachments_added_on_multiple() {
   // Prepare to listen for attachments-added
   let eventCount = 0;
   let lastEvent;
-  let listener = function(event) {
+  let listener = function (event) {
     eventCount++;
     lastEvent = event;
   };
@@ -96,7 +94,9 @@ add_task(function test_attachments_added_on_multiple() {
 
   // Open the compose window and add the attachments
   let cw = open_compose_new_mail(mc);
-  cw.e("attachmentBucket").addEventListener(kAttachmentsAdded, listener);
+  cw.window.document
+    .getElementById("attachmentBucket")
+    .addEventListener(kAttachmentsAdded, listener);
 
   add_attachments(cw, attachmentUrls, null, false);
 
@@ -113,7 +113,9 @@ add_task(function test_attachments_added_on_multiple() {
   }
 
   // Close the compose window - let's try again with 3 attachments.
-  cw.e("attachmentBucket").removeEventListener(kAttachmentsAdded, listener);
+  cw.window.document
+    .getElementById("attachmentBucket")
+    .removeEventListener(kAttachmentsAdded, listener);
   close_compose_window(cw);
 
   attachmentUrls = [
@@ -125,7 +127,9 @@ add_task(function test_attachments_added_on_multiple() {
   // Open the compose window and attach the files, and ensure that we saw
   // the attachments-added event
   cw = open_compose_new_mail(mc);
-  cw.e("attachmentBucket").addEventListener(kAttachmentsAdded, listener);
+  cw.window.document
+    .getElementById("attachmentBucket")
+    .addEventListener(kAttachmentsAdded, listener);
 
   add_attachments(cw, attachmentUrls, null, false);
   Assert.equal(2, eventCount);
@@ -143,7 +147,9 @@ add_task(function test_attachments_added_on_multiple() {
   add_attachments(cw, attachmentUrls, null, false);
   Assert.equal(2, eventCount);
 
-  cw.e("attachmentBucket").removeEventListener(kAttachmentsAdded, listener);
+  cw.window.document
+    .getElementById("attachmentBucket")
+    .removeEventListener(kAttachmentsAdded, listener);
   close_compose_window(cw);
 });
 
@@ -155,14 +161,16 @@ add_task(function test_attachments_removed_on_single() {
   // Prepare to listen for attachments-removed
   let eventCount = 0;
   let lastEvent;
-  let listener = function(event) {
+  let listener = function (event) {
     eventCount++;
     lastEvent = event;
   };
 
   // Open up the compose window, attach a file...
   let cw = open_compose_new_mail(mc);
-  cw.e("attachmentBucket").addEventListener(kAttachmentsRemoved, listener);
+  cw.window.document
+    .getElementById("attachmentBucket")
+    .addEventListener(kAttachmentsRemoved, listener);
 
   add_attachments(cw, "http://www.example.com/1");
 
@@ -190,7 +198,9 @@ add_task(function test_attachments_removed_on_single() {
   Assert.equal(1, subjects.length);
   Assert.equal(subjects[0].url, "http://www.example.com/2");
 
-  cw.e("attachmentBucket").removeEventListener(kAttachmentsRemoved, listener);
+  cw.window.document
+    .getElementById("attachmentBucket")
+    .removeEventListener(kAttachmentsRemoved, listener);
   close_compose_window(cw);
 });
 
@@ -202,14 +212,16 @@ add_task(function test_attachments_removed_on_multiple() {
   // Prepare to listen for attachments-removed
   let eventCount = 0;
   let lastEvent;
-  let listener = function(event) {
+  let listener = function (event) {
     eventCount++;
     lastEvent = event;
   };
 
   // Open up the compose window and attach some files...
   let cw = open_compose_new_mail(mc);
-  cw.e("attachmentBucket").addEventListener(kAttachmentsRemoved, listener);
+  cw.window.document
+    .getElementById("attachmentBucket")
+    .addEventListener(kAttachmentsRemoved, listener);
 
   add_attachments(cw, [
     "http://www.example.com/1",
@@ -245,7 +257,9 @@ add_task(function test_attachments_removed_on_multiple() {
   cw.window.goDoCommand("cmd_delete");
   Assert.equal(2, eventCount);
 
-  cw.e("attachmentBucket").removeEventListener(kAttachmentsRemoved, listener);
+  cw.window.document
+    .getElementById("attachmentBucket")
+    .removeEventListener(kAttachmentsRemoved, listener);
   close_compose_window(cw);
 });
 
@@ -256,13 +270,15 @@ add_task(function test_attachments_removed_on_multiple() {
 add_task(function test_no_attachments_removed_on_none() {
   // Prepare to listen for attachments-removed
   let eventCount = 0;
-  let listener = function(event) {
+  let listener = function (event) {
     eventCount++;
   };
 
   // Open the compose window and add some attachments.
   let cw = open_compose_new_mail(mc);
-  cw.e("attachmentBucket").addEventListener(kAttachmentsRemoved, listener);
+  cw.window.document
+    .getElementById("attachmentBucket")
+    .addEventListener(kAttachmentsRemoved, listener);
 
   add_attachments(cw, [
     "http://www.example.com/1",
@@ -271,12 +287,14 @@ add_task(function test_no_attachments_removed_on_none() {
   ]);
 
   // Choose no attachments
-  cw.e("attachmentBucket").clearSelection();
+  cw.window.document.getElementById("attachmentBucket").clearSelection();
   // Run the delete command
   cw.window.goDoCommand("cmd_delete");
   // Make sure we didn't see the attachments_removed event.
   Assert.equal(0, eventCount);
-  cw.e("attachmentBucket").removeEventListener(kAttachmentsRemoved, listener);
+  cw.window.document
+    .getElementById("attachmentBucket")
+    .removeEventListener(kAttachmentsRemoved, listener);
 
   close_compose_window(cw);
 });
@@ -294,7 +312,7 @@ add_task(function test_attachment_renamed() {
   // Prepare to listen for attachment-renamed
   let eventCount = 0;
   let lastEvent;
-  let listener = function(event) {
+  let listener = function (event) {
     eventCount++;
     lastEvent = event;
   };
@@ -309,7 +327,9 @@ add_task(function test_attachment_renamed() {
   // Open up the compose window, attach some files, choose the first
   // attachment, and choose to rename it.
   let cw = open_compose_new_mail(mc);
-  cw.e("attachmentBucket").addEventListener(kAttachmentRenamed, listener);
+  cw.window.document
+    .getElementById("attachmentBucket")
+    .addEventListener(kAttachmentRenamed, listener);
 
   add_attachments(cw, [
     "http://www.example.com/1",
@@ -318,17 +338,21 @@ add_task(function test_attachment_renamed() {
   ]);
 
   select_attachments(cw, 0);
+  Assert.equal(0, eventCount);
   cw.window.goDoCommand("cmd_renameAttachment");
 
-  // Ensure that we saw the attachment-renamed event
-  Assert.equal(1, eventCount);
+  // Wait until we saw the attachment-renamed event.
+  utils.waitFor(function () {
+    return eventCount == 1;
+  });
+
   // Ensure that the event mentions the right attachment
   let renamedAttachment1 = lastEvent.target.attachment;
-  let originalName1 = lastEvent.detail;
+  let originalAttachment1 = lastEvent.detail;
   Assert.ok(renamedAttachment1 instanceof Ci.nsIMsgAttachment);
   Assert.equal(kRenameTo1, renamedAttachment1.name);
   Assert.ok(renamedAttachment1.url.includes("http://www.example.com/1"));
-  Assert.equal("www.example.com/1", originalName1);
+  Assert.equal("www.example.com/1", originalAttachment1.name);
 
   // Ok, let's try renaming the same attachment.
   gMockPromptService.reset();
@@ -336,15 +360,20 @@ add_task(function test_attachment_renamed() {
   gMockPromptService.returnValue = true;
 
   select_attachments(cw, 0);
+  Assert.equal(1, eventCount);
   cw.window.goDoCommand("cmd_renameAttachment");
 
-  Assert.equal(2, eventCount);
+  // Wait until we saw the attachment-renamed event.
+  utils.waitFor(function () {
+    return eventCount == 2;
+  });
+
   let renamedAttachment2 = lastEvent.target.attachment;
-  let originalName2 = lastEvent.detail;
+  let originalAttachment2 = lastEvent.detail;
   Assert.ok(renamedAttachment2 instanceof Ci.nsIMsgAttachment);
   Assert.equal(kRenameTo2, renamedAttachment2.name);
   Assert.ok(renamedAttachment2.url.includes("http://www.example.com/1"));
-  Assert.equal(kRenameTo1, originalName2);
+  Assert.equal(kRenameTo1, originalAttachment2.name);
 
   // Ok, let's rename another attachment
   gMockPromptService.reset();
@@ -353,20 +382,26 @@ add_task(function test_attachment_renamed() {
 
   // We'll select the second attachment this time.
   select_attachments(cw, 1);
+  Assert.equal(2, eventCount);
   cw.window.goDoCommand("cmd_renameAttachment");
 
-  // Ensure we saw the attachment-renamed event
-  Assert.equal(3, eventCount);
+  // Wait until we saw the attachment-renamed event.
+  utils.waitFor(function () {
+    return eventCount == 3;
+  });
+
   // Ensure that the event mentions the right attachment
   let renamedAttachment3 = lastEvent.target.attachment;
-  let originalName3 = lastEvent.detail;
+  let originalAttachment3 = lastEvent.detail;
   Assert.ok(renamedAttachment3 instanceof Ci.nsIMsgAttachment);
   Assert.equal(kRenameTo3, renamedAttachment3.name);
   Assert.ok(renamedAttachment3.url.includes("http://www.example.com/2"));
-  Assert.equal("www.example.com/2", originalName3);
+  Assert.equal("www.example.com/2", originalAttachment3.name);
 
   // Unregister the Mock Prompt service, and remove our observer.
-  cw.e("attachmentBucket").removeEventListener(kAttachmentRenamed, listener);
+  cw.window.document
+    .getElementById("attachmentBucket")
+    .removeEventListener(kAttachmentRenamed, listener);
 
   close_compose_window(cw);
   gMockPromptService.unregister();
@@ -379,7 +414,7 @@ add_task(function test_attachment_renamed() {
 add_task(function test_no_attachment_renamed_on_blank() {
   // Prepare to listen for attachment-renamed
   let eventCount = 0;
-  let listener = function(event) {
+  let listener = function (event) {
     eventCount++;
   };
 
@@ -393,7 +428,9 @@ add_task(function test_no_attachment_renamed_on_blank() {
   // Open the compose window, attach some files, select one, and chooes to
   // rename it.
   let cw = open_compose_new_mail(mc);
-  cw.e("attachmentBucket").addEventListener(kAttachmentRenamed, listener);
+  cw.window.document
+    .getElementById("attachmentBucket")
+    .addEventListener(kAttachmentRenamed, listener);
 
   add_attachments(cw, [
     "http://www.example.com/1",
@@ -406,7 +443,9 @@ add_task(function test_no_attachment_renamed_on_blank() {
 
   // Ensure that we didn't see the attachment-renamed event.
   Assert.equal(0, eventCount);
-  cw.e("attachmentBucket").removeEventListener(kAttachmentRenamed, listener);
+  cw.window.document
+    .getElementById("attachmentBucket")
+    .removeEventListener(kAttachmentRenamed, listener);
   close_compose_window(cw);
   gMockPromptService.unregister();
 });
@@ -418,32 +457,32 @@ add_task(function test_attachments_pane_toggle() {
   // Open the compose window.
   let cw = open_compose_new_mail(mc);
 
-  // Use the hotkey to try to toggle attachmentsBox open.
+  // Use the hotkey to try to toggle attachmentsArea open.
   let opts =
     AppConstants.platform == "macosx"
       ? { metaKey: true, shiftKey: true }
       : { ctrlKey: true, shiftKey: true };
   EventUtils.synthesizeKey("m", opts, cw.window);
-  let attachmentsBox = cw.window.document.getElementById("attachmentsBox");
+  let attachmentArea = cw.window.document.getElementById("attachmentArea");
 
   // Since we don't have any uploaded attachment, assert that the box remains
   // closed.
-  cw.waitFor(() => attachmentsBox.collapsed);
-  Assert.ok(attachmentsBox.collapsed);
+  utils.waitFor(() => !attachmentArea.open);
+  Assert.ok(!attachmentArea.open);
 
   // Add an attachment. This should automatically open the box.
   add_attachments(cw, ["http://www.example.com/1"]);
-  Assert.ok(!attachmentsBox.collapsed);
+  Assert.ok(attachmentArea.open);
 
   // Press again, should toggle to closed.
   EventUtils.synthesizeKey("m", opts, cw.window);
-  cw.waitFor(() => attachmentsBox.collapsed);
-  Assert.ok(attachmentsBox.collapsed);
+  utils.waitFor(() => !attachmentArea.open);
+  Assert.ok(!attachmentArea.open);
 
   // Press again, should toggle to open.
   EventUtils.synthesizeKey("m", opts, cw.window);
-  cw.waitFor(() => !attachmentsBox.collapsed);
-  Assert.ok(!attachmentsBox.collapsed);
+  utils.waitFor(() => attachmentArea.open);
+  Assert.ok(attachmentArea.open);
 
   close_compose_window(cw);
 });
@@ -452,5 +491,4 @@ registerCleanupFunction(() => {
   // Some tests that open new windows don't return focus to the main window
   // in a way that satisfies mochitest, and the test times out.
   Services.focus.focusedWindow = window;
-  window.gFolderDisplay.tree.focus();
 });

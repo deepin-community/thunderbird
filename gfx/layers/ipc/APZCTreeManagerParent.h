@@ -45,12 +45,15 @@ class APZCTreeManagerParent : public PAPZCTreeManagerParent {
 
   mozilla::ipc::IPCResult RecvUpdateZoomConstraints(
       const ScrollableLayerGuid& aGuid,
-      const MaybeZoomConstraints& aConstraints);
+      const Maybe<ZoomConstraints>& aConstraints);
 
   mozilla::ipc::IPCResult RecvSetDPI(const float& aDpiValue);
 
   mozilla::ipc::IPCResult RecvSetAllowedTouchBehavior(
       const uint64_t& aInputBlockId, nsTArray<TouchBehaviorFlags>&& aValues);
+
+  mozilla::ipc::IPCResult RecvSetBrowserGestureResponse(
+      const uint64_t& aInputBlockId, const BrowserGestureResponse& aResponse);
 
   mozilla::ipc::IPCResult RecvStartScrollbarDrag(
       const ScrollableLayerGuid& aGuid, const AsyncDragMetrics& aDragMetrics);

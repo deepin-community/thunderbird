@@ -9,12 +9,12 @@
  Thunderbird" and "version" is used to mean "the specific revision number of a
  given Thunderbird channel". These terms are not synonymous.
 -->
-<!ENTITY window.title "You have launched an older version of &brandProductName;">
+<!ENTITY window.title "Chuir thu gu dol seann-tionndadh dhe &brandProductName;">
 <!ENTITY window.style "width: 490px;">
 
-<!ENTITY window.nosync2 "A newer version of &brandProductName; may have made changes to your profile which are no longer compatible with this older version. Use this profile only with that newer version, or create a new profile for this installation of &brandShortName;. Creating a new profile requires setting up your accounts, calendars and add-ons again.">
+<!ENTITY window.nosync2 "Dh’fhaoidte gun do rinn tionndadh nas ùire dhe &brandProductName; atharraichean air a’ phròifil agad nach eil co-chòrdail leis an t-seann-tionndadh seo tuilleadh. Na cleachd a’ phròifil seo ach leis an tionndadh nas ùire ud no cruthaich pròifil ùr dhan stàladh seo dhe &brandShortName;. Ma chruthaicheas tu pròifil ùr, feumaidh tu na cunntasan, mìosachain is tuilleadain agad a shuidheachadh às ùr.">
 
-<!ENTITY window.moreinfo "More information…">
-<!ENTITY window.create "Create New Profile">
-<!ENTITY window.quit-win "Exit">
-<!ENTITY window.quit-nonwin "Quit">
+<!ENTITY window.moreinfo "Barrachd fiosrachaidh…">
+<!ENTITY window.create "Cruthaich pròifil ùr">
+<!ENTITY window.quit-win "Fàg an-seo">
+<!ENTITY window.quit-nonwin "Fàg an-seo">

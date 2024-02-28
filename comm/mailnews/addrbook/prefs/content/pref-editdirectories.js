@@ -1,14 +1,14 @@
-/* -*- Mode: Java; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 /* import-globals-from ../../../../mail/components/addrbook/content/abCommon.js */
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 var { MailServices } = ChromeUtils.import(
   "resource:///modules/MailServices.jsm"
 );
+
+window.addEventListener("DOMContentLoaded", onInitEditDirectories);
 
 // Listener to refresh the list items if something changes. In all these
 // cases we just rebuild the list as it is easier than searching/adding in the
@@ -36,9 +36,6 @@ var gAddressBookAbListener = {
 };
 
 function onInitEditDirectories() {
-  // For AbDeleteDirectory in abCommon.js
-  gAddressBookBundle = document.getElementById("bundle_addressBook");
-
   // If the pref is locked disable the "Add" button
   if (Services.prefs.prefIsLocked("ldap_2.disable_button_add")) {
     document.getElementById("addButton").setAttribute("disabled", true);
@@ -67,11 +64,11 @@ function fillDirectoryList(aItem = null) {
     }
   }
 
-  holdingArray.sort(function(a, b) {
+  holdingArray.sort(function (a, b) {
     return a.dirName.localeCompare(b.dirName);
   });
 
-  holdingArray.forEach(function(ab) {
+  holdingArray.forEach(function (ab) {
     let item = document.createXULElement("richlistitem");
     let label = document.createXULElement("label");
     label.setAttribute("value", ab.dirName);
@@ -126,6 +123,13 @@ function dblClickDirectory(event) {
   editDirectory();
 }
 
+function addDirectory() {
+  parent.gSubDialog.open(
+    "chrome://messenger/content/addressbook/pref-directory-add.xhtml",
+    { features: "resizable=no" }
+  );
+}
+
 function editDirectory() {
   var abList = document.getElementById("directoriesList");
 
@@ -133,19 +137,52 @@ function editDirectory() {
     let abURI = abList.value;
     let ab = MailServices.ab.getDirectory(abURI);
 
-    window.browsingContext.topChromeWindow.openDialog(
-      ab.propertiesChromeURI,
-      "editDirectory",
-      "chrome,modal=yes,resizable=no",
+    parent.gSubDialog.open(
+      "chrome://messenger/content/addressbook/pref-directory-add.xhtml",
+      { features: "resizable=no" },
       { selectedDirectory: ab }
     );
   }
 }
 
-function removeDirectory() {
-  var abList = document.getElementById("directoriesList");
+async function removeDirectory() {
+  let abList = document.getElementById("directoriesList");
 
-  if (abList && abList.selectedItem) {
-    AbDeleteDirectory(abList.value);
+  if (!abList.selectedItem) {
+    return;
+  }
+
+  let directory = GetDirectoryFromURI(abList.value);
+  if (
+    !directory ||
+    ["ldap_2.servers.history", "ldap_2.servers.pab"].includes(
+      directory.dirPrefId
+    )
+  ) {
+    return;
+  }
+
+  let action = "delete-book";
+  if (directory.isMailList) {
+    action = "delete-lists";
+  } else if (
+    [
+      Ci.nsIAbManager.CARDDAV_DIRECTORY_TYPE,
+      Ci.nsIAbManager.LDAP_DIRECTORY_TYPE,
+    ].includes(directory.dirType)
+  ) {
+    action = "remove-remote-book";
+  }
+
+  let [title, message] = await document.l10n.formatValues([
+    { id: `about-addressbook-confirm-${action}-title`, args: { count: 1 } },
+    {
+      id: `about-addressbook-confirm-${action}`,
+      args: { name: directory.dirName, count: 1 },
+    },
+  ]);
+
+  if (Services.prompt.confirm(window, title, message)) {
+    MailServices.ab.deleteAddressBook(directory.URI);
   }
 }

@@ -10,12 +10,17 @@
 #define nsGridContainerFrame_h___
 
 #include "mozilla/CSSOrderAwareFrameIterator.h"
+#include "mozilla/MathAlgorithms.h"
 #include "mozilla/Maybe.h"
 #include "mozilla/HashTable.h"
 #include "nsContainerFrame.h"
+#include "nsILineIterator.h"
 
 namespace mozilla {
 class PresShell;
+namespace dom {
+class Grid;
+}
 }  // namespace mozilla
 
 /**
@@ -88,7 +93,8 @@ struct ComputedGridLineInfo {
 };
 }  // namespace mozilla
 
-class nsGridContainerFrame final : public nsContainerFrame {
+class nsGridContainerFrame final : public nsContainerFrame,
+                                   public nsILineIterator {
  public:
   NS_DECL_FRAMEARENA_HELPERS(nsGridContainerFrame)
   NS_DECL_QUERYFRAME
@@ -124,30 +130,14 @@ class nsGridContainerFrame final : public nsContainerFrame {
   void BuildDisplayList(nsDisplayListBuilder* aBuilder,
                         const nsDisplayListSet& aLists) override;
 
-  nscoord GetLogicalBaseline(mozilla::WritingMode aWM) const override {
-    if (HasAnyStateBits(NS_STATE_GRID_SYNTHESIZE_BASELINE)) {
-      // Return a baseline synthesized from our margin-box.
-      return nsContainerFrame::GetLogicalBaseline(aWM);
-    }
-    nscoord b;
-    GetBBaseline(BaselineSharingGroup::First, &b);
-    return b;
-  }
-
-  bool GetVerticalAlignBaseline(mozilla::WritingMode aWM,
-                                nscoord* aBaseline) const override {
-    return GetNaturalBaselineBOffset(aWM, BaselineSharingGroup::First,
-                                     aBaseline);
-  }
-
-  bool GetNaturalBaselineBOffset(mozilla::WritingMode aWM,
-                                 BaselineSharingGroup aBaselineGroup,
-                                 nscoord* aBaseline) const override {
+  Maybe<nscoord> GetNaturalBaselineBOffset(
+      mozilla::WritingMode aWM, BaselineSharingGroup aBaselineGroup,
+      BaselineExportContext) const override {
     if (StyleDisplay()->IsContainLayout() ||
         HasAnyStateBits(NS_STATE_GRID_SYNTHESIZE_BASELINE)) {
-      return false;
+      return Nothing{};
     }
-    return GetBBaseline(aBaselineGroup, aBaseline);
+    return mozilla::Some(GetBBaseline(aBaselineGroup));
   }
 
 #ifdef DEBUG_FRAME_DUMP
@@ -157,17 +147,17 @@ class nsGridContainerFrame final : public nsContainerFrame {
 
   // nsContainerFrame overrides
   bool DrainSelfOverflowList() override;
-  void AppendFrames(ChildListID aListID, nsFrameList& aFrameList) override;
+  void AppendFrames(ChildListID aListID, nsFrameList&& aFrameList) override;
   void InsertFrames(ChildListID aListID, nsIFrame* aPrevFrame,
                     const nsLineList::iterator* aPrevFrameLine,
-                    nsFrameList& aFrameList) override;
-  void RemoveFrame(ChildListID aListID, nsIFrame* aOldFrame) override;
+                    nsFrameList&& aFrameList) override;
+  void RemoveFrame(DestroyContext&, ChildListID, nsIFrame*) override;
   mozilla::StyleAlignFlags CSSAlignmentForAbsPosChild(
       const ReflowInput& aChildRI, LogicalAxis aLogicalAxis) const override;
 
 #ifdef DEBUG
   void SetInitialChildList(ChildListID aListID,
-                           nsFrameList& aChildList) override;
+                           nsFrameList&& aChildList) override;
 #endif
 
   /**
@@ -209,6 +199,18 @@ class nsGridContainerFrame final : public nsContainerFrame {
     const ComputedGridLineInfo* info = GetProperty(GridRowLineInfo());
     MOZ_ASSERT(info, "Property generation wasn't requested.");
     return info;
+  }
+
+  /**
+   * This property is set by the creation of a dom::Grid object, and cleared
+   * during GC unlink. Since the Grid object manages the lifecycle, the property
+   * itself is set without a destructor. The property is also cleared whenever
+   * new grid computed info is generated during reflow, ensuring that we aren't
+   * holding a stale dom::Grid object.
+   */
+  NS_DECLARE_FRAME_PROPERTY_WITHOUT_DTOR(GridFragmentInfo, mozilla::dom::Grid)
+  mozilla::dom::Grid* GetGridFragmentInfo() {
+    return GetProperty(GridFragmentInfo());
   }
 
   struct AtomKey {
@@ -365,15 +367,11 @@ class nsGridContainerFrame final : public nsContainerFrame {
   nscoord IntrinsicISize(gfxContext* aRenderingContext,
                          mozilla::IntrinsicISizeType aConstraint);
 
-  bool GetBBaseline(BaselineSharingGroup aBaselineGroup,
-                    nscoord* aResult) const {
-    *aResult = mBaseline[mozilla::eLogicalAxisBlock][aBaselineGroup];
-    return true;
+  nscoord GetBBaseline(BaselineSharingGroup aBaselineGroup) const {
+    return mBaseline[mozilla::eLogicalAxisBlock][aBaselineGroup];
   }
-  bool GetIBaseline(BaselineSharingGroup aBaselineGroup,
-                    nscoord* aResult) const {
-    *aResult = mBaseline[mozilla::eLogicalAxisInline][aBaselineGroup];
-    return true;
+  nscoord GetIBaseline(BaselineSharingGroup aBaselineGroup) const {
+    return mBaseline[mozilla::eLogicalAxisInline][aBaselineGroup];
   }
 
   /**
@@ -534,6 +532,121 @@ class nsGridContainerFrame final : public nsContainerFrame {
 
   // Our baselines, one per BaselineSharingGroup per axis.
   PerLogicalAxis<PerBaseline<nscoord>> mBaseline;
+
+ public:
+  // A cached result for a grid item's block-axis measuring reflow. This
+  // cache prevents us from doing exponential reflows in cases of deeply
+  // nested grid frames.
+  //
+  // We store the cached value in the grid item's frame property table.
+  //
+  // We cache the following as a "key"
+  //   - The size of the grid area in the item's inline axis
+  //   - The item's block axis baseline padding
+  // ...and we cache the following as the "value",
+  //   - The item's border-box BSize
+  class CachedBAxisMeasurement {
+   public:
+    NS_DECLARE_FRAME_PROPERTY_SMALL_VALUE(Prop, CachedBAxisMeasurement)
+    CachedBAxisMeasurement(const nsIFrame* aFrame, const LogicalSize& aCBSize,
+                           const nscoord aBSize)
+        : mKey(aFrame, aCBSize), mBSize(aBSize) {}
+
+    CachedBAxisMeasurement() = default;
+
+    bool IsValidFor(const nsIFrame* aFrame, const LogicalSize& aCBSize) const {
+      if (aFrame->IsSubtreeDirty()) {
+        return false;
+      }
+
+      if (!CanCacheMeasurement(aFrame, aCBSize)) {
+        return false;
+      }
+
+      return mKey == Key(aFrame, aCBSize);
+    }
+
+    static bool CanCacheMeasurement(const nsIFrame* aFrame,
+                                    const LogicalSize& aCBSize) {
+      return Key::CanHash(aFrame, aCBSize);
+    }
+
+    nscoord BSize() const { return mBSize; }
+
+    void Update(const nsIFrame* aFrame, const LogicalSize& aCBSize,
+                const nscoord aBSize) {
+      MOZ_ASSERT(CanCacheMeasurement(aFrame, aCBSize));
+      mKey.mHashKey = Key::GenerateHash(aFrame, aCBSize);
+      mBSize = aBSize;
+    }
+
+   private:
+    struct Key {
+      // mHashKey is generated by combining these 2 variables together
+      //   1. The containing block size in the item's inline axis used
+      //   for measuring reflow
+      //   2. The item's baseline padding property
+      uint32_t mHashKey;
+
+      Key() = default;
+
+      Key(const nsIFrame* aFrame, const LogicalSize& aCBSize) {
+        MOZ_ASSERT(CanHash(aFrame, aCBSize));
+        mHashKey = GenerateHash(aFrame, aCBSize);
+      }
+
+      void UpdateHash(const nsIFrame* aFrame, const LogicalSize& aCBSize) {
+        MOZ_ASSERT(CanHash(aFrame, aCBSize));
+        mHashKey = GenerateHash(aFrame, aCBSize);
+      }
+
+      static uint32_t GenerateHash(const nsIFrame* aFrame,
+                                   const LogicalSize& aCBSize) {
+        MOZ_ASSERT(CanHash(aFrame, aCBSize));
+
+        nscoord gridAreaISize = aCBSize.ISize(aFrame->GetWritingMode());
+        nscoord bBaselinePaddingProperty =
+            abs(aFrame->GetProperty(nsIFrame::BBaselinePadProperty()));
+
+        uint_fast8_t bitsNeededForISize = mozilla::FloorLog2(gridAreaISize) + 1;
+
+        return (gridAreaISize << (32 - bitsNeededForISize)) |
+               bBaselinePaddingProperty;
+      }
+
+      static bool CanHash(const nsIFrame* aFrame, const LogicalSize& aCBSize) {
+        uint_fast8_t bitsNeededForISize =
+            mozilla::FloorLog2(aCBSize.ISize(aFrame->GetWritingMode())) + 1;
+
+        uint_fast8_t bitsNeededForBBaselinePadding =
+            mozilla::FloorLog2(
+                abs(aFrame->GetProperty(nsIFrame::BBaselinePadProperty()))) +
+            1;
+
+        return bitsNeededForISize + bitsNeededForBBaselinePadding <= 32;
+      }
+
+      bool operator==(const Key& aOther) const {
+        return mHashKey == aOther.mHashKey;
+      }
+    };
+
+    Key mKey;
+    nscoord mBSize;
+  };
+
+  bool CanProvideLineIterator() const final { return true; }
+  nsILineIterator* GetLineIterator() final { return this; }
+  int32_t GetNumLines() const final;
+  bool IsLineIteratorFlowRTL() final;
+  mozilla::Result<LineInfo, nsresult> GetLine(int32_t aLineNumber) final;
+  int32_t FindLineContaining(nsIFrame* aFrame, int32_t aStartLine = 0) final;
+  NS_IMETHOD FindFrameAt(int32_t aLineNumber, nsPoint aPos,
+                         nsIFrame** aFrameFound, bool* aPosIsBeforeFirstFrame,
+                         bool* aPosIsAfterLastFrame) final;
+  NS_IMETHOD CheckLineOrder(int32_t aLine, bool* aIsReordered,
+                            nsIFrame** aFirstVisual,
+                            nsIFrame** aLastVisual) final;
 };
 
 #endif /* nsGridContainerFrame_h___ */

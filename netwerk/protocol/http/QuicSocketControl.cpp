@@ -11,7 +11,6 @@
 #include "nsISocketProvider.h"
 #include "nsIWebProgressListener.h"
 #include "nsNSSComponent.h"
-#include "nsWeakReference.h"
 #include "nsSocketTransportService2.h"
 #include "nsThreadUtils.h"
 #include "sslt.h"
@@ -20,57 +19,52 @@
 namespace mozilla {
 namespace net {
 
-NS_IMPL_ISUPPORTS_INHERITED(QuicSocketControl, TransportSecurityInfo,
-                            nsISSLSocketControl, QuicSocketControl)
-
-QuicSocketControl::QuicSocketControl(uint32_t aProviderFlags)
-    : CommonSocketControl(aProviderFlags) {}
+QuicSocketControl::QuicSocketControl(const nsCString& aHostName, int32_t aPort,
+                                     uint32_t aProviderFlags,
+                                     Http3Session* aHttp3Session)
+    : CommonSocketControl(aHostName, aPort, aProviderFlags) {
+  COMMON_SOCKET_CONTROL_ASSERT_ON_OWNING_THREAD();
+  mHttp3Session = do_GetWeakReference(
+      static_cast<nsISupportsWeakReference*>(aHttp3Session));
+}
 
 void QuicSocketControl::SetCertVerificationResult(PRErrorCode errorCode) {
+  COMMON_SOCKET_CONTROL_ASSERT_ON_OWNING_THREAD();
+  SetUsedPrivateDNS(GetProviderFlags() & nsISocketProvider::USED_PRIVATE_DNS);
+
   if (errorCode) {
     mFailedVerification = true;
     SetCanceled(errorCode);
   }
 
-  if (OnSocketThread()) {
-    CallAuthenticated();
-  } else {
-    DebugOnly<nsresult> rv = gSocketTransportService->Dispatch(
-        NewRunnableMethod("QuicSocketControl::CallAuthenticated", this,
-                          &QuicSocketControl::CallAuthenticated),
-        NS_DISPATCH_NORMAL);
-  }
+  CallAuthenticated();
 }
 
 NS_IMETHODIMP
 QuicSocketControl::GetSSLVersionOffered(int16_t* aSSLVersionOffered) {
-  *aSSLVersionOffered = nsISSLSocketControl::TLS_VERSION_1_3;
+  COMMON_SOCKET_CONTROL_ASSERT_ON_OWNING_THREAD();
+  *aSSLVersionOffered = nsITLSSocketControl::TLS_VERSION_1_3;
   return NS_OK;
 }
 
 void QuicSocketControl::CallAuthenticated() {
+  COMMON_SOCKET_CONTROL_ASSERT_ON_OWNING_THREAD();
   RefPtr<Http3Session> http3Session = do_QueryReferent(mHttp3Session);
   if (http3Session) {
     http3Session->Authenticated(GetErrorCode());
   }
-  mHttp3Session = nullptr;
-}
-
-void QuicSocketControl::SetAuthenticationCallback(Http3Session* aHttp3Session) {
-  mHttp3Session = do_GetWeakReference(
-      static_cast<nsISupportsWeakReference*>(aHttp3Session));
 }
 
 void QuicSocketControl::HandshakeCompleted() {
-  psm::RememberCertErrorsTable::GetInstance().LookupCertErrorBits(this);
-
+  COMMON_SOCKET_CONTROL_ASSERT_ON_OWNING_THREAD();
   uint32_t state = nsIWebProgressListener::STATE_IS_SECURE;
 
-  MutexAutoLock lock(mMutex);
-
-  // If we're here, the TLS handshake has succeeded. Thus if any of these
-  // booleans are true, the user has added an override for a certificate error.
-  if (mIsDomainMismatch || mIsUntrusted || mIsNotValidAtThisTime) {
+  // If we're here, the TLS handshake has succeeded. If the overridable error
+  // category is nonzero, the user has added an override for a certificate
+  // error.
+  if (mOverridableErrorCategory.isSome() &&
+      *mOverridableErrorCategory !=
+          nsITransportSecurityInfo::OverridableErrorCategory::ERROR_UNSET) {
     state |= nsIWebProgressListener::STATE_CERT_USER_OVERRIDDEN;
   }
 
@@ -79,52 +73,55 @@ void QuicSocketControl::HandshakeCompleted() {
 }
 
 void QuicSocketControl::SetNegotiatedNPN(const nsACString& aValue) {
-  MutexAutoLock lock(mMutex);
+  COMMON_SOCKET_CONTROL_ASSERT_ON_OWNING_THREAD();
   mNegotiatedNPN = aValue;
   mNPNCompleted = true;
 }
 
 void QuicSocketControl::SetInfo(uint16_t aCipherSuite,
-                                uint16_t aProtocolVersion, uint16_t aKeaGroup,
-                                uint16_t aSignatureScheme) {
+                                uint16_t aProtocolVersion,
+                                uint16_t aKeaGroupName,
+                                uint16_t aSignatureScheme, bool aEchAccepted) {
+  COMMON_SOCKET_CONTROL_ASSERT_ON_OWNING_THREAD();
   SSLCipherSuiteInfo cipherInfo;
   if (SSL_GetCipherSuiteInfo(aCipherSuite, &cipherInfo, sizeof cipherInfo) ==
       SECSuccess) {
-    MutexAutoLock lock(mMutex);
-    mHaveCipherSuiteAndProtocol = true;
-    mCipherSuite = aCipherSuite;
-    mProtocolVersion = aProtocolVersion & 0xFF;
-    mKeaGroup = getKeaGroupName(aKeaGroup);
-    mSignatureSchemeName = getSignatureName(aSignatureScheme);
+    mCipherSuite.emplace(aCipherSuite);
+    mProtocolVersion.emplace(aProtocolVersion & 0xFF);
+    mKeaGroupName.emplace(getKeaGroupName(aKeaGroupName));
+    mSignatureSchemeName.emplace(getSignatureName(aSignatureScheme));
+    mIsAcceptedEch.emplace(aEchAccepted);
   }
 }
 
-NS_IMETHODIMP QuicSocketControl::GetPeerId(nsACString& aResult) {
-  if (!mPeerId.IsEmpty()) {
-    aResult.Assign(mPeerId);
-    return NS_OK;
-  }
-
-  if (mProviderFlags &
-      nsISocketProvider::ANONYMOUS_CONNECT) {  // See bug 466080
-    mPeerId.AppendLiteral("anon:");
-  }
-  if (mProviderFlags & nsISocketProvider::NO_PERMANENT_STORAGE) {
-    mPeerId.AppendLiteral("private:");
-  }
-  if (mProviderFlags & nsISocketProvider::BE_CONSERVATIVE) {
-    mPeerId.AppendLiteral("beConservative:");
-  }
-
-  mPeerId.Append(GetHostName());
-  mPeerId.Append(':');
-  mPeerId.AppendInt(GetPort());
-  nsAutoCString suffix;
-  GetOriginAttributes().CreateSuffix(suffix);
-  mPeerId.Append(suffix);
-
-  aResult.Assign(mPeerId);
+NS_IMETHODIMP
+QuicSocketControl::GetEchConfig(nsACString& aEchConfig) {
+  COMMON_SOCKET_CONTROL_ASSERT_ON_OWNING_THREAD();
+  aEchConfig = mEchConfig;
   return NS_OK;
+}
+
+NS_IMETHODIMP
+QuicSocketControl::SetEchConfig(const nsACString& aEchConfig) {
+  COMMON_SOCKET_CONTROL_ASSERT_ON_OWNING_THREAD();
+  mEchConfig = aEchConfig;
+  RefPtr<Http3Session> http3Session = do_QueryReferent(mHttp3Session);
+  if (http3Session) {
+    http3Session->DoSetEchConfig(mEchConfig);
+  }
+  return NS_OK;
+}
+
+NS_IMETHODIMP
+QuicSocketControl::GetRetryEchConfig(nsACString& aEchConfig) {
+  COMMON_SOCKET_CONTROL_ASSERT_ON_OWNING_THREAD();
+  aEchConfig = mRetryEchConfig;
+  return NS_OK;
+}
+
+void QuicSocketControl::SetRetryEchConfig(const nsACString& aEchConfig) {
+  COMMON_SOCKET_CONTROL_ASSERT_ON_OWNING_THREAD();
+  mRetryEchConfig = aEchConfig;
 }
 
 }  // namespace net

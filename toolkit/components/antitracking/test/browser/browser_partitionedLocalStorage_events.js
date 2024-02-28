@@ -1,11 +1,9 @@
 function log(test) {
   if ("iteration" in test) {
     info(
-      `Running test ${
-        test.withStoragePrincipalEnabled
-          ? "with storage principal enabled"
-          : "without storage principal"
-      } with prefValue: ${test.prefValue} (Test #${test.iteration + 1})`
+      `Running test with prefValue: ${test.prefValue} (Test #${
+        test.iteration + 1
+      })`
     );
     test.iteration++;
   } else {
@@ -14,26 +12,14 @@ function log(test) {
   }
 }
 
-function runAllTests(withStoragePrincipalEnabled, prefValue) {
+function runAllTests(prefValue) {
   const storagePrincipalTest =
     prefValue == Ci.nsICookieService.BEHAVIOR_REJECT_TRACKER;
   const dynamicFPITest =
     prefValue ==
     Ci.nsICookieService.BEHAVIOR_REJECT_TRACKER_AND_PARTITION_FOREIGN;
 
-  if (dynamicFPITest && withStoragePrincipalEnabled) {
-    // This isn't a meaningful configuration, ignore it.
-    return;
-  }
-
-  const test = { withStoragePrincipalEnabled, dynamicFPITest, prefValue };
-
-  // For dynamic FPI tests, we want to test the conditions as if
-  // storage principal was enabled, so from now on we set this variable to
-  // true.
-  if (dynamicFPITest) {
-    withStoragePrincipalEnabled = true;
-  }
+  const test = { dynamicFPITest, prefValue };
 
   let thirdPartyDomain;
   if (storagePrincipalTest) {
@@ -43,14 +29,6 @@ function runAllTests(withStoragePrincipalEnabled, prefValue) {
     thirdPartyDomain = TEST_4TH_PARTY_DOMAIN;
   }
   ok(thirdPartyDomain, "Sanity check");
-
-  let storagePrincipalPrefValue;
-  if (storagePrincipalTest) {
-    storagePrincipalPrefValue = withStoragePrincipalEnabled;
-  }
-  if (dynamicFPITest) {
-    storagePrincipalPrefValue = false;
-  }
 
   // A same origin (and same-process via setting "dom.ipc.processCount" to 1)
   // top-level window with access to real localStorage does not share storage
@@ -71,10 +49,6 @@ function runAllTests(withStoragePrincipalEnabled, prefValue) {
         [
           "privacy.restrict3rdpartystorage.partitionedHosts",
           "tracking.example.org,not-tracking.example.com",
-        ],
-        [
-          "privacy.storagePrincipal.enabledForTrackers",
-          storagePrincipalPrefValue,
         ],
       ],
     });
@@ -183,9 +157,9 @@ function runAllTests(withStoragePrincipalEnabled, prefValue) {
     UrlClassifierTestUtils.cleanupTestTrackers();
   });
 
-  // Two ePartitionOrDeny iframes in the same tab in the same origin see
-  // the same localStorage values but no storage events are received from each
-  // other if storage principal and dFPI are disbled.
+  // Two ePartitionOrDeny iframes in the same tab in the same origin see the
+  // same localStorage values but no storage events are received from each other
+  // if dFPI is disabled.
   add_task(async _ => {
     log(test);
 
@@ -200,10 +174,6 @@ function runAllTests(withStoragePrincipalEnabled, prefValue) {
         [
           "privacy.restrict3rdpartystorage.partitionedHosts",
           "tracking.example.org,not-tracking.example.com",
-        ],
-        [
-          "privacy.storagePrincipal.enabledForTrackers",
-          storagePrincipalPrefValue,
         ],
       ],
     });
@@ -221,7 +191,6 @@ function runAllTests(withStoragePrincipalEnabled, prefValue) {
       [
         {
           page: thirdPartyDomain + TEST_PATH + "localStorageEvents.html",
-          withStoragePrincipalEnabled: test.withStoragePrincipalEnabled,
           dynamicFPITest: test.dynamicFPITest,
         },
       ],
@@ -275,7 +244,7 @@ function runAllTests(withStoragePrincipalEnabled, prefValue) {
           ifr2.contentWindow.postMessage("getValue", "*");
         });
 
-        if (obj.withStoragePrincipalEnabled || obj.dynamicFPITest) {
+        if (obj.dynamicFPITest) {
           ok(
             value.startsWith("tracker-"),
             "The value is correctly set in ifr2"
@@ -296,7 +265,7 @@ function runAllTests(withStoragePrincipalEnabled, prefValue) {
           ifr2.contentWindow.postMessage("getEvents", "*");
         });
 
-        if (obj.withStoragePrincipalEnabled || obj.dynamicFPITest) {
+        if (obj.dynamicFPITest) {
           is(events, 1, "one event");
         } else {
           is(events, 0, "No events");
@@ -329,10 +298,6 @@ function runAllTests(withStoragePrincipalEnabled, prefValue) {
         [
           "privacy.restrict3rdpartystorage.partitionedHosts",
           "tracking.example.org,not-tracking.example.com",
-        ],
-        [
-          "privacy.storagePrincipal.enabledForTrackers",
-          storagePrincipalPrefValue,
         ],
       ],
     });
@@ -442,10 +407,6 @@ function runAllTests(withStoragePrincipalEnabled, prefValue) {
           "privacy.restrict3rdpartystorage.partitionedHosts",
           "tracking.example.org,not-tracking.example.com",
         ],
-        [
-          "privacy.storagePrincipal.enabledForTrackers",
-          storagePrincipalPrefValue,
-        ],
       ],
     });
 
@@ -462,7 +423,6 @@ function runAllTests(withStoragePrincipalEnabled, prefValue) {
       [
         {
           page: thirdPartyDomain + TEST_PATH + "localStorageEvents.html",
-          withStoragePrincipalEnabled: test.withStoragePrincipalEnabled,
           dynamicFPITest: test.dynamicFPITest,
         },
       ],
@@ -512,7 +472,7 @@ function runAllTests(withStoragePrincipalEnabled, prefValue) {
           ifr.contentWindow.postMessage("getValue", "*");
         });
 
-        if (obj.withStoragePrincipalEnabled || obj.dynamicFPITest) {
+        if (obj.dynamicFPITest) {
           is(value, value2, "The value is received");
         } else {
           is(value2, null, "The value is undefined");
@@ -543,10 +503,6 @@ function runAllTests(withStoragePrincipalEnabled, prefValue) {
         [
           "privacy.restrict3rdpartystorage.partitionedHosts",
           "tracking.example.org,not-tracking.example.com",
-        ],
-        [
-          "privacy.storagePrincipal.enabledForTrackers",
-          storagePrincipalPrefValue,
         ],
       ],
     });
@@ -639,10 +595,6 @@ function runAllTests(withStoragePrincipalEnabled, prefValue) {
           "privacy.restrict3rdpartystorage.partitionedHosts",
           "tracking.example.org,not-tracking.example.com",
         ],
-        [
-          "privacy.storagePrincipal.enabledForTrackers",
-          storagePrincipalPrefValue,
-        ],
       ],
     });
 
@@ -659,7 +611,6 @@ function runAllTests(withStoragePrincipalEnabled, prefValue) {
       [
         {
           page: thirdPartyDomain + TEST_PATH + "localStorageEvents.html",
-          withStoragePrincipalEnabled: test.withStoragePrincipalEnabled,
           dynamicFPITest: test.dynamicFPITest,
         },
       ],
@@ -709,7 +660,7 @@ function runAllTests(withStoragePrincipalEnabled, prefValue) {
           ifr.contentWindow.postMessage("getValue", "*");
         });
 
-        if (obj.withStoragePrincipalEnabled || obj.dynamicFPITest) {
+        if (obj.dynamicFPITest) {
           is(value, value2, "The value is equal");
         } else {
           is(value2, null, "The value is undefined");
@@ -740,10 +691,6 @@ function runAllTests(withStoragePrincipalEnabled, prefValue) {
         [
           "privacy.restrict3rdpartystorage.partitionedHosts",
           "tracking.example.org,not-tracking.example.com",
-        ],
-        [
-          "privacy.storagePrincipal.enabledForTrackers",
-          storagePrincipalPrefValue,
         ],
       ],
     });
@@ -834,10 +781,6 @@ function runAllTests(withStoragePrincipalEnabled, prefValue) {
         [
           "privacy.restrict3rdpartystorage.partitionedHosts",
           "tracking.example.org,not-tracking.example.com",
-        ],
-        [
-          "privacy.storagePrincipal.enabledForTrackers",
-          storagePrincipalPrefValue,
         ],
       ],
     });
@@ -956,10 +899,6 @@ function runAllTests(withStoragePrincipalEnabled, prefValue) {
           "privacy.restrict3rdpartystorage.partitionedHosts",
           "tracking.example.org,not-tracking.example.com",
         ],
-        [
-          "privacy.storagePrincipal.enabledForTrackers",
-          storagePrincipalPrefValue,
-        ],
       ],
     });
 
@@ -1071,6 +1010,5 @@ for (let pref of [
   Ci.nsICookieService.BEHAVIOR_REJECT_TRACKER,
   Ci.nsICookieService.BEHAVIOR_REJECT_TRACKER_AND_PARTITION_FOREIGN,
 ]) {
-  runAllTests(false, pref);
-  runAllTests(true, pref);
+  runAllTests(pref);
 }

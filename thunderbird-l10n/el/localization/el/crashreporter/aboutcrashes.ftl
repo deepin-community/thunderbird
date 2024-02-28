@@ -18,5 +18,5 @@ submit-crash-button-failure-label = Αποτυχία
 crashes-submitted-label = Υποβληθείσες αναφορές κατάρρευσης
 date-submitted-heading = Ημερομηνία υποβολής
 view-crash-button-label = Προβολή
-no-reports-label = Δεν έχουν υποβληθεί αναφορές προβλημάτων.
+no-reports-label = Δεν έχουν υποβληθεί αναφορές καταρρεύσεων.
 no-config-label = Αυτή η εφαρμογή δεν έχει ρυθμιστεί για να εμφανίζει αναφορές προβλημάτων. Θα πρέπει να ρυθμιστούν οι προτιμήσεις στο <code>breakpad.reportURL</code>.

@@ -15,6 +15,10 @@ interface SVGAnimationElement : SVGElement {
 
   readonly attribute SVGElement? targetElement;
 
+  attribute EventHandler onbegin;
+  attribute EventHandler onend;
+  attribute EventHandler onrepeat;
+
   [Throws]
   float getStartTime();
   [BinaryName="getCurrentTimeAsFloat"]
@@ -23,14 +27,13 @@ interface SVGAnimationElement : SVGElement {
   float getSimpleDuration();
 
   [Throws]
-  void beginElement();
+  undefined beginElement();
   [Throws]
-  void beginElementAt(float offset);
+  undefined beginElementAt(float offset);
   [Throws]
-  void endElement();
+  undefined endElement();
   [Throws]
-  void endElementAt(float offset);
+  undefined endElementAt(float offset);
 };
 
 SVGAnimationElement includes SVGTests;
-

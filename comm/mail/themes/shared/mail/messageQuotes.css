@@ -32,6 +32,7 @@ body {
 
 body blockquote[type=cite] {
   margin-block: 1ex;
+  margin-inline: 0;
   padding: 0.4ex 1ex;
   border-inline-start: 2px solid rgb(114, 159, 207); /* Sky Blue 1 */
 }
@@ -53,12 +54,8 @@ blockquote[type=cite] blockquote[type=cite] blockquote[type=cite] blockquote[typ
 }
 
 /* Styles for the dark mode */
-/* Disabled in bug 1639249. See also EditorContent.css.
+/* Disabled in bug 1639249. See also editorContent.css.
 @media (prefers-color-scheme: dark) {
-  html {
-    scrollbar-color: rgba(249, 249, 250, .4) rgba(20, 20, 25, .3);
-  }
-
   body {
     color: #f9f9fa;
     background-color: #2a2a2e;
@@ -68,4 +65,3 @@ blockquote[type=cite] blockquote[type=cite] blockquote[type=cite] blockquote[typ
     color: #009fff;
   }
 } */
-

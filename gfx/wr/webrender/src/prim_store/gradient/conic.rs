@@ -13,7 +13,6 @@ use api::{ExtendMode, GradientStop, PremultipliedColorF};
 use api::units::*;
 use crate::scene_building::IsVisible;
 use crate::frame_builder::FrameBuildingState;
-use crate::gpu_cache::{GpuCache, GpuCacheHandle};
 use crate::intern::{Internable, InternDebug, Handle as InternHandle};
 use crate::internal_types::LayoutPrimitiveInfo;
 use crate::prim_store::{BrushSegment, GradientTileRange};
@@ -23,6 +22,7 @@ use crate::prim_store::{NinePatchDescriptor, PointKey, SizeKey, InternablePrimit
 use crate::render_task::{RenderTask, RenderTaskKind};
 use crate::render_task_graph::RenderTaskId;
 use crate::render_task_cache::{RenderTaskCacheKeyKind, RenderTaskCacheKey, RenderTaskParent};
+use crate::renderer::GpuBufferAddress;
 use crate::picture::{SurfaceIndex};
 
 use std::{hash, ops::{Deref, DerefMut}};
@@ -98,7 +98,6 @@ pub struct ConicGradientTemplate {
     pub brush_segments: Vec<BrushSegment>,
     pub stops_opacity: PrimitiveOpacity,
     pub stops: Vec<GradientStop>,
-    pub stops_handle: GpuCacheHandle,
     pub src_color: Option<RenderTaskId>,
 }
 
@@ -135,19 +134,58 @@ impl From<ConicGradientKey> for ConicGradientTemplate {
         stretch_size.width = stretch_size.width.min(common.prim_rect.width());
         stretch_size.height = stretch_size.height.min(common.prim_rect.height());
 
+        fn approx_eq(a: f32, b: f32) -> bool { (a - b).abs() < 0.01 }
+
+        // Attempt to detect some of the common configurations with hard gradient stops. Allow
+        // those a higher maximum resolution to avoid the worst cases of aliasing artifacts with
+        // large conic gradients. A better solution would be to go back to rendering very large
+        // conic gradients via a brush shader instead of caching all of them (unclear whether
+        // it is important enough to warrant the better solution).
+        let mut has_hard_stops = false;
+        let mut prev_stop = None;
+        let offset_range = item.params.end_offset - item.params.start_offset;
+        for stop in &stops {
+            if offset_range <= 0.0 {
+                break;
+            }
+            if let Some(prev_offset) = prev_stop {
+                // Check whether two consecutive stops are very close (hard stops).
+                if stop.offset < prev_offset + 0.005 / offset_range {
+                    // a is the angle of the stop normalized into 0-1 space and repeating in the 0-0.25 range.
+                    // If close to 0.0 or 0.25 it means the stop is vertical or horizontal. For those, the lower
+                    // resolution isn't a big issue.
+                    let a = item.params.angle / (2.0 * std::f32::consts::PI)
+                        + item.params.start_offset
+                        + stop.offset / offset_range;
+                    let a = a.rem_euclid(0.25);
+
+                    if !approx_eq(a, 0.0) && !approx_eq(a, 0.25) {
+                        has_hard_stops = true;
+                        break;
+                    }
+                }
+            }
+            prev_stop = Some(stop.offset);
+        }
+
+        let max_size = if has_hard_stops {
+            2048.0
+        } else {
+            1024.0
+        };
+
         // Avoid rendering enormous gradients. Radial gradients are mostly made of soft transitions,
         // so it is unlikely that rendering at a higher resolution that 1024 would produce noticeable
         // differences, especially with 8 bits per channel.
-        const MAX_SIZE: f32 = 1024.0;
         let mut task_size: DeviceSize = stretch_size.cast_unit();
         let mut scale = vec2(1.0, 1.0);
-        if task_size.width > MAX_SIZE {
-            scale.x = task_size.width / MAX_SIZE;
-            task_size.width = MAX_SIZE;
+        if task_size.width > max_size {
+            scale.x = task_size.width / max_size;
+            task_size.width = max_size;
         }
-        if task_size.height > MAX_SIZE {
-            scale.y = task_size.height / MAX_SIZE;
-            task_size.height = MAX_SIZE;
+        if task_size.height > max_size {
+            scale.y = task_size.height / max_size;
+            task_size.height = max_size;
         }
 
         ConicGradientTemplate {
@@ -162,7 +200,6 @@ impl From<ConicGradientKey> for ConicGradientTemplate {
             brush_segments,
             stops_opacity,
             stops,
-            stops_handle: GpuCacheHandle::new(),
             src_color: None,
         }
     }
@@ -200,14 +237,6 @@ impl ConicGradientTemplate {
             }
         }
 
-        if let Some(mut request) = frame_state.gpu_cache.request(&mut self.stops_handle) {
-            GradientGpuBlockBuilder::build(
-                false,
-                &mut request,
-                &self.stops,
-            );
-        }
-
         let cache_key = ConicGradientCacheKey {
             size: self.task_size,
             center: PointKey { x: self.center.x, y: self.center.y },
@@ -225,12 +254,19 @@ impl ConicGradientTemplate {
                 kind: RenderTaskCacheKeyKind::ConicGradient(cache_key),
             },
             frame_state.gpu_cache,
+            frame_state.frame_gpu_data,
             frame_state.rg_builder,
             None,
             false,
             RenderTaskParent::Surface(parent_surface),
-            frame_state.surfaces,
-            |rg_builder| {
+            &mut frame_state.surface_builder,
+            |rg_builder, gpu_buffer_builder| {
+                let stops = GradientGpuBlockBuilder::build(
+                    false,
+                    gpu_buffer_builder,
+                    &self.stops,
+                );
+
                 rg_builder.add().init(RenderTask::new_dynamic(
                     self.task_size,
                     RenderTaskKind::ConicGradient(ConicGradientTask {
@@ -238,7 +274,7 @@ impl ConicGradientTemplate {
                         scale: self.scale,
                         center: self.center,
                         params: self.params.clone(),
-                        stops: self.stops_handle,
+                        stops,
                     }),
                 ))
             }
@@ -311,11 +347,11 @@ pub struct ConicGradientTask {
     pub center: DevicePoint,
     pub scale: DeviceVector2D,
     pub params: ConicGradientParams,
-    pub stops: GpuCacheHandle,
+    pub stops: GpuBufferAddress,
 }
 
 impl ConicGradientTask {
-    pub fn to_instance(&self, target_rect: &DeviceIntRect, gpu_cache: &mut GpuCache) -> ConicGradientInstance {
+    pub fn to_instance(&self, target_rect: &DeviceIntRect) -> ConicGradientInstance {
         ConicGradientInstance {
             task_rect: target_rect.to_f32(),
             center: self.center,
@@ -324,7 +360,7 @@ impl ConicGradientTask {
             end_offset: self.params.end_offset,
             angle: self.params.angle,
             extend_mode: self.extend_mode as i32,
-            gradient_stops_address: self.stops.as_int(gpu_cache),
+            gradient_stops_address: self.stops.as_int(),
         }
     }
 }

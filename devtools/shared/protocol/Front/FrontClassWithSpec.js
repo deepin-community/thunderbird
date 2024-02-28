@@ -4,13 +4,13 @@
 
 "use strict";
 
-var { Front } = require("devtools/shared/protocol/Front");
+var { Front } = require("resource://devtools/shared/protocol/Front.js");
 
 /**
  * Generates request methods as described by the given actor specification on
  * the given front prototype. Returns the front prototype.
  */
-var generateRequestMethods = function(actorSpec, frontProto) {
+var generateRequestMethods = function (actorSpec, frontProto) {
   if (frontProto._actorSpec) {
     throw new Error("frontProto called twice on the same front prototype!");
   }
@@ -22,7 +22,7 @@ var generateRequestMethods = function(actorSpec, frontProto) {
   methods.forEach(spec => {
     const name = spec.name;
 
-    frontProto[name] = function(...args) {
+    frontProto[name] = function (...args) {
       // If the front is destroyed, the request will not be able to complete.
       if (this.isDestroyed()) {
         throw new Error(
@@ -30,6 +30,7 @@ var generateRequestMethods = function(actorSpec, frontProto) {
         );
       }
 
+      const startTime = Cu.now();
       let packet;
       try {
         packet = spec.request.write(args, this);
@@ -45,12 +46,25 @@ var generateRequestMethods = function(actorSpec, frontProto) {
 
       return this.request(packet).then(response => {
         let ret;
+        if (!this.conn) {
+          throw new Error("Missing conn on " + this);
+        }
+        if (this.isDestroyed()) {
+          throw new Error(
+            `Can not interpret '${name}' response because front '${this.typeName}' is already destroyed.`
+          );
+        }
         try {
           ret = spec.response.read(response, this);
         } catch (ex) {
           console.error("Error reading response to: " + name + "\n" + ex);
           throw ex;
         }
+        ChromeUtils.addProfilerMarker(
+          "RDP Front",
+          startTime,
+          `${this.typeName}:${name}()`
+        );
         return ret;
       });
     };
@@ -58,7 +72,7 @@ var generateRequestMethods = function(actorSpec, frontProto) {
     // Release methods should call the destroy function on return.
     if (spec.release) {
       const fn = frontProto[name];
-      frontProto[name] = function(...args) {
+      frontProto[name] = function (...args) {
         return fn.apply(this, args).then(result => {
           this.destroy();
           return result;
@@ -96,7 +110,7 @@ var generateRequestMethods = function(actorSpec, frontProto) {
  *    The object prototype.  Must have a 'typeName' property,
  *    should have method definitions, can have event definitions.
  */
-var FrontClassWithSpec = function(actorSpec) {
+var FrontClassWithSpec = function (actorSpec) {
   class OneFront extends Front {}
   generateRequestMethods(actorSpec, OneFront.prototype);
   return OneFront;

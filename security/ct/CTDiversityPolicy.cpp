@@ -9,7 +9,7 @@
 namespace mozilla {
 namespace ct {
 
-typedef mozilla::pkix::Result Result;
+typedef pkix::Result Result;
 
 void GetCTLogOperatorsFromVerifiedSCTList(const VerifiedSCTList& list,
                                           CTLogOperatorList& operators) {
@@ -30,9 +30,9 @@ void GetCTLogOperatorsFromVerifiedSCTList(const VerifiedSCTList& list,
 }
 
 Result CTDiversityPolicy::GetDependentOperators(
-    const CERTCertList* builtChain, const CTLogOperatorList& operators,
-    CTLogOperatorList& dependentOperators) {
-  return Success;
+    const nsTArray<nsTArray<uint8_t>>& builtChain,
+    const CTLogOperatorList& operators, CTLogOperatorList& dependentOperators) {
+  return pkix::Success;
 }
 
 }  // namespace ct

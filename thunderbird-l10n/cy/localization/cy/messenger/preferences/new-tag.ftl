@@ -3,12 +3,11 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 tag-dialog-window =
-    .title = Tab Newydd
-
+    .title = Tag newydd
+tag-dialog-title = Tag Newydd
 tag-name-label =
     .value = Enw Tag:
     .accesskey = T
-
 tag-color-label =
     .value = Lliw:
     .accesskey = L

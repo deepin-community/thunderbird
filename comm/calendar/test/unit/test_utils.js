@@ -2,7 +2,7 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-var { XPCOMUtils } = ChromeUtils.import("resource://gre/modules/XPCOMUtils.jsm");
+var { XPCOMUtils } = ChromeUtils.importESModule("resource://gre/modules/XPCOMUtils.sys.mjs");
 
 XPCOMUtils.defineLazyModuleGetters(this, {
   CalEvent: "resource:///modules/CalEvent.jsm",
@@ -24,9 +24,6 @@ function really_run_test() {
 }
 
 function test_recentzones() {
-  let oldDefaultTz = Services.prefs.getStringPref("calendar.timezone.local", "");
-  Services.prefs.setStringPref("calendar.timezone.local", "floating");
-
   equal(cal.dtz.getRecentTimezones().length, 0);
   equal(cal.dtz.getRecentTimezones(true).length, 0);
 
@@ -54,8 +51,6 @@ function test_recentzones() {
   cal.dtz.saveRecentTimezone("Unknown");
   equal(cal.dtz.getRecentTimezones().length, 3);
   equal(cal.dtz.getRecentTimezones(true).length, 2);
-
-  Services.prefs.setStringPref("calendar.timezone.local", oldDefaultTz);
 }
 
 function test_formatcss() {
@@ -73,7 +68,7 @@ function test_getDefaultStartDate() {
 
   let oldNow = cal.dtz.now;
   let now = cal.createDateTime("20120101T000000");
-  cal.dtz.now = function() {
+  cal.dtz.now = function () {
     return now;
   };
 

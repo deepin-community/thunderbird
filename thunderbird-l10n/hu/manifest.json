@@ -1,29 +1,28 @@
 {
   "langpack_id": "hu",
   "manifest_version": 2,
-  "applications": {
+  "browser_specific_settings": {
     "gecko": {
       "id": "langpack-hu@thunderbird.mozilla.org",
-      "strict_min_version": "91.0",
-      "strict_max_version": "91.*"
+      "strict_min_version": "115.0",
+      "strict_max_version": "115.*"
     }
   },
-  "name": "Magyar (HU) Language Pack",
-  "description": "Language pack for Thunderbird for hu",
-  "version": "91.0buildid20211101223011",
+  "name": "Language: Magyar (Hungarian)",
+  "description": "Thunderbird Language Pack for Magyar (hu) – Hungarian",
+  "version": "115.8.20240216.174500",
   "languages": {
     "hu": {
-      "version": "20211011165720",
+      "version": "20240216183605",
       "chrome_resources": {
         "alerts": "chrome/hu/locale/hu/alerts/",
         "autoconfig": "chrome/hu/locale/hu/autoconfig/",
-        "branding": "chrome/hu/locale/hu/branding/",
+        "branding": "chrome/hu/locale/branding/",
         "calendar": "chrome/hu/locale/hu/calendar/",
         "chat": "chrome/hu/locale/hu/chat/",
         "communicator": "chrome/hu/locale/hu/communicator/",
         "devtools": "chrome/hu/locale/hu/devtools/client/",
         "devtools-shared": "chrome/hu/locale/hu/devtools/shared/",
-        "devtools-startup": "chrome/hu/locale/hu/devtools/startup/",
         "global": "chrome/hu/locale/hu/global/",
         "global-platform": {
           "macosx": "chrome/hu/locale/hu/global-platform/mac/",

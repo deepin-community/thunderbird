@@ -2,11 +2,10 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-/* globals addMenuItem, getItemsFromFile, putItemsIntoCal,
+/* globals addMenuItem, getItemsFromIcsFile, putItemsIntoCal,
            sortCalendarArray */
 
 var { cal } = ChromeUtils.import("resource:///modules/calendar/calUtils.jsm");
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 
 const gModel = {
   /** @type {calICalendar[]} */
@@ -34,7 +33,7 @@ async function onWindowLoad() {
   gModel.file = window.arguments[0];
   document.getElementById("calendar-ics-file-dialog-file-path").value = gModel.file.path;
 
-  let calendars = cal.getCalendarManager().getCalendars();
+  let calendars = cal.manager.getCalendars();
   gModel.calendars = getCalendarsThatCanImport(calendars);
   if (!gModel.calendars.length) {
     // No calendars to import into. Show error dialog and close the window.
@@ -52,17 +51,17 @@ async function onWindowLoad() {
   Services.tm.dispatchToMainThread(async () => {
     let startTime = Date.now();
 
-    getItemsFromFile(gModel.file).forEach((item, index) => {
+    getItemsFromIcsFile(gModel.file).forEach((item, index) => {
       gModel.itemsToImport.set(index, item);
     });
     if (gModel.itemsToImport.size == 0) {
       // No items to import, close the window. An error dialog has already been
-      // shown by `getItemsFromFile`.
+      // shown by `getItemsFromIcsFile`.
       window.close();
       return;
     }
 
-    // We know that if `getItemsFromFile` took a long time, then `setUpItemSummaries` will also
+    // We know that if `getItemsFromIcsFile` took a long time, then `setUpItemSummaries` will also
     // take a long time. Show a loading message so the user knows something is happening.
     let loadingMessage = document.getElementById("calendar-ics-file-dialog-items-loading-message");
     if (Date.now() - startTime > 150) {
@@ -90,7 +89,7 @@ window.addEventListener("load", onWindowLoad);
  * that can import items.
  *
  * @param {calICalendar[]} calendars - An array of calendars.
- * @return {calICalendar[]} Sorted array of calendars that can import items.
+ * @returns {calICalendar[]} Sorted array of calendars that can import items.
  */
 function getCalendarsThatCanImport(calendars) {
   let calendarsThatCanImport = calendars.filter(
@@ -143,10 +142,21 @@ async function setUpItemSummaries() {
   let items = [...gModel.itemsToImport];
   let itemsContainer = document.getElementById("calendar-ics-file-dialog-items-container");
 
-  // Sort the items, chronologically first, then alphabetically.
+  // Sort the items, chronologically first, tasks without a date to the end,
+  // then alphabetically.
   let collator = new Intl.Collator(undefined, { numeric: true });
   items.sort(([, a], [, b]) => {
-    return a.startDate.nativeTime - b.startDate.nativeTime || collator.compare(a.title, b.title);
+    let aStartDate =
+      a.startDate?.nativeTime ||
+      a.entryDate?.nativeTime ||
+      a.dueDate?.nativeTime ||
+      Number.MAX_SAFE_INTEGER;
+    let bStartDate =
+      b.startDate?.nativeTime ||
+      b.entryDate?.nativeTime ||
+      b.dueDate?.nativeTime ||
+      Number.MAX_SAFE_INTEGER;
+    return aStartDate - bStartDate || collator.compare(a.title, b.title);
   });
 
   let [eventButtonText, taskButtonText] = await document.l10n.formatValues([
@@ -237,10 +247,7 @@ function filterItemSummaries(searchString = "") {
       }
 
       if (description === undefined) {
-        description = s.item
-          .getProperty("description")
-          ?.toLowerCase()
-          .normalize();
+        description = s.item.getProperty("description")?.toLowerCase().normalize();
       }
       return description?.includes(term);
     });
@@ -294,7 +301,7 @@ function sortItemSummaries(event) {
 /**
  * Get the currently selected calendar.
  *
- * @return {calICalendar} The currently selected calendar.
+ * @returns {calICalendar} The currently selected calendar.
  */
 function getCurrentlySelectedCalendar() {
   let menulist = document.getElementById("calendar-ics-file-dialog-calendar-menu");

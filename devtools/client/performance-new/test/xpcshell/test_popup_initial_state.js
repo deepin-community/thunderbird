@@ -9,15 +9,15 @@
 
 function setupBackgroundJsm() {
   return ChromeUtils.import(
-    "resource://devtools/client/performance-new/popup/background.jsm.js"
+    "resource://devtools/client/performance-new/shared/background.jsm.js"
   );
 }
 
 add_task(function test() {
   info("Test that we get the default preference values from the browser.");
-  const { getRecordingPreferences } = setupBackgroundJsm();
+  const { getRecordingSettings } = setupBackgroundJsm();
 
-  const preferences = getRecordingPreferences(
+  const preferences = getRecordingSettings(
     "aboutprofiling",
     Services.profiler.GetFeatures()
   );
@@ -70,38 +70,34 @@ add_task(function test() {
       "we add and remove features, the stored preferences do not cause the Gecko " +
       "Profiler interface to crash with invalid values."
   );
-  const {
-    getRecordingPreferences,
-    setRecordingPreferences,
-    changePreset,
-  } = setupBackgroundJsm();
+  const { getRecordingSettings, setRecordingSettings, changePreset } =
+    setupBackgroundJsm();
 
   const supportedFeatures = Services.profiler.GetFeatures();
 
   changePreset("aboutprofiling", "custom", supportedFeatures);
 
   Assert.ok(
-    getRecordingPreferences(
-      "aboutprofiling",
-      supportedFeatures
-    ).features.includes("js"),
+    getRecordingSettings("aboutprofiling", supportedFeatures).features.includes(
+      "js"
+    ),
     "The js preference is present initially."
   );
 
-  const settings = getRecordingPreferences("aboutprofiling", supportedFeatures);
+  const settings = getRecordingSettings("aboutprofiling", supportedFeatures);
   settings.features = settings.features.filter(feature => feature !== "js");
   settings.features.push("UNKNOWN_FEATURE_FOR_TESTS");
-  setRecordingPreferences("aboutprofiling", settings);
+  setRecordingSettings("aboutprofiling", settings);
 
   Assert.ok(
-    !getRecordingPreferences(
+    !getRecordingSettings(
       "aboutprofiling",
       supportedFeatures
     ).features.includes("UNKNOWN_FEATURE_FOR_TESTS"),
     "The unknown feature is removed."
   );
   Assert.ok(
-    !getRecordingPreferences(
+    !getRecordingSettings(
       "aboutprofiling",
       supportedFeatures
     ).features.includes("js"),

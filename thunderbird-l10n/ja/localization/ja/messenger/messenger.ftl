@@ -2,14 +2,24 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
+
+## Window controls
+
+messenger-window-minimize-button =
+    .tooltiptext = 最小化
+messenger-window-maximize-button =
+    .tooltiptext = 最大化
+messenger-window-restore-down-button =
+    .tooltiptext = 元に戻す (縮小)
+messenger-window-close-button =
+    .tooltiptext = 閉じる
 # Variables:
 # $count (Number) - Number of unread messages.
 unread-messages-os-tooltip =
-  { $count ->
-     [one] 1 通の未読メッセージ
-    *[other] { $count } 通の未読メッセージ
-  }
-
+    { $count ->
+        [one] 1 通の未読メッセージ
+       *[other] { $count } 通の未読メッセージ
+    }
 about-rights-notification-text = { -brand-short-name } は無料のオープンソースソフトウェアであり、世界中の多数のコミュニティによって開発されています。
 
 ## Content tabs
@@ -21,8 +31,63 @@ content-tab-security-high-icon =
 content-tab-security-broken-icon =
     .alt = 安全な接続ではありません
 
+# Back
+
+# Back
+# Variables
+#   $shortcut (String) - A keyboard shortcut for the Go Back command.
+content-tab-menu-back =
+    .tooltiptext = 前のページへ戻ります ({ $shortcut })
+    .aria-label = 戻る
+    .accesskey = B
+# This menuitem is only visible on macOS
+content-tab-menu-back-mac =
+    .label = 戻る
+    .accesskey = B
+
+# Forward
+
+# Forward
+# Variables
+#   $shortcut (String) - A keyboard shortcut for the Go Forward command.
+content-tab-menu-forward =
+    .tooltiptext = 次のページへ進みます ({ $shortcut })
+    .aria-label = 進む
+    .accesskey = F
+# This menuitem is only visible on macOS
+content-tab-menu-forward-mac =
+    .label = 進む
+    .accesskey = F
+
+# Reload
+
+# Reload
+content-tab-menu-reload =
+    .tooltiptext = ページを再度読み込みます
+    .aria-label = 再読み込み
+    .accesskey = R
+# This menuitem is only visible on macOS
+content-tab-menu-reload-mac =
+    .tooltiptext = ページを再度読み込みます
+    .label = 再読み込み
+    .accesskey = R
+
+# Stop
+
+# Stop
+content-tab-menu-stop =
+    .tooltiptext = ページの読み込みを中止します
+    .aria-label = 中止
+    .accesskey = S
+# This menuitem is only visible on macOS
+content-tab-menu-stop-mac =
+    .tooltiptext = ページの読み込みを中止します
+    .label = 中止
+    .accesskey = S
+
 ## Toolbar
 
+# Toolbar
 addons-and-themes-toolbarbutton =
     .label = アドオンとテーマ
     .tooltiptext = アドオンを管理します
@@ -62,11 +127,56 @@ show-smart-folders-label =
 show-recent-folders-label =
     .label = 最近使用したフォルダー
     .accesskey = R
+show-tags-folders-label =
+    .label = タグ
+    .accesskey = T
 folder-toolbar-toggle-folder-compact-view =
     .label = コンパクトビュー
     .accesskey = C
 
-## Menu
+## File Menu
+
+menu-file-save-as-file =
+    .label = ファイル...
+    .accesskey = F
+
+## Edit Menu
+
+menu-edit-delete-folder =
+    .label = フォルダーを削除
+    .accesskey = D
+menu-edit-unsubscribe-newsgroup =
+    .label = ニュースグループの購読を解除
+    .accesskey = b
+# Variables:
+# $count (Number) - Number of selected messages.
+menu-edit-delete-messages =
+    .label =
+        { $count ->
+            [one] メッセージを削除
+           *[other] 選択したメッセージを削除
+        }
+    .accesskey = D
+# Variables:
+# $count (Number) - Number of selected messages.
+menu-edit-undelete-messages =
+    .label =
+        { $count ->
+            [one] メッセージの削除を元に戻す
+           *[other] 選択したメッセージの削除を元に戻す
+        }
+    .accesskey = d
+menu-edit-properties =
+    .label = プロパティ
+    .accesskey = o
+menu-edit-folder-properties =
+    .label = フォルダーのプロパティ
+    .accesskey = o
+menu-edit-newsgroup-properties =
+    .label = ニュースグループのプロパティ
+    .accesskey = o
+
+## Message Menu
 
 redirect-msg-menuitem =
     .label = リダイレクト
@@ -74,30 +184,83 @@ redirect-msg-menuitem =
 
 ## AppMenu
 
-# Since v89 we dropped the platforms distinction between Options or Preferences
-# and consolidated everything with Preferences.
-appmenu-preferences =
+appmenu-save-as-file =
+    .label = ファイル...
+appmenu-settings =
     .label = 設定
 appmenu-addons-and-themes =
     .label = アドオンとテーマ
-appmenu-help-enter-troubleshoot-mode =
-    .label = トラブルシューティングモード...
-appmenu-help-exit-troubleshoot-mode =
-    .label = トラブルシューティングモードをオフにする
-appmenu-help-more-troubleshooting-info =
-    .label = トラブルシューティング情報
-appmenu-redirect-msg =
-    .label = リダイレクト
 
 ## Context menu
 
 context-menu-redirect-msg =
     .label = リダイレクト
+# This menu item is for canceling an NNTP message
+context-menu-cancel-msg =
+    .label = メッセージをキャンセル
+# Variables:
+# $count (Number) - Number of selected messages.
+mail-context-delete-messages =
+    .label =
+        { $count ->
+            [one] メッセージを削除
+           *[other] 選択したメッセージを削除
+        }
+# Variables:
+# $count (Number) - Number of selected messages.
+mail-context-undelete-messages =
+    .label =
+        { $count ->
+            [one] メッセージを削除しない
+           *[other] 選択したメッセージを削除しない
+        }
+context-menu-decrypt-to-folder2 =
+    .label = 復号したメッセージのコピーを作成
+    .accesskey = y
 
 ## Message header pane
 
 other-action-redirect-msg =
     .label = リダイレクト
+message-header-msg-flagged =
+    .title = スター付き
+    .aria-label = スター付き
+# Variables:
+# $address (String) - The email address of the recipient this picture belongs to.
+message-header-recipient-avatar =
+    .alt = { $address } のプロファイル写真
+
+## Message header cutomize panel
+
+message-header-customize-panel-title = メッセージヘッダー設定
+message-header-customize-button-style =
+    .value = ボタンのスタイル
+    .accesskey = B
+message-header-button-style-default =
+    .label = アイコンとテキスト
+message-header-button-style-text =
+    .label = テキストのみ
+message-header-button-style-icons =
+    .label = アイコンのみ
+message-header-show-sender-full-address =
+    .label = 常に送信者の完全アドレスを表示する
+    .accesskey = f
+message-header-show-sender-full-address-description = メールアドレスが表示名の下に表示されます。
+message-header-show-recipient-avatar =
+    .label = 送信者のプロファイル写真を表示する
+    .accesskey = p
+message-header-show-big-avatar =
+    .label = プロファイル写真を大きくする
+    .accesskey = g
+message-header-hide-label-column =
+    .label = ラベル列を隠す
+    .accesskey = l
+message-header-large-subject =
+    .label = 件名を拡大表示する
+    .accesskey = s
+message-header-all-headers =
+    .label = すべてのヘッダーを表示する
+    .accesskey = a
 
 ## Action Button Context Menu
 
@@ -108,31 +271,148 @@ toolbar-context-menu-remove-extension =
     .label = 拡張機能を削除
     .accesskey = v
 
-## Message headers
-
-message-header-address-in-address-book-icon =
-    .alt = このアドレスはアドレス帳に登録されています
-message-header-address-not-in-address-book-icon =
-    .alt = このアドレスはアドレス帳に登録されていません
-
 ## Add-on removal warning
 
 # Variables:
-#  $name (String): The name of the addon that will be removed.
+#  $name (String): The name of the add-on that will be removed.
 addon-removal-title = { $name } を削除しますか？
 addon-removal-confirmation-button = 削除
+# Variables:
+#  $name (String): The name of the add-on that will be removed.
 addon-removal-confirmation-message = { $name } とその設定およびデータを { -brand-short-name } から削除しますか？
-
 caret-browsing-prompt-title = キャレットブラウジング
 caret-browsing-prompt-text = F7 キーを押すとキャレットブラウジングのオンとオフを切り替えられます。この機能は、移動可能なカーソルをコンテンツ内に配置して、キーボードでテキストを選択できるようにします。キャレットブラウジングをオンにしますか？
 caret-browsing-prompt-check-text = 今後は確認しない
-
 repair-text-encoding-button =
-  .label = テキストエンコーディングを修復
-  .tooltiptext = メッセージ本文の適切なテキストエンコーディングを推定します
+    .label = テキストエンコーディングを修復
+    .tooltiptext = メッセージ本文の適切なテキストエンコーディングを推定します
 
 ## no-reply handling
 
 no-reply-title = 返信に対応していません
+# Variables:
+# $email (String) - Email address the reply will be sent to. Example: "noreply@example.com"
 no-reply-message = この返信アドレス ({ $email }) は通信相手が監視していません。このアドレスへのメッセージは誰にも読まれることがないでしょう。
 no-reply-reply-anyway-button = 強制返信する
+
+## error messages
+
+# Variables:
+# $failures (Number) - Number of messages that could not be decrypted.
+# $total (Number) - Total number of messages that were attempted to be decrypted.
+decrypt-and-copy-failures-multiple =
+    { $failures ->
+        [one] { $failures } / { $total } 通のメッセージが復号できなかったためコピーされませんでした。
+       *[other] { $failures } / { $total } 通のメッセージが復号できなかったためコピーされませんでした。
+    }
+
+## Spaces toolbar
+
+# (^m^) menubar.ftl の menu-spaces-toolbar-button と同じ
+spaces-toolbar-element =
+    .toolbarname = スペースツールバー
+    .aria-label = スペースツールバー
+    .aria-description = 異なるスペースに切り替えるための垂直ツールバーです。矢印キーを使って利用可能なボタンへ移動してください。
+spaces-toolbar-button-mail2 =
+    .title = メール
+spaces-toolbar-button-address-book2 =
+    .title = アドレス帳
+spaces-toolbar-button-calendar2 =
+    .title = カレンダー
+spaces-toolbar-button-tasks2 =
+    .title = ToDo
+spaces-toolbar-button-chat2 =
+    .title = チャット
+spaces-toolbar-button-overflow =
+    .title = 他のスペース...
+spaces-toolbar-button-settings2 =
+    .title = 設定を開きます
+spaces-toolbar-button-hide =
+    .title = スペースツールバーを隠します
+spaces-toolbar-button-show =
+    .title = スペースツールバーを表示します
+spaces-context-new-tab-item =
+    .label = 新しいタブで開く
+spaces-context-new-window-item =
+    .label = 新しいウィンドウで開く
+# Variables:
+# $tabName (String) - The name of the tab this item will switch to.
+spaces-context-switch-tab-item =
+    .label = { $tabName }に切り替える
+settings-context-open-settings-item2 =
+    .label = 設定
+settings-context-open-account-settings-item2 =
+    .label = アカウント設定
+settings-context-open-addons-item2 =
+    .label = アドオンとテーマ
+
+## Spaces toolbar pinned tab menupopup
+
+spaces-toolbar-pinned-tab-button =
+    .tooltiptext = スペースメニュー
+spaces-pinned-button-menuitem-mail2 =
+    .label = { spaces-toolbar-button-mail2.title }
+spaces-pinned-button-menuitem-address-book2 =
+    .label = { spaces-toolbar-button-address-book2.title }
+spaces-pinned-button-menuitem-calendar2 =
+    .label = { spaces-toolbar-button-calendar2.title }
+spaces-pinned-button-menuitem-tasks2 =
+    .label = { spaces-toolbar-button-tasks2.title }
+spaces-pinned-button-menuitem-chat2 =
+    .label = { spaces-toolbar-button-chat2.title }
+spaces-pinned-button-menuitem-settings2 =
+    .label = 設定
+spaces-pinned-button-menuitem-show =
+    .label = スペースツールバーを表示
+# Variables:
+# $count (Number) - Number of unread messages.
+chat-button-unread-messages = { $count }
+    .title =
+        { $count ->
+            [one] 1 件の未読メッセージ
+           *[other] { $count } 件の未読メッセージ
+        }
+
+## Spaces toolbar customize panel
+
+menuitem-customize-label =
+    .label = カスタマイズ...
+spaces-customize-panel-title = スペースツールバー設定
+spaces-customize-background-color = 背景の色
+spaces-customize-icon-color = ボタンの色
+# The background color used on the buttons of the spaces toolbar when they are
+# `current`, meaning the related space/tab is active and visible.
+spaces-customize-accent-background-color = 選択されたボタンの背景色
+# The icon color used on the buttons of the spaces toolbar when they are
+# `current`, meaning the related space/tab is active and visible.
+spaces-customize-accent-text-color = 選択されたボタンの色
+spaces-customize-button-restore = 初期設定に戻す
+    .accesskey = R
+customize-panel-button-save = 完了
+    .accesskey = D
+
+## Quick Filter Bar
+
+# The label to display for the "View... Toolbars..." menu item that controls
+# whether the quick filter bar is visible.
+quick-filter-bar-toggle =
+    .label = クイックフィルターバー
+    .accesskey = Q
+# This is the key used to show the quick filter bar.
+# This should match quick-filter-bar-search-shortcut in about3Pane.ftl.
+quick-filter-bar-show =
+    .key = k
+
+## OpenPGP
+
+# (^m^) 114.0 で UI 未実装のため未使用 Bug 1679278
+openpgp-forget = 入力した OpenPGP のパスフレーズを時間切れにする
+
+## Quota panel.
+
+# Variables:
+#   $percent (Number) - Usage percentage of the assigned IMAP quota.
+#   $usage (String) - Current quota usage (may include unit)
+#   $limit (String) - Current quota limit (may include unit)
+quota-panel-percent-used = { $percent }% 使用
+    .title = IMAP クォータ: ディスク領域の割り当て { $limit } 中の { $usage } を使用しています

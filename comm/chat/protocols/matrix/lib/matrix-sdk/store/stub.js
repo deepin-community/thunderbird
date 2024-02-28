@@ -3,13 +3,12 @@
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
-exports.StubStore = StubStore;
-
+exports.StubStore = void 0;
+function _defineProperty(obj, key, value) { key = _toPropertyKey(key); if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
+function _toPropertyKey(arg) { var key = _toPrimitive(arg, "string"); return typeof key === "symbol" ? key : String(key); }
+function _toPrimitive(input, hint) { if (typeof input !== "object" || input === null) return input; var prim = input[Symbol.toPrimitive]; if (prim !== undefined) { var res = prim.call(input, hint || "default"); if (typeof res !== "object") return res; throw new TypeError("@@toPrimitive must return a primitive value."); } return (hint === "string" ? String : Number)(input); }
 /*
-Copyright 2015, 2016 OpenMarket Ltd
-Copyright 2017 Vector Creations Ltd
-Copyright 2018 New Vector Ltd
-Copyright 2019 The Matrix.org Foundation C.I.C.
+Copyright 2015 - 2021 The Matrix.org Foundation C.I.C.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -26,257 +25,238 @@ limitations under the License.
 
 /**
  * This is an internal module.
- * @module store/stub
  */
 
 /**
  * Construct a stub store. This does no-ops on most store methods.
- * @constructor
  */
-function StubStore() {
-  this.fromToken = null;
-}
-
-StubStore.prototype = {
-  /** @return {Promise<bool>} whether or not the database was newly created in this session. */
-  isNewlyCreated: function () {
+class StubStore {
+  constructor() {
+    _defineProperty(this, "accountData", new Map());
+    // stub
+    _defineProperty(this, "fromToken", null);
+  }
+  /** @returns whether or not the database was newly created in this session. */
+  isNewlyCreated() {
     return Promise.resolve(true);
-  },
+  }
 
   /**
    * Get the sync token.
-   * @return {string}
    */
-  getSyncToken: function () {
+  getSyncToken() {
     return this.fromToken;
-  },
+  }
 
   /**
    * Set the sync token.
-   * @param {string} token
    */
-  setSyncToken: function (token) {
+  setSyncToken(token) {
     this.fromToken = token;
-  },
+  }
 
   /**
    * No-op.
-   * @param {Group} group
    */
-  storeGroup: function (group) {},
+  storeRoom(room) {}
 
   /**
    * No-op.
-   * @param {string} groupId
-   * @return {null}
    */
-  getGroup: function (groupId) {
+  getRoom(roomId) {
     return null;
-  },
+  }
 
   /**
    * No-op.
-   * @return {Array} An empty array.
+   * @returns An empty array.
    */
-  getGroups: function () {
+  getRooms() {
     return [];
-  },
-
-  /**
-   * No-op.
-   * @param {Room} room
-   */
-  storeRoom: function (room) {},
-
-  /**
-   * No-op.
-   * @param {string} roomId
-   * @return {null}
-   */
-  getRoom: function (roomId) {
-    return null;
-  },
-
-  /**
-   * No-op.
-   * @return {Array} An empty array.
-   */
-  getRooms: function () {
-    return [];
-  },
+  }
 
   /**
    * Permanently delete a room.
-   * @param {string} roomId
    */
-  removeRoom: function (roomId) {
+  removeRoom(roomId) {
     return;
-  },
+  }
 
   /**
    * No-op.
-   * @return {Array} An empty array.
+   * @returns An empty array.
    */
-  getRoomSummaries: function () {
+  getRoomSummaries() {
     return [];
-  },
+  }
 
   /**
    * No-op.
-   * @param {User} user
    */
-  storeUser: function (user) {},
+  storeUser(user) {}
 
   /**
    * No-op.
-   * @param {string} userId
-   * @return {null}
    */
-  getUser: function (userId) {
+  getUser(userId) {
     return null;
-  },
+  }
 
   /**
    * No-op.
-   * @return {User[]}
    */
-  getUsers: function () {
+  getUsers() {
     return [];
-  },
+  }
 
   /**
    * No-op.
-   * @param {Room} room
-   * @param {integer} limit
-   * @return {Array}
    */
-  scrollback: function (room, limit) {
+  scrollback(room, limit) {
     return [];
-  },
+  }
 
   /**
    * Store events for a room.
-   * @param {Room} room The room to store events for.
-   * @param {Array<MatrixEvent>} events The events to store.
-   * @param {string} token The token associated with these events.
-   * @param {boolean} toStart True if these are paginated results.
+   * @param room - The room to store events for.
+   * @param events - The events to store.
+   * @param token - The token associated with these events.
+   * @param toStart - True if these are paginated results.
    */
-  storeEvents: function (room, events, token, toStart) {},
+  storeEvents(room, events, token, toStart) {}
 
   /**
    * Store a filter.
-   * @param {Filter} filter
    */
-  storeFilter: function (filter) {},
+  storeFilter(filter) {}
 
   /**
    * Retrieve a filter.
-   * @param {string} userId
-   * @param {string} filterId
-   * @return {?Filter} A filter or null.
+   * @returns A filter or null.
    */
-  getFilter: function (userId, filterId) {
+  getFilter(userId, filterId) {
     return null;
-  },
+  }
 
   /**
    * Retrieve a filter ID with the given name.
-   * @param {string} filterName The filter name.
-   * @return {?string} The filter ID or null.
+   * @param filterName - The filter name.
+   * @returns The filter ID or null.
    */
-  getFilterIdByName: function (filterName) {
+  getFilterIdByName(filterName) {
     return null;
-  },
+  }
 
   /**
    * Set a filter name to ID mapping.
-   * @param {string} filterName
-   * @param {string} filterId
    */
-  setFilterIdByName: function (filterName, filterId) {},
+  setFilterIdByName(filterName, filterId) {}
 
   /**
    * Store user-scoped account data events
-   * @param {Array<MatrixEvent>} events The events to store.
+   * @param events - The events to store.
    */
-  storeAccountDataEvents: function (events) {},
+  storeAccountDataEvents(events) {}
 
   /**
    * Get account data event by event type
-   * @param {string} eventType The event type being queried
+   * @param eventType - The event type being queried
    */
-  getAccountData: function (eventType) {},
+  getAccountData(eventType) {
+    return undefined;
+  }
 
   /**
    * setSyncData does nothing as there is no backing data store.
    *
-   * @param {Object} syncData The sync data
-   * @return {Promise} An immediately resolved promise.
+   * @param syncData - The sync data
+   * @returns An immediately resolved promise.
    */
-  setSyncData: function (syncData) {
+  setSyncData(syncData) {
     return Promise.resolve();
-  },
+  }
 
   /**
-   * We never want to save becase we have nothing to save to.
+   * We never want to save because we have nothing to save to.
    *
-   * @return {boolean} If the store wants to save
+   * @returns If the store wants to save
    */
-  wantsSave: function () {
+  wantsSave() {
     return false;
-  },
+  }
 
   /**
    * Save does nothing as there is no backing data store.
    */
-  save: function () {},
+  save() {
+    return Promise.resolve();
+  }
 
   /**
    * Startup does nothing.
-   * @return {Promise} An immediately resolved promise.
+   * @returns An immediately resolved promise.
    */
-  startup: function () {
+  startup() {
     return Promise.resolve();
-  },
+  }
 
   /**
-   * @return {Promise} Resolves with a sync response to restore the
+   * @returns Promise which resolves with a sync response to restore the
    * client state to where it was at the last save, or null if there
    * is no saved sync data.
    */
-  getSavedSync: function () {
+  getSavedSync() {
     return Promise.resolve(null);
-  },
+  }
 
   /**
-   * @return {Promise} If there is a saved sync, the nextBatch token
+   * @returns If there is a saved sync, the nextBatch token
    * for this sync, otherwise null.
    */
-  getSavedSyncToken: function () {
+  getSavedSyncToken() {
     return Promise.resolve(null);
-  },
+  }
 
   /**
    * Delete all data from this store. Does nothing since this store
    * doesn't store anything.
-   * @return {Promise} An immediately resolved promise.
+   * @returns An immediately resolved promise.
    */
-  deleteAllData: function () {
-    return Promise.resolve();
-  },
-  getOutOfBandMembers: function () {
-    return Promise.resolve(null);
-  },
-  setOutOfBandMembers: function () {
-    return Promise.resolve();
-  },
-  clearOutOfBandMembers: function () {
-    return Promise.resolve();
-  },
-  getClientOptions: function () {
-    return Promise.resolve();
-  },
-  storeClientOptions: function () {
+  deleteAllData() {
     return Promise.resolve();
   }
-};
+  getOutOfBandMembers() {
+    return Promise.resolve(null);
+  }
+  setOutOfBandMembers(roomId, membershipEvents) {
+    return Promise.resolve();
+  }
+  clearOutOfBandMembers() {
+    return Promise.resolve();
+  }
+  getClientOptions() {
+    return Promise.resolve(undefined);
+  }
+  storeClientOptions(options) {
+    return Promise.resolve();
+  }
+  async getPendingEvents(roomId) {
+    return [];
+  }
+  setPendingEvents(roomId, events) {
+    return Promise.resolve();
+  }
+  async saveToDeviceBatches(batch) {
+    return Promise.resolve();
+  }
+  getOldestToDeviceBatch() {
+    return Promise.resolve(null);
+  }
+  async removeToDeviceBatch(id) {
+    return Promise.resolve();
+  }
+  async destroy() {
+    // Nothing to do
+  }
+}
+exports.StubStore = StubStore;

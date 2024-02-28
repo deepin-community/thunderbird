@@ -24,8 +24,6 @@
 <!ENTITY moveToNewWindow.accesskey "F">
 <!ENTITY newVirtualFolderCmd.label "Virtuel mappe…">
 <!ENTITY newVirtualFolderCmd.accesskey "t">
-<!ENTITY newOtherAccountsCmd.label "Andre konti…">
-<!ENTITY newOtherAccountsCmd.accesskey "i">
 <!ENTITY newCreateEmailAccountCmd.label "Ny mailkonto…">
 <!ENTITY newCreateEmailAccountCmd.accesskey "N">
 <!ENTITY newExistingEmailAccountCmd.label "Eksisterende mailkonto…">
@@ -48,8 +46,6 @@
 <!ENTITY openMessageFileCmd.accesskey "g">
 <!ENTITY saveAsMenu.label "Gem som">
 <!ENTITY saveAsMenu.accesskey "m">
-<!ENTITY saveAsFileCmd.label "Fil">
-<!ENTITY saveAsFileCmd.accesskey "F">
 <!ENTITY saveAsFileCmd.key "s">
 <!ENTITY saveAsTemplateCmd.label "Skabelon">
 <!ENTITY saveAsTemplateCmd.accesskey "S">
@@ -320,7 +316,6 @@
 <!ENTITY goBackCmd.commandKey "[">
 <!ENTITY goChatCmd.label "Chat">
 <!ENTITY goChatCmd.accesskey "c">
-<!ENTITY goChatCmd2.key "H">
 <!ENTITY prevStarredMsgCmd.label "Stjernemarkerede meddelelse">
 <!ENTITY prevStarredMsgCmd.accesskey "S">
 <!ENTITY folderMenu.label "Mappe">
@@ -677,7 +672,7 @@
 <!ENTITY saveAsVirtualFolderMenu.label "Gem som virtuel mappe…">
 
 <!-- Thread Pane -->
-<!ENTITY selectColumn.label "Marker meddelelser">
+<!ENTITY selectColumn.label "Vælg meddelelser">
 <!ENTITY threadColumn.label "Tråd">
 <!ENTITY fromColumn.label "Fra">
 <!ENTITY recipientColumn.label "Til">

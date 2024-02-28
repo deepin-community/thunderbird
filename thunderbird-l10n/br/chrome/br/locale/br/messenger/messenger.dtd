@@ -24,8 +24,6 @@
 <!ENTITY moveToNewWindow.accesskey "D">
 <!ENTITY newVirtualFolderCmd.label "Enrollañ disoc'h ar c'hlask">
 <!ENTITY newVirtualFolderCmd.accesskey "s">
-<!ENTITY newOtherAccountsCmd.label "Kontoù all…">
-<!ENTITY newOtherAccountsCmd.accesskey "o">
 <!ENTITY newCreateEmailAccountCmd.label "Kaout ur gont postel nevez…">
 <!ENTITY newCreateEmailAccountCmd.accesskey "K">
 <!ENTITY newExistingEmailAccountCmd.label "Ur gont postel zo anezhi endeo…">
@@ -46,8 +44,6 @@
 <!ENTITY openMessageFileCmd.accesskey "o">
 <!ENTITY saveAsMenu.label "Enrollañ evel">
 <!ENTITY saveAsMenu.accesskey "E">
-<!ENTITY saveAsFileCmd.label "Restr">
-<!ENTITY saveAsFileCmd.accesskey "R">
 <!ENTITY saveAsFileCmd.key "s">
 <!ENTITY saveAsTemplateCmd.label "Patrom">
 <!ENTITY saveAsTemplateCmd.accesskey "P">
@@ -101,6 +97,8 @@
 <!ENTITY deleteFolderCmd.accesskey "D">
 <!ENTITY unsubscribeNewsgroupCmd.label "Digoumanantiñ">
 <!ENTITY unsubscribeNewsgroupCmd.accesskey "n">
+
+<!-- Edit Menu -->
 <!ENTITY selectMenu.label "Diuzañ">
 <!ENTITY selectMenu.accesskey "D">
 <!ENTITY all.label "Pep tra">
@@ -184,7 +182,7 @@
 <!ENTITY sortBySizeCmd.accesskey "M">
 <!ENTITY sortByStatusCmd.label "Stad">
 <!ENTITY sortByStatusCmd.accesskey "S">
-<!ENTITY sortByTagsCmd.label "Gerioù Alc'hwez">
+<!ENTITY sortByTagsCmd.label "Merkoù">
 <!ENTITY sortByTagsCmd.accesskey "G">
 <!ENTITY sortByJunkStatusCmd.label "Stad lastez">
 <!ENTITY sortByJunkStatusCmd.accesskey "S">
@@ -316,7 +314,6 @@
 <!ENTITY goBackCmd.commandKey "[">
 <!ENTITY goChatCmd.label "Postelerezh prim">
 <!ENTITY goChatCmd.accesskey "P">
-<!ENTITY goChatCmd2.key "H">
 <!ENTITY prevStarredMsgCmd.label "Kemennadenn gant ur steredenn">
 <!ENTITY prevStarredMsgCmd.accesskey "s">
 <!ENTITY folderMenu.label "Teuliad">
@@ -510,7 +507,7 @@
 
 <!-- Mail Toolbar -->
 <!ENTITY getMsgButton1.label "Kerc'hat ar c'hemennadennoù ">
-<!ENTITY newMsgButton.label "Skridaozañ">
+<!ENTITY newMsgButton.label "Skrivañ">
 <!ENTITY replyButton.label "Respont">
 <!ENTITY replyAllButton.label "Respont d'an holl">
 <!ENTITY replyListButton.label "Respont d'ar roll">
@@ -598,7 +595,7 @@
 <!ENTITY appmenuEditMenu.label "Embann">
 <!ENTITY appmenuToolbarLayout.label "Aozadur ar varrenn ostilhoù…">
 <!ENTITY appmenuSelectThread.label "Diuzañ an neudenn">
-<!ENTITY appmenuSelectFlagged.label "Diuzañ ar c'hemennadennoù steredek">
+<!ENTITY appmenuSelectFlagged.label "Diuzañ ar c’hemennadennoù gant ur steredenn">
 
 <!-- Tags Menu Popup -->
 <!ENTITY addNewTag.label "Merk nevez…">
@@ -938,11 +935,12 @@
 
 <!-- Content tab Navigation buttons -->
 
-
 <!ENTITY openMenuCmd.label "Open">
 <!ENTITY openMenuCmd.accesskey "O">
 <!ENTITY glodaSearchCmd.label "Global Search…">
 <!ENTITY glodaSearchCmd.accesskey "G">
+<!ENTITY exportCmd.label "Export…">
+<!ENTITY exportCmd.accesskey "x">
 <!ENTITY deleteColumn.label "Delete">
 <!ENTITY selectColumn.tooltip "Toggle select all messages">
 <!ENTITY deleteColumn.tooltip "Delete a message">

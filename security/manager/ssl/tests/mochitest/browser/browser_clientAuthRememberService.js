@@ -5,7 +5,8 @@
 
 /**
  * Test certificate (i.e. build/pgo/certs/mochitest.client).
- * @type nsIX509Cert
+ *
+ * @type {nsIX509Cert}
  */
 var cert;
 var cert2;
@@ -18,8 +19,8 @@ var certDB = Cc["@mozilla.org/security/x509certdb;1"].getService(
 
 var deleted = false;
 
-const { MockRegistrar } = ChromeUtils.import(
-  "resource://testing-common/MockRegistrar.jsm"
+const { MockRegistrar } = ChromeUtils.importESModule(
+  "resource://testing-common/MockRegistrar.sys.mjs"
 );
 
 function findCertByCommonName(commonName) {
@@ -38,7 +39,7 @@ async function testHelper(connectURL, expectedURL) {
     set: [["security.default_personal_cert", "Ask Every Time"]],
   });
 
-  BrowserTestUtils.loadURI(win.gBrowser.selectedBrowser, connectURL);
+  BrowserTestUtils.loadURIString(win.gBrowser.selectedBrowser, connectURL);
 
   await BrowserTestUtils.browserLoaded(
     win.gBrowser.selectedBrowser,
@@ -104,6 +105,19 @@ const gClientAuthRememberService = {
         dbKey: cert3.dbKey,
         entryKey: "exampleKey3",
       },
+      {
+        asciiHost: "unavailable.example.com",
+        // This dbKey should not correspond to any real certificate. The first
+        // 8 bytes have to be 0, followed by the lengths of the serial number
+        // and issuer distinguished name, respectively, and then followed by
+        // the bytes of the serial number and finally the encoded issuer
+        // distinguished name. In this case, the serial number is a single 0
+        // byte and the issuer distinguished name is a DER SEQUENCE of length 0
+        // (the bytes 0x30 and 0).
+        // See also the documentation in nsNSSCertificateDB::FindCertByDBKey.
+        dbKey: "AAAAAAAAAAAAAAABAAAAAgAeAA==",
+        entryKey: "exampleKey4",
+      },
     ];
   },
 
@@ -160,8 +174,8 @@ add_task(async function testRememberedDecisionsUI() {
 
   Assert.equal(
     listItems.length,
-    3,
-    "Expected rememberedList to only have one item"
+    4,
+    "rememberedList has expected number of items"
   );
 
   let labels = win.document
@@ -170,37 +184,63 @@ add_task(async function testRememberedDecisionsUI() {
 
   Assert.equal(
     labels.length,
-    9,
-    "Expected the rememberedList to have three labels"
+    12,
+    "rememberedList has expected number of labels"
   );
 
-  let expectedHosts = ["example.com", "example.org", "example.test"];
-  let hosts = [labels[0].value, labels[3].value, labels[6].value];
-  let expectedNames = [cert.commonName, cert2.commonName, cert3.commonName];
-  let names = [labels[1].value, labels[4].value, labels[7].value];
+  await BrowserTestUtils.waitForCondition(
+    () => !!labels[10].textContent.length,
+    "Localized label is populated"
+  );
+
+  let expectedHosts = [
+    "example.com",
+    "example.org",
+    "example.test",
+    "unavailable.example.com",
+  ];
+  let hosts = [
+    labels[0].value,
+    labels[3].value,
+    labels[6].value,
+    labels[9].value,
+  ];
+  let expectedNames = [
+    cert.commonName,
+    cert2.commonName,
+    cert3.commonName,
+    "(Unavailable)",
+  ];
+  let names = [
+    labels[1].value,
+    labels[4].value,
+    labels[7].value,
+    labels[10].textContent,
+  ];
   let expectedSerialNumbers = [
     cert.serialNumber,
     cert2.serialNumber,
     cert3.serialNumber,
+    "(Unavailable)",
   ];
-  let serialNumbers = [labels[2].value, labels[5].value, labels[8].value];
+  let serialNumbers = [
+    labels[2].value,
+    labels[5].value,
+    labels[8].value,
+    labels[11].textContent,
+  ];
 
-  for (let i = 0; i < 3; i++) {
-    Assert.equal(hosts[i], expectedHosts[i], "Expected host to be asciiHost");
-    Assert.equal(
-      names[i],
-      expectedNames[i],
-      "Expected name to be the commonName of the cert"
-    );
+  for (let i = 0; i < listItems.length; i++) {
+    Assert.equal(hosts[i], expectedHosts[i], "got expected asciiHost");
+    Assert.equal(names[i], expectedNames[i], "got expected commonName");
     Assert.equal(
       serialNumbers[i],
       expectedSerialNumbers[i],
-      "Expected serialNumber to be the serialNumber of the cert"
+      "got expected serialNumber"
     );
   }
 
   win.document.getElementById("rememberedList").selectedIndex = 1;
-
   win.document.getElementById("remembered_deleteButton").click();
 
   Assert.ok(deleted, "Expected forgetRememberedDecision() to get called");
@@ -235,7 +275,7 @@ add_task(async function testDeletingRememberedDecisions() {
   await openRequireClientCert2();
   Assert.ok(
     gClientAuthDialogs.chooseCertificateCalled,
-    "chooseCertificate should have been called if visiting'requireclientcert-2.example.com' for the first time"
+    "chooseCertificate should have been called if visiting 'requireclientcert-2.example.com' for the first time"
   );
 
   let originAttributes = { privateBrowsingId: 0 };

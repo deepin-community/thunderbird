@@ -25,7 +25,7 @@ account-setup-name-input =
 account-setup-name-info-icon =
     .title = Ваше имя, как оно отображается у других
 account-setup-name-warning-icon =
-    .title = { account-setup-name-warning }
+    .title = Пожалуйста, введите своё имя
 account-setup-email-label = Адрес электронной почты
     .accesskey = е
 account-setup-email-input =
@@ -33,14 +33,14 @@ account-setup-email-input =
 account-setup-email-info-icon =
     .title = Имеющаяся у вас учётная запись электронной почты
 account-setup-email-warning-icon =
-    .title = { account-setup-email-warning }
+    .title = Некорректный адрес эл. почты
 account-setup-password-label = Пароль
     .accesskey = а
     .title = Необязательно, будет использоваться только для проверки имени пользователя
 account-provisioner-button = Получить новый адрес электронной почты
     .accesskey = ч
-account-setup-password-toggle =
-    .title = Показать/скрыть пароль
+account-setup-password-toggle-show =
+    .title = Показать пароль открытым текстом
 account-setup-password-toggle-hide =
     .title = Скрыть пароль
 account-setup-remember-password = Запомнить пароль
@@ -125,21 +125,14 @@ account-setup-results-area-title =
         [few] Доступные конфигурации
        *[many] Доступные конфигурации
     }
-# Note: IMAP is the name of a protocol.
-account-setup-result-imap = IMAP
 account-setup-result-imap-description = Синхронизирует ваши папки и электронную почту на вашем сервере
-# Note: POP3 is the name of a protocol.
-account-setup-result-pop = POP3
 account-setup-result-pop-description = Хранит ваши папки и электронную почту на вашем компьютере
-# Note: Exchange is the name of a product.
-account-setup-result-exchange = Exchange
 # Note: Exchange, Office365 are the name of products.
 account-setup-result-exchange2-description = Использует сервер Microsoft Exchange или облачные службы Office365
 account-setup-incoming-title = Для получения
 account-setup-outgoing-title = Для отправки
 account-setup-username-title = Имя пользователя
 account-setup-exchange-title = Сервер
-account-setup-result-smtp = SMTP
 account-setup-result-no-encryption = Без шифрования
 account-setup-result-ssl = SSL/TLS
 account-setup-result-starttls = STARTTLS
@@ -156,15 +149,13 @@ account-setup-credentials-incomplete = Ошибка аутентификации
 account-setup-credentials-wrong = Ошибка аутентификации. Пожалуйста, проверьте имя пользователя и пароль
 account-setup-find-settings-failed = { -brand-short-name } не удалось найти настройки для вашей учетной записи почты
 account-setup-exchange-config-unverifiable = Конфигурация не может быть проверена. Если ваше имя пользователя и пароль верны, вероятно, администратор сервера отключил выбранную конфигурацию для вашей учетной записи. Попробуйте выбрать другой протокол.
+account-setup-provisioner-error = При настройке новой учётной записи в { -brand-short-name } произошла ошибка. Пожалуйста, попробуйте вручную настроить учётную запись с вашими учётными данными.
 
 ## Manual configuration area
 
 account-setup-manual-config-title = Параметры сервера
 account-setup-incoming-server-legend = Cервер входящей почты
 account-setup-protocol-label = Протокол:
-protocol-imap-option = { account-setup-result-imap }
-protocol-pop-option = { account-setup-result-pop }
-protocol-exchange-option = { account-setup-result-exchange }
 account-setup-hostname-label = Имя сервера:
 account-setup-port-label = Порт:
     .title = Установите номер порта в 0 для автоопределения
@@ -214,6 +205,14 @@ exchange-dialog-cancel-button = Отмена
 
 ## Dismiss account creation dialog
 
+exit-dialog-title = Ни одна учётная запись электронной почты не настроена
+exit-dialog-description = Вы уверены, что хотите отменить процесс настройки? { -brand-short-name } может быть использован без учётной записи электронной почты, но многие функции будут недоступны.
+account-setup-no-account-checkbox = Использовать { -brand-short-name } без учётной записи электронной почты
+    .accesskey = е
+exit-dialog-cancel-button = Продолжить настройку
+    .accesskey = ж
+exit-dialog-confirm-button = Выйти из настройки
+    .accesskey = ы
 
 ## Alert dialogs
 
@@ -283,6 +282,8 @@ account-setup-calendar-name-input =
 account-setup-calendar-color-label = Цвет
 account-setup-calendar-refresh-label = Обновлять
 account-setup-calendar-refresh-manual = Вручную
+# Variables:
+# $count (Number) - Number of minutes in the calendar refresh interval.
 account-setup-calendar-refresh-interval =
     { $count ->
         [one] Каждую { $count } минуту

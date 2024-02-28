@@ -2,6 +2,10 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at <http://mozilla.org/MPL/2.0/>. */
 
+"use strict";
+
+/* global __dirname */
+
 const sharedJestConfig = require(`${__dirname}/../shared/test-helpers/shared-jest.config`);
 
 const { resolve } = require("path");
@@ -10,6 +14,7 @@ module.exports = {
   rootDir,
   displayName: "test",
   testURL: "http://localhost/",
+  testEnvironment: "jsdom",
   testPathIgnorePatterns: [
     "/node_modules/",
     "/helpers/",
@@ -17,7 +22,6 @@ module.exports = {
     "src/test/mochitest/examples/",
     "<rootDir>/firefox",
     "package.json",
-    "<rootDir>/packages",
   ],
   modulePathIgnorePatterns: ["test/mochitest"],
   collectCoverageFrom: [
@@ -32,7 +36,7 @@ module.exports = {
     "\\.[jt]sx?$": "babel-jest",
   },
   transformIgnorePatterns: ["node_modules/(?!(devtools-|react-aria-))"],
-  setupTestFrameworkScriptFile: "<rootDir>/src/test/tests-setup.js",
+  setupFilesAfterEnv: ["<rootDir>/src/test/tests-setup.js"],
   setupFiles: ["<rootDir>/src/test/shim.js", "jest-localstorage-mock"],
   snapshotSerializers: [
     "jest-serializer-babel-ast",
@@ -40,7 +44,7 @@ module.exports = {
   ],
   moduleNameMapper: {
     ...sharedJestConfig.moduleNameMapper,
-    "\\.css$": "<rootDir>/src/test/__mocks__/styleMock.js",
-    "\\.svg$": "<rootDir>/src/test/__mocks__/svgMock.js",
+    "\\.css$": "<rootDir>/../shared/test-helpers/jest-fixtures/empty-module",
+    "\\.svg$": "<rootDir>/../shared/test-helpers/jest-fixtures/svgMock.js",
   },
 };

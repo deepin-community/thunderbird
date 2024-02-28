@@ -12,18 +12,14 @@
 
 const EXPORTED_SYMBOLS = ["migrateMailnews"];
 
-const { XPCOMUtils } = ChromeUtils.import(
-  "resource://gre/modules/XPCOMUtils.jsm"
-);
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-var { MailServices } = ChromeUtils.import(
+const { MailServices } = ChromeUtils.import(
   "resource:///modules/MailServices.jsm"
 );
-XPCOMUtils.defineLazyServiceGetter(
-  this,
-  "uuidGen",
-  "@mozilla.org/uuid-generator;1",
-  "nsIUUIDGenerator"
+const lazy = {};
+ChromeUtils.defineModuleGetter(
+  lazy,
+  "migrateServerUris",
+  "resource:///modules/MsgIncomingServer.jsm"
 );
 
 var kServerPrefVersion = 1;
@@ -31,22 +27,19 @@ var kSmtpPrefVersion = 1;
 var kABRemoteContentPrefVersion = 1;
 
 function migrateMailnews() {
-  try {
-    MigrateProfileClientid();
-  } catch (e) {
-    console.error(e);
-  }
+  let migrations = [
+    migrateProfileClientid,
+    migrateServerAuthPref,
+    migrateServerAndUserName,
+    migrateABRemoteContentSettings,
+  ];
 
-  try {
-    MigrateServerAuthPref();
-  } catch (e) {
-    console.error(e);
-  }
-
-  try {
-    MigrateABRemoteContentSettings();
-  } catch (e) {
-    console.error(e);
+  for (let fn of migrations) {
+    try {
+      fn();
+    } catch (e) {
+      console.error(e);
+    }
   }
 }
 
@@ -54,7 +47,7 @@ function migrateMailnews() {
  * Creates the server specific 'CLIENTID' prefs and tries to pair up any imap
  * services with smtp services which are using the same username and hostname.
  */
-function MigrateProfileClientid() {
+function migrateProfileClientid() {
   // Comma-separated list of all account ids.
   let accounts = Services.prefs.getCharPref("mail.accountmanager.accounts", "");
   // Comma-separated list of all smtp servers.
@@ -82,7 +75,7 @@ function MigrateProfileClientid() {
         !Services.prefs.getCharPref(server + "clientid", "")
       ) {
         // Always give outgoing servers a new unique CLIENTID.
-        let newClientid = uuidGen
+        let newClientid = Services.uuid
           .generateUUID()
           .toString()
           .replace(/[{}]/g, "");
@@ -142,7 +135,7 @@ function MigrateProfileClientid() {
       }
       if (!clientidCache.has(combinedKey)) {
         // Generate a new CLIENTID if no matches were found from smtp servers.
-        let newClientid = uuidGen
+        let newClientid = Services.uuid
           .generateUUID()
           .toString()
           .replace(/[{}]/g, "");
@@ -162,7 +155,7 @@ function MigrateProfileClientid() {
 /**
  * Migrates from pref useSecAuth to pref authMethod
  */
-function MigrateServerAuthPref() {
+function migrateServerAuthPref() {
   // comma-separated list of all accounts.
   var accounts = Services.prefs
     .getCharPref("mail.accountmanager.accounts")
@@ -258,18 +251,68 @@ function MigrateServerAuthPref() {
 }
 
 /**
+ * For each mail.server.key. branch,
+ *   - migrate realhostname to hostname
+ *   - migrate realuserName to userName
+ */
+function migrateServerAndUserName() {
+  let branch = Services.prefs.getBranch("mail.server.");
+
+  // Collect all the server keys.
+  let keySet = new Set();
+  for (let name of branch.getChildList("")) {
+    keySet.add(name.split(".")[0]);
+  }
+  keySet.delete("default");
+
+  for (let key of keySet) {
+    let type = branch.getCharPref(`${key}.type`, "");
+    let hostname = branch.getCharPref(`${key}.hostname`, "");
+    let username = branch.getCharPref(`${key}.userName`, "");
+    let realHostname = branch.getCharPref(`${key}.realhostname`, "");
+    if (realHostname) {
+      branch.setCharPref(`${key}.hostname`, realHostname);
+      branch.clearUserPref(`${key}.realhostname`);
+    }
+    let realUsername = branch.getCharPref(`${key}.realuserName`, "");
+    if (realUsername) {
+      branch.setCharPref(`${key}.userName`, realUsername);
+      branch.clearUserPref(`${key}.realuserName`);
+    }
+    // Previously, when hostname/username changed, LoginManager and many prefs
+    // still contain the old hostname/username, try to migrate them to use the
+    // new hostname/username.
+    if (
+      ["imap", "pop3", "nntp"].includes(type) &&
+      (realHostname || realUsername)
+    ) {
+      let localStoreType = { imap: "imap", pop3: "mailbox", nntp: "news" }[
+        type
+      ];
+      lazy.migrateServerUris(
+        localStoreType,
+        hostname,
+        username,
+        realHostname || hostname,
+        realUsername || username
+      );
+    }
+  }
+}
+
+/**
  * The address book used to contain information about whether to allow remote
  * content for a given contact. Now we use the permission manager for that.
  * Do a one-time migration for it.
  */
-function MigrateABRemoteContentSettings() {
+function migrateABRemoteContentSettings() {
   if (Services.prefs.prefHasUserValue("mail.ab_remote_content.migrated")) {
     return;
   }
 
   // Search through all of our local address books looking for a match.
   for (let addrbook of MailServices.ab.directories) {
-    let migrateAddress = function(aEmail) {
+    let migrateAddress = function (aEmail) {
       let uri = Services.io.newURI(
         "chrome://messenger/content/email=" + aEmail
       );
@@ -293,12 +336,8 @@ function MigrateABRemoteContentSettings() {
           continue;
         }
 
-        if (card.primaryEmail) {
-          migrateAddress(card.primaryEmail);
-        }
-
-        if (card.getProperty("SecondEmail", "")) {
-          migrateAddress(card.getProperty("SecondEmail", ""));
+        for (let emailAddress of card.emailAddresses) {
+          migrateAddress(emailAddress);
         }
       }
     } catch (e) {

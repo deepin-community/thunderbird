@@ -14,15 +14,9 @@ connection-dns-over-https-url-custom =
     .accesskey = M
     .tooltiptext = Kirjoita ensisijainen osoite nimipalvelukyselyjen tekemiseksi HTTPS:n yli
 connection-dns-over-https-custom-label = Mukautettu
-connection-dialog-window =
+connection-dialog-window2 =
     .title = Yhteysasetukset
-    .style =
-        { PLATFORM() ->
-            [macos] width: 44em !important
-           *[other] width: 49em !important
-        }
-connection-disable-extension =
-    .label = Poista laajennus käytöstä
+connection-dialog-title = Yhteysasetukset
 disable-extension-button = Poista laajennus käytöstä
 # Variables:
 #   $name (String) - The extension that is controlling the proxy settings.

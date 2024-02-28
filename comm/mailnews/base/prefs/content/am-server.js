@@ -1,12 +1,10 @@
-/* -*- Mode: Java; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*-
- * This Source Code Form is subject to the terms of the Mozilla Public
+/* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 /* import-globals-from am-prefs.js */
 /* import-globals-from amUtils.js */
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 var { MailUtils } = ChromeUtils.import("resource:///modules/MailUtils.jsm");
 
 var gServer;
@@ -14,7 +12,8 @@ var gOriginalStoreType;
 
 /**
  * Called when the store type menu is clicked.
- * @param {Object} aStoreTypeElement - store type menu list element.
+ *
+ * @param {object} aStoreTypeElement - store type menu list element.
  */
 function clickStoreTypeMenu(aStoreTypeElement) {
   if (aStoreTypeElement.value == gOriginalStoreType) {
@@ -41,7 +40,8 @@ function clickStoreTypeMenu(aStoreTypeElement) {
  * Revert store type to the original store type if converter modal closes
  * before migration is complete, otherwise change original store type to
  * currently selected store type.
- * @param {Object} aResponse - response from migration dialog modal.
+ *
+ * @param {object} aResponse - response from migration dialog modal.
  */
 function changeStoreType(aResponse) {
   if (aResponse.newRootFolder) {
@@ -59,15 +59,15 @@ function changeStoreType(aResponse) {
     }
 
     document.getElementById("server.localPath").value = aResponse.newRootFolder;
-    gOriginalStoreType = document.getElementById("server.storeTypeMenulist")
-      .value;
+    gOriginalStoreType = document.getElementById(
+      "server.storeTypeMenulist"
+    ).value;
     MailUtils.restartApplication();
   } else {
     // The conversion failed or was cancelled.
     // Restore selected item to what was selected before conversion.
-    document.getElementById(
-      "server.storeTypeMenulist"
-    ).value = gOriginalStoreType;
+    document.getElementById("server.storeTypeMenulist").value =
+      gOriginalStoreType;
   }
 }
 
@@ -136,15 +136,6 @@ function onPreInit(account, accountValues) {
   hideShowControls(type);
 
   gServer = account.incomingServer;
-
-  if (!account.incomingServer.canEmptyTrashOnExit) {
-    document
-      .getElementById("server.emptyTrashOnExit")
-      .setAttribute("hidden", "true");
-    document
-      .getElementById("imap.deleteModel.box")
-      .setAttribute("hidden", "true");
-  }
 }
 
 function initServerType() {
@@ -247,7 +238,7 @@ function onAdvanced() {
       .getAttribute("value");
   }
 
-  let onCloseAdvanced = function() {
+  let onCloseAdvanced = function () {
     if (serverType == "imap") {
       document.getElementById("imap.dualUseFolders").checked =
         serverSettings.dualUseFolders;
@@ -325,7 +316,7 @@ function onAdvanced() {
             accountValues,
             "server",
             "spamActionTargetFolder",
-            "string",
+            "wstring",
             true
           );
           let moveOnSpam = parent.getAccountValue(
@@ -338,25 +329,22 @@ function onAdvanced() {
           );
 
           // Check if there are any invalid junk targets and fix them.
-          [
-            spamActionTargetAccount,
-            spamActionTargetFolder,
-            moveOnSpam,
-          ] = sanitizeJunkTargets(
-            spamActionTargetAccount,
-            spamActionTargetFolder,
-            deferredURI || account.incomingServer.serverURI,
-            parent.getAccountValue(
-              account,
-              accountValues,
-              "server",
-              "moveTargetMode",
-              "int",
-              true
-            ),
-            account.incomingServer.spamSettings,
-            moveOnSpam
-          );
+          [spamActionTargetAccount, spamActionTargetFolder, moveOnSpam] =
+            sanitizeJunkTargets(
+              spamActionTargetAccount,
+              spamActionTargetFolder,
+              deferredURI || account.incomingServer.serverURI,
+              parent.getAccountValue(
+                account,
+                accountValues,
+                "server",
+                "moveTargetMode",
+                "int",
+                true
+              ),
+              account.incomingServer.spamSettings,
+              moveOnSpam
+            );
 
           parent.setAccountValue(
             accountValues,

@@ -14,22 +14,12 @@
 }
 
 #tabs-toolbar {
-  appearance: none;
-  padding: 0;
-}
-
-#tabs-toolbar {
   -moz-window-dragging: drag;
+  padding-block-end: 0;
 }
 
 #tabs-toolbar:not(:-moz-lwtheme) {
-  appearance: none;
   color: -moz-menubartext;
-}
-
-:root[tabsintitlebar][sizemode=normal] #mail-toolbar-menubar2[autohide=true] ~
-  #tabs-toolbar > #tabbar-toolbar {
-  margin-inline-start: 40px;
 }
 
 #tabpanelcontainer:-moz-lwtheme {
@@ -45,30 +35,14 @@ tabpanels {
  * Tab
  */
 
-.tabmail-tab > .tab-stack > .tab-content > .tab-label-container {
+.tabmail-tab .tab-label-container {
   /* tabmail-tab focus ring */
   border: 1px dotted transparent;
   margin: -1px !important; /* let the border not consume any space, like outline */
 }
 
-.tabmail-tab[selected]:focus > .tab-stack > .tab-content > .tab-label-container {
+.tabmail-tab[selected]:focus .tab-label-container {
   border-color: -moz-DialogText;
-}
-
-@media (-moz-gtk-csd-reversed-placement: 0) {
-  #tabmail-arrowscrollbox[overflow="true"] > .tabmail-tab:first-child::before {
-    content: '';
-    display: -moz-box;
-    margin-inline-start: 0;
-  }
-}
-
-@media (-moz-gtk-csd-reversed-placement) {
-  :root[tabsintitlebar] .tabmail-tab:first-child::before {
-    content: '';
-    display: -moz-box;
-    margin-inline-start: 0;
-  }
 }
 
 /**

@@ -154,11 +154,11 @@ Var ArchToInstall
 ; This might not be enough when installing on a slow network drive so it will
 ; fallback to downloading the full installer if it reaches this number.
 
-; Approximately 150 seconds with a 100 millisecond timer.
-!define InstallCleanTotalSteps 1500
+; Approximately 200 seconds with a 100 millisecond timer.
+!define InstallCleanTotalSteps 2000
 
-; Approximately 165 seconds with a 100 millisecond timer.
-!define InstallPaveOverTotalSteps 1650
+; Approximately 215 seconds with a 100 millisecond timer.
+!define InstallPaveOverTotalSteps 2150
 
 ; Blurb duty cycle
 !define BlurbDisplayMS 19500
@@ -244,6 +244,7 @@ Var ArchToInstall
 !include "common.nsh"
 
 !insertmacro CopyPostSigningData
+!insertmacro CopyProvenanceData
 !insertmacro ElevateUAC
 !insertmacro GetLongPath
 !insertmacro GetPathFromString
@@ -429,21 +430,13 @@ Function .onInit
 
   SetShellVarContext all ; Set SHCTX to All Users
   ; If the user doesn't have write access to the installation directory set
-  ; the installation directory to a subdirectory of the All Users application
-  ; directory and if the user can't write to that location set the installation
-  ; directory to a subdirectory of the users local application directory
-  ; (e.g. non-roaming).
+  ; the installation directory to a subdirectory of the user's local
+  ; application directory (e.g. non-roaming).
   Call CanWrite
   ${If} "$CanWriteToInstallDir" == "false"
-    StrCpy $INSTDIR "$APPDATA\${BrandFullName}\"
+    ${GetLocalAppDataFolder} $0
+    StrCpy $INSTDIR "$0\${BrandFullName}\"
     Call CanWrite
-    ${If} "$CanWriteToInstallDir" == "false"
-      ; This should never happen but just in case.
-      StrCpy $CanWriteToInstallDir "false"
-    ${Else}
-      StrCpy $INSTDIR "$LOCALAPPDATA\${BrandFullName}\"
-      Call CanWrite
-    ${EndIf}
   ${EndIf}
 
   Call CheckSpace
@@ -692,7 +685,8 @@ Function createInstall
     StrCpy $ExistingBuildID "0"
   ${EndIf}
 
-  ${If} ${FileExists} "$LOCALAPPDATA\Mozilla\Firefox"
+  ${GetLocalAppDataFolder} $0
+  ${If} ${FileExists} "$0\Mozilla\Firefox"
     StrCpy $ExistingProfile "1"
   ${Else}
     StrCpy $ExistingProfile "0"
@@ -1290,6 +1284,8 @@ Function FinishInstall
 
   ${CopyPostSigningData}
   Pop $PostSigningData
+
+  ${CopyProvenanceData}
 
   Call LaunchApp
 FunctionEnd

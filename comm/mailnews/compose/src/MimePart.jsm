@@ -4,11 +4,16 @@
 
 const EXPORTED_SYMBOLS = ["MimePart", "MimeMultiPart"];
 
-let { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 let { jsmime } = ChromeUtils.import("resource:///modules/jsmime.jsm");
 let { MimeEncoder } = ChromeUtils.import("resource:///modules/MimeEncoder.jsm");
 let { MsgUtils } = ChromeUtils.import(
   "resource:///modules/MimeMessageUtils.jsm"
+);
+var { MailServices } = ChromeUtils.import(
+  "resource:///modules/MailServices.jsm"
+);
+var { MailStringUtils } = ChromeUtils.import(
+  "resource:///modules/MailStringUtils.jsm"
 );
 var { NetUtil } = ChromeUtils.import("resource://gre/modules/NetUtil.jsm");
 
@@ -70,6 +75,7 @@ class MimePart {
 
   /**
    * Set a header.
+   *
    * @param {string} name - The header name, e.g. "content-type".
    * @param {string} content - The header content, e.g. "text/plain".
    */
@@ -96,6 +102,7 @@ class MimePart {
 
   /**
    * Delete a header.
+   *
    * @param {string} name - The header name to delete, e.g. "content-type".
    */
   deleteHeader(name) {
@@ -104,6 +111,7 @@ class MimePart {
 
   /**
    * Set headers by an iterable.
+   *
    * @param {Iterable.<string, string>} entries - The header entries.
    */
   setHeaders(entries) {
@@ -114,6 +122,7 @@ class MimePart {
 
   /**
    * Set an attachment as body, with optional contentDisposition and contentId.
+   *
    * @param {nsIMsgAttachment} attachment - The attachment to use as body.
    * @param {string} [contentDisposition=attachment] - "attachment" or "inline".
    * @param {string} [contentId] - The url of an embedded object is cid:contentId.
@@ -130,6 +139,7 @@ class MimePart {
 
   /**
    * Add a child part.
+   *
    * @param {MimePart} part - A MimePart.
    */
   addPart(part) {
@@ -138,6 +148,7 @@ class MimePart {
 
   /**
    * Add child parts.
+   *
    * @param {MimePart[]} parts - An array of MimePart.
    */
   addParts(parts) {
@@ -147,6 +158,7 @@ class MimePart {
   /**
    * Pick an encoding according to _bodyText or _bodyAttachment content. Set
    * content-transfer-encoding header, then return the encoded value.
+   *
    * @returns {BinaryString}
    */
   async getEncodedBodyString() {
@@ -186,6 +198,7 @@ class MimePart {
 
   /**
    * Use jsmime to convert _headers to string.
+   *
    * @returns {string}
    */
   getHeaderString() {
@@ -200,12 +213,13 @@ class MimePart {
 
   /**
    * Fetch the attached message file to get its content.
+   *
    * @returns {string}
    */
   async _fetchMsgAttachment() {
-    let msgService = Cc["@mozilla.org/messenger;1"]
-      .createInstance(Ci.nsIMessenger)
-      .messageServiceFromURI(this._bodyAttachment.url);
+    let msgService = MailServices.messageServiceFromURI(
+      this._bodyAttachment.url
+    );
     return new Promise((resolve, reject) => {
       let streamListener = {
         _data: "",
@@ -248,6 +262,7 @@ class MimePart {
    * doesn't support url with embedded credentials (imap://name@server). As a
    * result, it's unreliable when having two mail accounts on the same IMAP
    * server.
+   *
    * @returns {string}
    */
   async _fetchAttachment() {
@@ -303,7 +318,9 @@ class MimePart {
         this._bodyAttachment.name
       );
     }
-    this._charset = MsgUtils.pickCharset(this._contentType, content);
+    this._charset = this._contentType.startsWith("text/")
+      ? MailStringUtils.detectCharset(content)
+      : "";
 
     let contentTypeParams = "";
     if (this._charset) {

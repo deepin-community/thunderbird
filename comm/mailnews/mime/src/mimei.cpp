@@ -76,6 +76,7 @@
 
 #include "nsIMsgMailNewsUrl.h"
 #include "nsIMsgHdr.h"
+#include "nsIMailChannel.h"
 
 using namespace mozilla;
 
@@ -338,7 +339,7 @@ void getMsgHdrForCurrentURL(MimeDisplayOptions* opts, nsIMsgDBHdr** aMsgHdr) {
         msgURI->GetUri(rdfURI);
         if (!rdfURI.IsEmpty()) {
           nsCOMPtr<nsIMsgDBHdr> msgHdr;
-          GetMsgDBHdrFromURI(rdfURI.get(), getter_AddRefs(msgHdr));
+          GetMsgDBHdrFromURI(rdfURI, getter_AddRefs(msgHdr));
           NS_IF_ADDREF(*aMsgHdr = msgHdr);
         }
       }
@@ -403,7 +404,7 @@ MimeObjectClass* mime_find_class(const char* content_type, MimeHeaders* hdrs,
     getMsgHdrForCurrentURL(opts, getter_AddRefs(msgHdr));
     if (msgHdr) {
       nsCString junkScoreStr;
-      (void)msgHdr->GetStringProperty("junkscore", getter_Copies(junkScoreStr));
+      (void)msgHdr->GetStringProperty("junkscore", junkScoreStr);
       if (html_as == 0 && junkScoreStr.get() && atoi(junkScoreStr.get()) > 50)
         html_as = 3;  // 3 == Simple HTML
     }                 // if msgHdr
@@ -428,11 +429,14 @@ MimeObjectClass* mime_find_class(const char* content_type, MimeHeaders* hdrs,
       if (full_content_type) {
         char* imip_method = MimeHeaders_get_parameter(
             full_content_type, "method", nullptr, nullptr);
-        nsCOMPtr<nsIMsgDBHdr> msgHdr;
-        getMsgHdrForCurrentURL(opts, getter_AddRefs(msgHdr));
-        if (msgHdr)
-          msgHdr->SetStringProperty("imip_method",
-                                    (imip_method) ? imip_method : "nomethod");
+
+        mime_stream_data* msd = (mime_stream_data*)(opts->stream_closure);
+        nsCOMPtr<nsIMailChannel> mailChannel = do_QueryInterface(msd->channel);
+        if (mailChannel) {
+          mailChannel->SetImipMethod(
+              nsCString(imip_method ? imip_method : "nomethod"));
+        }
+
         // PR_Free checks for null
         PR_Free(imip_method);
         PR_Free(full_content_type);
@@ -1528,7 +1532,7 @@ int MimeOptions_write(MimeHeaders* hdrs, MimeDisplayOptions* opt,
     if (opt->state->separator_suppressed_p)
       opt->state->separator_suppressed_p = false;
     else {
-      const char* sep = "<BR><FIELDSET CLASS=\"mimeAttachmentHeader\">";
+      const char* sep = "<BR><FIELDSET CLASS=\"moz-mime-attachment-header\">";
       int lstatus = opt->output_fn(sep, strlen(sep), closure);
       opt->state->separator_suppressed_p = false;
       if (lstatus < 0) return lstatus;
@@ -1538,7 +1542,7 @@ int MimeOptions_write(MimeHeaders* hdrs, MimeDisplayOptions* opt,
       MimeHeaders_convert_header_value(opt, name, false);
 
       if (!name.IsEmpty()) {
-        sep = "<LEGEND CLASS=\"mimeAttachmentHeaderName\">";
+        sep = "<LEGEND CLASS=\"moz-mime-attachment-header-name\">";
         lstatus = opt->output_fn(sep, strlen(sep), closure);
         opt->state->separator_suppressed_p = false;
         if (lstatus < 0) return lstatus;
@@ -1692,6 +1696,7 @@ char* mime_get_base_url(const char* url) {
   if (s && !strncmp(s, "?type=application/x-message-display",
                     sizeof("?type=application/x-message-display") - 1)) {
     const char* nextTerm = strchr(s, '&');
+    // strlen(s) cannot be zero, because it matches the above text
     s = nextTerm ? nextTerm : s + strlen(s) - 1;
   }
   // we need to keep the ?number part of the url, or we won't know

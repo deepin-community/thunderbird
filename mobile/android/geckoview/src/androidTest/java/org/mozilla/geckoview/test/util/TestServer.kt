@@ -13,7 +13,7 @@ import org.json.JSONObject
 import java.io.FileNotFoundException
 import java.math.BigInteger
 import java.security.MessageDigest
-import java.util.*
+import java.util.* // ktlint-disable no-wildcard-imports
 
 class TestServer {
     private val server = AsyncHttpServer()
@@ -37,7 +37,7 @@ class TestServer {
             obj.put("headers", headers)
 
             if (request.method == "POST") {
-                obj.put("data", request.body.get() as String)
+                obj.put("data", request.getBody())
             }
 
             response.send(obj)
@@ -49,7 +49,7 @@ class TestServer {
         server.get("/assets/.*") { request, response ->
             try {
                 val mimeType = MimeTypeMap.getSingleton()
-                        .getMimeTypeFromExtension(MimeTypeMap.getFileExtensionFromUrl(request.path))
+                    .getMimeTypeFromExtension(MimeTypeMap.getFileExtensionFromUrl(request.path))
                 val name = request.path.substring("/assets/".count())
                 val asset = assets.open(name).readBytes()
 
@@ -73,7 +73,7 @@ class TestServer {
         server.get("/redirect/.*") { request, response ->
             val count = request.path.split('/').last().toInt() - 1
             if (count > 0) {
-                response.redirect("/redirect/${count}")
+                response.redirect("/redirect/$count")
             }
 
             response.end()
@@ -122,7 +122,7 @@ class TestServer {
             val count = request.path.split("/").last().toInt()
 
             response.setContentType("application/octet-stream")
-            response.headers.set("Content-Length", "${count}")
+            response.headers.set("Content-Length", "$count")
             response.writeHead()
 
             val payload = byteArrayOf(1)
@@ -140,7 +140,7 @@ class TestServer {
 
             val count = 100
             response.setContentType("InstallException")
-            response.headers.set("Content-Length", "${count}")
+            response.headers.set("Content-Length", "$count")
             response.writeHead()
 
             val payload = byteArrayOf(1)
@@ -160,7 +160,7 @@ class TestServer {
 
     fun stop() {
         for (response in stallingResponses) {
-          response.end()
+            response.end()
         }
         server.stop()
     }

@@ -24,7 +24,7 @@ struct GPUImageCopyTexture;
 struct GPUImageDataLayout;
 struct TextureCopyView;
 struct TextureDataLayout;
-typedef RangeEnforcedUnsignedLongSequenceOrGPUExtent3DDict GPUExtent3D;
+using GPUExtent3D = RangeEnforcedUnsignedLongSequenceOrGPUExtent3DDict;
 }  // namespace dom
 namespace webgpu {
 
@@ -52,6 +52,11 @@ class Queue final : public ObjectBase, public ChildOf<Device> {
                     const dom::ArrayBufferViewOrArrayBuffer& aData,
                     const dom::GPUImageDataLayout& aDataLayout,
                     const dom::GPUExtent3D& aSize, ErrorResult& aRv);
+
+  void CopyExternalImageToTexture(
+      const dom::GPUImageCopyExternalImage& aSource,
+      const dom::GPUImageCopyTextureTagged& aDestination,
+      const dom::GPUExtent3D& aCopySize, ErrorResult& aRv);
 
  private:
   virtual ~Queue();

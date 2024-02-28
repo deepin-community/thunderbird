@@ -23,8 +23,7 @@
 
 class nsISocketTransport;
 
-namespace mozilla {
-namespace net {
+namespace mozilla::net {
 
 class WebrtcTCPSocketCallback;
 class WebrtcTCPData;
@@ -50,8 +49,8 @@ class WebrtcTCPSocket : public nsIHttpUpgradeListener,
   explicit WebrtcTCPSocket(WebrtcTCPSocketCallback* aCallbacks);
 
   void SetTabId(dom::TabId aTabId);
-  nsresult Open(const nsCString& aHost, const int& aPort,
-                const nsCString& aLocalAddress, const int& aLocalPort,
+  nsresult Open(const nsACString& aHost, const int& aPort,
+                const nsACString& aLocalAddress, const int& aLocalPort,
                 bool aUseTls,
                 const Maybe<net::WebrtcProxyConfig>& aProxyConfig);
   nsresult Write(nsTArray<uint8_t>&& aBytes);
@@ -100,7 +99,6 @@ class WebrtcTCPSocket : public nsIHttpUpgradeListener,
   nsCOMPtr<nsICancelable> mProxyRequest;
 };
 
-}  // namespace net
-}  // namespace mozilla
+}  // namespace mozilla::net
 
 #endif  // webrtc_tcp_socket_h__

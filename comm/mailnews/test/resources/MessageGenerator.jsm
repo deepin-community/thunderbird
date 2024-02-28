@@ -17,7 +17,12 @@ const EXPORTED_SYMBOLS = [
   "SyntheticPartMultiSignedSMIME",
   "SyntheticPartMultiSignedPGP",
   "SyntheticMessage",
+  "SyntheticMessageSet",
 ];
+
+var { MailServices } = ChromeUtils.import(
+  "resource:///modules/MailServices.jsm"
+);
 
 /**
  * A list of first names for use by MessageGenerator to create deterministic,
@@ -407,9 +412,9 @@ var PKCS_SIGNATURE_MIME_TYPE = "application/x-pkcs7-signature";
  *  up a gibberish signature.  We wrap the provided parts in the standard
  *  signature idiom
  *
- * @param aPart The content part to wrap. Only one part!  Use a multipart if
- *     you need to cram extra stuff in there.
- * @param aProperties Properties, propagated to SyntheticPart, see that.
+ * @param {string} aPart - The content part to wrap. Only one part!
+ *    Use a multipart if you need to cram extra stuff in there.
+ * @param {object} aProperties - Properties, propagated to SyntheticPart, see that.
  */
 function SyntheticPartMultiSignedSMIME(aPart, aProperties) {
   SyntheticPartMulti.call(this, [aPart], aProperties);
@@ -438,9 +443,9 @@ var PGP_SIGNATURE_MIME_TYPE = "application/pgp-signature";
  *  up a gibberish signature.  We wrap the provided parts in the standard
  *  signature idiom
  *
- * @param aPart The content part to wrap. Only one part!  Use a multipart if
- *     you need to cram extra stuff in there.
- * @param aProperties Properties, propagated to SyntheticPart, see that.
+ * @param {string} aPart - The content part to wrap. Only one part!
+ *    Use a multipart if you need to cram extra stuff in there.
+ * @param {object} aProperties - Properties, propagated to SyntheticPart, see that.
  */
 function SyntheticPartMultiSignedPGP(aPart, aProperties) {
   SyntheticPartMulti.call(this, [aPart], aProperties);
@@ -472,15 +477,16 @@ var _DEFAULT_META_STATES = {
  *  ingredients that went into the synthetic message as well as the rfc822 form
  *  of the message.
  *
- * @param [aHeaders] A dictionary of rfc822 header payloads.  The key should be
- *     capitalized as you want it to appear in the output.  This requires
- *     adherence to convention of this class.  You are best to just use the
- *     helpers provided by this class.
- * @param [aBodyPart] An instance of one of the many Synthetic part types
- *     available in this file.
- * @param [aMetaState] A dictionary of meta-state about the message that is only
- *     relevant to the messageInjection logic and perhaps some testing logic.
- * @param [aMetaState.junk=false] Is the method junk?
+ * @param {object} [aHeaders] A dictionary of rfc822 header payloads.
+ *   The key should be capitalized as you want it to appear in the output.
+ *   This requires adherence to convention of this class. You are best to just
+ *   use the helpers provided by this class.
+ * @param {object} [aBodyPart] - An instance of one of the many Synthetic part
+ *   types available in this file.
+ * @param {object} [aMetaState] - A dictionary of meta-state about the message
+ *   that is only relevant to the MessageInjection logic and perhaps some
+ *   testing logic.
+ * @param {boolean} [aMetaState.junk=false] Is the method junk?
  */
 function SyntheticMessage(aHeaders, aBodyPart, aMetaState) {
   // we currently do not need to call SyntheticPart's constructor...
@@ -502,29 +508,29 @@ SyntheticMessage.prototype = {
   _format: null,
   _encoding: null,
 
-  /** @returns the Message-Id header value. */
+  /** @returns {string} The Message-Id header value. */
   get messageId() {
     return this._messageId;
   },
   /**
    * Sets the Message-Id header value.
    *
-   * @param aMessageId A unique string without the greater-than and less-than,
-   *     we add those for you.
+   * @param {string} aMessageId - A unique string without the greater-than and
+   *   less-than, we add those for you.
    */
   set messageId(aMessageId) {
     this._messageId = aMessageId;
     this.headers["Message-Id"] = "<" + aMessageId + ">";
   },
 
-  /** @returns the message Date header value. */
+  /** @returns {Date} The message Date header value. */
   get date() {
     return this._date;
   },
   /**
    * Sets the Date header to the given javascript Date object.
    *
-   * @param aDate The date you want the message to claim to be from.
+   * @param {Date} aDate The date you want the message to claim to be from.
    */
   set date(aDate) {
     this._date = aDate;
@@ -543,14 +549,14 @@ SyntheticMessage.prototype = {
       dateParts[5].substring(3);
   },
 
-  /** @returns the message subject */
+  /** @returns {string} The message subject. */
   get subject() {
     return this._subject;
   },
   /**
    * Sets the message subject.
    *
-   * @param aSubject A string sans newlines or other illegal characters.
+   * @param {string} aSubject - A string sans newlines or other illegal characters.
    */
   set subject(aSubject) {
     this._subject = aSubject;
@@ -561,9 +567,9 @@ SyntheticMessage.prototype = {
    * Given a tuple containing [a display name, an e-mail address], returns a
    *  string suitable for use in a to/from/cc header line.
    *
-   * @param aNameAndAddress A list with two elements.  The first should be the
-   *     display name (sans wrapping quotes).  The second element should be the
-   *     e-mail address (sans wrapping greater-than/less-than).
+   * @param {string[]} aNameAndAddress - A list with two elements. The first
+   *   should be the display name (sans wrapping quotes). The second element
+   *   should be the e-mail address (sans wrapping greater-than/less-than).
    */
   _formatMailFromNameAndAddress(aNameAndAddress) {
     // if the name is encoded, do not put it in quotes!
@@ -578,8 +584,9 @@ SyntheticMessage.prototype = {
    * can (per rfc 2822) be of two forms:
    *  1) Name <me@example.org>
    *  2) me@example.org
-   * @return a tuple of name, email
-   **/
+   *
+   * @returns {string[]} A tuple of name, email.
+   */
   _parseMailbox(mailbox) {
     let matcher = mailbox.match(/(.*)<(.+@.+)>/);
     if (!matcher) {
@@ -592,7 +599,7 @@ SyntheticMessage.prototype = {
     return [name, email];
   },
 
-  /** @returns the name-and-address tuple used when setting the From header. */
+  /** @returns {string[]} The name-and-address tuple used when setting the From header. */
   get from() {
     return this._from;
   },
@@ -600,10 +607,10 @@ SyntheticMessage.prototype = {
    * Sets the From header using the given tuple containing [a display name,
    *  an e-mail address].
    *
-   * @param aNameAndAddress A list with two elements.  The first should be the
-   *     display name (sans wrapping quotes).  The second element should be the
-   *     e-mail address (sans wrapping greater-than/less-than).
-   *     Can also be a string, should then be a valid raw From: header value.
+   * @param {string[]} aNameAndAddress - A list with two elements. The first
+   *   should be the display name (sans wrapping quotes). The second element
+   *   should be the e-mail address (sans wrapping greater-than/less-than).
+   *   Can also be a string, should then be a valid raw From: header value.
    */
   set from(aNameAndAddress) {
     if (typeof aNameAndAddress === "string") {
@@ -615,11 +622,11 @@ SyntheticMessage.prototype = {
     this.headers.From = this._formatMailFromNameAndAddress(aNameAndAddress);
   },
 
-  /** @returns The display name part of the From header. */
+  /** @returns {string} The display name part of the From header. */
   get fromName() {
     return this._from[0];
   },
-  /** @returns The e-mail address part of the From header (no display name). */
+  /** @returns {string} The e-mail address part of the From header (no display name). */
   get fromAddress() {
     return this._from[1];
   },
@@ -627,8 +634,8 @@ SyntheticMessage.prototype = {
   /**
    * For our header storage, we may need to pre-add commas, this does it.
    *
-   * @param aList A list of strings that is mutated so that every string in the
-   *     list except the last one has a comma appended to it.
+   * @param {string[]} aList - A list of strings that is mutated so that every
+   *   string in the list except the last one has a comma appended to it.
    */
   _commaize(aList) {
     for (let i = 0; i < aList.length - 1; i++) {
@@ -638,8 +645,8 @@ SyntheticMessage.prototype = {
   },
 
   /**
-   * @returns the comma-ized list of name-and-address tuples used to set the To
-   *     header.
+   * @returns {string[][]} the comma-ized list of name-and-address tuples used
+   *   to set the To header.
    */
   get to() {
     return this._to;
@@ -648,11 +655,11 @@ SyntheticMessage.prototype = {
    * Sets the To header using a list of tuples containing [a display name,
    *  an e-mail address].
    *
-   * @param aNameAndAddress A list of name-and-address tuples.  Each tuple is a
-   *     list with two elements.  The first should be the
-   *     display name (sans wrapping quotes).  The second element should be the
-   *     e-mail address (sans wrapping greater-than/less-than).
-   *     Can also be a string, should then be a valid raw To: header value.
+   * @param {string[][]} aNameAndAddresses - A list of name-and-address tuples.
+   *   Each tuple is alist with two elements. The first should be the
+   *   display name (sans wrapping quotes).  The second element should be the
+   *   e-mail address (sans wrapping greater-than/less-than).
+   *   Can also be a string, should then be a valid raw To: header value.
    */
   set to(aNameAndAddresses) {
     if (typeof aNameAndAddresses === "string") {
@@ -672,18 +679,18 @@ SyntheticMessage.prototype = {
       )
     );
   },
-  /** @returns The display name of the first intended recipient. */
+  /** @returns {string} The display name of the first intended recipient. */
   get toName() {
     return this._to[0][0];
   },
-  /** @returns The email address (no display name) of the first recipient. */
+  /** @returns {string} The email address (no display name) of the first recipient. */
   get toAddress() {
     return this._to[0][1];
   },
 
   /**
-   * @returns The comma-ized list of name-and-address tuples used to set the Cc
-   *     header.
+   * @returns {string[][]} The comma-ized list of name-and-address tuples used
+   *   to set the Cc header.
    */
   get cc() {
     return this._cc;
@@ -692,11 +699,11 @@ SyntheticMessage.prototype = {
    * Sets the Cc header using a list of tuples containing [a display name,
    *  an e-mail address].
    *
-   * @param aNameAndAddress A list of name-and-address tuples.  Each tuple is a
-   *     list with two elements.  The first should be the
-   *     display name (sans wrapping quotes).  The second element should be the
-   *     e-mail address (sans wrapping greater-than/less-than).
-   *     Can also be a string, should then be a valid raw Cc: header value.
+   * @param {string[][]} aNameAndAddresses - A list of name-and-address tuples.
+   *   Each tuple is a list with two elements. The first should be the
+   *   display name (sans wrapping quotes). The second element should be the
+   *   e-mail address (sans wrapping greater-than/less-than).
+   *   Can also be a string, should then be a valid raw Cc: header value.
    */
   set cc(aNameAndAddresses) {
     if (typeof aNameAndAddresses === "string") {
@@ -728,8 +735,8 @@ SyntheticMessage.prototype = {
    * Normalizes header values, which may be strings or arrays of strings, into
    *  a suitable string suitable for appending to the header name/key.
    *
-   * @returns a normalized string representation of the header value(s), which
-   *     may include spanning multiple lines.
+   * @returns {string} A normalized string representation of the header
+   *   value(s), which may include spanning multiple lines.
    */
   _formatHeaderValues(aHeaderValues) {
     // may not be an array
@@ -744,8 +751,8 @@ SyntheticMessage.prototype = {
   },
 
   /**
-   * @returns a string uniquely identifying this message, at least as long as
-   *     the messageId is set and unique.
+   * @returns {string} A string uniquely identifying this message, at least
+   *   as long as the messageId is set and unique.
    */
   toString() {
     return "msg:" + this._messageId;
@@ -772,7 +779,7 @@ SyntheticMessage.prototype = {
   },
 
   /**
-   * @returns this messages in rfc822 format, or something close enough.
+   * @returns {string} This messages in rfc822 format, or something close enough.
    */
   toMessageString() {
     let lines = Object.keys(this.headers).map(
@@ -788,7 +795,7 @@ SyntheticMessage.prototype = {
   },
 
   /**
-   * @returns this message in rfc822 format in a string stream.
+   * @returns {nsIStringInputStream} This message in rfc822 format in a string stream.
    */
   toStream() {
     let stream = Cc["@mozilla.org/io/string-input-stream;1"].createInstance(
@@ -800,7 +807,7 @@ SyntheticMessage.prototype = {
   },
 
   /**
-   * Writes this message to an mbox stream.  This means adding a "From " line
+   * Writes this message to an mbox stream.  his means adding a "From " line
    *  and making sure we've got a trailing newline.
    */
   writeToMboxStream(aStream) {
@@ -812,8 +819,8 @@ SyntheticMessage.prototype = {
 /**
  * Write a list of messages to a folder
  *
- * @param aMessages The list of SyntheticMessages instances to write.
- * @param aFolder The folder to write to.
+ * @param {SyntheticMessage[]} aMessages - The list of SyntheticMessages instances to write.
+ * @param {nsIMsgFolder} aFolder - The folder to write to.
  */
 function addMessagesToFolder(aMessages, aFolder) {
   let localFolder = aFolder.QueryInterface(Ci.nsIMsgLocalMailFolder);
@@ -821,6 +828,244 @@ function addMessagesToFolder(aMessages, aFolder) {
     localFolder.addMessage(message.toMboxString());
   }
 }
+
+/**
+ * Represents a set of synthetic messages, also supporting insertion into and
+ *  tracking of the message folders to which they belong.  This then allows
+ *  mutations of the messages (in their folders) for testing purposes.
+ *
+ * In general, you would create a synthetic message set by passing in only a
+ *  list of synthetic messages, and then add then messages to nsIMsgFolders by
+ *  using one of the addMessage* methods.  This will populate the aMsgFolders
+ *  and aFolderIndices values.  (They are primarily intended for reasons of
+ *  slicing, but people who know what they are doing can also use them.)
+ *
+ * @param {SyntheticMessage[]} aSynMessages The synthetic messages that should belong to this set.
+ * @param {nsIMsgFolder|nsIMsgFolder[]} [aMsgFolders] Optional nsIMsgFolder or list of folders.
+ * @param {number[]} [aFolderIndices] Optional list where each value is an index into the
+ *     msgFolders attribute, specifying what folder the message can be found
+ *     in.  The value may also be null if the message has not yet been
+ *     inserted into a folder.
+ */
+function SyntheticMessageSet(aSynMessages, aMsgFolders, aFolderIndices) {
+  this.synMessages = aSynMessages;
+
+  if (Array.isArray(aMsgFolders)) {
+    this.msgFolders = aMsgFolders;
+  } else if (aMsgFolders) {
+    this.msgFolders = [aMsgFolders];
+  } else {
+    this.msgFolders = [];
+  }
+  if (aFolderIndices == null) {
+    this.folderIndices = aSynMessages.map(_ => null);
+  } else {
+    this.folderIndices = aFolderIndices;
+  }
+}
+SyntheticMessageSet.prototype = {
+  /**
+   * Helper method for messageInjection to use to tell us it is injecting a
+   *  message in a given folder.  As a convenience, we also return the
+   *  synthetic message.
+   *
+   * @protected
+   */
+  _trackMessageAddition(aFolder, aMessageIndex) {
+    let aFolderIndex = this.msgFolders.indexOf(aFolder);
+    if (aFolderIndex == -1) {
+      aFolderIndex = this.msgFolders.push(aFolder) - 1;
+    }
+    this.folderIndices[aMessageIndex] = aFolderIndex;
+    return this.synMessages[aMessageIndex];
+  },
+  /**
+   * Helper method for use by |MessageInjection.async_move_messages| to tell us that it moved
+   *  all the messages from aOldFolder to aNewFolder.
+   */
+  _folderSwap(aOldFolder, aNewFolder) {
+    let folderIndex = this.msgFolders.indexOf(aOldFolder);
+    this.msgFolders[folderIndex] = aNewFolder;
+  },
+
+  /**
+   * Union this set with another set and return the (new) result.
+   *
+   * @param {SyntheticMessageSet} aOtherSet - The other synthetic message set.
+   * @returns {SyntheticMessageSet} A new SyntheticMessageSet containing the
+   *   union of this set and the other set.
+   */
+  union(aOtherSet) {
+    let messages = this.synMessages.concat(aOtherSet.synMessages);
+    let folders = this.msgFolders.concat();
+    let indices = this.folderIndices.concat();
+
+    let folderUrisToIndices = {};
+    for (let [iFolder, folder] of this.msgFolders.entries()) {
+      folderUrisToIndices[folder.URI] = iFolder;
+    }
+
+    for (let iOther = 0; iOther < aOtherSet.synMessages.length; iOther++) {
+      let folderIndex = aOtherSet.folderIndices[iOther];
+      if (folderIndex == null) {
+        indices.push(folderIndex);
+      } else {
+        let folder = aOtherSet.msgFolders[folderIndex];
+        if (!(folder.URI in folderUrisToIndices)) {
+          folderUrisToIndices[folder.URI] = folders.length;
+          folders.push(folder);
+        }
+        indices.push(folderUrisToIndices[folder.URI]);
+      }
+    }
+
+    return new SyntheticMessageSet(messages, folders, indices);
+  },
+
+  /**
+   * Get the single message header of the message at the given index; use
+   *  |msgHdrs| if you want to get all the headers at once.
+   *
+   * @param {integer} aIndex
+   */
+  getMsgHdr(aIndex) {
+    let folder = this.msgFolders[this.folderIndices[aIndex]];
+    let synMsg = this.synMessages[aIndex];
+    return folder.msgDatabase.getMsgHdrForMessageID(synMsg.messageId);
+  },
+
+  /**
+   * Get the URI for the message at the given index.
+   *
+   * @param {integer} aIndex
+   */
+  getMsgURI(aIndex) {
+    let msgHdr = this.getMsgHdr(aIndex);
+    return msgHdr.folder.getUriForMsg(msgHdr);
+  },
+
+  /**
+   * @yields {nsIMsgDBHdr} A JS iterator of the message headers for all
+   *   messages inserted into a folder.
+   */
+  *msgHdrs() {
+    // get the databases
+    let msgDatabases = this.msgFolders.map(folder => folder.msgDatabase);
+    for (let [iMsg, synMsg] of this.synMessages.entries()) {
+      let folderIndex = this.folderIndices[iMsg];
+      if (folderIndex != null) {
+        yield msgDatabases[folderIndex].getMsgHdrForMessageID(synMsg.messageId);
+      }
+    }
+  },
+  /**
+   * @returns {nsIMsgDBHdr} A JS list of the message headers for all
+   *   messages inserted into a  folder.
+   */
+  get msgHdrList() {
+    return Array.from(this.msgHdrs());
+  },
+
+  /**
+   * @returns {object[]} - A list where each item is a list with two elements;
+   *   the first is an nsIMsgFolder, and the second is a list of all of the nsIMsgDBHdrs
+   *   for the synthetic messages in the set inserted into that folder.
+   */
+  get foldersWithMsgHdrs() {
+    let results = this.msgFolders.map(folder => [folder, []]);
+    for (let [iMsg, synMsg] of this.synMessages.entries()) {
+      let folderIndex = this.folderIndices[iMsg];
+      if (folderIndex != null) {
+        let [folder, msgHdrs] = results[folderIndex];
+        msgHdrs.push(
+          folder.msgDatabase.getMsgHdrForMessageID(synMsg.messageId)
+        );
+      }
+    }
+    return results;
+  },
+  /**
+   * Sets the status of the messages to read/unread.
+   *
+   * @param {boolean} aRead - true/false to set messages as read/unread
+   * @param {nsIMsgDBHdr} aMsgHdr - A message header to work on. If not
+   *    specified, mark all messages in the current set.
+   */
+  setRead(aRead, aMsgHdr) {
+    let msgHdrs = aMsgHdr ? [aMsgHdr] : this.msgHdrList;
+    for (let msgHdr of msgHdrs) {
+      msgHdr.markRead(aRead);
+    }
+  },
+  /**
+   * Sets the starred status of the messages.
+   *
+   * @param {boolean} aStarred - Starred status.
+   */
+  setStarred(aStarred) {
+    for (let msgHdr of this.msgHdrs()) {
+      msgHdr.markFlagged(aStarred);
+    }
+  },
+  /**
+   * Adds tag to the messages.
+   *
+   * @param {string} aTagName - Tag to add
+   */
+  addTag(aTagName) {
+    for (let [folder, msgHdrs] of this.foldersWithMsgHdrs) {
+      folder.addKeywordsToMessages(msgHdrs, aTagName);
+    }
+  },
+  /**
+   * Removes tag from the messages.
+   *
+   * @param {string} aTagName - Tag to remove
+   */
+  removeTag(aTagName) {
+    for (let [folder, msgHdrs] of this.foldersWithMsgHdrs) {
+      folder.removeKeywordsFromMessages(msgHdrs, aTagName);
+    }
+  },
+  /**
+   * Sets the junk score for the messages to junk/non-junk.  It does not
+   *  involve the bayesian classifier because we really don't want it
+   *  affecting our unit tests!  (Unless we were testing the bayesian
+   *  classifier.  Which I'm conveniently not.  Feel free to add a
+   *  "setJunkForRealsies" method if you are.)
+   *
+   * @param {boolean} aIsJunk - true/false to set messages to junk/non-junk
+   * @param {nsIMsgDBHdr} aMsgHdr - A message header to work on. If not
+   *   specified, mark all messages in the current set.
+   * Generates a msgsJunkStatusChanged nsIMsgFolderListener notification.
+   */
+  setJunk(aIsJunk, aMsgHdr) {
+    let junkscore = aIsJunk ? "100" : "0";
+    let msgHdrs = aMsgHdr ? [aMsgHdr] : this.msgHdrList;
+    for (let msgHdr of msgHdrs) {
+      msgHdr.setStringProperty("junkscore", junkscore);
+    }
+    MailServices.mfn.notifyMsgsJunkStatusChanged(msgHdrs);
+  },
+
+  /**
+   * Slice the message set using the exact Array.prototype.slice semantics
+   * (because we call Array.prototype.slice).
+   */
+  slice(...aArgs) {
+    let slicedMessages = this.synMessages.slice(...aArgs);
+    let slicedIndices = this.folderIndices.slice(...aArgs);
+    let sliced = new SyntheticMessageSet(
+      slicedMessages,
+      this.msgFolders,
+      slicedIndices
+    );
+    if ("glodaMessages" in this && this.glodaMessages) {
+      sliced.glodaMessages = this.glodaMessages.slice(...aArgs);
+    }
+    return sliced;
+  },
+};
 
 /**
  * Provides mechanisms for creating vaguely interesting, but at least valid,
@@ -854,9 +1099,9 @@ MessageGenerator.prototype = {
    *  should be sufficient for testing purposes, but if your code cares, check
    *  against MAX_VALID_NAMES.
    *
-   * @param aNameNumber The 'number' of the name you want which must be less
+   * @param {integer} aNameNumber The 'number' of the name you want which must be less
    *     than MAX_VALID_NAMES.
-   * @returns The unique name corresponding to the name number.
+   * @returns {string} The unique name corresponding to the name number.
    */
   makeName(aNameNumber) {
     let iFirst = aNameNumber % FIRST_NAMES.length;
@@ -873,9 +1118,9 @@ MessageGenerator.prototype = {
    *  up to 26*26 unique addresses can be generated, but if your code cares,
    *  check against MAX_VALID_MAIL_ADDRESSES.
    *
-   * @param aNameNumber The 'number' of the mail address you want which must be
-   *     less than MAX_VALID_MAIL_ADDRESSES.
-   * @returns The unique name corresponding to the name mail address.
+   * @param {integer} aNameNumber - The 'number' of the mail address you want
+   *   which must be ess than MAX_VALID_MAIL_ADDRESSES.
+   * @returns {string} The unique name corresponding to the name mail address.
    */
   makeMailAddress(aNameNumber) {
     let iFirst = aNameNumber % FIRST_NAMES.length;
@@ -894,17 +1139,18 @@ MessageGenerator.prototype = {
   /**
    * Generate a pair of name and e-mail address.
    *
-   * @param aNameNumber The optional 'number' of the name and mail address you
-   *     want.  If you do not provide a value, we will increment an internal
-   *     counter to ensure that a new name is allocated and that will not be
-   *     re-used.  If you use our automatic number once, you must use it always,
-   *     unless you don't mind or can ensure no collisions occur between our
-   *     number allocation and your uses.  If provided, the number must be
-   *     less than MAX_VALID_NAMES.
-   * @return A list containing two elements.  The first is a name produced by
-   *     a call to makeName, and the second an e-mail address produced by a
-   *     call to makeMailAddress.  This representation is used by the
-   *     SyntheticMessage class when dealing with names and addresses.
+   * @param {integer} aNameNumber - The optional 'number' of the name and mail
+   *   address you  want. If you do not provide a value, we will increment an
+   *   internal counter to ensure that a new name is allocated and that will not
+   *   be re-used. If you use our automatic number once, you must use it
+   *   always, unless you don't mind or can ensure no collisions occur between
+   *   our number allocation and your uses. If provided, the number must be
+   *   less than MAX_VALID_NAMES.
+   * @returns {string[]} A list containing two elements.
+   *   The first is a name produced by a call to makeName, and the second an
+   *   e-mail address produced by a call to makeMailAddress.
+   *   This representation is used by the SyntheticMessage class when dealing
+   *   with names and addresses.
    */
   makeNameAndAddress(aNameNumber) {
     if (aNameNumber === undefined) {
@@ -919,8 +1165,8 @@ MessageGenerator.prototype = {
    *  makeNameAndAddress.  You should accordingly not allocate / hard code name
    *  numbers on your own.
    *
-   * @param aCount The number of people you want name and address tuples for.
-   * @returns a list of aCount name-and-address tuples.
+   * @param {integer} aCount - The number of people you want name and address tuples for.
+   * @returns {string[][]} A list of aCount name-and-address tuples.
    */
   makeNamesAndAddresses(aCount) {
     let namesAndAddresses = [];
@@ -934,9 +1180,9 @@ MessageGenerator.prototype = {
    * Generate a consistently determined (and reversible) subject from a unique
    *  value.  Up to MAX_VALID_SUBJECTS can be produced.
    *
-   * @param aSubjectNumber The subject number you want generated, must be less
-   *     than MAX_VALID_SUBJECTS.
-   * @returns The subject corresponding to the given subject number.
+   * @param {integer} aSubjectNumber - The subject number you want generated,
+   *   must be less than MAX_VALID_SUBJECTS.
+   * @returns {string} The subject corresponding to the given subject number.
    */
   makeSubject(aSubjectNumber) {
     if (aSubjectNumber === undefined) {
@@ -967,9 +1213,10 @@ MessageGenerator.prototype = {
    *  message id to the server that theoretically might be sending it.  Or some
    *  such.
    *
-   * @param The synthetic message you would like us to make up a message-id for.
-   *     We don't set the message-id on the message, that's up to you.
-   * @returns a Message-id suitable for the given message.
+   * @param {SyntheticMessage} aSynthMessage - The synthetic message you would
+   *   like us to make up a message-id for. We don't set the message-id on the
+   *   message, that's up to you.
+   * @returns {string} A Message-Id suitable for the given message.
    */
   makeMessageId(aSynthMessage) {
     let msgId = this._nextMessageIdNum + "@made.up.invalid";
@@ -984,7 +1231,7 @@ MessageGenerator.prototype = {
    * If you need a precise time ordering or precise times, make them up
    *  yourself.
    *
-   * @returns A made-up time in JavaScript Date object form.
+   * @returns {Date} - A made-up time in JavaScript Date object form.
    */
   makeDate() {
     let date = this._clock;
@@ -994,56 +1241,61 @@ MessageGenerator.prototype = {
   },
 
   /**
+   * Description for makeMessage options parameter.
+   *
+   * @typedef MakeMessageOptions
+   * @property {number} [age] A dictionary with potential attributes 'minutes',
+   *     'hours', 'days', 'weeks' to specify the message be created that far in
+   *     the past.
+   * @property {object} [attachments] A list of dictionaries suitable for passing to
+   *     syntheticPartLeaf, plus a 'body' attribute that has already been
+   *     encoded. Line chopping is on you FOR NOW.
+   * @property {SyntheticPartLeaf} [body] A dictionary suitable for passing to SyntheticPart plus
+   *     a 'body' attribute that has already been encoded (if encoding is
+   *     required).  Line chopping is on you FOR NOW.  Alternately, use
+   *     bodyPart.
+   * @property {SyntheticPartLeaf} [bodyPart] A SyntheticPart to uses as the body.  If you
+   *     provide an attachments value, this part will be wrapped in a
+   *     multipart/mixed to also hold your attachments.  (You can put
+   *     attachments in the bodyPart directly if you want and not use
+   *     attachments.)
+   * @property {string} [callerData] A value to propagate to the callerData attribute
+   *     on the resulting message.
+   * @property {string[][]} [cc] A list of cc recipients (name and address pairs).  If
+   *     omitted, no cc is generated.
+   * @property {string[][]} [from] The name and value pair this message should be from.
+   *     Defaults to the first recipient if this is a reply, otherwise a new
+   *     person is synthesized via |makeNameAndAddress|.
+   * @property {string} [inReplyTo] the SyntheticMessage this message should be in
+   *     reply-to.  If that message was in reply to another message, we will
+   *     appropriately compensate for that.  If a SyntheticMessageSet is
+   *     provided we will use the first message in the set.
+   * @property {boolean} [replyAll] a boolean indicating whether this should be a
+   *     reply-to-all or just to the author of the message.  (er, to-only, not
+   *     cc.)
+   * @property {string} [subject] subject to use; you are responsible for doing any
+   *     encoding before passing it in.
+   * @property {string[][]} [to] The list of recipients for this message, defaults to a
+   *     set of toCount newly created persons.
+   * @property {number} [toCount=1] the number of people who the message should be to.
+   * @property {object} [clobberHeaders] An object whose contents will overwrite the
+   *     contents of the headers object.  This should only be used to construct
+   *     illegal header values; general usage should use another explicit
+   *     mechanism.
+   * @property {boolean} [junk] Should this message be flagged as junk for the benefit
+   *     of the MessageInjection helper so that it can know to flag the message
+   *     as junk?  We have no concept of marking a message as definitely not
+   *     junk at this point.
+   * @property {boolean} [read] Should this message be marked as already read?
+   */
+  /**
    * Create a SyntheticMessage.  All arguments are optional, but allow
    *  additional control.  With no arguments specified, a new name/address will
    *  be generated that has not been used before, and sent to a new name/address
    *  that has not been used before.
    *
-   * @param aArgs An object with any of the following attributes provided:
-   * @param [aArgs.age] A dictionary with potential attributes 'minutes',
-   *     'hours', 'days', 'weeks' to specify the message be created that far in
-   *     the past.
-   * @param [aArgs.attachments] A list of dictionaries suitable for passing to
-   *     syntheticPartLeaf, plus a 'body' attribute that has already been
-   *     encoded.  Line chopping is on you FOR NOW.
-   * @param [aArgs.body] A dictionary suitable for passing to SyntheticPart plus
-   *     a 'body' attribute that has already been encoded (if encoding is
-   *     required).  Line chopping is on you FOR NOW.  Alternately, use
-   *     bodyPart.
-   * @param [aArgs.bodyPart] A SyntheticPart to uses as the body.  If you
-   *     provide an attachments value, this part will be wrapped in a
-   *     multipart/mixed to also hold your attachments.  (You can put
-   *     attachments in the bodyPart directly if you want and not use
-   *     attachments.)
-   * @param [aArgs.callerData] A value to propagate to the callerData attribute
-   *     on the resulting message.
-   * @param [aArgs.cc] A list of cc recipients (name and address pairs).  If
-   *     omitted, no cc is generated.
-   * @param [aArgs.from] The name and value pair this message should be from.
-   *     Defaults to the first recipient if this is a reply, otherwise a new
-   *     person is synthesized via |makeNameAndAddress|.
-   * @param [aArgs.inReplyTo] the SyntheticMessage this message should be in
-   *     reply-to.  If that message was in reply to another message, we will
-   *     appropriately compensate for that.  If a SyntheticMessageSet is
-   *     provided we will use the first message in the set.
-   * @param [aArgs.replyAll] a boolean indicating whether this should be a
-   *     reply-to-all or just to the author of the message.  (er, to-only, not
-   *     cc.)
-   * @param [aArgs.subject] subject to use; you are responsible for doing any
-   *     encoding before passing it in.
-   * @param [aArgs.to] The list of recipients for this message, defaults to a
-   *     set of toCount newly created persons.
-   * @param [aArgs.toCount=1] the number of people who the message should be to.
-   * @param [aArgs.clobberHeaders] An object whose contents will overwrite the
-   *     contents of the headers object.  This should only be used to construct
-   *     illegal header values; general usage should use another explicit
-   *     mechanism.
-   * @param [aArgs.junk] Should this message be flagged as junk for the benefit
-   *     of the messageInjection helper so that it can know to flag the message
-   *     as junk?  We have no concept of marking a message as definitely not
-   *     junk at this point.
-   * @param [aArgs.read] Should this message be marked as already read?
-   * @returns a SyntheticMessage fashioned just to your liking.
+   * @param {MakeMessageOptions} aArgs
+   * @returns {SyntheticMessage} a SyntheticMessage fashioned just to your liking.
    */
   makeMessage(aArgs) {
     aArgs = aArgs || {};
@@ -1166,6 +1418,9 @@ MessageGenerator.prototype = {
   /**
    * Create an encrypted SMime message. It's just a wrapper around makeMessage,
    * that sets the right content-type. Use like makeMessage.
+   *
+   * @param {MakeMessageOptions} aOptions
+   * @returns {SyntheticMessage}
    */
   makeEncryptedSMimeMessage(aOptions) {
     if (!aOptions) {
@@ -1186,6 +1441,9 @@ MessageGenerator.prototype = {
   /**
    * Create an encrypted OpenPGP message. It's just a wrapper around makeMessage,
    * that sets the right content-type. Use like makeMessage.
+   *
+   * @param {MakeMessageOptions} aOptions
+   * @returns {SyntheticMessage}
    */
   makeEncryptedOpenPGPMessage(aOptions) {
     if (!aOptions) {
@@ -1226,10 +1484,12 @@ MessageGenerator.prototype = {
    *  age: As used by makeMessage.
    *  age_incr: Similar to age, but used to increment the values in the age
    *      dictionary (assuming a value of zero if omitted).
-   *  @param [aSetDef.msgsPerThread=1] The number of messages per thread.  If
-   *      you want to create direct-reply threads, you can pass a value for this
-   *      and have it not be one.  If you need fancier reply situations,
-   *      directly use a scenario or hook us up to support that.
+   *
+   * @param {object} aSetDef - Message properties, see MAKE_MESSAGES_PROPAGATE.
+   * @param {integer} [aSetDef.msgsPerThread=1] The number of messages per thread.
+   *   If you want to create direct-reply threads, you can pass a value for this
+   *   and have it not be one. If you need fancier reply situations,
+   *   directly use a scenario or hook us up to support that.
    *
    * Also supported are the following attributes as defined by makeMessage:
    *  attachments, body, from, inReplyTo, subject, to, clobberHeaders, junk
@@ -1296,7 +1556,7 @@ MessageGenerator.prototype = {
  *  equivalent to having simply called messageScenarioFactory.method(...).
  *  (Normally this would not be the case when using JavaScript.)
  *
- * @param aMessageGenerator The optional message generator we should use.
+ * @param {MessageGenerator} [aMessageGenerator] The optional message generator we should use.
  *     If you don't pass one, we create our own.  You would want to pass one so
  *     that if you also create synthetic messages directly via the message
  *     generator then the two sources can avoid duplicate use of the same
@@ -1372,8 +1632,8 @@ MessageScenarioFactory.prototype = {
  *  in question (never any part of its prototype chain).  As such, you probably
  *  want to invoke us on your prototype object(s).
  *
- * @param The object on whom we want to perform magic binding.  This should
- *     probably be your prototype object.
+ * @param {object} aObj - The object on whom we want to perform magic binding.
+ *   This should probably be your prototype object.
  */
 function bindMethods(aObj) {
   for (let [name, ubfunc] of Object.entries(aObj)) {

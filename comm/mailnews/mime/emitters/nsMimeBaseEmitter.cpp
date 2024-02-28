@@ -16,7 +16,6 @@
 #include "msgCore.h"
 #include "nsEmitterUtils.h"
 #include "nsIMimeStreamConverter.h"
-#include "nsMsgMimeCID.h"
 #include "mozilla/Logging.h"
 #include "prprf.h"
 #include "nsIMimeHeaders.h"
@@ -25,7 +24,8 @@
 #include "nsComponentManagerUtils.h"
 #include "nsMsgUtils.h"
 #include "nsTextFormatter.h"
-#include "mozilla/Services.h"
+#include "mozilla/Components.h"
+#include "mozilla/intl/AppDateTimeFormat.h"
 
 static mozilla::LazyLogModule gMimeEmitterLogModule("MIME");
 
@@ -71,7 +71,7 @@ nsMimeBaseEmitter::nsMimeBaseEmitter() {
   //  mBody = "";
 
   // This is needed for conversion of I18N Strings...
-  mUnicodeConverter = do_GetService(NS_MIME_CONVERTER_CONTRACTID);
+  mUnicodeConverter = do_GetService("@mozilla.org/messenger/mimeconverter;1");
 
   // Do prefs last since we can live without this if it fails...
   nsCOMPtr<nsIPrefBranch> pPrefBranch(do_GetService(NS_PREFSERVICE_CONTRACTID));
@@ -173,13 +173,12 @@ char* nsMimeBaseEmitter::MimeGetStringByName(const char* aHeaderName) {
   nsresult res = NS_OK;
 
   if (!m_headerStringBundle) {
-    static const char propertyURL[] = MIME_HEADER_URL;
-
     nsCOMPtr<nsIStringBundleService> sBundleService =
-        mozilla::services::GetStringBundleService();
+        mozilla::components::StringBundle::Service();
     if (sBundleService) {
-      res = sBundleService->CreateBundle(propertyURL,
+      res = sBundleService->CreateBundle(MIME_HEADER_URL,
                                          getter_AddRefs(m_headerStringBundle));
+      if (NS_FAILED(res)) return nullptr;
     }
   }
 
@@ -195,9 +194,8 @@ char* nsMimeBaseEmitter::MimeGetStringByName(const char* aHeaderName) {
     // if this is used as UCS-2 (e.g. cannot do nsString(utfStr);
     //
     return ToNewUTF8String(val);
-  } else {
-    return nullptr;
   }
+  return nullptr;
 }
 
 char* nsMimeBaseEmitter::MimeGetStringByID(int32_t aID) {
@@ -207,7 +205,7 @@ char* nsMimeBaseEmitter::MimeGetStringByID(int32_t aID) {
     static const char propertyURL[] = MIME_URL;
 
     nsCOMPtr<nsIStringBundleService> sBundleService =
-        mozilla::services::GetStringBundleService();
+        mozilla::components::StringBundle::Service();
     if (sBundleService)
       res = sBundleService->CreateBundle(propertyURL,
                                          getter_AddRefs(m_stringBundle));
@@ -220,8 +218,8 @@ char* nsMimeBaseEmitter::MimeGetStringByID(int32_t aID) {
     if (NS_FAILED(res)) return nullptr;
 
     return ToNewUTF8String(val);
-  } else
-    return nullptr;
+  }
+  return nullptr;
 }
 
 //
@@ -630,20 +628,24 @@ nsresult nsMimeBaseEmitter::GenerateDateString(const char* dateString,
 
   // If we want short dates, check if the message is from today, and if so
   // only show the time (e.g. 3:15 pm).
-  mozilla::nsDateFormatSelector dateFormat = mozilla::kDateFormatShort;
+  nsDateFormatSelectorComm dateFormat = kDateFormatShort;
   if (!showDateForToday &&
       explodedCurrentTime.tm_year == explodedCompTime.tm_year &&
       explodedCurrentTime.tm_month == explodedCompTime.tm_month &&
       explodedCurrentTime.tm_mday == explodedCompTime.tm_mday) {
     // same day...
-    dateFormat = mozilla::kDateFormatNone;
+    dateFormat = kDateFormatNone;
   }
 
   nsAutoString formattedDateString;
 
-  rv = mozilla::DateTimeFormat::FormatPRExplodedTime(
-      dateFormat, mozilla::kTimeFormatShort, &explodedCompTime,
-      formattedDateString);
+  mozilla::intl::DateTimeFormat::StyleBag style;
+  if (dateFormat == kDateFormatShort) {
+    style.date = mozilla::Some(mozilla::intl::DateTimeFormat::Style::Short);
+  }
+  style.time = mozilla::Some(mozilla::intl::DateTimeFormat::Style::Short);
+  rv = mozilla::intl::AppDateTimeFormat::Format(style, &explodedCompTime,
+                                                formattedDateString);
 
   if (NS_SUCCEEDED(rv)) {
     if (displaySenderTimezone) {
@@ -734,7 +736,7 @@ nsresult nsMimeBaseEmitter::WriteHeaderFieldHTML(const char* field,
     mHTMLHeaders.AppendLiteral("<b>");
   else
     mHTMLHeaders.AppendLiteral(
-        "<div class=\"headerdisplayname\" style=\"display:inline;\">");
+        "<div class=\"moz-header-display-name\" style=\"display:inline;\">");
 
   // Here is where we are going to try to L10N the tagName so we will always
   // get a field name next to an emitted header value. Note: Default will always
@@ -776,9 +778,11 @@ nsresult nsMimeBaseEmitter::WriteHeaderFieldHTMLPrefix(const nsACString& name) {
     /* DO NOTHING */;  // rhp: Do nothing...leaving the conditional like this so
                        // its easier to see the logic of what is going on.
   else {
-    mHTMLHeaders.AppendLiteral("<br><fieldset class=\"mimeAttachmentHeader\">");
+    mHTMLHeaders.AppendLiteral(
+        "<br><fieldset class=\"moz-mime-attachment-header\">");
     if (!name.IsEmpty()) {
-      mHTMLHeaders.AppendLiteral("<legend class=\"mimeAttachmentHeaderName\">");
+      mHTMLHeaders.AppendLiteral(
+          "<legend class=\"moz-mime-attachment-header-name\">");
       nsAppendEscapedHTML(name, mHTMLHeaders);
       mHTMLHeaders.AppendLiteral("</legend>");
     }
@@ -823,9 +827,9 @@ nsMimeBaseEmitter::WriteHTMLHeaders(const nsACString& name) {
 nsresult nsMimeBaseEmitter::DumpSubjectFromDate() {
   mHTMLHeaders.AppendLiteral(
       "<table border=0 cellspacing=0 cellpadding=0 width=\"100%\" "
-      "class=\"header-part1");
+      "class=\"moz-header-part1");
   if (mDocHeader) {
-    mHTMLHeaders.AppendLiteral(" main-header");
+    mHTMLHeaders.AppendLiteral(" moz-main-header");
   }
   mHTMLHeaders.AppendLiteral("\">");
 
@@ -856,9 +860,9 @@ nsresult nsMimeBaseEmitter::DumpToCC() {
   if (toField || ccField || bccField || newsgroupField) {
     mHTMLHeaders.AppendLiteral(
         "<table border=0 cellspacing=0 cellpadding=0 width=\"100%\" "
-        "class=\"header-part2");
+        "class=\"moz-header-part2");
     if (mDocHeader) {
-      mHTMLHeaders.AppendLiteral(" main-header");
+      mHTMLHeaders.AppendLiteral(" moz-main-header");
     }
     mHTMLHeaders.AppendLiteral("\">");
 
@@ -879,9 +883,9 @@ nsresult nsMimeBaseEmitter::DumpRestOfHeaders() {
 
   mHTMLHeaders.AppendLiteral(
       "<table border=0 cellspacing=0 cellpadding=0 width=\"100%\" "
-      "class=\"header-part3");
+      "class=\"moz-header-part3");
   if (mDocHeader) {
-    mHTMLHeaders.AppendLiteral(" main-header");
+    mHTMLHeaders.AppendLiteral(" moz-main-header");
   }
   mHTMLHeaders.AppendLiteral("\">");
 

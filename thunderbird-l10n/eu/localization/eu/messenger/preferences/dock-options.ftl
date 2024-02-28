@@ -2,9 +2,9 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-dock-options-window-dialog =
+dock-options-window-dialog2 =
     .title = Aplikazio-ikonoaren aukerak
-    .style = width: 35em;
+dock-options-dialog-title = Aplikazio-ikonoaren aukerak
 dock-options-show-badge =
     .label = Erakutsi bereizgarriaren ikonoa
     .accesskey = E
@@ -20,4 +20,4 @@ count-unread-messages-radio =
 count-new-messages-radio =
     .label = Mezu berrien kopurua
     .accesskey = k
-notification-settings-info = Jakinarazpen paneleko etiketa ezgaitu dezakezu sistemaren hobespenetan.
+notification-settings-info2 = Jakinarazpen paneleko etiketa ezgaitu dezakezu sistemaren ezarpenetan.

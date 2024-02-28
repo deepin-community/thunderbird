@@ -14,19 +14,21 @@ policy-3rdparty = Gosod polisïau y gall WebExtensions gael mynediad atyn nhw tr
 
 policy-AppAutoUpdate = Galluogi neu analluogi diweddariad rhaglen awtomatig.
 
+policy-AppUpdatePin = Rhwystro { -brand-short-name } rhag cael ei ddiweddaru y tu hwnt i fersiwn penodedig.
+
 policy-AppUpdateURL = Gosod URL diweddaru ap cyfaddas.
 
 policy-Authentication = Ffurfweddu dilysu integredig ar gyfer gwefannau sy'n ei gefnogi.
 
 policy-BackgroundAppUpdate2 = Galluogi neu analluogi'r diweddarydd cefndir.
 
-policy-BlockAboutAddons = Rhwystro mynediad i'r Rheolwr Ychwanegion (about:addons).
+policy-BlockAboutAddons = Rhwystro mynediad at y Rheolwr Ychwanegion (about:addons).
 
-policy-BlockAboutConfig = Rhwystro mynediad i dudalen about:config.
+policy-BlockAboutConfig = Rhwystro mynediad at dudalen about:config.
 
-policy-BlockAboutProfiles = Rhwystro mynediad i dudalen about:profiles.
+policy-BlockAboutProfiles = Rhwystro mynediad at dudalen about:profiles.
 
-policy-BlockAboutSupport = Rhwystro mynediad i dudalen about:support.
+policy-BlockAboutSupport = Rhwystro mynediad at dudalen about:support.
 
 policy-CaptivePortal = Galluogi neu analluogi cefnogaeth porth caeth.
 
@@ -44,11 +46,11 @@ policy-DisableAppUpdate = Rhwystro { -brand-short-name } rhag diweddaru.
 
 policy-DisableDefaultClientAgent = Atal asiant y cleient rhagosodedig rhag cymryd unrhyw gamau. Dim ond yn berthnasol i Windows; nid oes gan lwyfannau eraill yr asiant.
 
-policy-DisableDeveloperTools = Rhwystro mynediad i offer datblygwr.
+policy-DisableDeveloperTools = Rhwystro mynediad at offer datblygwr.
 
 policy-DisableFeedbackCommands = Analluogi gorchmynion anfon adborth o'r ddewislen Cymorth (Cyflwyno Adborth ac Adrodd ar Wefan Dwyllodrus).
 
-policy-DisableForgetButton = Rhwystro mynediad i'r botwm Anghofio.
+policy-DisableForgetButton = Rhwystro mynediad at y botwm Anghofio.
 
 policy-DisableFormHistory = Peidio cofio chwilio a hanes ffurflenni.
 

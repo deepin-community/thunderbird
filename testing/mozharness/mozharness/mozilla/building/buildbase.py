@@ -10,7 +10,6 @@ provides a base class for fx desktop builds
 author: Jordan Lund
 
 """
-from __future__ import absolute_import
 import copy
 import json
 import os
@@ -21,6 +20,8 @@ import uuid
 from datetime import datetime
 
 import six
+import yaml
+from yaml import YAMLError
 
 from mozharness.base.config import DEFAULT_CONFIG_PATH, BaseConfig, parse_config_file
 from mozharness.base.errors import MakefileErrorList
@@ -295,33 +296,40 @@ class BuildOptionParser(object):
         "arm-gradle-dependencies": path_base
         + "%s_arm_gradle_dependencies.py",  # NOQA: E501
         "arm": path_base + "%s_arm.py",
+        "arm-lite": path_base + "%s_arm_lite.py",
         "arm-beta": path_base + "%s_arm_beta.py",
         "arm-beta-debug": path_base + "%s_arm_beta_debug.py",
         "arm-debug": path_base + "%s_arm_debug.py",
+        "arm-lite-debug": path_base + "%s_arm_debug_lite.py",
         "arm-debug-ccov": path_base + "%s_arm_debug_ccov.py",
         "arm-debug-searchfox": path_base + "%s_arm_debug_searchfox.py",
         "arm-gradle": path_base + "%s_arm_gradle.py",
-        "arm-profile-generate": path_base + "%s_arm_profile_generate.py",
         "rusttests": path_base + "%s_rusttests.py",
         "rusttests-debug": path_base + "%s_rusttests_debug.py",
         "x86": path_base + "%s_x86.py",
+        "x86-lite": path_base + "%s_x86_lite.py",
         "x86-beta": path_base + "%s_x86_beta.py",
         "x86-beta-debug": path_base + "%s_x86_beta_debug.py",
         "x86-debug": path_base + "%s_x86_debug.py",
-        "x86-fuzzing-debug": path_base + "%s_x86_fuzzing_debug.py",
+        "x86-lite-debug": path_base + "%s_x86_debug_lite.py",
+        "x86-profile-generate": path_base + "%s_x86_profile_generate.py",
         "x86_64": path_base + "%s_x86_64.py",
+        "x86_64-lite": path_base + "%s_x86_64_lite.py",
         "x86_64-beta": path_base + "%s_x86_64_beta.py",
         "x86_64-beta-debug": path_base + "%s_x86_64_beta_debug.py",
         "x86_64-debug": path_base + "%s_x86_64_debug.py",
+        "x86_64-lite-debug": path_base + "%s_x86_64_debug_lite.py",
         "x86_64-debug-isolated-process": path_base
         + "%s_x86_64_debug_isolated_process.py",
-        "x86_64-fuzzing-asan": path_base + "%s_x86_64_fuzzing_asan.py",
+        "x86_64-profile-generate": path_base + "%s_x86_64_profile_generate.py",
         "arm-partner-sample1": path_base + "%s_arm_partner_sample1.py",
         "aarch64": path_base + "%s_aarch64.py",
+        "aarch64-lite": path_base + "%s_aarch64_lite.py",
         "aarch64-beta": path_base + "%s_aarch64_beta.py",
         "aarch64-beta-debug": path_base + "%s_aarch64_beta_debug.py",
         "aarch64-pgo": path_base + "%s_aarch64_pgo.py",
         "aarch64-debug": path_base + "%s_aarch64_debug.py",
+        "aarch64-lite-debug": path_base + "%s_aarch64_debug_lite.py",
         "android-geckoview-docs": path_base + "%s_geckoview_docs.py",
         "valgrind": path_base + "%s_valgrind.py",
     }
@@ -721,14 +729,18 @@ items from that key's value."
 
         # print its contents
         content = self.read_from_file(abs_mozconfig_path, error_level=FATAL)
+
+        extra_content = self.config.get("extra_mozconfig_content")
+        if extra_content:
+            content += "\n".join(extra_content)
+
         self.info("mozconfig content:")
         self.info(content)
 
         # finally, copy the mozconfig to a path that 'mach build' expects it to
         # be
-        self.copyfile(
-            abs_mozconfig_path, os.path.join(dirs["abs_src_dir"], ".mozconfig")
-        )
+        with open(os.path.join(dirs["abs_src_dir"], ".mozconfig"), "w") as fh:
+            fh.write(content)
 
     def _run_tooltool(self):
         env = self.query_build_env()
@@ -803,19 +815,7 @@ items from that key's value."
         )
 
     def _query_mach(self):
-        dirs = self.query_abs_dirs()
-
-        if "MOZILLABUILD" in os.environ:
-            # We found many issues with intermittent build failures when not
-            # invoking mach via bash.
-            # See bug 1364651 before considering changing.
-            mach = [
-                os.path.join(os.environ["MOZILLABUILD"], "msys", "bin", "bash.exe"),
-                os.path.join(dirs["abs_src_dir"], "mach"),
-            ]
-        else:
-            mach = [sys.executable, "mach"]
-        return mach
+        return [sys.executable, "mach"]
 
     def _run_mach_command_in_build_env(self, args, use_subprocess=False):
         """Run a mach command in a build context."""
@@ -917,7 +917,7 @@ items from that key's value."
         upload_cmd = ["make", "upload", "AB_CD=multi"]
         self.run_command(
             upload_cmd,
-            env=self.query_mach_build_env(multiLocale=False),
+            partial_env=self.query_mach_build_env(multiLocale=False),
             cwd=objdir,
             halt_on_failure=True,
             output_parser=parser,
@@ -1396,17 +1396,6 @@ items from that key's value."
             self.return_code = 2
 
     @PostScriptRun
-    def _shutdown_sccache(self):
-        """If sccache was in use for this build, shut down the sccache server."""
-        if os.environ.get("USE_SCCACHE") == "1":
-            topsrcdir = self.query_abs_dirs()["abs_src_dir"]
-            sccache_base = os.environ["MOZ_FETCHES_DIR"]
-            sccache = os.path.join(sccache_base, "sccache", "sccache")
-            if self._is_windows():
-                sccache += ".exe"
-            self.run_command([sccache, "--stop-server"], cwd=topsrcdir)
-
-    @PostScriptRun
     def _summarize(self):
         """If this is run in automation, ensure the return code is valid and
         set it to one if it's not. Finally, log any summaries we collected
@@ -1438,7 +1427,7 @@ items from that key's value."
 
         env = self.query_build_env()
 
-        grcov_path = os.path.join(os.environ["MOZ_FETCHES_DIR"], "grcov")
+        grcov_path = os.path.join(os.environ["MOZ_FETCHES_DIR"], "grcov", "grcov")
         if not os.path.isabs(grcov_path):
             grcov_path = os.path.join(base_work_dir, grcov_path)
         if self._is_windows():
@@ -1450,3 +1439,89 @@ items from that key's value."
             os.path.join("testing", "parse_build_tests_ccov.py"),
         ]
         self.run_command(command=cmd, cwd=topsrcdir, env=env, halt_on_failure=True)
+
+    @PostScriptRun
+    def _relocate_artifacts(self):
+        """Move certain artifacts out of the default upload directory.
+
+        These artifacts will be moved to a secondary directory called `cidata`.
+        Then they will be uploaded with different expiration values."""
+        dirs = self.query_abs_dirs()
+        topsrcdir = dirs["abs_src_dir"]
+        base_work_dir = dirs["base_work_dir"]
+
+        build_platform = os.environ.get("MOZ_ARTIFACT_PLATFORM")
+        if build_platform is not None:
+            build_platform = build_platform.lower()
+        else:
+            return
+        try:
+            upload_dir = os.environ["UPLOAD_DIR"]
+        except KeyError:
+            self.fatal("The env. var. UPLOAD_DIR is not set.")
+
+        artifact_yml_path = os.path.join(
+            topsrcdir, "taskcluster/gecko_taskgraph/transforms/artifacts.yml"
+        )
+
+        upload_short_dir = os.path.join(base_work_dir, "cidata")
+
+        # Choose artifacts based on build platform
+        if build_platform.startswith("win"):
+            main_platform = "win"
+        elif build_platform.startswith("linux"):
+            main_platform = "linux"
+        elif build_platform.startswith("mac"):
+            main_platform = "macos"
+        elif build_platform.startswith("android"):
+            if build_platform == "android-geckoview-docs":
+                return
+            main_platform = "android"
+        else:
+            err = "Build platform {} didn't start with 'mac', 'linux', 'win', or 'android'".format(
+                build_platform
+            )
+            self.fatal(err)
+        try:
+            with open(artifact_yml_path) as artfile:
+                arts = []
+                platforms = yaml.safe_load(artfile.read())
+                for artifact in platforms[main_platform]:
+                    arts.append(artifact)
+        except FileNotFoundError:
+            self.fatal("Could not read artifacts.yml; file not found. Exiting.")
+        except PermissionError:
+            self.fatal("Could not read artifacts.yml; permission error.")
+        except YAMLError as ye:
+            self.fatal(f"Failed to parse artifacts.yml with error:\n{ye}")
+
+        try:
+            os.makedirs(upload_short_dir)
+        except FileExistsError:
+            pass
+        except PermissionError:
+            self.fatal(f'Failed to create dir. "{upload_short_dir}"; permission error.')
+
+        for art in arts:
+            source_file = os.path.join(upload_dir, art)
+            if not os.path.exists(source_file):
+                self.info(
+                    f"The artifact {source_file} is not present in this build. Skipping"
+                )
+                continue
+            dest_file = os.path.join(upload_short_dir, art)
+            try:
+                os.rename(source_file, dest_file)
+                if os.path.exists(dest_file):
+                    self.info(
+                        f"Successfully moved artifact {source_file} to {dest_file}"
+                    )
+                else:
+                    self.fatal(
+                        f"Move of {source_file} to {dest_file} was not successful."
+                    )
+            except (PermissionError, FileNotFoundError) as err:
+                self.fatal(
+                    f'Failed to move file "{art}" from {source_file} to {dest_file}:\n{err}'
+                )
+                continue

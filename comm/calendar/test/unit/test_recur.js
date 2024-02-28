@@ -2,7 +2,7 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-var { XPCOMUtils } = ChromeUtils.import("resource://gre/modules/XPCOMUtils.jsm");
+var { XPCOMUtils } = ChromeUtils.importESModule("resource://gre/modules/XPCOMUtils.sys.mjs");
 
 XPCOMUtils.defineLazyModuleGetters(this, {
   CalRecurrenceInfo: "resource:///modules/CalRecurrenceInfo.jsm",
@@ -275,7 +275,7 @@ function test_rules() {
         "EXDATE:20020402T114500Z\n"
     ),
     [],
-    -0x7ffffffffffffdff
+    -9223372036854775000
   );
 
   check_recur(
@@ -784,6 +784,18 @@ function test_rules() {
       "EXDATE;TZID=Europe/Berlin:20020402T114500\n"
   );
   check_recur(item, ["20020401T114500", "20020403T114500"], "20020403T094500");
+
+  // Unsupported SECONDLY FREQ value.
+  item = makeEvent(
+    "DESCRIPTION:bug 1770984\nRRULE:FREQ=SECONDLY;COUNT=60\nDTSTART:20220606T114500Z\n"
+  );
+  check_recur(item, [], "20220606T114500Z");
+
+  // Unsupported MINUTELY FREQ value.
+  item = makeEvent(
+    "DESCRIPTION:bug 1770984\nRRULE:FREQ=MINUTELY;COUNT=60\nDTSTART:20220606T114500Z\n"
+  );
+  check_recur(item, [], "20220606T114500Z");
 }
 
 function test_limit() {
@@ -1009,7 +1021,7 @@ function test_rrule_interface() {
   // untilDate (without UTC)
   rrule.count = 3;
   let untilDate = cal.createDateTime();
-  untilDate.timezone = cal.getTimezoneService().getTimezone("Europe/Berlin");
+  untilDate.timezone = cal.timezoneService.getTimezone("Europe/Berlin");
   rrule.untilDate = untilDate;
   ok(!rrule.isByCount);
   throws(() => rrule.count, /0x80004005/);

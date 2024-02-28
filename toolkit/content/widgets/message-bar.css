@@ -7,9 +7,10 @@
   --warn-icon-url: url("chrome://global/skin/icons/warning.svg");
   --success-icon-url: url("chrome://global/skin/icons/check.svg");
   --error-icon-url: url("chrome://global/skin/icons/error.svg");
-  --close-icon-url: url("chrome://global/skin/icons/close.svg");
+  --close-icon-url: url("chrome://global/skin/icons/close-12.svg");
+  --close-fill-color: var(--in-content-icon-color);
   --icon-size: 16px;
-  --close-icon-size: 32px;
+  --close-icon-size: 24px;
 }
 
 :host([message-bar-type=infobar]) {
@@ -33,6 +34,8 @@
   --in-content-button-background: var(--yellow-60);
   --in-content-button-background-hover: var(--yellow-70);
   --in-content-button-background-active: var(--yellow-80);
+
+  --close-fill-color: var(--message-bar-text-color);
 }
 :host([type=warning]) {
   --message-bar-icon-url: var(--warn-icon-url);
@@ -148,7 +151,6 @@
   flex-shrink: 0;
 }
 
-@media (-moz-proton) {
 @media not (prefers-contrast) {
   .container.infobar {
     box-shadow: 0 1px 2px rgba(58, 57, 68, 0.1);
@@ -156,10 +158,10 @@
   }
 
   .close {
-    fill: var(--in-content-icon-color);
+    fill: var(--close-fill-color);
   }
 
-  @media (-moz-toolbar-prefers-color-scheme: dark) {
+  @media (prefers-color-scheme: dark) {
     /* Don't set the background in prefers-contrast mode or macOS can end up
      * with black on black text. */
     .container.infobar {
@@ -187,7 +189,7 @@
   display: block;
   width: 2px;
   position: absolute;
-  background-image: linear-gradient(0, #9059ff 0%, #ff4aa2 52.08%, #ffbd4f 100%);
+  background-image: linear-gradient(0deg, #9059ff 0%, #ff4aa2 52.08%, #ffbd4f 100%);
   top: 0;
   inset-inline-start: 0;
   height: 100%;
@@ -217,9 +219,17 @@
   vertical-align: middle;
 }
 
+.container.infobar > .notification-content > .notification-message img.inline-icon {
+  /* Align inline icon images in the message content */
+  vertical-align: bottom;
+  /* Ensure they get the right fill color. */
+  -moz-context-properties: fill;
+  fill: currentColor;
+}
+
 .close {
   margin: 4px 8px;
-  background-size: 16px;
+  background-size: 12px;
 }
 
 .notification-button {
@@ -265,7 +275,7 @@ strong {
   color: rgb(226,40,80);
 }
 
-@media (-moz-toolbar-prefers-color-scheme: dark) {
+@media (prefers-color-scheme: dark) {
   :host([type=info]) .icon {
     color: rgb(128,235,255);
   }
@@ -275,5 +285,4 @@ strong {
   :host([type=critical]) .icon {
     color: rgb(255,154,162);
   }
-}
 }

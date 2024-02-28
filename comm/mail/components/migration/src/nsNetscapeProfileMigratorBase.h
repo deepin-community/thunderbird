@@ -6,6 +6,7 @@
 #ifndef netscapeprofilemigratorbase___h___
 #define netscapeprofilemigratorbase___h___
 
+#include "nsAttrValue.h"
 #include "nsIFile.h"
 #include "nsIStringBundle.h"
 #include "nsString.h"
@@ -15,7 +16,6 @@
 #include "nsIMailProfileMigrator.h"
 
 class nsIPrefBranch;
-class nsIMutableArray;
 
 struct fileTransactionEntry {
   nsCOMPtr<nsIFile> srcFile;   // the src path including leaf name
@@ -37,12 +37,14 @@ struct fileTransactionEntry {
   }
 
 class nsNetscapeProfileMigratorBase : public nsIMailProfileMigrator,
-                                      public nsITimerCallback
+                                      public nsITimerCallback,
+                                      public nsINamed
 
 {
  public:
   NS_DECL_ISUPPORTS
   NS_DECL_NSITIMERCALLBACK
+  NS_DECL_NSINAMED
 
   nsNetscapeProfileMigratorBase();
 

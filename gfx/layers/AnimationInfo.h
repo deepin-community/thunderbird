@@ -18,11 +18,11 @@
 struct RawServoAnimationValue;
 class nsIContent;
 class nsIFrame;
-class nsDisplayListBuilder;
-class nsDisplayItem;
 
 namespace mozilla {
 
+class nsDisplayItem;
+class nsDisplayListBuilder;
 class EffectSet;
 struct AnimationProperty;
 
@@ -39,7 +39,7 @@ namespace layers {
 class Animation;
 class CompositorAnimations;
 class Layer;
-class LayerManager;
+class WebRenderLayerManager;
 struct CompositorAnimationData;
 struct PropertyAnimationGroup;
 
@@ -75,11 +75,7 @@ class AnimationInfo final {
   // ClearAnimations clears animations on this layer.
   void ClearAnimations();
   void ClearAnimationsForNextTransaction();
-  void SetCompositorAnimations(
-      const LayersId& aLayersId,
-      const CompositorAnimations& aCompositorAnimations);
   bool StartPendingAnimations(const TimeStamp& aReadyTime);
-  void TransferMutatedFlagToLayer(Layer* aLayer);
 
   uint64_t GetCompositorAnimationsId() { return mCompositorAnimationsId; }
   // Note: We don't set mAnimations on the compositor thread, so this will
@@ -118,7 +114,7 @@ class AnimationInfo final {
 
   void AddAnimationsForDisplayItem(
       nsIFrame* aFrame, nsDisplayListBuilder* aBuilder, nsDisplayItem* aItem,
-      DisplayItemType aType, LayerManager* aLayerManager,
+      DisplayItemType aType, WebRenderLayerManager* aLayerManager,
       const Maybe<LayoutDevicePoint>& aPosition = Nothing());
 
  private:
@@ -136,7 +132,7 @@ class AnimationInfo final {
       nsIFrame* aFrame, const EffectSet* aEffects,
       const nsTArray<RefPtr<dom::Animation>>& aCompositorAnimations,
       const Maybe<TransformData>& aTransformData, nsCSSPropertyID aProperty,
-      Send aSendFlag, LayerManager* aLayerManager);
+      Send aSendFlag, WebRenderLayerManager* aLayerManager);
 
   void AddNonAnimatingTransformLikePropertiesStyles(
       const nsCSSPropertyIDSet& aNonAnimatingProperties, nsIFrame* aFrame,

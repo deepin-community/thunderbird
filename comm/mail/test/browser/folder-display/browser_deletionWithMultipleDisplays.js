@@ -19,7 +19,9 @@ var {
   close_message_window,
   close_tab,
   create_folder,
-  make_new_sets_in_folder,
+  get_about_3pane,
+  get_about_message,
+  make_message_sets_in_folders,
   mc,
   open_selected_message_in_new_tab,
   open_selected_message_in_new_window,
@@ -44,33 +46,47 @@ var folder,
   multipleDeletionFolder3,
   multipleDeletionFolder4;
 
-add_task(function setupModule(module) {
-  requestLongerTimeout(3);
+// Adjust timeout to take care of code coverage runs needing twice as long.
+requestLongerTimeout(AppConstants.MOZ_CODE_COVERAGE ? 4 : 2);
 
-  folder = create_folder("DeletionA");
-  lastMessageFolder = create_folder("DeletionB");
-  oneBeforeFolder = create_folder("DeletionC");
-  oneAfterFolder = create_folder("DeletionD");
-  multipleDeletionFolder1 = create_folder("DeletionE");
-  multipleDeletionFolder2 = create_folder("DeletionF");
-  multipleDeletionFolder3 = create_folder("DeletionG");
-  multipleDeletionFolder4 = create_folder("DeletionH");
+add_setup(async function () {
+  folder = await create_folder("DeletionA");
+  lastMessageFolder = await create_folder("DeletionB");
+  oneBeforeFolder = await create_folder("DeletionC");
+  oneAfterFolder = await create_folder("DeletionD");
+  multipleDeletionFolder1 = await create_folder("DeletionE");
+  multipleDeletionFolder2 = await create_folder("DeletionF");
+  multipleDeletionFolder3 = await create_folder("DeletionG");
+  multipleDeletionFolder4 = await create_folder("DeletionH");
   // we want exactly as many messages as we plan to delete, so that we can test
   //  that the message window and tabs close when they run out of things to
   //  to display.
-  make_new_sets_in_folder(folder, [{ count: 4 }]);
+  await make_message_sets_in_folders([folder], [{ count: 4 }]);
 
   // since we don't test window close here, it doesn't really matter how many
   // messages these have
-  make_new_sets_in_folder(lastMessageFolder, [{ count: 4 }]);
-  make_new_sets_in_folder(oneBeforeFolder, [{ count: 10 }]);
-  make_new_sets_in_folder(oneAfterFolder, [{ count: 10 }]);
-  make_new_sets_in_folder(multipleDeletionFolder1, [{ count: 30 }]);
+
+  await make_message_sets_in_folders([lastMessageFolder], [{ count: 4 }]);
+  await make_message_sets_in_folders([oneBeforeFolder], [{ count: 10 }]);
+  await make_message_sets_in_folders([oneAfterFolder], [{ count: 10 }]);
+  await make_message_sets_in_folders(
+    [multipleDeletionFolder1],
+    [{ count: 30 }]
+  );
 
   // We're depending on selecting the last message here, so these do matter
-  make_new_sets_in_folder(multipleDeletionFolder2, [{ count: 10 }]);
-  make_new_sets_in_folder(multipleDeletionFolder3, [{ count: 10 }]);
-  make_new_sets_in_folder(multipleDeletionFolder4, [{ count: 10 }]);
+  await make_message_sets_in_folders(
+    [multipleDeletionFolder2],
+    [{ count: 10 }]
+  );
+  await make_message_sets_in_folders(
+    [multipleDeletionFolder3],
+    [{ count: 10 }]
+  );
+  await make_message_sets_in_folders(
+    [multipleDeletionFolder4],
+    [{ count: 10 }]
+  );
 });
 
 var tabFolder, tabMessage, tabMessageBackground, curMessage, nextMessage;
@@ -90,25 +106,25 @@ async function _open_message_in_all_four_display_mechanisms_helper(
   aIndex
 ) {
   // - Select the message in this tab.
-  tabFolder = be_in_folder(aFolder);
+  tabFolder = await be_in_folder(aFolder);
   curMessage = select_click_row(aIndex);
   assert_selected_and_displayed(curMessage);
 
   // - Open the tab with the message
-  tabMessage = open_selected_message_in_new_tab();
+  tabMessage = await open_selected_message_in_new_tab();
   assert_selected_and_displayed(curMessage);
   assert_tab_titled_from(tabMessage, curMessage);
 
   // go back to the folder tab
-  switch_tab(tabFolder);
+  await switch_tab(tabFolder);
 
   // - Open another tab with the message, this time in the background
-  tabMessageBackground = open_selected_message_in_new_tab(true);
+  tabMessageBackground = await open_selected_message_in_new_tab(true);
   assert_tab_titled_from(tabMessageBackground, curMessage);
 
   // - Open the window with the message
   // need to go back to the folder tab.  (well, should.)
-  switch_tab(tabFolder);
+  await switch_tab(tabFolder);
   msgc = await open_selected_message_in_new_window();
   assert_selected_and_displayed(msgc, curMessage);
 }
@@ -127,9 +143,14 @@ var VERIFY_ALL = 0xf;
  * Verify that the message is displayed in the given tabs. The index is
  * optional.
  */
-function _verify_message_is_displayed_in(aFlags, aMessage, aIndex) {
+async function _verify_message_is_displayed_in(aFlags, aMessage, aIndex) {
   if (aFlags & VERIFY_FOLDER_TAB) {
-    switch_tab(tabFolder);
+    await switch_tab(tabFolder);
+    Assert.equal(
+      get_about_message().gMessage,
+      aMessage,
+      "folder tab shows the correct message"
+    );
     assert_selected_and_displayed(aMessage);
     if (aIndex !== undefined) {
       assert_selected_and_displayed(aIndex);
@@ -138,9 +159,18 @@ function _verify_message_is_displayed_in(aFlags, aMessage, aIndex) {
   if (aFlags & VERIFY_MESSAGE_TAB) {
     // Verify the title first
     assert_tab_titled_from(tabMessage, aMessage);
-    switch_tab(tabMessage);
+    await switch_tab(tabMessage);
     // Verify the title again, just in case
+    Assert.equal(
+      get_about_message().gMessageURI,
+      aMessage.folder.getUriForMsg(aMessage)
+    );
     assert_tab_titled_from(tabMessage, aMessage);
+    Assert.equal(
+      get_about_message().gMessage,
+      aMessage,
+      "message tab shows the correct message"
+    );
     assert_selected_and_displayed(aMessage);
     if (aIndex !== undefined) {
       assert_selected_and_displayed(aIndex);
@@ -151,6 +181,11 @@ function _verify_message_is_displayed_in(aFlags, aMessage, aIndex) {
     assert_tab_titled_from(tabMessageBackground, aMessage);
   }
   if (aFlags & VERIFY_MESSAGE_WINDOW) {
+    Assert.equal(
+      get_about_message(msgc.window).gMessage,
+      aMessage,
+      "message window shows the correct message"
+    );
     assert_selected_and_displayed(msgc, aMessage);
     if (aIndex !== undefined) {
       assert_selected_and_displayed(msgc, aIndex);
@@ -175,33 +210,33 @@ add_task(
  * Perform a deletion from the folder tab, verify the others update correctly
  *  (advancing to the next message).
  */
-add_task(function test_delete_in_folder_tab() {
+add_task(async function test_delete_in_folder_tab() {
+  let about3Pane = get_about_3pane();
   // - plan to end up on the guy who is currently at index 1
-  curMessage = mc.dbView.getMsgHdrAt(1);
+  curMessage = about3Pane.gDBView.getMsgHdrAt(1);
   // while we're at it, figure out who is at 2 for the next step
-  nextMessage = mc.dbView.getMsgHdrAt(2);
+  nextMessage = about3Pane.gDBView.getMsgHdrAt(2);
   // - delete the message
   press_delete();
-
   // - verify all displays
-  _verify_message_is_displayed_in(VERIFY_ALL, curMessage, 0);
+  await _verify_message_is_displayed_in(VERIFY_ALL, curMessage, 0);
 });
 
 /**
  * Perform a deletion from the message tab, verify the others update correctly
  *  (advancing to the next message).
  */
-add_task(function test_delete_in_message_tab() {
-  switch_tab(tabMessage);
+add_task(async function test_delete_in_message_tab() {
+  await switch_tab(tabMessage);
   // nextMessage is the guy we want to see once the delete completes.
   press_delete();
   curMessage = nextMessage;
 
   // - verify all displays
-  _verify_message_is_displayed_in(VERIFY_ALL, curMessage, 0);
+  await _verify_message_is_displayed_in(VERIFY_ALL, curMessage, 0);
 
   // figure out the next guy...
-  nextMessage = mc.dbView.getMsgHdrAt(1);
+  nextMessage = get_about_message().gDBView.getMsgHdrAt(1);
   if (!nextMessage) {
     throw new Error("We ran out of messages early?");
   }
@@ -211,19 +246,19 @@ add_task(function test_delete_in_message_tab() {
  * Perform a deletion from the message window, verify the others update
  *  correctly (advancing to the next message).
  */
-add_task(function test_delete_in_message_window() {
+add_task(async function test_delete_in_message_window() {
   // - delete
   press_delete(msgc);
   curMessage = nextMessage;
   // - verify all displays
-  _verify_message_is_displayed_in(VERIFY_ALL, curMessage, 0);
+  await _verify_message_is_displayed_in(VERIFY_ALL, curMessage, 0);
 });
 
 /**
  * Delete the last message in that folder, which should close all message
  *  displays.
  */
-add_task(function test_delete_last_message_closes_message_displays() {
+add_task(async function test_delete_last_message_closes_message_displays() {
   // - since we have both foreground and background message tabs, we don't need
   // to open yet another tab to test
 
@@ -231,7 +266,7 @@ add_task(function test_delete_last_message_closes_message_displays() {
   plan_for_window_close(msgc);
 
   // - let's arbitrarily perform the deletion on this message tab
-  switch_tab(tabMessage);
+  await switch_tab(tabMessage);
   press_delete();
 
   // - the message window should have gone away...
@@ -241,11 +276,13 @@ add_task(function test_delete_last_message_closes_message_displays() {
   msgc = null;
 
   // - and we should now be on the folder tab and there should be no other tabs
-  if (mc.tabmail.tabInfo.length != 1) {
+  if (mc.window.document.getElementById("tabmail").tabInfo.length != 1) {
     throw new Error("There should only be one tab left!");
   }
   // the below check is implied by the previous check if things are sane-ish
-  if (mc.tabmail.currentTabInfo != tabFolder) {
+  if (
+    mc.window.document.getElementById("tabmail").currentTabInfo != tabFolder
+  ) {
     throw new Error("We should be on the folder tab!");
   }
 });
@@ -277,33 +314,34 @@ add_task(
  * Perform a deletion from the folder tab, verify the others update correctly
  * (advancing to the next message).
  */
-add_task(function test_delete_last_message_in_folder_tab() {
+add_task(async function test_delete_last_message_in_folder_tab() {
+  let about3Pane = get_about_3pane();
   // - plan to end up on the guy who is currently at index 2
-  curMessage = mc.dbView.getMsgHdrAt(2);
+  curMessage = about3Pane.gDBView.getMsgHdrAt(2);
   // while we're at it, figure out who is at 1 for the next step
-  nextMessage = mc.dbView.getMsgHdrAt(1);
+  nextMessage = about3Pane.gDBView.getMsgHdrAt(1);
   // - delete the message
   press_delete();
 
   // - verify all displays
-  _verify_message_is_displayed_in(VERIFY_ALL, curMessage, 2);
+  await _verify_message_is_displayed_in(VERIFY_ALL, curMessage, 2);
 });
 
 /**
  * Perform a deletion from the message tab, verify the others update correctly
  * (advancing to the next message).
  */
-add_task(function test_delete_last_message_in_message_tab() {
+add_task(async function test_delete_last_message_in_message_tab() {
   // (we're still on the message tab, and nextMessage is the guy we want to see
   //  once the delete completes.)
   press_delete();
   curMessage = nextMessage;
 
   // - verify all displays
-  _verify_message_is_displayed_in(VERIFY_ALL, curMessage, 1);
+  await _verify_message_is_displayed_in(VERIFY_ALL, curMessage, 1);
   // figure out the next guy...
 
-  nextMessage = mc.dbView.getMsgHdrAt(0);
+  nextMessage = get_about_message().gDBView.getMsgHdrAt(0);
   if (!nextMessage) {
     throw new Error("We ran out of messages early?");
   }
@@ -313,21 +351,21 @@ add_task(function test_delete_last_message_in_message_tab() {
  * Perform a deletion from the message window, verify the others update
  * correctly (advancing to the next message).
  */
-add_task(function test_delete_last_message_in_message_window() {
+add_task(async function test_delete_last_message_in_message_window() {
   // Vary this up. Switch to the folder tab instead of staying on the message
   // tab
-  switch_tab(tabFolder);
+  await switch_tab(tabFolder);
   // - delete
   press_delete(msgc);
   curMessage = nextMessage;
   // - verify all displays
-  _verify_message_is_displayed_in(VERIFY_ALL, curMessage, 0);
+  await _verify_message_is_displayed_in(VERIFY_ALL, curMessage, 0);
 
   // - clean up, close the message window and displays
   close_message_window(msgc);
   close_tab(tabMessage);
   close_tab(tabMessageBackground);
-  switch_tab(tabFolder);
+  await switch_tab(tabFolder);
 });
 
 /*
@@ -342,12 +380,12 @@ add_task(async function test_delete_one_before_message_in_folder_tab() {
   // Open up message 4 in message tabs and a window (we'll delete message 3).
   await _open_message_in_all_four_display_mechanisms_helper(oneBeforeFolder, 4);
 
-  let expectedMessage = mc.dbView.getMsgHdrAt(4);
+  let expectedMessage = get_about_3pane().gDBView.getMsgHdrAt(4);
   select_click_row(3);
   press_delete();
 
   // The message tab, background message tab and window shouldn't have changed
-  _verify_message_is_displayed_in(
+  await _verify_message_is_displayed_in(
     VERIFY_MESSAGE_TAB | VERIFY_BACKGROUND_MESSAGE_TAB | VERIFY_MESSAGE_WINDOW,
     expectedMessage
   );
@@ -356,7 +394,7 @@ add_task(async function test_delete_one_before_message_in_folder_tab() {
   close_message_window(msgc);
   close_tab(tabMessage);
   close_tab(tabMessageBackground);
-  switch_tab(tabFolder);
+  await switch_tab(tabFolder);
 });
 
 /**
@@ -366,17 +404,17 @@ add_task(async function test_delete_one_before_message_in_message_tab() {
   // Open up 3 in a message tab, then select and open up 4 in a background tab
   // and window.
   select_click_row(3);
-  tabMessage = open_selected_message_in_new_tab(true);
+  tabMessage = await open_selected_message_in_new_tab(true);
   let expectedMessage = select_click_row(4);
-  tabMessageBackground = open_selected_message_in_new_tab(true);
+  tabMessageBackground = await open_selected_message_in_new_tab(true);
   msgc = await open_selected_message_in_new_window(true);
 
   // Switch to the message tab, and delete.
-  switch_tab(tabMessage);
+  await switch_tab(tabMessage);
   press_delete();
 
   // The folder tab, background message tab and window shouldn't have changed
-  _verify_message_is_displayed_in(
+  await _verify_message_is_displayed_in(
     VERIFY_FOLDER_TAB | VERIFY_BACKGROUND_MESSAGE_TAB | VERIFY_MESSAGE_WINDOW,
     expectedMessage
   );
@@ -385,7 +423,7 @@ add_task(async function test_delete_one_before_message_in_message_tab() {
   close_message_window(msgc);
   close_tab(tabMessage);
   close_tab(tabMessageBackground);
-  switch_tab(tabFolder);
+  await switch_tab(tabFolder);
 });
 
 /**
@@ -397,16 +435,16 @@ add_task(async function test_delete_one_before_message_in_message_window() {
   select_click_row(3);
   msgc = await open_selected_message_in_new_window();
   let expectedMessage = select_click_row(4);
-  tabMessage = open_selected_message_in_new_tab();
-  switch_tab(tabFolder);
-  tabMessageBackground = open_selected_message_in_new_tab(true);
+  tabMessage = await open_selected_message_in_new_tab();
+  await switch_tab(tabFolder);
+  tabMessageBackground = await open_selected_message_in_new_tab(true);
 
   // Press delete in the message window.
   press_delete(msgc);
 
   // The folder tab, message tab and background message tab shouldn't have
   // changed
-  _verify_message_is_displayed_in(
+  await _verify_message_is_displayed_in(
     VERIFY_FOLDER_TAB | VERIFY_MESSAGE_TAB | VERIFY_BACKGROUND_MESSAGE_TAB,
     expectedMessage
   );
@@ -415,7 +453,7 @@ add_task(async function test_delete_one_before_message_in_message_window() {
   close_message_window(msgc);
   close_tab(tabMessage);
   close_tab(tabMessageBackground);
-  switch_tab(tabFolder);
+  await switch_tab(tabFolder);
 });
 
 /*
@@ -429,12 +467,12 @@ add_task(async function test_delete_one_after_message_in_folder_tab() {
   // Open up message 4 in message tabs and a window (we'll delete message 5).
   await _open_message_in_all_four_display_mechanisms_helper(oneAfterFolder, 4);
 
-  let expectedMessage = mc.dbView.getMsgHdrAt(4);
+  let expectedMessage = get_about_3pane().gDBView.getMsgHdrAt(4);
   select_click_row(5);
   press_delete();
 
   // The message tab, background message tab and window shouldn't have changed
-  _verify_message_is_displayed_in(
+  await _verify_message_is_displayed_in(
     VERIFY_MESSAGE_TAB | VERIFY_BACKGROUND_MESSAGE_TAB | VERIFY_MESSAGE_WINDOW,
     expectedMessage
   );
@@ -443,7 +481,7 @@ add_task(async function test_delete_one_after_message_in_folder_tab() {
   close_message_window(msgc);
   close_tab(tabMessage);
   close_tab(tabMessageBackground);
-  switch_tab(tabFolder);
+  await switch_tab(tabFolder);
 });
 
 /**
@@ -453,17 +491,17 @@ add_task(async function test_delete_one_after_message_in_message_tab() {
   // Open up 5 in a message tab, then select and open up 4 in a background tab
   // and window.
   select_click_row(5);
-  tabMessage = open_selected_message_in_new_tab(true);
+  tabMessage = await open_selected_message_in_new_tab(true);
   let expectedMessage = select_click_row(4);
-  tabMessageBackground = open_selected_message_in_new_tab(true);
+  tabMessageBackground = await open_selected_message_in_new_tab(true);
   msgc = await open_selected_message_in_new_window(true);
 
   // Switch to the message tab, and delete.
-  switch_tab(tabMessage);
+  await switch_tab(tabMessage);
   press_delete();
 
   // The folder tab, background message tab and window shouldn't have changed
-  _verify_message_is_displayed_in(
+  await _verify_message_is_displayed_in(
     VERIFY_FOLDER_TAB | VERIFY_BACKGROUND_MESSAGE_TAB | VERIFY_MESSAGE_WINDOW,
     expectedMessage
   );
@@ -472,7 +510,7 @@ add_task(async function test_delete_one_after_message_in_message_tab() {
   close_message_window(msgc);
   close_tab(tabMessage);
   close_tab(tabMessageBackground);
-  switch_tab(tabFolder);
+  await switch_tab(tabFolder);
 });
 
 /**
@@ -484,16 +522,16 @@ add_task(async function test_delete_one_after_message_in_message_window() {
   select_click_row(5);
   msgc = await open_selected_message_in_new_window();
   let expectedMessage = select_click_row(4);
-  tabMessage = open_selected_message_in_new_tab();
-  switch_tab(tabFolder);
-  tabMessageBackground = open_selected_message_in_new_tab(true);
+  tabMessage = await open_selected_message_in_new_tab();
+  await switch_tab(tabFolder);
+  tabMessageBackground = await open_selected_message_in_new_tab(true);
 
   // Press delete in the message window.
   press_delete(msgc);
 
   // The folder tab, message tab and background message tab shouldn't have
   // changed
-  _verify_message_is_displayed_in(
+  await _verify_message_is_displayed_in(
     VERIFY_FOLDER_TAB | VERIFY_MESSAGE_TAB | VERIFY_BACKGROUND_MESSAGE_TAB,
     expectedMessage
   );
@@ -502,7 +540,7 @@ add_task(async function test_delete_one_after_message_in_message_window() {
   close_message_window(msgc);
   close_tab(tabMessage);
   close_tab(tabMessageBackground);
-  switch_tab(tabFolder);
+  await switch_tab(tabFolder);
 });
 
 /*
@@ -529,19 +567,19 @@ add_task(
     select_control_click_row(8);
     select_control_click_row(9);
     select_control_click_row(10);
-    let expectedMessage = mc.dbView.getMsgHdrAt(6);
+    let expectedMessage = get_about_3pane().gDBView.getMsgHdrAt(6);
 
     // Delete the selected messages
     press_delete();
 
     // All the displays should now be showing the expectedMessage
-    _verify_message_is_displayed_in(VERIFY_ALL, expectedMessage);
+    await _verify_message_is_displayed_in(VERIFY_ALL, expectedMessage);
 
     // Clean up, close everything
     close_message_window(msgc);
     close_tab(tabMessage);
     close_tab(tabMessageBackground);
-    switch_tab(tabFolder);
+    await switch_tab(tabFolder);
   }
 );
 
@@ -564,7 +602,7 @@ add_task(
     select_control_click_row(8);
     select_control_click_row(9);
     select_control_click_row(10);
-    let expectedMessage = mc.dbView.getMsgHdrAt(11);
+    let expectedMessage = get_about_3pane().gDBView.getMsgHdrAt(11);
 
     // Delete the selected messages
     press_delete();
@@ -573,7 +611,7 @@ add_task(
     assert_selected_and_displayed(2);
 
     // The other displays should now be showing the expectedMessage
-    _verify_message_is_displayed_in(
+    await _verify_message_is_displayed_in(
       VERIFY_MESSAGE_TAB |
         VERIFY_BACKGROUND_MESSAGE_TAB |
         VERIFY_MESSAGE_WINDOW,
@@ -584,7 +622,7 @@ add_task(
     close_message_window(msgc);
     close_tab(tabMessage);
     close_tab(tabMessageBackground);
-    switch_tab(tabFolder);
+    await switch_tab(tabFolder);
   }
 );
 
@@ -607,7 +645,7 @@ add_task(
     select_control_click_row(8);
     select_control_click_row(9);
     select_control_click_row(10);
-    let expectedMessage = mc.dbView.getMsgHdrAt(11);
+    let expectedMessage = get_about_3pane().gDBView.getMsgHdrAt(11);
 
     // Delete the selected messages
     press_delete();
@@ -616,7 +654,7 @@ add_task(
     assert_selected_and_displayed(2);
 
     // The other displays should now be showing the expectedMessage
-    _verify_message_is_displayed_in(
+    await _verify_message_is_displayed_in(
       VERIFY_MESSAGE_TAB |
         VERIFY_BACKGROUND_MESSAGE_TAB |
         VERIFY_MESSAGE_WINDOW,
@@ -626,7 +664,7 @@ add_task(
     close_message_window(msgc);
     close_tab(tabMessage);
     close_tab(tabMessageBackground);
-    switch_tab(tabFolder);
+    await switch_tab(tabFolder);
   }
 );
 
@@ -648,19 +686,19 @@ add_task(
     select_control_click_row(7);
     select_control_click_row(8);
     select_control_click_row(9);
-    let expectedMessage = mc.dbView.getMsgHdrAt(5);
+    let expectedMessage = get_about_3pane().gDBView.getMsgHdrAt(5);
 
     // Delete the selected messages
     press_delete();
 
     // All the displays should now be showing the expectedMessage
-    _verify_message_is_displayed_in(VERIFY_ALL, expectedMessage);
+    await _verify_message_is_displayed_in(VERIFY_ALL, expectedMessage);
 
     // Clean up, close everything
     close_message_window(msgc);
     close_tab(tabMessage);
     close_tab(tabMessageBackground);
-    switch_tab(tabFolder);
+    await switch_tab(tabFolder);
   }
 );
 
@@ -682,7 +720,7 @@ add_task(
     select_control_click_row(7);
     select_control_click_row(8);
     select_control_click_row(9);
-    let expectedMessage = mc.dbView.getMsgHdrAt(6);
+    let expectedMessage = get_about_3pane().gDBView.getMsgHdrAt(6);
 
     // Delete the selected messages
     press_delete();
@@ -691,7 +729,7 @@ add_task(
     assert_selected_and_displayed(1);
 
     // The other displays should now be showing the expectedMessage
-    _verify_message_is_displayed_in(
+    await _verify_message_is_displayed_in(
       VERIFY_MESSAGE_TAB |
         VERIFY_BACKGROUND_MESSAGE_TAB |
         VERIFY_MESSAGE_WINDOW,
@@ -702,7 +740,7 @@ add_task(
     close_message_window(msgc);
     close_tab(tabMessage);
     close_tab(tabMessageBackground);
-    switch_tab(tabFolder);
+    await switch_tab(tabFolder);
   }
 );
 
@@ -724,7 +762,7 @@ add_task(
     select_control_click_row(7);
     select_control_click_row(8);
     select_control_click_row(9);
-    let expectedMessage = mc.dbView.getMsgHdrAt(6);
+    let expectedMessage = get_about_3pane().gDBView.getMsgHdrAt(6);
 
     // Delete the selected messages
     press_delete();
@@ -733,7 +771,7 @@ add_task(
     assert_selected_and_displayed(1);
 
     // The other displays should now be showing the expectedMessage
-    _verify_message_is_displayed_in(
+    await _verify_message_is_displayed_in(
       VERIFY_MESSAGE_TAB |
         VERIFY_BACKGROUND_MESSAGE_TAB |
         VERIFY_MESSAGE_WINDOW,
@@ -744,13 +782,6 @@ add_task(
     close_message_window(msgc);
     close_tab(tabMessage);
     close_tab(tabMessageBackground);
-    switch_tab(tabFolder);
-
-    Assert.report(
-      false,
-      undefined,
-      undefined,
-      "Test ran to completion successfully"
-    );
+    await switch_tab(tabFolder);
   }
 );

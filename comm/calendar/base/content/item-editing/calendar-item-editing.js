@@ -5,27 +5,47 @@
 /* import-globals-from ../calendar-management.js */
 /* import-globals-from ../calendar-views-utils.js */
 
+/* globals goUpdateCommand */
+
 var { cal } = ChromeUtils.import("resource:///modules/calendar/calUtils.jsm");
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-var { XPCOMUtils } = ChromeUtils.import("resource://gre/modules/XPCOMUtils.jsm");
+var { XPCOMUtils } = ChromeUtils.importESModule("resource://gre/modules/XPCOMUtils.sys.mjs");
+var { CalTransactionManager } = ChromeUtils.import("resource:///modules/CalTransactionManager.jsm");
 
 XPCOMUtils.defineLazyModuleGetters(this, {
+  CalAddTransaction: "resource:///modules/CalTransactionManager.jsm",
+  CalDeleteTransaction: "resource:///modules/CalTransactionManager.jsm",
   CalEvent: "resource:///modules/CalEvent.jsm",
+  CalModifyTransaction: "resource:///modules/CalTransactionManager.jsm",
   CalTodo: "resource:///modules/CalTodo.jsm",
 });
 
 /* exported modifyEventWithDialog, undo, redo, setContextPartstat */
 
 /**
- * Sets the default values for new items, taking values from either the passed
- * parameters or the preferences
+ * The global calendar transaction manager.
  *
- * @param aItem         The item to set up
- * @param aCalendar     (optional) The calendar to apply.
- * @param aStartDate    (optional) The start date to set.
- * @param aEndDate      (optional) The end date/due date to set.
- * @param aInitialDate  (optional) The reference date for the date pickers
- * @param aForceAllday  (optional) Force the event/task to be an allday item.
+ * @type {CalTransactionManager}
+ */
+var gCalTransactionMgr = CalTransactionManager.getInstance();
+
+/**
+ * If a batch transaction is active, it is stored here.
+ *
+ * @type {CalBatchTransaction?}
+ */
+var gCalBatchTransaction = null;
+
+/**
+ * Sets the default values for new items, taking values from either the passed
+ * parameters or the preferences.
+ *
+ * @param {calIItemBase} aItem - The item to set up.
+ * @param {?calICalendar} aCalendar - The calendar to apply.
+ * @param {?calIDateTime} aStartDate - The start date to set.
+ * @param {?calIDateTime} aEndDate - The end date/due date to set.
+ * @param {?calIDateTime} aInitialDate - The reference date for the date pickers.
+ * @param {boolean} [aForceAllday=false] - Force the event/task to be an all-day item.
+ * @param {calIAttendee[]} aAttendees - Attendees to add, if `aItem` is an event.
  */
 function setDefaultItemValues(
   aItem,
@@ -33,7 +53,8 @@ function setDefaultItemValues(
   aStartDate = null,
   aEndDate = null,
   aInitialDate = null,
-  aForceAllday = false
+  aForceAllday = false,
+  aAttendees = []
 ) {
   function endOfDay(aDate) {
     let eod = aDate ? aDate.clone() : cal.dtz.now();
@@ -96,6 +117,10 @@ function setDefaultItemValues(
 
     // Free/busy status is only valid for events, must not be set for tasks.
     aItem.setProperty("TRANSP", cal.item.getEventDefaultTransparency(aForceAllday));
+
+    for (let attendee of aAttendees) {
+      aItem.addAttendee(attendee);
+    }
   } else if (aItem.isTodo()) {
     let now = cal.dtz.now();
     let initDate = initialDate ? initialDate.clone() : now;
@@ -223,16 +248,24 @@ function setDefaultItemValues(
 /**
  * Creates an event with the calendar event dialog.
  *
- * @param calendar      (optional) The calendar to create the event in
- * @param startDate     (optional) The event's start date.
- * @param endDate       (optional) The event's end date.
- * @param summary       (optional) The event's title.
- * @param event         (optional) A template event to show in the dialog
- * @param aForceAllDay  (optional) Make sure the event shown in the dialog is an
- *                                   allday event.
+ * @param {?calICalendar} calendar - The calendar to create the event in
+ * @param {?calIDateTime} startDate - The event's start date.
+ * @param {?calIDateTime} endDate - The event's end date.
+ * @param {?string} summary - The event's title.
+ * @param {?calIEvent} event - A template event to show in the dialog
+ * @param {?boolean} forceAllDay - Make sure the event shown in the dialog is an all-day event.
+ * @param {?calIAttendee} attendees - Attendees to add to the event.
  */
-function createEventWithDialog(calendar, startDate, endDate, summary, event, aForceAllday) {
-  let onNewEvent = function(item, opcalendar, originalItem, listener, extresponse = null) {
+function createEventWithDialog(
+  calendar,
+  startDate,
+  endDate,
+  summary,
+  event,
+  forceAllDay,
+  attendees
+) {
+  let onNewEvent = function (item, opcalendar, originalItem, listener, extresponse = null) {
     if (item.id) {
       // If the item already has an id, then this is the result of
       // saving the item without closing, and then saving again.
@@ -252,7 +285,7 @@ function createEventWithDialog(calendar, startDate, endDate, summary, event, aFo
     // transaction
     event.id = null;
 
-    if (aForceAllday) {
+    if (forceAllDay) {
       event.startDate.isDate = true;
       event.endDate.isDate = true;
       if (event.startDate.compare(event.endDate) == 0) {
@@ -268,8 +301,8 @@ function createEventWithDialog(calendar, startDate, endDate, summary, event, aFo
   } else {
     event = new CalEvent();
 
-    let refDate = currentView().initialized && currentView().selectedDay.clone();
-    setDefaultItemValues(event, calendar, startDate, endDate, refDate, aForceAllday);
+    let refDate = currentView().selectedDay?.clone();
+    setDefaultItemValues(event, calendar, startDate, endDate, refDate, forceAllDay, attendees);
     if (summary) {
       event.title = summary;
     }
@@ -287,7 +320,7 @@ function createEventWithDialog(calendar, startDate, endDate, summary, event, aFo
  * @param initialDate   (optional) The initial date for new task datepickers
  */
 function createTodoWithDialog(calendar, dueDate, summary, todo, initialDate) {
-  let onNewItem = function(item, opcalendar, originalItem, listener, extresponse = null) {
+  let onNewItem = function (item, opcalendar, originalItem, listener, extresponse = null) {
     if (item.id) {
       // If the item already has an id, then this is the result of
       // saving the item without closing, and then saving again.
@@ -363,7 +396,7 @@ function modifyEventWithDialog(aItem, aPromptOccurrence, initialDate = null, aCo
     return;
   }
 
-  let onModifyItem = function(item, calendar, originalItem, listener, extresponse = null) {
+  let onModifyItem = function (item, calendar, originalItem, listener, extresponse = null) {
     doTransaction("modify", item, calendar, originalItem, listener, extresponse);
   };
 
@@ -385,21 +418,21 @@ function modifyEventWithDialog(aItem, aPromptOccurrence, initialDate = null, aCo
  * @param {calICalendar} calendar
  * @param {calIItemBase} originalItem
  * @param {?calIOperationListener} listener
- * @param {?Object} extresponse
+ * @param {?object} extresponse
  */
 
 /**
  * Opens the event dialog with the given item (task OR event).
  *
- * @param {calIItemBase} calendarItem    The item to open the dialog with.
- * @param {calICalendar} calendar        The calendar to open the dialog with.
- * @param {string} mode                  The operation the dialog should do
+ * @param {calIItemBase} calendarItem - The item to open the dialog with.
+ * @param {calICalendar} calendar - The calendar to open the dialog with.
+ * @param {string} mode - The operation the dialog should do
  *                                       ("new", "view", "modify").
- * @param {onDialogComplete} callback    The callback to call when the dialog
+ * @param {onDialogComplete} callback - The callback to call when the dialog
  *                                       has completed.
- * @param {?calIDateTime} initialDate    The initial date for new task
+ * @param {?calIDateTime} initialDate - The initial date for new task
  *                                       datepickers.
- * @param {?Object} counterProposal      An object representing the
+ * @param {?object} counterProposal - An object representing the
  *                                       counterproposal - see description
  *                                       for modifyEventWithDialog().
  */
@@ -420,16 +453,16 @@ function openEventDialog(
   // Set up some defaults
   mode = mode || "new";
   calendar = calendar || getSelectedCalendar();
-  let calendars = cal.getCalendarManager().getCalendars();
+  let calendars = cal.manager.getCalendars();
   calendars = calendars.filter(cal.acl.isCalendarWritable);
 
   let isItemSupported;
   if (calendarItem.isTodo()) {
-    isItemSupported = function(aCalendar) {
+    isItemSupported = function (aCalendar) {
       return aCalendar.getProperty("capabilities.tasks.supported") !== false;
     };
   } else if (calendarItem.isEvent()) {
-    isItemSupported = function(aCalendar) {
+    isItemSupported = function (aCalendar) {
       return aCalendar.getProperty("capabilities.events.supported") !== false;
     };
   }
@@ -488,10 +521,10 @@ function openEventDialog(
   args.counterProposal = counterProposal;
   args.inTab = Services.prefs.getBoolPref("calendar.item.editInTab", false);
   // this will be called if file->new has been selected from within the dialog
-  args.onNewEvent = function(opcalendar) {
+  args.onNewEvent = function (opcalendar) {
     createEventWithDialog(opcalendar, null, null);
   };
-  args.onNewTodo = function(opcalendar) {
+  args.onNewTodo = function (opcalendar) {
     createTodoWithDialog(opcalendar);
   };
 
@@ -509,6 +542,7 @@ function openEventDialog(
   let isEditable = mode == "modify" && !isInvitation && cal.acl.userCanModifyItem(calendarItem);
 
   if (cal.acl.isCalendarWritable(calendar) && (mode == "new" || isEditable)) {
+    // Currently the read-only summary dialog is never opened in a tab.
     if (args.inTab) {
       url = "chrome://calendar/content/calendar-item-iframe.xhtml";
     } else {
@@ -521,27 +555,13 @@ function openEventDialog(
   }
 
   if (args.inTab) {
-    // open in a tab, currently the read-only summary dialog is
-    // never opened in a tab
     args.url = url;
     let tabmail = document.getElementById("tabmail");
     let tabtype = args.calendarEvent.isEvent() ? "calendarEvent" : "calendarTask";
     tabmail.openTab(tabtype, args);
   } else {
     // open in a window
-
-    // reminder: event dialog should not be modal (cf bug 122671)
-    let features;
-    // keyword "dependent" should not be used (cf bug 752206)
-    if (Services.appinfo.OS == "WINNT") {
-      features = "chrome,titlebar,toolbar,resizable,status";
-    } else if (Services.appinfo.OS == "Darwin") {
-      features = "chrome,titlebar,toolbar,resizable,status,minimizable=no";
-    } else {
-      // All other targets, mostly Linux flavors using gnome.
-      features = "chrome,titlebar,toolbar,resizable,status,minimizable=no,dialog=no";
-    }
-    openDialog(url, "_blank", features, args);
+    openDialog(url, "_blank", "chrome,titlebar,toolbar,resizable", args);
   }
 }
 
@@ -565,7 +585,7 @@ function openEventDialog(
  *                                        false if a deletion is being made.
  * @param aAction                       Either "edit" or "delete". Sets up
  *                                          the labels in the occurrence prompt
- * @return [modifiedItem, futureItem, promptResponse]
+ * @returns [modifiedItem, futureItem, promptResponse]
  *                                      modifiedItem is a single item or array
  *                                        of items depending on the past aItem
  *
@@ -636,48 +656,50 @@ function promptOccurrenceModification(aItem, aNeedsFuture, aAction) {
 // Undo/Redo code
 
 /**
- * Helper to return the transaction manager service.
- *
- * @return      The calITransactionManager service.
- */
-function getTransactionMgr() {
-  return Cc["@mozilla.org/calendar/transactionmanager;1"].getService(Ci.calITransactionManager);
-}
-
-/**
  * Create and commit a transaction with the given arguments to the transaction
  * manager. Also updates the undo/redo menu.
  *
- * @see                 calITransactionManager
- * @param aAction       The action to do.
- * @param aItem         The new item to add/modify/delete
- * @param aCalendar     The calendar to do the transaction on
- * @param aOldItem      (optional) some actions require an old item
- * @param aListener     (optional) the listener to call when complete.
- * @param aExtResponse  (optional) JS object with additional parameters for sending itip messages
- *                                 (see also description of checkAndSend in calItipUtils.jsm)
+ * @param action       The action to do.
+ * @param item         The new item to add/modify/delete
+ * @param calendar     The calendar to do the transaction on
+ * @param oldItem      (optional) some actions require an old item
+ * @param observer     (optional) the observer to call when complete.
+ * @param extResponse  (optional) JS object with additional parameters for sending itip messages
+ *                                (see also description of checkAndSend in calItipUtils.jsm)
  */
-function doTransaction(aAction, aItem, aCalendar, aOldItem, aListener, aExtResponse = null) {
+async function doTransaction(action, item, calendar, oldItem, observer, extResponse = null) {
   // This is usually a user-initiated transaction, so make sure the calendar
   // this transaction is happening on is visible.
-  ensureCalendarVisible(aCalendar);
+  top.ensureCalendarVisible(calendar);
 
-  // Now use the transaction manager to execute the action
-  let manager = getTransactionMgr();
-  manager.createAndCommitTxn(
-    aAction,
-    aItem,
-    aCalendar,
-    aOldItem,
-    aListener ? aListener : null,
-    aExtResponse
-  );
+  let manager = gCalBatchTransaction || gCalTransactionMgr;
+  let trn;
+  switch (action) {
+    case "add":
+      trn = new CalAddTransaction(item, calendar, oldItem, extResponse);
+      break;
+    case "modify":
+      trn = new CalModifyTransaction(item, calendar, oldItem, extResponse);
+      break;
+    case "delete":
+      trn = new CalDeleteTransaction(item, calendar, oldItem, extResponse);
+      break;
+    default:
+      throw new Components.Exception(
+        `Invalid action specified "${action}"`,
+        Cr.NS_ERROR_ILLEGAL_VALUE
+      );
+  }
+
+  await manager.commit(trn);
 
   // If a batch transaction is active, do not update the menu as
   // endBatchTransaction() will take care of that.
-  if (manager.wrappedJSObject && manager.wrappedJSObject.batchActive) {
+  if (gCalBatchTransaction) {
     return;
   }
+
+  observer?.onTransactionComplete(trn.item, trn.oldItem);
   updateUndoRedoMenu();
 }
 
@@ -686,7 +708,7 @@ function doTransaction(aAction, aItem, aCalendar, aOldItem, aListener, aExtRespo
  */
 function undo() {
   if (canUndo()) {
-    getTransactionMgr().undo();
+    gCalTransactionMgr.undo();
     updateUndoRedoMenu();
   }
 }
@@ -696,17 +718,16 @@ function undo() {
  */
 function redo() {
   if (canRedo()) {
-    getTransactionMgr().redo();
+    gCalTransactionMgr.redo();
     updateUndoRedoMenu();
   }
 }
 
 /**
- * Start a batch transaction on the transaction manager. Can be called multiple
- * times, which nests transactions.
+ * Start a batch transaction on the transaction manager.
  */
 function startBatchTransaction() {
-  getTransactionMgr().beginBatch();
+  gCalBatchTransaction = gCalTransactionMgr.beginBatch();
 }
 
 /**
@@ -715,7 +736,7 @@ function startBatchTransaction() {
  * startBatchTransaction and this call.
  */
 function endBatchTransaction() {
-  getTransactionMgr().endBatch();
+  gCalBatchTransaction = null;
   updateUndoRedoMenu();
 }
 
@@ -724,14 +745,14 @@ function endBatchTransaction() {
  * at all).
  */
 function canUndo() {
-  return getTransactionMgr().canUndo();
+  return gCalTransactionMgr.canUndo();
 }
 
 /**
  * Checks if the last undone operation can be redone.
  */
 function canRedo() {
-  return getTransactionMgr().canRedo();
+  return gCalTransactionMgr.canRedo();
 }
 
 /**
@@ -758,7 +779,7 @@ function setContextPartstat(aTarget, aItems) {
    * Provides the participation representing the user for a provided item
    *
    * @param   {calEvent|calTodo}  aItem  The calendar item to inspect
-   * @returns {?calIAttendee}            An calIAttendee object or null if no
+   * @returns {?calIAttendee} An calIAttendee object or null if no
    *                                       participant was detected
    */
   function getParticipant(aItem) {

@@ -4,6 +4,7 @@
 
 calendar-ics-file-window-2 =
     .title = Importovať udalosti a úlohy
+calendar-ics-file-window-title = Importovať udalosti a úlohy
 calendar-ics-file-dialog-import-event-button-label = Importovať udalosť
 calendar-ics-file-dialog-import-task-button-label = Importovať úlohu
 calendar-ics-file-dialog-2 =
@@ -13,7 +14,7 @@ calendar-ics-file-cancel-button-close-label = Zavrieť
 calendar-ics-file-dialog-message-2 = Importovať zo súboru:
 calendar-ics-file-dialog-calendar-menu-label = Importovať do kalendára:
 calendar-ics-file-dialog-items-loading-message =
-    .value = Načítavajú sa položky ...
+    .value = Načítavajú sa položky…
 calendar-ics-file-dialog-search-input =
     .placeholder = Filtrovať položky…
 calendar-ics-file-dialog-sort-start-ascending =

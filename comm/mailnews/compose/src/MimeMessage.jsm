@@ -4,7 +4,9 @@
 
 const EXPORTED_SYMBOLS = ["MimeMessage"];
 
-let { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
+const { MailServices } = ChromeUtils.import(
+  "resource:///modules/MailServices.jsm"
+);
 let { MimeMultiPart, MimePart } = ChromeUtils.import(
   "resource:///modules/MimePart.jsm"
 );
@@ -26,12 +28,13 @@ let { jsmime } = ChromeUtils.import("resource:///modules/jsmime.jsm");
 class MimeMessage {
   /**
    * Construct a MimeMessage.
+   *
    * @param {nsIMsgIdentity} userIdentity
    * @param {nsIMsgCompFields} compFields
    * @param {string} fcc - The FCC header value.
    * @param {string} bodyType
    * @param {BinaryString} bodyText - This is ensured to be a 8-bit string, to
-   * be handled the same as attachment content.
+   *   be handled the same as attachment content.
    * @param {nsMsgDeliverMode} deliverMode
    * @param {string} originalMsgURI
    * @param {MSG_ComposeType} compType
@@ -63,6 +66,7 @@ class MimeMessage {
 
   /**
    * Write a MimeMessage to a tmp file.
+   *
    * @returns {nsIFile}
    */
   async createMessageFile() {
@@ -96,6 +100,7 @@ class MimeMessage {
 
   /**
    * Create a top MimePart to represent the full message.
+   *
    * @returns {MimePart}
    */
   _initMimePart() {
@@ -151,22 +156,52 @@ class MimeMessage {
         !this._compFields.newsgroups ||
         this._userIdentity.getBoolAttribute("generate_news_message_id"))
     ) {
-      messageId = Cc["@mozilla.org/messengercompose/computils;1"]
-        .createInstance(Ci.nsIMsgCompUtils)
-        .msgGenerateMessageId(this._userIdentity);
+      // Try to use the domain name of the From header to generate the message ID. We
+      // specifically don't use the nsIMsgIdentity associated with the account, because
+      // the user might have changed the address in the From header to use a different
+      // domain, and we don't want to leak the relationship between the domains.
+      const fromHdr = MailServices.headerParser.parseEncodedHeaderW(
+        this._compFields.from
+      );
+      const fromAddr = fromHdr[0].email;
+
+      // Extract the host from the address, if any, and generate a message ID from it.
+      // If we can't get a host for the message ID, let SMTP populate the header.
+      const atIndex = fromAddr.indexOf("@");
+      if (atIndex >= 0) {
+        messageId = Cc["@mozilla.org/messengercompose/computils;1"]
+          .createInstance(Ci.nsIMsgCompUtils)
+          .msgGenerateMessageId(
+            this._userIdentity,
+            fromAddr.slice(atIndex + 1)
+          );
+      }
+
       this._compFields.messageId = messageId;
     }
     let headers = new Map([
       ["message-id", messageId],
       ["date", new Date()],
       ["mime-version", "1.0"],
-      [
-        "user-agent",
-        Cc["@mozilla.org/network/protocol;1?name=http"].getService(
-          Ci.nsIHttpProtocolHandler
-        ).userAgent,
-      ],
     ]);
+
+    if (Services.prefs.getBoolPref("mailnews.headers.sendUserAgent")) {
+      if (Services.prefs.getBoolPref("mailnews.headers.useMinimalUserAgent")) {
+        headers.set(
+          "user-agent",
+          Services.strings
+            .createBundle("chrome://branding/locale/brand.properties")
+            .GetStringFromName("brandFullName")
+        );
+      } else {
+        headers.set(
+          "user-agent",
+          Cc["@mozilla.org/network/protocol;1?name=http"].getService(
+            Ci.nsIHttpProtocolHandler
+          ).userAgent
+        );
+      }
+    }
 
     for (let headerName of [...this._compFields.headerNames]) {
       let headerContent = this._compFields.getRawHeader(headerName);
@@ -286,6 +321,7 @@ class MimeMessage {
 
   /**
    * Determine if the message should include an HTML part, a plain part or both.
+   *
    * @returns {{plainPart: MimePart, htmlPart: MimePart}}
    */
   _gatherMainParts() {
@@ -371,6 +407,7 @@ class MimeMessage {
 
   /**
    * Collect local attachments.
+   *
    * @returns {MimePart[]}
    */
   _gatherAttachmentParts() {
@@ -379,19 +416,34 @@ class MimeMessage {
     let localParts = [];
 
     for (let attachment of attachments) {
-      if (attachment.sendViaCloud) {
-        let part = new MimePart();
-        let mozillaCloudPart = MsgUtils.getXMozillaCloudPart(
-          this._deliverMode,
-          attachment
+      let part;
+      if (attachment.htmlAnnotation) {
+        part = new MimePart();
+        // MimePart.bodyText should be binary string.
+        part.bodyText = jsmime.mimeutils.typedArrayToString(
+          new TextEncoder().encode(attachment.htmlAnnotation)
         );
-        part.setHeader("x-mozilla-cloud-part", mozillaCloudPart);
-        part.setHeader("content-type", "application/octet-stream");
-        cloudParts.push(part);
-        continue;
+        part.setHeader("content-type", "text/html; charset=utf-8");
+
+        let suffix = /\.html$/i.test(attachment.name) ? "" : ".html";
+        let encodedFilename = MsgUtils.rfc2231ParamFolding(
+          "filename",
+          `${attachment.name}${suffix}`
+        );
+        part.setHeader("content-disposition", `attachment; ${encodedFilename}`);
+      } else {
+        part = new MimePart(null, this._compFields.forceMsgEncoding, false);
+        part.setBodyAttachment(attachment);
       }
-      let part = new MimePart(null, this._compFields.forceMsgEncoding, false);
-      part.setBodyAttachment(attachment);
+
+      let cloudPartHeader = MsgUtils.getXMozillaCloudPart(
+        this._deliverMode,
+        attachment
+      );
+      if (cloudPartHeader) {
+        part.setHeader("x-mozilla-cloud-part", cloudPartHeader);
+      }
+
       localParts.push(part);
     }
     // Cloud attachments are handled before local attachments in the C++
@@ -401,6 +453,7 @@ class MimeMessage {
 
   /**
    * Collect embedded objects as attachments.
+   *
    * @returns {MimePart[]}
    */
   _gatherEmbeddedParts() {
@@ -412,7 +465,8 @@ class MimeMessage {
   }
 
   /**
-   * If crypto encaspsulation is required, returns an nsIMsgComposeSecure instance.
+   * If crypto encapsulation is required, returns an nsIMsgComposeSecure instance.
+   *
    * @returns {nsIMsgComposeSecure}
    */
   _getComposeSecure() {
@@ -441,8 +495,7 @@ class MimeMessage {
 
   /**
    * Pass a stream and other params to this._composeSecure to start crypto
-   * encaspsulation.
-   * @param {nsIOutputStream} stream - The stream to write to.
+   * encapsulation.
    */
   _startCryptoEncapsulation() {
     let recipients = [
@@ -467,12 +520,14 @@ class MimeMessage {
 
   /**
    * Recursively write an MimePart and its parts to a this._fstream.
+   *
    * @param {MimePart} curPart - The MimePart to write out.
    * @param {number} [depth=0] - Nested level of a part.
    */
   async _writePart(curPart, depth = 0) {
     let bodyString;
     try {
+      // `getEncodedBodyString()` returns a binary string.
       bodyString = await curPart.getEncodedBodyString();
     } catch (e) {
       if (e.data && /^data:/i.test(e.data.url)) {
@@ -483,21 +538,22 @@ class MimeMessage {
     }
 
     if (depth == 0 && this._composeSecure) {
-      // Crypto encaspsulation will add a new content-type header.
+      // Crypto encapsulation will add a new content-type header.
       curPart.deleteHeader("content-type");
       if (curPart.parts.length > 1) {
         // Move child parts one layer deeper so that the message is still well
-        // formed after crypto encaspsulation.
+        // formed after crypto encapsulation.
         let newChild = new MimeMultiPart(curPart.subtype);
         newChild.parts = curPart._parts;
         curPart.parts = [newChild];
       }
     }
 
-    // Write out headers.
+    // Write out headers, there could be non-ASCII in the headers
+    // which we need to encode into UTF-8.
     this._writeString(curPart.getHeaderString());
 
-    // Start crypto encaspsulation if needed.
+    // Start crypto encapsulation if needed.
     if (depth == 0 && this._composeSecure) {
       this._startCryptoEncapsulation();
     }
@@ -507,26 +563,42 @@ class MimeMessage {
       // single part message
       if (curPart.parts.length === 1) {
         await this._writePart(curPart.parts[0], depth + 1);
-        this._writeString(`${bodyString}`);
+        this._writeBinaryString(bodyString);
         return;
       }
 
-      this._writeString("\r\n");
+      // We can safely use `_writeBinaryString()` for ASCII strings.
+      this._writeBinaryString("\r\n");
       if (depth == 0) {
         // Current part is a top part and multipart container.
-        this._writeString("This is a multi-part message in MIME format.\r\n");
+        this._writeBinaryString(
+          "This is a multi-part message in MIME format.\r\n"
+        );
       }
 
       // multipart message
       for (let part of curPart.parts) {
-        this._writeString(`--${curPart.separator}\r\n`);
+        this._writeBinaryString(`--${curPart.separator}\r\n`);
         await this._writePart(part, depth + 1);
       }
-      this._writeString(`--${curPart.separator}--\r\n`);
+      this._writeBinaryString(`\r\n--${curPart.separator}--\r\n`);
+      if (depth > 1) {
+        // If more separators follow, make sure there is a blank line after
+        // this one.
+        this._writeBinaryString("\r\n");
+      }
+    } else {
+      this._writeBinaryString(`\r\n`);
     }
 
+    // Ensure there is exactly one blank line after a part and before
+    // the boundary, and exactly one blank line between boundary lines.
+    // This works around bugs in other software that erroneously remove
+    // additional blank lines, thereby causing verification failures of
+    // OpenPGP or S/MIME signatures. For example see bug 1731529.
+
     // Write out body.
-    this._writeBinaryString(`\r\n${bodyString}`);
+    this._writeBinaryString(bodyString);
   }
 
   /**

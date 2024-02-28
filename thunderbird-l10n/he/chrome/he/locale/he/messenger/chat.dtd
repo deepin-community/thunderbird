@@ -7,6 +7,7 @@
 <!ENTITY conversationsHeader.label     "שיחות">
 <!ENTITY searchResultConversation.label "תוצאת חיפוש">
 <!ENTITY chat.noConv.title             "השיחות תוצגנה כאן.">
+<!ENTITY chat.noPreviousConv.description       "ל־&brandShortName; אין כרגע שיחות קודמות המאוחסנות עבור איש קשר זה.">
 <!ENTITY chat.noAccount.title             "טרם הגדרת חשבון צ׳אט.">
 <!ENTITY chat.accountWizard.button       "איך מתחילים">
 <!ENTITY chat.noConnectedAccount.title             "חשבונות הצ׳אט שלך אינם מחוברים.">
@@ -41,5 +42,4 @@
 <!ENTITY openLinkCmd.accesskey        "פ">
 
 <!ENTITY chat.noConv.description       "Use the contact list in the left panel to start a conversation.">
-<!ENTITY chat.noPreviousConv.description       "&brandShortName; currently doesn't have any previous conversations stored for this contact.">
 <!ENTITY chat.noAccount.description       "Let &brandShortName; guide you through the process of setting up your chat account.">

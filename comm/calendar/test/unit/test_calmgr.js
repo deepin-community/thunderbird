@@ -3,8 +3,10 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 var { cal } = ChromeUtils.import("resource:///modules/calendar/calUtils.jsm");
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-var { XPCOMUtils } = ChromeUtils.import("resource://gre/modules/XPCOMUtils.jsm");
+var { CalReadableStreamFactory } = ChromeUtils.import(
+  "resource:///modules/CalReadableStreamFactory.jsm"
+);
+var { XPCOMUtils } = ChromeUtils.importESModule("resource://gre/modules/XPCOMUtils.sys.mjs");
 
 XPCOMUtils.defineLazyModuleGetters(this, {
   CalEvent: "resource:///modules/CalEvent.jsm",
@@ -53,17 +55,16 @@ class CalendarManagerObserver {
 
 add_test(function test_builtin_registration() {
   function checkCalendarCount(net, rdonly, all) {
-    equal(calmgr.networkCalendarCount, net);
-    equal(calmgr.readOnlyCalendarCount, rdonly);
-    equal(calmgr.calendarCount, all);
+    equal(cal.manager.networkCalendarCount, net);
+    equal(cal.manager.readOnlyCalendarCount, rdonly);
+    equal(cal.manager.calendarCount, all);
   }
 
   // Initially there should be no calendars.
-  let calmgr = cal.getCalendarManager();
   checkCalendarCount(0, 0, 0);
 
   // Create a local memory calendar, this shouldn't register any calendars.
-  let memory = calmgr.createCalendar("memory", Services.io.newURI("moz-memory-calendar://"));
+  let memory = cal.manager.createCalendar("memory", Services.io.newURI("moz-memory-calendar://"));
   checkCalendarCount(0, 0, 0);
 
   // Register an observer to test it.
@@ -79,10 +80,10 @@ add_test(function test_builtin_registration() {
   });
 
   memory.addObserver(calendarObserver);
-  calmgr.addObserver(calmgrObserver);
+  cal.manager.addObserver(calmgrObserver);
 
   // Register the calendar and check if its counted and observed.
-  calmgr.registerCalendar(memory);
+  cal.manager.registerCalendar(memory);
   calmgrObserver.check({ registered: memory.id });
   checkCalendarCount(0, 0, 1);
 
@@ -90,34 +91,34 @@ add_test(function test_builtin_registration() {
   notEqual(memory.id, null);
 
   // And be in the list of calendars.
-  equal(memory, calmgr.getCalendarById(memory.id));
-  ok(calmgr.getCalendars().some(x => x.id == memory.id));
+  equal(memory, cal.manager.getCalendarById(memory.id));
+  ok(cal.manager.getCalendars().some(x => x.id == memory.id));
 
   // Make it readonly and check if the observer caught it.
   memory.setProperty("readOnly", true);
   equal(readOnly, true);
 
   // Now unregister it.
-  calmgr.unregisterCalendar(memory);
+  cal.manager.unregisterCalendar(memory);
   calmgrObserver.check({ unregistering: memory.id });
   checkCalendarCount(0, 0, 0);
 
   // The calendar shouldn't be in the list of ids.
-  equal(calmgr.getCalendarById(memory.id), null);
-  ok(calmgr.getCalendars().every(x => x.id != memory.id));
+  equal(cal.manager.getCalendarById(memory.id), null);
+  ok(cal.manager.getCalendars().every(x => x.id != memory.id));
 
   // And finally delete it.
-  calmgr.removeCalendar(memory, Ci.calICalendarManager.REMOVE_NO_UNREGISTER);
+  cal.manager.removeCalendar(memory, Ci.calICalendarManager.REMOVE_NO_UNREGISTER);
   calmgrObserver.check({ deleting: memory.id });
   checkCalendarCount(0, 0, 0);
 
   // Now remove the observer again.
-  calmgr.removeObserver(calmgrObserver);
+  cal.manager.removeObserver(calmgrObserver);
   memory.removeObserver(calendarObserver);
 
   // Check if removing it actually worked.
-  calmgr.registerCalendar(memory);
-  calmgr.removeCalendar(memory);
+  cal.manager.registerCalendar(memory);
+  cal.manager.removeCalendar(memory);
   memory.setProperty("readOnly", false);
   calmgrObserver.check({});
   equal(readOnly, true);
@@ -138,12 +139,12 @@ add_task(async function test_dynamic_registration() {
     }
 
     getItems(itemFilter, count, rangeStart, rangeEnd, listener) {
-      this.notifyOperationComplete(listener, Cr.NS_OK, Ci.calIOperationListener.GET, null, null);
+      return CalReadableStreamFactory.createEmptyReadableStream();
     }
   }
 
   function checkCalendar(expectedCount = 1) {
-    let calendars = calmgr.getCalendars();
+    let calendars = cal.manager.getCalendars();
     equal(calendars.length, expectedCount);
     let calendar = calendars[0];
 
@@ -153,32 +154,31 @@ add_task(async function test_dynamic_registration() {
     return calendar;
   }
 
-  let calmgr = cal.getCalendarManager();
   let calmgrObserver = new CalendarManagerObserver();
-  calmgr.addObserver(calmgrObserver);
-  equal(calmgr.calendarCount, 0);
+  cal.manager.addObserver(calmgrObserver);
+  equal(cal.manager.calendarCount, 0);
 
   // No provider registered.
-  let calendar = calmgr.createCalendar("blm", Services.io.newURI("black-lives-matter://"));
+  let calendar = cal.manager.createCalendar("blm", Services.io.newURI("black-lives-matter://"));
   equal(calendar, null);
-  ok(!calmgr.hasCalendarProvider("blm"));
+  ok(!cal.manager.hasCalendarProvider("blm"));
 
   // Register dynamic provider.
-  calmgr.registerCalendarProvider("blm", CalendarProvider);
-  calendar = calmgr.createCalendar("blm", Services.io.newURI("black-lives-matter://"));
+  cal.manager.registerCalendarProvider("blm", CalendarProvider);
+  calendar = cal.manager.createCalendar("blm", Services.io.newURI("black-lives-matter://"));
   notEqual(calendar, null);
   ok(calendar.wrappedJSObject instanceof CalendarProvider);
-  ok(calmgr.hasCalendarProvider("blm"));
+  ok(cal.manager.hasCalendarProvider("blm"));
 
   // Register a calendar using it.
-  calmgr.registerCalendar(calendar);
+  cal.manager.registerCalendar(calendar);
   calendar = checkCalendar();
 
   let originalId = calendar.id;
   calmgrObserver.check({ registered: originalId });
 
   // Unregister the provider from under its feet.
-  calmgr.unregisterCalendarProvider("blm");
+  cal.manager.unregisterCalendarProvider("blm");
   calendar = checkCalendar();
   calmgrObserver.check({ unregistering: originalId, registered: originalId });
 
@@ -187,7 +187,7 @@ add_task(async function test_dynamic_registration() {
   equal(calendar.id, originalId);
 
   // Re-register the provider should reactive it.
-  calmgr.registerCalendarProvider("blm", CalendarProvider);
+  cal.manager.registerCalendarProvider("blm", CalendarProvider);
   calendar = checkCalendar();
   calmgrObserver.check({ unregistering: originalId, registered: originalId });
 
@@ -196,12 +196,12 @@ add_task(async function test_dynamic_registration() {
   equal(calendar.id, originalId);
 
   // Make sure calendar is loaded from prefs.
-  calmgr.unregisterCalendarProvider("blm");
+  cal.manager.unregisterCalendarProvider("blm");
   calmgrObserver.check({ unregistering: originalId, registered: originalId });
 
-  await new Promise(resolve => calmgr.shutdown({ onResult: resolve }));
-  calmgr.wrappedJSObject.mCache = null;
-  await new Promise(resolve => calmgr.startup({ onResult: resolve }));
+  await new Promise(resolve => cal.manager.shutdown({ onResult: resolve }));
+  cal.manager.wrappedJSObject.mCache = null;
+  await new Promise(resolve => cal.manager.startup({ onResult: resolve }));
   calmgrObserver.check({});
 
   calendar = checkCalendar();
@@ -210,7 +210,7 @@ add_task(async function test_dynamic_registration() {
   equal(calendar.id, originalId);
 
   // Unregister the calendar for cleanup.
-  calmgr.unregisterCalendar(calendar);
+  cal.manager.unregisterCalendar(calendar);
   checkCalendar(0);
   calmgrObserver.check({ unregistering: originalId });
 });
@@ -231,9 +231,8 @@ add_test(function test_calobserver() {
   }
 
   // First of all we need a local calendar to work on and some variables
-  let calmgr = cal.getCalendarManager();
-  let memory = calmgr.createCalendar("memory", Services.io.newURI("moz-memory-calendar://"));
-  let memory2 = calmgr.createCalendar("memory", Services.io.newURI("moz-memory-calendar://"));
+  let memory = cal.manager.createCalendar("memory", Services.io.newURI("moz-memory-calendar://"));
+  let memory2 = cal.manager.createCalendar("memory", Services.io.newURI("moz-memory-calendar://"));
   let calcounter, allcounter;
 
   // These observers will end up counting calls which we will use later on
@@ -250,9 +249,9 @@ add_test(function test_calobserver() {
 
   // Set up counters and observers
   resetCounters();
-  calmgr.registerCalendar(memory);
-  calmgr.registerCalendar(memory2);
-  calmgr.addCalendarObserver(allobs);
+  cal.manager.registerCalendar(memory);
+  cal.manager.registerCalendar(memory2);
+  cal.manager.addCalendarObserver(allobs);
   memory.addObserver(calobs);
 
   // Add an item
@@ -260,36 +259,36 @@ add_test(function test_calobserver() {
   item.id = cal.getUUID();
   item.startDate = cal.dtz.now();
   item.endDate = cal.dtz.now();
-  memory.addItem(item, null);
+  memory.addItem(item);
   checkCounters(1, 0, 0);
 
   // Modify the item
   let newItem = item.clone();
   newItem.title = "title";
-  memory.modifyItem(newItem, item, null);
+  memory.modifyItem(newItem, item);
   checkCounters(0, 1, 0);
 
   // Delete the item
   newItem.generation++; // circumvent generation checks for easier code
-  memory.deleteItem(newItem, null);
+  memory.deleteItem(newItem);
   checkCounters(0, 0, 1);
 
   // Now check the same for adding the item to a calendar only observed by the
   // calendar manager. The calcounters should still be 0, but the calendar
   // manager counter should have an item added, modified and deleted
-  memory2.addItem(item, null);
-  memory2.modifyItem(newItem, item, null);
-  memory2.deleteItem(newItem, null);
+  memory2.addItem(item);
+  memory2.modifyItem(newItem, item);
+  memory2.deleteItem(newItem);
   checkCounters(0, 0, 0, 1, 1, 1);
 
   // Remove observers
   memory.removeObserver(calobs);
-  calmgr.removeCalendarObserver(allobs);
+  cal.manager.removeCalendarObserver(allobs);
 
   // Make sure removing it actually worked
-  memory.addItem(item, null);
-  memory.modifyItem(newItem, item, null);
-  memory.deleteItem(newItem, null);
+  memory.addItem(item);
+  memory.modifyItem(newItem, item);
+  memory.deleteItem(newItem);
   checkCounters(0, 0, 0);
 
   // We are done now, start the next test
@@ -298,20 +297,20 @@ add_test(function test_calobserver() {
 
 add_test(function test_removeModes() {
   function checkCounts(modes, shouldDelete, expectCount, extraFlags = 0) {
-    if (calmgr.calendarCount == baseCalendarCount) {
-      calmgr.registerCalendar(memory);
-      equal(calmgr.calendarCount, baseCalendarCount + 1);
+    if (cal.manager.calendarCount == baseCalendarCount) {
+      cal.manager.registerCalendar(memory);
+      equal(cal.manager.calendarCount, baseCalendarCount + 1);
     }
     deleteCalled = false;
     removeModes = modes;
 
-    calmgr.removeCalendar(memory, extraFlags);
-    equal(calmgr.calendarCount, baseCalendarCount + expectCount);
+    cal.manager.removeCalendar(memory, extraFlags);
+    equal(cal.manager.calendarCount, baseCalendarCount + expectCount);
     equal(deleteCalled, shouldDelete);
   }
   function mockCalendar(memory) {
     let oldGetProperty = memory.wrappedJSObject.getProperty;
-    memory.wrappedJSObject.getProperty = function(name) {
+    memory.wrappedJSObject.getProperty = function (name) {
       if (name == "capabilities.removeModes") {
         return removeModes;
       }
@@ -319,7 +318,7 @@ add_test(function test_removeModes() {
     };
 
     let oldDeleteCalendar = memory.wrappedJSObject.deleteCalendar;
-    memory.wrappedJSObject.deleteCalendar = function(calendar, listener) {
+    memory.wrappedJSObject.deleteCalendar = function (calendar, listener) {
       deleteCalled = true;
       return oldDeleteCalendar.apply(this, arguments);
     };
@@ -329,9 +328,8 @@ add_test(function test_removeModes() {
   const SHOULD_DELETE = true,
     SHOULD_NOT_DELETE = false;
 
-  let calmgr = cal.getCalendarManager();
-  let memory = calmgr.createCalendar("memory", Services.io.newURI("moz-memory-calendar://"));
-  let baseCalendarCount = calmgr.calendarCount;
+  let memory = cal.manager.createCalendar("memory", Services.io.newURI("moz-memory-calendar://"));
+  let baseCalendarCount = cal.manager.calendarCount;
   let removeModes = null;
   let deleteCalled = false;
 
@@ -353,9 +351,8 @@ add_test(function test_removeModes() {
 
 add_test(function test_calprefs() {
   let prop;
-  let calmgr = cal.getCalendarManager();
-  let memory = calmgr.createCalendar("memory", Services.io.newURI("moz-memory-calendar://"));
-  calmgr.registerCalendar(memory);
+  let memory = cal.manager.createCalendar("memory", Services.io.newURI("moz-memory-calendar://"));
+  cal.manager.registerCalendar(memory);
   let memid = memory.id;
 
   // First set a few values, one of each relevant type
@@ -367,7 +364,7 @@ add_test(function test_calprefs() {
 
   // Before checking the value, reinitialize the memory calendar with the
   // same id to make sure the pref value isn't just cached
-  memory = calmgr.createCalendar("memory", Services.io.newURI("moz-memory-calendar://"));
+  memory = cal.manager.createCalendar("memory", Services.io.newURI("moz-memory-calendar://"));
   memory.id = memid;
 
   // First test the standard types
@@ -394,17 +391,17 @@ add_test(function test_calprefs() {
 
   // Check if changing pref types works. We need to reset the calendar again
   // because retrieving the value just cached it again.
-  memory = calmgr.createCalendar("memory", Services.io.newURI("moz-memory-calendar://"));
+  memory = cal.manager.createCalendar("memory", Services.io.newURI("moz-memory-calendar://"));
   memory.id = memid;
 
-  calmgr.setCalendarPref_(memory, "boolpref", "kinda true");
+  cal.manager.setCalendarPref_(memory, "boolpref", "kinda true");
   prop = memory.getProperty("boolpref");
   equal(typeof prop, "string");
   equal(prop, "kinda true");
 
   // Check if unsetting a pref works
   memory.setProperty("intpref", null);
-  memory = calmgr.createCalendar("memory", Services.io.newURI("moz-memory-calendar://"));
+  memory = cal.manager.createCalendar("memory", Services.io.newURI("moz-memory-calendar://"));
   memory.id = memid;
   prop = memory.getProperty("intpref");
   ok(prop === null);

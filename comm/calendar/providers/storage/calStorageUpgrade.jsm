@@ -66,16 +66,24 @@
  * please file a bug.
  */
 
-/* exported upgradeDB */
+var EXPORTED_SYMBOLS = [
+  "DB_SCHEMA_VERSION",
+  "getSql",
+  "getAllSql",
+  "getSqlTable",
+  "upgradeDB",
+  "backupDB",
+];
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 var { cal } = ChromeUtils.import("resource:///modules/calendar/calUtils.jsm");
 var { CAL_ITEM_FLAG, textToDate, getTimezone, newDateTime } = ChromeUtils.import(
   "resource:///modules/calendar/calStorageHelpers.jsm"
 );
-var { XPCOMUtils } = ChromeUtils.import("resource://gre/modules/XPCOMUtils.jsm");
+var { XPCOMUtils } = ChromeUtils.importESModule("resource://gre/modules/XPCOMUtils.sys.mjs");
 
-XPCOMUtils.defineLazyModuleGetters(this, {
+const lazy = {};
+
+XPCOMUtils.defineLazyModuleGetters(lazy, {
   CalAlarm: "resource:///modules/CalAlarm.jsm",
   CalAttachment: "resource:///modules/CalAttachment.jsm",
   CalAttendee: "resource:///modules/CalAttendee.jsm",
@@ -85,15 +93,6 @@ XPCOMUtils.defineLazyModuleGetters(this, {
 // The current database version. Be sure to increment this when you create a new
 // updater.
 var DB_SCHEMA_VERSION = 23;
-
-var EXPORTED_SYMBOLS = [
-  "DB_SCHEMA_VERSION",
-  "getSql",
-  "getAllSql",
-  "getSqlTable",
-  "upgradeDB",
-  "backupDB",
-];
 
 /**
  * Gets the SQL for the given table data and table name. This can be both a real
@@ -106,7 +105,7 @@ var EXPORTED_SYMBOLS = [
  * @param alternateName (optional) The table or index name to be used in the
  *                        resulting CREATE statement. If not set, tblName will
  *                        be used.
- * @return              The SQL Statement for the given table or index and
+ * @returns The SQL Statement for the given table or index and
  *                        version as a string.
  */
 function getSql(tblName, tblData, alternateName) {
@@ -133,7 +132,7 @@ function getSql(tblName, tblData, alternateName) {
  *
  * @param version       The database schema version to retrieve. If null, the
  *                        latest schema version will be used.
- * @return              The SQL Statement for the given version as a string.
+ * @returns The SQL Statement for the given version as a string.
  */
 function getAllSql(version) {
   let tblData = getSqlTable(version);
@@ -151,7 +150,7 @@ function getAllSql(version) {
  *
  * @param schemaVersion       The schema version to get. If null, the latest
  *                              schema version will be used.
- * @return                    The javascript object containing the table
+ * @returns The javascript object containing the table
  *                              definition.
  */
 function getSqlTable(schemaVersion) {
@@ -290,10 +289,7 @@ function upgradeExistingDB(db, version) {
  */
 function handleTooNewSchema(storageCalendar) {
   // Create a string like this: "2020-05-11T21-30-17".
-  let dateTime = new Date()
-    .toISOString()
-    .split(".")[0]
-    .replace(/:/g, "-");
+  let dateTime = new Date().toISOString().split(".")[0].replace(/:/g, "-");
 
   let copyFileName = `local-${dateTime}.sqlite`;
 
@@ -330,10 +326,10 @@ function setDbVersionAndCommit(db, version) {
  * database. In addition, if no database is passed, the call is ignored.
  *
  * @param funcName      The function name to delegate.
- * @return              The delegate function for the passed named function.
+ * @returns The delegate function for the passed named function.
  */
 function createDBDelegate(funcName) {
-  return function(db, ...args) {
+  return function (db, ...args) {
     if (db) {
       try {
         return db[funcName](...args);
@@ -359,10 +355,10 @@ function createDBDelegate(funcName) {
  * database is passed, no error is thrown but null is returned.
  *
  * @param getterAttr        The getter to delegate.
- * @return                  The function that delegates the getter.
+ * @returns The function that delegates the getter.
  */
 function createDBDelegateGetter(getterAttr) {
-  return function(db) {
+  return function (db) {
     return db ? db[getterAttr] : null;
   };
 }
@@ -418,7 +414,7 @@ function LOGdb(db, msg) {
  *
  * @param db        The database to roll back on.
  * @param e         The exception to report
- * @return          The passed exception, for chaining.
+ * @returns The passed exception, for chaining.
  */
 function reportErrorAndRollback(db, e) {
   if (db && db.transactionInProgress) {
@@ -438,7 +434,7 @@ function reportErrorAndRollback(db, e) {
 function ensureUpdatedTimezones(db) {
   // check if timezone version has changed:
   let selectTzVersion = createStatement(db, "SELECT version FROM cal_tz_version LIMIT 1");
-  let tzServiceVersion = cal.getTimezoneService().version;
+  let tzServiceVersion = cal.timezoneService.version;
   let version;
   try {
     version = selectTzVersion.executeStep() ? selectTzVersion.row.version : null;
@@ -483,7 +479,7 @@ function ensureUpdatedTimezones(db) {
         // Send the timezones off to the timezone service to attempt conversion:
         let timezone = getTimezone(zone);
         if (timezone) {
-          let refTz = cal.getTimezoneService().getTimezone(timezone.tzid);
+          let refTz = cal.timezoneService.getTimezone(timezone.tzid);
           if (refTz && refTz.tzid != zone) {
             zonesToUpdate.push({ oldTzId: zone, newTzId: refTz.tzid });
           }
@@ -518,7 +514,7 @@ function ensureUpdatedTimezones(db) {
         db,
         // prettier-ignore
         "DELETE FROM cal_tz_version; " +
-        `INSERT INTO cal_tz_version VALUES ('${cal.getTimezoneService().version}');`
+        `INSERT INTO cal_tz_version VALUES ('${cal.timezoneService.version}');`
       );
       commitTransaction(db);
     } catch (e) {
@@ -717,7 +713,7 @@ function migrateToIcalString(tblData, tblName, userFuncName, oldColumns, db) {
  * Maps a mozIStorageValueArray to a JS array, converting types correctly.
  *
  * @param storArgs      The storage value array to convert
- * @return              An array with the arguments as js values.
+ * @returns An array with the arguments as js values.
  */
 function mapStorageArgs(storArgs) {
   const mISVA = Ci.mozIStorageValueArray;
@@ -756,7 +752,7 @@ var upgrade = {};
  * p=vlad
  */
 // eslint-disable-next-line id-length
-upgrade.v2 = upgrade.v1 = function(db, version) {
+upgrade.v2 = upgrade.v1 = function (db, version) {
   LOGdb(db, "Storage: Upgrading to v1/v2");
   let tblData = {
     cal_calendar_schema_version: { version: "INTEGER" },
@@ -849,7 +845,7 @@ upgrade.v2 = upgrade.v1 = function(db, version) {
  * p=vlad
  */
 // eslint-disable-next-line id-length
-upgrade.v3 = function(db, version) {
+upgrade.v3 = function (db, version) {
   function updateSql(tbl, field) {
     executeSimpleSQL(
       db,
@@ -922,7 +918,7 @@ upgrade.v3 = function(db, version) {
  * r=shaver,p=vlad
  */
 // eslint-disable-next-line id-length
-upgrade.v4 = function(db, version) {
+upgrade.v4 = function (db, version) {
   let tbl = upgrade.v3(version < 3 && db, version);
   LOGdb(db, "Storage: Upgrading to v4");
 
@@ -946,7 +942,7 @@ upgrade.v4 = function(db, version) {
  * r=dmose, p=jminta
  */
 // eslint-disable-next-line id-length
-upgrade.v5 = function(db, version) {
+upgrade.v5 = function (db, version) {
   let tbl = upgrade.v4(version < 4 && db, version);
   LOGdb(db, "Storage: Upgrading to v5");
 
@@ -971,7 +967,7 @@ upgrade.v5 = function(db, version) {
  * r=ctalbert,jminta p=lilmatt
  */
 // eslint-disable-next-line id-length
-upgrade.v6 = function(db, version) {
+upgrade.v6 = function (db, version) {
   let tbl = upgrade.v5(version < 5 && db, version);
   LOGdb(db, "Storage: Upgrading to v6");
 
@@ -1044,7 +1040,7 @@ upgrade.v6 = function(db, version) {
  * r=ctalbert,dmose p=lilmatt
  */
 // eslint-disable-next-line id-length
-upgrade.v7 = function(db, version) {
+upgrade.v7 = function (db, version) {
   // No schema changes in v7
   let tbl = upgrade.v6(db, version);
   LOGdb(db, "Storage: Upgrading to v7");
@@ -1056,7 +1052,7 @@ upgrade.v7 = function(db, version) {
  * r=ctalbert, p=dbo,nth10sd,hb
  */
 // eslint-disable-next-line id-length
-upgrade.v8 = function(db, version) {
+upgrade.v8 = function (db, version) {
   // No schema changes in v8
   let tbl = upgrade.v7(db, version);
   LOGdb(db, "Storage: Upgrading to v8");
@@ -1068,7 +1064,7 @@ upgrade.v8 = function(db, version) {
  * r=philipp,ctalbert, p=dbo
  */
 // eslint-disable-next-line id-length
-upgrade.v9 = function(db, version) {
+upgrade.v9 = function (db, version) {
   // No schema changes in v9
   let tbl = upgrade.v8(db, version);
   LOGdb(db, "Storage: Upgrading to v9");
@@ -1080,7 +1076,7 @@ upgrade.v9 = function(db, version) {
  * recent timezone version;
  * r=philipp, p=dbo
  */
-upgrade.v10 = function(db, version) {
+upgrade.v10 = function (db, version) {
   let tbl = upgrade.v9(version < 9 && db, version);
   LOGdb(db, "Storage: Upgrading to v10");
 
@@ -1099,7 +1095,7 @@ upgrade.v10 = function(db, version) {
  * properties.
  * r=philipp,p=fred.jen@web.de
  */
-upgrade.v11 = function(db, version) {
+upgrade.v11 = function (db, version) {
   let tbl = upgrade.v10(version < 10 && db, version);
   LOGdb(db, "Storage: Upgrading to v11");
 
@@ -1127,7 +1123,7 @@ upgrade.v11 = function(db, version) {
  * Bug 449031 - Add meta data API to memory/storage
  * r=philipp, p=dbo
  */
-upgrade.v12 = function(db, version) {
+upgrade.v12 = function (db, version) {
   let tbl = upgrade.v11(version < 11 && db, version);
   LOGdb(db, "Storage: Upgrading to v12");
 
@@ -1159,7 +1155,7 @@ upgrade.v12 = function(db, version) {
  * across different calendars
  * r=dbo,philipp, p=wsourdeau@inverse.ca
  */
-upgrade.v13 = function(db, version) {
+upgrade.v13 = function (db, version) {
   let tbl = upgrade.v12(version < 12 && db, version);
   LOGdb(db, "Storage: Upgrading to v13");
 
@@ -1214,7 +1210,7 @@ upgrade.v13 = function(db, version) {
  * Bug 446303 - use the "RELATED-TO" property.
  * r=philipp,dbo, p=fred.jen@web.de
  */
-upgrade.v14 = function(db, version) {
+upgrade.v14 = function (db, version) {
   let tbl = upgrade.v13(version < 13 && db, version);
   LOGdb(db, "Storage: Upgrading to v14");
 
@@ -1242,7 +1238,7 @@ upgrade.v14 = function(db, version) {
  * Bug 463282 - Tasks cannot be created or imported (regression).
  * r=philipp,berend, p=dbo
  */
-upgrade.v15 = function(db, version) {
+upgrade.v15 = function (db, version) {
   let tbl = upgrade.v14(version < 14 && db, version);
   LOGdb(db, "Storage: Upgrading to v15");
 
@@ -1267,7 +1263,7 @@ upgrade.v15 = function(db, version) {
  * from 0.9 -> 1.0b1 and later. The v17 upgrader will merely take care of the
  * upgrade if a user is upgrading from 1.0pre -> 1.0b1 or later.
  */
-upgrade.v16 = function(db, version) {
+upgrade.v16 = function (db, version) {
   let tbl = upgrade.v15(version < 15 && db, version);
   LOGdb(db, "Storage: Upgrading to v16");
   beginTransaction(db);
@@ -1277,7 +1273,7 @@ upgrade.v16 = function(db, version) {
         try {
           let [aOffset, aRelated, aAlarmTime, aTzId] = mapStorageArgs(storArgs);
 
-          let alarm = new CalAlarm();
+          let alarm = new lazy.CalAlarm();
           if (aOffset) {
             alarm.related = parseInt(aRelated, 10) + 1;
             alarm.offset = cal.createDuration();
@@ -1293,10 +1289,10 @@ upgrade.v16 = function(db, version) {
               // filed bug 520463. Since we want to release 1.0b1
               // soon, I will just fix this on the "client side"
               // and do the conversion here.
-              alarmDate.timezone = cal.getTimezoneService().defaultTimezone;
+              alarmDate.timezone = cal.timezoneService.defaultTimezone;
               alarmDate = alarmDate.getInTimezone(cal.dtz.UTC);
             } else {
-              alarmDate.timezone = cal.getTimezoneService().getTimezone(aTzId);
+              alarmDate.timezone = cal.timezoneService.getTimezone(aTzId);
             }
             alarm.alarmDate = alarmDate;
           }
@@ -1325,7 +1321,7 @@ upgrade.v16 = function(db, version) {
       db
     );
 
-    let copyDataOver = function(tblName) {
+    let copyDataOver = function (tblName) {
       const transAlarm = "translateAlarm(alarm_offset, alarm_related, alarm_time, alarm_time_tz)";
       executeSimpleSQL(
         db,
@@ -1391,7 +1387,7 @@ upgrade.v16 = function(db, version) {
  * Therefore all this upgrader does is handle users of 1.0pre before the
  * mentioned bug.
  */
-upgrade.v17 = function(db, version) {
+upgrade.v17 = function (db, version) {
   let tbl = upgrade.v16(version < 16 && db, version);
   LOGdb(db, "Storage: Upgrading to v17");
   beginTransaction(db);
@@ -1446,7 +1442,7 @@ upgrade.v17 = function(db, version) {
  * This bug adds some indexes to improve performance. If you would like to add
  * additional indexes, please read http://www.sqlite.org/optoverview.html first.
  */
-upgrade.v18 = function(db, version) {
+upgrade.v18 = function (db, version) {
   let tbl = upgrade.v17(version < 17 && db, version);
   LOGdb(db, "Storage: Upgrading to v18");
   beginTransaction(db);
@@ -1490,7 +1486,7 @@ upgrade.v18 = function(db, version) {
  * events to be shown for multiple cached calendars
  * r=simon.at.orcl, p=philipp,dbo
  */
-upgrade.v19 = function(db, version) {
+upgrade.v19 = function (db, version) {
   let tbl = upgrade.v18(version < 18 && db, version);
   LOGdb(db, "Storage: Upgrading to v19");
   beginTransaction(db);
@@ -1523,7 +1519,7 @@ upgrade.v19 = function(db, version) {
  * Setting a offline_journal column in cal_events tables
  * r=philipp, p=redDragon
  */
-upgrade.v20 = function(db, version) {
+upgrade.v20 = function (db, version) {
   let tbl = upgrade.v19(version < 19 && db, version);
   LOGdb(db, "Storage: Upgrading to v20");
   beginTransaction(db);
@@ -1544,7 +1540,7 @@ upgrade.v20 = function(db, version) {
  * Migrate x-dateset to x-date in the storage database
  * r=mmecca, p=philipp
  */
-upgrade.v21 = function(db, version) {
+upgrade.v21 = function (db, version) {
   let tbl = upgrade.v20(version < 20 && db, version);
   LOGdb(db, "Storage: Upgrading to v21");
   beginTransaction(db);
@@ -1619,7 +1615,7 @@ upgrade.v21 = function(db, version) {
  * tables.
  * r=mmecca, p=philipp
  */
-upgrade.v22 = function(db, version) {
+upgrade.v22 = function (db, version) {
   let tbl = upgrade.v21(version < 21 && db, version);
   LOGdb(db, "Storage: Upgrading to v22");
   beginTransaction(db);
@@ -1630,7 +1626,7 @@ upgrade.v22 = function(db, version) {
         try {
           let [aData, aFmtType, aEncoding] = mapStorageArgs(storArgs);
 
-          let attach = new CalAttachment();
+          let attach = new lazy.CalAttachment();
           attach.uri = Services.io.newURI(aData);
           attach.formatType = aFmtType;
           attach.encoding = aEncoding;
@@ -1654,7 +1650,7 @@ upgrade.v22 = function(db, version) {
       onFunctionCall(storArgs) {
         try {
           let [aRelType, aRelId] = mapStorageArgs(storArgs);
-          let relation = new CalRelation();
+          let relation = new lazy.CalRelation();
           relation.relType = aRelType;
           relation.relId = aRelId;
           return relation.icalString;
@@ -1670,18 +1666,10 @@ upgrade.v22 = function(db, version) {
     createFunction(db, "translateAttendee", 8, {
       onFunctionCall(storArgs) {
         try {
-          let [
-            aAttendeeId,
-            aCommonName,
-            aRsvp,
-            aRole,
-            aStatus,
-            aType,
-            aIsOrganizer,
-            aProperties,
-          ] = mapStorageArgs(storArgs);
+          let [aAttendeeId, aCommonName, aRsvp, aRole, aStatus, aType, aIsOrganizer, aProperties] =
+            mapStorageArgs(storArgs);
 
-          let attendee = new CalAttendee();
+          let attendee = new lazy.CalAttendee();
 
           attendee.id = aAttendeeId;
           attendee.commonName = aCommonName;
@@ -1763,9 +1751,7 @@ upgrade.v22 = function(db, version) {
 
           let ritem;
           if (aType == "x-date") {
-            ritem = Cc["@mozilla.org/calendar/recurrence-date;1"].createInstance(
-              Ci.calIRecurrenceDate
-            );
+            ritem = cal.createRecurrenceDate();
             ritem.date = textToDate(aDates);
             ritem.isNegative = !!aIsNegative;
           } else {
@@ -1874,7 +1860,7 @@ upgrade.v22 = function(db, version) {
   return tbl;
 };
 
-upgrade.v23 = function(db, version) {
+upgrade.v23 = function (db, version) {
   let tbl = upgrade.v22(version < 22 && db, version);
   LOGdb(db, "Storage: Upgrading to v23");
   beginTransaction(db);

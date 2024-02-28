@@ -4,8 +4,8 @@
 
 "use strict";
 
-var { ExtensionTestUtils } = ChromeUtils.import(
-  "resource://testing-common/ExtensionXPCShellUtils.jsm"
+var { ExtensionTestUtils } = ChromeUtils.importESModule(
+  "resource://testing-common/ExtensionXPCShellUtils.sys.mjs"
 );
 
 add_task(async function test_managers() {
@@ -55,15 +55,12 @@ add_task(async function test_managers() {
       );
 
       let [bookUID, contactUID, listUID] = await window.sendMessage("get UIDs");
-      let [
-        foundBook,
-        foundContact,
-        foundList,
-      ] = await browser.testapi.testCanFindAddressBookItems(
-        bookUID,
-        contactUID,
-        listUID
-      );
+      let [foundBook, foundContact, foundList] =
+        await browser.testapi.testCanFindAddressBookItems(
+          bookUID,
+          contactUID,
+          listUID
+        );
       browser.test.assertEq("new book", foundBook.name);
       browser.test.assertEq("new contact", foundContact.properties.DisplayName);
       browser.test.assertEq("new list", foundList.name);
@@ -132,8 +129,8 @@ add_task(async function test_managers() {
         },
       ],
       "implementation.js": () => {
-        var { ExtensionCommon } = ChromeUtils.import(
-          "resource://gre/modules/ExtensionCommon.jsm"
+        var { ExtensionCommon } = ChromeUtils.importESModule(
+          "resource://gre/modules/ExtensionCommon.sys.mjs"
         );
         var { MailServices } = ChromeUtils.import(
           "resource:///modules/MailServices.jsm"
@@ -156,9 +153,8 @@ add_task(async function test_managers() {
                   return context.extension.folderManager.convert(realFolder);
                 },
                 async testCanGetMessage(messageId) {
-                  let realMessage = context.extension.messageManager.get(
-                    messageId
-                  );
+                  let realMessage =
+                    context.extension.messageManager.get(messageId);
                   return realMessage.subject;
                 },
                 async testCanConvertMessage() {
@@ -181,20 +177,29 @@ add_task(async function test_managers() {
                   contactUID,
                   listUID
                 ) {
-                  let foundBook = context.extension.addressBookManager.findAddressBookById(
-                    bookUID
-                  );
-                  let foundContact = context.extension.addressBookManager.findContactById(
-                    contactUID
-                  );
-                  let foundList = context.extension.addressBookManager.findMailingListById(
-                    listUID
-                  );
+                  let foundBook =
+                    context.extension.addressBookManager.findAddressBookById(
+                      bookUID
+                    );
+                  let foundContact =
+                    context.extension.addressBookManager.findContactById(
+                      contactUID
+                    );
+                  let foundList =
+                    context.extension.addressBookManager.findMailingListById(
+                      listUID
+                    );
 
                   return [
-                    context.extension.addressBookManager.convert(foundBook),
-                    context.extension.addressBookManager.convert(foundContact),
-                    context.extension.addressBookManager.convert(foundList),
+                    await context.extension.addressBookManager.convert(
+                      foundBook
+                    ),
+                    await context.extension.addressBookManager.convert(
+                      foundContact
+                    ),
+                    await context.extension.addressBookManager.convert(
+                      foundList
+                    ),
                   ];
                 },
               },
@@ -268,5 +273,7 @@ add_task(async function test_managers() {
 
 registerCleanupFunction(() => {
   // Make sure any open database is given a chance to close.
-  Services.obs.notifyObservers(null, "quit-application");
+  Services.startup.advanceShutdownPhase(
+    Services.startup.SHUTDOWN_PHASE_APPSHUTDOWNCONFIRMED
+  );
 });

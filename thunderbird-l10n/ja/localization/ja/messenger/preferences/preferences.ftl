@@ -4,7 +4,7 @@
 
 close-button =
     .aria-label = 閉じる
-preferences-doc-title = 設定
+preferences-doc-title2 = 設定
 category-list =
     .aria-label = カテゴリー
 pane-general-title = 一般
@@ -22,6 +22,9 @@ category-chat =
 pane-calendar-title = カレンダー
 category-calendar =
     .tooltiptext = カレンダー
+pane-sync-title = 同期
+category-sync =
+    .tooltiptext = 同期
 general-language-and-appearance-header = 言語と外観
 general-incoming-mail-header = 新着メールの通知
 general-files-and-attachment-header = ファイルと添付
@@ -54,7 +57,6 @@ collection-backlogged-crash-reports =
     .label = { -brand-short-name } があなたに代わって未送信のクラッシュレポートを送信することを許可する
     .accesskey = c
 collection-backlogged-crash-reports-link = 詳細情報
-
 privacy-security-header = セキュリティ
 privacy-scam-detection-title = 詐欺メール
 privacy-anti-virus-title = ウイルス対策
@@ -117,12 +119,18 @@ restore-default-label =
     .label = 既定値に戻す
     .accesskey = R
 default-search-engine = 既定の検索エンジン
-add-search-engine =
-    .label = ファイルから追加
+add-web-search-engine =
+    .label = 追加...
     .accesskey = A
 remove-search-engine =
     .label = 削除
     .accesskey = v
+add-opensearch-provider-title = OpenSearch プロバイダーの追加
+add-opensearch-provider-text = 追加する OpenSearch プロバイダーの URL を入力してください。OpenSearch Description ファイルの URL を直接使用するか、このファイルを自動的に発見できる URL を入力してください。
+adding-opensearch-provider-failed-title = OpenSearch プロバイダーの追加に失敗しました
+# Variables:
+# $url (String) - URL an OpenSearch provider was requested for.
+adding-opensearch-provider-failed-text = { $url } の OpenSearch プロバイダーを追加できませんでした。
 minimize-to-tray-label =
     .label = 最小化した { -brand-short-name } をタスクトレイにしまう
     .accesskey = m
@@ -141,11 +149,11 @@ mail-play-sound-label =
 mail-play-button =
     .label = 再生
     .accesskey = P
-change-dock-icon = アプリケーションアイコンの設定を変更します
+change-dock-icon = アプリケーションアイコンの設定を変更します。
 app-icon-options =
     .label = アプリケーションアイコンのオプション...
     .accesskey = n
-notification-settings = 通知と既定のサウンドはシステム環境設定の通知ペインで無効化できます。
+notification-settings2 = 通知と既定のサウンドはシステム設定の通知ペインで無効化できます。
 animated-alert-label =
     .label = デスクトップ通知を表示する
     .accesskey = S
@@ -189,6 +197,17 @@ autoscroll-label =
 smooth-scrolling-label =
     .label = スムーズスクロール機能を使用する
     .accesskey = m
+browsing-gtk-use-non-overlay-scrollbars =
+    .label = スクロールバーを常に表示する
+    .accesskey = c
+window-layout-legend = ウィンドウレイアウト
+draw-in-titlebar-label =
+    .label = システムウィンドウのタイトルバーを隠す
+    .accesskey = H
+auto-hide-tabbar-label =
+    .label = タブバーを自動的に隠す
+    .accesskey = A
+auto-hide-tabbar-description = 開いているタブが 1 個だけの場合にタブバーを隠します
 system-integration-legend = システム統合
 always-check-default =
     .label = 起動時に { -brand-short-name } が既定のクライアントとして設定されているか確認する
@@ -264,11 +283,14 @@ use-cache-after = MB まで使用する
 ##
 
 smart-cache-label =
-    .label = 自動キャッシュ管理設定を上書き
+    .label = 自動キャッシュ管理設定を上書きする
     .accesskey = v
 clear-cache-button =
     .label = 今すぐ消去
     .accesskey = C
+clear-cache-shutdown-label =
+    .label = シャットダウン時にキャッシュを消去する
+    .accesskey = s
 fonts-legend = フォントと配色
 default-font-label =
     .value = 既定のフォント:
@@ -313,8 +335,8 @@ quoted-text-color =
     .accesskey = o
 search-handler-table =
     .placeholder = ファイルの種類と動作設定の絞り込み
-type-column-label = ファイルの種類
-action-column-label = 動作設定
+type-column-header = ファイルの種類
+action-column-header = 動作設定
 save-to-label =
     .label = 次のフォルダーに保存する:
     .accesskey = S
@@ -348,6 +370,9 @@ auto-mark-as-read =
 mark-read-no-delay =
     .label = メッセージの表示直後に既読にする
     .accesskey = o
+view-attachments-inline =
+    .label = 添付をメッセージ本文に表示する
+    .accesskey = V
 
 ## Note: This will concatenate to "After displaying for [___] seconds",
 ## using (mark-read-delay) and a number (seconds-label).
@@ -405,6 +430,9 @@ auto-save-end = 分ごとに下書きとして自動保存する
 warn-on-send-accel-key =
     .label = キーボードショートカットでメッセージを送信するときは確認する
     .accesskey = C
+add-link-previews =
+    .label = URL の貼り付け時にリンクプレビューを追加する
+    .accesskey = i
 spellcheck-label =
     .label = 送信前にスペルチェックを行う
     .accesskey = C
@@ -422,7 +450,7 @@ font-size-label =
     .value = サイズ:
     .accesskey = z
 default-colors-label =
-    .label = 既定の色を使用
+    .label = 既定の色を使用する
     .accesskey = d
 font-color-label =
     .value = 文字色:
@@ -436,10 +464,19 @@ restore-html-label =
 default-format-label =
     .label = 既定で本文テキストの代わりに段落書式を使用する
     .accesskey = P
-format-description = 送信するメッセージの形式を設定します。
-send-options-label =
-    .label = 送信テキスト形式...
-    .accesskey = S
+compose-send-format-title = 送信テキスト形式
+compose-send-automatic-option =
+    .label = 自動選択
+compose-send-automatic-description = メッセージ内にスタイル書式が使われていない場合はプレーンテキスト形式で送信します。使われている場合は、プレーンテキストへのフォールバックありの HTML 形式で送信します。
+compose-send-both-option =
+    .label = HTML とプレーンテキスト形式
+compose-send-both-description = 受信者側のメールアプリケーションで表示形式を決定します。
+compose-send-html-option =
+    .label = HTML 形式のみ
+compose-send-html-description = 一部の受信者はプレーンテキストへのフォールバックなしでメッセージを読めない可能性があります。
+compose-send-plain-option =
+    .label = プレーンテキスト形式のみ
+compose-send-plain-description = 一部のスタイル書式がプレーンの代替書式に変換されますが、他の編集機能は無効化されます。
 autocomplete-description = 以下に登録されているメールアドレスを宛先等の入力時に自動補完する:
 ab-label =
     .label = ローカルのアドレス帳
@@ -508,23 +545,14 @@ third-party-never =
     .label = 常に拒否
 third-party-visited =
     .label = 訪問したサイトのみ許可
-keep-label =
-    .value = Cookie を保存する期間:
-    .accesskey = K
-keep-expire =
-    .label = サイトが指定した期限まで
-keep-close =
-    .label = { -brand-short-name } を終了するまで
-keep-ask =
-    .label = 毎回確認する
 cookies-button =
     .label = Cookie を表示...
     .accesskey = S
 do-not-track-label =
-    .label = ウェブサイトに “Do Not Track” 信号を送り、追跡されたくないことを知らせます
+    .label = ウェブサイトに “Do Not Track” 信号を送り、追跡されたくないことを知らせる
     .accesskey = n
-learn-button =
-    .label = 詳細情報
+dnt-learn-more-button =
+    .value = 詳細情報
 passwords-description = { -brand-short-name } で利用するすべてのアカウントのパスワードを保存できます。
 passwords-button =
     .label = 保存されているパスワード...
@@ -585,6 +613,22 @@ certificate-button =
 security-devices-button =
     .label = セキュリティデバイス...
     .accesskey = D
+email-e2ee-header = メールのエンドツーエンド暗号
+account-settings = アカウント設定
+email-e2ee-enable-info = アカウント設定内のエンドツーエンド暗号のためにメールアカウントと差出人情報をセットアップします。
+email-e2ee-automatism = 暗号の自動使用
+email-e2ee-automatism-pre =
+    { -brand-short-name } には、メール作成中の暗号を自動的に有効または無効にする補助機能があります。
+    自動的な有効化または無効化は、正しく受け入れられた通信相手の鍵や証明書が利用可能かどうかに基づいています。
+email-e2ee-auto-on =
+    .label = 可能な場合、自動的に暗号を有効にする
+email-e2ee-auto-off =
+    .label = 受信者が暗号を変更して使用不可になった場合、自動的に暗号を無効にします
+email-e2ee-auto-off-notify =
+    .label = 暗号が自動的に無効になった時に通知を表示する
+email-e2ee-automatism-post =
+    自動的な決定は、メッセージの作成中に暗号を手動で有効または無効にすることで上書きされます。
+    注記: 暗号化されたメッセージに返信する場合、暗号が常に自動的に有効になります。
 
 ## Chat Tab
 
@@ -646,7 +690,7 @@ chat-system-sound-label =
     .label = システムの新着メール通知音
     .accesskey = D
 chat-custom-sound-label =
-    .label = 次のサウンドファイルを使用する
+    .label = 次のサウンドファイルを使用する:
     .accesskey = U
 chat-browse-sound-button =
     .label = 参照...
@@ -654,8 +698,8 @@ chat-browse-sound-button =
 theme-label =
     .value = テーマ:
     .accesskey = T
-style-thunderbird =
-    .label = Thunderbird
+style-mail =
+    .label = { -brand-short-name }
 style-bubbles =
     .label = Bubbles
 style-dark =
@@ -678,16 +722,59 @@ chat-variant-label =
 # Notice: The value of the `.style` attribute is a CSS string, and the `width`
 # is the name of the CSS property. It is intended only to adjust the element's width.
 # Do not translate.
-search-preferences-input =
+search-preferences-input2 =
     .style = width: 15.4em
-    .placeholder = 設定を検索
+    .placeholder = 設定内を検索
 
-## Preferences UI Search Results
+## Settings UI Search Results
 
 search-results-header = 検索結果
 # `<span data-l10n-name="query"></span>` will be replaced by the search term.
-search-results-empty-message = { PLATFORM() ->
-    [windows] “<span data-l10n-name="query"></span>” オプションについての検索結果はありません。
-    *[other] “<span data-l10n-name="query"></span>” 設定についての検索結果はありません。
-}
+search-results-empty-message2 =
+    { PLATFORM() ->
+        [windows] “<span data-l10n-name="query"></span>” オプションの検索結果はありません。
+       *[other] “<span data-l10n-name="query"></span>” 設定の検索結果はありません。
+    }
 search-results-help-link = 助けが必要な方は、<a data-l10n-name="url">{ -brand-short-name } サポート</a> をご利用ください
+
+## Sync Tab
+
+sync-signedout-caption = ウェブを持ち歩こう
+sync-signedout-description = あなたのアカウントやアドレス帳、カレンダー、アドオン、設定をお持ちのすべての端末間で同期できます。
+# Note: "Sync" represents the Firefox Sync product so it shouldn't be translated.
+sync-signedout-account-signin-btn = Sync にログイン...
+sync-pane-header = 同期
+# Variables:
+# $userEmail (String) - The email logged into Sync.
+sync-pane-email-not-verified = “{ $userEmail }” は認証されていません。
+# Variables:
+# $userEmail (String) - The email logged into Sync.
+sync-signedin-login-failure = ログインして “{ $userEmail }” に再接続してください
+sync-pane-resend-verification = 認証メールを再送信
+sync-pane-sign-in = ログイン
+sync-pane-remove-account = アカウントを削除
+sync-pane-edit-photo =
+    .title = プロフィール写真を変更します
+sync-pane-manage-account = アカウントの管理
+sync-pane-sign-out = ログアウト...
+sync-pane-device-name-title = 端末名
+sync-pane-change-device-name = 端末名を変更
+sync-pane-cancel = キャンセル
+sync-pane-save = 保存
+sync-pane-show-synced-header-on = 同期: オン
+sync-pane-show-synced-header-off = 同期: オフ
+sync-pane-sync-now = 今すぐ同期
+sync-panel-sync-now-syncing = 同期中...
+show-synced-list-heading = これらの項目を同期しています:
+show-synced-learn-more = 詳細情報...
+show-synced-item-account = メールアカウント
+show-synced-item-address = アドレス帳
+show-synced-item-calendar = カレンダー
+show-synced-item-identity = 差出人情報
+show-synced-item-passwords = パスワード
+show-synced-change = 変更...
+synced-acount-item-server-config = サーバー設定
+synced-acount-item-filters = メッセージフィルター
+synced-acount-item-keys = OpenPGP - S/MIME
+sync-disconnected-text = あなたのメールアカウントやアドレス帳、カレンダー、差出人情報をお持ちのすべての端末間で同期します。
+sync-disconnected-turn-on-sync = 同期をオンにする...

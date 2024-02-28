@@ -4,6 +4,7 @@ $ds-width: 936px;
   $columns: 12;
   --gridColumnGap: 48px;
   --gridRowGap: 24px;
+
   grid-template-columns: repeat($columns, 1fr);
   grid-column-gap: var(--gridColumnGap);
   grid-row-gap: var(--gridRowGap);
@@ -40,12 +41,8 @@ $ds-width: 936px;
 
 .ds-header,
 .ds-layout .section-title span {
-  @include dark-theme-only {
-    color: $grey-30;
-  }
-
-  color: $grey-50;
-  font-size: 13px;
+  color: var(--newtab-text-primary-color);
+  font-size: $section-title-font-size;
   font-weight: 600;
   line-height: 20px;
 
@@ -59,11 +56,11 @@ $ds-width: 936px;
 
   .section-top-bar {
     .learn-more-link a {
-      color: var(--newtab-link-primary-color);
-      font-weight: normal;
+      color: var(--newtab-primary-action-background);
+      font-weight: 500;
 
       &:is(:focus, :hover) {
-        text-decoration: underline;
+        text-decoration: none;
       }
     }
   }

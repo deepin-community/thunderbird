@@ -62,12 +62,18 @@ nsresult nsCMSSecureMessage::CheckUsageOk(nsIX509Cert* aCert,
       do_GetService("@mozilla.org/security/x509certdb;1", &rv);
   NS_ENSURE_SUCCESS(rv, rv);
 
+  nsTArray<uint8_t> certBytes;
+  rv = aCert->GetRawDER(certBytes);
+  NS_ENSURE_SUCCESS(rv, rv);
+
   RefPtr<SharedCertVerifier> certVerifier(GetDefaultCertVerifier());
   NS_ENSURE_TRUE(certVerifier, NS_ERROR_UNEXPECTED);
 
-  UniqueCERTCertList unusedBuiltChain;
-  if (certVerifier->VerifyCert(aCert->GetCert(), aUsage, mozilla::pkix::Now(),
-                               nullptr, nullptr, unusedBuiltChain,
+  nsTArray<nsTArray<uint8_t>> unusedBuiltChain;
+  // It's fine to skip OCSP, because this is called only from code
+  // for selecting the user's own configured cert.
+  if (certVerifier->VerifyCert(certBytes, aUsage, mozilla::pkix::Now(), nullptr,
+                               nullptr, unusedBuiltChain,
                                CertVerifier::FLAG_LOCAL_ONLY) ==
       mozilla::pkix::Success) {
     *aCanBeUsed = true;

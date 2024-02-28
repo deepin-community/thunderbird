@@ -7,7 +7,7 @@
 #include "plstr.h"
 #include "nsCOMPtr.h"
 #include "nsString.h"
-#include "mozilla/Services.h"
+#include "mozilla/Components.h"
 #include "nsIRequest.h"
 #include "nsIStringBundle.h"
 #include "nsIPrefService.h"
@@ -15,8 +15,7 @@
 #include "nsIURI.h"
 #include "mimexpcom.h"
 #include "nsMsgUtils.h"
-
-#include "nsMsgMimeCID.h"
+#include "nsNetUtil.h"
 
 #include "mimecth.h"
 #include "mimemoz2.h"
@@ -81,7 +80,7 @@ static void PgpMimeGetNeedsAddonString(nsCString& aResult) {
   aResult.AssignLiteral("???");
 
   nsCOMPtr<nsIStringBundleService> stringBundleService =
-      mozilla::services::GetStringBundleService();
+      mozilla::components::StringBundle::Service();
 
   nsCOMPtr<nsIStringBundle> stringBundle;
   nsresult rv = stringBundleService->CreateBundle(PGPMIME_PROPERTIES_URL,
@@ -163,12 +162,34 @@ static void* MimePgpe_init(MimeObject* obj,
   rv = data->mimeDecrypt->SetMimePart(mimePart);
   if (NS_FAILED(rv)) return nullptr;
 
+  if (mimePart.EqualsLiteral("1.1") && obj->parent &&
+      obj->parent->content_type &&
+      !strcmp(obj->parent->content_type, "multipart/signed") &&
+      ((MimeContainer*)obj->parent)->nchildren == 1) {
+    // Don't show status for the outer signature, it could be misleading,
+    // the signature could have been created by someone not knowing
+    // the contents of the inner encryption layer.
+    // Another reason is, we usually skip decrypting nested encrypted
+    // parts. However, we make an exception: If the outermost layer
+    // is a signature, and the signature wraps only a single encrypted
+    // message (no sibling MIME parts next to the encrypted part),
+    // then we allow decryption. (bug 1594253)
+    data->mimeDecrypt->SetAllowNestedDecrypt(true);
+  }
+
   mime_stream_data* msd =
       (mime_stream_data*)(data->self->options->stream_closure);
   nsIChannel* channel = msd->channel;
 
   nsCOMPtr<nsIURI> uri;
   if (channel) channel->GetURI(getter_AddRefs(uri));
+
+  if (!uri && obj && obj->options && obj->options->url) {
+    // Allow the PGP mime decrypt code to know what message we're
+    // working with, necessary for storing into the message DB
+    // (e.g. decrypted subject). Bug 1666005.
+    NS_NewURI(getter_AddRefs(uri), obj->options->url);
+  }
 
   // Initialise proxy object with MIME's output function, object and URI.
   if (NS_FAILED(
@@ -259,7 +280,8 @@ nsPgpMimeProxy::nsPgpMimeProxy()
       mOutputFun(nullptr),
       mOutputClosure(nullptr),
       mLoadFlags(LOAD_NORMAL),
-      mCancelStatus(NS_OK) {
+      mCancelStatus(NS_OK),
+      mAllowNestedDecrypt(false) {
 }
 
 nsPgpMimeProxy::~nsPgpMimeProxy() { Finalize(); }
@@ -401,6 +423,18 @@ nsPgpMimeProxy::SetMimePart(const nsACString& aMimePart) {
   return NS_OK;
 }
 
+NS_IMETHODIMP
+nsPgpMimeProxy::SetAllowNestedDecrypt(bool aAllowNestedDecrypt) {
+  mAllowNestedDecrypt = aAllowNestedDecrypt;
+  return NS_OK;
+}
+
+NS_IMETHODIMP
+nsPgpMimeProxy::GetAllowNestedDecrypt(bool* aAllowNestedDecrypt) {
+  *aAllowNestedDecrypt = mAllowNestedDecrypt;
+  return NS_OK;
+}
+
 /**
  * This method is called by the add-on-supplied decryption object.
  * It passes the decrypted data back to the proxy which calls the
@@ -455,6 +489,19 @@ nsPgpMimeProxy::GetStatus(nsresult* status) {
 
   *status = mCancelStatus;
   return NS_OK;
+}
+
+NS_IMETHODIMP nsPgpMimeProxy::SetCanceledReason(const nsACString& aReason) {
+  return SetCanceledReasonImpl(aReason);
+}
+
+NS_IMETHODIMP nsPgpMimeProxy::GetCanceledReason(nsACString& aReason) {
+  return GetCanceledReasonImpl(aReason);
+}
+
+NS_IMETHODIMP nsPgpMimeProxy::CancelWithReason(nsresult aStatus,
+                                               const nsACString& aReason) {
+  return CancelWithReasonImpl(aStatus, aReason);
 }
 
 // NOTE: We assume that OnStopRequest should not be called if
@@ -573,6 +620,8 @@ nsPgpMimeProxy::Close() {
 
   return NS_OK;
 }
+
+NS_IMETHODIMP nsPgpMimeProxy::StreamStatus() { return NS_OK; }
 
 ///////////////////////////////////////////////////////////////////////////////
 // nsIStreamListener methods

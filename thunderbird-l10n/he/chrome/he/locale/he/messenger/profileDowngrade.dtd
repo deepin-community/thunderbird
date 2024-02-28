@@ -10,12 +10,12 @@
  given Thunderbird channel". These terms are not synonymous.
 -->
 <!ENTITY window.title "הפעלת גרסה ישנה של &brandProductName;">
-
-
-
 <!ENTITY window.style "width: 490px;">
+
+
+<!ENTITY window.moreinfo "מידע נוסף…">
+<!ENTITY window.create "יצירת פרופיל חדש">
+<!ENTITY window.quit-win "יציאה">
+<!ENTITY window.quit-nonwin "יציאה">
+
 <!ENTITY window.nosync2 "A newer version of &brandProductName; may have made changes to your profile which are no longer compatible with this older version. Use this profile only with that newer version, or create a new profile for this installation of &brandShortName;. Creating a new profile requires setting up your accounts, calendars and add-ons again.">
-<!ENTITY window.moreinfo "More information…">
-<!ENTITY window.create "Create New Profile">
-<!ENTITY window.quit-win "Exit">
-<!ENTITY window.quit-nonwin "Quit">

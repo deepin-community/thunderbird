@@ -3,6 +3,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 /* globals Assert */
+/* globals info */
 
 /**
  * This file contains utilities that can be shared between xpcshell tests and mochitests.
@@ -16,23 +17,42 @@ const INTERVAL_END = 3;
 
 // This Services declaration may shadow another from head.js, so define it as
 // a var rather than a const.
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 
 const defaultSettings = {
   entries: 8 * 1024 * 1024, // 8M entries = 64MB
   interval: 1, // ms
-  features: ["threads"],
+  features: [],
   threads: ["GeckoMain"],
 };
 
-function startProfiler(callersSettings) {
+// Effectively `async`: Start the profiler and return the `startProfiler`
+// promise that will get resolved when all child process have started their own
+// profiler.
+async function startProfiler(callersSettings) {
   if (Services.profiler.IsActive()) {
-    throw new Error(
-      "The profiler must not be active before starting it in a test."
+    Assert.ok(
+      Services.env.exists("MOZ_PROFILER_STARTUP"),
+      "The profiler is active at the begining of the test, " +
+        "the MOZ_PROFILER_STARTUP environment variable should be set."
     );
+    if (Services.env.exists("MOZ_PROFILER_STARTUP")) {
+      // If the startup profiling environment variable exists, it is likely
+      // that tests are being profiled.
+      // Stop the profiler before starting profiler tests.
+      info(
+        "This test starts and stops the profiler and is not compatible " +
+          "with the use of MOZ_PROFILER_STARTUP. " +
+          "Stopping the profiler before starting the test."
+      );
+      await Services.profiler.StopProfiler();
+    } else {
+      throw new Error(
+        "The profiler must not be active before starting it in a test."
+      );
+    }
   }
   const settings = Object.assign({}, defaultSettings, callersSettings);
-  Services.profiler.StartProfiler(
+  return Services.profiler.StartProfiler(
     settings.entries,
     settings.interval,
     settings.features,
@@ -43,8 +63,8 @@ function startProfiler(callersSettings) {
 }
 
 function startProfilerForMarkerTests() {
-  startProfiler({
-    features: ["threads", "nostacksampling"],
+  return startProfiler({
+    features: ["nostacksampling", "js"],
     threads: ["GeckoMain", "DOM Worker"],
   });
 }
@@ -158,18 +178,41 @@ function getInflatedNetworkMarkers(thread) {
  * @return {InflatedMarker[][]} Pairs of network markers
  */
 function getPairsOfNetworkMarkers(allNetworkMarkers) {
-  // For each 'start' marker we want to find the 'stop' or 'redirect' marker
-  // with the same id.
-  // Note: the algorithm we use here to match markers is very crude and would
-  // be too slow for the real product, but because it is very simple it's good
-  // for a test. Also the logic will be compatible with future marker sets.
-  // Because we only have a few markers the performance is good enough in this
-  // case.
-  return allNetworkMarkers
-    .filter(({ data }) => data.status === "STATUS_START")
-    .map(startMarker =>
-      allNetworkMarkers.filter(({ data }) => data.id === startMarker.data.id)
-    );
+  // For each 'start' marker we want to find the next 'stop' or 'redirect'
+  // marker with the same id.
+  const result = [];
+  const mapOfStartMarkers = new Map(); // marker id -> id in result array
+  for (const marker of allNetworkMarkers) {
+    const { data } = marker;
+    if (data.status === "STATUS_START") {
+      if (mapOfStartMarkers.has(data.id)) {
+        const previousMarker = result[mapOfStartMarkers.get(data.id)][0];
+        Assert.ok(
+          false,
+          `We found 2 start markers with the same id ${data.id}, without end marker in-between.` +
+            `The first marker has URI ${previousMarker.data.URI}, the second marker has URI ${data.URI}.` +
+            ` This should not happen.`
+        );
+        continue;
+      }
+
+      mapOfStartMarkers.set(data.id, result.length);
+      result.push([marker]);
+    } else {
+      // STOP or REDIRECT
+      if (!mapOfStartMarkers.has(data.id)) {
+        Assert.ok(
+          false,
+          `We found an end marker without a start marker (id: ${data.id}, URI: ${data.URI}). This should not happen.`
+        );
+        continue;
+      }
+      result[mapOfStartMarkers.get(data.id)].push(marker);
+      mapOfStartMarkers.delete(data.id);
+    }
+  }
+
+  return result;
 }
 
 /**
@@ -193,16 +236,75 @@ function captureAtLeastOneJsSample() {
   }
 }
 
+function isJSONWhitespace(c) {
+  return ["\n", "\r", " ", "\t"].includes(c);
+}
+
+function verifyJSONStringIsCompact(s) {
+  const stateData = 0;
+  const stateString = 1;
+  const stateEscapedChar = 2;
+  let state = stateData;
+  for (let i = 0; i < s.length; ++i) {
+    let c = s[i];
+    switch (state) {
+      case stateData:
+        if (isJSONWhitespace(c)) {
+          Assert.ok(
+            false,
+            `"Unexpected JSON whitespace at index ${i} in profile: <<<${s}>>>"`
+          );
+          return;
+        }
+        if (c == '"') {
+          state = stateString;
+        }
+        break;
+      case stateString:
+        if (c == '"') {
+          state = stateData;
+        } else if (c == "\\") {
+          state = stateEscapedChar;
+        }
+        break;
+      case stateEscapedChar:
+        state = stateString;
+        break;
+    }
+  }
+}
+
 /**
- * This function pauses the profiler before getting the profile. Then after the
+ * This function pauses the profiler before getting the profile. Then after
  * getting the data, the profiler is stopped, and all profiler data is removed.
  * @returns {Promise<Profile>}
  */
-async function stopAndGetProfile() {
+async function stopNowAndGetProfile() {
+  // Don't await the pause, because each process will handle it before it
+  // receives the following `getProfileDataAsArrayBuffer()`.
   Services.profiler.Pause();
-  const profile = await Services.profiler.getProfileDataAsync();
-  Services.profiler.StopProfiler();
-  return profile;
+
+  const profileArrayBuffer =
+    await Services.profiler.getProfileDataAsArrayBuffer();
+  await Services.profiler.StopProfiler();
+
+  const profileUint8Array = new Uint8Array(profileArrayBuffer);
+  const textDecoder = new TextDecoder("utf-8", { fatal: true });
+  const profileString = textDecoder.decode(profileUint8Array);
+  verifyJSONStringIsCompact(profileString);
+
+  return JSON.parse(profileString);
+}
+
+/**
+ * This function ensures there's at least one sample, then pauses the profiler
+ * before getting the profile. Then after getting the data, the profiler is
+ * stopped, and all profiler data is removed.
+ * @returns {Promise<Profile>}
+ */
+async function waitSamplingAndStopAndGetProfile() {
+  await Services.profiler.waitOnePeriodicSampling();
+  return stopNowAndGetProfile();
 }
 
 /**
@@ -290,7 +392,7 @@ function escapeStringRegexp(string) {
 /** ------ Assertions helper ------ */
 /**
  * This assert helper function makes it easy to check a lot of properties in an
- * object. We augment Assert.jsm to make it easier to use.
+ * object. We augment Assert.sys.mjs to make it easier to use.
  */
 Object.assign(Assert, {
   /*
@@ -443,7 +545,9 @@ Object.assign(Assert, {
 });
 
 const Expect = {
-  any: () => actual => {} /* We don't check anything more than the presence of this property. */,
+  any:
+    () =>
+    actual => {} /* We don't check anything more than the presence of this property. */,
 };
 
 /* These functions are part of the Assert object, and we want to reuse them. */
@@ -454,8 +558,10 @@ const Expect = {
   "objectContainsOnly",
 ].forEach(
   assertChecker =>
-    (Expect[assertChecker] = expected => (actual, ...moreArgs) =>
-      Assert[assertChecker](actual, expected, ...moreArgs))
+    (Expect[assertChecker] =
+      expected =>
+      (actual, ...moreArgs) =>
+        Assert[assertChecker](actual, expected, ...moreArgs))
 );
 
 /* These functions will only check for the type. */

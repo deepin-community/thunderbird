@@ -27,11 +27,18 @@ please use _rnpkeys(1)_ for that purpose.
 
 By default, *rnp* will apply a _COMMAND_, additionally configured with _OPTIONS_,
 to all _INPUT_FILE_(s) or _stdin_ if no _INPUT_FILE_ is given.
+There are some special cases for _INPUT_FILE_ :
+
+* _-_ (dash) substitutes to _stdin_
+* env:VARIABLE_NAME substitutes to the contents of environment variable VARIABLE_NAME
 
 Depending on the input, output may be written:
 
-* to the specified file with a removed or added file extension (_.pgp_, _.asc_, _.sig_); or
-* to _stdout_.
+* if *--output* option is given output is written to the path specified (or to the *stdout* if *-* is used)
+* to the _INPUT_FILE_ with a removed or added file extension (_.pgp_, _.gpg_, _.asc_, _.sig_), depending on operation.
+* to the _stdout_ if input was read from the _stdin_.
+
+If output file already exists, it will *not* be overwritten, unless *--overwrite* option is given.
 
 Without the *--armor* option, output will be in binary.
 
@@ -67,11 +74,15 @@ Specify one or more recipients.
 *--cipher*:::
 Select a specific cipher.
 
-*-z*, *--zip*, *--bzip*:::
-Select a compression algorithm.
+*-z 0..9*, *--zlib*, *--zip*, *--bzip*:::
+Select a compression algorithm and level.
 
 *--armor*:::
 Output ASCII data instead of binary via the *--armor* option. If the input file is _file.ext_, and *--output* is not specified, then the data will be written (depending on *--armor* option) to _file.ext.pgp_ or _file.ext.asc_. +
+
+*--no-wrap*:::
+Do not wrap the output in literal data packet. This could be used to encrypt a file which is already signed or encrypted.
+By default this would also disable compression, use option *-z* to override.
 
 *--overwrite*:::
 If the destination file already exists, and the *--overwrite* option is not given, the caller will be asked for the permission to overwrite or to provide a new file name. Please see the *OPTIONS* section for more information.
@@ -123,15 +134,17 @@ If the data is signed, signature verification information will be printed to _st
 Additional options:
 
 *--output*:::
-Output, if not overridden with this option, will be written to the file with stripped _.pgp_ extension or stdout. If _INPUT_FILE_ does not end with the _.pgp_ extension, then output file name will be asked via _stdin_/_tty_.
+Override the default output selection with a file name or stdout specifier (*_-_*). For the default output path selection see the *BASICS* section.
 
 *--password*, *--pass-fd*:::
 Depending on encryption options, you may be asked for the password of one of your secret keys, or for the encryption password. These options override that behavior such that you can input the password through automated means.
 
 *-v*, *--verify*::
-Verify signature(s) without writing embedded data out, if any. +
+Verify signature(s) without writing embedded data out, if any (unless option _--output_ is specified). +
 +
 To verify the detached signature of a file _file.ext_, the detached signature file in the file name pattern of _file.ext.sig_ or _file.ext.asc_ must exist. +
++
+Also you may use option *--source* to specify the exact source for the signed data. +
 +
 If data is encrypted, you may be asked for password as in the *--decrypt* command.
 
@@ -159,7 +172,7 @@ or to _stdout_. +
 The following OpenPGP headers may be specified:
 +
 --
-*msg*::: _-----BEGIN PGP MESSAGE-----_
+*msg* (default) ::: _-----BEGIN PGP MESSAGE-----_
 *pubkey*::: _-----BEGIN PGP PUBLIC KEY BLOCK-----_
 *seckey*::: _-----BEGIN PGP SECRET KEY BLOCK-----_
 *sign*::: _-----BEGIN PGP SIGNATURE-----_
@@ -227,6 +240,9 @@ via _stdin_/_tty_.
 *--overwrite*::
 Overwrite already existing files without prompt.
 
+*--source*::
+Specify signed data for the detached signature verification (_-_ and _env:_ substitutions may be used here). +
+
 *--hash* _ALGORITHM_::
 Set hash algorithm which to be used for signing and derivation
 of the encryption key from a password. +
@@ -242,7 +258,7 @@ The default value is _AES256_.
 Enable AEAD encryption and select algorithm to be used.
 
 *--aead-chunk-bits* _BITS_::
-Change AEAD chunk size. This is used for testing or debugging.
+Change AEAD chunk size bits, from 0 to 16 (actual chunk size would be 1 << (6 + bits)). See OpenPGP documentation for the details. +
 
 *--zip*, *--zlib*, *--bzip2*::
 Select corresponding algorithm to compress data with.
@@ -263,7 +279,7 @@ Useful for automated or non-interactive sessions.
 *--password* _PASSWORD_::
 Use the specified password when it is needed. +
 +
-WARNING: Not recommended for production use due to potential security issues.
+WARNING: Not recommended for production use due to potential security issues.
 Use *--pass-fd* for batch operations instead.
 
 *--passwords* _COUNT_::
@@ -274,11 +290,9 @@ While not commonly used, you may encrypt a message to any reasonable number of p
 *--creation* _TIME_::
 Override signature creation time. +
 +
-By default, creation time is set to current local computer time. +
+By default, creation time is set to the current local computer time. +
 +
-A specific time could be specified in the
-ISO 8601-1:2019 date format (_yyyy-mm-dd_),
-or in the UNIX timestamp format.
+*TIME* could be specified in the ISO 8601-1:2019 date format (_yyyy-mm-dd_), or in the UNIX timestamp format.
 
 *--expiration* _TIME_::
 Set signature expiration time, counting from the creation time. +
@@ -298,9 +312,31 @@ RNP automatically detects the keystore format. +
 +
 This option allows the auto-detection behavior to be overridden.
 
-*--debug* _FILENAME.CPP_::
-Enable debug output for the source file specified. For development use only.
+*--notty*::
+Disable use of tty. +
++
+By default RNP would detect whether TTY is attached and use it for user prompts. +
++
+This option overrides default behaviour so user input may be passed in batch mode.
 
+*--current-time* _TIME_::
+Override system's time with a specified value. +
++
+By default RNP uses system's time in all signature/key checks, however in some scenarios it could be needed to override this. +
++
+*TIME* may be specified in the same way as *--creation*.
+
+*--set-filename* _FNAME_::
+Override or set a file name, stored inside of OpenPGP message. +
++
+By default RNP will store input filename (or empty string for *stdin*/*env* input) in the resulting OpenPGP message during encryption or embedded signing.
+This option allows to override this. Special value *_CONSOLE* may be used for "for your eyes only"-message. Refer OpenPGP documentation for the details.
+
+*--allow-hidden* ::
+Allow hidden recipient support. +
++
+Sender of an encrypted message may wish to hide recipient's key by setting a Key ID field to all zeroes.
+In this case receiver has to try every available secret key, checking for a valid decrypted session key. This option is disabled by default.
 
 == EXIT STATUS
 
@@ -353,6 +389,11 @@ so *any* of these may be used to decrypt the resulting file.
 
 Additionally, the message will be signed with key _0x44616E69656C2057_.
 
+=== EXAMPLE 5
+
+*printf* _"Message"_ | *rnp* *--keyfile* _env:PGP_ENCRYPTION_KEY_ *-e* *-* *--armor*
+
+Encrypt message, passed via stdin, using the key, stored in environment variable *PGP_ENCRYPTION_KEY*, add ascii armoring, and print result to the stdout.
 
 == BUGS
 

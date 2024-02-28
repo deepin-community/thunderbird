@@ -1,15 +1,17 @@
 #!/usr/bin/python3
 
-from optparse import OptionParser
-import fnmatch
-import tarfile
-import io
-import re
-import os
-import sys
 import email
+import fnmatch
+import io
+import os
+import re
+import sys
+import tarfile
 import urllib.request, urllib.error, urllib.parse
+
+from optparse import OptionParser
 from urllib.parse import urlparse
+
 
 class URLFile(object):
     '''Simple proxy to urllib2.urlopen, that responds to seek only if
@@ -32,11 +34,13 @@ class URLFile(object):
     def close(self):
         self.file.close()
 
+
 def dirname(filespec):
     '''Returns os.path.dirname if a file, and '' if an url'''
     if urlparse(filespec).scheme:
         return ''
     return os.path.dirname(filespec)
+
 
 class TarFilterList(object):
     def __init__(self, filename):
@@ -100,8 +104,10 @@ class TarFilterList(object):
                         result.append(root + p[0])
         return result
 
+
 def file_extension(name):
     return os.path.splitext(name)[1][1:]
+
 
 def filter_tar(orig, new, filt):
     def u8(x):
@@ -112,7 +118,7 @@ def filter_tar(orig, new, filt):
         tar = tarfile.open(orig, "r:" + file_extension(orig), URLFile(orig))
     else:
         tar = tarfile.open(orig, "r:" + file_extension(orig))
-    new_tar = tarfile.open(new + ".new", "w:" + file_extension(new))
+    new_tar = tarfile.open(f'{new}.new', "w:" + file_extension(new))
 
     while True:
         info = tar.next()
@@ -120,13 +126,13 @@ def filter_tar(orig, new, filt):
             break
         do_filt = filt.match(info.name)
         if do_filt == None:
-            print("Removing %s" % (info.name), file=sys.stderr)
+            print(f'Removing {info.name}', file=sys.stderr)
             continue
 
         if info.isfile():
             file = tar.extractfile(info)
             if do_filt:
-                print("Filtering %s" % (info.name), file=sys.stderr)
+                print(f'Filtering {info.name}', file=sys.stderr)
                 orig = file
                 file = io.BytesIO()
                 the_filt = lambda l: u8(l)
@@ -151,9 +157,11 @@ def filter_tar(orig, new, filt):
     os.rename(new_tar.name, new)
     unused = filt.unused()
     if unused:
-        print('Unused filters:')
-        print('', '\n '.join(unused))
-        exit(1)
+        print('\nUnused filters:')
+        for ele in unused:
+            if not ele.startswith('#'):
+                print(ele)
+
 
 def get_package_name():
     control = os.path.join(os.path.dirname(__file__), "control")
@@ -173,11 +181,8 @@ def main():
         help="use the given compression for the new tarball")
     (options, args) = parser.parse_args()
 
-    if len(args) < 1:
+    if len(args) < 1 or len(args) > 1:
         parser.error("Too few arguments! You may want to use option '--help' for usage first?")
-        return
-    if len(args) > 1:
-        parser.error("Too many arguments! You may want to use option '--help' for usage first?")
         return
 
     if not options.upstream_version:
@@ -195,9 +200,9 @@ def main():
     else:
         orig = args[0]
         compression = options.compression or file_extension(orig)
-        new_file = options.package + "_" + options.upstream_version + ".orig.tar." + compression
+        new_file = f'{options.package}_{options.upstream_version}.orig.tar.{compression}'
         new_file = os.path.realpath(os.path.join(dirname(orig), new_file))
-    print(orig, new_file)
+    print(f'Source: {orig} - Target: {new_file}\n')
     filter_tar(orig, new_file, options.filter)
 
 if __name__ == '__main__':

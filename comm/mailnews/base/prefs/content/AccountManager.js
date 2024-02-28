@@ -1,4 +1,4 @@
-/* -*- Mode: C++; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 2 -*-
+/* -*- Mode: JavaScript; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 2 -*-
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
@@ -29,26 +29,32 @@
 /* import-globals-from am-prefs.js */
 /* import-globals-from amUtils.js */
 
-var { XPCOMUtils } = ChromeUtils.import(
-  "resource://gre/modules/XPCOMUtils.jsm"
+var { XPCOMUtils } = ChromeUtils.importESModule(
+  "resource://gre/modules/XPCOMUtils.sys.mjs"
 );
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 var { MailUtils } = ChromeUtils.import("resource:///modules/MailUtils.jsm");
 var { Gloda } = ChromeUtils.import("resource:///modules/gloda/Gloda.jsm");
 var { MailServices } = ChromeUtils.import(
   "resource:///modules/MailServices.jsm"
 );
-var { allAccountsSorted } = ChromeUtils.import(
-  "resource:///modules/folderUtils.jsm"
+var { UIDensity } = ChromeUtils.import("resource:///modules/UIDensity.jsm");
+var { UIFontSize } = ChromeUtils.import("resource:///modules/UIFontSize.jsm");
+
+ChromeUtils.defineModuleGetter(
+  this,
+  "FolderUtils",
+  "resource:///modules/FolderUtils.jsm"
 );
 var { cleanUpHostName, isLegalHostNameOrIP } = ChromeUtils.import(
   "resource:///modules/hostnameUtils.jsm"
 );
-var { ChatIcons } = ChromeUtils.import("resource:///modules/chatIcons.jsm");
+var { ChatIcons } = ChromeUtils.importESModule(
+  "resource:///modules/chatIcons.sys.mjs"
+);
 
-XPCOMUtils.defineLazyGetter(this, "gSubDialog", function() {
-  const { SubDialogManager } = ChromeUtils.import(
-    "resource://gre/modules/SubDialog.jsm"
+XPCOMUtils.defineLazyGetter(this, "gSubDialog", function () {
+  const { SubDialogManager } = ChromeUtils.importESModule(
+    "resource://gre/modules/SubDialog.sys.mjs"
   );
   return new SubDialogManager({
     dialogStack: document.getElementById("dialogStack"),
@@ -58,6 +64,20 @@ XPCOMUtils.defineLazyGetter(this, "gSubDialog", function() {
         "chrome://messenger/skin/preferences/dialog.css",
         "chrome://messenger/skin/preferences/preferences.css",
       ],
+      resizeCallback: ({ title, frame }) => {
+        UIFontSize.registerWindow(frame.contentWindow);
+
+        // Resize the dialog to fit the content with edited font size.
+        requestAnimationFrame(() => {
+          let dialogs = frame.ownerGlobal.gSubDialog._dialogs;
+          let dialog = dialogs.find(
+            d => d._frame.contentDocument == frame.contentDocument
+          );
+          if (dialog) {
+            UIFontSize.resizeSubDialog(dialog);
+          }
+        });
+      },
     },
   });
 });
@@ -175,7 +195,11 @@ function onLoad() {
         });
       }
     }
+    UIFontSize.registerWindow(contentFrame.contentWindow);
   });
+
+  UIDensity.registerWindow(window);
+  UIFontSize.registerWindow(window);
 }
 
 function onUnload() {
@@ -183,49 +207,39 @@ function onUnload() {
 }
 
 function selectServer(server, selectPageId) {
-  let childrenNode = document.getElementById("account-tree-children");
+  let accountTree = document.getElementById("accounttree");
 
   // Default to showing the first account.
-  let accountNode = childrenNode.firstElementChild;
+  let accountRow = accountTree.rows[0];
 
-  // Find the tree-node for the account we want to select
+  // Find the tree-node for the account we want to select.
   if (server) {
-    for (let i = 0; i < childrenNode.children.length; i++) {
-      let account = childrenNode.children[i]._account;
+    for (let row of accountTree.children) {
+      let account = row._account;
       if (account && server == account.incomingServer) {
-        accountNode = childrenNode.children[i];
+        accountRow = row;
         // Make sure all the panes of the account to be selected are shown.
-        accountNode.setAttribute("open", "true");
+        accountTree.expandRow(accountRow);
         break;
       }
     }
   }
 
-  let pageToSelect = accountNode;
+  let pageToSelect = accountRow;
 
   if (selectPageId) {
     // Find the page that also corresponds to this server.
-    // It either is the accountNode itself...
-    let pageId = accountNode.getAttribute("PageTag");
+    // It either is the accountRow itself...
+    let pageId = accountRow.getAttribute("PageTag");
     if (pageId != selectPageId) {
       // ... or one of its children.
-      pageToSelect = accountNode.querySelector(
+      pageToSelect = accountRow.querySelector(
         '[PageTag="' + selectPageId + '"]'
       );
     }
   }
 
-  let accountTree = document.getElementById("accounttree");
-  let index = accountTree.view.getIndexOfItem(pageToSelect);
-  accountTree.view.selection.select(index);
-  accountTree.ensureRowIsVisible(index);
-
-  let lastItem = accountNode.lastElementChild.lastElementChild;
-  if (lastItem.localName == "treeitem") {
-    index = accountTree.view.getIndexOfItem(lastItem);
-  }
-
-  accountTree.ensureRowIsVisible(index);
+  accountTree.selectedIndex = accountTree.rows.indexOf(pageToSelect);
 }
 
 function replaceWithDefaultSmtpServer(deletedSmtpServerKey) {
@@ -266,9 +280,8 @@ function replaceWithDefaultSmtpServer(deletedSmtpServerKey) {
 /**
  * Called when OK is clicked on the dialog.
  *
- * @param aDoChecks  If true, execute checks on data, otherwise hope they
- *                   were already done elsewhere and proceed directly to saving
- *                   the data.
+ * @param {boolean} aDoChecks - If true, execute checks on data, otherwise hope
+ *   they were already done elsewhere and proceed directly to saving the data.
  */
 function onAccept(aDoChecks) {
   if (aDoChecks) {
@@ -299,25 +312,12 @@ function onAccept(aDoChecks) {
 
   if (gRestartNeeded) {
     MailUtils.restartApplication();
-    // Prevent closing Account manager incase restart failed. If restart did not fail,
+    // Prevent closing Account manager in case restart failed. If restart did not fail,
     // return value does not matter, as we are restarting.
     return false;
   }
 
   return true;
-}
-
-/**
- * Runs when Cancel button is used.
- *
- * This function must not be called onCancel(), because it would call itself
- * recursively for pages that don't have an onCancel() implementation.
- */
-function onNotAccept(event) {
-  // If onCancel() present in current page frame, call it.
-  if ("onCancel" in top.frames.contentFrame) {
-    top.frames.contentFrame.onCancel(event);
-  }
 }
 
 /**
@@ -390,20 +390,20 @@ function checkDirectoryIsAllowed(aLocalPath) {
    * Check if the local path (aLocalPath) is 'safe' i.e. NOT a parent
    * or subdirectory of the given special system/app directory (aDirToCheck).
    *
-   * @param aDirToCheck  An object describing the special directory.
-   *        The object has the following members:
-   *        dirsvc      : A path keyword to retrieve from the Directory service.
-   *        dir         : An absolute filesystem path.
-   *                      Only one of 'dirsvc' or 'dir' can be specified.
-   *        OS          : A string of comma separated values defining on which
-   *                      Operating systems the folder is unusable:
-   *                       null   = all
-   *                       WINNT  = Windows
-   *                       Darwin = OS X
-   *                       Linux  = Linux
-   *        safeSubdirs : An array of directory names that are allowed to be used
-   *                      under the tested directory.
-   * @param aLocalPath  An nsIFile of the directory to check, intended for message storage.
+   * @param {object} aDirToCheck - An object describing the special directory.
+   * @param {string} aDirToCheck.dirsvc - A path keyword to retrieve from the
+   *   Directory service.
+   * @param {string} aDirToCheck.dir - An absolute filesystem path.
+   * @param {string} aDirToCheck.OS - A string of comma separated values defining on which.
+   *   Operating systems the folder is unusable:
+   *     - null   = all
+   *     - WINNT  = Windows
+   *     - Darwin = OS X
+   *     - Linux  = Linux
+   * @param {string} aDirToCheck.safeSubdirs - An array of directory names that
+   *   are allowed to be used under the tested directory.
+   * @param {nsIFile} aLocalPath - An nsIFile of the directory to check,
+   *   intended for message storage.
    */
   function checkLocalDirectoryIsSafe(aDirToCheck, aLocalPath) {
     if (aDirToCheck.OS) {
@@ -417,7 +417,7 @@ function checkDirectoryIsAllowed(aLocalPath) {
       try {
         testDir = Services.dirsvc.get(aDirToCheck.dirsvc, Ci.nsIFile);
       } catch (e) {
-        Cu.reportError(
+        console.error(
           "The special folder " +
             aDirToCheck.dirsvc +
             " cannot be retrieved on this platform: " +
@@ -435,7 +435,7 @@ function checkDirectoryIsAllowed(aLocalPath) {
         return true;
       }
     } else {
-      Cu.reportError("No directory to check?");
+      console.error("No directory to check?");
       return true;
     }
 
@@ -556,7 +556,7 @@ function checkDirectoryIsUsable(aLocalPath) {
       }
     } catch (e) {
       // The other account's path is seriously broken, so we can't compare it.
-      Cu.reportError(
+      console.error(
         "The Local Directory path of the account " +
           server.prettyName +
           " seems invalid."
@@ -572,7 +572,8 @@ function checkDirectoryIsUsable(aLocalPath) {
  * if the new names already exists for an account or are empty.
  * Also check if the Local Directory path was changed.
  *
- * @param showAlert  show and alert if a problem with the host / user name is found
+ * @param {boolean} showAlert - Show and alert if a problem with the host / user
+ *   name is found.
  */
 function checkUserServerChanges(showAlert) {
   const prefBundle = document.getElementById("bundle_prefs");
@@ -593,15 +594,15 @@ function checkUserServerChanges(showAlert) {
 
   // Get the new username, hostname and type from the page.
   var typeElem = getPageFormElement("server.type");
-  var hostElem = getPageFormElement("server.realHostName");
-  var userElem = getPageFormElement("server.realUsername");
+  var hostElem = getPageFormElement("server.hostName");
+  var userElem = getPageFormElement("server.username");
   if (typeElem && userElem && hostElem) {
     var newType = getFormElementValue(typeElem);
     var oldHost = getAccountValue(
       currentAccount,
       accountValues,
       "server",
-      "realHostName",
+      "hostName",
       null,
       false
     );
@@ -610,7 +611,7 @@ function checkUserServerChanges(showAlert) {
       currentAccount,
       accountValues,
       "server",
-      "realUsername",
+      "username",
       null,
       false
     );
@@ -632,11 +633,10 @@ function checkUserServerChanges(showAlert) {
       } else if (!isLegalHostNameOrIP(newHost)) {
         alertText = prefBundle.getString("enterValidServerName");
       } else {
-        let sameServer = MailServices.accounts.findRealServer(
+        let sameServer = MailServices.accounts.findServer(
           newUser,
           newHost,
-          newType,
-          0
+          newType
         );
         if (sameServer && sameServer != currentServer) {
           alertText = prefBundle.getString("modifiedAccountExists");
@@ -688,6 +688,26 @@ function checkUserServerChanges(showAlert) {
           Services.prompt.alert(window, alertTitle, changeText.trim());
         }
       }
+
+      let l10n = new Localization(["messenger/accountManager.ftl"], true);
+      let cancel = Services.prompt.confirmEx(
+        window,
+        alertTitle,
+        l10n.formatValueSync("server-change-restart-required"),
+        Services.prompt.BUTTON_POS_0 * Services.prompt.BUTTON_TITLE_IS_STRING +
+          Services.prompt.BUTTON_POS_1 * Services.prompt.BUTTON_TITLE_CANCEL,
+        prefBundle.getString("localDirectoryRestart"),
+        null,
+        null,
+        null,
+        {}
+      );
+      if (cancel) {
+        setFormElementValue(hostElem, oldHost);
+        setFormElementValue(userElem, oldUser);
+        return false;
+      }
+      gRestartNeeded = true;
     }
   }
 
@@ -699,7 +719,7 @@ function checkUserServerChanges(showAlert) {
   let dir = getFormElementValue(pathElem);
   if (!checkDirectoryIsUsable(dir)) {
     //          return false; // Temporarily disable this. Just show warning but do not block. See bug 921371.
-    Cu.reportError(
+    console.error(
       `Local directory ${dir.path} of account ${currentAccount.key} is not safe to use. Consider changing it.`
     );
   }
@@ -804,96 +824,36 @@ function onSave() {
   return true;
 }
 
-function onAddAccount() {
-  MsgAccountWizard();
-}
-
 /**
  * Highlight the default account row in the account tree,
  * optionally un-highlight the previous one.
  *
- * @param newDefault  The account that has become the new default.
- *                    Can be given as null if there is none.
- * @param oldDefault  The account that has stopped being the default.
- *                    Can be given as null if there was none.
+ * @param {?nsIMsgAccount} newDefault - The account that has become the new
+ *   default. Can be given as null if there is none.
+ * @param {?nsIMsgAccount} oldDefault - The account that has stopped being the
+ *   default. Can be given as null if there was none.
  */
 function markDefaultServer(newDefault, oldDefault) {
   if (oldDefault == newDefault) {
     return;
   }
 
-  let accountTree = document.getElementById("account-tree-children");
-  for (let accountNode of accountTree.children) {
-    if (newDefault && newDefault == accountNode._account) {
-      let props = accountNode.firstElementChild.firstElementChild.getAttribute(
-        "properties"
-      );
-      accountNode.firstElementChild.firstElementChild.setAttribute(
-        "properties",
-        props + " isDefaultServer-true"
-      );
+  let accountTree = document.getElementById("accounttree");
+  for (let accountRow of accountTree.children) {
+    if (newDefault && newDefault == accountRow._account) {
+      accountRow.classList.add("isDefaultServer");
     }
-    if (oldDefault && oldDefault == accountNode._account) {
-      let props = accountNode.firstElementChild.firstElementChild.getAttribute(
-        "properties"
-      );
-      props = props.replace(/isDefaultServer-true/, "");
-      accountNode.firstElementChild.firstElementChild.setAttribute(
-        "properties",
-        props
-      );
+    if (oldDefault && oldDefault == accountRow._account) {
+      accountRow.classList.remove("isDefaultServer");
     }
   }
-}
-
-/**
- * Sets the name of the account rowitem in the tree pane.
- *
- * @param aAccountKey   the key of the account to change
- * @param aAccountNode  the node on which to change the label
- * @param aLabel        the value of the label to set
- */
-function setAccountLabel(aAccountKey, aAccountNode, aLabel) {
-  if (!aAccountNode) {
-    // We can't use the current tree selection to determine the current account,
-    // because this function may be called when the selection
-    // is already on another tree item (account) than the one we want to change.
-    // So find the proper node using the account key.
-    let accountTree = document.getElementById("account-tree-children");
-    for (let accountNode of accountTree.children) {
-      if (
-        "_account" in accountNode &&
-        accountNode._account.key == aAccountKey
-      ) {
-        aAccountNode = accountNode.firstElementChild.firstElementChild;
-        break;
-      }
-    }
-  }
-  aAccountNode.setAttribute("label", aLabel);
 }
 
 /**
  * Notify the UI to rebuild the account tree.
- *
- * @param {boolean} [reloadAccountManager=true] - When set to false, the
- *   account manager for the current window is not reloaded.
  */
-function rebuildAccountTree(reloadAccountManager = true) {
-  const mostRecent3Pane = Services.wm.getMostRecentWindow("mail:3pane");
-  for (let win of Services.wm.getEnumerator("mail:3pane")) {
-    win.gFolderTreeView._rebuild();
-    if (reloadAccountManager || win !== mostRecent3Pane) {
-      let tabmail = win.document.getElementById("tabmail");
-      for (let tabInfo of tabmail.tabInfo) {
-        let tab = tabmail.getTabForBrowser(tabInfo.browser);
-        if (tab && tab.urlbar && tab.urlbar.value == "about:accountsettings") {
-          tab.browser.reload();
-          break;
-        }
-      }
-    }
-  }
+function rebuildAccountTree() {
+  // TODO: Reimplement or replace.
 }
 
 /**
@@ -908,18 +868,10 @@ function onSetDefault(event) {
   let previousDefault = MailServices.accounts.defaultAccount;
   MailServices.accounts.defaultAccount = currentAccount;
   markDefaultServer(currentAccount, previousDefault);
-  let accountList = allAccountsSorted(false);
-  let accountKeyList = accountList
-    .map(account => account.key)
-    .filter(key => key != currentAccount.key);
-  accountKeyList.unshift(currentAccount.key);
-  MailServices.accounts.reorderAccounts(accountKeyList);
-  rebuildAccountTree();
+
   // Update gloda's myContact with the new default account's default identity.
   Gloda._initMyIdentities();
 
-  // This is only needed on Seamonkey which has this button.
-  setEnabled(document.getElementById("setDefaultButton"), false);
   gAccountTree.load();
 }
 
@@ -936,11 +888,11 @@ function onRemoveAccount(event) {
   }
 
   let serverList = [];
-  let accountTreeNode = document.getElementById("account-tree-children");
+  let accountTree = document.getElementById("accounttree");
   // build the list of servers in the account tree (order is important)
-  for (let i = 0; i < accountTreeNode.children.length; i++) {
-    if ("_account" in accountTreeNode.children[i]) {
-      let curServer = accountTreeNode.children[i]._account.incomingServer;
+  for (let row of accountTree.children) {
+    if ("_account" in row) {
+      let curServer = row._account.incomingServer;
       if (!serverList.includes(curServer)) {
         serverList.push(curServer);
       }
@@ -968,7 +920,7 @@ function onRemoveAccount(event) {
     result: false,
   };
 
-  let onCloseDialog = function() {
+  let onCloseDialog = function () {
     // If result is true, the account was removed.
     if (!removeArgs.result) {
       return;
@@ -1131,24 +1083,6 @@ function saveAccount(accountValues, account) {
 }
 
 /**
- * Set enabled/disabled state for account actions buttons.
- * Called by all apps, but if the buttons do not exist, exits early.
- */
-function updateButtons(tree, account) {
-  let addAccountButton = document.getElementById("addAccountButton");
-  let removeButton = document.getElementById("removeButton");
-  let setDefaultButton = document.getElementById("setDefaultButton");
-
-  if (!addAccountButton && !removeButton && !setDefaultButton) {
-    // Thunderbird isn't using these.
-    return;
-  }
-
-  updateItems(tree, account, addAccountButton, setDefaultButton, removeButton);
-  updateBlockedItems([addAccountButton, setDefaultButton, removeButton], false);
-}
-
-/**
  * Set enabled/disabled state for the actions in the Account Actions menu.
  * Called only by Thunderbird.
  */
@@ -1183,7 +1117,7 @@ function updateItems(
   let canSetDefault = false;
   let canDelete = false;
 
-  if (account && tree.view.selection.count >= 1) {
+  if (account && tree.selectedIndex >= 0) {
     // Only try to check properties if there was anything selected in the tree
     // and it belongs to an account.
     // Otherwise we have either selected a SMTP server, or there is some
@@ -1208,12 +1142,10 @@ function updateItems(
 
 /**
  * Disable buttons/menu items if their control preference is locked.
- * SeaMonkey: Not currently handled by WSM or the main loop yet
- * since these buttons aren't under the IFRAME.
  *
- * @param aItems       an array or NodeList of elements to be checked
- * @param aMustBeTrue  if true then the pref must be boolean and set to true
- *                     to trigger the disabling (TB requires this, SM not)
+ * @param {Node[]|NodeList} aItems - Elements to be checked.
+ * @param {boolean} aMustBeTrue - If true then the pref must be boolean and set
+ *   to true to trigger the disabling.
  */
 function updateBlockedItems(aItems, aMustBeTrue) {
   for (let item of aItems) {
@@ -1254,11 +1186,11 @@ function onAccountTreeSelect(pageId, account) {
 
   let changeView = pageId && account;
   if (!changeView) {
-    if (tree.view.selection.count < 1) {
+    if (tree.selectedIndex < 0) {
       return false;
     }
 
-    let node = tree.view.getItemAtIndex(tree.currentIndex);
+    let node = tree.rows[tree.selectedIndex];
     account = "_account" in node ? node._account : null;
 
     pageId = node.getAttribute("PageTag");
@@ -1333,10 +1265,6 @@ function onAccountTreeSelect(pageId, account) {
     restorePage(pageId, account);
   }
 
-  if (changeAccount) {
-    updateButtons(tree, account);
-  }
-
   return true;
 }
 
@@ -1389,7 +1317,7 @@ function loadPage(pageId) {
   };
   document
     .getElementById("contentFrame")
-    .webNavigation.loadURI(pageURL(pageId), loadURIOptions);
+    .webNavigation.fixupAndLoadURIString(pageURL(pageId), loadURIOptions);
 }
 
 // save the values of the widgets to the given server
@@ -1407,6 +1335,16 @@ function savePage(account) {
   if (!accountValues) {
     return;
   }
+  // Reset accountArray so that only the current page will be saved. This is
+  // needed to prevent resetting prefs unintentionally. An example is when
+  // changing username/hostname, MsgIncomingServer.jsm will modify identities,
+  // without this, identities changes may be reverted to old values in
+  // accountArray.
+  accountArray = {};
+  accountValues = {};
+  let serverId = account.incomingServer.serverURI;
+  accountArray[serverId] = accountValues;
+  accountArray[serverId]._account = account;
 
   var pageElements = getPageFormElements();
   if (!pageElements) {
@@ -1598,7 +1536,7 @@ function restorePage(pageId, account) {
  * Gets the value of a widget in current the account settings page,
  * automatically setting the right property of it depending on element type.
  *
- * @param formElement  A XUL input element.
+ * @param {HTMLInputElement} formElement - An input element.
  */
 function getFormElementValue(formElement) {
   try {
@@ -1625,7 +1563,7 @@ function getFormElementValue(formElement) {
     }
     return null;
   } catch (ex) {
-    Cu.reportError("getFormElementValue failed, ex=" + ex + "\n");
+    console.error("getFormElementValue failed, ex=" + ex + "\n");
   }
   return null;
 }
@@ -1634,8 +1572,8 @@ function getFormElementValue(formElement) {
  * Sets the value of a widget in current the account settings page,
  * automatically setting the right property of it depending on element type.
  *
- * @param formElement  A XUL input element.
- * @param value        The value to store in the element.
+ * @param {HTMLInputElement} formElement - An input element.
+ * @param {string|nsIFile} value - The value to store in the element.
  */
 function setFormElementValue(formElement, value) {
   var type = formElement.localName;
@@ -1713,7 +1651,7 @@ function getPageFormElements() {
 /**
  * Get a single persisted form element in the current page.
  *
- * @param aId  ID of the element requested.
+ * @param {srtring} aId - ID of the element requested.
  */
 function getPageFormElement(aId) {
   let elem = top.frames.contentFrame.document.getElementById(aId);
@@ -1736,22 +1674,59 @@ function getValueArrayFor(account) {
   return accountArray[serverId];
 }
 
-function accountReordered() {
-  let accountIds = [];
-  for (let account of document.getElementById("account-tree-children")
-    .children) {
-    if (account.hasAttribute("id")) {
-      accountIds.push(account.getAttribute("id"));
-    }
+/**
+ * Sets the name of the account rowitem in the tree pane.
+ *
+ * @param {string} aAccountKey - The key of the account to change.
+ * @param {string} aLabel - The value of the label to set.
+ */
+function setAccountLabel(aAccountKey, aLabel) {
+  let row = document.getElementById(aAccountKey);
+  if (row) {
+    row.setAttribute("aria-label", aLabel);
+    row.title = aLabel;
+    row.querySelector(".name").textContent = aLabel;
   }
-
-  MailServices.accounts.reorderAccounts(accountIds);
   rebuildAccountTree(false);
 }
 
 var gAccountTree = {
   load() {
     this._build();
+
+    let mainTree = document.getElementById("accounttree");
+    mainTree.__defineGetter__("_orderableChildren", function () {
+      let rows = [...this.children];
+      rows.pop();
+      return rows;
+    });
+    mainTree.addEventListener("ordering", event => {
+      if (!event.detail || event.detail.id == "smtp") {
+        event.preventDefault();
+      }
+    });
+    mainTree.addEventListener("ordered", event => {
+      let accountKeyList = Array.from(mainTree.children, row => row.id);
+      accountKeyList.pop(); // Remove SMTP.
+      MailServices.accounts.reorderAccounts(accountKeyList);
+      rebuildAccountTree();
+    });
+    mainTree.addEventListener("expanded", event => {
+      this._dataStore.setValue(
+        document.documentURI,
+        event.target.id,
+        "open",
+        "true"
+      );
+    });
+    mainTree.addEventListener("collapsed", event => {
+      this._dataStore.setValue(
+        document.documentURI,
+        event.target.id,
+        "open",
+        "false"
+      );
+    });
 
     MailServices.accounts.addIncomingServerListener(this);
   },
@@ -1774,7 +1749,7 @@ var gAccountTree = {
    * Retrieve from XULStore.json whether the account should be expanded (open)
    * in the account tree.
    *
-   * @param aAccountKey  key of the account to check
+   * @param {string} aAccountKey - Key of the account to check.
    */
   _getAccountOpenState(aAccountKey) {
     if (!this._dataStore.hasValue(document.documentURI, aAccountKey, "open")) {
@@ -1803,131 +1778,13 @@ var gAccountTree = {
       { string: getString("prefPanel-junk"), src: "am-junk.xhtml" },
     ];
 
-    let accounts = allAccountsSorted(false);
+    let accounts = FolderUtils.allAccountsSorted(false);
 
-    let mainTree = document.getElementById("account-tree-children");
+    let mainTree = document.getElementById("accounttree");
     // Clear off all children...
     while (mainTree.hasChildNodes()) {
       mainTree.lastChild.remove();
     }
-
-    let accountTree = document.getElementById("accounttree");
-
-    function findDropItem(event) {
-      let row = accountTree.getRowAt(event.clientX, event.clientY);
-      if (row == -1) {
-        // The mouse pointer is beyond the end of the list.
-        return null;
-      }
-
-      let length = 0;
-      for (let childElement of mainTree.children) {
-        if (childElement.getAttribute("open") == "true") {
-          length += childElement.querySelectorAll("treerow").length;
-        } else {
-          length++;
-        }
-        if (length > row) {
-          return childElement;
-        }
-      }
-      return null;
-    }
-
-    function getElementIndex(treeItem) {
-      let index = 0;
-      for (let childElement of mainTree.children) {
-        if (childElement === treeItem) {
-          return index;
-        }
-        if (childElement.getAttribute("open") == "true") {
-          index += childElement.querySelectorAll("treerow").length;
-        } else {
-          index++;
-        }
-      }
-      return -1;
-    }
-
-    // By default, data/elements cannot be dropped in other elements.
-    // To allow a drop, we must prevent the default handling of the element.
-    accountTree.addEventListener("dragover", event => {
-      event.preventDefault();
-      for (let childElement of mainTree.children) {
-        childElement.querySelector("treerow").removeAttribute("properties");
-      }
-
-      let dropItem = findDropItem(event);
-      if (dropItem) {
-        dropItem
-          .querySelector("treerow")
-          .setAttribute("properties", "dragover");
-      }
-    });
-
-    accountTree.addEventListener("drop", event => {
-      let dragId = event.dataTransfer.getData("text/account");
-      if (!dragId) {
-        return;
-      }
-
-      let dropItem = findDropItem(event);
-      if (dropItem) {
-        if (dragId != dropItem.getAttribute("id")) {
-          let dragItem = mainTree.querySelector("#" + dragId);
-          mainTree.insertBefore(dragItem, dropItem);
-          accountTree.view.selection.clearSelection();
-          accountTree.view.selection.select(getElementIndex(dragItem));
-          accountReordered();
-        }
-      }
-    });
-
-    mainTree.addEventListener("dragstart", event => {
-      if (getCurrentAccount()) {
-        event.dataTransfer.effectAllowed = "move";
-        event.dataTransfer.dropEffect = "move";
-        event.dataTransfer.setData("text/account", getCurrentAccount().key);
-      }
-    });
-
-    mainTree.addEventListener("dragend", event => {
-      for (let childElement of mainTree.children) {
-        childElement.querySelector("treerow").removeAttribute("properties");
-      }
-    });
-
-    accountTree.addEventListener(
-      "keydown",
-      event => {
-        if (event.code == "ArrowDown" && event.altKey && getCurrentAccount()) {
-          let treeItem = mainTree.querySelector("#" + getCurrentAccount().key);
-          if (
-            treeItem &&
-            treeItem.nextElementSibling &&
-            treeItem.nextElementSibling != mainTree.lastElementChild
-          ) {
-            mainTree.insertBefore(treeItem.nextElementSibling, treeItem);
-            accountTree.view.selection.clearSelection();
-            accountTree.view.selection.select(getElementIndex(treeItem));
-            accountReordered();
-          }
-        } else if (
-          event.code == "ArrowUp" &&
-          event.altKey &&
-          getCurrentAccount()
-        ) {
-          let treeItem = mainTree.querySelector("#" + getCurrentAccount().key);
-          if (treeItem && treeItem.previousElementSibling) {
-            mainTree.insertBefore(treeItem, treeItem.previousElementSibling);
-            accountTree.view.selection.clearSelection();
-            accountTree.view.selection.select(getElementIndex(treeItem));
-            accountReordered();
-          }
-        }
-      },
-      true
-    );
 
     for (let account of accounts) {
       let accountName = null;
@@ -2004,7 +1861,7 @@ var gAccountTree = {
             // Fetching of this extension panel failed so do not show it,
             // just log error.
             let extName = data || "(unknown)";
-            Cu.reportError(
+            console.error(
               "Error accessing panel from extension '" + extName + "': " + e
             );
           }
@@ -2014,59 +1871,60 @@ var gAccountTree = {
         // Show only a placeholder in the account list saying this account
         // is broken, with no child panels.
         let accountID = accountName || accountKey;
-        Cu.reportError("Error accessing account " + accountID + ": " + e);
+        console.error("Error accessing account " + accountID + ": " + e);
         accountName = "Invalid account " + accountID;
         panelsToKeep.length = 0;
       }
 
       // Create the top level tree-item.
-      let treeitem = document.createXULElement("treeitem");
+      let treeitem = document
+        .getElementById("accountTreeItem")
+        .content.firstElementChild.cloneNode(true);
       mainTree.appendChild(treeitem);
-      let treerow = document.createXULElement("treerow");
-      treeitem.appendChild(treerow);
-      let treecell = document.createXULElement("treecell");
-      treerow.appendChild(treecell);
-      treecell.setAttribute("label", accountName);
+      treeitem.setAttribute("aria-label", accountName);
+      treeitem.title = accountName;
+      treeitem.querySelector(".name").textContent = accountName;
       treeitem.setAttribute("PageTag", amChrome);
       // Add icons based on account type.
       if (server) {
-        treecell.setAttribute(
-          "properties",
-          "folderNameCol isServer-true serverType-" + server.type
-        );
+        treeitem.classList.add("serverType-" + server.type);
+        if (server.isSecure) {
+          treeitem.classList.add("isSecure");
+        }
         // For IM accounts, we can try to fetch a protocol specific icon.
         if (server.type == "im") {
-          treecell.setAttribute(
-            "src",
+          treeitem.querySelector(".icon").style.backgroundImage =
+            "url(" +
             ChatIcons.getProtocolIconURI(
               server.wrappedJSObject.imAccount.protocol
-            )
-          );
+            ) +
+            ")";
           treeitem.id = accountKey;
         }
       }
 
       if (panelsToKeep.length > 0) {
-        var treekids = document.createXULElement("treechildren");
-        treeitem.appendChild(treekids);
+        let treekids = treeitem.querySelector("ul");
         for (let panel of panelsToKeep) {
-          var kidtreeitem = document.createXULElement("treeitem");
+          let kidtreeitem = document.createElement("li");
+          kidtreeitem.title = panel.string;
           treekids.appendChild(kidtreeitem);
-          var kidtreerow = document.createXULElement("treerow");
+          let kidtreerow = document.createElement("div");
           kidtreeitem.appendChild(kidtreerow);
-          var kidtreecell = document.createXULElement("treecell");
+          let kidtreecell = document.createElement("span");
+          kidtreecell.classList.add("name");
+          kidtreecell.tabIndex = -1;
           kidtreerow.appendChild(kidtreecell);
-          setAccountLabel(null, kidtreecell, panel.string);
+          kidtreecell.textContent = panel.string;
           kidtreeitem.setAttribute("PageTag", panel.src);
           kidtreeitem._account = account;
+          kidtreeitem.id = `${accountKey}/${panel.src}`;
         }
-        treeitem.setAttribute("container", "true");
         treeitem.id = accountKey;
         // Load the 'open' state of the account from XULStore.json.
-        treeitem.setAttribute("open", this._getAccountOpenState(accountKey));
-        // Let the XULStore.json automatically save the 'open' state of the
-        // account when it is changed.
-        treeitem.setAttribute("persist", "open");
+        if (this._getAccountOpenState(accountKey) != "true") {
+          treeitem.classList.add("collapsed");
+        }
       }
       treeitem._account = account;
     }
@@ -2074,18 +1932,14 @@ var gAccountTree = {
     markDefaultServer(MailServices.accounts.defaultAccount, null);
 
     // Now add the outgoing server node.
-    let treeitem = document.createXULElement("treeitem");
+    let treeitem = document
+      .getElementById("accountTreeItem")
+      .content.firstElementChild.cloneNode(true);
     mainTree.appendChild(treeitem);
-    let treerow = document.createXULElement("treerow");
-    treeitem.appendChild(treerow);
-    let treecell = document.createXULElement("treecell");
-    treerow.appendChild(treecell);
-    treecell.setAttribute("label", getString("prefPanel-smtp"));
+    treeitem.id = "smtp";
+    treeitem.querySelector(".name").textContent = getString("prefPanel-smtp");
     treeitem.setAttribute("PageTag", "am-smtp.xhtml");
-    treecell.setAttribute(
-      "properties",
-      "folderNameCol isServer-true serverType-smtp"
-    );
+    treeitem.classList.add("serverType-smtp");
 
     // If a new server was created, select the server after rebuild of the tree.
     if (newServer) {

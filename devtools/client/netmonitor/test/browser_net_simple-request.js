@@ -12,8 +12,8 @@
  * 3) Empty user message visibility
  * 4) Number of requests displayed
  */
-add_task(async function() {
-  const { tab, monitor } = await initNetMonitor(SIMPLE_URL, {
+add_task(async function () {
+  const { monitor } = await initNetMonitor(SIMPLE_URL, {
     requestCount: 1,
   });
   info("Starting test... ");
@@ -72,7 +72,7 @@ add_task(async function() {
     "The network details panel should still be hidden after a reload."
   );
 
-  store.dispatch(Actions.clearRequests());
+  await clearNetworkEvents(monitor);
 
   ok(
     document.querySelector(".request-list-empty-notice"),
@@ -91,9 +91,9 @@ add_task(async function() {
 
   return teardown(monitor);
 
-  function reloadAndWait() {
+  async function reloadAndWait() {
     const wait = waitForNetworkEvents(monitor, 1);
-    tab.linkedBrowser.reload();
+    await reloadBrowser();
     return wait;
   }
 });

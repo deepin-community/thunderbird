@@ -9,6 +9,11 @@
   color: var(--lwt-text-color);
 }
 
+#imageDlg {
+  overflow: auto;
+  max-width: inherit;
+}
+
 .MinWidth5em {
   min-width: 5em;
 }
@@ -57,7 +62,7 @@
   width: 30px;
   height: 12px;
   border: 1px inset #CCCCCC;
-  margin: 1px 0;
+  margin: auto;
 }
 
 .color-well[default="true"] {
@@ -78,6 +83,12 @@ button.color-button .button-text {
   margin-inline: 0;
 }
 
+#spacingLabel,
+#alignLabel,
+#imagemapLabel {
+  margin-top: 0;
+}
+
 #ColorPickerSwatch {
   width: 12px;
   height: 12px;
@@ -91,7 +102,7 @@ button.color-button .button-text {
 }
 
 #LastPickedButton {
-  -moz-box-align: center;
+  align-items: center;
 }
 
 #LastPickedColor {
@@ -100,7 +111,7 @@ button.color-button .button-text {
   border-radius: 50%;
   margin-inline-start: 2px;
   border: 1px solid var(--field-border-color);
-  -moz-box-ordinal-group: 2;
+  order: 2;
 }
 
 /* temporary -- we need a simple box-based list defined in XBL */
@@ -128,8 +139,8 @@ tree.list {
 #NextButton,
 #PreviousButton {
   list-style-image: url("chrome://global/skin/icons/arrow-left-12.svg");
-  -moz-context-properties: fill;
-  fill: currentColor;
+  -moz-context-properties: stroke;
+  stroke: currentColor;
 }
 
 #PreviousButton[type="row"] {
@@ -213,10 +224,6 @@ tree.list {
 .radio-spacer {
   width: 2em;
   min-width: 2em;
-}
-
-#alignTypeSelect {
-  height: 34px;
 }
 
 .align-menu[value="top"] {
@@ -310,4 +317,31 @@ html|table html|th {
 
 #SuggestedList {
   flex-direction: column;
+  max-height: 10em;
+}
+
+#dictionary-list {
+  list-style-type: none;
+  padding: 6px 3px;
+  margin: 0;
+  max-height: 5em;
+  overflow-y: auto;
+}
+
+html|input[type="checkbox"] {
+  -moz-appearance: checkbox;
+}
+
+/* Advanced Edit dialog */
+
+#HTMLAttrCol,
+#CSSPropCol,
+#AttrCol {
+  flex: 35 35;
+}
+
+#HTMLValCol,
+#CSSValCol,
+#HeaderCol {
+  flex: 65 65;
 }

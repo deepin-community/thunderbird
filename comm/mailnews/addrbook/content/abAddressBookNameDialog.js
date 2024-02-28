@@ -5,7 +5,6 @@
 var { MailServices } = ChromeUtils.import(
   "resource:///modules/MailServices.jsm"
 );
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 
 var gOkButton;
 var gNameInput;
@@ -14,6 +13,8 @@ var gDirectory = null;
 var kPersonalAddressbookURI = "jsaddrbook://abook.sqlite";
 var kCollectedAddressbookURI = "jsaddrbook://history.sqlite";
 var kAllDirectoryRoot = "moz-abdirectory://";
+
+window.addEventListener("DOMContentLoaded", abNameOnLoad);
 
 function abNameOnLoad() {
   // Get the document elements.

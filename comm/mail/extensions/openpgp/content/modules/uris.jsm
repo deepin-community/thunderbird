@@ -8,8 +8,10 @@
 
 var EXPORTED_SYMBOLS = ["EnigmailURIs"];
 
+const lazy = {};
+
 ChromeUtils.defineModuleGetter(
-  this,
+  lazy,
   "EnigmailLog",
   "chrome://openpgp/content/modules/log.jsm"
 );
@@ -25,7 +27,7 @@ var EnigmailURIs = {
    * @return null
    */
   rememberEncryptedUri(uri) {
-    EnigmailLog.DEBUG("uris.jsm: rememberEncryptedUri: uri=" + uri + "\n");
+    lazy.EnigmailLog.DEBUG("uris.jsm: rememberEncryptedUri: uri=" + uri + "\n");
     if (!encryptedUris.includes(uri)) {
       encryptedUris.push(uri);
     }
@@ -39,7 +41,7 @@ var EnigmailURIs = {
    * @return null
    */
   forgetEncryptedUri(uri) {
-    EnigmailLog.DEBUG("uris.jsm: forgetEncryptedUri: uri=" + uri + "\n");
+    lazy.EnigmailLog.DEBUG("uris.jsm: forgetEncryptedUri: uri=" + uri + "\n");
     const pos = encryptedUris.indexOf(uri);
     if (pos >= 0) {
       encryptedUris.splice(pos, 1);
@@ -47,14 +49,14 @@ var EnigmailURIs = {
   },
 
   /*
-   * determine if a URI was remebered as encrypted
+   * determine if a URI was remembered as encrypted
    *
    * @param String msgUri
    *
    * @return: Boolean true if yes, false otherwise
    */
   isEncryptedUri(uri) {
-    EnigmailLog.DEBUG("uris.jsm: isEncryptedUri: uri=" + uri + "\n");
+    lazy.EnigmailLog.DEBUG("uris.jsm: isEncryptedUri: uri=" + uri + "\n");
     return encryptedUris.includes(uri);
   },
 
@@ -63,7 +65,7 @@ var EnigmailURIs = {
    *
    * @param url - nsIURI object
    *
-   * @return Object:
+   * @returns Object:
    *    - msgNum: String - the message number, or "" if no URI Scheme fits
    *    - folder: String - the folder (or newsgroup) name
    */
@@ -72,7 +74,7 @@ var EnigmailURIs = {
     // Local folder: mailbox:///some/path/to/folder?number=359360
     // IMAP: imap://user@host:port/fetch>some>path>111
     // NNTP: news://some.host/some.service.com?group=some.group.name&key=3510
-    // also seen: e.g. mailbox:///som/path/to/folder?number=4455522&part=1.1.2&filename=test.eml
+    // also seen: e.g. mailbox:///some/path/to/folder?number=4455522&part=1.1.2&filename=test.eml
     // mailbox:///...?number=4455522&part=1.1.2&filename=test.eml&type=application/x-message-display&filename=test.eml
     // imap://user@host:port>UID>some>path>10?header=filter&emitter=js&examineEncryptedParts=true
 
@@ -80,7 +82,7 @@ var EnigmailURIs = {
       return null;
     }
 
-    EnigmailLog.DEBUG(
+    lazy.EnigmailLog.DEBUG(
       "uris.jsm: msgIdentificationFromUrl: url.pathQueryRef=" +
         ("path" in url ? url.path : url.pathQueryRef) +
         "\n"
@@ -106,7 +108,7 @@ var EnigmailURIs = {
       msgFolder = pathQueryRef.replace(/(.*[?&]group=)([^&]+)(&.*)?/, "$2");
     }
 
-    EnigmailLog.DEBUG(
+    lazy.EnigmailLog.DEBUG(
       "uris.jsm: msgIdentificationFromUrl: msgNum=" +
         msgNum +
         " / folder=" +

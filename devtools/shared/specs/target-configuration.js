@@ -9,15 +9,15 @@ const {
   Arg,
   RetVal,
   types,
-} = require("devtools/shared/protocol");
+} = require("resource://devtools/shared/protocol.js");
 
 types.addDictType("target-configuration.configuration", {
   cacheDisabled: "nullable:boolean",
   colorSchemeSimulation: "nullable:string",
+  customFormatters: "nullable:boolean",
   customUserAgent: "nullable:string",
   javascriptEnabled: "nullable:boolean",
   overrideDPPX: "nullable:number",
-  paintFlashing: "nullable:boolean",
   printSimulationEnabled: "nullable:boolean",
   rdmPaneOrientation: "nullable:json",
   reloadOnTouchSimulationToggle: "nullable:boolean",

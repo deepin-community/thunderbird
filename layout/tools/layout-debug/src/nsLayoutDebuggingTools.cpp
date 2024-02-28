@@ -17,6 +17,8 @@
 
 #include "nsIContent.h"
 
+#include "nsCounterManager.h"
+#include "nsCSSFrameConstructor.h"
 #include "nsViewManager.h"
 #include "nsIFrame.h"
 
@@ -83,24 +85,6 @@ nsLayoutDebuggingTools::Init(mozIDOMWindow* aWin) {
 }
 
 NS_IMETHODIMP
-nsLayoutDebuggingTools::SetVisualDebugging(bool aVisualDebugging) {
-#ifdef DEBUG
-  nsIFrame::ShowFrameBorders(aVisualDebugging);
-  ForceRefresh();
-#endif
-  return NS_OK;
-}
-
-NS_IMETHODIMP
-nsLayoutDebuggingTools::SetVisualEventDebugging(bool aVisualEventDebugging) {
-#ifdef DEBUG
-  nsIFrame::ShowEventTargetFrameBorder(aVisualEventDebugging);
-  ForceRefresh();
-#endif
-  return NS_OK;
-}
-
-NS_IMETHODIMP
 nsLayoutDebuggingTools::SetReflowCounts(bool aShow) {
   NS_ENSURE_TRUE(mDocShell, NS_ERROR_NOT_INITIALIZED);
   if (PresShell* presShell = GetPresShell(mDocShell)) {
@@ -121,7 +105,7 @@ nsLayoutDebuggingTools::SetPagedMode(bool aPagedMode) {
       do_GetService("@mozilla.org/gfx/printsettings-service;1");
   nsCOMPtr<nsIPrintSettings> printSettings;
 
-  printSettingsService->GetNewPrintSettings(getter_AddRefs(printSettings));
+  printSettingsService->CreateNewPrintSettings(getter_AddRefs(printSettings));
 
   // Use the same setup as setupPrintMode() in reftest-content.js.
   printSettings->SetPaperWidth(5);
@@ -246,6 +230,15 @@ NS_IMETHODIMP
 nsLayoutDebuggingTools::DumpViews() {
   NS_ENSURE_TRUE(mDocShell, NS_ERROR_NOT_INITIALIZED);
   DumpViewsRecur(mDocShell, stdout);
+  return NS_OK;
+}
+
+NS_IMETHODIMP
+nsLayoutDebuggingTools::DumpCounterManager() {
+  NS_ENSURE_TRUE(mDocShell, NS_ERROR_NOT_INITIALIZED);
+  if (PresShell* presShell = GetPresShell(mDocShell)) {
+    presShell->FrameConstructor()->GetContainStyleScopeManager().DumpCounters();
+  }
   return NS_OK;
 }
 

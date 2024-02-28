@@ -8,12 +8,9 @@
 #include "WorkerPrivate.h"
 #include "WorkerRunnable.h"
 
-#include "WorkerPrivate.h"
-#include "WorkerRunnable.h"
 #include "mozilla/dom/ReferrerInfo.h"
 
-namespace mozilla {
-namespace dom {
+namespace mozilla::dom {
 
 namespace {
 
@@ -121,6 +118,34 @@ WorkerEventTarget::DelayedDispatch(already_AddRefed<nsIRunnable>, uint32_t) {
   return NS_ERROR_NOT_IMPLEMENTED;
 }
 
+NS_IMETHODIMP
+WorkerEventTarget::RegisterShutdownTask(nsITargetShutdownTask* aTask) {
+  NS_ENSURE_ARG(aTask);
+
+  MutexAutoLock lock(mMutex);
+
+  // If mWorkerPrivate is gone, the event target is already late during
+  // shutdown, return NS_ERROR_UNEXPECTED as documented in `nsIEventTarget.idl`.
+  if (!mWorkerPrivate) {
+    return NS_ERROR_UNEXPECTED;
+  }
+
+  return mWorkerPrivate->RegisterShutdownTask(aTask);
+}
+
+NS_IMETHODIMP
+WorkerEventTarget::UnregisterShutdownTask(nsITargetShutdownTask* aTask) {
+  NS_ENSURE_ARG(aTask);
+
+  MutexAutoLock lock(mMutex);
+
+  if (!mWorkerPrivate) {
+    return NS_ERROR_UNEXPECTED;
+  }
+
+  return mWorkerPrivate->UnregisterShutdownTask(aTask);
+}
+
 NS_IMETHODIMP_(bool)
 WorkerEventTarget::IsOnCurrentThreadInfallible() {
   MutexAutoLock lock(mMutex);
@@ -139,5 +164,4 @@ WorkerEventTarget::IsOnCurrentThread(bool* aIsOnCurrentThread) {
   return NS_OK;
 }
 
-}  // namespace dom
-}  // namespace mozilla
+}  // namespace mozilla::dom

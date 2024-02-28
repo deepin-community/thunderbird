@@ -14,12 +14,10 @@
 #include "nsString.h"
 #include "nsCOMPtr.h"
 #include "nsISupports.h"
-#include "nsMsgCompCID.h"
 #include "nsIMsgDatabase.h"
 #include "nsMsgFolderFlags.h"
 #include "nsIMsgHdr.h"
 #include "MailNewsTypes.h"
-#include "nsMsgBaseCID.h"
 #include "nsIMsgAccountManager.h"
 #include "nsIMsgFolder.h"
 #include "nsIMsgImapMailFolder.h"
@@ -104,7 +102,7 @@ STDMETHODIMP CMapiImp::Login(unsigned long aUIArg, LPSTR aLogin,
   nsCString id_key;
 
   MOZ_LOG(MAPI, mozilla::LogLevel::Debug,
-          ("CMapiImp::Login using flags %d", aFlags));
+          ("CMapiImp::Login using flags %lu", aFlags));
   if (aFlags & MAPI_NEW_SESSION) bNewSession = true;
 
   // Check For Profile Name
@@ -120,7 +118,7 @@ STDMETHODIMP CMapiImp::Login(unsigned long aUIArg, LPSTR aLogin,
     // get default account
     nsresult rv;
     nsCOMPtr<nsIMsgAccountManager> accountManager =
-        do_GetService(NS_MSGACCOUNTMANAGER_CONTRACTID, &rv);
+        do_GetService("@mozilla.org/messenger/account-manager;1", &rv);
     NS_ENSURE_SUCCESS(rv, MAPI_E_LOGIN_FAILURE);
 
     nsCOMPtr<nsIMsgAccount> account;
@@ -180,7 +178,7 @@ STDMETHODIMP CMapiImp::SendMail(unsigned long aSession,
   /** create nsIMsgCompFields obj and populate it **/
   nsresult rv = NS_OK;
   nsCOMPtr<nsIMsgCompFields> pCompFields =
-      do_CreateInstance(NS_MSGCOMPFIELDS_CONTRACTID, &rv);
+      do_CreateInstance("@mozilla.org/messengercompose/composefields;1", &rv);
   if (NS_FAILED(rv) || (!pCompFields)) return MAPI_E_INSUFFICIENT_MEMORY;
 
   if (aMessage)
@@ -216,7 +214,7 @@ STDMETHODIMP CMapiImp::SendMailW(unsigned long aSession,
   // Create nsIMsgCompFields obj and populate it.
   nsresult rv = NS_OK;
   nsCOMPtr<nsIMsgCompFields> pCompFields =
-      do_CreateInstance(NS_MSGCOMPFIELDS_CONTRACTID, &rv);
+      do_CreateInstance("@mozilla.org/messengercompose/composefields;1", &rv);
   if (NS_FAILED(rv) || !pCompFields) return MAPI_E_INSUFFICIENT_MEMORY;
 
   if (aMessage) rv = nsMapiHook::PopulateCompFieldsW(aMessage, pCompFields);
@@ -239,10 +237,10 @@ STDMETHODIMP CMapiImp::SendDocuments(unsigned long aSession, LPSTR aDelimChar,
   nsresult rv = NS_OK;
 
   MOZ_LOG(MAPI, mozilla::LogLevel::Debug,
-          ("CMapiImp::SendDocument using flags %d", aFlags));
+          ("CMapiImp::SendDocument using flags %lu", aFlags));
   /** create nsIMsgCompFields obj and populate it **/
   nsCOMPtr<nsIMsgCompFields> pCompFields =
-      do_CreateInstance(NS_MSGCOMPFIELDS_CONTRACTID, &rv);
+      do_CreateInstance("@mozilla.org/messengercompose/composefields;1", &rv);
   if (NS_FAILED(rv) || (!pCompFields)) return MAPI_E_INSUFFICIENT_MEMORY;
 
   if (aFilePaths) {
@@ -254,7 +252,7 @@ STDMETHODIMP CMapiImp::SendDocuments(unsigned long aSession, LPSTR aDelimChar,
     rv = nsMapiHook::ShowComposerWindow(aSession, pCompFields);
   else
     MOZ_LOG(MAPI, mozilla::LogLevel::Debug,
-            ("CMapiImp::SendDocument error rv = %lx, paths = %s names = %s", rv,
+            ("CMapiImp::SendDocument error rv = %x, paths = %s names = %s", rv,
              aFilePaths, aFileNames));
 
   return nsMAPIConfiguration::GetMAPIErrorFromNSError(rv);
@@ -264,7 +262,7 @@ nsresult CMapiImp::GetDefaultInbox(nsIMsgFolder** inboxFolder) {
   // get default account
   nsresult rv;
   nsCOMPtr<nsIMsgAccountManager> accountManager =
-      do_GetService(NS_MSGACCOUNTMANAGER_CONTRACTID, &rv);
+      do_GetService("@mozilla.org/messenger/account-manager;1", &rv);
   NS_ENSURE_SUCCESS(rv, rv);
 
   nsCOMPtr<nsIMsgAccount> account;
@@ -538,7 +536,7 @@ lpnsMapiMessage MsgMapiListContext::GetMessage(nsMsgKey key,
 
     m_db->GetMsgHdrForKey(key, getter_AddRefs(msgHdr));
     if (msgHdr) {
-      msgHdr->GetSubject(getter_Copies(subject));
+      msgHdr->GetSubject(subject);
       message->lpszSubject = (char*)CoTaskMemAlloc(subject.Length() + 1);
       strcpy((char*)message->lpszSubject, subject.get());
       uint32_t date;
@@ -587,7 +585,7 @@ lpnsMapiMessage MsgMapiListContext::GetMessage(nsMsgKey key,
       }
 
       MOZ_LOG(MAPI, mozilla::LogLevel::Debug,
-              ("MsgMapiListContext::GetMessage flags=%x subject %s date %s "
+              ("MsgMapiListContext::GetMessage flags=%lu subject %s date %s "
                "sender %s",
                flFlags, (char*)message->lpszSubject,
                (char*)message->lpszDateReceived, author.get()));

@@ -14,13 +14,12 @@ var { MockObjectReplacer } = ChromeUtils.import(
   "resource://testing-common/mozmill/MockObjectHelpers.jsm"
 );
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-var { XPCOMUtils } = ChromeUtils.import(
-  "resource://gre/modules/XPCOMUtils.jsm"
+var { XPCOMUtils } = ChromeUtils.importESModule(
+  "resource://gre/modules/XPCOMUtils.sys.mjs"
 );
 
 var kMockPromptServiceName = "Mock Prompt Service";
-var kPromptServiceContractID = "@mozilla.org/embedcomp/prompt-service;1";
+var kPromptServiceContractID = "@mozilla.org/prompter;1";
 var kPromptServiceName = "Prompt Service";
 
 var gMockAuthPromptReg = new MockObjectReplacer(
@@ -251,6 +250,7 @@ var gMockPromptService = {
   },
 
   _resetServicesPrompt() {
+    // eslint-disable-next-line mozilla/use-services
     XPCOMUtils.defineLazyServiceGetter(
       Services,
       "prompt",
@@ -261,11 +261,7 @@ var gMockPromptService = {
 };
 
 var gMockPromptServiceFactory = {
-  createInstance(aOuter, aIID) {
-    if (aOuter != null) {
-      throw Components.Exception("", Cr.NS_ERROR_NO_AGGREGATION);
-    }
-
+  createInstance(aIID) {
     if (!aIID.equals(Ci.nsIPromptService)) {
       throw Components.Exception("", Cr.NS_ERROR_NO_INTERFACE);
     }

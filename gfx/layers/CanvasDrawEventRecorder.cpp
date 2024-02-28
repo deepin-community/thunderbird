@@ -8,6 +8,7 @@
 
 #include <string.h>
 
+#include "mozilla/layers/SharedSurfacesChild.h"
 #include "nsThreadUtils.h"
 
 namespace mozilla {
@@ -37,7 +38,8 @@ bool CanvasEventRingBuffer::InitWriter(
     return false;
   }
 
-  if (NS_WARN_IF(!mSharedMemory->ShareToProcess(aOtherPid, aReadHandle))) {
+  *aReadHandle = mSharedMemory->CloneHandle();
+  if (NS_WARN_IF(!*aReadHandle)) {
     return false;
   }
 
@@ -64,14 +66,14 @@ bool CanvasEventRingBuffer::InitWriter(
 
   mReaderSemaphore.reset(
       CrossProcessSemaphore::Create("SharedMemoryStreamParent", 0));
-  *aReaderSem = mReaderSemaphore->ShareToProcess(aOtherPid);
+  *aReaderSem = mReaderSemaphore->CloneHandle();
   mReaderSemaphore->CloseHandle();
   if (!IsHandleValid(*aReaderSem)) {
     return false;
   }
   mWriterSemaphore.reset(
       CrossProcessSemaphore::Create("SharedMemoryStreamChild", 0));
-  *aWriterSem = mWriterSemaphore->ShareToProcess(aOtherPid);
+  *aWriterSem = mWriterSemaphore->CloneHandle();
   mWriterSemaphore->CloseHandle();
   if (!IsHandleValid(*aWriterSem)) {
     return false;
@@ -84,13 +86,13 @@ bool CanvasEventRingBuffer::InitWriter(
 }
 
 bool CanvasEventRingBuffer::InitReader(
-    const ipc::SharedMemoryBasic::Handle& aReadHandle,
-    const CrossProcessSemaphoreHandle& aReaderSem,
-    const CrossProcessSemaphoreHandle& aWriterSem,
+    ipc::SharedMemoryBasic::Handle aReadHandle,
+    CrossProcessSemaphoreHandle aReaderSem,
+    CrossProcessSemaphoreHandle aWriterSem,
     UniquePtr<ReaderServices> aReaderServices) {
   mSharedMemory = MakeAndAddRef<ipc::SharedMemoryBasic>();
   if (NS_WARN_IF(!mSharedMemory->SetHandle(
-          aReadHandle, ipc::SharedMemory::RightsReadWrite)) ||
+          std::move(aReadHandle), ipc::SharedMemory::RightsReadWrite)) ||
       NS_WARN_IF(!mSharedMemory->Map(kShmemSize))) {
     return false;
   }
@@ -100,9 +102,9 @@ bool CanvasEventRingBuffer::InitReader(
   mBuf = static_cast<char*>(mSharedMemory->memory());
   mRead = reinterpret_cast<ReadFooter*>(mBuf + kStreamSize);
   mWrite = reinterpret_cast<WriteFooter*>(mBuf + kStreamSize + kCacheLineSize);
-  mReaderSemaphore.reset(CrossProcessSemaphore::Create(aReaderSem));
+  mReaderSemaphore.reset(CrossProcessSemaphore::Create(std::move(aReaderSem)));
   mReaderSemaphore->CloseHandle();
-  mWriterSemaphore.reset(CrossProcessSemaphore::Create(aWriterSem));
+  mWriterSemaphore.reset(CrossProcessSemaphore::Create(std::move(aWriterSem)));
   mWriterSemaphore->CloseHandle();
 
   mReaderServices = std::move(aReaderServices);
@@ -500,17 +502,16 @@ void CanvasEventRingBuffer::ReturnRead(char* aOut, size_t aSize) {
   mWrite->returnCount = readCount;
 }
 
-void CanvasDrawEventRecorder::RecordSourceSurfaceDestruction(void* aSurface) {
-  // We must only record things on the main thread and surfaces that have been
-  // recorded can sometimes be destroyed off the main thread.
-  if (NS_IsMainThread()) {
-    DrawEventRecorderPrivate::RecordSourceSurfaceDestruction(aSurface);
+void CanvasDrawEventRecorder::StoreSourceSurfaceRecording(
+    gfx::SourceSurface* aSurface, const char* aReason) {
+  wr::ExternalImageId extId{};
+  nsresult rv = layers::SharedSurfacesChild::Share(aSurface, extId);
+  if (NS_FAILED(rv)) {
+    DrawEventRecorderPrivate::StoreSourceSurfaceRecording(aSurface, aReason);
     return;
   }
 
-  NS_DispatchToMainThread(NewRunnableMethod<void*>(
-      "DrawEventRecorderPrivate::RecordSourceSurfaceDestruction", this,
-      &DrawEventRecorderPrivate::RecordSourceSurfaceDestruction, aSurface));
+  StoreExternalSurfaceRecording(aSurface, wr::AsUint64(extId));
 }
 
 }  // namespace layers

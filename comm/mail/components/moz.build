@@ -24,14 +24,11 @@ DIRS += [
     "prompts",
     "search",
     "shell",
+    "unifiedtoolbar",
 ]
-
-DIRS += ["build"]
 
 EXTRA_COMPONENTS += [
     "MailComponents.manifest",
-    "test/startupRecorder.js",
-    "test/testComponents.manifest",
 ]
 
 EXTRA_JS_MODULES += [
@@ -39,11 +36,18 @@ EXTRA_JS_MODULES += [
     "AppIdleManager.jsm",
     "MailGlue.jsm",
     "MessengerContentHandler.jsm",
-    "MidProtocolHandler.jsm",
 ]
+
+if CONFIG["MOZ_DEBUG"] or CONFIG["NIGHTLY_BUILD"]:
+    EXTRA_JS_MODULES += [
+        "StartupRecorder.jsm",
+    ]
 
 XPCOM_MANIFESTS += [
     "components.conf",
 ]
 
 XPCSHELL_TESTS_MANIFESTS += ["test/unit/xpcshell.ini"]
+
+Library("mailcomps")
+FINAL_LIBRARY = "xul"

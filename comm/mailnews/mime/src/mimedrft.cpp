@@ -35,7 +35,6 @@
 #include "comi18n.h"
 #include "nsIMsgAttachment.h"
 #include "nsIMsgCompFields.h"
-#include "nsMsgCompCID.h"
 #include "nsIMsgComposeService.h"
 #include "nsMsgAttachmentData.h"
 #include "nsMsgI18N.h"
@@ -46,7 +45,6 @@
 #include "nsCExternalHandlerService.h"
 #include "nsIMIMEService.h"
 #include "nsIMsgAccountManager.h"
-#include "nsMsgBaseCID.h"
 #include "modmimee.h"  // for MimeConverterOutputCallback
 #include "mozilla/dom/Promise.h"
 #include "mozilla/mailnews/MimeHeaderParser.h"
@@ -74,7 +72,12 @@ int mime_decompose_file_output_fn(const char* buf, int32_t size,
 int mime_decompose_file_close_fn(void* stream_closure);
 extern int MimeHeaders_build_heads_list(MimeHeaders* hdrs);
 
-// CID's
+#define NS_MSGCOMPOSESERVICE_CID                    \
+  { /* 588595FE-1ADA-11d3-A715-0060B0EB39B5 */      \
+    0x588595fe, 0x1ada, 0x11d3, {                   \
+      0xa7, 0x15, 0x0, 0x60, 0xb0, 0xeb, 0x39, 0xb5 \
+    }                                               \
+  }
 static NS_DEFINE_CID(kCMsgComposeServiceCID, NS_MSGCOMPOSESERVICE_CID);
 
 mime_draft_data::mime_draft_data()
@@ -91,7 +94,7 @@ mime_draft_data::mime_draft_data()
       forwardInline(false),
       forwardInlineFilter(false),
       overrideComposeFormat(false),
-      originalMsgURI(nullptr) {}
+      autodetectCharset(false) {}
 ////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////
 // THIS SHOULD ALL MOVE TO ANOTHER FILE AFTER LANDING!
@@ -167,7 +170,7 @@ nsresult CreateComposeParams(nsCOMPtr<nsIMsgComposeParams>& pMsgComposeParams,
                              MSG_ComposeType composeType,
                              MSG_ComposeFormat composeFormat,
                              nsIMsgIdentity* identity,
-                             const char* originalMsgURI,
+                             const nsACString& originalMsgURI,
                              nsIMsgDBHdr* origMsgHdr) {
 #ifdef NS_DEBUG
   mime_dump_attachments(attachmentList);
@@ -181,8 +184,8 @@ nsresult CreateComposeParams(nsCOMPtr<nsIMsgComposeParams>& pMsgComposeParams,
     while (curAttachment && curAttachment->m_url) {
       rv = curAttachment->m_url->GetSpec(spec);
       if (NS_SUCCEEDED(rv)) {
-        nsCOMPtr<nsIMsgAttachment> attachment =
-            do_CreateInstance(NS_MSGATTACHMENT_CONTRACTID, &rv);
+        nsCOMPtr<nsIMsgAttachment> attachment = do_CreateInstance(
+            "@mozilla.org/messengercompose/attachment;1", &rv);
         if (NS_SUCCEEDED(rv) && attachment) {
           nsAutoString nameStr;
           rv = nsMsgI18NConvertToUnicode("UTF-8"_ns, curAttachment->m_realName,
@@ -199,14 +202,21 @@ nsresult CreateComposeParams(nsCOMPtr<nsIMsgComposeParams>& pMsgComposeParams,
           if (!curAttachment->m_cloudPartInfo.IsEmpty()) {
             nsCString provider;
             nsCString cloudUrl;
-            attachment->SetSendViaCloud(true);
+            nsCString cloudPartHeaderData;
+
             provider.Adopt(
                 MimeHeaders_get_parameter(curAttachment->m_cloudPartInfo.get(),
                                           "provider", nullptr, nullptr));
             cloudUrl.Adopt(MimeHeaders_get_parameter(
                 curAttachment->m_cloudPartInfo.get(), "url", nullptr, nullptr));
+            cloudPartHeaderData.Adopt(
+                MimeHeaders_get_parameter(curAttachment->m_cloudPartInfo.get(),
+                                          "data", nullptr, nullptr));
+
+            attachment->SetSendViaCloud(true);
             attachment->SetCloudFileAccountKey(provider);
             attachment->SetContentLocation(cloudUrl);
+            attachment->SetCloudPartHeaderData(cloudPartHeaderData);
           }
           compFields->AddAttachment(attachment);
         }
@@ -229,14 +239,16 @@ nsresult CreateComposeParams(nsCOMPtr<nsIMsgComposeParams>& pMsgComposeParams,
                    : nsIMsgCompFormat::PlainText;
   }
 
-  pMsgComposeParams = do_CreateInstance(NS_MSGCOMPOSEPARAMS_CONTRACTID, &rv);
+  pMsgComposeParams =
+      do_CreateInstance("@mozilla.org/messengercompose/composeparams;1", &rv);
   NS_ENSURE_SUCCESS(rv, rv);
 
   pMsgComposeParams->SetType(composeType);
   pMsgComposeParams->SetFormat(format);
   pMsgComposeParams->SetIdentity(identity);
   pMsgComposeParams->SetComposeFields(compFields);
-  if (originalMsgURI) pMsgComposeParams->SetOriginalMsgURI(originalMsgURI);
+  if (!originalMsgURI.IsEmpty())
+    pMsgComposeParams->SetOriginalMsgURI(originalMsgURI);
   if (origMsgHdr) pMsgComposeParams->SetOrigMsgHdr(origMsgHdr);
   return NS_OK;
 }
@@ -246,7 +258,7 @@ nsresult CreateTheComposeWindow(nsIMsgCompFields* compFields,
                                 MSG_ComposeType composeType,
                                 MSG_ComposeFormat composeFormat,
                                 nsIMsgIdentity* identity,
-                                const char* originalMsgURI,
+                                const nsACString& originalMsgURI,
                                 nsIMsgDBHdr* origMsgHdr) {
   nsCOMPtr<nsIMsgComposeParams> pMsgComposeParams;
   nsresult rv = CreateComposeParams(pMsgComposeParams, compFields,
@@ -265,7 +277,8 @@ nsresult CreateTheComposeWindow(nsIMsgCompFields* compFields,
 nsresult ForwardMsgInline(nsIMsgCompFields* compFields,
                           nsMsgAttachmentData* attachmentList,
                           MSG_ComposeFormat composeFormat,
-                          nsIMsgIdentity* identity, const char* originalMsgURI,
+                          nsIMsgIdentity* identity,
+                          const nsACString& originalMsgURI,
                           nsIMsgDBHdr* origMsgHdr) {
   nsCOMPtr<nsIMsgComposeParams> pMsgComposeParams;
   nsresult rv =
@@ -279,7 +292,7 @@ nsresult ForwardMsgInline(nsIMsgCompFields* compFields,
   NS_ENSURE_SUCCESS(rv, rv);
   // create the nsIMsgCompose object to send the object
   nsCOMPtr<nsIMsgCompose> pMsgCompose(
-      do_CreateInstance(NS_MSGCOMPOSE_CONTRACTID, &rv));
+      do_CreateInstance("@mozilla.org/messengercompose/compose;1", &rv));
   NS_ENSURE_SUCCESS(rv, rv);
 
   /** initialize nsIMsgCompose, Send the message, wait for send completion
@@ -305,14 +318,15 @@ nsresult CreateCompositionFields(
     const char* bcc, const char* fcc, const char* newsgroups,
     const char* followup_to, const char* organization, const char* subject,
     const char* references, const char* priority, const char* newspost_url,
-    char* charset, nsIMsgCompFields** _retval) {
+    const nsTArray<nsString>& otherHeaders, char* charset,
+    nsIMsgCompFields** _retval) {
   NS_ENSURE_ARG_POINTER(_retval);
 
   nsresult rv;
   *_retval = nullptr;
 
   nsCOMPtr<nsIMsgCompFields> cFields =
-      do_CreateInstance(NS_MSGCOMPFIELDS_CONTRACTID, &rv);
+      do_CreateInstance("@mozilla.org/messengercompose/composefields;1", &rv);
   NS_ENSURE_SUCCESS(rv, rv);
   NS_ENSURE_TRUE(cFields, NS_ERROR_OUT_OF_MEMORY);
 
@@ -405,8 +419,19 @@ nsresult CreateCompositionFields(
     cFields->SetNewspostUrl(!val.IsEmpty() ? val.get() : newspost_url);
   }
 
+  nsTArray<nsString> cFieldsOtherHeaders;
+  cFields->GetOtherHeaders(cFieldsOtherHeaders);
+  for (auto otherHeader : otherHeaders) {
+    if (!otherHeader.IsEmpty()) {
+      MIME_DecodeMimeHeader(NS_ConvertUTF16toUTF8(otherHeader).get(), charset,
+                            false, true, val);
+      cFieldsOtherHeaders.AppendElement(NS_ConvertUTF8toUTF16(val));
+    } else {
+      cFieldsOtherHeaders.AppendElement(u""_ns);
+    }
+  }
+  cFields->SetOtherHeaders(cFieldsOtherHeaders);
   cFields.forget(_retval);
-
   return rv;
 }
 
@@ -451,12 +476,11 @@ static nsMsgAttachmentData* mime_draft_process_attachments(
   // It's possible we must treat the message body as attachment!
   bool bodyAsAttachment = false;
   if (mdd->messageBody && !mdd->messageBody->m_type.IsEmpty() &&
-      mdd->messageBody->m_type.Find("text/html", /* ignoreCase = */ true) ==
-          -1 &&
-      mdd->messageBody->m_type.Find("text/plain", /* ignoreCase = */ true) ==
-          -1 &&
-      !mdd->messageBody->m_type.LowerCaseEqualsLiteral("text"))
+      mdd->messageBody->m_type.LowerCaseFindASCII("text/html") == kNotFound &&
+      mdd->messageBody->m_type.LowerCaseFindASCII("text/plain") == kNotFound &&
+      !mdd->messageBody->m_type.LowerCaseEqualsLiteral("text")) {
     bodyAsAttachment = true;
+  }
 
   if (!mdd->attachments.Length() && !bodyAsAttachment) return nullptr;
 
@@ -489,8 +513,7 @@ static nsMsgAttachmentData* mime_draft_process_attachments(
         if (!tmpFile->m_realName.IsEmpty())
           tmp->m_realName = tmpFile->m_realName;
         else {
-          if (tmpFile->m_type.Find(MESSAGE_RFC822, /* ignoreCase = */ true) !=
-              -1)
+          if (tmpFile->m_type.LowerCaseFindASCII(MESSAGE_RFC822) != kNotFound)
             // we have the odd case of processing an e-mail that had an unnamed
             // eml message attached
             tmp->m_realName = "ForwardedMessage.eml";
@@ -1141,6 +1164,7 @@ static void mime_parse_stream_complete(nsMIMESession* stream) {
   char* draftInfo = 0;
   char* contentLanguage = 0;
   char* identityKey = 0;
+  nsTArray<nsString> readOtherHeaders;
 
   bool forward_inline = false;
   bool bodyAsAttachment = false;
@@ -1170,9 +1194,10 @@ static void mime_parse_stream_complete(nsMIMESession* stream) {
     if (mdd->options) {
       // save the override flag before it's unavailable
       charsetOverride = mdd->options->override_charset;
-      if ((!mdd->mailcharset || charsetOverride) &&
-          mdd->options->default_charset) {
-        PR_Free(mdd->mailcharset);
+      // Override the charset only if requested. If the message doesn't have
+      // one and we're not overriding, we'll detect it later.
+      if (charsetOverride && mdd->options->default_charset) {
+        PR_FREEIF(mdd->mailcharset);
         mdd->mailcharset = strdup(mdd->options->default_charset);
       }
 
@@ -1247,11 +1272,30 @@ static void mime_parse_stream_complete(nsMIMESession* stream) {
           news_host = PR_smprintf("news://%s", host);
         }
       }
+
+      // Other headers via pref.
+      nsCString otherHeaders;
+      nsTArray<nsCString> otherHeadersArray;
+      nsresult rv;
+      nsCOMPtr<nsIPrefBranch> pPrefBranch(
+          do_GetService(NS_PREFSERVICE_CONTRACTID, &rv));
+      pPrefBranch->GetCharPref("mail.compose.other.header", otherHeaders);
+      if (!otherHeaders.IsEmpty()) {
+        ToLowerCase(otherHeaders);
+        ParseString(otherHeaders, ',', otherHeadersArray);
+        for (auto otherHeader : otherHeadersArray) {
+          otherHeader.Trim(" ");
+          nsAutoCString result;
+          result.Assign(
+              MimeHeaders_get(mdd->headers, otherHeader.get(), false, false));
+          readOtherHeaders.AppendElement(NS_ConvertUTF8toUTF16(result));
+        }
+      }
     }
 
     CreateCompositionFields(from, repl, to, cc, bcc, fcc, grps, foll, org, subj,
-                            refs, priority, news_host, mdd->mailcharset,
-                            getter_AddRefs(fields));
+                            refs, priority, news_host, readOtherHeaders,
+                            mdd->mailcharset, getter_AddRefs(fields));
 
     contentLanguage =
         MimeHeaders_get(mdd->headers, HEADER_CONTENT_LANGUAGE, false, false);
@@ -1316,7 +1360,7 @@ static void mime_parse_stream_complete(nsMIMESession* stream) {
       PR_FREEIF(parm);
       parm = MimeHeaders_get_parameter(draftInfo, "deliveryformat", NULL, NULL);
       if (parm) {
-        int32_t deliveryFormat = nsIMsgCompSendFormat::AskUser;
+        int32_t deliveryFormat = nsIMsgCompSendFormat::Unset;
         sscanf(parm, "%d", &deliveryFormat);
         fields->SetDeliveryFormat(deliveryFormat);
       }
@@ -1329,7 +1373,7 @@ static void mime_parse_stream_complete(nsMIMESession* stream) {
     if (identityKey && *identityKey) {
       nsresult rv = NS_OK;
       nsCOMPtr<nsIMsgAccountManager> accountManager =
-          do_GetService(NS_MSGACCOUNTMANAGER_CONTRACTID, &rv);
+          do_GetService("@mozilla.org/messenger/account-manager;1", &rv);
       if (NS_SUCCEEDED(rv) && accountManager) {
         nsCOMPtr<nsIMsgIdentity> overrulingIdentity;
         rv = accountManager->GetIdentity(nsDependentCString(identityKey),
@@ -1345,11 +1389,11 @@ static void mime_parse_stream_complete(nsMIMESession* stream) {
     if (mdd->messageBody) {
       MSG_ComposeFormat composeFormat = nsIMsgCompFormat::Default;
       if (!mdd->messageBody->m_type.IsEmpty()) {
-        if (mdd->messageBody->m_type.Find("text/html",
-                                          /* ignoreCase = */ true) != -1)
+        if (mdd->messageBody->m_type.LowerCaseFindASCII("text/html") !=
+            kNotFound)
           composeFormat = nsIMsgCompFormat::HTML;
-        else if (mdd->messageBody->m_type.Find("text/plain",
-                                               /* ignoreCase = */ true) != -1 ||
+        else if (mdd->messageBody->m_type.LowerCaseFindASCII("text/plain") !=
+                     kNotFound ||
                  mdd->messageBody->m_type.LowerCaseEqualsLiteral("text"))
           composeFormat = nsIMsgCompFormat::PlainText;
         else
@@ -1398,12 +1442,24 @@ static void mime_parse_stream_complete(nsMIMESession* stream) {
             mimeCharset = MimeHeaders_get_parameter(
                 mdd->messageBody->m_type.get(), "charset", nullptr, nullptr);
           // If no charset is specified in the header then use the default.
-          char* bodyCharset = mimeCharset ? mimeCharset : mdd->mailcharset;
-          if (bodyCharset) {
+          nsAutoCString bodyCharset;
+          if (mimeCharset) {
+            bodyCharset.Adopt(mimeCharset);
+          } else if (mdd->mailcharset) {
+            bodyCharset.Assign(mdd->mailcharset);
+          }
+          if (bodyCharset.IsEmpty()) {
+            nsAutoCString detectedCharset;
+            // We need to detect it.
+            rv = MIME_detect_charset(body, bodyLen, detectedCharset);
+            if (NS_SUCCEEDED(rv) && !detectedCharset.IsEmpty()) {
+              bodyCharset = detectedCharset;
+            }
+          }
+          if (!bodyCharset.IsEmpty()) {
             nsAutoString tmpUnicodeBody;
-            rv = nsMsgI18NConvertToUnicode(nsDependentCString(bodyCharset),
-                                           nsDependentCString(body),
-                                           tmpUnicodeBody);
+            rv = nsMsgI18NConvertToUnicode(
+                bodyCharset, nsDependentCString(body), tmpUnicodeBody);
             if (NS_FAILED(rv))  // Tough luck, ASCII/ISO-8859-1 then...
               CopyASCIItoUTF16(nsDependentCString(body), tmpUnicodeBody);
 
@@ -1413,7 +1469,6 @@ static void mime_parse_stream_complete(nsMIMESession* stream) {
               body = newBody;
             }
           }
-          PR_FREEIF(mimeCharset);
         }
       }
 
@@ -1452,11 +1507,14 @@ static void mime_parse_stream_complete(nsMIMESession* stream) {
 
       MSG_ComposeType msgComposeType = 0;  // Keep compilers happy.
       if (mdd->format_out == nsMimeOutput::nsMimeMessageEditorTemplate) {
-        if (PL_strstr(mdd->url_name, "&redirect=true"))
+        if (PL_strstr(mdd->url_name, "?redirect=true") ||
+            PL_strstr(mdd->url_name, "&redirect=true"))
           msgComposeType = nsIMsgCompType::Redirect;
-        else if (PL_strstr(mdd->url_name, "&editasnew=true"))
+        else if (PL_strstr(mdd->url_name, "?editasnew=true") ||
+                 PL_strstr(mdd->url_name, "&editasnew=true"))
           msgComposeType = nsIMsgCompType::EditAsNew;
-        else if (PL_strstr(mdd->url_name, "&edittempl=true"))
+        else if (PL_strstr(mdd->url_name, "?edittempl=true") ||
+                 PL_strstr(mdd->url_name, "&edittempl=true"))
           msgComposeType = nsIMsgCompType::EditTemplate;
         else
           msgComposeType = nsIMsgCompType::Template;
@@ -1521,9 +1579,9 @@ static void mime_parse_stream_complete(nsMIMESession* stream) {
         // Note that always setting the draft ID here would cause drafts to be
         // overwritten when edited "as new", which is undesired.
         if (msgComposeType == nsIMsgCompType::EditTemplate) {
-          fields->SetDraftId(mdd->url_name);
-          fields->SetTemplateId(
-              mdd->url_name);  // Remember original template ID.
+          fields->SetDraftId(nsDependentCString(mdd->url_name));
+          fields->SetTemplateId(nsDependentCString(
+              mdd->url_name));  // Remember original template ID.
         }
 
         if (convertToPlainText) fields->ConvertBodyToPlainText();
@@ -1548,7 +1606,7 @@ static void mime_parse_stream_complete(nsMIMESession* stream) {
                                    mdd->origMsgHdr);
         } else {
           if (convertToPlainText) fields->ConvertBodyToPlainText();
-          fields->SetDraftId(mdd->url_name);
+          fields->SetDraftId(nsDependentCString(mdd->url_name));
           CreateTheComposeWindow(fields, newAttachData, nsIMsgCompType::Draft,
                                  composeFormat, mdd->identity,
                                  mdd->originalMsgURI, mdd->origMsgHdr);
@@ -1568,7 +1626,7 @@ static void mime_parse_stream_complete(nsMIMESession* stream) {
 #endif
         CreateTheComposeWindow(fields, newAttachData, nsIMsgCompType::Template,
                                nsIMsgCompFormat::Default, mdd->identity,
-                               nullptr, mdd->origMsgHdr);
+                               EmptyCString(), mdd->origMsgHdr);
       } else {
 #ifdef NS_DEBUG
         printf("Time to create the composition window WITHOUT a body!!!!\n");
@@ -1582,21 +1640,21 @@ static void mime_parse_stream_complete(nsMIMESession* stream) {
                                  mdd->identity, mdd->originalMsgURI,
                                  mdd->origMsgHdr);
         } else {
-          fields->SetDraftId(mdd->url_name);
+          fields->SetDraftId(nsDependentCString(mdd->url_name));
           CreateTheComposeWindow(fields, newAttachData, nsIMsgCompType::Draft,
                                  nsIMsgCompFormat::Default, mdd->identity,
-                                 nullptr, mdd->origMsgHdr);
+                                 EmptyCString(), mdd->origMsgHdr);
         }
       }
     }
   } else {
     CreateCompositionFields(from, repl, to, cc, bcc, fcc, grps, foll, org, subj,
-                            refs, priority, news_host, mdd->mailcharset,
-                            getter_AddRefs(fields));
+                            refs, priority, news_host, readOtherHeaders,
+                            mdd->mailcharset, getter_AddRefs(fields));
     if (fields)
       CreateTheComposeWindow(fields, newAttachData, nsIMsgCompType::New,
-                             nsIMsgCompFormat::Default, mdd->identity, nullptr,
-                             mdd->origMsgHdr);
+                             nsIMsgCompFormat::Default, mdd->identity,
+                             EmptyCString(), mdd->origMsgHdr);
   }
 
   if (mdd->headers) MimeHeaders_free(mdd->headers);
@@ -1620,7 +1678,6 @@ static void mime_parse_stream_complete(nsMIMESession* stream) {
 
   mdd->identity = nullptr;
   PR_Free(mdd->url_name);
-  PR_Free(mdd->originalMsgURI);
   mdd->origMsgHdr = nullptr;
   PR_Free(mdd);
 
@@ -1724,9 +1781,14 @@ int mime_decompose_file_init_fn(void* stream_closure, MimeHeaders* headers) {
   if (!nAttachments && !mdd->messageBody) {
     // if we've been told to use an override charset then do so....otherwise use
     // the charset inside the message header...
-    if (mdd->options && mdd->options->override_charset)
-      mdd->mailcharset = strdup(mdd->options->default_charset);
-    else {
+    if (mdd->options && mdd->options->override_charset) {
+      if (mdd->options->default_charset)
+        mdd->mailcharset = strdup(mdd->options->default_charset);
+      else {
+        mdd->mailcharset = strdup("");
+        mdd->autodetectCharset = true;
+      }
+    } else {
       char* contentType;
       contentType = MimeHeaders_get(headers, HEADER_CONTENT_TYPE, false, false);
       if (contentType) {
@@ -1801,48 +1863,40 @@ int mime_decompose_file_init_fn(void* stream_closure, MimeHeaders* headers) {
   newAttachment->m_cloudPartInfo.Adopt(
       MimeHeaders_get(headers, HEADER_X_MOZILLA_CLOUD_PART, false, false));
 
-  // There's no file in the message if it's a cloud part.
-  if (!newAttachment->m_cloudPartInfo.IsEmpty()) {
-    nsAutoCString fileURL;
-    fileURL.Adopt(MimeHeaders_get_parameter(
-        newAttachment->m_cloudPartInfo.get(), "file", nullptr, nullptr));
-    if (!fileURL.IsEmpty())
-      nsMimeNewURI(getter_AddRefs(newAttachment->m_origUrl), fileURL.get(),
-                   nullptr);
-    mdd->tmpFile = nullptr;
-    return 0;
-  }
-
   nsCOMPtr<nsIFile> tmpFile = nullptr;
   {
     // Let's build a temp file with an extension based on the content-type:
     // nsmail.<extension>
 
     nsAutoCString newAttachName("nsmail");
-    bool extensionAdded = false;
+    nsAutoCString fileExtension;
     // the content type may contain a charset. i.e. text/html; ISO-2022-JP...we
     // want to strip off the charset before we ask the mime service for a mime
     // info for this content type.
     nsAutoCString contentType(newAttachment->m_type);
     int32_t pos = contentType.FindChar(';');
     if (pos > 0) contentType.SetLength(pos);
-    nsresult rv = NS_OK;
-    nsCOMPtr<nsIMIMEService> mimeFinder(
-        do_GetService(NS_MIMESERVICE_CONTRACTID, &rv));
-    if (NS_SUCCEEDED(rv) && mimeFinder) {
-      nsAutoCString fileExtension;
-      rv = mimeFinder->GetPrimaryExtension(contentType, EmptyCString(),
-                                           fileExtension);
-
-      if (NS_SUCCEEDED(rv) && !fileExtension.IsEmpty()) {
-        newAttachName.Append('.');
-        newAttachName.Append(fileExtension);
-        extensionAdded = true;
+    int32_t extLoc = newAttachment->m_realName.RFindChar('.');
+    int32_t specLength = newAttachment->m_realName.Length();
+    // @see nsExternalHelperAppService::GetTypeFromURI()
+    if (extLoc != -1 && extLoc != specLength - 1 &&
+        // nothing over 20 chars long can be sanely considered an
+        // extension.... Dat dere would be just data.
+        specLength - extLoc < 20) {
+      fileExtension = Substring(newAttachment->m_realName, extLoc + 1);
+    } else {
+      nsCOMPtr<nsIMIMEService> mimeFinder(
+          do_GetService(NS_MIMESERVICE_CONTRACTID));
+      if (mimeFinder) {
+        mimeFinder->GetPrimaryExtension(contentType, ""_ns, fileExtension);
       }
     }
 
-    if (!extensionAdded) {
+    if (fileExtension.IsEmpty()) {
       newAttachName.AppendLiteral(".tmp");
+    } else {
+      newAttachName.Append('.');
+      newAttachName.Append(fileExtension);
     }
 
     nsMsgCreateTempFile(newAttachName.get(), getter_AddRefs(tmpFile));
@@ -1922,6 +1976,16 @@ int mime_decompose_file_output_fn(const char* buf, int32_t size,
   if (!size) return 0;
 
   if (!mdd->tmpFileStream) return 0;
+
+  if (mdd->autodetectCharset) {
+    nsAutoCString detectedCharset;
+    nsresult res = NS_OK;
+    res = MIME_detect_charset(buf, size, detectedCharset);
+    if (NS_SUCCEEDED(res) && !detectedCharset.IsEmpty()) {
+      mdd->mailcharset = ToNewCString(detectedCharset);
+      mdd->autodetectCharset = false;
+    }
+  }
 
   if (mdd->decoder_data) {
     int32_t outsize;
@@ -2008,7 +2072,7 @@ extern "C" void* mime_bridge_create_draft_stream(
   newPluginObj2->GetForwardToAddress(mdd->forwardToAddress);
   newPluginObj2->GetOverrideComposeFormat(&mdd->overrideComposeFormat);
   newPluginObj2->GetIdentity(getter_AddRefs(mdd->identity));
-  newPluginObj2->GetOriginalMsgURI(&mdd->originalMsgURI);
+  newPluginObj2->GetOriginalMsgURI(mdd->originalMsgURI);
   newPluginObj2->GetOrigMsgHdr(getter_AddRefs(mdd->origMsgHdr));
   mdd->format_out = format_out;
   mdd->options = new MimeDisplayOptions;
@@ -2061,7 +2125,6 @@ extern "C" void* mime_bridge_create_draft_stream(
 FAIL:
   if (mdd) {
     PR_Free(mdd->url_name);
-    PR_Free(mdd->originalMsgURI);
     if (mdd->options) delete mdd->options;
     PR_Free(mdd);
   }

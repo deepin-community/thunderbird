@@ -314,27 +314,27 @@ template <WebGLTexelFormat Format, bool IsFloat = IsFloatFormat<Format>::Value,
           bool Is16bpp = Is16bppFormat<Format>::Value,
           bool IsHalfFloat = IsHalfFloatFormat<Format>::Value>
 struct DataTypeForFormat {
-  typedef uint8_t Type;
+  using Type = uint8_t;
 };
 
 template <WebGLTexelFormat Format>
 struct DataTypeForFormat<Format, true, false, false> {
-  typedef float Type;
+  using Type = float;
 };
 
 template <WebGLTexelFormat Format>
 struct DataTypeForFormat<Format, false, true, false> {
-  typedef uint16_t Type;
+  using Type = uint16_t;
 };
 
 template <WebGLTexelFormat Format>
 struct DataTypeForFormat<Format, false, false, true> {
-  typedef uint16_t Type;
+  using Type = uint16_t;
 };
 
 template <>
 struct DataTypeForFormat<WebGLTexelFormat::RGB11F11F10F, true, false, false> {
-  typedef uint32_t Type;
+  using Type = uint32_t;
 };
 
 template <WebGLTexelFormat Format>
@@ -1228,6 +1228,45 @@ pack<WebGLTexelFormat::RGBA8, WebGLTexelPremultiplicationOp::Unpremultiply,
   dst[0] = srcR;
   dst[1] = srcG;
   dst[2] = srcB;
+  dst[3] = src[3];
+}
+
+template <>
+MOZ_ALWAYS_INLINE void
+pack<WebGLTexelFormat::BGRA8, WebGLTexelPremultiplicationOp::None, uint8_t,
+     uint8_t>(const uint8_t* __restrict src, uint8_t* __restrict dst) {
+  dst[0] = src[2];
+  dst[1] = src[1];
+  dst[2] = src[0];
+  dst[3] = src[3];
+}
+
+template <>
+MOZ_ALWAYS_INLINE void
+pack<WebGLTexelFormat::BGRA8, WebGLTexelPremultiplicationOp::Premultiply,
+     uint8_t, uint8_t>(const uint8_t* __restrict src, uint8_t* __restrict dst) {
+  float scaleFactor = src[3] / 255.0f;
+  uint8_t srcR = static_cast<uint8_t>(src[0] * scaleFactor);
+  uint8_t srcG = static_cast<uint8_t>(src[1] * scaleFactor);
+  uint8_t srcB = static_cast<uint8_t>(src[2] * scaleFactor);
+  dst[0] = srcB;
+  dst[1] = srcG;
+  dst[2] = srcR;
+  dst[3] = src[3];
+}
+
+// FIXME: this routine is lossy and must be removed.
+template <>
+MOZ_ALWAYS_INLINE void
+pack<WebGLTexelFormat::BGRA8, WebGLTexelPremultiplicationOp::Unpremultiply,
+     uint8_t, uint8_t>(const uint8_t* __restrict src, uint8_t* __restrict dst) {
+  float scaleFactor = src[3] ? 255.0f / src[3] : 1.0f;
+  uint8_t srcR = static_cast<uint8_t>(src[0] * scaleFactor);
+  uint8_t srcG = static_cast<uint8_t>(src[1] * scaleFactor);
+  uint8_t srcB = static_cast<uint8_t>(src[2] * scaleFactor);
+  dst[0] = srcB;
+  dst[1] = srcG;
+  dst[2] = srcR;
   dst[3] = src[3];
 }
 

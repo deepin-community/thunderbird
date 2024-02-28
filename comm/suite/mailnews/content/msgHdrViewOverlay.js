@@ -1,4 +1,4 @@
-/* -*- Mode: javascript; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
+/* -*- indent-tabs-mode: nil; js-indent-level: 2 -*- */
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
@@ -32,10 +32,6 @@ var gBuildAttachmentPopupForCurrentMsg = true;
 var gBuiltExpandedView = false;
 var gBuiltCollapsedView = false;
 var gMessengerBundle;
-
-// Globals for setFromBuddyIcon().
-var gFileHandler;
-var gProfileDirURL;
 
 // Show the friendly display names for people I know, instead of the name + email address.
 var gShowCondensedEmailAddresses;
@@ -363,7 +359,8 @@ var messageHeaderSink = {
       gBuildAttachmentsForCurrentMsg = false;
       gBuildAttachmentPopupForCurrentMsg = true;
       ClearAttachmentList();
-      ClearEditMessageBox();
+      ClearEditMessageBox("editDraftBox");
+      ClearEditMessageBox("editTemplateBox");
       gMessageNotificationBar.clearMsgNotifications();
 
       for (let index in gMessageListeners)
@@ -385,7 +382,8 @@ var messageHeaderSink = {
 
       ShowMessageHeaderPane();
       UpdateMessageHeaders();
-      ShowEditMessageBox();
+      ShowEditMessageBox("editDraftBox", Ci.nsMsgFolderFlags.Drafts);
+      ShowEditMessageBox("editTemplateBox", Ci.nsMsgFolderFlags.Templates);
 
       for (let index in gMessageListeners)
         gMessageListeners[index].onEndHeaders();
@@ -1108,62 +1106,10 @@ function OutputEmailAddresses(headerEntry, emailAddresses)
     else
       updateEmailAddressNode(headerEntry.enclosingBox.emailAddressNode,
                              address);
-
-    if (headerEntry.enclosingBox.getAttribute("id") == "expandedfromBox") {
-      setFromBuddyIcon(addr.email);
-    }
   }
 
   if (headerEntry.useToggle)
     headerEntry.enclosingBox.buildViews();
-}
-
-function setFromBuddyIcon(email)
-{
-  var fromBuddyIcon = document.getElementById("fromBuddyIcon");
-
-  var myScreenName = null;
-  try {
-    // TODO: Cache this.
-    myScreenName = Services.prefs.getCharPref("aim.session.screenname");
-  }
-  catch (ex) {
-    // No screenname preference.
-  }
-  if (myScreenName)
-  {
-    var card = GetCardForEmail(email).card;
-    if (card)
-    {
-      // For now, retrieve the screen name only.
-      var iconURLStr = card.getProperty("_AimScreenName", "");
-      if (iconURLStr)
-      {
-        // Lazily create these globals.
-        if (!gFileHandler)
-        {
-          gFileHandler = Services.io.getProtocolHandler("file")
-                                    .QueryInterface(Ci.nsIFileProtocolHandler);
-
-          gProfileDirURL = Services.io.newFileURI(GetSpecialDirectory("ProfD"));
-        }
-
-        // If we did have a buddy icon on disk for this screenname,
-        // this would be the file url spec for it.
-        iconURLStr = gProfileDirURL.spec + "/NIM/" + myScreenName
-                                         + "/picture/" + iconURLStr + ".gif";
-
-        // check if the file exists
-        // is this a perf hit?  (how expensive is stat()?)
-        if (gFileHandler.getFileFromURLSpec(iconURLStr).exists()) {
-          fromBuddyIcon.setAttribute("src", iconURLStr);
-          return;
-        }
-      }
-    }
-  }
-
-  fromBuddyIcon.setAttribute("src", "");
 }
 
 function updateEmailAddressNode(emailAddressNode, address)
@@ -1845,23 +1791,20 @@ function ClearAttachmentList()
     list.lastChild.remove();
 }
 
-function ShowEditMessageBox()
-{
-  try
-  {
+function ShowEditMessageBox(aMessageBox, aFlag) {
+  try {
     // it would be nice if we passed in the msgHdr from the back end
     var msgHdr = gDBView.hdrForFirstSelectedMessage;
     if (!msgHdr || !msgHdr.folder)
-     return;
-    if (msgHdr.folder.isSpecialFolder(Ci.nsMsgFolderFlags.Drafts, true))
-      document.getElementById("editMessageBox").collapsed = false;
+      return;
+    if (msgHdr.folder.isSpecialFolder(aFlag, true))
+      document.getElementById(aMessageBox).collapsed = false;
   }
   catch (ex) {}
 }
 
-function ClearEditMessageBox()
-{
-  var editBox = document.getElementById("editMessageBox");
+function ClearEditMessageBox(aMessageBox) {
+  var editBox = document.getElementById(aMessageBox);
   if (editBox)
     editBox.collapsed = true;
 }

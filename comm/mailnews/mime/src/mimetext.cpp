@@ -75,7 +75,14 @@ static int MimeInlineText_initializeCharset(MimeObject* obj) {
   // Figure out an appropriate charset for this object.
   if (!text->charset && obj->headers) {
     if (obj->options && obj->options->override_charset) {
-      text->charset = strdup(obj->options->default_charset);
+      if (obj->options->default_charset) {
+        text->charset = strdup(obj->options->default_charset);
+      } else {
+        text->charsetOverridable = true;
+        text->inputAutodetect = true;
+        text->needUpdateMsgWinCharset = true;
+        text->charset = strdup("");
+      }
     } else {
       char* ct =
           MimeHeaders_get(obj->headers, HEADER_CONTENT_TYPE, false, false);
@@ -102,21 +109,14 @@ static int MimeInlineText_initializeCharset(MimeObject* obj) {
         text->charset = strdup("UTF-8");
 
       if (!text->charset) {
-        nsresult res;
-
         text->charsetOverridable = true;
-
-        nsCOMPtr<nsIPrefBranch> prefBranch(
-            do_GetService(NS_PREFSERVICE_CONTRACTID, &res));
+        text->inputAutodetect = true;
+        text->needUpdateMsgWinCharset = true;
 
         if (obj->options && obj->options->default_charset)
           text->charset = strdup(obj->options->default_charset);
-        else {
-          if (NS_SUCCEEDED(res)) {
-            text->charset = strdup("UTF-8");
-          } else
-            text->charset = strdup("");
-        }
+        else
+          text->charset = strdup("UTF-8");
       }
     }
   }

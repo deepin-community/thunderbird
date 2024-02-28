@@ -3,18 +3,21 @@
 
 "use strict";
 
-const { PushDB, PushService, PushServiceWebSocket } = serviceExports;
-const { BroadcastService } = ChromeUtils.import(
-  "resource://gre/modules/PushBroadcastService.jsm",
-  null
+// Create the profile directory early to ensure pushBroadcastService
+// is initialized with the correct path
+do_get_profile();
+const { BroadcastService } = ChromeUtils.importESModule(
+  "resource://gre/modules/PushBroadcastService.sys.mjs"
 );
-const { JSONFile } = ChromeUtils.import("resource://gre/modules/JSONFile.jsm");
+const { JSONFile } = ChromeUtils.importESModule(
+  "resource://gre/modules/JSONFile.sys.mjs"
+);
 
-const { FileTestUtils } = ChromeUtils.import(
-  "resource://testing-common/FileTestUtils.jsm"
+const { FileTestUtils } = ChromeUtils.importESModule(
+  "resource://testing-common/FileTestUtils.sys.mjs"
 );
-const { broadcastHandler } = ChromeUtils.import(
-  "resource://test/broadcast_handler.jsm"
+const { broadcastHandler } = ChromeUtils.importESModule(
+  "resource://test/broadcast_handler.sys.mjs"
 );
 
 const broadcastService = pushBroadcastService;
@@ -23,7 +26,6 @@ const userAgentID = "bd744428-f125-436a-b6d0-dd0c9845837f";
 const channelID = "0ef2ad4a-6c49-41ad-af6e-95d2425276bf";
 
 function run_test() {
-  do_get_profile();
   setPrefs({
     userAgentID,
     alwaysConnect: true,
@@ -53,7 +55,7 @@ add_task(async function test_register_success() {
   });
 
   await broadcastService.addListener("broadcast-test", "2018-02-01", {
-    moduleURI: "resource://test/broadcast_handler.jsm",
+    moduleURI: "resource://test/broadcast_handler.sys.mjs",
     symbolName: "broadcastHandler",
   });
 
@@ -153,7 +155,7 @@ add_task(async function test_handle_hello_broadcasts() {
   });
 
   await broadcastService.addListener("broadcast-test", "2018-02-01", {
-    moduleURI: "resource://test/broadcast_handler.jsm",
+    moduleURI: "resource://test/broadcast_handler.sys.mjs",
     symbolName: "broadcastHandler",
   });
 
@@ -226,7 +228,7 @@ add_task(async function test_broadcast_context() {
   const serviceId = "broadcast-test";
   const version = "2018-02-01";
   await broadcastService.addListener(serviceId, version, {
-    moduleURI: "resource://test/broadcast_handler.jsm",
+    moduleURI: "resource://test/broadcast_handler.sys.mjs",
     symbolName: "broadcastHandler",
   });
 

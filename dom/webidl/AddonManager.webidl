@@ -29,7 +29,7 @@ interface Addon {
   readonly attribute boolean canUninstall;
 
   Promise<boolean> uninstall();
-  Promise<void> setEnabled(boolean value);
+  Promise<undefined> setEnabled(boolean value);
 };
 
 [ChromeOnly, JSImplementation="dummy",
@@ -44,8 +44,8 @@ interface AddonInstall : EventTarget {
   // How many total bytes will need to be downloaded or -1 if unknown
   readonly attribute long long maxProgress;
 
-  Promise<void> install();
-  Promise<void> cancel();
+  Promise<undefined> install();
+  Promise<undefined> cancel();
 };
 
 dictionary addonInstallOptions {
@@ -95,9 +95,6 @@ interface AddonManager : EventTarget {
    */
   Promise<boolean> reportAbuse(DOMString id);
 
-  // Indicator to content whether permissions prompts are enabled
-  readonly attribute boolean permissionPromptsEnabled;
-
   // Indicator to content whether handing off the reports to the integrated
   // abuse report panel is enabled.
   readonly attribute boolean abuseReportPanelEnabled;
@@ -107,4 +104,3 @@ interface AddonManager : EventTarget {
 namespace AddonManagerPermissions {
   boolean isHostPermitted(DOMString host);
 };
-

@@ -5,6 +5,7 @@
 
 #include "GeckoViewStreamListener.h"
 
+#include "mozilla/fallible.h"
 #include "nsIAsyncVerifyRedirectCallback.h"
 #include "nsIChannelEventSink.h"
 #include "nsIHttpChannel.h"
@@ -161,7 +162,10 @@ nsresult GeckoViewStreamListener::WriteSegment(
 
   jni::ByteArray::LocalRef buffer = jni::ByteArray::New(
       reinterpret_cast<signed char*>(const_cast<char*>(aFromSegment)),
-      *aWriteCount);
+      *aWriteCount, fallible);
+  if (!buffer) {
+    return NS_ERROR_OUT_OF_MEMORY;
+  }
 
   if (NS_FAILED(self->mStream->AppendBuffer(buffer))) {
     // The stream was closed or something, abort reading this channel.
@@ -261,34 +265,28 @@ std::tuple<jni::ByteArray::LocalRef, java::sdk::Boolean::LocalRef>
 GeckoViewStreamListener::CertificateFromChannel(nsIChannel* aChannel) {
   MOZ_ASSERT(aChannel);
 
-  nsCOMPtr<nsISupports> securityInfo;
+  nsCOMPtr<nsITransportSecurityInfo> securityInfo;
   aChannel->GetSecurityInfo(getter_AddRefs(securityInfo));
   if (!securityInfo) {
     return std::make_tuple((jni::ByteArray::LocalRef) nullptr,
                            (java::sdk::Boolean::LocalRef) nullptr);
   }
 
-  nsresult rv;
-  nsCOMPtr<nsITransportSecurityInfo> tsi = do_QueryInterface(securityInfo, &rv);
-  NS_ENSURE_SUCCESS(rv,
-                    std::make_tuple((jni::ByteArray::LocalRef) nullptr,
-                                    (java::sdk::Boolean::LocalRef) nullptr));
-
   uint32_t securityState = 0;
-  tsi->GetSecurityState(&securityState);
+  securityInfo->GetSecurityState(&securityState);
   auto isSecure = securityState == nsIWebProgressListener::STATE_IS_SECURE
                       ? java::sdk::Boolean::TRUE()
                       : java::sdk::Boolean::FALSE();
 
   nsCOMPtr<nsIX509Cert> cert;
-  tsi->GetServerCert(getter_AddRefs(cert));
+  securityInfo->GetServerCert(getter_AddRefs(cert));
   if (!cert) {
     return std::make_tuple((jni::ByteArray::LocalRef) nullptr,
                            (java::sdk::Boolean::LocalRef) nullptr);
   }
 
   nsTArray<uint8_t> derBytes;
-  rv = cert->GetRawDER(derBytes);
+  nsresult rv = cert->GetRawDER(derBytes);
   NS_ENSURE_SUCCESS(rv,
                     std::make_tuple((jni::ByteArray::LocalRef) nullptr,
                                     (java::sdk::Boolean::LocalRef) nullptr));

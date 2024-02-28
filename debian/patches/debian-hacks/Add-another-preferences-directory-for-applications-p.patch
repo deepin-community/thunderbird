@@ -5,27 +5,26 @@ Subject: Add another preferences directory for applications:
 
 This can be used to symlink to /etc/thunderbird/pref.
 ---
- toolkit/xre/nsXREDirProvider.cpp | 3 +++
- 1 file changed, 3 insertions(+)
+ toolkit/xre/nsXREDirProvider.cpp | 2 ++
+ 1 file changed, 2 insertions(+)
 
 diff --git a/toolkit/xre/nsXREDirProvider.cpp b/toolkit/xre/nsXREDirProvider.cpp
-index d6def8a..3fd4cfe 100644
+index 41d2353..28d9780 100644
 --- a/toolkit/xre/nsXREDirProvider.cpp
 +++ b/toolkit/xre/nsXREDirProvider.cpp
-@@ -807,6 +807,8 @@ static nsresult DeleteDirIfExists(nsIFile* dir) {
- 
- static const char* const kAppendPrefDir[] = {"defaults", "preferences",
-                                              nullptr};
-+static const char *const kAppendSysPrefDir[] = { "defaults", "syspref", nullptr };
-+
- #ifdef MOZ_BACKGROUNDTASKS
+@@ -676,6 +676,7 @@ static const char* const kAppendPrefDir[] = {"defaults", "preferences",
  static const char* const kAppendBackgroundTasksPrefDir[] = {
      "defaults", "backgroundtasks", nullptr};
-@@ -825,6 +827,7 @@ nsresult nsXREDirProvider::GetFilesInternal(const char* aProperty,
-     if (mozilla::BackgroundTasks::IsBackgroundTaskMode()) {
-       LoadDirIntoArray(mGREDir, kAppendBackgroundTasksPrefDir, directories);
+ #endif
++static const char *const kAppendSysPrefDir[] = { "defaults", "syspref", nullptr };
+ 
+ NS_IMETHODIMP
+ nsXREDirProvider::GetFiles(const char* aProperty,
+@@ -693,6 +694,7 @@ nsXREDirProvider::GetFiles(const char* aProperty,
        LoadDirIntoArray(mXULAppDir, kAppendBackgroundTasksPrefDir, directories);
-+      LoadDirIntoArray(mXULAppDir, kAppendSysPrefDir, directories);
      }
  #endif
++      LoadDirIntoArray(mXULAppDir, kAppendSysPrefDir, directories);
  
+     rv = NS_NewArrayEnumerator(aResult, directories, NS_GET_IID(nsIFile));
+   } else if (!strcmp(aProperty, NS_APP_CHROME_DIR_LIST)) {

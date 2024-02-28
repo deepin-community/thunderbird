@@ -6,9 +6,7 @@
 // this file implements the nsAddrDatabase interface using the MDB Interface.
 
 #include "nsAddrDatabase.h"
-#include "nsAbBaseCID.h"
 #include "nsMsgUtils.h"
-#include "nsMorkCID.h"
 #include "nsIMdbFactoryFactory.h"
 #include "nsSimpleEnumerator.h"
 
@@ -103,7 +101,6 @@ nsAddrDatabase::nsAddrDatabase()
       m_Custom4ColumnToken(0),
       m_NotesColumnToken(0),
       m_LastModDateColumnToken(0),
-      m_MailFormatColumnToken(0),
       m_PopularityIndexColumnToken(0),
       m_AddressCharSetColumnToken(0) {}
 
@@ -121,7 +118,7 @@ nsresult nsAddrDatabase::GetMDBFactory(nsIMdbFactory** aMdbFactory) {
   if (!mMdbFactory) {
     nsresult rv;
     nsCOMPtr<nsIMdbFactoryService> mdbFactoryService =
-        do_GetService(NS_MORK_CONTRACTID, &rv);
+        do_GetService("@mozilla.org/db/mork;1", &rv);
     if (NS_SUCCEEDED(rv) && mdbFactoryService) {
       rv = mdbFactoryService->GetMdbFactory(getter_AddRefs(mMdbFactory));
       NS_ENSURE_SUCCESS(rv, rv);
@@ -314,8 +311,6 @@ nsresult nsAddrDatabase::InitMDBInfo() {
                                 &m_2ndEmailColumnToken);
       m_mdbStore->StringToToken(m_mdbEnv, kLower2ndEmailColumn,
                                 &m_Lower2ndEmailColumnToken);
-      m_mdbStore->StringToToken(m_mdbEnv, kPreferMailFormatProperty,
-                                &m_MailFormatColumnToken);
       m_mdbStore->StringToToken(m_mdbEnv, kPopularityIndexProperty,
                                 &m_PopularityIndexColumnToken);
       m_mdbStore->StringToToken(m_mdbEnv, kWorkPhoneProperty,
@@ -792,7 +787,8 @@ nsresult nsAddrDatabase::CreateCard(nsIMdbRow* cardRow, mdb_id listRowID,
 
   if (NS_SUCCEEDED(rv)) {
     nsCOMPtr<nsIAbCard> personCard;
-    personCard = do_CreateInstance(NS_ABCARDPROPERTY_CONTRACTID, &rv);
+    personCard =
+        do_CreateInstance("@mozilla.org/addressbook/cardproperty;1", &rv);
     NS_ENSURE_SUCCESS(rv, rv);
 
     InitCardFromRow(personCard, cardRow);
@@ -829,7 +825,8 @@ nsresult nsAddrDatabase::CreateABListCard(nsIMdbRow* listRow,
   listURI = PR_smprintf("MailList%ld", rowID);
 
   nsCOMPtr<nsIAbCard> personCard;
-  personCard = do_CreateInstance(NS_ABCARDPROPERTY_CONTRACTID, &rv);
+  personCard =
+      do_CreateInstance("@mozilla.org/addressbook/cardproperty;1", &rv);
   NS_ENSURE_SUCCESS(rv, rv);
 
   if (personCard) {

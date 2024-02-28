@@ -12,8 +12,7 @@
 #include "nsContentUtils.h"
 #include "nsHTMLDocument.h"
 
-namespace mozilla {
-namespace dom {
+namespace mozilla::dom {
 
 using namespace mozilla::css;
 
@@ -81,11 +80,11 @@ bool CSSMozDocumentRule::Match(const Document* aDoc, nsIURI* aDocURI,
   return false;
 }
 
-CSSMozDocumentRule::CSSMozDocumentRule(RefPtr<RawServoMozDocumentRule> aRawRule,
+CSSMozDocumentRule::CSSMozDocumentRule(RefPtr<StyleDocumentRule> aRawRule,
                                        StyleSheet* aSheet,
                                        css::Rule* aParentRule, uint32_t aLine,
                                        uint32_t aColumn)
-    : css::ConditionRule(Servo_MozDocumentRule_GetRules(aRawRule).Consume(),
+    : css::ConditionRule(Servo_DocumentRule_GetRules(aRawRule).Consume(),
                          aSheet, aParentRule, aLine, aColumn),
       mRawRule(std::move(aRawRule)) {}
 
@@ -103,27 +102,28 @@ void CSSMozDocumentRule::List(FILE* out, int32_t aIndent) const {
   for (int32_t i = 0; i < aIndent; i++) {
     str.AppendLiteral("  ");
   }
-  Servo_MozDocumentRule_Debug(mRawRule, &str);
+  Servo_DocumentRule_Debug(mRawRule, &str);
   fprintf_stderr(out, "%s\n", str.get());
 }
 #endif
 
-void CSSMozDocumentRule::GetConditionText(nsACString& aConditionText) {
-  Servo_MozDocumentRule_GetConditionText(mRawRule, &aConditionText);
+void CSSMozDocumentRule::SetRawAfterClone(RefPtr<StyleDocumentRule> aRaw) {
+  mRawRule = std::move(aRaw);
+  css::ConditionRule::SetRawAfterClone(
+      Servo_DocumentRule_GetRules(mRawRule).Consume());
 }
 
-void CSSMozDocumentRule::SetConditionText(const nsACString& aConditionText,
-                                          ErrorResult& aRv) {
-  if (IsReadOnly()) {
-    return;
-  }
+StyleCssRuleType CSSMozDocumentRule::Type() const {
+  return StyleCssRuleType::Document;
+}
 
-  aRv.Throw(NS_ERROR_NOT_IMPLEMENTED);
+void CSSMozDocumentRule::GetConditionText(nsACString& aConditionText) {
+  Servo_DocumentRule_GetConditionText(mRawRule, &aConditionText);
 }
 
 /* virtual */
 void CSSMozDocumentRule::GetCssText(nsACString& aCssText) const {
-  Servo_MozDocumentRule_GetCssText(mRawRule, &aCssText);
+  Servo_DocumentRule_GetCssText(mRawRule, &aCssText);
 }
 
 /* virtual */
@@ -133,5 +133,4 @@ size_t CSSMozDocumentRule::SizeOfIncludingThis(
   return aMallocSizeOf(this);
 }
 
-}  // namespace dom
-}  // namespace mozilla
+}  // namespace mozilla::dom

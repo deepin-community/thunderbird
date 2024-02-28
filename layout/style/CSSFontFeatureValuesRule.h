@@ -12,12 +12,11 @@
 
 #include "nsICSSDeclaration.h"
 
-namespace mozilla {
-namespace dom {
+namespace mozilla::dom {
 
 class CSSFontFeatureValuesRule final : public css::Rule {
  public:
-  CSSFontFeatureValuesRule(RefPtr<RawServoFontFeatureValuesRule> aRawRule,
+  CSSFontFeatureValuesRule(RefPtr<StyleFontFeatureValuesRule> aRawRule,
                            StyleSheet* aSheet, css::Rule* aParentRule,
                            uint32_t aLine, uint32_t aColumn)
       : css::Rule(aSheet, aParentRule, aLine, aColumn),
@@ -25,12 +24,11 @@ class CSSFontFeatureValuesRule final : public css::Rule {
 
   virtual bool IsCCLeaf() const override;
 
-  RawServoFontFeatureValuesRule* Raw() const { return mRawRule; }
+  StyleFontFeatureValuesRule* Raw() const { return mRawRule; }
+  void SetRawAfterClone(RefPtr<StyleFontFeatureValuesRule> aRaw);
 
   // WebIDL interfaces
-  uint16_t Type() const final {
-    return CSSRule_Binding::FONT_FEATURE_VALUES_RULE;
-  }
+  StyleCssRuleType Type() const final;
 
   void GetCssText(nsACString& aCssText) const override;
   void GetFontFamily(nsACString& aFamily);
@@ -51,10 +49,9 @@ class CSSFontFeatureValuesRule final : public css::Rule {
  private:
   ~CSSFontFeatureValuesRule() = default;
 
-  RefPtr<RawServoFontFeatureValuesRule> mRawRule;
+  RefPtr<StyleFontFeatureValuesRule> mRawRule;
 };
 
-}  // namespace dom
-}  // namespace mozilla
+}  // namespace mozilla::dom
 
 #endif  // mozilla_dom_CSSFontFeatureValuesRule_h

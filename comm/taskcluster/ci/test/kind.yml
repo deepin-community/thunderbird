@@ -2,38 +2,47 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 ---
-loader: taskgraph.loader.test:loader
+loader: gecko_taskgraph.loader.test:loader
 
 kind-dependencies:
     - build
+    - build-mac-signing
     - build-signing
+    - repackage-signing-shippable-l10n-msix
+    - repackage-signing-msix
     - fetch
     - toolchain
 
 transforms:
     - comm_taskgraph.transforms.tests:transforms
-    - taskgraph.transforms.tests:transforms
-    - taskgraph.transforms.job:transforms
-    - taskgraph.transforms.task:transforms
+    - gecko_taskgraph.transforms.test:transforms
+    - gecko_taskgraph.transforms.job:transforms
+    - gecko_taskgraph.transforms.task:transforms
 
 jobs-from:
     - compiled.yml
-    - marionette.yml
     - tests.yml
 
 # These apply to all included test yml files listed in jobs-from
 job-defaults:
-    webrender: false
+    attributes:
+        retrigger: true
     optimization:
         by-test-platform:
-            .*-tsan/opt:
+            .*-tsan.*/opt:
                 skip-unless-backstop-no-suite: null
-            .*-asan/opt:
-                skip-unless-backstop-no-suite: null
-            .*-asan-qr/opt:
+            .*-asan.*/opt:
                 skip-unless-backstop-no-suite: null
             default:
                 skip-suite-only: null
+    mozharness:
+        requires-signed-builds:
+            by-test-platform:
+                windows11-64.*:
+                    by-variant:
+                        msix: true
+                        default: false
+                default: false
     fetches:
         toolchain:
             by-test-platform:

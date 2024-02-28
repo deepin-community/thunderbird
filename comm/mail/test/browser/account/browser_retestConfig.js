@@ -17,8 +17,6 @@ var { close_window } = ChromeUtils.import(
   "resource://testing-common/mozmill/WindowHelpers.jsm"
 );
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-
 var user = {
   name: "test",
   email: "test@momo.invalid",
@@ -28,7 +26,7 @@ var user = {
 const PREF_NAME = "mailnews.auto_config_url";
 const PREF_VALUE = Services.prefs.getCharPref(PREF_NAME);
 
-add_task(function setupModule(module) {
+add_setup(function () {
   Services.prefs.setCharPref("mail.setup.loglevel", "All");
 
   let url =
@@ -36,7 +34,7 @@ add_task(function setupModule(module) {
   Services.prefs.setCharPref(PREF_NAME, url);
 });
 
-registerCleanupFunction(function teardownModule(module) {
+registerCleanupFunction(function () {
   Services.prefs.setCharPref(PREF_NAME, PREF_VALUE);
   Services.prefs.clearUserPref("mail.setup.loglevel");
 });
@@ -108,5 +106,5 @@ add_task(async function test_re_test_config() {
     "We're not back to the original state!"
   );
 
-  mc.tabmail.closeTab(tab);
+  mc.window.document.getElementById("tabmail").closeTab(tab);
 });

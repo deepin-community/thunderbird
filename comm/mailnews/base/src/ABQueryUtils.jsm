@@ -13,7 +13,6 @@ const EXPORTED_SYMBOLS = [
   "generateQueryURI",
   "encodeABTermValue",
 ];
-const { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 
 /**
  * Parse the multiword search string to extract individual search terms
@@ -22,7 +21,7 @@ const { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
  *
  * @param {string} aSearchString - The full search string entered by the user.
  *
- * @return {Array} Array of separated search terms from the full search string.
+ * @returns {Array} Array of separated search terms from the full search string.
  */
 function getSearchTokens(aSearchString) {
   // Trim leading and trailing whitespace and comma(s) to prevent empty search
@@ -71,12 +70,13 @@ function getSearchTokens(aSearchString) {
 /**
  * For AB quicksearch or recipient autocomplete, get the normal or phonetic model
  * query URL part from prefs, allowing users to customize these searches.
- * @param aBasePrefName  the full pref name of default, non-phonetic model query,
- *                       e.g. mail.addr_book.quicksearchquery.format
- *                       If phonetic search is used, corresponding pref must exist:
- *                       e.g. mail.addr_book.quicksearchquery.format.phonetic
- * @return               depending on mail.addr_book.show_phonetic_fields pref,
- *                       the value of aBasePrefName or aBasePrefName + ".phonetic"
+ *
+ * @param {string} aBasePrefName - The full pref name of default, non-phonetic
+ *   model query, e.g. mail.addr_book.quicksearchquery.format. If phonetic
+ *   search is used, corresponding pref must exist:
+ *   e.g. mail.addr_book.quicksearchquery.format.phonetic
+ * @returns {boolean} depending on mail.addr_book.show_phonetic_fields pref,
+ *   the value of aBasePrefName or aBasePrefName + ".phonetic"
  */
 function getModelQuery(aBasePrefName) {
   let modelQuery = "";
@@ -100,11 +100,12 @@ function getModelQuery(aBasePrefName) {
 
 /**
  * Check if the currently used pref with the model query was customized by user.
- * @param aBasePrefName  the full pref name of default, non-phonetic model query,
- *                       e.g. mail.addr_book.quicksearchquery.format
- *                       If phonetic search is used, corresponding pref must exist:
- *                       e.g. mail.addr_book.quicksearchquery.format.phonetic
- * @return               true or false
+ *
+ * @param {string} aBasePrefName - The full pref name of default, non-phonetic
+ *   model query, e.g. mail.addr_book.quicksearchquery.format
+ *   If phonetic search is used, corresponding pref must exist:
+ *   e.g. mail.addr_book.quicksearchquery.format.phonetic
+ * @returns {boolean} true or false
  */
 function modelQueryHasUserValue(aBasePrefName) {
   if (

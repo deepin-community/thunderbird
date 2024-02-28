@@ -1,13 +1,3 @@
-var { BrowserWindowTracker } = ChromeUtils.import(
-  "resource:///modules/BrowserWindowTracker.jsm"
-);
-
-ChromeUtils.defineModuleGetter(
-  this,
-  "CaptivePortalWatcher",
-  "resource:///modules/CaptivePortalWatcher.jsm"
-);
-
 XPCOMUtils.defineLazyServiceGetter(
   this,
   "cps",
@@ -120,7 +110,7 @@ function ensurePortalTab(win) {
 }
 
 function ensurePortalNotification(win) {
-  let notification = win.gHighPriorityNotificationBox.getNotificationWithValue(
+  let notification = win.gNotificationBox.getNotificationWithValue(
     PORTAL_NOTIFICATION_VALUE
   );
   isnot(
@@ -156,9 +146,7 @@ function ensureNoPortalTab(win) {
 
 function ensureNoPortalNotification(win) {
   is(
-    win.gHighPriorityNotificationBox.getNotificationWithValue(
-      PORTAL_NOTIFICATION_VALUE
-    ),
+    win.gNotificationBox.getNotificationWithValue(PORTAL_NOTIFICATION_VALUE),
     null,
     "There should be no captive portal notification in the window."
   );

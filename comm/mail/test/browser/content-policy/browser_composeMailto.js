@@ -4,6 +4,7 @@
 
 "use strict";
 
+var utils = ChromeUtils.import("resource://testing-common/mozmill/utils.jsm");
 var { close_compose_window, wait_for_compose_window } = ChromeUtils.import(
   "resource://testing-common/mozmill/ComposeHelpers.jsm"
 );
@@ -17,6 +18,7 @@ var { input_value } = ChromeUtils.import(
   "resource://testing-common/mozmill/KeyboardHelpers.jsm"
 );
 var {
+  click_menus_in_sequence,
   plan_for_modal_dialog,
   plan_for_new_window,
   wait_for_modal_dialog,
@@ -25,7 +27,7 @@ var {
 
 var folder = null;
 var gMsgNo = 0;
-var gComposeWin;
+var gCwc;
 var gNewTab;
 var gPreCount;
 
@@ -33,10 +35,11 @@ var url =
   "http://mochi.test:8888/browser/comm/mail/test/browser/content-policy/html/";
 
 add_task(async function test_openComposeFromMailToLink() {
+  let tabmail = mc.window.document.getElementById("tabmail");
   // Open a content tab with the mailto link in it.
   // To open a tab we're going to have to cheat and use tabmail so we can load
   // in the data of what we want.
-  gPreCount = mc.tabmail.tabContainer.allTabs.length;
+  gPreCount = tabmail.tabContainer.allTabs.length;
   gNewTab = open_content_tab_with_url(url + "mailtolink.html");
 
   plan_for_new_window("msgcompose");
@@ -45,41 +48,46 @@ add_task(async function test_openComposeFromMailToLink() {
     {},
     gNewTab.browser
   );
-  gComposeWin = wait_for_compose_window();
+  gCwc = wait_for_compose_window();
 });
 
-add_task(function test_checkInsertImage() {
+add_task(async function test_checkInsertImage() {
   // First focus on the editor element
-  gComposeWin.e("content-frame").focus();
+  gCwc.window.document.getElementById("messageEditor").focus();
 
   // Now open the image window
-  plan_for_modal_dialog("Mail:image", function insert_image(mwc) {
+  plan_for_modal_dialog("Mail:image", async function insert_image(mwc) {
     // Insert the url of the image.
     let srcloc = mwc.window.document.getElementById("srcInput");
     srcloc.focus();
 
     input_value(mwc, url + "pass.png");
-    mwc.sleep(0);
+    await new Promise(resolve => setTimeout(resolve));
 
+    let noAlt = mwc.window.document.getElementById("noAltTextRadio");
     // Don't add alternate text
-    mwc.click(mwc.e("noAltTextRadio"));
+    EventUtils.synthesizeMouseAtCenter(noAlt, {}, noAlt.ownerGlobal);
 
     // Accept the dialog
     mwc.window.document.querySelector("dialog").acceptDialog();
   });
-  gComposeWin.click(gComposeWin.e("insertImage"));
+
+  let insertMenu = gCwc.window.document.getElementById("InsertPopupButton");
+  let insertMenuPopup = gCwc.window.document.getElementById("InsertPopup");
+  EventUtils.synthesizeMouseAtCenter(insertMenu, {}, insertMenu.ownerGlobal);
+  await click_menus_in_sequence(insertMenuPopup, [{ id: "InsertImageItem" }]);
 
   wait_for_modal_dialog();
   wait_for_window_close();
 
   // Test that the image load has not been denied
-  let childImages = gComposeWin
-    .e("content-frame")
+  let childImages = gCwc.window.document
+    .getElementById("messageEditor")
     .contentDocument.getElementsByTagName("img");
 
   Assert.equal(childImages.length, 1, "Should be one image in the document");
 
-  gComposeWin.waitFor(() => childImages[0].complete);
+  utils.waitFor(() => childImages[0].complete);
 
   // Should be the only image, so just check the first.
   Assert.ok(
@@ -93,11 +101,12 @@ add_task(function test_checkInsertImage() {
 });
 
 add_task(function test_closeComposeWindowAndTab() {
-  close_compose_window(gComposeWin);
+  close_compose_window(gCwc);
+  let tabmail = mc.window.document.getElementById("tabmail");
 
-  mc.tabmail.closeTab(gNewTab);
+  tabmail.closeTab(gNewTab);
 
-  if (mc.tabmail.tabContainer.allTabs.length != gPreCount) {
+  if (tabmail.tabContainer.allTabs.length != gPreCount) {
     throw new Error("The content tab didn't close");
   }
 

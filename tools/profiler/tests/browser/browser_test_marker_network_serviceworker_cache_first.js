@@ -45,18 +45,15 @@ add_task(async function test_network_markers_service_worker_register() {
     await SpecialPowers.spawn(
       contentBrowser,
       [serviceWorkerFileName],
-      async function(serviceWorkerFileName) {
+      async function (serviceWorkerFileName) {
         await content.wrappedJSObject.registerServiceWorkerAndWait(
           serviceWorkerFileName
         );
       }
     );
 
-    const {
-      parentThread,
-      contentThread,
-      profile,
-    } = await stopProfilerNowAndGetThreads(contentPid);
+    const { parentThread, contentThread, profile } =
+      await stopProfilerNowAndGetThreads(contentPid);
 
     // The service worker work happens in a third "thread" or process, let's try
     // to find it.
@@ -157,9 +154,6 @@ add_task(async function test_network_markers_service_worker_register() {
 
     // Let's look at all pairs and make sure we requested all expected files.
     const parentStopMarkers = parentPairs.map(([_, stopMarker]) => stopMarker);
-    const serviceWorkerStopMarkers = serviceWorkerPairs.map(
-      ([_, stopMarker]) => stopMarker
-    );
 
     // These are the files cached by the service worker. We should see markers
     // for both the parent thread and the service worker thread.
@@ -173,9 +167,6 @@ add_task(async function test_network_markers_service_worker_register() {
         `Checking if "${expectedFile}" is present in the network markers in both processes.`
       );
       const parentMarker = parentStopMarkers.find(
-        marker => marker.data.URI === expectedFile
-      );
-      const serviceWorkerMarker = serviceWorkerStopMarkers.find(
         marker => marker.data.URI === expectedFile
       );
 
@@ -205,7 +196,6 @@ add_task(async function test_network_markers_service_worker_register() {
       };
 
       Assert.objectContains(parentMarker, expectedProperties);
-      Assert.objectContains(serviceWorkerMarker, expectedProperties);
     }
   });
 });
@@ -283,15 +273,15 @@ add_task(async function test_network_markers_service_worker_use() {
     );
 
     // Let's look at all pairs and make sure we requested all expected files.
-    const parentStopMarkers = parentPairs.map(([_, stopMarker]) => stopMarker);
+    const parentEndMarkers = parentPairs.map(([_, endMarker]) => endMarker);
     const contentStopMarkers = contentPairs.map(
       ([_, stopMarker]) => stopMarker
     );
 
     Assert.equal(
-      parentStopMarkers.length,
-      expectedFiles.length,
-      "There should be as many stop markers in the parent process as requested files."
+      parentEndMarkers.length,
+      expectedFiles.length * 2, // one redirect + one stop
+      "There should be twice as many end markers in the parent process as requested files."
     );
     Assert.equal(
       contentStopMarkers.length,
@@ -303,7 +293,7 @@ add_task(async function test_network_markers_service_worker_use() {
       info(
         `Checking if "${expectedFile}" if present in the network markers in both processes.`
       );
-      const parentMarker = parentStopMarkers.find(
+      const [parentRedirectMarker, parentStopMarker] = parentEndMarkers.filter(
         marker => marker.data.URI === expectedFile
       );
       const contentMarker = contentStopMarkers.find(
@@ -312,7 +302,6 @@ add_task(async function test_network_markers_service_worker_use() {
 
       const commonDataProperties = {
         type: "Network",
-        status: "STATUS_STOP",
         URI: expectedFile,
         requestMethod: "GET",
         contentType: Expect.stringMatches(/^(text\/html|image\/svg\+xml)$/),
@@ -322,44 +311,67 @@ add_task(async function test_network_markers_service_worker_use() {
         pri: Expect.number(),
       };
 
-      const expectedPropertiesForTopLevelNavigation = {
+      const expectedProperties = {
         name: Expect.stringMatches(
           `Load \\d+:.*${escapeStringRegexp(expectedFile)}`
         ),
-        // Note: in the future we may have more properties. We're using the
-        // "Only" flavor of the matcher so that we don't forget to update this
-        // test when this changes.
-        data: Expect.objectContainsOnly(commonDataProperties),
       };
 
-      const expectedPropertiesForOtherRequests = {
-        name: Expect.stringMatches(
-          `Load \\d+:.*${escapeStringRegexp(expectedFile)}`
-        ),
-        // Note: in the future we may have more properties. We're using the
-        // "Only" flavor of the matcher so that we don't forget to update this
-        // test when this changes.
-        data: Expect.objectContainsOnly({
+      Assert.objectContains(parentRedirectMarker, expectedProperties);
+      Assert.objectContains(parentStopMarker, expectedProperties);
+      Assert.objectContains(contentMarker, expectedProperties);
+      if (i === 0) {
+        // This is the top level navigation, the HTML file.
+        Assert.objectContainsOnly(parentRedirectMarker.data, {
+          ...commonDataProperties,
+          status: "STATUS_REDIRECT",
+          contentType: null,
+          cache: "Unresolved",
+          RedirectURI: expectedFile,
+          redirectType: "Internal",
+          redirectId: parentStopMarker.data.id,
+          isHttpToHttpsRedirect: false,
+        });
+
+        Assert.objectContainsOnly(parentStopMarker.data, {
+          ...commonDataProperties,
+          status: "STATUS_STOP",
+        });
+
+        Assert.objectContainsOnly(contentMarker.data, {
+          ...commonDataProperties,
+          status: "STATUS_STOP",
+        });
+      } else {
+        Assert.objectContainsOnly(parentRedirectMarker.data, {
+          ...commonDataProperties,
+          status: "STATUS_REDIRECT",
+          contentType: null,
+          cache: "Unresolved",
+          innerWindowID: Expect.number(),
+          RedirectURI: expectedFile,
+          redirectType: "Internal",
+          redirectId: parentStopMarker.data.id,
+          isHttpToHttpsRedirect: false,
+        });
+
+        Assert.objectContainsOnly(
+          parentStopMarker.data,
+          // Note: in the future we may have more properties. We're using the
+          // "Only" flavor of the matcher so that we don't forget to update this
+          // test when this changes.
+          {
+            ...commonDataProperties,
+            innerWindowID: Expect.number(),
+            status: "STATUS_STOP",
+          }
+        );
+
+        Assert.objectContainsOnly(contentMarker.data, {
           ...commonDataProperties,
           innerWindowID: Expect.number(),
-        }),
-      };
-
-      if (i === 0) {
-        Assert.objectContains(
-          parentMarker,
-          expectedPropertiesForTopLevelNavigation
-        );
-        Assert.objectContains(
-          contentMarker,
-          expectedPropertiesForTopLevelNavigation
-        );
-      } else {
-        Assert.objectContains(parentMarker, expectedPropertiesForOtherRequests);
-        Assert.objectContains(
-          contentMarker,
-          expectedPropertiesForOtherRequests
-        );
+          status: "STATUS_STOP",
+        });
       }
     }
   });

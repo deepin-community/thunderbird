@@ -42,14 +42,8 @@ pref("dom.capture.enabled", true);
 // Disable Web Push until we get it working
 pref("dom.push.enabled", true);
 
-// enable external storage API
-pref("dom.storageManager.enabled", true);
-
-// enable LocalStorage NextGen (LSNG) for all GeckoView channels.  (LSNG is
-// enabled for all of Gecko on nightly and early beta, but the rollout to
-// release has been slow because of legacy profile breakage issues that are not
-// shared by GeckoView.)
-pref("dom.storage.next_gen", true);
+// enable storage access API
+pref("dom.storage_access.enabled", true);
 
 // Inherit locale from the OS, used for multi-locale builds
 pref("intl.locale.requested", "");
@@ -78,7 +72,6 @@ pref("dom.ipc.processPriorityManager.enabled", true);
 
 pref("signon.debug", false);
 pref("signon.showAutoCompleteFooter", true);
-pref("security.insecure_field_warning.contextual.enabled", true);
 pref("toolkit.autocomplete.delegate", true);
 
 // Android doesn't support the new sync storage yet, we will have our own in
@@ -88,9 +81,7 @@ pref("webextensions.storage.sync.kinto", true);
 // This value is derived from the calculation:
 // MOZ_ANDROID_CONTENT_SERVICE_COUNT - dom.ipc.processCount
 // (dom.ipc.processCount is set in GeckoRuntimeSettings.java)
-#ifdef NIGHTLY_BUILD
-  pref("dom.ipc.processCount.webCOOP+COEP", 38);
-#endif
+pref("dom.ipc.processCount.webCOOP+COEP", 38);
 
 // Form autofill prefs.
 pref("extensions.formautofill.addresses.capture.enabled", true);
@@ -98,3 +89,10 @@ pref("extensions.formautofill.addresses.capture.enabled", true);
 // Debug prefs.
 pref("browser.formfill.debug", false);
 pref("extensions.formautofill.loglevel", "Warn");
+
+// PDF.js (enabled in StaticPrefList.yaml)
+// Try to convert PDFs sent as octet-stream
+pref("pdfjs.handleOctetStream", true);
+pref("browser.download.open_pdf_attachments_inline", true);
+pref("pdfjs.annotationEditorMode", -1);
+pref("pdfjs.enableFloatingToolbar", true);

@@ -24,10 +24,10 @@
 
         // Test for mutations applied.
         let verifyL10n = () => {
-          if (label.textContent.length > 0) {
+          if (label.textContent.length) {
             window.removeEventListener("MozAfterPaint", verifyL10n);
             // Notice: In normal tests we do not want to test against any particular
-            // value as per https://firefox-source-docs.mozilla.org/intl/l10n/l10n/fluent_tutorial.html#testing
+            // value as per https://firefox-source-docs.mozilla.org/l10n/fluent/tutorial.html#testing
             // But in this particular test, since we do not rely on actual real
             // localization, but instead we mock it in the test, we can test
             // against the actual value safely.
@@ -44,18 +44,20 @@
   </script>
   <script type="application/javascript">
   "use strict";
-  async function* generateBundles(resourceIds) {
-    const bundle = new FluentBundle("en-US");
-    bundle.addResource(new FluentResource(`
+  const l10nReg = new L10nRegistry();
+  const fs = [
+    { path: "/localization/en-US/mock.ftl", source: `
 key1 = Value for Key 1
-    `));
-    yield bundle;
-  }
+` },
+  ];
+  const source = L10nFileSource.createMock("test", "app", ["en-US"], "/localization/{locale}", fs);
+  l10nReg.registerSources([source]);
 
   document.domLoc = new DOMLocalization(
-    [],
+    ["/mock.ftl"],
     false,
-    { generateBundles }
+    l10nReg,
+    ["en-US"],
   );
   </script>
 </head>

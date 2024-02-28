@@ -1,10 +1,9 @@
 "use strict";
 
 const { HttpServer } = ChromeUtils.import("resource://testing-common/httpd.js");
-const { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 
 const TEST_DOMAIN = "www.example.com";
-XPCOMUtils.defineLazyGetter(this, "URL", function() {
+XPCOMUtils.defineLazyGetter(this, "URL", function () {
   return (
     "http://" + TEST_DOMAIN + ":" + httpserv.identity.primaryPort + "/path"
   );

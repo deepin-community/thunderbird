@@ -24,8 +24,6 @@
 <!ENTITY moveToNewWindow.accesskey "l">
 <!ENTITY newVirtualFolderCmd.label "Paieška įrašant radinius…">
 <!ENTITY newVirtualFolderCmd.accesskey "P">
-<!ENTITY newOtherAccountsCmd.label "Kita paskyra…">
-<!ENTITY newOtherAccountsCmd.accesskey "K">
 <!ENTITY newCreateEmailAccountCmd.label "Kurti naują el. pašto paskyrą…">
 <!ENTITY newCreateEmailAccountCmd.accesskey "e">
 <!ENTITY newExistingEmailAccountCmd.label "Registruoti turimą el. pašto paskyrą…">
@@ -48,8 +46,6 @@
 <!ENTITY openMessageFileCmd.accesskey "A">
 <!ENTITY saveAsMenu.label "Įrašyti kaip">
 <!ENTITY saveAsMenu.accesskey "k">
-<!ENTITY saveAsFileCmd.label "failą…">
-<!ENTITY saveAsFileCmd.accesskey "f">
 <!ENTITY saveAsFileCmd.key "s">
 <!ENTITY saveAsTemplateCmd.label "šabloną">
 <!ENTITY saveAsTemplateCmd.accesskey "š">
@@ -320,7 +316,6 @@
 <!ENTITY goBackCmd.commandKey "[">
 <!ENTITY goChatCmd.label "Į pokalbius">
 <!ENTITY goChatCmd.accesskey "k">
-<!ENTITY goChatCmd2.key "H">
 <!ENTITY prevStarredMsgCmd.label "žvaigždute pažymėtą laišką">
 <!ENTITY prevStarredMsgCmd.accesskey "ž">
 <!ENTITY folderMenu.label "Į aplanką">
@@ -946,3 +941,6 @@
 <!-- Content tab Navigation buttons -->
 <!ENTITY browseBackButton.tooltip    "Vienu puslapiu atgal">
 <!ENTITY browseForwardButton.tooltip "Vienu puslapiu pirmyn">
+
+<!ENTITY exportCmd.label "Export…">
+<!ENTITY exportCmd.accesskey "x">

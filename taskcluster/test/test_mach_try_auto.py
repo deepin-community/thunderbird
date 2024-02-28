@@ -1,15 +1,11 @@
 # Any copyright is dedicated to the public domain.
 # http://creativecommons.org/publicdomain/zero/1.0/
 
-from __future__ import absolute_import, print_function, unicode_literals
-
 import pytest
+from gecko_taskgraph.util.bugbug import push_schedules
+from gecko_taskgraph.util.chunking import BugbugLoader
 from mozunit import main
 from tryselect.selectors.auto import TRY_AUTO_PARAMETERS
-
-from taskgraph.util.bugbug import push_schedules
-from taskgraph.util.chunking import BugbugLoader
-
 
 pytestmark = pytest.mark.slow
 PARAMS = TRY_AUTO_PARAMETERS.copy()
@@ -91,14 +87,13 @@ def test_tasks_are_scheduled(optimized_task_graph, filter_tasks, func, min_expec
             lambda t: t.kind == "build" and "ccov" in t.attributes["build_platform"],
             id="no ccov builds",
         ),
-        # Disabled as per Bug 1731843
         # We should only assert that we have no signed builds on platforms that don't run
         # xpcshell tests.
-        # pytest.param(
-        #    lambda t: t.kind == "build-signing",
-        #    id="no build-signing",
-        #    marks=pytest.mark.xfail(reason="some xpcshell tests require signed builds"),
-        # ),
+        pytest.param(
+            lambda t: t.kind == "build-signing",
+            id="no build-signing",
+            marks=pytest.mark.xfail(reason="some xpcshell tests require signed builds"),
+        ),
         pytest.param(
             lambda t: t.kind == "upload-symbols",
             id="no upload-symbols",

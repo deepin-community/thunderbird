@@ -8,27 +8,30 @@ add_task(async () => {
     "network.cookieJarSettings.unblocked_for_testing",
     true
   );
+  Services.prefs.setBoolPref("dom.security.https_first", false);
 
-  var ios = Cc["@mozilla.org/network/io-service;1"].getService(Ci.nsIIOService);
-  var cookieURI = ios.newURI("http://mozilla.org/test_cookie_blacklist.js");
+  var cookieURI = Services.io.newURI(
+    "http://mozilla.org/test_cookie_blacklist.js"
+  );
   const channel = NetUtil.newChannel({
     uri: cookieURI,
     loadUsingSystemPrincipal: true,
     contentPolicyType: Ci.nsIContentPolicy.TYPE_DOCUMENT,
   });
 
-  var cookieService = Cc["@mozilla.org/cookieService;1"].getService(
-    Ci.nsICookieService
+  Services.cookies.setCookieStringFromHttp(
+    cookieURI,
+    "BadCookie1=\x01",
+    channel
   );
-  cookieService.setCookieStringFromHttp(cookieURI, "BadCookie1=\x01", channel);
-  cookieService.setCookieStringFromHttp(cookieURI, "BadCookie2=\v", channel);
-  cookieService.setCookieStringFromHttp(
+  Services.cookies.setCookieStringFromHttp(cookieURI, "BadCookie2=\v", channel);
+  Services.cookies.setCookieStringFromHttp(
     cookieURI,
     "Bad\x07Name=illegal",
     channel
   );
-  cookieService.setCookieStringFromHttp(cookieURI, GOOD_COOKIE, channel);
-  cookieService.setCookieStringFromHttp(cookieURI, SPACEY_COOKIE, channel);
+  Services.cookies.setCookieStringFromHttp(cookieURI, GOOD_COOKIE, channel);
+  Services.cookies.setCookieStringFromHttp(cookieURI, SPACEY_COOKIE, channel);
 
   CookieXPCShellUtils.createServer({ hosts: ["mozilla.org"] });
 
@@ -36,4 +39,5 @@ add_task(async () => {
     cookieURI.spec
   );
   Assert.equal(storedCookie, GOOD_COOKIE + "; " + SPACEY_COOKIE);
+  Services.prefs.clearUserPref("dom.security.https_first");
 });

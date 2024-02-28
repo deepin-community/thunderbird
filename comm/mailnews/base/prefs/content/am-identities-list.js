@@ -1,10 +1,8 @@
-/* -*- Mode: Java; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 var { Gloda } = ChromeUtils.import("resource:///modules/gloda/Gloda.jsm");
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 
 var gIdentityListBox; // the root <richlistbox> node
 var gAddButton;
@@ -13,6 +11,8 @@ var gSetDefaultButton;
 var gDeleteButton;
 
 var gAccount = null; // the account we are showing the identities for
+
+window.addEventListener("DOMContentLoaded", onLoad);
 
 document.addEventListener("dialogaccept", onOk);
 document.addEventListener("dialogcancel", onOk);
@@ -73,7 +73,7 @@ function refreshIdentityList(aSelectIndex) {
 /**
  * Opens the identity editor dialog.
  *
- * @param identity  the identity (if any) to load in the dialog
+ * @param {nsIMsgIdentity} identity - The identity (if any) to load in the dialog.
  */
 function openIdentityEditor(identity) {
   let args = { identity, account: gAccount, result: false };

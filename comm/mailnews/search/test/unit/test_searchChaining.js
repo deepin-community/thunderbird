@@ -14,7 +14,7 @@ load("../../../resources/MessageGenerator.jsm");
 var { IMAPPump, setupIMAPPump, teardownIMAPPump } = ChromeUtils.import(
   "resource://testing-common/mailnews/IMAPpump.jsm"
 );
-var { imapMessage } = ChromeUtils.import(
+var { ImapMessage } = ChromeUtils.import(
   "resource://testing-common/mailnews/Imapd.jsm"
 );
 const { PromiseTestUtils } = ChromeUtils.import(
@@ -31,7 +31,7 @@ async function setupFolder() {
   let msgURI = Services.io.newURI(
     "data:text/plain;base64," + btoa(synthMessage.toMessageString())
   );
-  let message = new imapMessage(msgURI.spec, IMAPPump.mailbox.uidnext++, []);
+  let message = new ImapMessage(msgURI.spec, IMAPPump.mailbox.uidnext++, []);
   IMAPPump.mailbox.addMessage(message);
 
   // update folder to download header.
@@ -42,9 +42,8 @@ async function setupFolder() {
 
 async function searchTest() {
   // Get the IMAP inbox...
-  var emptyLocal1 = localAccountUtils.rootFolder.createLocalSubfolder(
-    "empty 1"
-  );
+  var emptyLocal1 =
+    localAccountUtils.rootFolder.createLocalSubfolder("empty 1");
 
   let searchSession = Cc[
     "@mozilla.org/messenger/searchSession;1"

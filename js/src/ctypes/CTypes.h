@@ -333,7 +333,7 @@ struct FieldHashPolicy {
 };
 
 using FieldInfoHash = GCHashMap<js::HeapPtr<JSLinearString*>, FieldInfo,
-                                FieldHashPolicy, ZoneAllocPolicy>;
+                                FieldHashPolicy, CellAllocPolicy>;
 
 // Descriptor of ABI, return type, argument types, and variadicity for a
 // FunctionType.
@@ -354,12 +354,12 @@ struct FunctionInfo {
 
   // A fixed array of known parameter types, excluding any variadic
   // parameters (if mIsVariadic).
-  GCVector<HeapPtr<JSObject*>, 0, ZoneAllocPolicy> mArgTypes;
+  GCVector<HeapPtr<JSObject*>, 0, CellAllocPolicy> mArgTypes;
 
   // A variable array of ffi_type*s corresponding to both known parameter
   // types and dynamic (variadic) parameter types. Longer than mArgTypes
   // only if mIsVariadic.
-  Vector<ffi_type*, 0, ZoneAllocPolicy> mFFITypes;
+  Vector<ffi_type*, 0, CellAllocPolicy> mFFITypes;
 
   // Flag indicating whether the function behaves like a C function with
   // ... as the final formal parameter.
@@ -466,12 +466,14 @@ enum CClosureSlot {
 };
 
 enum CDataFinalizerSlot {
+  // PrivateValue storing CDataFinalizer::Private* pointer or UndefinedValue.
+  SLOT_DATAFINALIZER_PRIVATE = 0,
   // The type of the value (a CType JSObject).
   // We hold it to permit ImplicitConvert and ToSource.
-  SLOT_DATAFINALIZER_VALTYPE = 0,
+  SLOT_DATAFINALIZER_VALTYPE = 1,
   // The type of the function used at finalization (a CType JSObject).
   // We hold it to permit |ToSource|.
-  SLOT_DATAFINALIZER_CODETYPE = 1,
+  SLOT_DATAFINALIZER_CODETYPE = 2,
   CDATAFINALIZER_SLOTS
 };
 

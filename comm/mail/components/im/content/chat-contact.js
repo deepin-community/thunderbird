@@ -8,17 +8,19 @@
 
 // Wrap in a block to prevent leaking to window scope.
 {
-  const { Services } = ChromeUtils.import(
-    "resource://gre/modules/Services.jsm"
+  const { IMServices } = ChromeUtils.importESModule(
+    "resource:///modules/IMServices.sys.mjs"
   );
-  const { ChatIcons } = ChromeUtils.import("resource:///modules/chatIcons.jsm");
+  const { ChatIcons } = ChromeUtils.importESModule(
+    "resource:///modules/chatIcons.sys.mjs"
+  );
 
   /**
    * The MozChatContactRichlistitem widget displays contact information about user under
    * chat-groups, online contacts and offline contacts: i.e. icon and username.
    * On double clicking the element, it gets moved into the conversations.
    *
-   * @extends {MozElements.MozRichlistitem}
+   * @augments {MozElements.MozRichlistitem}
    */
   class MozChatContactRichlistitem extends MozElements.MozRichlistitem {
     static get inheritedAttributes() {
@@ -29,6 +31,38 @@
         ".contactStatusText": "value=statusTextWithDash",
       };
     }
+
+    static get markup() {
+      return `
+      <vbox class="box-line"></vbox>
+      <stack class="prplBuddyIcon">
+        <html:img class="protoIcon" alt="" />
+        <html:img class="smallStatusIcon" />
+      </stack>
+      <hbox flex="1" class="contact-hbox">
+        <stack>
+          <label crop="end"
+                 class="contactDisplayName blistDisplayName">
+          </label>
+          <html:input type="text"
+                      class="contactDisplayNameInput"
+                      hidden="hidden"/>
+        </stack>
+        <label crop="end"
+               style="flex: 100000 100000;"
+               class="contactStatusText">
+        </label>
+        <button class="startChatBubble"
+                tooltiptext="&openConversationButton.tooltip;">
+        </button>
+      </hbox>
+      `;
+    }
+
+    static get entities() {
+      return ["chrome://messenger/locale/chat.dtd"];
+    }
+
     connectedCallback() {
       if (this.delayConnectedCallback() || this.hasChildNodes()) {
         return;
@@ -74,7 +108,7 @@
       // @implements {nsIObserver}
       this.observer = {
         QueryInterface: ChromeUtils.generateQI(["nsIObserver"]),
-        observe: function(subject, topic, data) {
+        observe: function (subject, topic, data) {
           if (
             topic == "contact-preferred-buddy-changed" ||
             topic == "contact-display-name-changed" ||
@@ -91,36 +125,7 @@
         }.bind(this),
       };
 
-      this.appendChild(
-        MozXULElement.parseXULToFragment(
-          `
-          <vbox class="box-line"></vbox>
-          <stack class="prplBuddyIcon">
-            <html:img class="protoIcon" alt="" />
-            <html:img class="smallStatusIcon" />
-          </stack>
-          <hbox flex="1" class="contact-hbox">
-            <stack>
-              <label crop="end"
-                     flex="1"
-                     class="contactDisplayName blistDisplayName">
-              </label>
-              <html:input type="text"
-                          class="contactDisplayNameInput"
-                          hidden="hidden"/>
-            </stack>
-            <label crop="end"
-                   flex="100000"
-                   class="contactStatusText">
-            </label>
-            <button class="startChatBubble"
-                    tooltiptext="&openConversationButton.tooltip;">
-            </button>
-          </hbox>
-          `,
-          ["chrome://messenger/locale/chat.dtd"]
-        )
-      );
+      this.appendChild(this.constructor.fragment);
 
       this.initializeAttributeInheritance();
     }
@@ -182,7 +187,7 @@
       label.setAttribute("hidden", "true");
       input.focus();
 
-      this._inputBlurListener = function(event) {
+      this._inputBlurListener = function (event) {
         this.finishAliasing(true);
       }.bind(this);
       input.addEventListener("blur", this._inputBlurListener);
@@ -190,7 +195,7 @@
       // Some keys (home/end for example) can make the selected item
       // of the richlistbox change without producing a blur event on
       // our textbox. Make sure we watch richlistbox selection changes.
-      this._parentSelectListener = function(event) {
+      this._parentSelectListener = function (event) {
         if (event.target == this.parentNode) {
           this.finishAliasing(true);
         }
@@ -227,7 +232,7 @@
 
     openConversation() {
       let prplConv = this.contact.createConversation();
-      let uiConv = Services.conversations.getUIConversation(prplConv);
+      let uiConv = IMServices.conversations.getUIConversation(prplConv);
       chatHandler.focusConversation(uiConv);
     }
 

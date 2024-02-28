@@ -2,9 +2,9 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-dock-options-window-dialog =
+dock-options-window-dialog2 =
     .title = Nastavení ikony aplikace
-    .style = width: 35em;
+dock-options-dialog-title = Nastavení ikony aplikace
 dock-options-show-badge =
     .label = Zobrazit odznak
     .accesskey = b
@@ -20,4 +20,4 @@ count-unread-messages-radio =
 count-new-messages-radio =
     .label = Počet nových zpráv
     .accesskey = n
-notification-settings-info = Ikonu notifikace můžete zakázat v systémovém nastavení panelu upozornění.
+notification-settings-info2 = Ikonu notifikace můžete zakázat v systémovém nastavení panelu upozornění.

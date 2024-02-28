@@ -9,28 +9,23 @@
 
 "use strict";
 
+var utils = ChromeUtils.import("resource://testing-common/mozmill/utils.jsm");
 var {
   close_compose_window,
   open_compose_new_mail,
+  save_compose_message,
   wait_for_compose_window,
 } = ChromeUtils.import("resource://testing-common/mozmill/ComposeHelpers.jsm");
-var {
-  be_in_folder,
-  get_special_folder,
-  mc,
-  press_delete,
-  select_click_row,
-} = ChromeUtils.import(
-  "resource://testing-common/mozmill/FolderDisplayHelpers.jsm"
-);
-var { plan_for_new_window } = ChromeUtils.import(
+var { be_in_folder, get_special_folder, mc, press_delete, select_click_row } =
+  ChromeUtils.import(
+    "resource://testing-common/mozmill/FolderDisplayHelpers.jsm"
+  );
+var { click_menus_in_sequence, plan_for_new_window } = ChromeUtils.import(
   "resource://testing-common/mozmill/WindowHelpers.jsm"
 );
-
 var { MailServices } = ChromeUtils.import(
   "resource:///modules/MailServices.jsm"
 );
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 
 var gInbox;
 var gDrafts;
@@ -48,28 +43,27 @@ var identity3Name = "User Z";
 var identity3Label = "Label Z";
 var identityKey4;
 
-add_task(function setupModule(module) {
+add_setup(async function () {
   // Now set up an account with some identities.
-  let acctMgr = MailServices.accounts;
-  account = acctMgr.createAccount();
-  account.incomingServer = acctMgr.createIncomingServer(
+  account = MailServices.accounts.createAccount();
+  account.incomingServer = MailServices.accounts.createIncomingServer(
     "nobody",
     "New Msg Compose Identity Testing",
     "pop3"
   );
 
-  let identity1 = acctMgr.createIdentity();
+  let identity1 = MailServices.accounts.createIdentity();
   identity1.email = identity1Email;
   account.addIdentity(identity1);
   identityKey1 = identity1.key;
 
-  let identity2 = acctMgr.createIdentity();
+  let identity2 = MailServices.accounts.createIdentity();
   identity2.email = identity2Email;
   identity2.fullName = identity2Name;
   account.addIdentity(identity2);
   identityKey2 = identity2.key;
 
-  let identity3 = acctMgr.createIdentity();
+  let identity3 = MailServices.accounts.createIdentity();
   identity3.email = identity3Email;
   identity3.fullName = identity3Name;
   identity3.label = identity3Label;
@@ -77,14 +71,14 @@ add_task(function setupModule(module) {
   identityKey3 = identity3.key;
 
   // Identity with no data.
-  let identity4 = acctMgr.createIdentity();
+  let identity4 = MailServices.accounts.createIdentity();
   account.addIdentity(identity4);
   identityKey4 = identity4.key;
 
   gInbox = account.incomingServer.rootFolder.getFolderWithFlags(
     Ci.nsMsgFolderFlags.Inbox
   );
-  gDrafts = get_special_folder(Ci.nsMsgFolderFlags.Drafts, true);
+  gDrafts = await get_special_folder(Ci.nsMsgFolderFlags.Drafts, true);
 });
 
 /**
@@ -98,7 +92,7 @@ add_task(function setupModule(module) {
  *                        (the sender address to be sent out).
  */
 function checkCompIdentity(cwc, aIdentityKey, aIdentityAlias, aIdentityValue) {
-  let identityList = cwc.e("msgIdentity");
+  let identityList = cwc.window.document.getElementById("msgIdentity");
 
   Assert.equal(
     cwc.window.getCurrentIdentityKey(),
@@ -128,7 +122,7 @@ function checkCompIdentity(cwc, aIdentityKey, aIdentityAlias, aIdentityValue) {
  * expected initial identity.
  */
 add_task(async function test_compose_from_composer() {
-  be_in_folder(gInbox);
+  await be_in_folder(gInbox);
 
   let cwc = open_compose_new_mail();
   checkCompIdentity(cwc, account.defaultIdentity.key);
@@ -170,7 +164,7 @@ add_task(async function test_compose_from_composer() {
  */
 add_task(async function test_editing_identity() {
   Services.prefs.setBoolPref("mail.compose.warned_about_customize_from", true);
-  be_in_folder(gInbox);
+  await be_in_folder(gInbox);
 
   let compWin = open_compose_new_mail();
   checkCompIdentity(compWin, account.defaultIdentity.key, identity1Email);
@@ -180,13 +174,21 @@ add_task(async function test_editing_identity() {
   let customEmail = "custom@edited.invalid";
   let identityCustom = customName + " <" + customEmail + ">";
 
-  compWin.click(compWin.e("msgIdentity"));
-  await compWin.click_menus_in_sequence(compWin.e("msgIdentityPopup"), [
-    { command: "cmd_customizeFromAddress" },
-  ]);
-  compWin.waitFor(() => compWin.e("msgIdentity").editable);
+  EventUtils.synthesizeMouseAtCenter(
+    compWin.window.document.getElementById("msgIdentity"),
+    {},
+    compWin.window.document.getElementById("msgIdentity").ownerGlobal
+  );
+  await click_menus_in_sequence(
+    compWin.window.document.getElementById("msgIdentityPopup"),
+    [{ command: "cmd_customizeFromAddress" }]
+  );
+  utils.waitFor(
+    () => compWin.window.document.getElementById("msgIdentity").editable
+  );
 
-  compWin.type(compWin.e("msgIdentityPopup"), identityCustom);
+  compWin.window.document.getElementById("msgIdentityPopup").focus();
+  EventUtils.sendString(identityCustom, compWin.window);
   checkCompIdentity(
     compWin,
     account.defaultIdentity.key,
@@ -202,14 +204,14 @@ add_task(async function test_editing_identity() {
 
   // Switch to another identity to see if editable field still obeys predefined
   // identity values.
-  await compWin.click_menus_in_sequence(compWin.e("msgIdentityPopup"),
+  await click_menus_in_sequence(compWin.window.document.getElementById("msgIdentityPopup"),
                                   [ { identitykey: identityKey2 } ]);
   checkCompIdentity(compWin, identityKey2, identity2From, identity2From);
 
   // This should not save the identity2 to the draft message.
   close_compose_window(compWin);
 
-  be_in_folder(gDrafts);
+  await be_in_folder(gDrafts);
   let curMessage = select_click_row(0);
   Assert.equal(curMessage.author, identityCustom);
   // Remove the saved draft.
@@ -223,7 +225,7 @@ add_task(async function test_editing_identity() {
  * Test how an identity displays and behaves in the compose window.
  */
 add_task(async function test_display_of_identities() {
-  be_in_folder(gInbox);
+  await be_in_folder(gInbox);
 
   let cwc = open_compose_new_mail();
   checkCompIdentity(cwc, account.defaultIdentity.key, identity1Email);
@@ -249,18 +251,17 @@ add_task(async function test_display_of_identities() {
 
   // Bug 1152045, check that the email address from the selected identity
   // is properly used for the From field in the created message.
-  cwc.window.SaveAsDraft();
-  waitForSaveOperation(cwc);
+  await save_compose_message(cwc.window);
   close_compose_window(cwc);
 
-  be_in_folder(gDrafts);
+  await be_in_folder(gDrafts);
   let curMessage = select_click_row(0);
   Assert.equal(curMessage.author, identity3From);
   // Remove the saved draft.
   press_delete(mc);
 });
 
-registerCleanupFunction(function teardownModule(module) {
+registerCleanupFunction(function () {
   account.removeIdentity(MailServices.accounts.getIdentity(identityKey1));
   account.removeIdentity(MailServices.accounts.getIdentity(identityKey2));
   account.removeIdentity(MailServices.accounts.getIdentity(identityKey3));

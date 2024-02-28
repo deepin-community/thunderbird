@@ -8,10 +8,8 @@
 
 "use strict";
 
-var {
-  async_wait_for_compose_window,
-  close_compose_window,
-} = ChromeUtils.import("resource://testing-common/mozmill/ComposeHelpers.jsm");
+var { async_wait_for_compose_window, close_compose_window } =
+  ChromeUtils.import("resource://testing-common/mozmill/ComposeHelpers.jsm");
 
 var { async_plan_for_new_window } = ChromeUtils.import(
   "resource://testing-common/mozmill/WindowHelpers.jsm"
@@ -21,6 +19,7 @@ var {
   assert_selected_and_displayed,
   be_in_folder,
   create_message,
+  get_about_message,
   mc,
   select_click_row,
 } = ChromeUtils.import(
@@ -40,11 +39,10 @@ var { MailServices } = ChromeUtils.import(
   "resource:///modules/MailServices.jsm"
 );
 
-add_task(function setup() {
+add_setup(function () {
   // Now set up an account with some identities.
-  let acctMgr = MailServices.accounts;
-  let account = acctMgr.createAccount();
-  account.incomingServer = acctMgr.createIncomingServer(
+  let account = MailServices.accounts.createAccount();
+  account.incomingServer = MailServices.accounts.createIncomingServer(
     "nobody",
     "Redirect Addresses Testing",
     "pop3"
@@ -54,11 +52,11 @@ add_task(function setup() {
     .QueryInterface(Ci.nsIMsgLocalMailFolder)
     .createLocalSubfolder("Msgs4Redirect");
 
-  identity = acctMgr.createIdentity();
+  identity = MailServices.accounts.createIdentity();
   identity.email = myEmail;
   account.addIdentity(identity);
 
-  identity2 = acctMgr.createIdentity();
+  identity2 = MailServices.accounts.createIdentity();
   identity2.email = myEmail2;
   account.addIdentity(identity2);
 
@@ -80,16 +78,12 @@ function checkAddresses(win, expectedFields) {
 
   let obtainedFields = [];
   for (let row of rows) {
-    let addrTextbox = row.querySelector(
-      `input[is="autocomplete-input"][recipienttype]`
-    );
-
     let addresses = [];
     for (let pill of row.querySelectorAll("mail-address-pill")) {
       addresses.push(pill.fullAddress);
     }
 
-    obtainedFields[addrTextbox.getAttribute("recipienttype")] = addresses;
+    obtainedFields[row.dataset.recipienttype] = addresses;
   }
 
   // Check what we expect is there.
@@ -135,9 +129,7 @@ function checkAddresses(win, expectedFields) {
   // Check if the input "aria-label" attribute was properly updated.
   for (let row of rows) {
     let addrLabel = row.querySelector(".address-label-container > label").value;
-    let addrTextbox = row.querySelector(
-      `input[is="autocomplete-input"][recipienttype]`
-    );
+    let addrTextbox = row.querySelector(".address-row-input");
     let ariaLabel = addrTextbox.getAttribute("aria-label");
     let pillCount = row.querySelectorAll("mail-address-pill").length;
 
@@ -175,16 +167,19 @@ add_task(async function testRedirectToMe() {
     cc: "Lisa <lisa@example.com>",
     subject: "testRedirectToMe",
   });
-  add_message_to_folder(folder, msg0);
+  await add_message_to_folder([folder], msg0);
 
-  be_in_folder(folder);
+  await be_in_folder(folder);
   let msg = select_click_row(i++);
   assert_selected_and_displayed(mc, msg);
 
   // Open Other Actions.
-  let otherActionsButton = document.getElementById("otherActionsButton");
-  EventUtils.synthesizeMouseAtCenter(otherActionsButton, {}, mc.window);
-  let otherActionsPopup = document.getElementById("otherActionsPopup");
+  let aboutMessage = get_about_message();
+  let otherActionsButton =
+    aboutMessage.document.getElementById("otherActionsButton");
+  EventUtils.synthesizeMouseAtCenter(otherActionsButton, {}, aboutMessage);
+  let otherActionsPopup =
+    aboutMessage.document.getElementById("otherActionsPopup");
   let popupshown = BrowserTestUtils.waitForEvent(
     otherActionsPopup,
     "popupshown"
@@ -197,7 +192,7 @@ add_task(async function testRedirectToMe() {
   EventUtils.synthesizeMouseAtCenter(
     otherActionsPopup.firstElementChild,
     {},
-    mc.window
+    aboutMessage
   );
   let cwc = await async_wait_for_compose_window(mc, compWinPromise);
   Assert.equal(

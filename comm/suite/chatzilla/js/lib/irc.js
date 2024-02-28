@@ -12,23 +12,22 @@ const JSIRC_ERR_OFFLINE   = "JSIRCE:OFFLINE";
 const JSIRC_ERR_PAC_LOADING = "JSIRCE:PAC_LOADING";
 
 const JSIRCV3_SUPPORTED_CAPS = [
-    //"account-notify",
-    //"account-tag",
+    "account-notify",
+    "account-tag",
     "away-notify",
-    //"batch",
-    //"cap-notify",
+    "batch",
+    "cap-notify",
     "chghost",
-    //"echo-message",
-    //"extended-join",
-    //"invite-notify",
+    "echo-message",
+    "extended-join",
+    "invite-notify",
     //"labeled-response",
-    //"message-tags",
+    "message-tags",
     //"metadata",
-    //"monitor",
     "multi-prefix",
-    //"sasl",
-    //"server-time",
-    //"tls",
+    "sasl",
+    "server-time",
+    "tls",
     "userhost-in-names",
 ];
 
@@ -83,6 +82,7 @@ function CIRCNetwork (name, serverList, eventPump, temporary)
     this.unicodeName = name;
     this.viewName = name;
     this.canonicalName = name;
+    this.collectionKey = ":" + name;
     this.encodedName = name;
     this.servers = new Object();
     this.serverList = new Array();
@@ -109,6 +109,9 @@ function CIRCNetwork (name, serverList, eventPump, temporary)
 CIRCNetwork.prototype.INITIAL_NICK = "js-irc";
 CIRCNetwork.prototype.INITIAL_NAME = "INITIAL_NAME";
 CIRCNetwork.prototype.INITIAL_DESC = "INITIAL_DESC";
+CIRCNetwork.prototype.USE_SASL = false;
+CIRCNetwork.prototype.UPGRADE_INSECURE = false;
+CIRCNetwork.prototype.STS_MODULE = null;
 /* set INITIAL_CHANNEL to "" if you don't want a primary channel */
 CIRCNetwork.prototype.INITIAL_CHANNEL = "#jsbot";
 CIRCNetwork.prototype.INITIAL_UMODE = "+iw";
@@ -386,6 +389,39 @@ function net_doconnect(e)
         host = 0;
     }
 
+    // If STS is enabled, check the cache for a secure port to connect to.
+    if (this.STS_MODULE.ENABLED && !this.serverList[host].isSecure)
+    {
+        var newPort = this.STS_MODULE.getUpgradePolicy(this.serverList[host].hostname);
+        if (newPort)
+        {
+            // If we're a temporary network, just change the server prior to connecting.
+            if (this.temporary)
+            {
+                this.serverList[host].port = newPort;
+                this.serverList[host].isSecure = true;
+            }
+            // Otherwise, find or create a server with the specified host and port.
+            else
+            {
+                var hostname = this.serverList[host].hostname;
+                var matches = this.serverList.filter(function(s) {
+                    return  s.hostname == hostname && s.port == newPort;
+                });
+                if (matches.length > 0)
+                {
+                    host = arrayIndexOf(this.serverList, matches[0]);
+                }
+                else
+                {
+                    this.addServer(hostname, newPort, true,
+                                    this.serverList[host].password);
+                    host = this.serverList.length - 1;
+                }
+            }
+        }
+    }
+
     if (this.serverList[host].isSecure || !this.requireSecurity)
     {
         ev = new CEvent ("network", "startconnect", this, "onStartConnect");
@@ -494,6 +530,7 @@ function CIRCServer (parent, hostname, port, isSecure, password)
     s.unicodeName = serverName;
     s.viewName = serverName;
     s.canonicalName = serverName;
+    s.collectionKey = ":" + serverName;
     s.encodedName = serverName;
     s.hostname = hostname;
     s.port = port;
@@ -518,7 +555,7 @@ function CIRCServer (parent, hostname, port, isSecure, password)
     s.caps = new Object();
     s.capvals = new Object();
 
-    parent.servers[s.canonicalName] = s;
+    parent.servers[s.collectionKey] = s;
     if ("onInit" in s)
         s.onInit();
     return s;
@@ -531,8 +568,10 @@ CIRCServer.prototype.VERSION_RPLY = "JS-IRC Library v0.01, " +
 CIRCServer.prototype.OS_RPLY = "Unknown";
 CIRCServer.prototype.HOST_RPLY = "Unknown";
 CIRCServer.prototype.DEFAULT_REASON = "no reason";
-/* true means on352 code doesn't collect hostmask, username, etc. */
+/* true means WHO command doesn't collect hostmask, username, etc. */
 CIRCServer.prototype.LIGHTWEIGHT_WHO = false;
+/* Unique identifier for WHOX commands. */
+CIRCServer.prototype.WHOX_TYPE = "314";
 /* -1 == never, 0 == prune onQuit, >0 == prune when >X ms old */
 CIRCServer.prototype.PRUNE_OLD_USERS = -1;
 
@@ -633,6 +672,122 @@ function serv_tolowercase(str)
      return str;
 }
 
+// Iterates through the keys in an object and, if specified, the keys of
+// child objects.
+CIRCServer.prototype.renameProperties =
+function serv_renameproperties(obj, child)
+{
+    for (let key in obj)
+    {
+        let item = obj[key];
+        item.canonicalName = this.toLowerCase(item.encodedName);
+        item.collectionKey = ":" + item.canonicalName;
+        renameProperty(obj, key, item.collectionKey);
+        if (child && (child in item))
+            this.renameProperties(item[child], null);
+    }
+}
+
+// Encodes tag data to send.
+CIRCServer.prototype.encodeTagData =
+function serv_encodetagdata(obj)
+{
+    var dict = new Object();
+    dict[";"] = ":";
+    dict[" "] = "s";
+    dict["\\"] = "\\";
+    dict["\r"] = "r";
+    dict["\n"] = "n";
+
+    // Function for escaping key values.
+    function escapeTagValue(data)
+    {
+        var rv = "";
+        for (var i = 0; i  < data.length; i++)
+        {
+            var ci = data[i];
+            var co = dict[data[i]];
+            if (co)
+                rv += "\\" + co;
+            else
+                rv += ci;
+        }
+
+        return rv;
+    }
+
+    var str = "";
+
+    for(var key in obj)
+    {
+        var val = obj[key];
+        str += key;
+        if (val)
+        {
+            str += "=";
+            str += escapeTagValue(val);
+        }
+        str += ";";
+    }
+
+    // Remove any trailing semicolons.
+    if (str[str.length - 1] == ";")
+        str = str.substring(0, str.length - 1);
+
+    return str;
+}
+
+// Decodes received tag data.
+CIRCServer.prototype.decodeTagData =
+function serv_decodetagdata(str)
+{
+    // Remove the leading '@' if we have one.
+    if (str[0] == "@")
+        str = str.substring(1);
+
+    var dict = new Object();
+    dict[":"] = ";";
+    dict["s"] = " ";
+    dict["\\"] = "\\";
+    dict["r"] = "\r";
+    dict["n"] = "\n";
+
+    // Function for unescaping key values.
+    function unescapeTagValue(data)
+    {
+        var rv = "";
+        for (let j = 0; j < data.length; j++)
+        {
+            let currentItem = data[j];
+            if (currentItem == "\\" && j < data.length - 1)
+            {
+                let nextItem = data[j + 1];
+                if (nextItem in dict)
+                    rv += dict[nextItem];
+                else
+                    rv += nextItem;
+                j++
+            }
+            else if (currentItem != "\\")
+                rv += currentItem;
+        }
+
+        return rv;
+    }
+
+    var obj = Object();
+
+    var tags = str.split(";");
+    for (var i = 0; i < tags.length; i++)
+    {
+        var [key, val] = tags[i].split("=");
+        val = unescapeTagValue(val);
+        obj[key] = val;
+    }
+
+    return obj;
+}
+
 // Returns the IRC URL representation of this server.
 CIRCServer.prototype.getURL =
 function serv_geturl(target, flags)
@@ -656,12 +811,12 @@ function serv_geturl(target, flags)
 CIRCServer.prototype.getUser =
 function chan_getuser(nick)
 {
-    var tnick = this.toLowerCase(nick);
+    var tnick = ":" + this.toLowerCase(nick);
 
     if (tnick in this.users)
         return this.users[tnick];
 
-    tnick = this.toLowerCase(fromUnicode(nick, this));
+    tnick = ":" + this.toLowerCase(fromUnicode(nick, this));
 
     if (tnick in this.users)
         return this.users[tnick];
@@ -672,12 +827,12 @@ function chan_getuser(nick)
 CIRCServer.prototype.getChannel =
 function chan_getchannel(name)
 {
-    var tname = this.toLowerCase(name);
+    var tname = ":" + this.toLowerCase(name);
 
     if (tname in this.channels)
         return this.channels[tname];
 
-    tname = this.toLowerCase(fromUnicode(name, this));
+    tname = ":" + this.toLowerCase(fromUnicode(name, this));
 
     if (tname in this.channels)
         return this.channels[tname];
@@ -825,6 +980,63 @@ function serv_logout(reason)
     this.connection.sendData("QUIT :" +
                              fromUnicode(reason, this.parent) + "\n");
     this.connection.disconnect();
+}
+
+CIRCServer.prototype.sendAuthResponse =
+function serv_authresponse(resp)
+{
+    // Encode the response and break into 400-byte parts.
+    var resp = btoa(resp);
+    var part = null;
+    var n = 0;
+    do
+    {
+        part = resp.substring(0, 400);
+        n = part.length;
+        resp = resp.substring(400);
+
+        this.sendData("AUTHENTICATE " + part + '\n');
+    }
+    while (resp.length > 0);
+
+    // Send empty auth response if last part was exactly 400 bytes long.
+    if (n == 400)
+    {
+        this.sendData("AUTHENTICATE +\n");
+    }
+}
+
+CIRCServer.prototype.sendAuthAbort =
+function serv_authabort()
+{
+    // Abort an in-progress SASL authentication.
+    this.sendData("AUTHENTICATE *\n");
+}
+
+CIRCServer.prototype.sendMonitorList =
+function serv_monitorlist(nicks, isAdd)
+{
+    if (!nicks.length)
+        return;
+
+    var prefix;
+    if (isAdd)
+        prefix = "MONITOR + ";
+    else
+        prefix = "MONITOR - ";
+
+    /* Send monitor list updates in chunks less than
+       maxLineLength in size. */
+    var nicks_string = nicks.join(",");
+    while (nicks_string.length > this.maxLineLength)
+    {
+        var nicks_part = nicks_string.substring(0, this.maxLineLength);
+        var i = nicks_part.lastIndexOf(",");
+        nicks_part = nicks_string.substring(0, i);
+        nicks_string = nicks_string.substring(i + 1);
+        this.sendData(prefix + nicks_part + "\n");
+    }
+    this.sendData(prefix + nicks_string + "\n");
 }
 
 CIRCServer.prototype.addTarget =
@@ -1067,12 +1279,7 @@ function serv_disconnect(e)
         return;
 
     // Don't reconnect from a certificate error.
-    var certErrors = [SEC_ERROR_EXPIRED_CERTIFICATE, SEC_ERROR_UNKNOWN_ISSUER,
-                      SEC_ERROR_UNTRUSTED_ISSUER, SEC_ERROR_UNTRUSTED_CERT,
-                      SEC_ERROR_EXPIRED_ISSUER_CERTIFICATE,
-                      SEC_ERROR_CA_CERT_INVALID, SEC_ERROR_INADEQUATE_KEY_USAGE,
-                      SSL_ERROR_BAD_CERT_DOMAIN];
-    var certError = arrayContains(certErrors, e.disconnectStatus);
+    var certError = (getNSSErrorClass(e.disconnectStatus) == ERROR_CLASS_BAD_CERT);
 
     // Don't reconnect if our connection was aborted.
     var wasAborted = (e.disconnectStatus == NS_ERROR_ABORT);
@@ -1101,6 +1308,14 @@ function serv_disconnect(e)
         this.channels[c].users = new Object();
         this.channels[c].active = false;
     }
+
+    if (this.isStartTLS)
+    {
+        this.isSecure = false;
+        delete this.isStartTLS;
+    }
+
+    delete this.batches;
 
     this.connection = null;
     this.isConnected = false;
@@ -1231,7 +1446,7 @@ function serv_ppline(e)
         ev.data = lines[i].replace(/\r/g, "");
         if (ev.data)
         {
-            if (ev.data.match(/^(?::[^ ]+ )?(?:32[123]|352|315) /i))
+            if (ev.data.match(/^(?::[^ ]+ )?(?:32[123]|352|354|315) /i))
                 this.parent.eventPump.addBulkEvent(ev);
             else
                 this.parent.eventPump.addEvent(ev);
@@ -1273,6 +1488,18 @@ function serv_onRawData(e)
         return false;
     }
 
+    if (l[0] == "@")
+    {
+        e.tagdata = l.substring(0, l.indexOf(" "));
+        e.tags = this.decodeTagData(e.tagdata);
+        l = l.substring(l.indexOf(" ") + 1);
+    }
+    else
+    {
+        e.tagdata = new Object();
+        e.tags = new Object();
+    }
+
     if (l[0] == ":")
     {
         // Must split only on REAL spaces here, not just any old whitespace.
@@ -1298,6 +1525,11 @@ function serv_onRawData(e)
                     e.user = new CIRCUser(this, null, ary[1], ary[2], null);
             }
         }
+    }
+
+    if (("user" in e) && e.user && e.tags.account)
+    {
+        e.user.account = e.tags.account;
     }
 
     e.ignored = false;
@@ -1346,8 +1578,20 @@ function serv_onRawData(e)
     e.code = e.params[0].toUpperCase();
 
     // Ignore all private (inc. channel) messages, notices and invites here.
-    if (e.ignored && ((e.code == "PRIVMSG") || (e.code == "NOTICE") || (e.code == "INVITE") ))
+    if (e.ignored && ((e.code == "PRIVMSG") || (e.code == "NOTICE") ||
+                      (e.code == "INVITE") || (e.code == "TAGMSG")))
         return true;
+
+    // If the message is part of a batch, store it for later.
+    if (this.batches && e.tags["batch"] && e.code != "BATCH")
+    {
+        var reftag = e.tags["batch"];
+        // Check if the batch is already open.
+        // If not, ignore the incoming message.
+        if (this.batches[reftag])
+            this.batches[reftag].messages.push(e);
+        return false;
+    }
 
     e.type = "parseddata";
     e.destObject = this;
@@ -1424,8 +1668,8 @@ function serv_001 (e)
      */
     if (e.params[1] != e.server.me.encodedName)
     {
-        renameProperty(e.server.users, e.server.me.canonicalName,
-                       this.toLowerCase(e.params[1]));
+        renameProperty(e.server.users, e.server.me.collectionKey,
+                       ":" + this.toLowerCase(e.params[1]));
         e.server.me.changeNick(toUnicode(e.params[1], this));
     }
 
@@ -1514,26 +1758,8 @@ function serv_005 (e)
     // Update all users and channels if the casemapping changed.
     if (this.supports["casemapping"] != oldCaseMapping)
     {
-        var newName, encodedName;
-        for (var user in this.users)
-        {
-            newName = this.toLowerCase(this.users[user].encodedName);
-            renameProperty(this.users, user, newName);
-            this.users[newName].canonicalName = newName;
-        }
-        for (var channel in this.channels)
-        {
-            newName = this.toLowerCase(this.channels[channel].encodedName);
-            renameProperty(this.channels, this.channels[channel].canonicalName,
-                           newName);
-            this.channels[channel].canonicalName = newName;
-            for (user in this.channels[channel].users)
-            {
-                encodedName = this.channels[channel].users[user].encodedName;
-                newName = this.toLowerCase(encodedName);
-                renameProperty(this.channels[channel].users, user, newName);
-            }
-        }
+        this.renameProperties(this.users, null);
+        this.renameProperties(this.channels, "users");
     }
 
     // Supported 'special' items:
@@ -1705,6 +1931,8 @@ CIRCServer.prototype.on330 =
 function serv_330(e)
 {
     e.user = new CIRCUser(this, null, e.params[2]);
+    var account = (e.params[3] == "*" ? null : e.params[3]);
+    this.users[e.user.collectionKey].account = account;
 
     e.destObject = this.parent;
     e.set = "network";
@@ -1773,6 +2001,50 @@ function serv_352 (e)
         }
     }
     var away = (e.params[7][0] == "G");
+    if (e.user.isAway != away)
+    {
+        e.userHasChanges = true;
+        e.user.isAway = away;
+    }
+
+    e.destObject = this.parent;
+    e.set = "network";
+
+    return true;
+}
+
+/* extended who reply */
+CIRCServer.prototype.on354 =
+function serv_354(e)
+{
+    // Discard if the type is not ours.
+    if (e.params[2] != this.WHOX_TYPE)
+        return;
+
+    e.userHasChanges = false;
+    if (this.LIGHTWEIGHT_WHO)
+    {
+        e.user = new CIRCUser(this, null, e.params[7]);
+    }
+    else
+    {
+        e.user = new CIRCUser(this, null, e.params[7], e.params[4], e.params[5]);
+        e.user.connectionHost = e.params[6];
+        // Hops is a separate parameter in WHOX.
+        e.user.hops = e.params[9];
+        var account = (e.params[10] == "0" ? null : e.params[10]);
+        e.user.account = account;
+        if (11 in e.params)
+        {
+            var desc = e.decodeParam(11, e.user);
+            if (e.user.desc != desc)
+            {
+                e.userHasChanges = true;
+                e.user.desc = desc;
+            }
+        }
+    }
+    var away = (e.params[8][0] == "G");
     if (e.user.isAway != away)
     {
         e.userHasChanges = true;
@@ -1906,6 +2178,7 @@ function serv_367(e)
     {
         e.channel.bans[e.ban] = {host: e.ban, user: e.user, time: e.banTime };
         var ban_evt = new CEvent("channel", "ban", e.channel, "onBan");
+        ban_evt.tags = e.tags;
         ban_evt.channel = e.channel;
         ban_evt.ban = e.ban;
         ban_evt.source = e.user;
@@ -2042,7 +2315,34 @@ function my_cap (e)
         //Only request capabilities we support if we are connecting.
         if (this.pendingCapNegotiation)
         {
+            // If we have an STS upgrade policy, immediately disconnect
+            // and reconnect on the secure port.
+            if (this.parent.STS_MODULE.ENABLED && ("sts" in this.caps) && !this.isSecure)
+            {
+                var policy = this.parent.STS_MODULE.parseParameters(this.capvals["sts"]);
+                if (policy && policy.port)
+                {
+                    e.stsUpgradePort = policy.port;
+                    e.destObject = this.parent;
+                    e.set = "network";
+                    return false;
+                }
+            }
+
+            // Request STARTTLS if we are configured to do so.
+            if (!this.isSecure && ("tls" in this.caps) && this.parent.UPGRADE_INSECURE)
+                this.sendData("STARTTLS\n");
+
             var caps_req = JSIRCV3_SUPPORTED_CAPS.filter(i => (i in this.caps));
+
+            // Don't send requests for these caps.
+            let caps_noreq = ["tls", "sts", "echo-message"];
+
+            if (!this.parent.USE_SASL)
+                caps_noreq.push("sasl");
+
+            caps_req = caps_req.filter(i => caps_noreq.indexOf(i) === -1);
+
             if (caps_req.length > 0)
             {
                 caps_req = caps_req.join(" ");
@@ -2092,6 +2392,20 @@ function my_cap (e)
             this.caps[cap] = enabled;
         }
 
+        // Try SASL authentication if we are configured to do so.
+        if (caps.indexOf("sasl") != -1)
+        {
+            var ev = new CEvent("server", "sasl-start", this, "onSASLStart");
+            ev.server = this;
+            if (this.capvals["sasl"])
+                ev.mechs = this.capvals["sasl"].toLowerCase().split(/,/);
+            ev.destObject = this.parent;
+            this.parent.eventPump.routeEvent(ev);
+
+            if (this.pendingCapNegotiation)
+                return true;
+        }
+
         if (this.pendingCapNegotiation)
         {
             e.server.sendData("CAP END\n");
@@ -2121,10 +2435,230 @@ function my_cap (e)
             return true;
         }
     }
+    else if (e.params[2] == "NEW")
+    {
+        // A capability is now available, so request it if we can.
+        var caps = e.params[3].split(/\s+/);
+        e.newcaps = [];
+        for (var i = 0; i < caps.length; i++)
+        {
+            var [cap, value] = caps[i].split(/=(.+)/);
+            cap = cap.trim();
+            this.caps[cap] = null;
+            e.newcaps.push(cap);
+            if (value)
+                this.capvals[cap] = value;
+        }
+
+        var caps_req = JSIRCV3_SUPPORTED_CAPS.filter(i => (i in e.newcaps));
+
+        // Don't send requests for these caps.
+        caps_noreq = ["tls", "sts", "sasl", "echo-message"];
+        caps_req = caps_req.filter(i => caps_noreq.indexOf(i) === -1);
+
+        if (caps_req.length > 0)
+        {
+            caps_req = caps_req.join(" ");
+            e.server.sendData("CAP REQ :" + caps_req + "\n");
+        }
+    }
+    else if (e.params[2] == "DEL")
+    {
+        // A capability is no longer available.
+        var caps = e.params[3].split(/\s+/);
+        var caps_nodel = ["sts"];
+        for (var i = 0; i < caps.length; i++)
+        {
+            var cap = caps[i].split(/=(.+)/)[0];
+            cap = cap.trim();
+
+            if (arrayContains(caps_nodel, cap))
+                continue;
+
+            this.caps[cap] = null;
+        }
+    }
     else
     {
         dd("Unknown CAP reply " + e.params[2]);
     }
+
+    e.destObject = this.parent;
+    e.set = "network";
+}
+
+/* BATCH start or end */
+CIRCServer.prototype.onBatch =
+function serv_batch(e)
+{
+    // We should at least get a ref tag.
+    if (e.params.length < 2)
+        return false;
+
+    e.reftag = e.params[1].substring(1);
+    switch (e.params[1][0])
+    {
+        case "+":
+            e.starting = true;
+            break;
+        case "-":
+            e.starting = false;
+            break;
+        default:
+            // Invalid reference tag.
+            return false;
+    }
+    var isPlayback = (this.batches && this.batches[e.reftag] &&
+                      this.batches[e.reftag].playback);
+
+    if (!isPlayback)
+    {
+        if (e.starting)
+        {
+            // We're starting a batch, so we also need a type.
+            if (e.params.length < 3)
+                return false;
+
+            if (!this.batches)
+                this.batches = new Object();
+            // The batch object holds the messages queued up as part
+            // of this batch, and a boolean value indicating whether
+            // it is being played back.
+            var newBatch = new Object();
+            newBatch.messages = [e];
+            newBatch.type = e.params[2].toUpperCase();
+            if (e.params[3] && (e.params[3] in this.channels))
+            {
+                newBatch.destObject = this.channels[e.params[3]];
+            }
+            else if (e.params[3] && (e.params[3] in this.users))
+            {
+                newBatch.destObject = this.users[e.params[3]];
+            }
+            else
+            {
+                newBatch.destObject = this.parent;
+            }
+            newBatch.playback = false;
+            this.batches[e.reftag] = newBatch;
+        }
+        else
+        {
+            if (!this.batches[e.reftag])
+            {
+                // Got a close tag without an open tag, so ignore it.
+                return false;
+            }
+
+            var batch = this.batches[e.reftag];
+
+            // Closing the batch, prepare for playback.
+            batch.messages.push(e);
+            batch.playback = true;
+            if (e.tags["batch"])
+            {
+                // We are an inner batch. Append the message queue
+                // to the outer batch's message queue.
+                var parentRef = e.tags["batch"];
+                var parentMsgs = this.batches[parentRef].messages;
+                parentMsgs = parentMsgs.concat(batch.messages);
+            }
+            else
+            {
+                // We are an outer batch. Playback!
+                for (var i = 0; i < batch.messages.length; i++)
+                {
+                    var ev = batch.messages[i];
+                    ev.type = "parseddata";
+                    ev.destObject = this;
+                    ev.destMethod = "onParsedData";
+                    this.parent.eventPump.routeEvent(ev);
+                }
+            }
+        }
+        return false;
+    }
+    else
+    {
+        // Batch command is ready for handling.
+        e.batchtype = this.batches[e.reftag].type;
+        e.destObject = this.batches[e.reftag].destObject;
+        if (e.destObject.TYPE == "CIRCChannel")
+        {
+            e.set = "channel";
+        }
+        else
+        {
+            e.set = "network";
+        }
+
+        if (!e.starting)
+        {
+            // If we've reached the end of a batch in playback,
+            // do some cleanup.
+            delete this.batches[e.reftag];
+            if (Object.entries(this.batches).length == 0)
+                delete this.batches;
+        }
+
+        // Massage the batchtype into a method name for handlers:
+        // netsplit            - onNetsplitBatch
+        // some-batch-type     - onSomeBatchTypeBatch
+        // example.com/example - onExampleComExampleBatch
+        var batchCode = e.batchtype.split(/[\.\/-]/).map(function(s)
+        {
+            return s[0].toUpperCase() + s.substr(1).toLowerCase();
+        }).join("");
+        e.destMethod = "on" + batchCode + "Batch";
+
+        if (!e.destObject[e.destMethod])
+            e.destMethod = "onUnknownBatch";
+    }
+}
+
+/* SASL authentication responses */
+CIRCServer.prototype.on902 = /* Nick locked */
+CIRCServer.prototype.on903 = /* Auth success */
+CIRCServer.prototype.on904 = /* Auth failed */
+CIRCServer.prototype.on905 = /* Command too long */
+CIRCServer.prototype.on906 = /* Aborted */
+CIRCServer.prototype.on907 = /* Already authenticated */
+CIRCServer.prototype.on908 = /* Mechanisms */
+function cap_on900(e)
+{
+    if (this.pendingCapNegotiation)
+    {
+        delete this.pendingCapNegotiation;
+        this.sendData("CAP END\n");
+    }
+
+    if (e.code == "908")
+    {
+        // Update our list of SASL mechanics.
+        this.capvals["sasl"] = e.params[2];
+    }
+
+    e.destObject = this.parent;
+    e.set = "network";
+}
+
+/* STARTTLS responses */
+CIRCServer.prototype.on670 = /* Success */
+function cap_on670(e)
+{
+    this.caps["tls"] = true;
+    e.server.connection.startTLS();
+    e.server.isSecure = true;
+    e.server.isStartTLS = true;
+
+    e.destObject = this.parent;
+    e.set = "network";
+}
+
+CIRCServer.prototype.on691 = /* Failure */
+function cap_on691(e)
+{
+    this.caps["tls"] = false;
 
     e.destObject = this.parent;
     e.set = "network";
@@ -2143,8 +2677,8 @@ function serv_away(e)
 CIRCServer.prototype.onChghost =
 function serv_chghost(e)
 {
-    this.users[e.user.canonicalName].name = e.params[1];
-    this.users[e.user.canonicalName].host = e.params[2];
+    this.users[e.user.collectionKey].name = e.params[1];
+    this.users[e.user.collectionKey].host = e.params[2];
     e.destObject = this.parent;
     e.set = "network";
 }
@@ -2318,8 +2852,8 @@ CIRCServer.prototype.onNick =
 function serv_nick (e)
 {
     var newNick = e.params[1];
-    var newKey = this.toLowerCase(newNick);
-    var oldKey = e.user.canonicalName;
+    var newKey = ":" + this.toLowerCase(newNick);
+    var oldKey = e.user.collectionKey;
     var ev;
 
     renameProperty (this.users, oldKey, newKey);
@@ -2339,6 +2873,7 @@ function serv_nick (e)
             cuser.updateSortName();
 
             ev = new CEvent ("channel", "nick", this.channels[c], "onNick");
+            ev.tags = e.tags;
             ev.channel = this.channels[c];
             ev.user = cuser;
             ev.server = this;
@@ -2351,6 +2886,7 @@ function serv_nick (e)
     {
         /* if it was me, tell the network about the nick change as well */
         ev = new CEvent ("network", "nick", this.parent, "onNick");
+        ev.tags = e.tags;
         ev.user = e.user;
         ev.server = this;
         ev.oldNick = e.oldNick;
@@ -2371,25 +2907,26 @@ function serv_quit (e)
     for (var c in e.server.channels)
     {
         if (e.server.channels[c].active &&
-            e.user.canonicalName in e.server.channels[c].users)
+            e.user.collectionKey in e.server.channels[c].users)
         {
             var ev = new CEvent ("channel", "quit", e.server.channels[c],
                                  "onQuit");
-            ev.user = e.server.channels[c].users[e.user.canonicalName];
+            ev.tags = e.tags;
+            ev.user = e.server.channels[c].users[e.user.collectionKey];
             ev.channel = e.server.channels[c];
             ev.server = ev.channel.parent;
             ev.reason = reason;
             this.parent.eventPump.routeEvent(ev);
-            delete e.server.channels[c].users[e.user.canonicalName];
+            delete e.server.channels[c].users[e.user.collectionKey];
         }
     }
 
-    this.users[e.user.canonicalName].lastQuitMessage = reason;
-    this.users[e.user.canonicalName].lastQuitDate = new Date();
+    this.users[e.user.collectionKey].lastQuitMessage = reason;
+    this.users[e.user.collectionKey].lastQuitDate = new Date();
 
     // 0 == prune onQuit.
     if (this.PRUNE_OLD_USERS == 0)
-        delete this.users[e.user.canonicalName];
+        delete this.users[e.user.collectionKey];
 
     e.reason = reason;
     e.destObject = e.user;
@@ -2421,7 +2958,7 @@ function serv_kick (e)
 {
     e.channel = new CIRCChannel(this, null, e.params[1]);
     e.lamer = new CIRCChanUser(e.channel, null, e.params[2]);
-    delete e.channel.users[e.lamer.canonicalName];
+    delete e.channel.users[e.lamer.collectionKey];
     if (userIsMe(e.lamer))
     {
         e.channel.active = false;
@@ -2441,6 +2978,14 @@ function serv_join(e)
     // Passing undefined here because CIRCChanUser doesn't like "null"
     e.user = new CIRCChanUser(e.channel, e.user.unicodeName, null,
                               undefined, true);
+
+    if (e.params[2] && e.params[3])
+    {
+        var account = (e.params[2] == "*" ? null : e.params[2]);
+        var desc = e.decodeParam([3], e.user);
+        this.users[e.user.collectionKey].account = account;
+        this.users[e.user.collectionKey].desc = desc;
+    }
 
     if (userIsMe(e.user))
     {
@@ -2473,7 +3018,12 @@ function serv_join(e)
             //If away-notify is active, query the list of users for away status.
             if (e.server.caps["away-notify"])
             {
-                e.server.sendData("WHO " + e.channel.encodedName + "\n");
+                // If the server supports extended who, use it.
+                // This lets us initialize the account property.
+                if (e.server.supports["whox"])
+                    e.server.who(e.channel.unicodeName + " %acdfhnrstu," + e.server.WHOX_TYPE);
+                else
+                    e.server.who(e.channel.unicodeName);
             }
         };
         // Between 10s - 20s.
@@ -2494,6 +3044,15 @@ function serv_join(e)
 
     e.destObject = e.channel;
     e.set = "channel";
+
+    return true;
+}
+
+CIRCServer.prototype.onAccount =
+function serv_acct(e)
+{
+    var account = (e.params[1] == "*" ? null : e.params[1]);
+    this.users[e.user.collectionKey].account = account;
 
     return true;
 }
@@ -2538,6 +3097,7 @@ function serv_invite(e)
 
 CIRCServer.prototype.onNotice =
 CIRCServer.prototype.onPrivmsg =
+CIRCServer.prototype.onTagmsg =
 function serv_notice_privmsg (e)
 {
     var targetName = e.params[1];
@@ -2599,6 +3159,13 @@ function serv_notice_privmsg (e)
             // Just print to console on failure - or we'd spam the user
             dd("Warning: IDENTIFY-MSG is on, but there's no message flags");
         }
+    }
+
+    // TAGMSG doesn't have a message parameter, so just pass it on.
+    if (e.code == "TAGMSG")
+    {
+        e.destObject = e.replyTo;
+        return true;
     }
 
     if (e.params[2].search (/^\x01[^ ]+.*\x01$/) != -1)
@@ -2724,6 +3291,16 @@ function serv_ctcp (e)
     }
     else
         e.destObject = this;
+
+    var ev = new CEvent("server", "ctcp-receive", this, "onReceiveCTCP");
+    ev.tags = e.tags;
+    ev.server = this;
+    ev.CTCPCode = e.CTCPCode;
+    ev.CTCPData = e.CTCPData;
+    ev.type = e.type;
+    ev.user = e.user;
+    ev.destObject = this.parent;
+    this.parent.eventPump.addEvent(ev);
 
     return true;
 }
@@ -2934,13 +3511,14 @@ function CIRCChannel(parent, unicodeName, encodedName)
     if (!encodedName)
         encodedName = fromUnicode(unicodeName, parent);
 
-    var canonicalName = parent.toLowerCase(encodedName);
-    if (canonicalName in parent.channels)
-        return parent.channels[canonicalName];
+    let collectionKey = ":" + parent.toLowerCase(encodedName);
+    if (collectionKey in parent.channels)
+        return parent.channels[collectionKey];
 
     this.parent = parent;
     this.encodedName = encodedName;
-    this.canonicalName = canonicalName;
+    this.canonicalName = collectionKey.substr(1);
+    this.collectionKey = collectionKey;
     this.unicodeName = unicodeName || toUnicode(encodedName, this);
     this.viewName = this.unicodeName;
 
@@ -2959,7 +3537,7 @@ function CIRCChannel(parent, unicodeName, encodedName)
     this.active = false;
     this.joined = false;
 
-    this.parent.channels[this.canonicalName] = this;
+    this.parent.channels[this.collectionKey] = this;
     if ("onInit" in this)
         this.onInit();
 
@@ -2990,9 +3568,9 @@ function chan_geturl()
 CIRCChannel.prototype.rehome =
 function chan_rehome(newParent)
 {
-    delete this.parent.channels[this.canonicalName];
+    delete this.parent.channels[this.collectionKey];
     this.parent = newParent;
-    this.parent.channels[this.canonicalName] = this;
+    this.parent.channels[this.collectionKey] = this;
 }
 
 CIRCChannel.prototype.addUser =
@@ -3005,14 +3583,14 @@ CIRCChannel.prototype.getUser =
 function chan_getuser(nick)
 {
     // Try assuming it's an encodedName first.
-    nick = this.parent.toLowerCase(nick);
-    if (nick in this.users)
-        return this.users[nick];
+    let tnick = ":" + this.parent.toLowerCase(nick);
+    if (tnick in this.users)
+        return this.users[tnick];
 
     // Ok, failed, so try assuming it's a unicodeName.
-    nick = this.parent.toLowerCase(fromUnicode(nick, this.parent));
-    if (nick in this.users)
-        return this.users[nick];
+    tnick = ":" + this.parent.toLowerCase(fromUnicode(nick, this.parent));
+    if (tnick in this.users)
+        return this.users[tnick];
 
     return null;
 }
@@ -3021,14 +3599,14 @@ CIRCChannel.prototype.removeUser =
 function chan_removeuser(nick)
 {
     // Try assuming it's an encodedName first.
-    nick = this.parent.toLowerCase(nick);
-    if (nick in this.users)
-        delete this.users[nick]; // see ya
+    let key = ":" + this.parent.toLowerCase(nick);
+    if (key in this.users)
+        delete this.users[key]; // see ya
 
     // Ok, failed, so try assuming it's a unicodeName.
-    nick = this.parent.toLowerCase(fromUnicode(nick, this.parent));
-    if (nick in this.users)
-        delete this.users[nick];
+    key = ":" + this.parent.toLowerCase(fromUnicode(nick, this.parent));
+    if (key in this.users)
+        delete this.users[key];
 }
 
 CIRCChannel.prototype.getUsersLength =
@@ -3066,19 +3644,19 @@ function chan_userslen (mode)
 CIRCChannel.prototype.iAmOp =
 function chan_amop()
 {
-    return this.active && this.users[this.parent.me.canonicalName].isOp;
+    return this.active && this.users[this.parent.me.collectionKey].isOp;
 }
 
 CIRCChannel.prototype.iAmHalfOp =
 function chan_amhalfop()
 {
-    return this.active && this.users[this.parent.me.canonicalName].isHalfOp;
+    return this.active && this.users[this.parent.me.collectionKey].isHalfOp;
 }
 
 CIRCChannel.prototype.iAmVoice =
 function chan_amvoice()
 {
-    return this.active && this.users[this.parent.me.canonicalName].isVoice;
+    return this.active && this.users[this.parent.me.collectionKey].isVoice;
 }
 
 CIRCChannel.prototype.setTopic =
@@ -3355,10 +3933,10 @@ function CIRCUser(parent, unicodeName, encodedName, name, host)
     if (!encodedName)
         encodedName = fromUnicode(unicodeName, parent);
 
-    var canonicalName = parent.toLowerCase(encodedName);
-    if (canonicalName in parent.users)
+    let collectionKey = ":" + parent.toLowerCase(encodedName);
+    if (collectionKey in parent.users)
     {
-        var existingUser = parent.users[canonicalName];
+        let existingUser = parent.users[collectionKey];
         if (name)
             existingUser.name = name;
         if (host)
@@ -3368,18 +3946,20 @@ function CIRCUser(parent, unicodeName, encodedName, name, host)
 
     this.parent = parent;
     this.encodedName = encodedName;
-    this.canonicalName = canonicalName;
+    this.canonicalName = collectionKey.substr(1);
+    this.collectionKey = collectionKey;
     this.unicodeName = unicodeName || toUnicode(encodedName, this.parent);
     this.viewName = this.unicodeName;
 
     this.name = name;
     this.host = host;
     this.desc = "";
+    this.account = null;
     this.connectionHost = null;
     this.isAway = false;
     this.modestr = this.parent.parent.INITIAL_UMODE;
 
-    this.parent.users[this.canonicalName] = this;
+    this.parent.users[this.collectionKey] = this;
     if ("onInit" in this)
         this.onInit();
 
@@ -3398,9 +3978,9 @@ function usr_geturl()
 CIRCUser.prototype.rehome =
 function usr_rehome(newParent)
 {
-    delete this.parent.users[this.canonicalName];
+    delete this.parent.users[this.collectionKey];
     this.parent = newParent;
-    this.parent.users[this.canonicalName] = this;
+    this.parent.users[this.collectionKey] = this;
 }
 
 CIRCUser.prototype.changeNick =
@@ -3410,6 +3990,7 @@ function usr_changenick(unicodeName)
     this.viewName = this.unicodeName;
     this.encodedName = fromUnicode(this.unicodeName, this.parent);
     this.canonicalName = this.parent.toLowerCase(this.encodedName);
+    this.collectionKey = ":" + this.canonicalName;
 }
 
 CIRCUser.prototype.getHostMask =
@@ -3482,12 +4063,11 @@ function CIRCChanUser(parent, unicodeName, encodedName, modes, userInChannel, na
         encodedName = fromUnicode(unicodeName, parent);
 
     // We should have both unicode and encoded names by now.
+    let collectionKey = ":" + parent.parent.toLowerCase(encodedName);
 
-    var canonicalName = parent.parent.toLowerCase(encodedName);
-
-    if (canonicalName in parent.users)
+    if (collectionKey in parent.users)
     {
-        var existingUser = parent.users[canonicalName];
+        let existingUser = parent.users[collectionKey];
         if (modes)
         {
             // If we start with a single character mode, assume we're replacing
@@ -3564,7 +4144,7 @@ function CIRCChanUser(parent, unicodeName, encodedName, modes, userInChannel, na
     this.updateSortName();
 
     if (userInChannel)
-        parent.users[this.canonicalName] = this;
+        parent.users[this.collectionKey] = this;
 
     return this;
 }

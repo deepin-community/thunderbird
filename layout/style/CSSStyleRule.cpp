@@ -16,16 +16,15 @@
 #include "mozAutoDocUpdate.h"
 #include "nsISupports.h"
 
-using namespace mozilla::dom;
-
-namespace mozilla {
-namespace dom {
+namespace mozilla::dom {
 
 // -- CSSStyleRuleDeclaration ---------------------------------------
 
 CSSStyleRuleDeclaration::CSSStyleRuleDeclaration(
-    already_AddRefed<RawServoDeclarationBlock> aDecls)
-    : mDecls(new DeclarationBlock(std::move(aDecls))) {}
+    already_AddRefed<StyleLockedDeclarationBlock> aDecls)
+    : mDecls(new DeclarationBlock(std::move(aDecls))) {
+  mDecls->SetOwningRule(Rule());
+}
 
 CSSStyleRuleDeclaration::~CSSStyleRuleDeclaration() {
   mDecls->SetOwningRule(nullptr);
@@ -59,18 +58,32 @@ nsISupports* CSSStyleRuleDeclaration::GetParentObject() const {
 
 DeclarationBlock* CSSStyleRuleDeclaration::GetOrCreateCSSDeclaration(
     Operation aOperation, DeclarationBlock** aCreated) {
+  if (aOperation != Operation::Read) {
+    if (StyleSheet* sheet = Rule()->GetStyleSheet()) {
+      sheet->WillDirty();
+    }
+  }
   return mDecls;
+}
+
+void CSSStyleRule::SetRawAfterClone(RefPtr<StyleLockedStyleRule> aRaw) {
+  mRawRule = std::move(aRaw);
+  mDecls.SetRawAfterClone(Servo_StyleRule_GetStyle(mRawRule).Consume());
+}
+
+void CSSStyleRuleDeclaration::SetRawAfterClone(
+    RefPtr<StyleLockedDeclarationBlock> aRaw) {
+  RefPtr<DeclarationBlock> block = new DeclarationBlock(aRaw.forget());
+  mDecls->SetOwningRule(nullptr);
+  mDecls = std::move(block);
+  mDecls->SetOwningRule(Rule());
 }
 
 nsresult CSSStyleRuleDeclaration::SetCSSDeclaration(
     DeclarationBlock* aDecl, MutationClosureData* aClosureData) {
   CSSStyleRule* rule = Rule();
 
-  if (rule->IsReadOnly()) {
-    return NS_OK;
-  }
-
-  if (RefPtr<StyleSheet> sheet = rule->GetStyleSheet()) {
+  if (StyleSheet* sheet = rule->GetStyleSheet()) {
     if (aDecl != mDecls) {
       mDecls->SetOwningRule(nullptr);
       RefPtr<DeclarationBlock> decls = aDecl;
@@ -88,12 +101,12 @@ Document* CSSStyleRuleDeclaration::DocToUpdate() { return nullptr; }
 nsDOMCSSDeclaration::ParsingEnvironment
 CSSStyleRuleDeclaration::GetParsingEnvironment(
     nsIPrincipal* aSubjectPrincipal) const {
-  return GetParsingEnvironmentForRule(Rule(), CSSRule_Binding::STYLE_RULE);
+  return GetParsingEnvironmentForRule(Rule(), StyleCssRuleType::Style);
 }
 
 // -- CSSStyleRule --------------------------------------------------
 
-CSSStyleRule::CSSStyleRule(already_AddRefed<RawServoStyleRule> aRawRule,
+CSSStyleRule::CSSStyleRule(already_AddRefed<StyleLockedStyleRule> aRawRule,
                            StyleSheet* aSheet, css::Rule* aParentRule,
                            uint32_t aLine, uint32_t aColumn)
     : BindingStyleRule(aSheet, aParentRule, aLine, aColumn),
@@ -159,6 +172,8 @@ void CSSStyleRule::List(FILE* out, int32_t aIndent) const {
 
 /* CSSRule implementation */
 
+StyleCssRuleType CSSStyleRule::Type() const { return StyleCssRuleType::Style; }
+
 void CSSStyleRule::GetCssText(nsACString& aCssText) const {
   Servo_StyleRule_GetCssText(mRawRule, &aCssText);
 }
@@ -176,15 +191,12 @@ void CSSStyleRule::SetSelectorText(const nsACString& aSelectorText) {
     return;
   }
 
-  if (RefPtr<StyleSheet> sheet = GetStyleSheet()) {
-    // StyleRule lives inside of the Inner, it is unsafe to call WillDirty
-    // if sheet does not already have a unique Inner.
-    sheet->AssertHasUniqueInner();
+  if (StyleSheet* sheet = GetStyleSheet()) {
     sheet->WillDirty();
 
     // TODO(emilio): May actually be more efficient to handle this as rule
     // removal + addition, from the point of view of invalidation...
-    const RawServoStyleSheetContents* contents = sheet->RawContents();
+    const StyleStylesheetContents* contents = sheet->RawContents();
     if (Servo_StyleRule_SetSelectorText(contents, mRawRule, &aSelectorText)) {
       sheet->RuleChanged(this, StyleRuleChangeKind::Generic);
     }
@@ -214,21 +226,15 @@ nsresult CSSStyleRule::SelectorMatchesElement(Element* aElement,
                                               const nsAString& aPseudo,
                                               bool aRelevantLinkVisited,
                                               bool* aMatches) {
-  PseudoStyleType pseudoType = PseudoStyleType::NotPseudo;
-  if (!aPseudo.IsEmpty()) {
-    RefPtr<nsAtom> pseudoElt = NS_Atomize(aPseudo);
-    pseudoType = nsCSSPseudoElements::GetPseudoType(
-        pseudoElt, CSSEnabledState::IgnoreEnabledState);
-
-    if (pseudoType == PseudoStyleType::NotPseudo) {
-      *aMatches = false;
-      return NS_OK;
-    }
+  Maybe<PseudoStyleType> pseudoType = nsCSSPseudoElements::GetPseudoType(
+      aPseudo, CSSEnabledState::IgnoreEnabledState);
+  if (!pseudoType) {
+    *aMatches = false;
+    return NS_OK;
   }
 
   *aMatches = Servo_StyleRule_SelectorMatchesElement(
-      mRawRule, aElement, aSelectorIndex, pseudoType, aRelevantLinkVisited);
-
+      mRawRule, aElement, aSelectorIndex, *pseudoType, aRelevantLinkVisited);
   return NS_OK;
 }
 
@@ -236,5 +242,4 @@ NotNull<DeclarationBlock*> CSSStyleRule::GetDeclarationBlock() const {
   return WrapNotNull(mDecls.mDecls);
 }
 
-}  // namespace dom
-}  // namespace mozilla
+}  // namespace mozilla::dom

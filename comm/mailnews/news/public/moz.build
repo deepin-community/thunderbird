@@ -7,17 +7,12 @@ XPIDL_SOURCES += [
     "nsIMsgNewsFolder.idl",
     "nsIMsgOfflineNewsState.idl",
     "nsINewsDownloadDialogArgs.idl",
-    "nsINNTPArticleList.idl",
     "nsINntpIncomingServer.idl",
-    "nsINNTPNewsgroupList.idl",
     "nsINNTPNewsgroupPost.idl",
-    "nsINNTPProtocol.idl",
     "nsINntpService.idl",
     "nsINntpUrl.idl",
 ]
 
 XPIDL_MODULE = "msgnews"
 
-EXPORTS += [
-    "nsMsgNewsCID.h",
-]
+EXPORTS += []

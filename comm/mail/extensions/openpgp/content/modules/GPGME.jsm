@@ -4,12 +4,17 @@
 
 const EXPORTED_SYMBOLS = ["GPGME"];
 
-const { XPCOMUtils } = ChromeUtils.import(
-  "resource://gre/modules/XPCOMUtils.jsm"
+const { XPCOMUtils } = ChromeUtils.importESModule(
+  "resource://gre/modules/XPCOMUtils.sys.mjs"
 );
 
-XPCOMUtils.defineLazyModuleGetters(this, {
-  ctypes: "resource://gre/modules/ctypes.jsm",
+const lazy = {};
+
+ChromeUtils.defineESModuleGetters(lazy, {
+  ctypes: "resource://gre/modules/ctypes.sys.mjs",
+});
+
+XPCOMUtils.defineLazyModuleGetters(lazy, {
   EnigmailConstants: "chrome://openpgp/content/modules/constants.jsm",
   GPGMELibLoader: "chrome://openpgp/content/modules/GPGMELib.jsm",
 });
@@ -22,7 +27,7 @@ var GPGME = {
   once() {
     this.hasRan = true;
     try {
-      GPGMELib = GPGMELibLoader.init();
+      GPGMELib = lazy.GPGMELibLoader.init();
       if (!GPGMELib) {
         return;
       }
@@ -48,15 +53,53 @@ var GPGME = {
     return GPGME.libLoaded;
   },
 
+  /**
+   * High level interface to retrieve public keys from GnuPG that
+   * contain a user ID that matches the given email address.
+   *
+   * @param {string} email - The email address to search for.
+   *
+   * @returns {Map} - a Map that contains ASCII armored key blocks
+   *   indexed by fingerprint.
+   */
+  getPublicKeysForEmail(email) {
+    function keyFilterFunction(key) {
+      if (
+        key.contents.bitfield & GPGMELib.gpgme_key_t_revoked ||
+        key.contents.bitfield & GPGMELib.gpgme_key_t_expired ||
+        key.contents.bitfield & GPGMELib.gpgme_key_t_disabled ||
+        key.contents.bitfield & GPGMELib.gpgme_key_t_invalid ||
+        !(key.contents.bitfield & GPGMELib.gpgme_key_t_can_encrypt)
+      ) {
+        return false;
+      }
+
+      let matchesEmail = false;
+      let nextUid = key.contents.uids;
+      while (nextUid && !nextUid.isNull()) {
+        let uidEmail = nextUid.contents.email.readString();
+        // Variable email is provided by the outer scope.
+        if (uidEmail == email) {
+          matchesEmail = true;
+          break;
+        }
+        nextUid = nextUid.contents.next;
+      }
+      return matchesEmail;
+    }
+
+    return GPGMELib.exportKeys(email, false, keyFilterFunction);
+  },
+
   async decrypt(encrypted, enArmorCB) {
     let result = {};
     result.decryptedData = "";
 
     let arr = encrypted.split("").map(e => e.charCodeAt());
-    let encrypted_array = ctypes.uint8_t.array()(arr);
-    let tmp_array = ctypes.cast(
+    let encrypted_array = lazy.ctypes.uint8_t.array()(arr);
+    let tmp_array = lazy.ctypes.cast(
       encrypted_array,
-      ctypes.char.array(encrypted_array.length)
+      lazy.ctypes.char.array(encrypted_array.length)
     );
 
     let data_ciphertext = new GPGMELib.gpgme_data_t();
@@ -94,16 +137,16 @@ var GPGME = {
       throw new Error("gpgme_data_release failed");
     }
 
-    let result_len = new ctypes.size_t();
+    let result_len = new lazy.ctypes.size_t();
     let result_buf = GPGMELib.gpgme_data_release_and_get_mem(
       data_plain,
       result_len.address()
     );
 
     if (!result_buf.isNull()) {
-      let unwrapped = ctypes.cast(
+      let unwrapped = lazy.ctypes.cast(
         result_buf,
-        ctypes.char.array(result_len.value).ptr
+        lazy.ctypes.char.array(result_len.value).ptr
       ).contents;
 
       // The result of decrypt(GPGME_DECRYPT_UNWRAP) is an OpenPGP message.
@@ -114,9 +157,9 @@ var GPGME = {
 
       let armor_head = "-----BEGIN PGP MESSAGE-----";
 
-      let head_of_array = ctypes.cast(
+      let head_of_array = lazy.ctypes.cast(
         result_buf,
-        ctypes.char.array(armor_head.length).ptr
+        lazy.ctypes.char.array(armor_head.length).ptr
       ).contents;
 
       let isArmored = false;
@@ -151,7 +194,10 @@ var GPGME = {
     resultStatus.errorMsg = "";
 
     if (args.encrypt || !args.sign || !args.sigTypeDetached) {
-      throw new Error("invalid parameters, neither encrypt nor sign");
+      throw new Error("invalid encrypt/sign parameters");
+    }
+    if (!plaintext) {
+      throw new Error("cannot sign empty data");
     }
 
     let result = null;
@@ -167,13 +213,16 @@ var GPGME = {
     let keyHandle = new GPGMELib.gpgme_key_t();
     if (!GPGMELib.gpgme_get_key(ctx, keyId, keyHandle.address(), 1)) {
       if (!GPGMELib.gpgme_signers_add(ctx, keyHandle)) {
-        var tmp_array = ctypes.char.array()(plaintext);
+        var tmp_array = lazy.ctypes.char.array()(plaintext);
         let data_plaintext = new GPGMELib.gpgme_data_t();
+
+        // The tmp_array will have one additional byte to store the
+        // trailing null character, we don't want to sign it, thus -1.
         if (
           !GPGMELib.gpgme_data_new_from_mem(
             data_plaintext.address(),
             tmp_array,
-            tmp_array.length,
+            tmp_array.length - 1,
             0
           )
         ) {
@@ -188,19 +237,93 @@ var GPGME = {
             if (exitCode != GPGMELib.GPG_ERR_NO_ERROR) {
               GPGMELib.gpgme_data_release(data_signed);
             } else {
-              let result_len = new ctypes.size_t();
+              let result_len = new lazy.ctypes.size_t();
               let result_buf = GPGMELib.gpgme_data_release_and_get_mem(
                 data_signed,
                 result_len.address()
               );
               if (!result_buf.isNull()) {
-                let unwrapped = ctypes.cast(
+                let unwrapped = lazy.ctypes.cast(
                   result_buf,
-                  ctypes.char.array(result_len.value).ptr
+                  lazy.ctypes.char.array(result_len.value).ptr
                 ).contents;
                 result = unwrapped.readString();
                 resultStatus.exitCode = 0;
-                resultStatus.statusFlags |= EnigmailConstants.SIG_CREATED;
+                resultStatus.statusFlags |= lazy.EnigmailConstants.SIG_CREATED;
+                GPGMELib.gpgme_free(result_buf);
+              }
+            }
+          }
+        }
+      }
+      GPGMELib.gpgme_key_release(keyHandle);
+    }
+    GPGMELib.gpgme_release(ctx);
+    return result;
+  },
+
+  async sign(plaintext, args, resultStatus) {
+    resultStatus.exitCode = -1;
+    resultStatus.statusFlags = 0;
+    resultStatus.statusMsg = "";
+    resultStatus.errorMsg = "";
+
+    if (args.encrypt || !args.sign) {
+      throw new Error("invalid encrypt/sign parameters");
+    }
+    if (!plaintext) {
+      throw new Error("cannot sign empty data");
+    }
+
+    let result = null;
+    //args.sender must be keyId
+    let keyId = args.sender.replace(/^0x/, "").toUpperCase();
+
+    let ctx = new GPGMELib.gpgme_ctx_t();
+    if (GPGMELib.gpgme_new(ctx.address())) {
+      throw new Error("gpgme_new failed");
+    }
+    let keyHandle = new GPGMELib.gpgme_key_t();
+    if (!GPGMELib.gpgme_get_key(ctx, keyId, keyHandle.address(), 1)) {
+      if (!GPGMELib.gpgme_signers_add(ctx, keyHandle)) {
+        var tmp_array = lazy.ctypes.char.array()(plaintext);
+        let data_plaintext = new GPGMELib.gpgme_data_t();
+
+        // The tmp_array will have one additional byte to store the
+        // trailing null character, we don't want to sign it, thus -1.
+        if (
+          !GPGMELib.gpgme_data_new_from_mem(
+            data_plaintext.address(),
+            tmp_array,
+            tmp_array.length - 1,
+            0
+          )
+        ) {
+          let data_signed = new GPGMELib.gpgme_data_t();
+          if (!GPGMELib.gpgme_data_new(data_signed.address())) {
+            let exitCode = GPGMELib.gpgme_op_sign(
+              ctx,
+              data_plaintext,
+              data_signed,
+              GPGMELib.GPGME_SIG_MODE_NORMAL
+            );
+            if (exitCode != GPGMELib.GPG_ERR_NO_ERROR) {
+              GPGMELib.gpgme_data_release(data_signed);
+            } else {
+              let result_len = new lazy.ctypes.size_t();
+              let result_buf = GPGMELib.gpgme_data_release_and_get_mem(
+                data_signed,
+                result_len.address()
+              );
+              if (!result_buf.isNull()) {
+                let unwrapped = lazy.ctypes.cast(
+                  result_buf,
+                  lazy.ctypes.uint8_t.array(result_len.value).ptr
+                ).contents;
+
+                result = unwrapped.readTypedArray();
+                resultStatus.exitCode = 0;
+                resultStatus.statusFlags |= lazy.EnigmailConstants.SIG_CREATED;
                 GPGMELib.gpgme_free(result_buf);
               }
             }

@@ -7,8 +7,7 @@
 /* globals gSubDialog, Preferences */
 
 var { cal } = ChromeUtils.import("resource:///modules/calendar/calUtils.jsm");
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-var { AppConstants } = ChromeUtils.import("resource://gre/modules/AppConstants.jsm");
+var { AppConstants } = ChromeUtils.importESModule("resource://gre/modules/AppConstants.sys.mjs");
 
 Preferences.add({ id: "calendar.categories.names", type: "string" });
 
@@ -89,7 +88,7 @@ var gCategoriesPane = {
       let categoryNameFix = cal.view.formatStringForCSSRule(gCategoryList[i]);
 
       let categoryColor = document.createXULElement("box");
-      categoryColor.setAttribute("width", "150");
+      categoryColor.style.width = "150px";
       let colorCode = categoryPrefBranch.getCharPref(categoryNameFix, "");
       if (colorCode) {
         categoryColor.style.backgroundColor = colorCode;

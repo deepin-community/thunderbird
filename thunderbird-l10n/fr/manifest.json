@@ -1,29 +1,28 @@
 {
   "langpack_id": "fr",
   "manifest_version": 2,
-  "applications": {
+  "browser_specific_settings": {
     "gecko": {
       "id": "langpack-fr@thunderbird.mozilla.org",
-      "strict_min_version": "91.0",
-      "strict_max_version": "91.*"
+      "strict_min_version": "115.0",
+      "strict_max_version": "115.*"
     }
   },
-  "name": "Français Language Pack",
-  "description": "Language pack for Thunderbird for fr",
-  "version": "91.0buildid20211101223011",
+  "name": "Language: Français (French)",
+  "description": "Thunderbird Language Pack for Français (fr) – French",
+  "version": "115.8.20240216.174500",
   "languages": {
     "fr": {
-      "version": "20211012155819",
+      "version": "20240216183735",
       "chrome_resources": {
         "alerts": "chrome/fr/locale/fr/alerts/",
         "autoconfig": "chrome/fr/locale/fr/autoconfig/",
-        "branding": "chrome/fr/locale/fr/branding/",
+        "branding": "chrome/fr/locale/branding/",
         "calendar": "chrome/fr/locale/fr/calendar/",
         "chat": "chrome/fr/locale/fr/chat/",
         "communicator": "chrome/fr/locale/fr/communicator/",
         "devtools": "chrome/fr/locale/fr/devtools/client/",
         "devtools-shared": "chrome/fr/locale/fr/devtools/shared/",
-        "devtools-startup": "chrome/fr/locale/fr/devtools/startup/",
         "global": "chrome/fr/locale/fr/global/",
         "global-platform": {
           "macosx": "chrome/fr/locale/fr/global-platform/mac/",

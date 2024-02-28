@@ -9,13 +9,12 @@
 #include "nsISupportsPrimitives.h"
 #include "nsIImportMailboxDescriptor.h"
 #include "nsIMsgAccountManager.h"
-#include "nsMsgBaseCID.h"
 #include "nsImportStringBundle.h"
 #include "nsTextFormatter.h"
 #include "ImportDebug.h"
 #include "plstr.h"
 #include "nsThreadUtils.h"
-#include "mozilla/Services.h"
+#include "mozilla/Components.h"
 #include "msgCore.h"
 
 // forward decl for proxy methods
@@ -446,7 +445,7 @@ void ImportThreadData::ThreadDelete() {
 void ImportThreadData::DriverAbort() {
   if (abort && !threadAlive && destRoot) {
     if (ownsDestRoot) {
-      destRoot->RecursiveDelete(true, nullptr);
+      destRoot->RecursiveDelete(true);
     } else {
       // FIXME: just delete the stuff we created?
     }
@@ -636,7 +635,7 @@ static void ImportMailThread(void* stuff) {
 
   // Now save the new acct info to pref file.
   nsCOMPtr<nsIMsgAccountManager> accMgr =
-      do_GetService(NS_MSGACCOUNTMANAGER_CONTRACTID, &rv);
+      do_GetService("@mozilla.org/messenger/account-manager;1", &rv);
   if (NS_SUCCEEDED(rv) && accMgr) {
     rv = accMgr->SaveAccountInfo();
     NS_ASSERTION(NS_SUCCEEDED(rv), "Can't save account info to pref file");
@@ -649,7 +648,7 @@ static void ImportMailThread(void* stuff) {
     IMPORT_LOG0("*** ImportMailThread: Abort or fatalError flag was set\n");
     if (pData->ownsDestRoot) {
       IMPORT_LOG0("Calling destRoot->RecursiveDelete\n");
-      destRoot->RecursiveDelete(true, nullptr);
+      destRoot->RecursiveDelete(true);
     } else {
       // FIXME: just delete the stuff we created?
     }
@@ -668,7 +667,7 @@ bool nsImportGenericMail::CreateFolder(nsIMsgFolder** ppFolder) {
 
   nsCOMPtr<nsIStringBundle> bundle;
   nsCOMPtr<nsIStringBundleService> bundleService =
-      mozilla::services::GetStringBundleService();
+      mozilla::components::StringBundle::Service();
   if (!bundleService) return false;
   rv = bundleService->CreateBundle(IMPORT_MSGS_URL, getter_AddRefs(bundle));
   if (NS_FAILED(rv)) return false;
@@ -685,7 +684,7 @@ bool nsImportGenericMail::CreateFolder(nsIMsgFolder** ppFolder) {
     return false;
   }
   nsCOMPtr<nsIMsgAccountManager> accMgr =
-      do_GetService(NS_MSGACCOUNTMANAGER_CONTRACTID, &rv);
+      do_GetService("@mozilla.org/messenger/account-manager;1", &rv);
   if (NS_FAILED(rv)) {
     IMPORT_LOG0("*** Failed to create account manager!\n");
     return false;
@@ -780,7 +779,9 @@ NS_IMETHODIMP GetSubFoldersRunnable::Run() {
 nsresult ProxyGetSubFolders(nsIMsgFolder* aFolder) {
   RefPtr<GetSubFoldersRunnable> getSubFolders =
       new GetSubFoldersRunnable(aFolder);
-  nsresult rv = NS_DispatchToMainThread(getSubFolders, NS_DISPATCH_SYNC);
+  nsresult rv = NS_DispatchAndSpinEventLoopUntilComplete(
+      "ProxyGetSubFolders"_ns, mozilla::GetMainThreadSerialEventTarget(),
+      do_AddRef(getSubFolders));
   NS_ENSURE_SUCCESS(rv, rv);
   return getSubFolders->mResult;
 }
@@ -802,6 +803,7 @@ GetChildNamedRunnable::GetChildNamedRunnable(nsIMsgFolder* aFolder,
                                              const nsAString& aName,
                                              nsIMsgFolder** aChild)
     : mozilla::Runnable("GetChildNamedRunnable"),
+      mResult(NS_OK),
       m_folder(aFolder),
       m_name(aName),
       m_child(aChild) {}
@@ -815,7 +817,9 @@ nsresult ProxyGetChildNamed(nsIMsgFolder* aFolder, const nsAString& aName,
                             nsIMsgFolder** aChild) {
   RefPtr<GetChildNamedRunnable> getChildNamed =
       new GetChildNamedRunnable(aFolder, aName, aChild);
-  nsresult rv = NS_DispatchToMainThread(getChildNamed, NS_DISPATCH_SYNC);
+  nsresult rv = NS_DispatchAndSpinEventLoopUntilComplete(
+      "ProxyGetChildNamed"_ns, mozilla::GetMainThreadSerialEventTarget(),
+      do_AddRef(getChildNamed));
   NS_ENSURE_SUCCESS(rv, rv);
   return getChildNamed->mResult;
 }
@@ -834,6 +838,7 @@ class GetParentRunnable : public mozilla::Runnable {
 GetParentRunnable::GetParentRunnable(nsIMsgFolder* aFolder,
                                      nsIMsgFolder** aParent)
     : mozilla::Runnable("GetParentRunnable"),
+      mResult(NS_OK),
       m_folder(aFolder),
       m_parent(aParent) {}
 
@@ -844,7 +849,9 @@ NS_IMETHODIMP GetParentRunnable::Run() {
 
 nsresult ProxyGetParent(nsIMsgFolder* aFolder, nsIMsgFolder** aParent) {
   RefPtr<GetParentRunnable> getParent = new GetParentRunnable(aFolder, aParent);
-  nsresult rv = NS_DispatchToMainThread(getParent, NS_DISPATCH_SYNC);
+  nsresult rv = NS_DispatchAndSpinEventLoopUntilComplete(
+      "ProxyGetParent"_ns, mozilla::GetMainThreadSerialEventTarget(),
+      do_AddRef(getParent));
   NS_ENSURE_SUCCESS(rv, rv);
   return getParent->mResult;
 }
@@ -866,6 +873,7 @@ ContainsChildNamedRunnable::ContainsChildNamedRunnable(nsIMsgFolder* aFolder,
                                                        const nsAString& aName,
                                                        bool* aResult)
     : mozilla::Runnable("ContainsChildNamedRunnable"),
+      mResult(NS_OK),
       m_folder(aFolder),
       m_name(aName),
       m_result(aResult) {}
@@ -880,7 +888,9 @@ nsresult ProxyContainsChildNamed(nsIMsgFolder* aFolder, const nsAString& aName,
   NS_ENSURE_ARG(aFolder);
   RefPtr<ContainsChildNamedRunnable> containsChildNamed =
       new ContainsChildNamedRunnable(aFolder, aName, aResult);
-  nsresult rv = NS_DispatchToMainThread(containsChildNamed, NS_DISPATCH_SYNC);
+  nsresult rv = NS_DispatchAndSpinEventLoopUntilComplete(
+      "ProxyContainsChildNamed"_ns, mozilla::GetMainThreadSerialEventTarget(),
+      do_AddRef(containsChildNamed));
   NS_ENSURE_SUCCESS(rv, rv);
   return containsChildNamed->mResult;
 }
@@ -905,6 +915,7 @@ GenerateUniqueSubfolderNameRunnable::GenerateUniqueSubfolderNameRunnable(
     nsIMsgFolder* aFolder, const nsAString& aPrefix, nsIMsgFolder* aOtherFolder,
     nsAString& aName)
     : mozilla::Runnable("GenerateUniqueSubfolderNameRunnable"),
+      mResult(NS_OK),
       m_folder(aFolder),
       m_prefix(aPrefix),
       m_otherFolder(aOtherFolder),
@@ -925,8 +936,10 @@ nsresult ProxyGenerateUniqueSubfolderName(nsIMsgFolder* aFolder,
   RefPtr<GenerateUniqueSubfolderNameRunnable> generateUniqueSubfolderName =
       new GenerateUniqueSubfolderNameRunnable(aFolder, aPrefix, aOtherFolder,
                                               aName);
-  nsresult rv =
-      NS_DispatchToMainThread(generateUniqueSubfolderName, NS_DISPATCH_SYNC);
+  nsresult rv = NS_DispatchAndSpinEventLoopUntilComplete(
+      "ProxyGenerateUniqueSubfolderName"_ns,
+      mozilla::GetMainThreadSerialEventTarget(),
+      do_AddRef(generateUniqueSubfolderName));
   NS_ENSURE_SUCCESS(rv, rv);
   return generateUniqueSubfolderName->mResult;
 }
@@ -945,6 +958,7 @@ class CreateSubfolderRunnable : public mozilla::Runnable {
 CreateSubfolderRunnable::CreateSubfolderRunnable(nsIMsgFolder* aFolder,
                                                  const nsAString& aName)
     : mozilla::Runnable("CreateSubfolderRunnable"),
+      mResult(NS_OK),
       m_folder(aFolder),
       m_name(aName) {}
 
@@ -954,9 +968,12 @@ NS_IMETHODIMP CreateSubfolderRunnable::Run() {
 }
 
 nsresult ProxyCreateSubfolder(nsIMsgFolder* aFolder, const nsAString& aName) {
+  NS_ENSURE_ARG_POINTER(aFolder);
   RefPtr<CreateSubfolderRunnable> createSubfolder =
       new CreateSubfolderRunnable(aFolder, aName);
-  nsresult rv = NS_DispatchToMainThread(createSubfolder, NS_DISPATCH_SYNC);
+  nsresult rv = NS_DispatchAndSpinEventLoopUntilComplete(
+      "ProxyCreateSubfolder"_ns, mozilla::GetMainThreadSerialEventTarget(),
+      do_AddRef(createSubfolder));
   NS_ENSURE_SUCCESS(rv, rv);
   return createSubfolder->mResult;
 }
@@ -982,7 +999,9 @@ NS_IMETHODIMP ForceDBClosedRunnable::Run() {
 nsresult ProxyForceDBClosed(nsIMsgFolder* aFolder) {
   RefPtr<ForceDBClosedRunnable> forceDBClosed =
       new ForceDBClosedRunnable(aFolder);
-  nsresult rv = NS_DispatchToMainThread(forceDBClosed, NS_DISPATCH_SYNC);
+  nsresult rv = NS_DispatchAndSpinEventLoopUntilComplete(
+      "ProxyForceDBClosed"_ns, mozilla::GetMainThreadSerialEventTarget(),
+      do_AddRef(forceDBClosed));
   NS_ENSURE_SUCCESS(rv, rv);
   return forceDBClosed->mResult;
 }

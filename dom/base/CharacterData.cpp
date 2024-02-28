@@ -66,9 +66,9 @@ Element* CharacterData::GetNameSpaceElement() {
   return Element::FromNodeOrNull(GetParentNode());
 }
 
-NS_IMPL_CYCLE_COLLECTION_CLASS(CharacterData)
-
-NS_IMPL_CYCLE_COLLECTION_TRACE_WRAPPERCACHE(CharacterData)
+// Note, _INHERITED macro isn't used here since nsINode implementations are
+// rather special.
+NS_IMPL_CYCLE_COLLECTION_WRAPPERCACHE_CLASS(CharacterData)
 
 NS_IMPL_CYCLE_COLLECTION_CAN_SKIP_BEGIN(CharacterData)
   return Element::CanSkip(tmp, aRemovingAllowed);
@@ -103,7 +103,7 @@ NS_IMPL_CYCLE_COLLECTION_UNLINK_BEGIN(CharacterData)
   nsIContent::Unlink(tmp);
 
   if (nsContentSlots* slots = tmp->GetExistingContentSlots()) {
-    slots->Unlink();
+    slots->Unlink(*tmp);
   }
 NS_IMPL_CYCLE_COLLECTION_UNLINK_END
 
@@ -265,19 +265,16 @@ nsresult CharacterData::SetTextInternal(
                                    aOffset));
 
   if (aOffset == 0 && endOffset == textLength) {
-    // Replacing whole text or old text was empty.  Don't bother to check for
-    // bidi in this string if the document already has bidi enabled.
+    // Replacing whole text or old text was empty.
     // If this is marked as "maybe modified frequently", the text should be
     // stored as char16_t since converting char* to char16_t* is expensive.
-    bool ok =
-        mText.SetTo(aBuffer, aLength, !document || !document->GetBidiEnabled(),
-                    HasFlag(NS_MAYBE_MODIFIED_FREQUENTLY));
+    bool ok = mText.SetTo(aBuffer, aLength, true,
+                          HasFlag(NS_MAYBE_MODIFIED_FREQUENTLY));
     NS_ENSURE_TRUE(ok, NS_ERROR_OUT_OF_MEMORY);
   } else if (aOffset == textLength) {
-    // Appending to existing
-    bool ok =
-        mText.Append(aBuffer, aLength, !document || !document->GetBidiEnabled(),
-                     HasFlag(NS_MAYBE_MODIFIED_FREQUENTLY));
+    // Appending to existing.
+    bool ok = mText.Append(aBuffer, aLength, !mText.IsBidi(),
+                           HasFlag(NS_MAYBE_MODIFIED_FREQUENTLY));
     NS_ENSURE_TRUE(ok, NS_ERROR_OUT_OF_MEMORY);
   } else {
     // Merging old and new
@@ -285,7 +282,7 @@ nsresult CharacterData::SetTextInternal(
     bool bidi = mText.IsBidi();
 
     // Allocate new buffer
-    int32_t newLength = textLength - aCount + aLength;
+    const uint32_t newLength = textLength - aCount + aLength;
     // Use nsString and not nsAutoString so that we get a nsStringBuffer which
     // can be just AddRefed in nsTextFragment.
     nsString to;
@@ -297,7 +294,7 @@ nsresult CharacterData::SetTextInternal(
     }
     if (aLength) {
       to.Append(aBuffer, aLength);
-      if (!bidi && (!document || !document->GetBidiEnabled())) {
+      if (!bidi) {
         bidi = HasRTLChars(Span(aBuffer, aLength));
       }
     }
@@ -347,7 +344,7 @@ nsresult CharacterData::SetTextInternal(
       }
 
       mozAutoSubtreeModified subtree(OwnerDoc(), this);
-      (new AsyncEventDispatcher(this, mutation))->RunDOMEventWhenSafe();
+      AsyncEventDispatcher::RunDOMEventWhenSafe(*this, mutation);
     }
   }
 
@@ -419,11 +416,10 @@ nsresult CharacterData::BindToTree(BindContext& aContext, nsINode& aParent) {
   if (aParent.IsInNativeAnonymousSubtree()) {
     SetFlags(NODE_IS_IN_NATIVE_ANONYMOUS_SUBTREE);
   }
-  if (aParent.HasFlag(NODE_HAS_BEEN_IN_UA_WIDGET)) {
-    SetFlags(NODE_HAS_BEEN_IN_UA_WIDGET);
-  }
   if (IsRootOfNativeAnonymousSubtree()) {
     aParent.SetMayHaveAnonymousChildren();
+  } else if (aParent.HasFlag(NODE_HAS_BEEN_IN_UA_WIDGET)) {
+    SetFlags(NODE_HAS_BEEN_IN_UA_WIDGET);
   }
 
   // Set parent
@@ -463,9 +459,6 @@ nsresult CharacterData::BindToTree(BindContext& aContext, nsINode& aParent) {
   }
 
   MutationObservers::NotifyParentChainChanged(this);
-  if (!hadParent && IsRootOfNativeAnonymousSubtree()) {
-    MutationObservers::NotifyNativeAnonymousChildListChange(this, false);
-  }
 
   UpdateEditableState(false);
 
@@ -492,9 +485,6 @@ void CharacterData::UnbindFromTree(bool aNullParent) {
   HandleShadowDOMRelatedRemovalSteps(aNullParent);
 
   if (aNullParent) {
-    if (IsRootOfNativeAnonymousSubtree()) {
-      MutationObservers::NotifyNativeAnonymousChildListChange(this, true);
-    }
     if (GetParent()) {
       NS_RELEASE(mParent);
     } else {

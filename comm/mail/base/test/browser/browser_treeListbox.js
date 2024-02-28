@@ -7,26 +7,44 @@ registerCleanupFunction(() => {
   tabmail.closeOtherTabs(tabmail.tabInfo[0]);
 });
 
-add_task(async function() {
+async function withTab(callback) {
   let tab = tabmail.openTab("contentTab", {
-    url:
-      "chrome://mochitests/content/browser/comm/mail/base/test/browser/files/treeListbox.xhtml",
+    url: "chrome://mochitests/content/browser/comm/mail/base/test/browser/files/treeListbox.xhtml",
   });
-
   await BrowserTestUtils.browserLoaded(tab.browser);
-  tab.browser.focus();
 
-  await SpecialPowers.spawn(tab.browser, [], testKeyboard);
-  await SpecialPowers.spawn(tab.browser, [], testMutation);
-  await SpecialPowers.spawn(tab.browser, [], testExpandCollapse);
+  tab.browser.focus();
+  await SpecialPowers.spawn(tab.browser, [], callback);
 
   tabmail.closeTab(tab);
+}
+
+add_task(async function testKeyboard() {
+  await withTab(subtestKeyboard);
+});
+add_task(async function testMutation() {
+  await withTab(subtestMutation);
+});
+add_task(async function testExpandCollapse() {
+  await withTab(subtestExpandCollapse);
+});
+add_task(async function testSelectOnRemoval1() {
+  await withTab(subtestSelectOnRemoval1);
+});
+add_task(async function testSelectOnRemoval2() {
+  await withTab(subtestSelectOnRemoval2);
+});
+add_task(async function testSelectOnRemoval3() {
+  await withTab(subtestSelectOnRemoval3);
+});
+add_task(async function testUnselectable() {
+  await withTab(subtestUnselectable);
 });
 
 /**
  * Tests keyboard navigation up and down the list.
  */
-async function testKeyboard() {
+async function subtestKeyboard() {
   let doc = content.document;
 
   let list = doc.querySelector(`ul[is="tree-listbox"]`);
@@ -74,7 +92,7 @@ async function testKeyboard() {
     Assert.equal(
       !!selectHandler.seenEvent,
       expectEvent,
-      `'select' event ${expectEvent ? "fired" : "did not fire"} as expected`
+      `'select' event ${expectEvent ? "fired" : "did not fire"}`
     );
   }
 
@@ -85,13 +103,12 @@ async function testKeyboard() {
       Assert.deepEqual(
         selectHandler.selectedAtEvent,
         expectedIndex,
-        "selectedIndex were correct at the last 'select' event"
+        "selectedIndex was correct at the last 'select' event"
       );
     }
 
-    let selected = [...list.querySelectorAll(".selected")].map(row => row.id);
     Assert.deepEqual(
-      selected,
+      Array.from(list.querySelectorAll(".selected"), row => row.id),
       [expectedId],
       "correct rows have the 'selected' class"
     );
@@ -151,7 +168,7 @@ async function testKeyboard() {
  * mutation observer so the tree is not updated immediately, but at the end of
  * the event loop.
  */
-async function testMutation() {
+async function subtestMutation() {
   let doc = content.document;
   let list = doc.querySelector(`ul[is="tree-listbox"]`);
   let idsWithChildren = ["row-2", "row-3", "row-3-1"];
@@ -200,6 +217,7 @@ async function testMutation() {
   await new Promise(r => content.setTimeout(r));
   checkHasClass("new-row", false);
   newRow.remove();
+  await new Promise(r => content.setTimeout(r));
 
   // Add and remove a single row to rows with existing children.
 
@@ -281,13 +299,35 @@ async function testMutation() {
   checkHasClass("added-row-1-1", false);
   checkHasClass("added-row-2", false);
   newRow.remove();
+  await new Promise(r => content.setTimeout(r));
+
+  // Add a new row without children to the middle of the list. Selection should
+  // be maintained.
+
+  list.selectedIndex = 5; // row-3-1
+
+  info("adding new row to middle of list");
+  newRow = template.content.cloneNode(true).firstElementChild;
+  list.insertBefore(newRow, list.querySelector("#row-3"));
+  await new Promise(r => content.setTimeout(r));
+  Assert.equal(list.selectedIndex, 9, "row-3-1 is still selected");
+
+  newRow.remove();
+  await new Promise(r => content.setTimeout(r));
+  Assert.equal(list.selectedIndex, 5, "row-3-1 is still selected");
+
+  list.selectedIndex = 0;
 }
 
 /**
  * Checks that expanding and collapsing works. Twisties in the test file are
  * styled as coloured squares: red for collapsed, green for expanded.
+ *
+ * @note This is practically the same test as in browser_treeView.js,
+ * but for TreeListbox instead of TreeView. If you make changes here
+ * you may want to make changes there too.
  */
-async function testExpandCollapse() {
+async function subtestExpandCollapse() {
   let doc = content.document;
   let list = doc.querySelector(`ul[is="tree-listbox"]`);
   let allIds = [
@@ -323,6 +363,20 @@ async function testExpandCollapse() {
   };
   list.addEventListener("collapsed", listener);
   list.addEventListener("expanded", listener);
+
+  let selectHandler = {
+    seenEvent: null,
+    selectedAtEvent: null,
+
+    reset() {
+      this.seenEvent = null;
+      this.selectedAtEvent = null;
+    },
+    handleEvent(event) {
+      this.seenEvent = event;
+      this.selectedAtEvent = list.selectedIndex;
+    },
+  };
 
   Assert.equal(
     list.querySelectorAll("collapsed").length,
@@ -396,6 +450,13 @@ async function testExpandCollapse() {
     );
   }
 
+  function doubleClick(id, expectedChange) {
+    info(`double clicking on ${id}`);
+    performChange(id, expectedChange, row =>
+      EventUtils.synthesizeMouseAtCenter(row, { clickCount: 2 }, content)
+    );
+  }
+
   for (let id of idsWithoutChildren) {
     clickTwisty(id, null);
     Assert.equal(list.querySelector(".selected").id, id);
@@ -443,13 +504,13 @@ async function testExpandCollapse() {
 
   // Expand row 2.
 
-  clickTwisty("row-2", "expanded");
+  doubleClick("row-2", "expanded");
   checkRowsAreHidden("row-3-1", "row-3-1-1", "row-3-1-2");
   checkSelected(4, "row-3");
 
   // Expand row 3.
 
-  clickTwisty("row-3", "expanded");
+  doubleClick("row-3", "expanded");
   checkRowsAreHidden();
   checkSelected(4, "row-3");
 
@@ -588,6 +649,17 @@ async function testExpandCollapse() {
   checkRowsAreHidden();
   checkSelected(6, "row-3-1-1");
 
+  // Toggle expansion of row 3-1 with Enter key.
+
+  list.selectedIndex = 5;
+  pressKey("row-3-1", "KEY_Enter", "collapsed");
+  checkRowsAreHidden("row-3-1-1", "row-3-1-2");
+  checkSelected(5, "row-3-1");
+
+  pressKey("row-3-1", "KEY_Enter", "expanded");
+  checkRowsAreHidden();
+  checkSelected(5, "row-3-1");
+
   // Same again, with a RTL tree.
 
   info("switching to RTL");
@@ -695,7 +767,547 @@ async function testExpandCollapse() {
   checkRowsAreHidden();
   checkSelected(6, "row-3-1-1");
 
+  // Use the class methods for expanding and collapsing.
+
+  selectHandler.reset();
+  list.addEventListener("select", selectHandler);
+  listener.reset();
+
+  list.collapseRowAtIndex(6); // No children, no effect.
+  Assert.ok(!selectHandler.seenEvent, "'select' event did not fire");
+  Assert.ok(!listener.collapsedRow, "'collapsed' event did not fire");
+
+  list.expandRowAtIndex(6); // No children, no effect.
+  Assert.ok(!selectHandler.seenEvent, "'select' event did not fire");
+  Assert.ok(!listener.expandedRow, "'expanded' event did not fire");
+
+  list.collapseRowAtIndex(1); // Item with children that aren't selected.
+  Assert.ok(!selectHandler.seenEvent, "'select' event did not fire");
+  Assert.equal(
+    listener.collapsedRow.id,
+    "row-2",
+    "row-2 fired 'collapsed' event"
+  );
+  listener.reset();
+
+  list.expandRowAtIndex(1); // Item with children that aren't selected.
+  Assert.ok(!selectHandler.seenEvent, "'select' event did not fire");
+  Assert.equal(
+    listener.expandedRow.id,
+    "row-2",
+    "row-2 fired 'expanded' event"
+  );
+  listener.reset();
+
+  list.collapseRowAtIndex(5); // Item with children that are selected.
+  Assert.ok(selectHandler.seenEvent, "'select' event fired");
+  Assert.equal(
+    selectHandler.selectedAtEvent,
+    5,
+    "selectedIndex was correct when 'select' event fired"
+  );
+  Assert.equal(
+    listener.collapsedRow.id,
+    "row-3-1",
+    "row-3-1 fired 'collapsed' event"
+  );
+  checkRowsAreHidden("row-3-1-1", "row-3-1-2");
+  checkSelected(5, "row-3-1");
+  selectHandler.reset();
+  listener.reset();
+
+  list.expandRowAtIndex(5); // Selected item with children.
+  Assert.ok(!selectHandler.seenEvent, "'select' event did not fire");
+  Assert.equal(
+    listener.expandedRow.id,
+    "row-3-1",
+    "row-3-1 fired 'expanded' event"
+  );
+  checkRowsAreHidden();
+  checkSelected(5, "row-3-1");
+  listener.reset();
+
+  list.selectedIndex = 7;
+  selectHandler.reset();
+
+  list.collapseRowAtIndex(4); // Item with grandchildren that are selected.
+  Assert.ok(selectHandler.seenEvent, "'select' event fired");
+  Assert.equal(
+    selectHandler.selectedAtEvent,
+    4,
+    "selectedIndex was correct when 'select' event fired"
+  );
+  Assert.equal(
+    listener.collapsedRow.id,
+    "row-3",
+    "row-3 fired 'collapsed' event"
+  );
+  checkRowsAreHidden("row-3-1", "row-3-1-1", "row-3-1-2");
+  checkSelected(4, "row-3");
+  selectHandler.reset();
+  listener.reset();
+
+  list.expandRowAtIndex(4); // Selected item with grandchildren.
+  Assert.ok(!selectHandler.seenEvent, "'select' event did not fire");
+  Assert.equal(
+    listener.expandedRow.id,
+    "row-3",
+    "row-3 fired 'expanded' event"
+  );
+  checkRowsAreHidden();
+  checkSelected(4, "row-3");
+  listener.reset();
+
   list.removeEventListener("collapsed", listener);
   list.removeEventListener("expanded", listener);
+  list.removeEventListener("select", selectHandler);
   doc.documentElement.dir = null;
+}
+
+/**
+ * Tests what happens to selection when a row is removed.
+ */
+async function subtestSelectOnRemoval1() {
+  let doc = content.document;
+  let list = doc.getElementById("deleteTree");
+
+  let selectPromise;
+  function promiseSelectEvent() {
+    selectPromise = new Promise(resolve =>
+      list.addEventListener(
+        "select",
+        () => resolve([list.selectedIndex, list.selectedRow?.id ?? null]),
+        {
+          once: true,
+        }
+      )
+    );
+  }
+  // dRow-1
+  // dRow-2
+  //   dRow-2-1
+  //   dRow-2-2
+  // dRow-3
+  //   dRow-3-1
+  //     dRow-3-1-1
+  //     dRow-3-1-2
+  //     dRow-3-1-3
+  // dRow-4
+  //   dRow-4-1
+  //   dRow-4-2
+  //   dRow-4-3
+  //     dRow-4-3-1
+  //     dRow-4-3-2
+  //   dRow-4-4
+  // dRow-5
+  //   dRow-5-1
+  // dRow-6
+
+  // Delete a row that is selected, and not at the top level. Selection should
+  // move to the next row under the shared parent.
+
+  list.selectedIndex = 2;
+  Assert.equal(list.selectedRow.id, "dRow-2-1");
+
+  promiseSelectEvent();
+  list.querySelector("#dRow-2-1").remove();
+  Assert.deepEqual(
+    await selectPromise,
+    [2, "dRow-2-2"],
+    "selection moved to the next row"
+  );
+
+  // dRow-1
+  // dRow-2
+  //   dRow-2-2
+  // dRow-3
+  //   dRow-3-1
+  //     dRow-3-1-1
+  //     dRow-3-1-2
+  //     dRow-3-1-3
+  // dRow-4
+  //   dRow-4-1
+  //   dRow-4-2
+  //   dRow-4-3
+  //     dRow-4-3-1
+  //     dRow-4-3-2
+  //   dRow-4-4
+  // dRow-5
+  //   dRow-5-1
+  // dRow-6
+
+  // Delete a row that contains the selected, and at the top level. Selection
+  // should move to the next top-level row.
+
+  Assert.equal(list.selectedRow.id, "dRow-2-2");
+  promiseSelectEvent();
+  list.querySelector("#dRow-2").remove();
+  Assert.deepEqual(
+    await selectPromise,
+    [1, "dRow-3"],
+    "selection moved to the next row"
+  );
+
+  // dRow-1
+  // dRow-3
+  //   dRow-3-1
+  //     dRow-3-1-1
+  //     dRow-3-1-2
+  //     dRow-3-1-3
+  // dRow-4
+  //   dRow-4-1
+  //   dRow-4-2
+  //   dRow-4-3
+  //     dRow-4-3-1
+  //     dRow-4-3-2
+  //   dRow-4-4
+  // dRow-5
+  //   dRow-5-1
+  // dRow-6
+
+  // Delete the first top-level row that is selected. Should select the first
+  // row.
+  list.selectedIndex = 0;
+  Assert.equal(list.selectedRow.id, "dRow-1");
+  promiseSelectEvent();
+  list.querySelector("#dRow-1").remove();
+  Assert.deepEqual(
+    await selectPromise,
+    [0, "dRow-3"],
+    "selection moved to the first row"
+  );
+
+  // dRow-3
+  //   dRow-3-1
+  //     dRow-3-1-1
+  //     dRow-3-1-2
+  //     dRow-3-1-3
+  // dRow-4
+  //   dRow-4-1
+  //   dRow-4-2
+  //   dRow-4-3
+  //     dRow-4-3-1
+  //     dRow-4-3-2
+  //   dRow-4-4
+  // dRow-5
+  //   dRow-5-1
+  // dRow-6
+
+  // Delete the last top-level row that is selected. Should select the last row.
+  list.selectedIndex = 14;
+  Assert.equal(list.selectedRow.id, "dRow-6");
+  promiseSelectEvent();
+  list.querySelector("#dRow-6").remove();
+  Assert.deepEqual(
+    await selectPromise,
+    [13, "dRow-5-1"],
+    "selection moved to the new last row"
+  );
+
+  // dRow-3
+  //   dRow-3-1
+  //     dRow-3-1-1
+  //     dRow-3-1-2
+  //     dRow-3-1-3
+  // dRow-4
+  //   dRow-4-1
+  //   dRow-4-2
+  //   dRow-4-3
+  //     dRow-4-3-1
+  //     dRow-4-3-2
+  //   dRow-4-4
+  // dRow-5
+  //   dRow-5-1
+
+  // Delete the last selected descendant should move selection to the new
+  // descendant child.
+  list.selectedIndex = 11;
+  Assert.equal(list.selectedRow.id, "dRow-4-4");
+  promiseSelectEvent();
+  list.querySelector("#dRow-4-4").remove();
+  Assert.deepEqual(
+    await selectPromise,
+    [10, "dRow-4-3-2"],
+    "selection moved to the new last row"
+  );
+
+  // dRow-3
+  //   dRow-3-1
+  //     dRow-3-1-1
+  //     dRow-3-1-2
+  //     dRow-3-1-3
+  // dRow-4
+  //   dRow-4-1
+  //   dRow-4-2
+  //   dRow-4-3
+  //     dRow-4-3-1
+  //     dRow-4-3-2
+  // dRow-5
+  //   dRow-5-1
+
+  // Delete the first selected child should move selection to the new first child.
+  list.selectedIndex = 6;
+  Assert.equal(list.selectedRow.id, "dRow-4-1");
+  promiseSelectEvent();
+  list.querySelector("#dRow-4-1").remove();
+  Assert.deepEqual(
+    await selectPromise,
+    [6, "dRow-4-2"],
+    "selection moved to the new first row"
+  );
+
+  // dRow-3
+  //   dRow-3-1
+  //     dRow-3-1-1
+  //     dRow-3-1-2
+  //     dRow-3-1-3
+  // dRow-4
+  //   dRow-4-2
+  //   dRow-4-3
+  //     dRow-4-3-1
+  //     dRow-4-3-2
+  // dRow-5
+  //   dRow-5-1
+
+  // Delete a row that isn't selected. Nothing should happen.
+
+  list.selectedIndex = 2;
+  Assert.equal(list.selectedRow.id, "dRow-3-1-1");
+
+  list.querySelector("#dRow-3-1-2").remove();
+  await new Promise(resolve => content.setTimeout(resolve));
+  Assert.equal(list.selectedIndex, 2, "selection did not change");
+  Assert.equal(list.selectedRow.id, "dRow-3-1-1", "selection did not change");
+
+  // dRow-3
+  //   dRow-3-1
+  //     dRow-3-1-1
+  //     dRow-3-1-3
+  // dRow-4
+  //   dRow-4-2
+  //   dRow-4-3
+  //     dRow-4-3-1
+  //     dRow-4-3-2
+  // dRow-5
+  //   dRow-5-1
+
+  // Deleting the last row under a parent that contains the selection should
+  // select the parent.
+  list.selectedIndex = 2;
+  Assert.equal(list.selectedRow.id, "dRow-3-1-1");
+
+  promiseSelectEvent();
+  let rowToReplace = list.querySelector("#dRow-3-1");
+  rowToReplace.remove();
+  Assert.deepEqual(
+    await selectPromise,
+    [0, "dRow-3"],
+    "selection moved to the parent row"
+  );
+
+  // dRow-3
+  // dRow-4
+  //   dRow-4-2
+  //   dRow-4-3
+  //     dRow-4-3-1
+  //     dRow-4-3-2
+  // dRow-5
+  //   dRow-5-1
+
+  // Deleting several rows under a parent, should select the parent row.
+  list.selectedIndex = 4;
+  Assert.equal(list.selectedRow.id, "dRow-4-3-1");
+  promiseSelectEvent();
+  list.querySelector("#dRow-4 ul").remove();
+  Assert.deepEqual(
+    await selectPromise,
+    [1, "dRow-4"],
+    "selection moved to the parent row"
+  );
+
+  // Delete the last remaining rows. The selected index should be -1.
+
+  promiseSelectEvent();
+  list.replaceChildren();
+  Assert.deepEqual(await selectPromise, [-1, null], "selection was cleared");
+
+  // Add back a row. One of the row's children was selected, this should be
+  // removed and the selection set to the top-level row.
+
+  promiseSelectEvent();
+  list.appendChild(rowToReplace);
+  Assert.deepEqual(
+    await selectPromise,
+    [0, "dRow-3-1"],
+    "selection set to the added row"
+  );
+  Assert.ok(list.querySelector("#dRow-3-1-1"), "child of the added row exists");
+  Assert.ok(
+    !list.querySelector("#dRow-3-1-1").classList.contains("selected"),
+    "child of the added row is not selected"
+  );
+}
+
+/**
+ * Tests what happens to selection when a row is removed.
+ */
+async function subtestSelectOnRemoval2() {
+  let doc = content.document;
+  let list = doc.querySelector(`ul[is="tree-listbox"]`);
+
+  let selectPromise;
+  function promiseSelectEvent() {
+    selectPromise = new Promise(resolve =>
+      list.addEventListener("select", () => resolve(list.selectedIndex), {
+        once: true,
+      })
+    );
+  }
+
+  // Delete row-3 containing the selection.
+
+  list.selectedIndex = 7; // row-3-1-2
+
+  promiseSelectEvent();
+  list.querySelector("#row-3").remove();
+  Assert.equal(await selectPromise, 3, "selection moved to the last row");
+
+  // Delete row-2. Selection should move to the only row.
+
+  promiseSelectEvent();
+  list.querySelector("#row-2").remove();
+  Assert.equal(
+    await selectPromise,
+    0, // row-1
+    "selection moved to the last row"
+  );
+}
+
+/**
+ * Tests what happens to selection when elements above it are removed.
+ */
+async function subtestSelectOnRemoval3() {
+  let doc = content.document;
+  let list = doc.querySelector(`ul[is="tree-listbox"]`);
+
+  // Delete a row.
+
+  list.selectedIndex = 6; // row-3-1-1
+
+  list.querySelector("#row-2-1").remove();
+  await new Promise(r => content.setTimeout(r));
+  Assert.deepEqual(
+    list.rows.map(r => r.id),
+    ["row-1", "row-2", "row-2-2", "row-3", "row-3-1", "row-3-1-1", "row-3-1-2"]
+  );
+  Assert.equal(
+    list.selectedIndex,
+    5, // row-3-1-1
+    "selection moved to the previous top-level row"
+  );
+
+  // Delete an element that isn't a row.
+
+  list.querySelector("#row-2 div").remove();
+  await new Promise(r => content.setTimeout(r));
+  Assert.deepEqual(
+    list.rows.map(r => r.id),
+    ["row-1", "row-2", "row-2-2", "row-3", "row-3-1", "row-3-1-1", "row-3-1-2"]
+  );
+  Assert.equal(
+    list.selectedIndex,
+    5, // row-3-1-1
+    "selection moved to the previous top-level row"
+  );
+
+  // Delete an element that contains a row.
+
+  list.querySelector("#row-2 ul").remove();
+  await new Promise(r => content.setTimeout(r));
+  Assert.deepEqual(
+    list.rows.map(r => r.id),
+    ["row-1", "row-2", "row-3", "row-3-1", "row-3-1-1", "row-3-1-2"]
+  );
+  Assert.equal(
+    list.selectedIndex,
+    4, // row-3-1-1
+    "selection moved to the previous top-level row"
+  );
+}
+
+/**
+ * Tests that rows marked as unselectable cannot be selected.
+ */
+async function subtestUnselectable() {
+  let doc = content.document;
+
+  let list = doc.querySelector(`ul#unselectableTree`);
+  Assert.ok(!!list, "the list exists");
+
+  let initialRowIds = [
+    "uRow-2-1",
+    "uRow-2-2",
+    "uRow-3-1",
+    "uRow-3-1-1",
+    "uRow-3-1-2",
+  ];
+  Assert.equal(list.rowCount, initialRowIds.length, "rowCount is correct");
+  Assert.deepEqual(
+    list.rows.map(r => r.id),
+    initialRowIds,
+    "initial rows are correct"
+  );
+
+  function checkSelected(expectedIndex, expectedId) {
+    Assert.equal(list.selectedIndex, expectedIndex, "selectedIndex is correct");
+    Assert.deepEqual(
+      Array.from(list.querySelectorAll(".selected"), row => row.id),
+      [expectedId],
+      "correct rows have the 'selected' class"
+    );
+  }
+
+  checkSelected(0, "uRow-2-1");
+
+  // Clicking unselectable rows should not change the selection.
+  EventUtils.synthesizeMouseAtCenter(
+    doc.querySelector("#uRow-1 > div"),
+    {},
+    content
+  );
+  checkSelected(0, "uRow-2-1");
+  EventUtils.synthesizeMouseAtCenter(
+    doc.querySelector("#uRow-2 > div"),
+    {},
+    content
+  );
+  checkSelected(0, "uRow-2-1");
+  EventUtils.synthesizeMouseAtCenter(
+    doc.querySelector("#uRow-3 > div"),
+    {},
+    content
+  );
+  checkSelected(0, "uRow-2-1");
+
+  // Unselectable rows should not be accessible by keyboard.
+  EventUtils.synthesizeKey("KEY_ArrowUp", {}, content);
+  checkSelected(0, "uRow-2-1");
+  EventUtils.synthesizeKey("KEY_ArrowDown", {}, content);
+  EventUtils.synthesizeKey("KEY_ArrowDown", {}, content);
+  checkSelected(2, "uRow-3-1");
+  EventUtils.synthesizeKey("KEY_Home", {}, content);
+  checkSelected(0, "uRow-2-1");
+  EventUtils.synthesizeKey("KEY_End", {}, content);
+  checkSelected(4, "uRow-3-1-2");
+  EventUtils.synthesizeKey("KEY_PageUp", {}, content);
+  checkSelected(0, "uRow-2-1");
+  EventUtils.synthesizeKey("KEY_PageDown", {}, content);
+  checkSelected(4, "uRow-3-1-2");
+
+  EventUtils.synthesizeKey("VK_LEFT", {}, content); // Move up to 3-1.
+  checkSelected(2, "uRow-3-1");
+  EventUtils.synthesizeKey("VK_LEFT", {}, content); // Collapse.
+  checkSelected(2, "uRow-3-1");
+  EventUtils.synthesizeKey("VK_LEFT", {}, content); // Try to move to 3.
+  checkSelected(2, "uRow-3-1");
 }

@@ -6,9 +6,8 @@ const EXPORTED_SYMBOLS = ["cloudFileAccounts"];
 
 var ACCOUNT_ROOT = "mail.cloud_files.accounts.";
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-var { EventEmitter } = ChromeUtils.import(
-  "resource://gre/modules/EventEmitter.jsm"
+var { EventEmitter } = ChromeUtils.importESModule(
+  "resource://gre/modules/EventEmitter.sys.mjs"
 );
 
 var cloudFileAccounts = new (class extends EventEmitter {
@@ -20,7 +19,13 @@ var cloudFileAccounts = new (class extends EventEmitter {
       uploadWouldExceedQuota: 0x8055311b,
       uploadExceedsFileLimit: 0x8055311c,
       uploadCancelled: 0x8055311d,
-      uploadExceedsFileNameLimit: 0x8055311e,
+      uploadErrWithCustomMessage: 0x8055311f,
+      renameErr: 0x80553120,
+      renameErrWithCustomMessage: 0x80553121,
+      renameNotSupported: 0x80553122,
+      deleteErr: 0x80553123,
+      attachmentErr: 0x80553124,
+      accountErr: 0x80553125,
     };
   }
 
@@ -55,7 +60,7 @@ var cloudFileAccounts = new (class extends EventEmitter {
    * key, just return it. If we have the account, get the key from it.
    *
    * @param aKeyOrAccount the key or the account object
-   * @return the account key
+   * @returns the account key
    */
   _ensureKey(aKeyOrAccount) {
     if (typeof aKeyOrAccount == "string") {
@@ -70,7 +75,7 @@ var cloudFileAccounts = new (class extends EventEmitter {
   /**
    * Register a cloudfile provider, e.g. from an extension.
    *
-   * @param {Object} The implementation to register
+   * @param {object} The implementation to register
    */
   registerProvider(aType, aProvider) {
     if (this._providers.has(aType)) {
@@ -83,7 +88,7 @@ var cloudFileAccounts = new (class extends EventEmitter {
   /**
    * Unregister a cloudfile provider.
    *
-   * @param {String} aType                  The provider type to unregister
+   * @param {string} aType - The provider type to unregister
    */
   unregisterProvider(aType) {
     if (!this._providers.has(aType)) {

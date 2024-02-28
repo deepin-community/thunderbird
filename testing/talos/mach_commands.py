@@ -4,21 +4,15 @@
 
 # Integrates Talos mozharness with mach
 
-from __future__ import absolute_import, print_function, unicode_literals
-
+import json
 import logging
 import os
-import six
-import sys
-import json
 import socket
+import sys
 
-from mozbuild.base import (
-    MozbuildObject,
-    MachCommandBase,
-    BinaryNotFoundException,
-)
-from mach.decorators import CommandProvider, Command
+import six
+from mach.decorators import Command
+from mozbuild.base import BinaryNotFoundException, MozbuildObject
 
 HERE = os.path.dirname(os.path.realpath(__file__))
 
@@ -123,19 +117,17 @@ def create_parser():
     return create_parser(mach_interface=True)
 
 
-@CommandProvider
-class MachCommands(MachCommandBase):
-    @Command(
-        "talos-test",
-        category="testing",
-        description="Run talos tests (performance testing).",
-        parser=create_parser,
-    )
-    def run_talos_test(self, command_context, **kwargs):
-        talos = self._spawn(TalosRunner)
+@Command(
+    "talos-test",
+    category="testing",
+    description="Run talos tests (performance testing).",
+    parser=create_parser,
+)
+def run_talos_test(command_context, **kwargs):
+    talos = command_context._spawn(TalosRunner)
 
-        try:
-            return talos.run_test(sys.argv[2:])
-        except Exception as e:
-            print(str(e))
-            return 1
+    try:
+        return talos.run_test(sys.argv[2:])
+    except Exception as e:
+        print(str(e))
+        return 1

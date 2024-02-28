@@ -11,6 +11,7 @@
 <!ENTITY newMenu.label "Newydd">
 <!ENTITY newMenu.accesskey "N">
 <!ENTITY newMessage.label "Neges">
+<!ENTITY newMessage.accesskey "N">
 <!ENTITY newMessageCmd2.key "N">
 <!ENTITY newContact.label "Cysylltiad Llyfr Cyfeiriadau…">
 <!ENTITY newContact.accesskey "C">
@@ -20,9 +21,6 @@
 <!ENTITY attachCloudCmd.accesskey "F">
 <!ENTITY attachPageCmd.label "Tudalen Gwe…">
 <!ENTITY attachPageCmd.accesskey "T">
-<!--LOCALIZATION NOTE attachVCardCmd.label Don't translate the term 'vCard' -->
-<!ENTITY attachVCardCmd.label "Cerdyn Personol (vCard)">
-<!ENTITY attachVCardCmd.accesskey "C">
 <!ENTITY remindLater.label "Atgoffa Fi yn Ddiweddarach">
 <!ENTITY remindLater.accesskey "D">
 <!ENTITY closeCmd.label "Cau">
@@ -103,7 +101,7 @@
      sortAttachmentsPanelBtn.SortSelection.ZA.label, except for the sort direction. -->
 <!ENTITY sortAttachmentsPanelBtn.SortSelection.AZ.label "Trefnu'r Dewis: A - Z">
 <!ENTITY sortAttachmentsPanelBtn.SortSelection.ZA.label "Trefnu'r Dewis: Z - A">
-<!ENTITY sortAttachmentsPanelBtn.key "t">
+<!ENTITY sortAttachmentsPanelBtn.key "y">
 
 <!-- View Menu -->
 <!ENTITY viewMenu.label "Golwg">
@@ -148,16 +146,6 @@
 <!ENTITY returnReceiptMenu.accesskey "D">
 <!ENTITY dsnMenu.label "Hysbysiad Statws Trosglwyddo">
 <!ENTITY dsnMenu.accesskey "H">
-<!ENTITY deliveryFormatMenu.label "Fformat Darparu">
-<!ENTITY deliveryFormatMenu.accesskey "D">
-<!ENTITY autoFormatCmd.label "Awto-Ganfod">
-<!ENTITY autoFormatCmd.accesskey "A">
-<!ENTITY plainTextFormatCmd.label "Testun Plaen yn Unig">
-<!ENTITY plainTextFormatCmd.accesskey "P">
-<!ENTITY htmlFormatCmd.label "Testun Cyfoethog (HTML) yn Unig">
-<!ENTITY htmlFormatCmd.accesskey "C">
-<!ENTITY bothFormatCmd.label "Testun Plaen a Chyfoethog (HTML)">
-<!ENTITY bothFormatCmd.accesskey "P">
 <!ENTITY priorityMenu.label "Blaenoriaeth">
 <!ENTITY priorityMenu.accesskey "B">
 <!ENTITY priorityButton.title "Blaenoriaeth">
@@ -186,7 +174,7 @@
 <!ENTITY addressBookCmd.label "Llyfr Cyfeiriadau">
 <!ENTITY addressBookCmd.accesskey "L">
 <!ENTITY addressBookCmd.key "B">
-<!ENTITY accountManagerCmd2.label "Gosodiadau'r Cyfrif">
+<!ENTITY accountManagerCmd2.label "Gosodiadau Cyfrif">
 <!ENTITY accountManagerCmd2.accesskey "C">
 <!ENTITY accountManagerCmdUnix2.accesskey "C">
 
@@ -221,10 +209,9 @@
 <!--LOCALIZATION NOTE headersSpaces.style is for aligning  the From:, To: and
     Subject: rows. It should be larger than the largest Header label  -->
 <!ENTITY headersSpace2.style "width: 8em;">
-<!ENTITY extraRecipients.tooltip "Mathau eraill o feysydd cyfeiriad">
 <!ENTITY fromAddr2.label "Oddi wrth">
 <!ENTITY fromAddr.accesskey "O">
-<!ENTITY replyAddr2.label "Ateb i">
+<!ENTITY replyAddr2.label "Ateb-At">
 <!ENTITY newsgroupsAddr2.label "Grŵp Newyddion">
 <!ENTITY followupAddr2.label "Dilyn i">
 <!ENTITY subject2.label "Pwnc">
@@ -280,7 +267,7 @@
 <!ENTITY reorderAttachments.accesskey "a">
 <!ENTITY removeAllAttachments.label "Tynnu Pob Atodiad">
 <!ENTITY removeAllAttachments.accesskey "T">
-<!ENTITY selectAll.label "Dewis Popeth">
+<!ENTITY selectAll.label "Dewis y Cyfan">
 <!ENTITY selectAll.accesskey "D">
 <!ENTITY attachCloud.label "Filelink…">
 <!ENTITY attachCloud.accesskey "i">
@@ -297,7 +284,7 @@
 <!-- LOCALIZATION NOTE (initiallyShowAttachmentPane.label):
      Should use the same wording as startExpandedCmd.label
      in msgHdrViewOverlay.dtd. -->
-<!ENTITY initiallyShowAttachmentPane.label "Dangos y Paen Atodi yn Gyntaf">
+<!ENTITY initiallyShowAttachmentPane.label "Dangos y Paen Atodiad yn Gyntaf">
 <!ENTITY initiallyShowAttachmentPane.accesskey "D">
 
 <!-- Spell checker context menu items -->

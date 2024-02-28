@@ -6,11 +6,12 @@
 #include <math.h>
 
 #include "js/Equality.h"  // JS::LooselyEqual
+#include "js/GlobalObject.h"
 #include "jsapi-tests/tests.h"
 
 using namespace std;
 
-struct LooseEqualityFixture : public JSAPITest {
+struct LooseEqualityFixture : public JSAPIRuntimeTest {
   virtual ~LooseEqualityFixture() {}
 
   bool leq(JS::HandleValue x, JS::HandleValue y) {

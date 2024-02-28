@@ -3,10 +3,10 @@
 
 "use strict";
 
-const { ThreadFront } = require("devtools/client/fronts/thread");
+const { ThreadFront } = require("resource://devtools/client/fronts/thread.js");
 const {
-  BrowsingContextTargetFront,
-} = require("devtools/client/fronts/targets/browsing-context");
+  WindowGlobalTargetFront,
+} = require("resource://devtools/client/fronts/targets/window-global.js");
 
 /**
  * Very naive test that checks threadClearTest helper.
@@ -23,9 +23,6 @@ add_task(
       "Debuggee client is valid (getSandboxMetadata did not fail)"
     );
     ok(client instanceof DevToolsClient, "Client is valid");
-    ok(
-      targetFront instanceof BrowsingContextTargetFront,
-      "TargetFront is valid"
-    );
+    ok(targetFront instanceof WindowGlobalTargetFront, "TargetFront is valid");
   })
 );

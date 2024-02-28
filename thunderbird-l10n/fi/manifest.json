@@ -1,29 +1,28 @@
 {
   "langpack_id": "fi",
   "manifest_version": 2,
-  "applications": {
+  "browser_specific_settings": {
     "gecko": {
       "id": "langpack-fi@thunderbird.mozilla.org",
-      "strict_min_version": "91.0",
-      "strict_max_version": "91.*"
+      "strict_min_version": "115.0",
+      "strict_max_version": "115.*"
     }
   },
-  "name": "Finnish Language Pack",
-  "description": "Language pack for Thunderbird for fi",
-  "version": "91.0buildid20211101223011",
+  "name": "Language: Suomi (Finnish)",
+  "description": "Thunderbird Language Pack for Suomi (fi) – Finnish",
+  "version": "115.8.20240216.174500",
   "languages": {
     "fi": {
-      "version": "20211014071536",
+      "version": "20240216183650",
       "chrome_resources": {
         "alerts": "chrome/fi/locale/fi/alerts/",
         "autoconfig": "chrome/fi/locale/fi/autoconfig/",
-        "branding": "chrome/fi/locale/fi/branding/",
+        "branding": "chrome/fi/locale/branding/",
         "calendar": "chrome/fi/locale/fi/calendar/",
         "chat": "chrome/fi/locale/fi/chat/",
         "communicator": "chrome/fi/locale/fi/communicator/",
         "devtools": "chrome/fi/locale/fi/devtools/client/",
         "devtools-shared": "chrome/fi/locale/fi/devtools/shared/",
-        "devtools-startup": "chrome/fi/locale/fi/devtools/startup/",
         "global": "chrome/fi/locale/fi/global/",
         "global-platform": {
           "macosx": "chrome/fi/locale/fi/global-platform/mac/",

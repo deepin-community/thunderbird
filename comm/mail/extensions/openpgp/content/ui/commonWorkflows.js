@@ -6,7 +6,6 @@
 
 "use strict";
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 var { EnigmailDialog } = ChromeUtils.import(
   "chrome://openpgp/content/modules/dialog.jsm"
 );
@@ -19,8 +18,8 @@ var { EnigmailKeyRing } = ChromeUtils.import(
 var { EnigmailArmor } = ChromeUtils.import(
   "chrome://openpgp/content/modules/armor.jsm"
 );
-var { EnigmailFiles } = ChromeUtils.import(
-  "chrome://openpgp/content/modules/files.jsm"
+var { MailStringUtils } = ChromeUtils.import(
+  "resource:///modules/MailStringUtils.jsm"
 );
 
 var l10n = new Localization(["messenger/openpgp/openpgp.ftl"], true);
@@ -30,37 +29,24 @@ var l10n = new Localization(["messenger/openpgp/openpgp.ftl"], true);
  * returns: the passphrase if entered (empty string is allowed)
  * resultFlags.canceled is set to true if the user clicked cancel
  */
-function passphrasePromptCallback(win, keyId, resultFlags) {
-  let p = {};
-  p.value = "";
-  let dummy = {};
-  if (
-    !Services.prompt.promptPassword(
-      win,
-      "",
-      l10n.formatValueSync("passphrase-prompt", {
-        key: keyId,
-      }),
-      p,
-      null,
-      dummy
-    )
-  ) {
+function passphrasePromptCallback(win, promptString, resultFlags) {
+  let password = { value: "" };
+  if (!Services.prompt.promptPassword(win, "", promptString, password)) {
     resultFlags.canceled = true;
     return "";
   }
 
   resultFlags.canceled = false;
-  return p.value;
+  return password.value;
 }
 
-// Return the first block of the wanted type (skip blocks of wrong type)
-function getKeyBlockFromFile(path, wantSecret) {
-  var contents = EnigmailFiles.readFile(path);
-  if (!contents) {
-    return "";
-  }
-
+/**
+ * @param {nsIFile} file
+ * @returns {string} The first block of the wanted type, or empty string.
+ *   Skip blocks of wrong type.
+ */
+async function getKeyBlockFromFile(file, wantSecret) {
+  let contents = await IOUtils.readUTF8(file.path).catch(() => "");
   let searchOffset = 0;
 
   while (searchOffset < contents.length) {
@@ -96,9 +82,14 @@ function getKeyBlockFromFile(path, wantSecret) {
 
 /**
  * import OpenPGP keys from file
- * @param {string} what - "rev" for revocation, "pub" for public keys, "sec" for secret keys.
+ *
+ * @param {string} what - "rev" for revocation, "pub" for public keys
  */
-function EnigmailCommon_importObjectFromFile(what) {
+async function EnigmailCommon_importObjectFromFile(what) {
+  if (what != "rev" && what != "pub") {
+    throw new Error(`Can't import. Invalid argument: ${what}`);
+  }
+
   let importingRevocation = what == "rev";
   let promptStr = importingRevocation ? "import-rev-file" : "import-key-file";
 
@@ -128,27 +119,27 @@ function EnigmailCommon_importObjectFromFile(what) {
     let errorMsgObj = {};
 
     if (importingRevocation) {
-      EnigmailKeyRing.importRevFromFile(file);
+      await EnigmailKeyRing.importRevFromFile(file);
       continue;
     }
 
-    let isSecret = what == "sec";
     let importBinary = false;
-    let keyBlock = getKeyBlockFromFile(file, isSecret);
+    let keyBlock = await getKeyBlockFromFile(file, false);
 
     // if we don't find an ASCII block, try to import as binary.
     if (!keyBlock) {
       importBinary = true;
-      keyBlock = EnigmailFiles.readFile(file);
+      let data = await IOUtils.read(file.path);
+      keyBlock = MailStringUtils.uint8ArrayToByteString(data);
     }
 
-    // Generat a preview of the imported key.
-    let preview = EnigmailKey.getKeyListFromKeyBlock(
+    // Generate a preview of the imported key.
+    let preview = await EnigmailKey.getKeyListFromKeyBlock(
       keyBlock,
       errorMsgObj,
       true, // interactive
-      !isSecret,
-      isSecret
+      true,
+      false // not secret
     );
 
     if (!preview || !preview.length || errorMsgObj.value) {
@@ -161,37 +152,14 @@ function EnigmailCommon_importObjectFromFile(what) {
     if (preview.length > 0) {
       let confirmImport = false;
       let autoAcceptance = null;
-      if (isSecret) {
-        if (preview.length == 1) {
-          confirmImport = EnigmailDialog.confirmDlg(
-            window,
-            l10n.formatValueSync("do-import-one", {
-              name: preview[0].name,
-              id: preview[0].id,
-            })
-          );
-        } else {
-          confirmImport = EnigmailDialog.confirmDlg(
-            window,
-            l10n.formatValueSync("do-import-multiple", {
-              key: preview
-                .map(function(a) {
-                  return "\t" + a.name + " (" + a.id + ")";
-                })
-                .join("\n"),
-            })
-          );
-        }
-      } else {
-        let outParam = {};
-        confirmImport = EnigmailDialog.confirmPubkeyImport(
-          window,
-          preview,
-          outParam
-        );
-        if (confirmImport) {
-          autoAcceptance = outParam.acceptance;
-        }
+      let outParam = {};
+      confirmImport = EnigmailDialog.confirmPubkeyImport(
+        window,
+        preview,
+        outParam
+      );
+      if (confirmImport) {
+        autoAcceptance = outParam.acceptance;
       }
 
       if (confirmImport) {
@@ -208,9 +176,7 @@ function EnigmailCommon_importObjectFromFile(what) {
           resultKeys,
           false, // minimize
           [], // filter
-          isSecret,
           true, // allow prompt for permissive
-          passphrasePromptCallback,
           autoAcceptance
         );
 

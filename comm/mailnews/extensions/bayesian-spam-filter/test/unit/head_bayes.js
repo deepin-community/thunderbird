@@ -1,9 +1,8 @@
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 var { MailServices } = ChromeUtils.import(
   "resource:///modules/MailServices.jsm"
 );
-var { XPCOMUtils } = ChromeUtils.import(
-  "resource://gre/modules/XPCOMUtils.jsm"
+var { XPCOMUtils } = ChromeUtils.importESModule(
+  "resource://gre/modules/XPCOMUtils.sys.mjs"
 );
 var { mailTestUtils } = ChromeUtils.import(
   "resource://testing-common/mailnews/MailTestUtils.jsm"
@@ -20,13 +19,10 @@ do_get_profile();
 function getSpec(aFileName) {
   var file = do_get_file("resources/" + aFileName);
   var uri = Services.io.newFileURI(file).QueryInterface(Ci.nsIURL);
-  uri = uri
-    .mutate()
-    .setQuery("type=application/x-message-display")
-    .finalize();
+  uri = uri.mutate().setQuery("type=application/x-message-display").finalize();
   return uri.spec;
 }
 
-registerCleanupFunction(function() {
+registerCleanupFunction(function () {
   load("../../../../resources/mailShutdown.js");
 });

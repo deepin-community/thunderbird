@@ -24,8 +24,10 @@
 #include "prmem.h"
 #include "prlog.h"
 #include "msgCore.h"
+#include "nsContentUtils.h"
 #include "mozilla/dom/DOMParser.h"
 #include "mozilla/dom/Document.h"
+#include "nsGenericHTMLElement.h"
 #include "mozilla/Preferences.h"
 #include "nsIParserUtils.h"
 #include "nsIDocumentEncoder.h"
@@ -88,6 +90,20 @@ static int MimeInlineTextHTMLParsed_parse_eof(MimeObject* obj, bool abort_p) {
       rawHTML, mozilla::dom::SupportedType::Text_html, rv2);
   if (rv2.Failed()) return -1;
 
+  // Remove meta http-equiv="refresh".
+  RefPtr<nsContentList> metas = document->GetElementsByTagName(u"meta"_ns);
+  uint32_t length = metas->Length(true);
+  for (uint32_t i = length; i > 0; i--) {
+    RefPtr<nsGenericHTMLElement> node =
+        nsGenericHTMLElement::FromNodeOrNull(metas->Item(i - 1));
+    nsAutoString header;
+    node->GetAttr(kNameSpaceID_None, nsGkAtoms::httpEquiv, header);
+    nsContentUtils::ASCIIToLower(header);
+    if (nsGkAtoms::refresh->Equals(header)) {
+      node->Remove();
+    }
+  }
+
   // Serialize it back to HTML source again.
   nsCOMPtr<nsIDocumentEncoder> encoder = do_createDocumentEncoder("text/html");
   NS_ENSURE_TRUE(encoder, -1);
@@ -106,9 +122,7 @@ static int MimeInlineTextHTMLParsed_parse_eof(MimeObject* obj, bool abort_p) {
     nsString cssCondStripped;
     nsCOMPtr<nsIParserUtils> parserUtils =
         do_GetService(NS_PARSERUTILS_CONTRACTID);
-    parserUtils->Sanitize(parsed,
-                          nsIParserUtils::SanitizerRemoveOnlyConditionalCSS,
-                          cssCondStripped);
+    parserUtils->RemoveConditionalCSS(parsed, cssCondStripped);
     parsed.Truncate();
     resultCStr = NS_ConvertUTF16toUTF8(cssCondStripped);
   } else {
@@ -116,6 +130,11 @@ static int MimeInlineTextHTMLParsed_parse_eof(MimeObject* obj, bool abort_p) {
   }
 
   // Write it out.
+
+  // XXX: adding the doc source resultCStr to what we have here is not nice:
+  //   We already have the stuff up to and including <body> written.
+  //   So we are dumping <head> content into <body>. Tagsoup ohoy!
+
   MimeInlineTextHTML_insert_lang_div(obj, resultCStr);
   MimeInlineTextHTML_remove_plaintext_tag(obj, resultCStr);
   status =

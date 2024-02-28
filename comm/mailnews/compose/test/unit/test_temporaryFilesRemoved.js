@@ -6,8 +6,6 @@
  * Test that temporary files for draft are surely removed.
  */
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-
 var gMsgCompose;
 var gExpectedFiles;
 
@@ -46,9 +44,11 @@ async function getTemporaryFilesCount() {
   let tmpDir = Services.dirsvc.get("TmpD", Ci.nsIFile).path;
   let entries = await IOUtils.getChildren(tmpDir);
   let tempFiles = {
-    "nsemail.html": 0, // not actually used by MessageSend.jsm
-    "nsemail.eml": 0,
+    "nsmail.tmp": 0,
     "nscopy.tmp": 0,
+    "nsemail.eml": 0,
+    "nsemail.tmp": 0,
+    "nsqmail.tmp": 0,
   };
   for (const path of entries) {
     for (let pattern of Object.keys(tempFiles)) {
@@ -77,7 +77,7 @@ async function checkResult() {
   do_test_finished();
 }
 
-add_task(async function() {
+add_task(async function () {
   gExpectedFiles = await getTemporaryFilesCount();
 
   // Ensure we have at least one mail account
@@ -93,8 +93,8 @@ add_task(async function() {
     "@mozilla.org/messengercompose/composeparams;1"
   ].createInstance(Ci.nsIMsgComposeParams);
 
+  fields.from = "Nobody <nobody@tinderbox.test>";
   fields.body = "body text";
-  // set multipart for nsemail.html
   fields.useMultipartAlternative = true;
 
   params.composeFields = fields;

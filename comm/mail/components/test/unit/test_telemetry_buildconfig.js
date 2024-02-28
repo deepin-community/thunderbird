@@ -10,11 +10,9 @@
 // The probe names have been changed to probes that only exist in a Thunderbird build.
 // If this test begins to fail, check for recent changes in toolkit/components/telemetry.
 
-ChromeUtils.defineModuleGetter(
-  this,
-  "TelemetryTestUtils",
-  "resource://testing-common/TelemetryTestUtils.jsm"
-);
+ChromeUtils.defineESModuleGetters(this, {
+  TelemetryTestUtils: "resource://testing-common/TelemetryTestUtils.sys.mjs",
+});
 
 const Telemetry = Services.telemetry;
 
@@ -26,7 +24,7 @@ const BOOLEAN_SCALAR = "tb.test.boolean_kind";
  * Check that stored events correspond to expectations.
  *
  * @param {Array} summaries - Summary of the expected events.
- * @param {Boolean} clearScalars - Whether to clear out data after snapshotting.
+ * @param {boolean} clearScalars - Whether to clear out data after snapshotting.
  */
 function checkEventSummary(summaries, clearScalars) {
   let scalars = Telemetry.getSnapshotForKeyedScalars("main", clearScalars);

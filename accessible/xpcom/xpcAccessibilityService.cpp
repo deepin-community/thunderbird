@@ -4,11 +4,14 @@
 
 #include "xpcAccessibilityService.h"
 
+#include "mozilla/dom/Document.h"
+
 #include "nsAccessiblePivot.h"
 #include "nsAccessibilityService.h"
 #include "Platform.h"
 #include "xpcAccessibleApplication.h"
 #include "xpcAccessibleDocument.h"
+#include "xpcAccessibleTextLeafRange.h"
 
 #ifdef A11Y_LOG
 #  include "Logging.h"
@@ -238,6 +241,21 @@ xpcAccessibilityService::CreateAccessiblePivot(nsIAccessible* aRoot,
 
   nsAccessiblePivot* pivot = new nsAccessiblePivot(accessibleRoot);
   NS_ADDREF(*aPivot = pivot);
+
+  return NS_OK;
+}
+
+NS_IMETHODIMP
+xpcAccessibilityService::CreateTextLeafPoint(
+    nsIAccessible* aAccessible, int32_t aOffset,
+    nsIAccessibleTextLeafPoint** aPoint) {
+  NS_ENSURE_ARG_POINTER(aPoint);
+  NS_ENSURE_ARG(aAccessible);
+  *aPoint = nullptr;
+
+  RefPtr<xpcAccessibleTextLeafPoint> point =
+      new xpcAccessibleTextLeafPoint(aAccessible, aOffset);
+  point.forget(aPoint);
 
   return NS_OK;
 }

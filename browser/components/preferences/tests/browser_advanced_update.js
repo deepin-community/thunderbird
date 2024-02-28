@@ -5,9 +5,7 @@
 
 const Cm = Components.manager;
 
-const uuidGenerator = Cc["@mozilla.org/uuid-generator;1"].getService(
-  Ci.nsIUUIDGenerator
-);
+const uuidGenerator = Services.uuid;
 
 const mockUpdateManager = {
   contractId: "@mozilla.org/updates/update-manager;1",
@@ -18,10 +16,7 @@ const mockUpdateManager = {
 
   QueryInterface: ChromeUtils.generateQI(["nsIUpdateManager"]),
 
-  createInstance(outer, iiD) {
-    if (outer) {
-      throw Components.Exception("", Cr.NS_ERROR_NO_AGGREGATION);
-    }
+  createInstance(iiD) {
     return this.QueryInterface(iiD);
   },
 
@@ -90,7 +85,7 @@ function formatInstallDate(sec) {
   return date.toLocaleString(undefined, dtOptions);
 }
 
-add_task(async function() {
+add_task(async function () {
   await openPreferencesViaOpenPreferencesAPI("general", { leaveOpen: true });
   let doc = gBrowser.selectedBrowser.contentDocument;
 

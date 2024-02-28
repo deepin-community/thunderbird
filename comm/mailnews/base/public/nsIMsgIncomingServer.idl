@@ -36,6 +36,12 @@ interface nsIMsgIncomingServer : nsISupports {
   attribute ACString key;
 
   /**
+   * A unique identifier for this server that can be used for the same
+   * server synced across multiple profiles. Auto-generated on first use.
+   */
+  attribute AUTF8String UID;
+
+  /**
    * pretty name - should be "userid on hostname"
    * if the pref is not set
    */
@@ -50,12 +56,7 @@ interface nsIMsgIncomingServer : nsISupports {
   /**
    * hostname of the server
    */
-  attribute ACString hostName;
-
-  /**
-   * real hostname of the server (if server name is changed it's stored here)
-   */
-  attribute ACString realHostName;
+  attribute AUTF8String hostName;
 
   /* port of the server */
   attribute long port;
@@ -63,12 +64,7 @@ interface nsIMsgIncomingServer : nsISupports {
   /**
    * userid to log into the server
    */
-  attribute ACString username;
-
-  /**
-   * real username of the server (if username is changed it's stored here)
-   */
-  attribute ACString realUsername;
+  attribute AUTF8String username;
 
   /**
    * protocol type, i.e. "pop3", "imap", "nntp", "none", etc
@@ -110,7 +106,7 @@ interface nsIMsgIncomingServer : nsISupports {
   readonly attribute ACString localDatabaseType;
 
   // Perform specific tasks (reset flags, remove files, etc) for account user/server name changes.
-  void onUserOrHostNameChanged(in ACString oldName, in ACString newName,
+  void onUserOrHostNameChanged(in AUTF8String oldName, in AUTF8String newName,
                                in bool hostnameChanged);
 
   /// cleartext utf16 version of the password
@@ -123,7 +119,6 @@ interface nsIMsgIncomingServer : nsISupports {
    * @param aPromptString  The text of the prompt if the user is prompted for
    *                       password.
    * @param aPromptTitle   The title of the prompt if the user is prompted.
-   * @param aMsgWindow     A message window to associate the prompt with.
    * @return               The obtained password. Could be an empty password.
    *
    * @exception NS_ERROR_FAILURE  The password could not be obtained.
@@ -132,14 +127,19 @@ interface nsIMsgIncomingServer : nsISupports {
    *       if the prompt was presented to the user but the user cancelled the
    *       prompt.
    */
-  AString getPasswordWithUI(in AString aPromptString, in AString aPromptTitle,
-                             in nsIMsgWindow aMsgWindow);
+  AString getPasswordWithUI(in AString aPromptString, in AString aPromptTitle);
 
   /* forget the password in memory and in single signon database */
   void forgetPassword();
 
-  /* forget the password in memory which is cached for the session */
-  void forgetSessionPassword();
+  /**
+   * Forget the password in memory which is cached for the session.
+   *
+   * @param modifyLogin  Only relevant for nsImapIncomingServer override. When
+   *                     true and authentication method is oauth2, the password
+   *                     and user authenticated flag are not cleared.
+   */
+  void forgetSessionPassword(in boolean modifyLogin);
 
   /* should we download whole messages when biff goes off? */
   attribute boolean downloadOnBiff;
@@ -163,7 +163,7 @@ interface nsIMsgIncomingServer : nsISupports {
   readonly attribute nsIMsgPluggableStore msgStore;
 
   /* the RDF URI for the root mail folder */
-  readonly attribute ACString serverURI;
+  readonly attribute AUTF8String serverURI;
 
   /* the root folder for this server, even if server is deferred */
   attribute nsIMsgFolder rootFolder;
@@ -273,7 +273,7 @@ interface nsIMsgIncomingServer : nsISupports {
   /* this gets called when the server is expanded in the folder pane */
   void performExpand(in nsIMsgWindow aMsgWindow);
 
-  /* Write out all known folder data to panacea.dat */
+  /* Write out all known folder data to folderCache */
   void writeToFolderCache(in nsIMsgFolderCache folderCache);
 
   /* close any server connections */
@@ -356,8 +356,6 @@ interface nsIMsgIncomingServer : nsISupports {
 
   AString toString();
 
-  void displayOfflineMsg(in nsIMsgWindow aWindow);
-
   /* used for comparing nsIMsgIncomingServers */
   boolean equals(in nsIMsgIncomingServer server);
 
@@ -385,9 +383,6 @@ interface nsIMsgIncomingServer : nsISupports {
 
   /* check if this server allows search operations */
   readonly attribute boolean canSearchMessages;
-
-  /* check if this server allows canEmptyTrashOnExit operations */
-  readonly attribute boolean canEmptyTrashOnExit;
 
   /* display startup page once per account per session */
   attribute boolean displayStartupPage;
@@ -490,7 +485,7 @@ interface nsIMsgIncomingServer : nsISupports {
   readonly attribute nsISpamSettings spamSettings;
   readonly attribute nsIMsgFilterPlugin spamFilterPlugin;
 
-  nsIMsgFolder getMsgFolderFromURI(in nsIMsgFolder aFolderResource, in ACString aURI);
+  nsIMsgFolder getMsgFolderFromURI(in nsIMsgFolder aFolderResource, in AUTF8String aURI);
 
   /// Indicates if any other server has deferred storage to this account.
   readonly attribute boolean isDeferredTo;

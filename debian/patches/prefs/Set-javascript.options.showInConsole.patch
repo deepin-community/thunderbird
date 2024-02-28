@@ -7,10 +7,10 @@ Subject: Set javascript.options.showInConsole
  1 file changed, 9 insertions(+)
 
 diff --git a/modules/libpref/init/all.js b/modules/libpref/init/all.js
-index 1aa0592..522b504 100644
+index c7c6f0c..3823047 100644
 --- a/modules/libpref/init/all.js
 +++ b/modules/libpref/init/all.js
-@@ -1115,11 +1115,20 @@ pref("javascript.options.throw_on_asmjs_validation_failure", false);
+@@ -976,11 +976,20 @@ pref("javascript.options.throw_on_asmjs_validation_failure", false);
  // memory, but makes things like Function.prototype.toSource()
  // fail.
  pref("javascript.options.discardSystemSource", false);

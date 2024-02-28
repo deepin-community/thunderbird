@@ -21,18 +21,30 @@
 #include "mozilla/AppUnits.h"         // for AppUnits
 #include "nsFontMetrics.h"            // for nsFontMetrics::Params
 #include "mozilla/gfx/PrintTarget.h"  // for PrintTarget::PageDoneCallback
+#include "mozilla/gfx/PrintPromise.h"
 
 class gfxContext;
 class gfxTextPerfMetrics;
 class gfxUserFontSet;
 struct nsFont;
-class nsFontCache;
 class nsAtom;
 class nsIDeviceContextSpec;
 class nsIScreen;
 class nsIScreenManager;
 class nsIWidget;
 struct nsRect;
+
+namespace mozilla {
+namespace dom {
+enum class ScreenColorGamut : uint8_t;
+}  // namespace dom
+namespace hal {
+enum class ScreenOrientation : uint32_t;
+}  // namespace hal
+namespace widget {
+class Screen;
+}  // namespace widget
+}  // namespace mozilla
 
 class nsDeviceContext final {
  public:
@@ -45,17 +57,8 @@ class nsDeviceContext final {
   /**
    * Initialize the device context from a widget
    * @param aWidget a widget to initialize the device context from
-   * @return error status
    */
-  nsresult Init(nsIWidget* aWidget);
-
-  /*
-   * Initialize the font cache if it hasn't been initialized yet.
-   * (Needed for stylo)
-   */
-  void InitFontCache();
-
-  void UpdateFontCacheUserFonts(gfxUserFontSet* aUserFontSet);
+  void Init(nsIWidget* aWidget);
 
   /**
    * Initialize the device context from a device context spec
@@ -70,7 +73,7 @@ class nsDeviceContext final {
    *
    * @return the new rendering context (guaranteed to be non-null)
    */
-  already_AddRefed<gfxContext> CreateRenderingContext();
+  mozilla::UniquePtr<gfxContext> CreateRenderingContext();
 
   /**
    * Create a reference rendering context and initialize it.  Only call this
@@ -78,7 +81,7 @@ class nsDeviceContext final {
    *
    * @return the new rendering context.
    */
-  already_AddRefed<gfxContext> CreateReferenceRenderingContext();
+  mozilla::UniquePtr<gfxContext> CreateReferenceRenderingContext();
 
   /**
    * Gets the number of app units in one device pixel; this number
@@ -117,30 +120,32 @@ class nsDeviceContext final {
   }
 
   /**
-   * Get the nsFontMetrics that describe the properties of
-   * an nsFont.
-   * @param aFont font description to obtain metrics for
+   * Get the ratio of app units to dev pixels that would be used in a top-level
+   * chrome page such as browser.xhtml.
    */
-  already_AddRefed<nsFontMetrics> GetMetricsFor(
-      const nsFont& aFont, const nsFontMetrics::Params& aParams);
-
-  /**
-   * Notification when a font metrics instance created for this device is
-   * about to be deleted
-   */
-  nsresult FontMetricsDeleted(const nsFontMetrics* aFontMetrics);
-
-  /**
-   * Attempt to free up resources by flushing out any fonts no longer
-   * referenced by anything other than the font cache itself.
-   * @return error status
-   */
-  nsresult FlushFontCache();
+  int32_t AppUnitsPerDevPixelInTopLevelChromePage() const;
 
   /**
    * Return the bit depth of the device.
    */
-  nsresult GetDepth(uint32_t& aDepth);
+  uint32_t GetDepth();
+
+  /**
+   * Return the color gamut of the device.
+   */
+  mozilla::dom::ScreenColorGamut GetColorGamut();
+
+  /**
+   * Return the orientation type of the device.
+   * If not screen device, return primary screen's value
+   */
+  mozilla::hal::ScreenOrientation GetScreenOrientationType();
+
+  /**
+   * Return the orientation angle of the device.
+   * If not screen device, return primary screen's value
+   */
+  uint16_t GetScreenOrientationAngle();
 
   /**
    * Get the size of the displayable area of the output device
@@ -203,9 +208,9 @@ class nsDeviceContext final {
    * Inform the output device that output of a document is ending.
    * Used for print related device contexts. Must be matched 1:1 with
    * BeginDocument()
-   * @return error status
+   * @return Promise that can be chained once the operation is complete.
    */
-  nsresult EndDocument();
+  RefPtr<mozilla::gfx::PrintEndDocumentPromise> EndDocument();
 
   /**
    * Inform the output device that output of a document is being aborted.
@@ -232,17 +237,11 @@ class nsDeviceContext final {
 
   /**
    * Check to see if the DPI has changed, or impose a new DPI scale value.
-   * @param  aScale - If non-null, the default (unzoomed) CSS to device pixel
-   *                  scale factor will be returned here; and if it is > 0.0
-   *                  on input, the given value will be used instead of
-   *                  getting it from the widget (if any). This is used to
-   *                  allow subdocument contexts to inherit the resolution
-   *                  setting of their parent.
    * @return whether there was actually a change in the DPI (whether
    *         AppUnitsPerDevPixel() or AppUnitsPerPhysicalInch()
    *         changed)
    */
-  bool CheckDPIChange(double* aScale = nullptr);
+  bool CheckDPIChange();
 
   /**
    * Set the full zoom factor: all lengths are multiplied by this factor
@@ -259,13 +258,9 @@ class nsDeviceContext final {
   /**
    * True if this device context was created for printing.
    */
-  bool IsPrinterContext();
+  bool IsPrinterContext() const { return !!mPrintTarget; }
 
   mozilla::DesktopToLayoutDeviceScale GetDesktopToDeviceScale();
-
-  bool IsSyncPagePrinting() const;
-  void RegisterPageDoneCallback(PrintTarget::PageDoneCallback&& aCallback);
-  void UnregisterPageDoneCallback();
 
  private:
   // Private destructor, to discourage deletion outside of Release():
@@ -275,13 +270,13 @@ class nsDeviceContext final {
    * Implementation shared by CreateRenderingContext and
    * CreateReferenceRenderingContext.
    */
-  already_AddRefed<gfxContext> CreateRenderingContextCommon(
+  mozilla::UniquePtr<gfxContext> CreateRenderingContextCommon(
       bool aWantReferenceContext);
 
-  void SetDPI(double* aScale = nullptr);
+  void SetDPI();
   void ComputeClientRectUsingScreen(nsRect* outRect);
   void ComputeFullAreaUsingScreen(nsRect* outRect);
-  void FindScreen(nsIScreen** outScreen);
+  already_AddRefed<mozilla::widget::Screen> FindScreen();
 
   // Return false if the surface is not right
   bool CalcPrintingSize();
@@ -296,15 +291,11 @@ class nsDeviceContext final {
   float mPrintingScale;
   gfxPoint mPrintingTranslate;
 
-  RefPtr<nsFontCache> mFontCache;
   nsCOMPtr<nsIWidget> mWidget;
-  nsCOMPtr<nsIScreenManager> mScreenManager;
   nsCOMPtr<nsIDeviceContextSpec> mDeviceContextSpec;
   RefPtr<PrintTarget> mPrintTarget;
   bool mIsCurrentlyPrintingDoc;
-#ifdef DEBUG
-  bool mIsInitialized;
-#endif
+  bool mIsInitialized = false;
 };
 
 #endif /* _NS_DEVICECONTEXT_H_ */

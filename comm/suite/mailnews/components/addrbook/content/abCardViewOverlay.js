@@ -1,15 +1,12 @@
-/* -*- Mode: Java; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*-
- * This Source Code Form is subject to the terms of the Mozilla Public
+/* -*- indent-tabs-mode: nil; js-indent-level: 2 -*- */
+/* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 //NOTE: gAddressBookBundle must be defined and set or this Overlay won't work
 
-var gProfileDirURL;
-
 var gMapItURLFormat;
 
-var gFileHandler = Services.io.getProtocolHandler("file").QueryInterface(Ci.nsIFileProtocolHandler);
 var gPhotoDisplayHandlers = {};
 
 var zListName;
@@ -27,8 +24,6 @@ var zCustom1;
 var zCustom2;
 var zCustom3;
 var zCustom4;
-var zGtalk;
-var zAIM;
 var zYahoo;
 var zSkype;
 var zQQ;
@@ -58,8 +53,6 @@ function OnLoadCardView()
   zCustom2 = gAddressBookBundle.getString("propertyCustom2");
   zCustom3 = gAddressBookBundle.getString("propertyCustom3");
   zCustom4 = gAddressBookBundle.getString("propertyCustom4");
-  zGtalk = gAddressBookBundle.getString("propertyGtalk");
-  zAIM = gAddressBookBundle.getString("propertyAIM");
   zYahoo = gAddressBookBundle.getString("propertyYahoo");
   zSkype = gAddressBookBundle.getString("propertySkype");
   zQQ = gAddressBookBundle.getString("propertyQQ");
@@ -146,8 +139,6 @@ function OnLoadCardView()
   // Chat section
   cvData.cvbChat      = doc.getElementById("cvbChat");
   cvData.cvhChat      = doc.getElementById("cvhChat");
-  cvData.cvGtalk      = doc.getElementById("cvGtalk");
-  cvData.cvAIM        = doc.getElementById("cvAIM");
   cvData.cvYahoo      = doc.getElementById("cvYahoo");
   cvData.cvSkype      = doc.getElementById("cvSkype");
   cvData.cvQQ         = doc.getElementById("cvQQ");
@@ -181,10 +172,10 @@ function DisplayCardViewPane(realCard)
 {
   var generatedName = realCard.generateName(Services.prefs.getIntPref("mail.addr_book.lastnamefirst"));
 
-  var data = top.cvData;
-  var visible;
+  let data = top.cvData;
+  let visible = false;
 
-  var card = { getProperty : function (prop) {
+  let card = { getProperty : function (prop) {
                  return realCard.getProperty(prop, "");
                },
                primaryEmail : realCard.primaryEmail,
@@ -196,7 +187,7 @@ function DisplayCardViewPane(realCard)
   // Contact photo
   displayPhoto(card, cvData.cvPhoto);
 
-  var titleString;
+  let titleString;
   if (generatedName == "")
     titleString = card.primaryEmail;  // if no generatedName, use email
   else
@@ -216,7 +207,7 @@ function DisplayCardViewPane(realCard)
     cvSetVisible(data.cvDisplayName, false);
     cvSetVisible(data.cvEmail1Box, false);
 
-    visible = HandleLink(data.cvListName, zListName, card.displayName, data.cvListNameBox, "mailto:" + encodeURIComponent(GenerateAddressFromCard(card))) || visible;
+    visible = HandleLink(data.cvListName, zListName, card.displayName, data.cvListNameBox, "mailto:" + encodeURIComponent(GenerateAddressFromCard(card)));
   }
   else {
     // listname always hidden if not a mailing list
@@ -224,7 +215,7 @@ function DisplayCardViewPane(realCard)
 
     cvSetNodeWithLabel(data.cvDisplayName, zDisplayName, card.displayName);
 
-    visible = HandleLink(data.cvEmail1, zPrimaryEmail, card.primaryEmail, data.cvEmail1Box, "mailto:" + card.primaryEmail) || visible;
+    visible = HandleLink(data.cvEmail1, zPrimaryEmail, card.primaryEmail, data.cvEmail1Box, "mailto:" + card.primaryEmail);
   }
 
   visible = HandleLink(data.cvEmail2, zSecondaryEmail, card.getProperty("SecondEmail"), data.cvEmail2Box, "mailto:" + card.getProperty("SecondEmail")) || visible;
@@ -239,7 +230,7 @@ function DisplayCardViewPane(realCard)
   if (visible)
     mapURLList.initMapAddressFromCard(card, "Home");
 
-  cvSetVisible(data.cvbHomeMapItBox, addressVisible && !!mapURLList.mapURL);
+  cvSetVisible(data.cvbHomeMapItBox, visible && !!mapURLList.mapURL);
 
   visible = HandleLink(data.cvHomeWebPage, "", card.getProperty("WebPage2"), data.cvHomeWebPageBox, card.getProperty("WebPage2")) || visible;
 
@@ -261,13 +252,13 @@ function DisplayCardViewPane(realCard)
   else {
     // Other section
     /// setup the birthday information
-    var day = card.getProperty("BirthDay", null);
-    var month = card.getProperty("BirthMonth", null);
-    var year = card.getProperty("BirthYear", null);
-    var dateStr;
+    let day = card.getProperty("BirthDay", null);
+    let month = card.getProperty("BirthMonth", null);
+    let year = card.getProperty("BirthYear", null);
+    let dateStr;
     if (day > 0 && day < 32 && month > 0 && month < 13) {
-      var date;
-      var formatter;
+      let date;
+      let formatter;
       if (year) {
         // use UTC-based calculations to avoid off-by-one day
         // due to time zone/dst discontinuity
@@ -284,8 +275,10 @@ function DisplayCardViewPane(realCard)
       }
       dateStr = formatter.format(date);
     }
-    else if (year)
+    else if (year) {
       dateStr = year;
+    }
+  
     visible = cvSetNodeWithLabel(data.cvBirthday, zBirthday, dateStr);
 
     visible = cvSetNodeWithLabel(data.cvCustom1, zCustom1, card.getProperty("Custom1")) || visible;
@@ -293,18 +286,13 @@ function DisplayCardViewPane(realCard)
     visible = cvSetNodeWithLabel(data.cvCustom3, zCustom3, card.getProperty("Custom3")) || visible;
     visible = cvSetNodeWithLabel(data.cvCustom4, zCustom4, card.getProperty("Custom4")) || visible;
     visible = cvSetNode(data.cvNotes, card.getProperty("Notes")) || visible;
-    visible = setBuddyIcon(card, data.cvBuddyIcon) || visible;
 
     cvSetVisible(data.cvhOther, visible);
     cvSetVisible(data.cvbOther, visible);
 
     // Chat section
-    visible = cvSetNodeWithLabel(data.cvGtalk, zGtalk,
-                                 card.getProperty("_GoogleTalk"));
-    visible = cvSetNodeWithLabel(data.cvAIM, zAIM,
-                                 card.getProperty("_AimScreenName")) || visible;
     visible = cvSetNodeWithLabel(data.cvYahoo, zYahoo,
-                                 card.getProperty("_Yahoo")) || visible;
+                                 card.getProperty("_Yahoo"));
     visible = cvSetNodeWithLabel(data.cvSkype, zSkype,
                                  card.getProperty("_Skype")) || visible;
     visible = cvSetNodeWithLabel(data.cvQQ, zQQ,
@@ -335,12 +323,13 @@ function DisplayCardViewPane(realCard)
   visible = cvSetNodeWithLabel(data.cvPhPager, zPager, card.getProperty("PagerNumber")) || visible;
   cvSetVisible(data.cvhPhone, visible);
   cvSetVisible(data.cvbPhone, visible);
+
   // Work section
   visible = cvSetNode(data.cvJobTitle, card.getProperty("JobTitle"));
   visible = cvSetNode(data.cvDepartment, card.getProperty("Department")) || visible;
   visible = cvSetNode(data.cvCompany, card.getProperty("Company")) || visible;
 
-  var addressVisible = cvSetNode(data.cvWorkAddress, card.getProperty("WorkAddress"));
+  let addressVisible = cvSetNode(data.cvWorkAddress, card.getProperty("WorkAddress"));
   addressVisible = cvSetNode(data.cvWorkAddress2, card.getProperty("WorkAddress2")) || addressVisible;
   addressVisible = cvSetCityStateZip(data.cvWorkCityStZip, card.getProperty("WorkCity"), card.getProperty("WorkState"), card.getProperty("WorkZipCode")) || addressVisible;
   addressVisible = cvSetNode(data.cvWorkCountry, card.getProperty("WorkCountry")) || addressVisible;
@@ -351,45 +340,13 @@ function DisplayCardViewPane(realCard)
 
   cvSetVisible(data.cvbWorkMapItBox, addressVisible && !!mapURLList.mapURL);
 
-        visible = HandleLink(data.cvWorkWebPage, "", card.getProperty("WebPage1"), data.cvWorkWebPageBox, card.getProperty("WebPage1")) || addressVisible || visible;
+  visible = HandleLink(data.cvWorkWebPage, "", card.getProperty("WebPage1"), data.cvWorkWebPageBox, card.getProperty("WebPage1")) || addressVisible || visible;
 
   cvSetVisible(data.cvhWork, visible);
   cvSetVisible(data.cvbWork, visible);
 
   // make the card view box visible
   cvSetVisible(top.cvData.CardViewBox, true);
-}
-
-function setBuddyIcon(card, buddyIcon)
-{
-  try {
-    var myScreenName = Services.prefs.getCharPref("aim.session.screenname");
-    if (myScreenName && card.primaryEmail) {
-      if (!gProfileDirURL) {
-        // lazily create these file urls, and keep them around
-        gProfileDirURL = Services.io.newFileURI(GetSpecialDirectory("ProfD"));
-      }
-
-      // if we did have a buddy icon on disk for this screenname, this would be the file url spec for it
-      var iconURLStr = gProfileDirURL.spec + "/NIM/" + myScreenName + "/picture/" + card.getProperty("_AimScreenName") + ".gif";
-
-      // check if the file exists
-      var file = gFileHandler.getFileFromURLSpec(iconURLStr);
-
-      // check if the file exists
-      // is this a perf hit?  (how expensive is stat()?)
-      if (file.exists()) {
-        buddyIcon.setAttribute("src", iconURLStr);
-        return true;
-      }
-    }
-  }
-  catch (ex) {
-    // can get here if no screenname
-  }
-
-  buddyIcon.setAttribute("src", "");
-  return false;
 }
 
 function ClearCardViewPane()

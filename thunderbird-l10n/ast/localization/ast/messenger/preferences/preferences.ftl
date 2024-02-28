@@ -223,10 +223,6 @@ quoted-text-color =
     .label = Color:
     .accesskey = o
 
-
-
-
-
 save-to-label =
     .label = Guardar ficheros en
     .accesskey = G
@@ -325,12 +321,6 @@ restore-html-label =
 default-format-label =
     .label = Usar formatu párrafu en cuentes del testu de cuerpu por defeutu
     .accesskey = P
-
-format-description = Configurar comportamientu del formatu de testu
-
-send-options-label =
-    .label = Opciones d'unviu…
-    .accesskey = v
 
 autocomplete-description = Al unviar mensaxes, guetar entraes coincidentes en:
 
@@ -555,4 +545,6 @@ chat-browse-sound-button =
     .accesskey = s
 
 ## Preferences UI Search Results
+
+## Settings UI Search Results
 

@@ -25,10 +25,10 @@ var {
 
 var folder = null;
 
-add_task(function setupModule(module) {
-  folder = create_folder("Forward Content Testing");
-  add_message_to_folder(
-    folder,
+add_setup(async function () {
+  folder = await create_folder("Forward Content Testing");
+  await add_message_to_folder(
+    [folder],
     create_message({
       subject: "something like <foo@example>",
       body: { body: "Testing bug 397021!" },
@@ -40,16 +40,16 @@ add_task(function setupModule(module) {
  * Test that the subject is set properly in the forwarded message content
  * when you hit forward.
  */
-add_task(function test_forwarded_subj() {
-  be_in_folder(folder);
+add_task(async function test_forwarded_subj() {
+  await be_in_folder(folder);
 
   let msg = select_click_row(0);
   assert_selected_and_displayed(mc, msg);
 
   let fwdWin = open_compose_with_forward();
 
-  let headerTableText = fwdWin
-    .e("content-frame")
+  let headerTableText = fwdWin.window.document
+    .getElementById("messageEditor")
     .contentDocument.querySelector("table").textContent;
   if (!headerTableText.includes(msg.mime2DecodedSubject)) {
     throw new Error(

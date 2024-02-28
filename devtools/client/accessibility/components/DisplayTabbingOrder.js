@@ -4,24 +4,29 @@
 "use strict";
 
 // React
-const { PureComponent } = require("devtools/client/shared/vendor/react");
+const {
+  PureComponent,
+} = require("resource://devtools/client/shared/vendor/react.js");
 const {
   label,
   input,
-} = require("devtools/client/shared/vendor/react-dom-factories");
-const PropTypes = require("devtools/client/shared/vendor/react-prop-types");
+} = require("resource://devtools/client/shared/vendor/react-dom-factories.js");
+const PropTypes = require("resource://devtools/client/shared/vendor/react-prop-types.js");
 
-const { L10N } = require("devtools/client/accessibility/utils/l10n");
+const {
+  L10N,
+} = require("resource://devtools/client/accessibility/utils/l10n.js");
 
-const { connect } = require("devtools/client/shared/vendor/react-redux");
+const {
+  connect,
+} = require("resource://devtools/client/shared/vendor/react-redux.js");
 const {
   updateDisplayTabbingOrder,
-} = require("devtools/client/accessibility/actions/ui");
+} = require("resource://devtools/client/accessibility/actions/ui.js");
 
 class DisplayTabbingOrder extends PureComponent {
   static get propTypes() {
     return {
-      describedby: PropTypes.string,
       dispatch: PropTypes.func.isRequired,
       tabbingOrderDisplayed: PropTypes.bool.isRequired,
     };
@@ -46,10 +51,11 @@ class DisplayTabbingOrder extends PureComponent {
   }
 
   render() {
-    const { describedby, tabbingOrderDisplayed } = this.props;
+    const { tabbingOrderDisplayed } = this.props;
     return label(
       {
-        className: "accessibility-tabbing-order devtools-checkbox-label",
+        className:
+          "accessibility-tabbing-order devtools-checkbox-label devtools-ellipsis-text",
         htmlFor: "devtools-display-tabbing-order-checkbox",
         title: L10N.getStr("accessibility.toolbar.displayTabbingOrder.tooltip"),
       },
@@ -60,7 +66,6 @@ class DisplayTabbingOrder extends PureComponent {
         checked: tabbingOrderDisplayed,
         disabled: this.state.disabled,
         onChange: this.onChange,
-        "aria-describedby": describedby,
       }),
       L10N.getStr("accessibility.toolbar.displayTabbingOrder.label")
     );

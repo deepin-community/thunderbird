@@ -24,8 +24,6 @@
 <!ENTITY moveToNewWindow.accesskey "W">
 <!ENTITY newVirtualFolderCmd.label "Saved Search…">
 <!ENTITY newVirtualFolderCmd.accesskey "S">
-<!ENTITY newOtherAccountsCmd.label "Other Accounts…">
-<!ENTITY newOtherAccountsCmd.accesskey "O">
 <!ENTITY newCreateEmailAccountCmd.label "Get a New Mail Account…">
 <!ENTITY newCreateEmailAccountCmd.accesskey "G">
 <!ENTITY newExistingEmailAccountCmd.label "Existing Mail Account…">
@@ -40,8 +38,6 @@
 <!ENTITY openMessageFileCmd.accesskey "O">
 <!ENTITY saveAsMenu.label "Save As">
 <!ENTITY saveAsMenu.accesskey "S">
-<!ENTITY saveAsFileCmd.label "File">
-<!ENTITY saveAsFileCmd.accesskey "F">
 <!ENTITY saveAsFileCmd.key "s">
 <!ENTITY saveAsTemplateCmd.label "Template">
 <!ENTITY saveAsTemplateCmd.accesskey "T">
@@ -878,13 +874,10 @@
 <!ENTITY openMenuCmd.accesskey "O">
 <!ENTITY getNextNMsgCmd2.label "Get Next News Messages">
 <!ENTITY getNextNMsgCmd2.accesskey "t">
-<!ENTITY showFolderPaneColsCmd.label "Folder Pane Columns">
-<!ENTITY showFolderPaneColsCmd.accesskey "P">
 <!ENTITY sortByCorrespondentCmd.label "Correspondents">
 <!ENTITY sortByCorrespondentCmd.accesskey "n">
 <!ENTITY glodaSearchCmd.label "Global Search…">
 <!ENTITY glodaSearchCmd.accesskey "G">
-<!ENTITY goChatCmd2.key "H">
 <!ENTITY editDraftMsgCmd.label "Edit Draft Message">
 <!ENTITY editDraftMsgCmd.accesskey "D">
 <!ENTITY editTemplateMsgCmd.label "Edit Template">
@@ -895,6 +888,8 @@
 <!ENTITY openInConversationCmd.accesskey "s">
 <!ENTITY openInConversationCmd.key "o">
 <!ENTITY addonNoPrefs.label "No Add-on settings found.">
+<!ENTITY exportCmd.label "Export…">
+<!ENTITY exportCmd.accesskey "x">
 <!-- Developer Tools Submenu -->
 <!ENTITY devtoolsMenu.label "Developer Tools">
 <!ENTITY devtoolsMenu.accesskey "e">

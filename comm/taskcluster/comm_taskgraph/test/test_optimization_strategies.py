@@ -1,21 +1,19 @@
 # Any copyright is dedicated to the public domain.
 # http://creativecommons.org/publicdomain/zero/1.0/
 
-from __future__ import absolute_import
-
 import hashlib
 from datetime import datetime
 from time import mktime
 
-import responses
+import conftest  # noqa: F401
 import pytest
+import responses
 from mozunit import main
+from taskgraph.task import Task
 
-# from responses import RequestsMock
+from gecko_taskgraph.optimize import registry
 
 from comm_taskgraph.optimize import SkipSuiteOnly
-from taskgraph.optimize import registry
-from taskgraph.task import Task
 
 
 def generate_task():
@@ -44,11 +42,7 @@ def idfn(param):
 
 
 def generate_json_push_data(files_changed):
-    return {
-        "changesets": [
-            {"desc": "commit comment", "files": files_changed, "node": "cdefgh"}
-        ]
-    }
+    return {"changesets": [{"desc": "commit comment", "files": files_changed, "node": "cdefgh"}]}
 
 
 @pytest.fixture
@@ -59,6 +53,7 @@ def params():
         "head_rev": "zyxwvu",
         "comm_head_repository": "https://hg.mozilla.org/comm-central",
         "comm_head_rev": "abcdef",
+        "comm_src_path": "comm/",
         "project": "comm-central",
         "pushlog_id": 1,
         "pushdate": mktime(datetime.now().timetuple()),

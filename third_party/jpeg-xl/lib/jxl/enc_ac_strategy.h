@@ -9,11 +9,8 @@
 #include <stdint.h>
 
 #include "lib/jxl/ac_strategy.h"
-#include "lib/jxl/aux_out.h"
-#include "lib/jxl/aux_out_fwd.h"
 #include "lib/jxl/base/data_parallel.h"
 #include "lib/jxl/base/status.h"
-#include "lib/jxl/chroma_from_luma.h"
 #include "lib/jxl/common.h"
 #include "lib/jxl/dec_ans.h"
 #include "lib/jxl/enc_cache.h"
@@ -26,11 +23,14 @@
 
 namespace jxl {
 
+struct AuxOut;
+
 // AC strategy selection: utility struct.
 
 struct ACSConfig {
   const DequantMatrices* JXL_RESTRICT dequant;
   float info_loss_multiplier;
+  float info_loss_multiplier2;
   float* JXL_RESTRICT quant_field_row;
   size_t quant_field_stride;
   float* JXL_RESTRICT masking_field_row;
@@ -55,10 +55,6 @@ struct ACSConfig {
     JXL_DASSERT(quant_field_row[by * quant_field_stride + bx] > 0);
     return quant_field_row[by * quant_field_stride + bx];
   }
-  void SetQuant(size_t bx, size_t by, float value) const {
-    JXL_DASSERT(value > 0);
-    quant_field_row[by * quant_field_stride + bx] = value;
-  }
 };
 
 struct AcStrategyHeuristics {
@@ -67,7 +63,6 @@ struct AcStrategyHeuristics {
   void Finalize(AuxOut* aux_out);
   ACSConfig config;
   PassesEncoderState* enc_state;
-  float entropy_adjust[2 * AcStrategy::kNumValidStrategies];
 };
 
 // Debug.

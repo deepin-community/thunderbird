@@ -1,14 +1,16 @@
-/* -*- Mode: Java; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- */
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 /* import-globals-from amUtils.js */
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 var { MailServices } = ChromeUtils.import(
   "resource:///modules/MailServices.jsm"
 );
+
+window.addEventListener("DOMContentLoaded", event => {
+  gSmtpServerListWindow.onLoad();
+});
 
 var gSmtpServerListWindow = {
   mBundle: null,
@@ -132,11 +134,10 @@ var gSmtpServerListWindow = {
       aServer.port || noneSelected;
     document.getElementById("userNameValue").textContent =
       aServer.username || noneSelected;
-    document.getElementById(
-      "useSecureConnectionValue"
-    ).textContent = this.mBundle.getString(
-      "smtpServer-ConnectionSecurityType-" + aServer.socketType
-    );
+    document.getElementById("useSecureConnectionValue").textContent =
+      this.mBundle.getString(
+        "smtpServer-ConnectionSecurityType-" + aServer.socketType
+      );
 
     const AuthMethod = Ci.nsMsgAuthMethod;
     const SocketType = Ci.nsMsgSocketType;
@@ -169,7 +170,7 @@ var gSmtpServerListWindow = {
         break;
       default:
         // leave empty
-        Cu.reportError(
+        console.error(
           "Warning: unknown value for smtpserver... authMethod: " +
             aServer.authMethod
         );
@@ -180,16 +181,16 @@ var gSmtpServerListWindow = {
   },
 
   refreshServerList(aServerKeyToSelect, aFocusList) {
-    // remove all children
     while (this.mServerList.hasChildNodes()) {
       this.mServerList.lastChild.remove();
     }
-
-    this.fillSmtpServers(
-      this.mServerList,
-      MailServices.smtp.servers,
-      MailServices.smtp.defaultServer
-    );
+    for (let server of MailServices.smtp.servers) {
+      let listitem = this.createSmtpListItem(
+        server,
+        MailServices.smtp.defaultServer.key == server.key
+      );
+      this.mServerList.appendChild(listitem);
+    }
 
     if (aServerKeyToSelect) {
       this.setSelectedServer(
@@ -204,19 +205,6 @@ var gSmtpServerListWindow = {
 
     if (aFocusList) {
       this.mServerList.focus();
-    }
-  },
-
-  fillSmtpServers(aListBox, aServers, aDefaultServer) {
-    if (!aListBox || !aServers) {
-      return;
-    }
-
-    for (let server of aServers) {
-      let isDefault = aDefaultServer.key == server.key;
-
-      let listitem = this.createSmtpListItem(server, isDefault);
-      aListBox.appendChild(listitem);
     }
   },
 
@@ -265,7 +253,7 @@ var gSmtpServerListWindow = {
     }
 
     setTimeout(
-      function(aServerList) {
+      function (aServerList) {
         aServerList.ensureElementIsVisible(aServer);
         aServerList.selectItem(aServer);
       },

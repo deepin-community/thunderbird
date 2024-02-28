@@ -8,7 +8,6 @@
 
 #include "mozilla/Attributes.h"
 #include "nsISupports.h"
-#include "nsAbBaseCID.h"
 #include "nsAbDirProperty.h"
 #include "nsIAbDirSearchListener.h"
 #include "nsIMutableArray.h"
@@ -19,7 +18,7 @@
 class nsIAbManager;
 class nsIAbBooleanExpression;
 
-#define NS_ABOSXDIRECTORY_URI_PREFIX NS_ABOSXDIRECTORY_PREFIX "://"
+#define NS_ABOSXDIRECTORY_URI_PREFIX "moz-abosxdirectory://"
 
 #define NS_IABOSXDIRECTORY_IID                       \
   {                                                  \
@@ -62,6 +61,7 @@ class nsAbOSXDirectory final : public nsAbDirProperty,
 
   // nsAbDirProperty methods
   NS_IMETHOD GetReadOnly(bool* aReadOnly) override;
+  NS_IMETHOD GetChildCardCount(uint32_t* aCount) override;
   NS_IMETHOD GetChildCards(nsTArray<RefPtr<nsIAbCard>>& result) override;
   NS_IMETHOD GetChildNodes(nsTArray<RefPtr<nsIAbDirectory>>& result) override;
   NS_IMETHOD HasCard(nsIAbCard* aCard, bool* aHasCard) override;

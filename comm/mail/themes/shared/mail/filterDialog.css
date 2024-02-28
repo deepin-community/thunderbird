@@ -6,8 +6,6 @@
   == Styles for the Mail Filters dialog.
   ======================================================================= */
 
-@import url("chrome://messenger/skin/messenger.css");
-
 #filterListDialog:not([lwt-tree]):-moz-lwtheme {
   background: -moz-Dialog !important;
   color: -moz-DialogText;
@@ -24,12 +22,24 @@
   --field-background-color: Field;
   --field-border-color: rgba(128, 128, 128, .6);
   --field-border-hover-color: rgba(128, 128, 128, .8);
-  --highlight-color: Highlight;
   --popup-item-hover: rgba(128, 128, 128, .2);
   --popup-item-hover-text: MenuText;
-  --popup-item-selected: Highlight;
-  --popup-selected-text: HighlightText;
+  --popup-item-selected: var(--selected-item-color);
+  --popup-selected-text: var(--selected-item-text-color);
   --richlist-button-background: -moz-Dialog;
+}
+
+#filterListGrid {
+  min-height: 0;
+}
+
+#filterListBox {
+  min-width: 0;
+  min-height: 0;
+}
+
+#filterList {
+  height: 340px;
 }
 
 #searchBox {
@@ -48,6 +58,7 @@ richlistitem {
 
 richlistitem > checkbox {
   width: 100px;
+  min-width: 100px;
   margin: 0;
   -moz-user-focus: none;
 }
@@ -56,9 +67,12 @@ checkbox:not([label]) .checkbox-label-box {
   display: none;
 }
 
-.search-value-menulist,
-.search-value-textbox[type="number"] {
+.search-value-menulist {
   flex: 1;
+}
+
+.search-value-input {
+  width: -moz-available;
 }
 
 .search-menulist[unavailable="true"] {
@@ -73,15 +87,53 @@ checkbox:not([label]) .checkbox-label-box {
   min-width: 15em;
 }
 
-#countBox[filterActive="matches"] {
-  color: #4e9a06;
-}
-
-#countBox[filterActive="nomatches"] {
-  color: #c00;
-}
-
 #statusbar {
   height: 1.8em;
   padding: 2px 4px;
+}
+
+toolbarbutton[is="toolbarbutton-menu-button"] {
+  appearance: none;
+  min-height: 24px;
+  margin: 4px;
+  color: inherit !important;
+  background-color: var(--button-background-color);
+  border: 1px solid var(--button-border-color);
+  border-radius: var(--button-border-radius);
+}
+
+toolbarbutton[is="toolbarbutton-menu-button"] > toolbarbutton {
+  appearance: none;
+  margin-block: 0;
+  padding-block: 0 !important;
+  font-weight: inherit;
+  background-color: transparent;
+  border-width: 0;
+  border-inline-end: 1px solid var(--button-border-color);
+}
+
+toolbarbutton[is="toolbarbutton-menu-button"]:hover,
+toolbarbutton[is="toolbarbutton-menu-button"] > toolbarbutton:hover {
+  background-color: var(--button-hover-background-color);
+}
+
+toolbarbutton[is="toolbarbutton-menu-button"]:hover:active,
+toolbarbutton[is="toolbarbutton-menu-button"] > toolbarbutton:hover:active {
+  background-color: var(--button-active-background-color);
+}
+
+toolbarbutton[is="toolbarbutton-menu-button"] > dropmarker {
+  appearance: none;
+  list-style-image: var(--icon-nav-down-sm);
+  -moz-context-properties: stroke;
+  stroke: currentColor;
+  display: inline-flex;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+}
+
+#filterListGrid toolbarbutton *:focus-visible {
+  outline: var(--focus-outline);
+  outline-offset: var(--focus-outline-offset);
 }

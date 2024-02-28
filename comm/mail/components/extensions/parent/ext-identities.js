@@ -7,11 +7,9 @@ ChromeUtils.defineModuleGetter(
   "MailServices",
   "resource:///modules/MailServices.jsm"
 );
-ChromeUtils.defineModuleGetter(
-  this,
-  "DeferredTask",
-  "resource://gre/modules/DeferredTask.jsm"
-);
+ChromeUtils.defineESModuleGetters(this, {
+  DeferredTask: "resource://gre/modules/DeferredTask.sys.mjs",
+});
 
 function findIdentityAndAccount(identityId) {
   for (let account of MailServices.accounts.accounts) {
@@ -95,7 +93,7 @@ var identitiesTracker = new (class extends EventEmitter {
       for (let topic of this._notifications) {
         Services.obs.addObserver(this, topic);
       }
-      Services.prefs.getBranch(null).addObserver("mail.identity.", this);
+      Services.prefs.addObserver("mail.identity.", this);
     }
   }
   decrementListeners() {
@@ -104,7 +102,7 @@ var identitiesTracker = new (class extends EventEmitter {
       for (let topic of this._notifications) {
         Services.obs.removeObserver(this, topic);
       }
-      Services.prefs.getBranch(null).removeObserver("mail.identity.", this);
+      Services.prefs.removeObserver("mail.identity.", this);
     }
   }
 
@@ -152,10 +150,7 @@ var identitiesTracker = new (class extends EventEmitter {
 
       case "nsPref:changed":
         {
-          let key = data
-            .split(".")
-            .slice(2, 3)
-            .pop();
+          let key = data.split(".").slice(2, 3).pop();
 
           // Ignore update notifications for created identities, before they are
           // added to an account (looks like they are cloned from a default
@@ -192,14 +187,78 @@ var identitiesTracker = new (class extends EventEmitter {
   }
 })();
 
-this.identities = class extends ExtensionAPI {
+this.identities = class extends ExtensionAPIPersistent {
+  PERSISTENT_EVENTS = {
+    // For primed persistent events (deactivated background), the context is only
+    // available after fire.wakeup() has fulfilled (ensuring the convert() function
+    // has been called).
+
+    onCreated({ context, fire }) {
+      async function listener(event, key, identity) {
+        if (fire.wakeup) {
+          await fire.wakeup();
+        }
+        fire.sync(key, identity);
+      }
+      identitiesTracker.on("account-identity-added", listener);
+      return {
+        unregister: () => {
+          identitiesTracker.off("account-identity-added", listener);
+        },
+        convert(newFire, extContext) {
+          fire = newFire;
+          context = extContext;
+        },
+      };
+    },
+    onUpdated({ context, fire }) {
+      async function listener(event, key, changedValues) {
+        if (fire.wakeup) {
+          await fire.wakeup();
+        }
+        fire.sync(key, changedValues);
+      }
+      identitiesTracker.on("account-identity-updated", listener);
+      return {
+        unregister: () => {
+          identitiesTracker.off("account-identity-updated", listener);
+        },
+        convert(newFire, extContext) {
+          fire = newFire;
+          context = extContext;
+        },
+      };
+    },
+    onDeleted({ context, fire }) {
+      async function listener(event, key) {
+        if (fire.wakeup) {
+          await fire.wakeup();
+        }
+        fire.sync(key);
+      }
+      identitiesTracker.on("account-identity-removed", listener);
+      return {
+        unregister: () => {
+          identitiesTracker.off("account-identity-removed", listener);
+        },
+        convert(newFire, extContext) {
+          fire = newFire;
+          context = extContext;
+        },
+      };
+    },
+  };
+
+  constructor(...args) {
+    super(...args);
+    identitiesTracker.incrementListeners();
+  }
+
   onShutdown() {
     identitiesTracker.decrementListeners();
   }
 
   getAPI(context) {
-    identitiesTracker.incrementListeners();
-
     return {
       identities: {
         async list(accountId) {
@@ -279,45 +338,21 @@ this.identities = class extends ExtensionAPI {
         },
         onCreated: new EventManager({
           context,
-          name: "identities.onCreated",
-          register: fire => {
-            let listener = (event, key, identity) => {
-              fire.sync(key, identity);
-            };
-
-            identitiesTracker.on("account-identity-added", listener);
-            return () => {
-              identitiesTracker.off("account-identity-added", listener);
-            };
-          },
+          module: "identities",
+          event: "onCreated",
+          extensionApi: this,
         }).api(),
         onUpdated: new EventManager({
           context,
-          name: "identities.onUpdated",
-          register: fire => {
-            let listener = (event, key, changedValues) => {
-              fire.sync(key, changedValues);
-            };
-
-            identitiesTracker.on("account-identity-updated", listener);
-            return () => {
-              identitiesTracker.off("account-identity-updated", listener);
-            };
-          },
+          module: "identities",
+          event: "onUpdated",
+          extensionApi: this,
         }).api(),
         onDeleted: new EventManager({
           context,
-          name: "identities.onDeleted",
-          register: fire => {
-            let listener = (event, key) => {
-              fire.sync(key);
-            };
-
-            identitiesTracker.on("account-identity-removed", listener);
-            return () => {
-              identitiesTracker.off("account-identity-removed", listener);
-            };
-          },
+          module: "identities",
+          event: "onDeleted",
+          extensionApi: this,
         }).api(),
       },
     };

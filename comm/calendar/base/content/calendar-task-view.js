@@ -6,14 +6,14 @@
 
 /* import-globals-from ../../../mail/base/content/mailCore.js */
 /* import-globals-from item-editing/calendar-item-editing.js */
+/* import-globals-from ../src/calApplicationUtils.js */
 /* import-globals-from calendar-ui-utils.js */
 
 var { cal } = ChromeUtils.import("resource:///modules/calendar/calUtils.jsm");
 var { recurrenceRule2String } = ChromeUtils.import(
   "resource:///modules/calendar/calRecurrenceUtils.jsm"
 );
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-var { AppConstants } = ChromeUtils.import("resource://gre/modules/AppConstants.jsm");
+var { AppConstants } = ChromeUtils.importESModule("resource://gre/modules/AppConstants.sys.mjs");
 
 var taskDetailsView = {
   /**
@@ -127,24 +127,21 @@ var taskDetailsView = {
           .getElementById("calendar-task-details-category-row")
           .toggleAttribute("hidden", categories.length == 0)
       ) {
-        document.getElementById("calendar-task-details-category").textContent = categories.join(
-          ", "
-        );
+        document.getElementById("calendar-task-details-category").textContent =
+          categories.join(", ");
       }
 
       let taskStartDate = item[cal.dtz.startDateProp(item)];
       if (taskStartDate) {
-        document.getElementById("task-start-date").textContent = cal.dtz.getStringForDateTime(
-          taskStartDate
-        );
+        document.getElementById("task-start-date").textContent =
+          cal.dtz.getStringForDateTime(taskStartDate);
       }
       document.getElementById("task-start-row").toggleAttribute("hidden", !taskStartDate);
 
       let taskDueDate = item[cal.dtz.endDateProp(item)];
       if (taskDueDate) {
-        document.getElementById("task-due-date").textContent = cal.dtz.getStringForDateTime(
-          taskDueDate
-        );
+        document.getElementById("task-due-date").textContent =
+          cal.dtz.getStringForDateTime(taskDueDate);
       }
       document.getElementById("task-due-row").toggleAttribute("hidden", !taskDueDate);
 
@@ -174,10 +171,27 @@ var taskDetailsView = {
           rpv.textContent = detailsString.split("\n").join(" ");
         }
       }
-      let textbox = document.getElementById("calendar-task-details-description");
-      let description = item.hasProperty("DESCRIPTION") ? item.getProperty("DESCRIPTION") : null;
-      textbox.value = description;
-      textbox.readOnly = true;
+      let iframe = document.getElementById("calendar-task-details-description");
+      let docFragment = cal.view.textToHtmlDocumentFragment(
+        item.descriptionText,
+        iframe.contentDocument,
+        item.descriptionHTML
+      );
+
+      // Make any links open in the user's default browser, not in Thunderbird.
+      for (let anchor of docFragment.querySelectorAll("a")) {
+        anchor.addEventListener("click", function (event) {
+          event.preventDefault();
+          if (event.isTrusted) {
+            launchBrowser(anchor.getAttribute("href"), event);
+          }
+        });
+      }
+      iframe.contentDocument.body.replaceChildren(docFragment);
+      let link = iframe.contentDocument.createElement("link");
+      link.rel = "stylesheet";
+      link.href = "chrome://messenger/skin/shared/editorContent.css";
+      iframe.contentDocument.head.replaceChildren(link);
       let attachmentRows = document.getElementById("calendar-task-details-attachment-rows");
       while (attachmentRows.lastChild) {
         attachmentRows.lastChild.remove();
@@ -357,7 +371,7 @@ var taskDetailsView = {
  * Updates the currently applied filter for the task view and refreshes the task
  * tree.
  *
- * @param {String} [filter] - The filter name to set.
+ * @param {string} [filter] - The filter name to set.
  */
 function taskViewUpdate(filter) {
   if (!filter) {
@@ -435,7 +449,7 @@ function taskViewOnLoad() {
 
   // Setup customizeDone handler for the task action toolbox.
   let toolbox = document.getElementById("task-actions-toolbox");
-  toolbox.customizeDone = function(aEvent) {
+  toolbox.customizeDone = function (aEvent) {
     MailToolboxCustomizeDone(aEvent, "CustomizeTaskActionsToolbar");
   };
 

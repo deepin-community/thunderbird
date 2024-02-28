@@ -4,17 +4,22 @@ exports[`visible column breakpoints doesnt show breakpoints to the right 1`] = `
 Array [
   Object {
     "breakpoint": Object {
-      "astLocation": null,
       "disabled": false,
       "generatedLocation": Object {
         "column": 1,
         "line": 1,
+        "source": Object {
+          "id": "foo",
+        },
         "sourceId": "foo",
       },
       "id": "breakpoint",
       "location": Object {
         "column": 1,
         "line": 1,
+        "source": Object {
+          "id": "foo",
+        },
         "sourceId": "foo",
       },
       "options": Object {},
@@ -34,17 +39,22 @@ exports[`visible column breakpoints ignores single breakpoints 1`] = `
 Array [
   Object {
     "breakpoint": Object {
-      "astLocation": null,
       "disabled": false,
       "generatedLocation": Object {
         "column": 1,
         "line": 1,
+        "source": Object {
+          "id": "foo",
+        },
         "sourceId": "foo",
       },
       "id": "breakpoint",
       "location": Object {
         "column": 1,
         "line": 1,
+        "source": Object {
+          "id": "foo",
+        },
         "sourceId": "foo",
       },
       "options": Object {},
@@ -58,7 +68,7 @@ Array [
     },
   },
   Object {
-    "breakpoint": undefined,
+    "breakpoint": null,
     "location": Object {
       "column": 3,
       "line": 1,
@@ -72,17 +82,22 @@ exports[`visible column breakpoints only shows visible breakpoints 1`] = `
 Array [
   Object {
     "breakpoint": Object {
-      "astLocation": null,
       "disabled": false,
       "generatedLocation": Object {
         "column": 1,
         "line": 1,
+        "source": Object {
+          "id": "foo",
+        },
         "sourceId": "foo",
       },
       "id": "breakpoint",
       "location": Object {
         "column": 1,
         "line": 1,
+        "source": Object {
+          "id": "foo",
+        },
         "sourceId": "foo",
       },
       "options": Object {},
@@ -96,7 +111,7 @@ Array [
     },
   },
   Object {
-    "breakpoint": undefined,
+    "breakpoint": null,
     "location": Object {
       "column": 3,
       "line": 1,
@@ -110,17 +125,22 @@ exports[`visible column breakpoints simple 1`] = `
 Array [
   Object {
     "breakpoint": Object {
-      "astLocation": null,
       "disabled": false,
       "generatedLocation": Object {
         "column": 1,
         "line": 1,
+        "source": Object {
+          "id": "foo",
+        },
         "sourceId": "foo",
       },
       "id": "breakpoint",
       "location": Object {
         "column": 1,
         "line": 1,
+        "source": Object {
+          "id": "foo",
+        },
         "sourceId": "foo",
       },
       "options": Object {},
@@ -134,7 +154,7 @@ Array [
     },
   },
   Object {
-    "breakpoint": undefined,
+    "breakpoint": null,
     "location": Object {
       "column": 5,
       "line": 1,

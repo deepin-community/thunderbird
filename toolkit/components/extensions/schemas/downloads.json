@@ -4,13 +4,12 @@
     "types": [
       {
         "$extend": "OptionalPermission",
-        "choices": [{
-          "type": "string",
-          "enum": [
-            "downloads",
-            "downloads.open"
-          ]
-        }]
+        "choices": [
+          {
+            "type": "string",
+            "enum": ["downloads", "downloads.open"]
+          }
+        ]
       }
     ]
   },
@@ -21,11 +20,7 @@
       {
         "id": "FilenameConflictAction",
         "type": "string",
-        "enum": [
-          "uniquify",
-          "overwrite",
-          "prompt"
-        ]
+        "enum": ["uniquify", "overwrite", "prompt"]
       },
       {
         "id": "InterruptReason",
@@ -75,11 +70,7 @@
       {
         "id": "State",
         "type": "string",
-        "enum": [
-          "in_progress",
-          "interrupted",
-          "complete"
-        ],
+        "enum": ["in_progress", "interrupted", "complete"],
         "description": "<dl><dt>in_progress</dt><dd>The download is currently receiving data from the server.</dd><dt>interrupted</dt><dd>An error broke the connection with the file host.</dd><dt>complete</dt><dd>The download completed successfully.</dd></dl>These string constants will never change, however the set of States may change."
       },
       {
@@ -105,6 +96,11 @@
           "incognito": {
             "description": "False if this download is recorded in the history, true if it is not recorded.",
             "type": "boolean"
+          },
+          "cookieStoreId": {
+            "type": "string",
+            "optional": true,
+            "description": "The cookie store ID of the contextual identity."
           },
           "danger": {
             "$ref": "DangerType",
@@ -300,6 +296,11 @@
             "optional": true,
             "type": "string"
           },
+          "cookieStoreId": {
+            "type": "string",
+            "optional": true,
+            "description": "The cookie store ID of the contextual identity."
+          },
           "danger": {
             "$ref": "DangerType",
             "description": "Indication of whether this download is thought to be safe or known to be suspicious.",
@@ -383,6 +384,11 @@
                 "default": false,
                 "type": "boolean"
               },
+              "cookieStoreId": {
+                "type": "string",
+                "optional": true,
+                "description": "The cookie store ID of the contextual identity; requires \"cookies\" permission."
+              },
               "conflictAction": {
                 "$ref": "FilenameConflictAction",
                 "optional": true
@@ -394,10 +400,7 @@
               },
               "method": {
                 "description": "The HTTP method to use if the URL uses the HTTP[S] protocol.",
-                "enum": [
-                  "GET",
-                  "POST"
-                ],
+                "enum": ["GET", "POST"],
                 "optional": true,
                 "type": "string"
               },
@@ -652,7 +655,7 @@
             "name": "callback",
             "type": "function",
             "optional": true,
-            "parameters": [ ]
+            "parameters": []
           }
         ]
       },
@@ -669,7 +672,7 @@
             "name": "callback",
             "type": "function",
             "optional": true,
-            "parameters": [ ]
+            "parameters": []
           }
         ],
         "type": "function"

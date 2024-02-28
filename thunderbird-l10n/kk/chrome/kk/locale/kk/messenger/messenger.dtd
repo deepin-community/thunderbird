@@ -24,8 +24,6 @@
 <!ENTITY moveToNewWindow.accesskey "е">
 <!ENTITY newVirtualFolderCmd.label "Сақталған іздеу…">
 <!ENTITY newVirtualFolderCmd.accesskey "С">
-<!ENTITY newOtherAccountsCmd.label "Басқа тіркелгілер…">
-<!ENTITY newOtherAccountsCmd.accesskey "а">
 <!ENTITY newCreateEmailAccountCmd.label "Жаңа пошта тіркелгісін алу…">
 <!ENTITY newCreateEmailAccountCmd.accesskey "л">
 <!ENTITY newExistingEmailAccountCmd.label "Бар болып тұрған пошта тіркелгісі…">
@@ -48,8 +46,6 @@
 <!ENTITY openMessageFileCmd.accesskey "а">
 <!ENTITY saveAsMenu.label "Қалайша сақтау">
 <!ENTITY saveAsMenu.accesskey "с">
-<!ENTITY saveAsFileCmd.label "Файл">
-<!ENTITY saveAsFileCmd.accesskey "Ф">
 <!ENTITY saveAsFileCmd.key "с">
 <!ENTITY saveAsTemplateCmd.label "Үлгі">
 <!ENTITY saveAsTemplateCmd.accesskey "л">
@@ -134,7 +130,7 @@
 <!-- View Menu -->
 <!ENTITY menubarCmd.label "Мәзір жолағы">
 <!ENTITY menubarCmd.accesskey "М">
-<!ENTITY showMessengerToolbarCmd.label "Басты самандар панелі">
+<!ENTITY showMessengerToolbarCmd.label "Басты саймандар панелі">
 <!ENTITY showMessengerToolbarCmd.accesskey "м">
 <!ENTITY customizeToolbar.label "Баптау…">
 <!ENTITY customizeToolbar.accesskey "а">
@@ -320,7 +316,6 @@
 <!ENTITY goBackCmd.commandKey "[">
 <!ENTITY goChatCmd.label "Чат">
 <!ENTITY goChatCmd.accesskey "а">
-<!ENTITY goChatCmd2.key "H">
 <!ENTITY prevStarredMsgCmd.label "Жұлдызшалы хабарлама">
 <!ENTITY prevStarredMsgCmd.accesskey "Ж">
 <!ENTITY folderMenu.label "Бума">
@@ -355,10 +350,10 @@
 <!ENTITY replyToListMsgCmd.label "Тізімге жауап беру">
 <!ENTITY replyToListMsgCmd.accesskey "Т">
 <!ENTITY replyToListMsgCmd.key "l">
-<!ENTITY forwardMsgCmd.label "Қайта бағдарлау">
+<!ENTITY forwardMsgCmd.label "Әрі қарай жіберу">
 <!ENTITY forwardMsgCmd.accesskey "й">
 <!ENTITY forwardMsgCmd.key "l">
-<!ENTITY forwardAsMenu.label "Қалайша қайта бағдарлау">
+<!ENTITY forwardAsMenu.label "Қалайша әрі қарай жіберу">
 <!ENTITY forwardAsMenu.accesskey "й">
 <!ENTITY forwardAsInline.label "Мәтін бетінде">
 <!ENTITY forwardAsInline.accesskey "М">
@@ -490,6 +485,8 @@
 <!ENTITY deleteJunk.accesskey "ш">
 <!ENTITY importCmd.label "Импорттау…">
 <!ENTITY importCmd.accesskey "м">
+<!ENTITY exportCmd.label "Экспорттау…">
+<!ENTITY exportCmd.accesskey "к">
 <!ENTITY clearRecentHistory.label "Жуырдағы тарихты өшіру…">
 <!ENTITY clearRecentHistory.accesskey "х">
 <!ENTITY accountManagerCmd2.label "Тіркелгі баптаулары">
@@ -518,7 +515,7 @@
 <!ENTITY replyButton.label "Жауап беру">
 <!ENTITY replyAllButton.label "Барлығына жауап беру">
 <!ENTITY replyListButton.label "Тізімге жауап беру">
-<!ENTITY forwardButton.label "Қайта бағдарлау">
+<!ENTITY forwardButton.label "Әрі қарай жіберу">
 <!ENTITY fileButton.label "Файл">
 <!ENTITY archiveButton.label "Архивтеу">
 <!ENTITY openConversationButton.label "Сөйлесу">
@@ -529,7 +526,7 @@
 <!ENTITY previousButtonToolbarItem.label "Алдыңғы оқылмаған">
 <!ENTITY previousMsgButton.label "Алдыңғы">
 <!ENTITY backButton1.label "Артқа">
-<!ENTITY goForwardButton1.label "Қайта бағдарлау">
+<!ENTITY goForwardButton1.label "Алға">
 <!ENTITY deleteItem.title "Өшіру">
 <!ENTITY markButton.label "Белгілеу">
 <!ENTITY printButton.label "Баспаға шығару">
@@ -555,9 +552,9 @@
 <!ENTITY replyButton.tooltip "Хабарламаға жауап беру">
 <!ENTITY replyAllButton.tooltip "Жіберуші және барлық алушыларға жауап беру">
 <!ENTITY replyListButton.tooltip "Эл. поштаны тарату тізіміне жауап беру">
-<!ENTITY forwardButton.tooltip "Таңдалған хабарламаны қайта бағдарлау">
-<!ENTITY forwardAsInline.tooltip "Таңдалған хабарламаны құрамындағы мәтін ретінде қайта бағдарлау">
-<!ENTITY forwardAsAttachment.tooltip "Таңдалған хабарламаны салыным ретінде қайта бағдарлау">
+<!ENTITY forwardButton.tooltip "Таңдалған хабарламаны әрі қарай жіберу">
+<!ENTITY forwardAsInline.tooltip "Таңдалған хабарламаны құрамындағы мәтін ретінде әрі қарай жіберу">
+<!ENTITY forwardAsAttachment.tooltip "Таңдалған хабарламаны салыным ретінде әрі қарай жіберу">
 <!ENTITY fileButton.tooltip "Таңдалған хабарламаны керек бумаға салу">
 <!ENTITY archiveButton.tooltip "Таңдалған хабарламаны архивтеу">
 <!ENTITY openMsgConversationButton.tooltip "Таңдалған хабарламаның сөйлесуін көрсету">
@@ -577,8 +574,8 @@
 <!ENTITY appmenuButton1.tooltip "&brandShortName; мәзірін көрсету">
 
 <!-- Toolbar Button Popup -->
-<!ENTITY buttonMenuForwardAsInline.label "Хабарлама ішінде қайта бағдарлау">
-<!ENTITY buttonMenuForwardAsAttachment.label "Салыным ретінде қайта бағдарлау">
+<!ENTITY buttonMenuForwardAsInline.label "Хабарлама ішінде әрі қарай жіберу">
+<!ENTITY buttonMenuForwardAsAttachment.label "Салыным ретінде әрі қарай жіберу">
 
 <!-- Remote Content Button Popup -->
 <!ENTITY remoteContentOptionsAllowForMsg.label "Бұл хабарламадағы қашықтағы құраманы көрсету">
@@ -696,7 +693,6 @@
 <!ENTITY locationColumn.label "Орналасуы">
 <!ENTITY idColumn.label "Алынған реті">
 <!ENTITY attachmentColumn.label "Салынымдар">
-
 <!ENTITY deleteColumn.label "Өшіру">
 
 <!-- Thread Pane Tooltips -->
@@ -722,7 +718,6 @@
 <!ENTITY locationColumn2.tooltip "Орналасуы бойынша сұрыптау">
 <!ENTITY idColumn2.tooltip "Алынған реті бойынша сұрыптау">
 <!ENTITY attachmentColumn2.tooltip "Салынымдары бойынша сұрыптау">
-
 <!ENTITY deleteColumn.tooltip "Хабарламаны өшіру">
 
 <!-- Thread Pane Context Menu -->
@@ -754,15 +749,15 @@
 <!ENTITY contextReplyAll.accesskey "а">
 <!ENTITY contextReplyList.label "Тізімге жауап беру">
 <!ENTITY contextReplyList.accesskey "Т">
-<!ENTITY contextForward.label "Қайта бағдарлау">
+<!ENTITY contextForward.label "Әрі қарай жіберу">
 <!ENTITY contextForward.accesskey "й">
-<!ENTITY contextForwardAsMenu.label "Қалайша қайта бағдарлау">
+<!ENTITY contextForwardAsMenu.label "Қалайша әрі қарай жіберу">
 <!ENTITY contextForwardAsMenu.accesskey "а">
 <!ENTITY contextForwardAsInline.label "Хат бетінде">
 <!ENTITY contextForwardAsInline.accesskey "Х">
 <!ENTITY contextForwardAsAttachmentItem.label "Салыным">
 <!ENTITY contextForwardAsAttachmentItem.accesskey "а">
-<!ENTITY contextMultiForwardAsAttachment.label "Салынымдар ретінде қайта бағдарлау">
+<!ENTITY contextMultiForwardAsAttachment.label "Салынымдар ретінде әрі қарай жіберу">
 <!ENTITY contextMultiForwardAsAttachment.accesskey "а">
 <!ENTITY contextMoveMsgMenu.label "Қайда жылжыту">
 <!ENTITY contextMoveMsgMenu.accesskey "й">
@@ -947,4 +942,4 @@
 
 <!-- Content tab Navigation buttons -->
 <!ENTITY browseBackButton.tooltip    "Алдыңғы бетке қайту">
-<!ENTITY browseForwardButton.tooltip "Келесі бетке өту">
+<!ENTITY browseForwardButton.tooltip "Бір бетке алға өту">

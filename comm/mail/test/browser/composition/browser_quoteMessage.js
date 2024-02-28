@@ -7,42 +7,48 @@
  * non-UTF8 encoding.
  */
 
-var {
-  close_compose_window,
-  open_compose_with_reply,
-  get_compose_body,
-} = ChromeUtils.import("resource://testing-common/mozmill/ComposeHelpers.jsm");
+var { close_compose_window, open_compose_with_reply, get_compose_body } =
+  ChromeUtils.import("resource://testing-common/mozmill/ComposeHelpers.jsm");
 var {
   be_in_folder,
   create_folder,
+  get_about_message,
   open_message_from_file,
   select_click_row,
 } = ChromeUtils.import(
   "resource://testing-common/mozmill/FolderDisplayHelpers.jsm"
 );
-var { close_window } = ChromeUtils.import(
+var { click_menus_in_sequence, close_window } = ChromeUtils.import(
   "resource://testing-common/mozmill/WindowHelpers.jsm"
 );
 
 var folderToStoreMessages;
 
-add_task(function setupModule(module) {
-  folderToStoreMessages = create_folder("QuoteTestFolder");
+add_setup(async function () {
+  folderToStoreMessages = await create_folder("QuoteTestFolder");
 });
 
 add_task(async function test_quoteMessage() {
-  be_in_folder(folderToStoreMessages);
+  await be_in_folder(folderToStoreMessages);
 
   let file = new FileUtils.File(getTestFilePath("data/iso-2022-jp.eml"));
   let msgc = await open_message_from_file(file);
   // Copy the message to a folder, so that Quote Message menu item is enabled.
-  let documentChild = msgc.e("messagepane").contentDocument.firstChild;
-  msgc.rightClick(documentChild);
-  await msgc.click_menus_in_sequence(msgc.e("mailContext"), [
-    { id: "mailContext-copyMenu" },
-    { label: "Local Folders" },
-    { label: "QuoteTestFolder" },
-  ]);
+  let documentChild = msgc.window.content.document.documentElement;
+  EventUtils.synthesizeMouseAtCenter(
+    documentChild,
+    { type: "contextmenu", button: 2 },
+    documentChild.ownerGlobal
+  );
+  let aboutMessage = get_about_message(msgc.window);
+  await click_menus_in_sequence(
+    aboutMessage.document.getElementById("mailContext"),
+    [
+      { id: "mailContext-copyMenu" },
+      { label: "Local Folders" },
+      { label: "QuoteTestFolder" },
+    ]
+  );
   close_window(msgc);
 
   // Select message and click reply.
@@ -57,15 +63,22 @@ add_task(async function test_quoteMessage() {
 
   if (["linux", "win"].includes(AppConstants.platform)) {
     // Click Options > Quote Message.
-    cwc.click(cwc.e("optionsMenu"));
-    await cwc.click_menus_in_sequence(cwc.e("optionsMenuPopup"), [
-      { id: "menu_quoteMessage" },
-    ]);
-    cwc.sleep(50);
+    EventUtils.synthesizeMouseAtCenter(
+      cwc.window.document.getElementById("optionsMenu"),
+      {},
+      cwc.window.document.getElementById("optionsMenu").ownerGlobal
+    );
+    await click_menus_in_sequence(
+      cwc.window.document.getElementById("optionsMenuPopup"),
+      [{ id: "menu_quoteMessage" }]
+    );
+    // eslint-disable-next-line mozilla/no-arbitrary-setTimeout
+    await new Promise(resolve => setTimeout(resolve, 50));
   } else {
     // Native menubar is used on macOS, didn't find a way to click it.
     cwc.window.goDoCommand("cmd_quoteMessage");
-    cwc.sleep(1);
+    // eslint-disable-next-line mozilla/no-arbitrary-setTimeout
+    await new Promise(resolve => setTimeout(resolve, 1));
   }
   composeBody = get_compose_body(cwc).textContent;
   Assert.equal(

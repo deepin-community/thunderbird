@@ -8,6 +8,7 @@
 
 #include "mozilla/Attributes.h"
 #include "msgCore.h"
+#include "nsImapCore.h"
 #include "nsIImapIncomingServer.h"
 #include "nsMsgIncomingServer.h"
 #include "nsIImapServerSink.h"
@@ -50,7 +51,6 @@ class nsImapIncomingServer : public nsMsgIncomingServer,
       bool* canCompactFoldersOnServer) override;
   NS_IMETHOD GetCanUndoDeleteOnServer(bool* canUndoDeleteOnServer) override;
   NS_IMETHOD GetCanSearchMessages(bool* canSearchMessages) override;
-  NS_IMETHOD GetCanEmptyTrashOnExit(bool* canEmptyTrashOnExit) override;
   NS_IMETHOD GetOfflineSupportLevel(int32_t* aSupportLevel) override;
   NS_IMETHOD GeneratePrettyNameForMigration(nsAString& aPrettyName) override;
   NS_IMETHOD GetSupportsDiskSpace(bool* aSupportsDiskSpace) override;
@@ -62,11 +62,8 @@ class nsImapIncomingServer : public nsMsgIncomingServer,
   NS_IMETHOD GetSearchScope(nsMsgSearchScopeValue* searchScope) override;
   NS_IMETHOD GetServerRequiresPasswordForBiff(
       bool* aServerRequiresPasswordForBiff) override;
-  NS_IMETHOD OnUserOrHostNameChanged(const nsACString& oldName,
-                                     const nsACString& newName,
-                                     bool hostnameChanged) override;
   NS_IMETHOD GetNumIdleConnections(int32_t* aNumIdleConnections);
-  NS_IMETHOD ForgetSessionPassword() override;
+  NS_IMETHOD ForgetSessionPassword(bool modifyLogin) override;
   NS_IMETHOD GetMsgFolderFromURI(nsIMsgFolder* aFolderResource,
                                  const nsACString& aURI,
                                  nsIMsgFolder** aFolder) override;

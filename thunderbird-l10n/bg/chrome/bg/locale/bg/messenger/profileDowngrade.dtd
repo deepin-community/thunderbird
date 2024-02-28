@@ -9,12 +9,11 @@
  Thunderbird" and "version" is used to mean "the specific revision number of a
  given Thunderbird channel". These terms are not synonymous.
 -->
-<!ENTITY window.title "You have launched an older version of &brandProductName;">
-<!ENTITY window.style "width: 490px;">
+<!ENTITY window.title "Стартирахте по-старо издание на &brandProductName;">
 
-<!ENTITY window.nosync2 "A newer version of &brandProductName; may have made changes to your profile which are no longer compatible with this older version. Use this profile only with that newer version, or create a new profile for this installation of &brandShortName;. Creating a new profile requires setting up your accounts, calendars and add-ons again.">
+<!ENTITY window.nosync2 "По-новото издание на &brandProductName; може да е направило промени в профила ви, които вече не са съвместими с по-старото. Използвайте този профил само с това по-ново издание или създайте нов профил за тази инсталация на &brandShortName;. Създаването на нов профил изисква отново да настроите вашите профили, календари и добавки.">
 
-<!ENTITY window.moreinfo "More information…">
-<!ENTITY window.create "Create New Profile">
-<!ENTITY window.quit-win "Exit">
-<!ENTITY window.quit-nonwin "Quit">
+<!ENTITY window.moreinfo "Повече информация…">
+<!ENTITY window.create "Създаване на профил">
+<!ENTITY window.quit-win "Изход">
+<!ENTITY window.quit-nonwin "Изход">

@@ -2,9 +2,9 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-dock-options-window-dialog =
+dock-options-window-dialog2 =
     .title = Uygulama simgesi seçenekleri
-    .style = width: 35em;
+dock-options-dialog-title = Uygulama simgesi seçenekleri
 dock-options-show-badge =
     .label = Rozet simgesini göster
     .accesskey = R
@@ -20,4 +20,4 @@ count-unread-messages-radio =
 count-new-messages-radio =
     .label = Yeni ileti sayısı
     .accesskey = s
-notification-settings-info = Rozeti, Sistem Tercihleri'nde bulunan Bildirim panelinden kapatabilirsiniz.
+notification-settings-info2 = Rozeti, Sistem Ayarları'nda bulunan Bildirim panelinden kapatabilirsiniz.

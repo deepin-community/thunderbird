@@ -7,23 +7,21 @@
  * Makes sure Pie Charts correctly handle empty source data.
  */
 
-add_task(async function() {
-  // Disable bfcache for Fission for now.
-  // If Fission is disabled, the pref is no-op.
-  await SpecialPowers.pushPrefEnv({
-    set: [["fission.bfcacheInParent", false]],
+add_task(async function () {
+  const {
+    L10N,
+  } = require("resource://devtools/client/netmonitor/src/utils/l10n.js");
+
+  const { monitor } = await initNetMonitor(HTTPS_SIMPLE_URL, {
+    requestCount: 1,
   });
-
-  const { L10N } = require("devtools/client/netmonitor/src/utils/l10n");
-
-  const { monitor } = await initNetMonitor(SIMPLE_URL, { requestCount: 1 });
   info("Starting test... ");
 
   const { document, windowRequire } = monitor.panelWin;
   const { Chart } = windowRequire("devtools/client/shared/widgets/Chart");
 
   const wait = waitForNetworkEvents(monitor, 1);
-  navigateTo(SIMPLE_URL);
+  await navigateTo(HTTPS_SIMPLE_URL);
   await wait;
 
   const pie = Chart.Pie(document, {
@@ -33,7 +31,7 @@ add_task(async function() {
   });
 
   const { node } = pie;
-  const slices = node.querySelectorAll(".pie-chart-slice.chart-colored-blob");
+  const slices = node.querySelectorAll(".pie-chart-slice");
   const labels = node.querySelectorAll(".pie-chart-label");
 
   is(slices.length, 1, "There should be 1 pie chart slice created.");
@@ -52,7 +50,7 @@ add_task(async function() {
     "The slice should also be the smallest one."
   );
   is(
-    slices[0].getAttribute("name"),
+    slices[0].getAttribute("data-statistic-name"),
     L10N.getStr("pieChart.unavailable"),
     "The slice's name is correct."
   );

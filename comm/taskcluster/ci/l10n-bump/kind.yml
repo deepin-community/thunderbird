@@ -2,11 +2,11 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 ---
-loader: taskgraph.loader.transform:loader
+loader: gecko_taskgraph.loader.transform:loader
 
 transforms:
-    - taskgraph.transforms.release_version_bump:transforms
-    - taskgraph.transforms.task:transforms
+    - gecko_taskgraph.transforms.release_version_bump:transforms
+    - gecko_taskgraph.transforms.task:transforms
 
 
 job-defaults:
@@ -23,7 +23,7 @@ job-defaults:
                 default: false
         source-repo:
             by-release-type:
-                release: https://hg.mozilla.org/releases/comm-esr91
+                release: https://hg.mozilla.org/releases/comm-esr115
                 beta: https://hg.mozilla.org/releases/comm-beta
                 default: https://hg.mozilla.org/comm-central
         l10n-bump-info:
@@ -32,7 +32,7 @@ job-defaults:
                     name: Thunderbird l10n changesets
                     path: mail/locales/l10n-changesets.json
                     version-path: mail/config/version.txt
-                    l10n-repo-url: "https://hg.mozilla.org/l10n-central/%(locale)s/json-pushes?version=2&tipsonly=1"
+                    l10n-repo-url: "https://hg.mozilla.org/projects/comm-l10n/json-pushes?version=2&tipsonly=1"
                     ignore-config:
                         ja:
                             - macosx64

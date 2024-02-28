@@ -32,7 +32,7 @@ fi
 
 # some global variables
 MOZ_APP_NAME=thunderbird
-MOZ_APP_LAUNCHER=$(which "$0")
+MOZ_APP_LAUNCHER=$(command -v "$0")
 MOZ_LIBDIR=/usr/lib/${MOZ_APP_NAME}
 ID_PROFILE_FOLDER=${HOME}/.icedove
 TB_PROFILE_FOLDER=${HOME}/.thunderbird

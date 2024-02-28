@@ -8,12 +8,12 @@
 /* import-globals-from downloads.js */
 /* import-globals-from privacy.js */
 /* import-globals-from chat.js */
+/* import-globals-from sync.js */
 /* import-globals-from findInPage.js */
 /* globals gCalendarPane */
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-var { AppConstants } = ChromeUtils.import(
-  "resource://gre/modules/AppConstants.jsm"
+var { AppConstants } = ChromeUtils.importESModule(
+  "resource://gre/modules/AppConstants.sys.mjs"
 );
 var { MailServices } = ChromeUtils.import(
   "resource:///modules/MailServices.jsm"
@@ -24,19 +24,19 @@ var { ExtensionSupport } = ChromeUtils.import(
 var { calendarDeactivator } = ChromeUtils.import(
   "resource:///modules/calendar/calCalendarDeactivator.jsm"
 );
+var { UIDensity } = ChromeUtils.import("resource:///modules/UIDensity.jsm");
+var { UIFontSize } = ChromeUtils.import("resource:///modules/UIFontSize.jsm");
 
 var paneDeck = document.getElementById("paneDeck");
 var defaultPane = "paneGeneral";
 
-ChromeUtils.defineModuleGetter(
-  this,
-  "AddonManager",
-  "resource://gre/modules/AddonManager.jsm"
-);
+ChromeUtils.defineESModuleGetters(this, {
+  AddonManager: "resource://gre/modules/AddonManager.sys.mjs",
+});
 
-XPCOMUtils.defineLazyGetter(this, "gSubDialog", function() {
-  const { SubDialogManager } = ChromeUtils.import(
-    "resource://gre/modules/SubDialog.jsm"
+XPCOMUtils.defineLazyGetter(this, "gSubDialog", function () {
+  const { SubDialogManager } = ChromeUtils.importESModule(
+    "resource://gre/modules/SubDialog.sys.mjs"
   );
   return new SubDialogManager({
     dialogStack: document.getElementById("dialogStack"),
@@ -47,6 +47,8 @@ XPCOMUtils.defineLazyGetter(this, "gSubDialog", function() {
         "chrome://messenger/skin/preferences/preferences.css",
       ],
       resizeCallback: ({ title, frame }) => {
+        UIFontSize.registerWindow(frame.contentWindow);
+
         // Search within main document and highlight matched keyword.
         gSearchResultsPane.searchWithinNode(title, gSearchResultsPane.query);
 
@@ -65,6 +67,17 @@ XPCOMUtils.defineLazyGetter(this, "gSubDialog", function() {
             );
           }
         }
+
+        // Resize the dialog to fit the content with edited font size.
+        requestAnimationFrame(() => {
+          let dialogs = frame.ownerGlobal.gSubDialog._dialogs;
+          let dialog = dialogs.find(
+            d => d._frame.contentDocument == frame.contentDocument
+          );
+          if (dialog) {
+            UIFontSize.resizeSubDialog(dialog);
+          }
+        });
       },
     },
   });
@@ -104,9 +117,9 @@ function register_module(categoryName, categoryObject) {
         document.l10n.resumeObserving();
 
         // Asks Preferences to update the attribute value of the entire
-        // document again (this can be simplified if we could seperate the
+        // document again (this can be simplified if we could separate the
         // preferences of each pane.)
-        Preferences.updateAllElements();
+        Preferences.queueUpdateOfAllElements();
       }
       categoryObject.init();
       this.inited = true;
@@ -115,12 +128,13 @@ function register_module(categoryName, categoryObject) {
 }
 
 function init() {
-  Preferences.forceEnableInstantApply();
-
   register_module("paneGeneral", gGeneralPane);
   register_module("paneCompose", gComposePane);
   register_module("panePrivacy", gPrivacyPane);
   register_module("paneCalendar", gCalendarPane);
+  if (AppConstants.NIGHTLY_BUILD) {
+    register_module("paneSync", gSyncPane);
+  }
   register_module("paneSearchResults", gSearchResultsPane);
   if (Services.prefs.getBoolPref("mail.chat.enabled")) {
     register_module("paneChat", gChatPane);
@@ -150,7 +164,7 @@ function init() {
     }
   });
 
-  categories.addEventListener("mousedown", function() {
+  categories.addEventListener("mousedown", function () {
     this.removeAttribute("keyboard-navigation");
   });
 
@@ -161,6 +175,9 @@ function init() {
     "lastSelected"
   );
   gotoPref(lastSelected);
+
+  UIDensity.registerWindow(window);
+  UIFontSize.registerWindow(window);
 }
 
 function onHashChange() {
@@ -238,7 +255,7 @@ async function gotoPref(aCategory) {
   try {
     await init_category_if_required(category);
   } catch (ex) {
-    Cu.reportError(
+    console.error(
       new Error(
         "Error initializing preference category " + category + ": " + ex
       )
@@ -282,7 +299,7 @@ function friendlyPrefCategoryNameToInternalName(aName) {
 
 // This function is duplicated inside of utilityOverlay.js's openPreferences.
 function internalPrefCategoryNameToFriendlyName(aName) {
-  return (aName || "").replace(/^pane./, function(toReplace) {
+  return (aName || "").replace(/^pane./, function (toReplace) {
     return toReplace[4].toLowerCase();
   });
 }
@@ -350,7 +367,7 @@ async function scrollAndHighlight(subcategory, category) {
  * If there is no visible second level header it will return first level header,
  * otherwise return second level header.
  *
- * @returns {Element}  The closest displayed header.
+ * @returns {Element} The closest displayed header.
  */
 function getClosestDisplayedHeader(element) {
   let header = element.closest("groupbox");
@@ -366,8 +383,8 @@ function getClosestDisplayedHeader(element) {
 }
 
 function scrollContentTo(element) {
-  const STICKY_CONTAINER_HEIGHT = document.querySelector(".sticky-container")
-    .clientHeight;
+  const STICKY_CONTAINER_HEIGHT =
+    document.querySelector(".sticky-container").clientHeight;
   let mainContent = document.querySelector(".main-content");
   let top = element.getBoundingClientRect().top - STICKY_CONTAINER_HEIGHT;
   mainContent.scroll({
@@ -401,7 +418,7 @@ function selectPrefPane(paneID, scrollPaneTo, otherArgs) {
  * @param subdialogID  ID of button to activate, opening a subdialog
  */
 function showTab(scrollPaneTo, subdialogID) {
-  setTimeout(function() {
+  setTimeout(function () {
     let scrollTarget = document.getElementById(scrollPaneTo);
     if (scrollTarget.closest("groupbox")) {
       scrollTarget = scrollTarget.closest("groupbox");

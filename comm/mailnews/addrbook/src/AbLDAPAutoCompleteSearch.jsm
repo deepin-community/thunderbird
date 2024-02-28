@@ -1,11 +1,9 @@
-/* -*- Mode: Java; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 var EXPORTED_SYMBOLS = ["AbLDAPAutoCompleteSearch"];
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 var { MailServices } = ChromeUtils.import(
   "resource:///modules/MailServices.jsm"
 );
@@ -111,17 +109,17 @@ AbLDAPAutoCompleteSearch.prototype = {
   _checkDuplicate(card, emailAddress) {
     var lcEmailAddress = emailAddress.toLocaleLowerCase();
 
-    return this._result._searchResults.some(function(result) {
+    return this._result._searchResults.some(function (result) {
       return result.value.toLocaleLowerCase() == lcEmailAddress;
     });
   },
 
-  _addToResult(card, emailProperty) {
+  _addToResult(card, address) {
     let mbox = this._parser.makeMailboxObject(
       card.displayName,
       card.isMailList
         ? card.getProperty("Notes", "") || card.displayName
-        : card.getProperty(emailProperty, "")
+        : address
     );
     if (!mbox.email) {
       return;
@@ -200,7 +198,7 @@ AbLDAPAutoCompleteSearch.prototype = {
       try {
         identity = MailServices.accounts.getIdentity(params.idKey);
       } catch (ex) {
-        Cu.reportError(
+        console.error(
           "Couldn't get specified identity, " +
             "falling back to global settings"
         );
@@ -342,8 +340,9 @@ AbLDAPAutoCompleteSearch.prototype = {
       return;
     }
 
-    this._addToResult(aCard, "PrimaryEmail");
-    this._addToResult(aCard, "SecondEmail");
+    for (let emailAddress of aCard.emailAddresses) {
+      this._addToResult(aCard, emailAddress);
+    }
 
     /* XXX autocomplete doesn't expect you to rearrange while searching
     if (this._result.matchCount) {

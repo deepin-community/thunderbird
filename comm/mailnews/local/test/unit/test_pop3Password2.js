@@ -78,11 +78,7 @@ function checkBusy() {
   }
 
   // If the server hasn't quite finished, just delay a little longer.
-  if (
-    incomingServer.serverBusy ||
-    (incomingServer instanceof Ci.nsIPop3IncomingServer &&
-      incomingServer.runningProtocol)
-  ) {
+  if (incomingServer.serverBusy) {
     do_timeout(20, checkBusy);
     return;
   }
@@ -123,7 +119,7 @@ function testNext() {
   }
 }
 
-add_task(async function() {
+add_task(async function () {
   // Disable new mail notifications
   Services.prefs.setBoolPref("mail.biff.play_sound", false);
   Services.prefs.setBoolPref("mail.biff.show_alert", false);
@@ -189,13 +185,14 @@ add_task(async function() {
   handler.kUsername = "testpop3";
   handler.kPassword = "pop3test";
 
-  MailServices.accounts.LoadAccounts();
+  MailServices.accounts.loadAccounts();
 
   localAccountUtils.incomingServer = MailServices.accounts.localFoldersServer;
 
-  var rootFolder = localAccountUtils.incomingServer.rootMsgFolder.QueryInterface(
-    Ci.nsIMsgLocalMailFolder
-  );
+  var rootFolder =
+    localAccountUtils.incomingServer.rootMsgFolder.QueryInterface(
+      Ci.nsIMsgLocalMailFolder
+    );
 
   // Note: Inbox is not created automatically when there is no deferred server,
   // so we need to create it.

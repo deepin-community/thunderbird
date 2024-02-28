@@ -8,7 +8,8 @@
 #include "nsMacSharingService.h"
 
 #include "jsapi.h"
-#include "js/Array.h"  // JS::NewArrayObject
+#include "js/Array.h"               // JS::NewArrayObject
+#include "js/PropertyAndElement.h"  // JS_SetElement, JS_SetProperty
 #include "nsCocoaUtils.h"
 #include "mozilla/MacStringHelpers.h"
 
@@ -97,10 +98,10 @@ static void SetStrAttribute(JSContext* aCx, JS::Rooted<JSObject*>& aObj, const c
 }
 
 nsresult nsMacSharingService::GetSharingProviders(const nsAString& aPageUrl, JSContext* aCx,
-                                                  JS::MutableHandleValue aResult) {
+                                                  JS::MutableHandle<JS::Value> aResult) {
   NS_OBJC_BEGIN_TRY_BLOCK_RETURN;
 
-  NSURL* url = [NSURL URLWithString:nsCocoaUtils::ToNSString(aPageUrl)];
+  NSURL* url = nsCocoaUtils::ToNSURL(aPageUrl);
   if (!url) {
     // aPageUrl is not a valid URL.
     return NS_ERROR_FAILURE;
@@ -165,7 +166,7 @@ nsMacSharingService::ShareUrl(const nsAString& aServiceName, const nsAString& aP
   NS_OBJC_BEGIN_TRY_BLOCK_RETURN;
 
   NSString* serviceName = nsCocoaUtils::ToNSString(aServiceName);
-  NSURL* pageUrl = [NSURL URLWithString:nsCocoaUtils::ToNSString(aPageUrl)];
+  NSURL* pageUrl = nsCocoaUtils::ToNSURL(aPageUrl);
   NSString* pageTitle = nsCocoaUtils::ToNSString(aPageTitle);
   NSSharingService* service = [NSSharingService sharingServiceNamed:serviceName];
 
@@ -177,6 +178,7 @@ nsMacSharingService::ShareUrl(const nsAString& aServiceName, const nsAString& aP
     if ([pageUrl.scheme hasPrefix:@"http"]) {
       [shareActivity setWebpageURL:pageUrl];
     }
+    [shareActivity setEligibleForHandoff:NO];
     [shareActivity setTitle:pageTitle];
     [shareActivity becomeCurrent];
 

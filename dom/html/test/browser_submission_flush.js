@@ -6,10 +6,10 @@
 // wrong action or target. This test ensures that such flushes happen properly.
 
 const kTestPage =
-  "http://example.org/browser/dom/html/test/submission_flush.html";
+  "https://example.org/browser/dom/html/test/submission_flush.html";
 // This is the page pointed to by the form action in the test HTML page.
 const kPostActionPage =
-  "http://example.org/browser/dom/html/test/post_action_page.html";
+  "https://example.org/browser/dom/html/test/post_action_page.html";
 
 const kFormId = "test_form";
 const kFrameId = "test_frame";
@@ -27,7 +27,7 @@ async function runTest(aTestActions) {
   let frame_url = await SpecialPowers.spawn(
     gBrowser.selectedBrowser,
     [{ kFormId, kFrameId, kSubmitButtonId, aTestActions }],
-    async function({ kFormId, kFrameId, kSubmitButtonId, aTestActions }) {
+    async function ({ kFormId, kFrameId, kSubmitButtonId, aTestActions }) {
       let form = content.document.getElementById(kFormId);
 
       form.addEventListener(
@@ -73,17 +73,17 @@ async function runTest(aTestActions) {
   );
 }
 
-add_task(async function() {
+add_task(async function () {
   info("Changing action should flush pending submissions");
   await runTest({ setattr: [{ attr: "action", value: "about:blank" }] });
 });
 
-add_task(async function() {
+add_task(async function () {
   info("Changing target should flush pending submissions");
   await runTest({ setattr: [{ attr: "target", value: "_blank" }] });
 });
 
-add_task(async function() {
+add_task(async function () {
   info("Unsetting action should flush pending submissions");
   await runTest({ unsetattr: ["action"] });
 });
@@ -91,7 +91,7 @@ add_task(async function() {
 // On failure, this test will time out rather than failing an assert. When the
 // target attribute is not set, the form will submit the active page, navigating
 // it away and preventing the wait for iframe load from ever finishing.
-add_task(async function() {
+add_task(async function () {
   info("Unsetting target should flush pending submissions");
   await runTest({ unsetattr: ["target"] });
 });

@@ -1,3 +1,1135 @@
+thunderbird (1:115.8.0-1) unstable; urgency=medium
+
+  * [68f2fbe] New upstream version 115.8.0
+    Fixed CVE issues in upstream version 115.8 (MFSA 2024-07):
+    CVE-2024-1546: Out-of-bounds memory read in networking channels
+    CVE-2024-1547: Alert dialog could have been spoofed on another site
+    CVE-2024-1548: Fullscreen Notification could have been hidden by select
+                   element
+    CVE-2024-1549: Custom cursor could obscure the permission dialog
+    CVE-2024-1550: Mouse cursor re-positioned unexpectedly could have led to
+                   unintended permission grants
+    CVE-2024-1551: Multipart HTTP Responses would accept the Set-Cookie
+                   header in response parts
+    CVE-2024-1552: Incorrect code generation on 32-bit ARM devices
+    CVE-2024-1553: Memory safety bugs fixed in Firefox 123, Firefox ESR 115.8,
+                   and Thunderbird 115.8
+
+ -- Carsten Schoenert <c.schoenert@t-online.de>  Tue, 21 Feb 2024 17:18:14 +0100
+
+thunderbird (1:115.7.0-1) unstable; urgency=medium
+
+  * [6e0c26c] New upstream version 115.7.0
+    Fixed CVE issues in upstream version 115.7 (MFSA 2024-04):
+    CVE-2024-0741: Out of bounds write in ANGLE
+    CVE-2024-0742: Failure to update user input timestamp
+    CVE-2024-0746: Crash when listing printers on Linux
+    CVE-2024-0747: Bypass of Content Security Policy when directive
+                   unsafe-inline was set
+    CVE-2024-0749: Phishing site popup could show local origin in address bar
+    CVE-2024-0750: Potential permissions request bypass via clickjacking
+    CVE-2024-0751: Privilege escalation through devtools
+    CVE-2024-0753: HSTS policy on subdomain could bypass policy of upper domain
+    CVE-2024-0755: Memory safety bugs fixed in Firefox 122, Firefox ESR 115.7,
+                   and Thunderbird 115.7
+
+ -- Carsten Schoenert <c.schoenert@t-online.de>  Tue, 23 Jan 2024 16:56:31 +0100
+
+thunderbird (1:115.6.0-1) unstable; urgency=medium
+
+  * [aea3623] New upstream version 115.6.0
+    Fixed CVE issues in upstream version 115.6 (MFSA 2023-55):
+    CVE-2023-50762: Truncated signed text was shown with a valid OpenPGP
+                    signature
+    CVE-2023-50761: S/MIME signature accepted despite mismatching message
+                    date
+    CVE-2023-6856: Heap-buffer-overflow affecting WebGL DrawElementsInstanced
+                   method with Mesa VM driver
+    CVE-2023-6857: Symlinks may resolve to smaller than expected buffers
+    CVE-2023-6858: Heap buffer overflow in nsTextFragment
+    CVE-2023-6859: Use-after-free in PR_GetIdentitiesLayer
+    CVE-2023-6860: Potential sandbox escape due to VideoBridge lack
+                   of texture validation
+    CVE-2023-6861: Heap buffer overflow affected nsWindow::PickerOpen(void)
+                   in headless mode
+    CVE-2023-6862: Use-after-free in nsDNSService
+    CVE-2023-6863: Undefined behavior in ShutdownObserver()
+    CVE-2023-6864: Memory safety bugs fixed in Firefox 121, Firefox ESR 115.6,
+                   and Thunderbird 115.6
+  * [6ecaa01] d/control: Remove B-D on libiw-dev
+    (Closes: #1058737)
+
+ -- Carsten Schoenert <c.schoenert@t-online.de>  Tue, 19 Dec 2023 20:24:02 +0100
+
+thunderbird (1:115.5.2-1) unstable; urgency=medium
+
+  * [34f6404] New upstream version 115.5.2
+
+ -- Carsten Schoenert <c.schoenert@t-online.de>  Fri, 08 Dec 2023 21:21:26 +0100
+
+thunderbird (1:115.5.1-1) unstable; urgency=medium
+
+  * [eec913b] New upstream version 115.5.1
+
+ -- Carsten Schoenert <c.schoenert@t-online.de>  Wed, 29 Nov 2023 18:13:11 +0100
+
+thunderbird (1:115.5.0-1) unstable; urgency=medium
+
+  [ intrigeri ]
+  * [a6be3ab] AppArmor: update profile from upstream at commit
+              9d3fa88cdab512e45f6fd80f067337f200d356bc
+
+  [ Carsten Schoenert ]
+  * [ed61fd6] New upstream version 115.5.0
+    Fixed CVE issues in upstream version 115.5 (MFSA 2023-52):
+    CVE-2023-6204: Out-of-bound memory access in WebGL2 blitFramebuffer
+    CVE-2023-6205: Use-after-free in MessagePort::Entangled
+    CVE-2023-6206: Clickjacking permission prompts using the fullscreen
+                   transition
+    CVE-2023-6207: Use-after-free in ReadableByteStreamQueueEntry::Buffer
+    CVE-2023-6208: Using Selection API would copy contents into X11 primary
+                   selection.
+    CVE-2023-6209: Incorrect parsing of relative URLs starting with "///"
+    CVE-2023-6212: Memory safety bugs fixed in Firefox 120, Firefox ESR 115.5,
+                   and Thunderbird 115.5
+
+ -- Carsten Schoenert <c.schoenert@t-online.de>  Wed, 22 Nov 2023 21:50:16 +0000
+
+thunderbird (1:115.4.1-1) unstable; urgency=medium
+
+  * [c51ab77] New upstream version 115.4.1
+    Fixed CVE issues in upstream version 115.4.1 (MFSA 2023-47):
+    CVE-2023-5721: Queued up rendering could have allowed websites to
+                   clickjack
+    CVE-2023-5732: Address bar spoofing via bidirectional characters
+    CVE-2023-5724: Large WebGL draw could have led to a crash
+    CVE-2023-5725: WebExtensions could open arbitrary URLs
+    CVE-2023-5728: Improper object tracking during GC in the JavaScript
+                   engine could have led to a crash.
+    CVE-2023-5730: Memory safety bugs fixed in Firefox 119, Firefox ESR 115.4,
+                   and Thunderbird 115.4.1
+
+ -- Carsten Schoenert <c.schoenert@t-online.de>  Wed, 25 Oct 2023 21:05:23 +0200
+
+thunderbird (1:115.3.1-1) unstable; urgency=medium
+
+  * [276a53a] New upstream version 115.3.1
+    Fixed CVE issues in upstream version 115.3.1 (MFSA 2023-44):
+    CVE-2023-5217: Heap buffer overflow in libvpx
+  * [a360abf] d/control: Point VCS links to debian/sid
+
+ -- Carsten Schoenert <c.schoenert@t-online.de>  Fri, 29 Sep 2023 19:26:42 +0200
+
+thunderbird (1:115.3.0-1) unstable; urgency=medium
+
+  * [2e67467] New upstream version 115.3.0
+    Fixed CVE issues in upstream version 115.3 (MFSA 2023-43):
+    CVE-2023-5168: Out-of-bounds write in FilterNodeD2D1
+    CVE-2023-5169: Out-of-bounds write in PathOps
+    CVE-2023-5171: Use-after-free in Ion Compiler
+    CVE-2023-5176: Memory safety bugs fixed in Firefox 118, Firefox
+                   ESR 115.3, and Thunderbird 115.3
+
+ -- Carsten Schoenert <c.schoenert@t-online.de>  Wed, 27 Sep 2023 19:07:47 +0200
+
+thunderbird (1:115.2.2-1) unstable; urgency=medium
+
+  * [08bc8c9] d/thunderbird.desktop: Update data with upstream data
+    (Closes: #1042912, #1051261)
+  * [2fd665b] New upstream version 115.2.2
+    Fixed CVE issues in upstream version 115.2.2 (MFSA 2023-40):
+    CVE-2023-4863: Heap buffer overflow in libwebp
+  * [7b862be] d/copyright: Update content due upstream changes
+  * [140b77d] d/s/lintian-overrides: Update data for overrides
+
+ -- Carsten Schoenert <c.schoenert@t-online.de>  Wed, 13 Sep 2023 22:59:59 +0530
+
+thunderbird (1:115.2.0-1) unstable; urgency=medium
+
+  * [1415d01] New upstream version 115.2.0
+    Fixed CVE issues in upstream version 115.2 (MFSA 2023-36):
+    CVE-2023-4573: Memory corruption in IPC CanvasTranslator
+    CVE-2023-4574: Memory corruption in IPC ColorPickerShownCallback
+    CVE-2023-4575: Memory corruption in IPC FilePickerShownCallback
+    CVE-2023-4576: Integer Overflow in RecordedSourceSurfaceCreation
+    CVE-2023-4577: Memory corruption in JIT UpdateRegExpStatics
+    CVE-2023-4051: Full screen notification obscured by file open dialog
+    CVE-2023-4578: Error reporting methods in SpiderMonkey could have
+                   triggered an Out of Memory Exception
+    CVE-2023-4053: Full screen notification obscured by external program
+    CVE-2023-4580: Push notifications saved to disk unencrypted
+    CVE-2023-4581: XLL file extensions were downloadable without warnings
+    CVE-2023-4582: Buffer Overflow in WebGL glGetProgramiv
+    CVE-2023-4583: Browsing Context potentially not cleared when closing
+                   Private Window
+    CVE-2023-4584: Memory safety bugs fixed in Firefox 117, Firefox ESR
+                   102.15, Firefox ESR 115.2, Thunderbird 102.15, and
+                   Thunderbird 115.2
+    CVE-2023-4585: Memory safety bugs fixed in Firefox 117, Firefox ESR 115.2,
+                   and Thunderbird 115.2
+
+ -- Christoph Goehre <chris@sigxcpu.org>  Wed, 30 Aug 2023 17:41:36 +0200
+
+thunderbird (1:115.1.1-1) unstable; urgency=medium
+
+  [ Christoph Goehre ]
+  * [880cabe] ship glxtest and vaapitest binaries
+    (Closes: #1043057)
+
+  [ Carsten Schoenert ]
+  * [8474b9b] d/thunderbird.install: Use upstream graphics for icons
+  * [85f99a2] d/c-u-t.py: Use Version() from python3-packaging
+  * [86e3335] d/thunderbird.desktop: Sort MimeType entries alphabetically
+  * [2bc5f47] New upstream version 115.1.1
+  * [ddec51f] Revert "d/mozconfig.default: Use internal shipped librnp
+              version"
+  * [3ef27e2] Revert "d/control: Drop librnp0 package from Depends"
+  * [9011502] Revert "d/thunderbird.install: Install rnp tools too"
+  * [d5eef62] d/control: Bump version of librnp{0,-dev}
+    (Closes: #1041409)
+
+  [ Max Nikulin ]
+  * [0e04b0e] d/thunderbird.desktop: Add IANA MIME type for .vcf vcard
+  * [ce01092] d/thunderbird.desktop: Add mid: URI to MIME types
+    (Closes: #1008159)
+  * [c11a22f] d/thunderbird.desktop: Add news: URI to MIME types
+  * [bf5586f] d/thunderbird.desktop: Add webcal: URI to MIME types
+
+ -- Carsten Schoenert <c.schoenert@t-online.de>  Wed, 16 Aug 2023 17:18:04 +0200
+
+thunderbird (1:115.1.0-1) unstable; urgency=medium
+
+  * [8c11865] d/gbp.conf: Adjust upstream branch to new ESR cycle
+  * [fb76340] New upstream version 115.1.0
+    Fixed CVE issues in upstream version 115.1 (MFSA 2023-33):
+    CVE-2023-4045: Offscreen Canvas could have bypassed cross-origin
+                   restrictions
+    CVE-2023-4046: Incorrect value used during WASM compilation
+    CVE-2023-4047: Potential permissions request bypass via clickjacking
+    CVE-2023-4048: Crash in DOMParser due to out-of-memory conditions
+    CVE-2023-4049: Fix potential race conditions when releasing platform
+                   objects
+    CVE-2023-4050: Stack buffer overflow in StorageManager
+    CVE-2023-4055: Cookie jar overflow caused unexpected cookie jar state
+    CVE-2023-4056: Memory safety bugs fixed in Firefox 116,
+                   Firefox ESR 115.1, Firefox ESR 102.14, Thunderbird 115.1,
+                   and Thunderbird 102.14
+    CVE-2023-4057: Memory safety bugs fixed in Firefox 116,
+                   Firefox ESR 115.1, and Thunderbird 115.1
+  * [b562827] Rebuild patch queue from patch-queue branch
+    Removed patches (included upstream):
+    fixes/Bug-1840931-More-properly-handle-files-4GB-in-elfhack.-r-.patch
+    fixes/Bug-1842933-Use-NEON_FLAGS-instead-of-VPX_ASFLAGS-for-lib.patch
+    porting-mips/Bug-1841197-Undefine-the-mips-builtin-macro-on-mips-in-sk.patch
+    porting-mips64el/Bug-1841201-Work-around-tail-call-optimization-not-happen.patch
+    porting-ppc64el/Work-around-bz-1775202-to-fix-FTBFS-on-ppc64el.patch
+
+ -- Carsten Schoenert <c.schoenert@t-online.de>  Tue, 01 Aug 2023 19:19:27 +0200
+
+thunderbird (1:115.0.1-2) experimental; urgency=medium
+
+  [ Carsten Schoenert ]
+  * [39b1576] d/create-upstream-tarballs.py: Catch non existing versions
+  * [f663f6a] d/create-upstream-tarballs.py: Running black formatter
+  * [8e6d7fe] d/create-upstream-tarballs.py: Use speaking variable name
+
+  [ Christoph Goehre ]
+  * [cdab989] Rebuild patch queue from patch-queue branch
+    Added patch:
+    porting-mips64el/Bug-1841201-Work-around-tail-call-optimization-not-happen.patch
+
+ -- Carsten Schoenert <c.schoenert@t-online.de>  Sat, 29 Jul 2023 09:22:57 +0200
+
+thunderbird (1:115.0.1-1) experimental; urgency=medium
+
+  * [30f2fcc] New upstream version 115.0.1
+    Fixed CVE issues in upstream version 115.0.1 (MFSA 2023-27):
+    CVE-2023-3600: Use-after-free in workers
+    CVE-2023-3417: File Extension Spoofing using the Text Direction
+                   Override Character
+  * [efbb370] Rebuild patch queue from patch-queue branch
+    Added patches:
+    debian-hacks/rnp-Fix-include-for-format-specifiers-for-uint32_t.patch
+    fixes/skia-Cast-SkEndian_SwapBE32-n-to-uint32_t-on-big-endian.patch
+    porting-mips64el/skia-Disable-musttail-on-mips64.patch
+    porting-ppc64el/skia-Disable-musttail-on-ppc64el.patch
+  * [f78b777] d/mozconfig.default: Use internal shipped librnp version
+  * [a606cdb] d/control: Drop librnp0 package from Depends
+  * [104bf35] d/thunderbird.install: Install rnp tools too
+
+ -- Carsten Schoenert <c.schoenert@t-online.de>  Sun, 23 Jul 2023 09:07:08 +0200
+
+thunderbird (1:115.0-1) experimental; urgency=medium
+
+  [ Carsten Schoenert ]
+  * [3a6b0eb] New upstream version 115.0
+  * [1c11a15] Rebuild patch queue from patch-queue branch
+    Dropped patches:
+    debian-hacks/Decrease-Cargo-minimal-version-to-1.46.0.patch
+    debian-hacks/Fix-Floating-Point-Normalization-breakage-on-32bit-Linux.patch
+    debian-hacks/Use-remoting-name-for-call-to-gdk_set_program_class.patch
+    fixes/Bug-1556197-amend-Bug-1544631-for-fixing-mips32.patch
+    fixes/Bug-628252-os2.cc-fails-to-compile-against-GCC-4.6-m.patch
+    porting-armhf/Bug-1526653-Include-struct-definitions-for-user_vfp-and-u.patch
+    porting-kfreebsd-hurd/Allow-ipc-code-to-build-on-GNU-hurd.patch
+    porting-kfreebsd-hurd/Allow-ipc-code-to-build-on-GNU-kfreebsd.patch
+    porting-kfreebsd-hurd/FTBFS-hurd-fixing-unsupported-platform-Hurd.patch
+    porting-kfreebsd-hurd/LDAP-support-building-on-GNU-kFreeBSD-and-GNU-Hurd.patch
+    porting-kfreebsd-hurd/adding-missed-HURD-adoptions.patch
+    porting-kfreebsd-hurd/ipc-chromium-fix-if-define-for-kFreeBSD-and-Hurd.patch
+    porting-ppc64el/work-around-a-build-failure-with-clang-on-ppc64el.patch
+    porting/Work-around-GCC-ICE-on-mips-i386-and-s390x.patch
+    Added patches:
+    fixes/Bug-1840931-More-properly-handle-files-4GB-in-elfhack.-r-.patch
+    fixes/Bug-1842933-Use-NEON_FLAGS-instead-of-VPX_ASFLAGS-for-lib.patch
+    fixes/Fix-math_private.h-for-i386-FTBFS.patch
+    porting-mips/Bug-1841197-Undefine-the-mips-builtin-macro-on-mips-in-sk.patch
+    porting-ppc64el/Work-around-GCC-ICE-on-ppc64el.patch
+    porting-ppc64el/Work-around-bz-1775202-to-fix-FTBFS-on-ppc64el.patch
+  * [8d1d0e0] d/source.filter: Add build/android to list
+
+  [ Bo YU ]
+  * [ddf55dc] riscv64: Add build support for Riscv64 (Closes: #1026118)
+
+ -- Carsten Schoenert <c.schoenert@t-online.de>  Sun, 16 Jul 2023 12:22:50 +0200
+
+thunderbird (1:115.0~b6-1) experimental; urgency=medium
+
+  * [1d7c51d] New upstream version 115.0~b6
+
+ -- Carsten Schoenert <c.schoenert@t-online.de>  Thu, 29 Jun 2023 20:13:46 +0200
+
+thunderbird (1:115.0~b4-1) experimental; urgency=medium
+
+  * [5685662] New upstream version 115.0~b4
+  * [0ff4fd0] Rebuild patch queue from patch-queue branch
+    Updated patches:
+    porting-kfreebsd-hurd/Allow-ipc-code-to-build-on-GNU-hurd.patch
+    porting-kfreebsd-hurd/Allow-ipc-code-to-build-on-GNU-kfreebsd.patch
+  * [67def1f] d/control: Add libotr5 to Depends
+
+ -- Carsten Schoenert <c.schoenert@t-online.de>  Fri, 23 Jun 2023 16:03:31 +0200
+
+thunderbird (1:114.0~b2-1) experimental; urgency=medium
+
+  * [1f5bec1] New upstream version 114.0~b2
+  * [df5220a] Rebuild patch queue from patch-queue branch
+    Updated patches:
+    porting-kfreebsd-hurd/FTBFS-hurd-fixing-unsupported-platform-Hurd.patch
+    porting/Work-around-GCC-ICE-on-mips-i386-and-s390x.patch
+  * [71e654b] d/rules: Add 2 files to dh_missing
+
+ -- Carsten Schoenert <c.schoenert@t-online.de>  Tue, 16 May 2023 21:38:11 +0200
+
+thunderbird (1:113.0~b3-1) experimental; urgency=medium
+
+  [ Carsten Schoenert ]
+  * [569da29] apparmor: Expand profile folder about .mozilla-thunderbird
+    (Closes: #1030532)
+  * [777be0a] New upstream version 113.0~b3
+  * [ae90792] Rebuild patch queue from patch-queue branch
+    Dropped patch (included upstream):
+    debian-hacks/Make-Thunderbird-build-reproducible.patch
+
+  [ Timothy Pearson ]
+  * [5dff12c] Explicitly set SQLite endianness on ppc64el
+
+  [ intrigeri ]
+  * [c0ea3f9] AppArmor: update profile from upstream at
+    commit a03a894c6c30b7a566aa74645802de1cea580bca
+
+ -- Carsten Schoenert <c.schoenert@t-online.de>  Fri, 21 Apr 2023 19:11:41 +0200
+
+thunderbird (1:112.0~b1-1) experimental; urgency=medium
+
+  * [c89a60d] d/source.filter: Update content to filter out
+  * [12cd2c8] New upstream version 112.0~b1
+  * [6655d37] Rebuild patch queue from patch-queue branch
+    Removed patch:
+    debian-hacks/Relax-minimum-supporter-rust-version-to-1.63.patch
+  * [c4744df] d/control: Increade B-D on rustc to >= 1.65
+  * [ad73ef1] d/thunderbird.docs: Readd Apache-2 related Notice file
+  * [ebf44e8] d/control: Adjust B-D to libfontconfig-dev
+  * [6cea088] d/control: Increase Standards-Version to 4.6.2
+  * [2d0d8ee] d/copyright: Update content due upstream changes
+  * [268ee53] Lintian: Update overrides for source package
+  * [28ffd63] Lintian: Update overrides for thunderbird package
+  * [200f86d] Lintian: Update override for thunderbird-l10n-all
+
+ -- Carsten Schoenert <c.schoenert@t-online.de>  Sat, 18 Mar 2023 19:31:18 +0100
+
+thunderbird (1:110.0~b4-1) experimental; urgency=medium
+
+
+  [ Amr Ibrahim ]
+  * [22b9eb7] thunderbird.desktop: Update StartupWMClass
+
+  [ Carsten Schoenert ]
+  * [afe6c6a] d/copyright: Update content due upstream changes
+  * [7b31b9d] d/source.filter: Update content to filter out
+  * [03b50b4] Lintian: Adjust overrides for thunderbird package
+  * [d3510d8] Lintian: Adjust overrides for source package
+  * [57839a2] d/control: Increase version in B-D for libnss-dev
+  * [958648e] d-create-upstream-tarballs.py: Use correct variable
+  * [208f93e] New upstream version 110.0~b4
+    (Closes: #1031541)
+  * [ba87378] Rebuild patch queue from patch-queue branch
+    Added patch:
+    debian-hacks/Relax-minimum-supporter-rust-version-to-1.63.patch
+    Adjusted patch:
+    debian-hacks/Fix-Floating-Point-Normalization-breakage-on-32bit-Linux.patch
+    porting-kfreebsd-hurd/FTBFS-hurd-fixing-unsupported-platform-Hurd.patch
+  * [3104ede] Drop usage of autoconf calls
+  * [42a2545] d/control: Increase some versions in B-D
+  * [551a17f] d/rules: Don't remove configure on dh_clean
+  * [3b7b408] d/source.filter: Don't filter configure from upstream data
+  * [48913d3] d/thunderbird.docs: Drop install of NOTICE file
+  * [44589db] d/mozconfig.default: Use internal version of ICU
+  * [3eba559] d/control: Drop libicu-dev from B-D for now
+
+ -- Carsten Schoenert <c.schoenert@t-online.de>  Tue, 07 Mar 2023 16:41:43 +0100
+
+thunderbird (1:104.0~b2-1) experimental; urgency=medium
+
+  * [92670b2] d/repack.py: Small rework and adjustments
+  * [06fb656] d/create-upstream-tarballs.py: Adding new helper script
+  * [331247d] d/README.source: Update information on importing data
+  * [57a6dd7] d/source.filter: Relax filter rule for old-configure
+  * [36696b6] d/repack.py: Don't exit(1) if unused filter items exist
+  * [3b14d11] d/create-thunderbird-l10n-tarball.sh: Drop old helper
+  * [5468bb8] d/gbp.conf: Drop 'import-orig' section
+  * [fd4d5c1] d/source.filter: Add files named *.orig and *.rej
+  * [5035e50] New upstream version 104.0~b2
+  * [cc89049] Rebuild patch queue from patch-queue branch
+    Removed patch:
+    debian-hacks/Lower-down-required-NSS-version.patch
+
+ -- Carsten Schoenert <c.schoenert@t-online.de>  Sat, 06 Aug 2022 09:13:35 +0200
+
+thunderbird (1:103.0~b5-1) experimental; urgency=medium
+
+  * [a060ea2] d/gbp.conf: Sign tags automatically
+    (cherry-picked from debian/sid)
+  * [ac331c8] New upstream version 103.0~b5
+  * [00dd354] Rebuild patch queue from patch-queue branch
+    Added patch:
+    debian-hacks/Lower-down-required-NSS-version.patch
+  * [5c35afb] d/watch: Look now for versions starting with 3 digits
+    (cherry-picked from debian/sid)
+  * [a897f48] d/control: Add package thunderbird-l10n-es-mx
+    (cherry-picked from debian/sid)
+
+ -- Carsten Schoenert <c.schoenert@t-online.de>  Wed, 13 Jul 2022 18:08:16 +0200
+
+thunderbird (1:102.13.1-1) unstable; urgency=medium
+
+  * [e803b54] New upstream version 102.13.1
+    Fixed CVE issues in upstream version 102.13.1 (MFSA 2023-28):
+    CVE-2023-3417: File Extension Spoofing using the Text Direction
+                   Override Character
+  * [456ce20] Rebuild patch queue from patch-queue branch
+    Added patch:
+    fixes/gfx-Fix-inclusion-of-C-header.patch
+    fixes/toolkit-Fix-inclusion-of-C-header.patch
+    (Closes: #1037872)
+
+ -- Carsten Schoenert <c.schoenert@t-online.de>  Wed, 26 Jul 2023 19:48:59 +0200
+
+thunderbird (1:102.13.0-1) unstable; urgency=medium
+
+  * [7168011] New upstream version 102.13.0
+    Fixed CVE issues in upstream version 102.13 (MFSA 2023-24):
+    CVE-2023-37201: Use-after-free in WebRTC certificate generation
+    CVE-2023-37202: Potential use-after-free from compartment mismatch in
+                    SpiderMonkey
+    CVE-2023-37207: Fullscreen notification obscured
+    CVE-2023-37208: Lack of warning when opening Diagcab files
+    CVE-2023-37211: Memory safety bugs fixed in Firefox 115, Firefox ESR
+                    102.13, and Thunderbird 102.13
+    (Closes: #971790, #1006432)
+
+ -- Carsten Schoenert <c.schoenert@t-online.de>  Sat, 08 Jul 2023 06:15:04 +0200
+
+thunderbird (1:102.12.0-1) unstable; urgency=medium
+
+  * [a285966] New upstream version 102.12.0
+    Fixed CVE issues in upstream version 102.12 (MFSA 2023-21):
+    CVE-2023-34414: Click-jacking certificate exceptions through rendering lag
+    CVE-2023-34416: Memory safety bugs fixed in Thunderbird 102.12
+  * [73c48d4] d/control: Add libotr5 to Depends
+
+ -- Carsten Schoenert <c.schoenert@t-online.de>  Mon, 05 Jun 2023 18:51:11 +0200
+
+thunderbird (1:102.11.0-1) unstable; urgency=medium
+
+  [ intrigeri ]
+  * [f3e5479] AppArmor: update profile from upstream at
+    commit a03a894c6c30b7a566aa74645802de1cea580bca
+
+  [ Carsten Schoenert ]
+  * [0626d72] New upstream version 102.11.0
+    Fixed CVE issues in upstream version 102.11 (MFSA 2023-18):
+    CVE-2023-32205: Browser prompts could have been obscured by popups
+    CVE-2023-32206: Crash in RLBox Expat driver
+    CVE-2023-32207: Potential permissions request bypass via clickjacking
+    CVE-2023-32211: Content process crash due to invalid wasm code
+    CVE-2023-32212: Potential spoof due to obscured address bar
+    CVE-2023-32213: Potential memory corruption in FileReader::DoReadData()
+    CVE-2023-32215: Memory safety bugs fixed in Thunderbird 102.11
+
+ -- Carsten Schoenert <c.schoenert@t-online.de>  Fri, 12 May 2023 17:11:29 +0200
+
+thunderbird (1:102.10.0-1) unstable; urgency=medium
+
+  * [8afefce] New upstream version 102.10.0
+    Fixed CVE issues in upstream version 102.10 (MFSA 2023-15):
+    CVE-2023-29532: Mozilla Maintenance Service Write-lock bypass
+    CVE-2023-29533: Fullscreen notification obscured
+    CVE-2023-1999: Double-free in libwebp
+    CVE-2023-29535: Potential Memory Corruption following Garbage Collector
+                    compaction
+    CVE-2023-29536: Invalid free from JavaScript code
+    CVE-2023-0547: Revocation status of S/Mime recipient certificates was
+                   not checked
+    CVE-2023-29479: Hang when processing certain OpenPGP messages
+    CVE-2023-29539: Content-Disposition filename truncation leads to
+                    Reflected File Download
+    CVE-2023-29541: Files with malicious extensions could have been
+                    downloaded unsafely on Linux
+    CVE-2023-29542: Bypass of file download extension restrictions
+    CVE-2023-1945: Memory Corruption in Safe Browsing Code
+    CVE-2023-29548: Incorrect optimization result on ARM64
+    CVE-2023-29550: Memory safety bugs fixed in Thunderbird 102.10
+
+ -- Carsten Schoenert <c.schoenert@t-online.de>  Mon, 17 Apr 2023 21:32:45 +0200
+
+thunderbird (1:102.9.1-1) unstable; urgency=medium
+
+  [ Timothy Pearson ]
+  * [de7c4f8] Explicitly set SQLite endianness on ppc64el
+    (Closes: #1033534)
+
+  [ Carsten Schoenert ]
+  * [06059fb] New upstream version 102.9.1
+    Fixed CVE issues in upstream version 102.9.1 (MFSA 2023-12):
+    CVE-2023-28427: Matrix SDK bundled with Thunderbird vulnerable to
+                    denial-of-service attack
+
+ -- Carsten Schoenert <c.schoenert@t-online.de>  Wed, 29 Mar 2023 17:34:39 +0200
+
+thunderbird (1:102.9.0-1) unstable; urgency=medium
+
+  * [ad8cc7c] New upstream version 102.9.0
+    Fixed CVE issues in upstream version 102.9 (MFSA 2023-11):
+    CVE-2023-25751: Incorrect code generation during JIT compilation
+    CVE-2023-28164: URL being dragged from a removed cross-origin iframe
+                    into the same tab triggered navigation
+    CVE-2023-28162: Invalid downcast in Worklets
+    CVE-2023-25752: Potential out-of-bounds when accessing throttled streams
+    CVE-2023-28176: Memory safety bugs fixed in Thunderbird 102.9
+  * [b0a22c0] d/control: Increase Standards-Version to 4.6.2
+    No further changes needed.
+
+ -- Carsten Schoenert <c.schoenert@t-online.de>  Wed, 15 Mar 2023 19:54:53 +0100
+
+thunderbird (1:102.8.0-1) unstable; urgency=medium
+
+  * [b130936] New upstream version 102.8.0
+    Fixed CVE issues in upstream version 102.8.0 (MFSA 2023-07):
+    CVE-2023-0616: User Interface lockup with messages combining S/MIME and
+                   OpenPGP
+    CVE-2023-25728: Content security policy leak in violation reports using
+                    iframes
+    CVE-2023-25730: Screen hijack via browser fullscreen mode
+    CVE-2023-0767: Arbitrary memory write via PKCS 12 in NSS
+    CVE-2023-25735: Potential use-after-free from compartment mismatch in
+                    SpiderMonkey
+    CVE-2023-25737: Invalid downcast in SVGUtils::SetupStrokeGeometry
+    CVE-2023-25739: Use-after-free in
+                    mozilla::dom::ScriptLoadContext::~ScriptLoadContext
+    CVE-2023-25729: Extensions could have opened external schemes without
+                    user knowledge
+    CVE-2023-25732: Out of bounds memory write from EncodeInputStream
+    CVE-2023-25742: Web Crypto ImportKey crashes tab
+    CVE-2023-25746: Memory safety bugs fixed in Thunderbird 102.8
+  * [66e2335] Rebuild patch queue from patch-queue branch
+    Removed patch (included upstream):
+    debian-hacks/Python-3.11-Don-t-use-mode-rU-any-more.patch
+
+ -- Carsten Schoenert <c.schoenert@t-online.de>  Fri, 17 Feb 2023 20:17:32 +0100
+
+thunderbird (1:102.7.2-1) unstable; urgency=medium
+
+  * [468e468] New upstream version 102.7.2
+
+ -- Carsten Schoenert <c.schoenert@t-online.de>  Wed, 08 Feb 2023 18:34:59 +0100
+
+thunderbird (1:102.7.1+1-1) unstable; urgency=medium
+
+  * [5ce0e7d] New upstream version 102.7.1+1
+    Fixed CVE issues in upstream version 102.7.1 (MFSA 2023-04):
+    CVE-2023-0430: Revocation status of S/Mime signature certificates was
+                   not checked
+    Note: The previous version 1:102.7.1-1 was build on top of a release
+    candidate which does not fixed CVE-2023-0430 fully.
+    (Closes: #1029594, #1029606)
+  * [c7c81a5] apparmor: Expand profile folder about .mozilla-thunderbird
+    (Closes: #1030532)
+
+ -- Carsten Schoenert <c.schoenert@t-online.de>  Sun, 05 Feb 2023 17:27:40 +0100
+
+thunderbird (1:102.7.1-1) unstable; urgency=medium
+
+  * [dbc3385] New upstream version 102.7.1
+    Fixed CVE issues in upstream version 102.7 (MFSA 2023-03):
+    CVE-2022-46871: libusrsctp library out of date
+    CVE-2023-23598: Arbitrary file read from GTK drag and drop on Linux
+    CVE-2023-23601: URL being dragged from cross-origin iframe into same
+                    tab triggers navigation
+    CVE-2023-23602: Content Security Policy wasn't being correctly applied
+                    to WebSockets in WebWorkers
+    CVE-2022-46877: Fullscreen notification bypass
+    CVE-2023-23603: Calls to <code>console.log</code> allowed bypasing
+                    Content Security Policy via format directive
+    CVE-2023-23605: Memory safety bugs fixed in Thunderbird 102.7
+  * [af92a36] Rebuild patch queue from patch-queue branch
+    Added patch:
+    debian-hacks/Python-3.11-Don-t-use-mode-rU-any-more.patch
+    (Closes: #1028885)
+
+ -- Carsten Schoenert <c.schoenert@t-online.de>  Tue, 24 Jan 2023 16:32:06 +0100
+
+thunderbird (1:102.6.0-1) unstable; urgency=medium
+
+  [ Paul Gevers ]
+  * [6bbbd94] tests: thunderbird no longer builds on armel and armhf, so
+    let's not fail while trying to test there
+  * [d9e09a0] tests: help.sh is really a very superficial test, so let's
+    mark it as such
+
+  [ Carsten Schoenert ]
+  * [43b90d6] New upstream version 102.6.0
+    Fixed CVE issues in upstream version 102.6 (MFSA 2022-53):
+    CVE-2022-46880: Use-after-free in WebGL
+    CVE-2022-46872: Arbitrary file read from a compromised content process
+    CVE-2022-46881: Memory corruption in WebGL
+    CVE-2022-46874: Drag and Dropped Filenames could have been truncated to
+                    malicious extensions
+    CVE-2022-46882: Use-after-free in WebGL
+    CVE-2022-46878: Memory safety bugs fixed in Thunderbird 102.6
+  * [745c1a3] Rebuild patch queue from patch-queue branch
+    Removed patches (included upstream):
+    fixes/Bug-1773070-Rename-remove-some-eventState-s-variables.-r-.patch
+    fixes/Bug-1782988-Avoid-build-bustage-when-building-against-gli.patch
+    fixes/Bug-1782988-Fix-use-of-arc4random_buf-use-in-ping.cpp.-r-.patch
+  * [1e74214] d/control: Increase buid dep on libnss3-dev to 3.79.2
+
+ -- Carsten Schoenert <c.schoenert@t-online.de>  Tue, 13 Dec 2022 19:40:57 +0100
+
+thunderbird (1:102.5.1-1) unstable; urgency=medium
+
+  * [ae4d1ff] New upstream version 102.5.1
+    Fixed CVE issues in upstream version 102.5.1 (MFSA 2022-50):
+    CVE-2022-45414: Quoting from an HTML email with certain tags will trigger
+                    network requests and load remote content, regardless of
+                    a configuration to block remote content
+
+ -- Carsten Schoenert <c.schoenert@t-online.de>  Wed, 30 Nov 2022 12:27:38 +0100
+
+thunderbird (1:102.5.0-1) unstable; urgency=medium
+
+  * [2f04265] New upstream version 102.5.0
+    Fixed CVE issues in upstream version 102.5 (MFSA 2022-49):
+    CVE-2022-45403: Service Workers might have learned size of cross-origin
+                    media files
+    CVE-2022-45404: Fullscreen notification bypass
+    CVE-2022-45405: Use-after-free in InputStream implementation
+    CVE-2022-45406: Use-after-free of a JavaScript Realm
+    CVE-2022-45408: Fullscreen notification bypass via windowName
+    CVE-2022-45409: Use-after-free in Garbage Collection
+    CVE-2022-45410: ServiceWorker-intercepted requests bypassed SameSite
+                    cookie policy
+    CVE-2022-45411: Cross-Site Tracing was possible via non-standard
+                    override headers
+    CVE-2022-45412: Symlinks may resolve to partially uninitialized buffers
+    CVE-2022-45416: Keystroke Side-Channel Leakage
+    CVE-2022-45418: Custom mouse cursor could have been drawn over
+                    browser UI
+    CVE-2022-45420: Iframe contents could be rendered outside the iframe
+    CVE-2022-45421: Memory safety bugs fixed in Thunderbird 102.5
+  * [57e94ac] Rebuild patch queue from patch-queue branch
+    Added patches:
+    fixes/Bug-1782988-Avoid-build-bustage-when-building-against-gli.patch
+    fixes/Bug-1782988-Fix-use-of-arc4random_buf-use-in-ping.cpp.-r-.patch
+    (Closes: #1023789)
+
+ -- Carsten Schoenert <c.schoenert@t-online.de>  Sat, 15 Nov 2022 19:34:55 +0100
+
+thunderbird (1:102.4.1-1) unstable; urgency=medium
+
+  [ intrigeri ]
+  * [37c5b01] AppArmor: update profile from upstream at commit
+    09fa2669dc95cb336d133a6b96cac227e3aa73dc
+    This allows running Thunderbird as a native Wayland application.
+
+  [ Carsten Schoenert ]
+  * [031c4a2] New upstream version 102.4.1
+
+ -- Carsten Schoenert <c.schoenert@t-online.de>  Mon, 31 Oct 2022 18:50:44 +0100
+
+thunderbird (1:102.4.0-1) unstable; urgency=medium
+
+  * [6bfe8cd] New upstream version 102.4.0
+    Fixed CVE issues in upstream version 102.4 (MFSA 2022-46):
+    CVE-2022-42927: Same-origin policy violation could have leaked
+                    cross-origin URLs
+    CVE-2022-42928: Memory Corruption in JS Engine
+    CVE-2022-42929: Denial of Service via window.print
+    CVE-2022-42932: Memory safety bugs fixed in Thunderbird 102.4
+
+ -- Carsten Schoenert <c.schoenert@t-online.de>  Mon, 24 Oct 2022 22:33:05 +0200
+
+thunderbird (1:102.3.3-1) unstable; urgency=medium
+
+  * [6729f5d] New upstream version 102.3.3
+
+ -- Carsten Schoenert <c.schoenert@t-online.de>  Thu, 13 Oct 2022 16:09:50 +0200
+
+thunderbird (1:102.3.2-1) unstable; urgency=medium
+
+  * [db7a24f] New upstream version 102.3.2
+
+ -- Carsten Schoenert <c.schoenert@t-online.de>  Thu, 06 Oct 2022 20:34:42 +0200
+
+thunderbird (1:102.3.1-1) unstable; urgency=medium
+
+  * [f845126] New upstream version 102.3.1
+    Fixed CVE issues in upstream version 102.3.1 (MFSA 2022-43):
+    CVE-2022-39249: Matrix SDK bundled with Thunderbird vulnerable to an
+                    impersonation attack by malicious server administrators
+    CVE-2022-39250: Matrix SDK bundled with Thunderbird vulnerable to a device
+                    verification attack
+    CVE-2022-39251: Matrix SDK bundled with Thunderbird vulnerable to an
+                    impersonation attack
+    CVE-2022-39236: Matrix SDK bundled with Thunderbird vulnerable to a data
+                    corruption issue
+  * [4555808] Rebuild patch queu from patch-queue branch
+    debian-hacks/Use-remoting-name-for-call-to-gdk_set_program_class.patch
+    fixes/Properly-launch-applications-set-in-HOME-.mailcap.patch
+  * [344dbfa] d/copyright: Add info about code from Matrix
+
+ -- Carsten Schoenert <c.schoenert@t-online.de>  Thu, 29 Sep 2022 19:09:02 +0200
+
+thunderbird (1:102.3.0-1) unstable; urgency=medium
+
+  * [0e841a7] New upstream version 102.3.0
+    Fixed CVE issues in upstream version 102.3 (MFSA 2022-42):
+    CVE-2022-40959: Bypassing FeaturePolicy restrictions on transient pages
+    CVE-2022-40960: Data-race when parsing non-UTF-8 URLs in threads
+    CVE-2022-40958: Bypassing Secure Context restriction for cookies with
+                    __Host and __Secure prefix
+    CVE-2022-40956: Content-Security-Policy base-uri bypass
+    CVE-2022-40957: Incoherent instruction cache when building WASM on ARM64
+    CVE-2022-40962: Memory safety bugs fixed in Thunderbird 102.3
+
+ -- Carsten Schoenert <c.schoenert@t-online.de>  Fri, 16 Sep 2022 16:56:20 +0200
+
+thunderbird (1:102.2.2-1) unstable; urgency=medium
+
+  * [f1dc81f] New upstream version 102.2.2
+
+ -- Carsten Schoenert <c.schoenert@t-online.de>  Thu, 08 Sep 2022 17:25:57 +0200
+
+thunderbird (1:102.2.1-1) unstable; urgency=medium
+
+  * [e1d0f74] New upstream version 102.2.1
+    Fixed CVE issues in upstream version 102.2.1 (MFSA 2022-38):
+    CVE-2022-3033: Leaking of sensitive information when composing a response
+                   to an HTML email with a META refresh tag
+    CVE-2022-3032: Remote content specified in an HTML document that was
+                   nested inside an iframe's srcdoc attribute was not blocked
+    CVE-2022-3034: An iframe element in an HTML email could trigger a
+                   network request
+    CVE-2022-36059: Matrix SDK bundled with Thunderbird vulnerable to
+                    denial-of-service attack
+
+ -- Carsten Schoenert <c.schoenert@t-online.de>  Thu, 01 Sep 2022 07:52:16 +0200
+
+thunderbird (1:102.2.0-1) unstable; urgency=medium
+
+  [ Amr Ibrahim ]
+  * [02a3990] thunderbird.desktop: Update StartupWMClass
+    (Closes: #1017420, #1014748)
+
+  [ Carsten Schoenert ]
+  * [f7b62a8] d-create-upstream-tarballs.py: Use correct variable
+  * [7194457] New upstream version 102.2.0
+    Fixed CVE issues in upstream version 102.2 (MFSA 2022-36):
+    CVE-2022-38472: Address bar spoofing via XSLT error handling
+    CVE-2022-38473: Cross-origin XSLT Documents would have inherited the
+                    parent's permissions
+    CVE-2022-38476: Data race and potential use-after-free in PK11_ChangePW
+    CVE-2022-38477: Memory safety bugs fixed in Thunderbird 102.2
+    CVE-2022-38478: Memory safety bugs fixed in Thunderbird 102.2, and
+                    Thunderbird 91.13
+
+ -- Carsten Schoenert <c.schoenert@t-online.de>  Sun, 28 Aug 2022 17:23:50 +0200
+
+thunderbird (1:102.1.2-1) unstable; urgency=medium
+
+  * [78f2899] d/copyright: Update content due upstream changes
+  * [55dba1d] d/source.filter: Update content to filter out
+  * [3e19497] Lintian: Adjust overrides for thunderbird package
+  * [567e0c4] Lintian: Adjust overrides for source package
+  * [c201484] New upstream version 102.1.2
+    (Closes: #1016944)
+
+ -- Carsten Schoenert <c.schoenert@t-online.de>  Thu, 11 Aug 2022 16:37:07 +0200
+
+thunderbird (1:102.1.1-1) unstable; urgency=medium
+
+  * [2c1b12f] d/create-upstream-tarballs.py: Adding new helper script
+  * [a9633b9] d/README.source: Update information on importing data
+  * [1d2cdc0] d/source.filter: Relax filter rule for old-configure
+  * [f1afe9b] d/repack.py: Don't exit(1) if unused filter items exist
+  * [165593a] d/create-thunderbird-l10n-tarball.sh: Drop old helper
+  * [b4d73ee] d/gbp.conf: Drop 'import-orig' section
+  * [d186832] d/source.filter: Add files named *.orig and *.rej
+  * [933b099] New upstream version 102.1.1
+    (Closes: #1014675:)
+
+ -- Carsten Schoenert <c.schoenert@t-online.de>  Sat, 06 Aug 2022 11:26:44 +0200
+
+thunderbird (1:102.1.0-1) unstable; urgency=medium
+
+  * [3b7bb0d] New upstream version 102.1.0
+    Fixed CVE issues in upstream version 102.1 (MFSA 2022-32):
+    CVE-2022-36319: Mouse Position spoofing with CSS transforms
+    CVE-2022-36318: Directory indexes for bundled resources reflected URL
+                    parameters
+    CVE-2022-2505: Memory safety bugs fixed in Thunderbird 102.1
+    (Closes: #1016083, #1014745, #1014675, #1014638)
+
+ -- Carsten Schoenert <c.schoenert@t-online.de>  Fri, 29 Jul 2022 17:00:53 +0200
+
+thunderbird (1:102.0.2-1) unstable; urgency=medium
+
+  * [079e135] d/repack.py: Small rework and adjustments
+  * [fc2518e] d/control: Readjust Vcs links to unstable
+  * [a7b09b3] d/gbp.conf: Sign tags automatically
+  * [faf115d] New upstream version 102.0.2
+
+ -- Carsten Schoenert <c.schoenert@t-online.de>  Tue, 12 Jul 2022 18:41:04 +0200
+
+thunderbird (1:102.0.1-1) unstable; urgency=medium
+
+  * [68c9410] d/gbp.conf: Adjust upstream branch to new ESR cycle
+  * [45eca79] New upstream version 102.0.1
+    Fixed CVE issues in upstream version 102.0 (MFSA 2022-26):
+    CVE-2022-34479: A popup window could be resized in a way to overlay the
+                    address bar with web content
+    CVE-2022-34470: Use-after-free in nsSHistory
+    CVE-2022-34468: CSP sandbox header without `allow-scripts` can be bypassed
+                    via retargeted javascript: URI
+    CVE-2022-2226: An email with a mismatching OpenPGP signature date was
+                   accepted as valid
+    CVE-2022-34481: Potential integer overflow in ReplaceElementsAt
+    CVE-2022-31744: CSP bypass enabling stylesheet injection
+    CVE-2022-34472: Unavailable PAC file resulted in OCSP requests being
+                    blocked
+    CVE-2022-2200: Undesired attributes could be set as part of prototype
+                   pollution
+    CVE-2022-34484: Memory safety bugs fixed in Thunderbird 91.11 and
+                    Thunderbird 102
+  * [1842425] d/watch: Look now for versions starting with 3 digits
+  * [0a32bb3] d/control: Add package thunderbird-l10n-es-mx
+
+ -- Carsten Schoenert <c.schoenert@t-online.de>  Fri, 08 Jul 2022 17:47:21 +0200
+
+thunderbird (1:102.0~b7-1) experimental; urgency=medium
+
+  * [edf32aa] New upstream version 102.0~b7
+  * [c9dd3e0] d/control: Remove not required B-D
+  * [ac2ec70] d/mozconfig.default: Remove commented out options
+
+ -- Carsten Schoenert <c.schoenert@t-online.de>  Tue, 21 Jun 2022 19:06:58 +0200
+
+thunderbird (1:102.0~b4-1) experimental; urgency=medium
+
+  * [8f34a01] d/source.filter: Small updates to filtering list
+  * [e1d4c7c] New upstream version 102.0~b4
+  * [c97416b] Rebuild patch-queue from patch queue branch
+    Removed patch (needs update):
+    fixes/Bug-1494436-Unset-MOZ_APP_LAUNCHER-for-external-MIME-hand.patch
+    Removed patch (fixed upstream):
+    porting-armhf/Don-t-use-LLVM-internal-assembler-on-armhf.patch
+  * [68712eb] d/mozconfig.default: Disable wasm sandboxing
+  * [a1df764] d/mozconfig.default: Remove openpgp option
+    Supporting OpenPGP functionality is now set on by default.
+  * [607c321] d/mozconfig.default: Add/Update some configure options
+  * [efc728e] d/rules: Add new needed variable MOZBUILD_STATE_PATH
+  * [7b0d743] d/rules: Ensure python is used from the environment
+  * [26053f1] Build against system librnp library
+    Unfortunately using librnp-dev requires the usage of the internal
+    versions of botan, bz2 and jsonc.
+    (Closes: #998848)
+  * [5e904d8] d/control: Bump various build dependencies
+  * [94ee0da] d/thunderbird.docs: Update content to install
+  * [477f949] d/control: Increase Standards-Version to 4.6.1
+    No further changes needed.
+
+ -- Carsten Schoenert <c.schoenert@t-online.de>  Wed, 15 Jun 2022 16:47:29 +0200
+
+thunderbird (1:91.11.0-1) unstable; urgency=medium
+
+  * [05a947d] New upstream version 91.11.0
+    Fixed CVE issues in upstream version 91.11 (MFSA 2022-26):
+    CVE-2022-34479: A popup window could be resized in a way to overlay the
+                    address bar with web content
+    CVE-2022-34470: Use-after-free in nsSHistory
+    CVE-2022-34468: CSP sandbox header without `allow-scripts` can be bypassed
+                    via retargeted javascript: URI
+    CVE-2022-2226: An email with a mismatching OpenPGP signature date was
+                   accepted as valid
+    CVE-2022-34481: Potential integer overflow in ReplaceElementsAt
+    CVE-2022-31744: CSP bypass enabling stylesheet injection
+    CVE-2022-34472: Unavailable PAC file resulted in OCSP requests being
+                    blocked
+    CVE-2022-2200: Undesired attributes could be set as part of prototype
+                   pollution
+    CVE-2022-34484: Memory safety bugs fixed in Thunderbird 91.11 and
+                    Thunderbird 102
+    (Closes: #1014004)
+  * [4c4944d] Rebuild patch queue from patch-queue branch
+    Added patch:
+    fixes/Bug-1773070-Rename-remove-some-eventState-s-variables.-r-.patch
+
+ -- Carsten Schoenert <c.schoenert@t-online.de>  Fri, 01 Jul 2022 20:12:40 +0200
+
+thunderbird (1:91.10.0-1) unstable; urgency=medium
+
+  * [969960a] New upstream version 91.10.0
+    Fixed CVE issues in upstream version 91.9.1 (MFSA 2022-19):
+    CVE-2022-1802: Prototype pollution in Top-Level Await implementation
+    CVE-2022-1529: Untrusted input used in JavaScript object indexing, leading
+                   to prototype pollution
+
+    Fixed CVE issues in upstream version 91.10 (MFSA 2022-22):
+    CVE-2022-31736: Cross-Origin resource's length leaked
+    CVE-2022-31737: Heap buffer overflow in WebGL
+    CVE-2022-31738: Browser window spoof using fullscreen mode
+    CVE-2022-31739: Attacker-influenced path traversal when saving downloaded
+                    files
+    CVE-2022-31740: Register allocation problem in WASM on arm64
+    CVE-2022-31741: Uninitialized variable leads to invalid memory read
+    CVE-2022-1834: Braille space character caused incorrect sender email to be
+                   shown for a digitally signed email
+    CVE-2022-31742: Querying a WebAuthn token with a large number of
+                    allowCredential entries may have leaked cross-origin
+                    information
+    CVE-2022-31747: Memory safety bugs fixed in Thunderbird 91.10
+  * [4b55e16] d/control: Increase Standards-Version to 4.6.0
+    No further changes needed.
+
+ -- Carsten Schoenert <c.schoenert@t-online.de>  Mon, 30 May 2022 19:36:06 +0200
+
+thunderbird (1:91.9.0-1) unstable; urgency=medium
+
+  * [88b99d1] New upstream version 91.9.0
+    Fixed CVE issues in upstream version 91.9 (MFSA 2022-18):
+    CVE-2022-1520: Incorrect security status shown after viewing an attached
+                   email
+    CVE-2022-29914: Fullscreen notification bypass using popups
+    CVE-2022-29909: Bypassing permission prompt in nested browsing contexts
+    CVE-2022-29916: Leaking browser history with CSS variables
+    CVE-2022-29911: iframe sandbox bypass
+    CVE-2022-29912: Reader mode bypassed SameSite cookies
+    CVE-2022-29913: Speech Synthesis feature not properly disabled
+    CVE-2022-29917: Memory safety bugs fixed in Thunderbird 91.9
+
+ -- Carsten Schoenert <c.schoenert@t-online.de>  Mon, 16 May 2022 13:51:59 +0200
+
+thunderbird (1:91.8.1-1) unstable; urgency=medium
+
+  * [b57406c] New upstream version 91.8.1
+    (Closes: #1009321)
+
+ -- Carsten Schoenert <c.schoenert@t-online.de>  Tue, 19 Apr 2022 20:27:13 +0200
+
+thunderbird (1:91.8.0-1) unstable; urgency=medium
+
+  * [06619c5] New upstream version 91.8.0
+    Fixed CVE issues in upstream version 91.8 (MFSA 2022-15):
+    CVE-2022-1097: Use-after-free in NSSToken objects
+    CVE-2022-28281: Out of bounds write due to unexpected WebAuthN Extensions
+    CVE-2022-1197: OpenPGP revocation information was ignored
+    CVE-2022-1196: Use-after-free after VR Process destruction
+    CVE-2022-28282: Use-after-free in DocumentL10n::TranslateDocument
+    CVE-2022-28285: Incorrect AliasSet used in JIT Codegen
+    CVE-2022-28286: iframe contents could be rendered outside the border
+    CVE-2022-24713: Denial of Service via complex regular expressions
+    CVE-2022-28289: Memory safety bugs fixed in Thunderbird 91.8
+
+ -- Carsten Schoenert <c.schoenert@t-online.de>  Wed, 06 Apr 2022 20:08:25 +0200
+
+thunderbird (1:91.7.0-2) unstable; urgency=medium
+
+  * [c348b62] Rebuild patch-queue from patch queue branch
+    Added patch:
+    fixes/Bug-1494436-Unset-MOZ_APP_LAUNCHER-for-external-MIME-hand.patch
+    (Closes: #948691)
+    Thanks go out to Simon McVittie for preparing this patch!
+
+ -- Carsten Schoenert <c.schoenert@t-online.de>  Wed, 16 Mar 2022 06:55:46 +0100
+
+thunderbird (1:91.7.0-1) unstable; urgency=medium
+
+  * [952f6d0] New upstream version 91.7.0
+    Fixed CVE issues in upstream version 91.7 (MFSA 2022-12):
+    CVE-2022-26383: Browser window spoof using fullscreen mode
+    CVE-2022-26384: iframe allow-scripts sandbox bypass
+    CVE-2022-26387: Time-of-check time-of-use bug when verifying add-on
+                    signatures
+    CVE-2022-26381: Use-after-free in text reflows
+    CVE-2022-26386: Temporary files downloaded to /tmp and accessible by other
+                    local users
+
+ -- Carsten Schoenert <c.schoenert@t-online.de>  Tue, 15 Mar 2022 17:54:46 +0100
+
+thunderbird (1:91.6.2-1) unstable; urgency=medium
+
+  * [2f95b97] New upstream version 91.6.2
+    Fixed CVE issues in upstream version 91.6.2 (MFSA 2022-09):
+    CVE-2022-26485: Use-after-free in XSLT parameter processing
+    CVE-2022-26486: Use-after-free in WebGPU IPC Framework
+
+ -- Carsten Schoenert <c.schoenert@t-online.de>  Tue, 08 Mar 2022 08:40:12 +0100
+
+thunderbird (1:91.6.1-1) unstable; urgency=medium
+
+  * [3edb855] New upstream version 91.6.1
+    Fixed CVE issues in upstream version 91.6.1 (MFSA 2022-07):
+    CVE-2022-0566: Crafted email could trigger an out-of-bounds write
+
+ -- Carsten Schoenert <c.schoenert@t-online.de>  Sat, 19 Feb 2022 11:01:46 +0100
+
+thunderbird (1:91.6.0-1) unstable; urgency=medium
+
+  * [884ccb6] New upstream version 91.6.0
+    Fixed CVE issues in upstream version 91.6 (MFSA 2022-06):
+    CVE-2022-22754: Extensions could have bypassed permission confirmation
+                    during update
+    CVE-2022-22756: Drag and dropping an image could have resulted in the
+                    dropped object being an executable
+    CVE-2022-22759: Sandboxed iframes could have executed script if the parent
+                    appended elements
+    CVE-2022-22760: Cross-Origin responses could be distinguished between
+                    script and non-script content-types
+    CVE-2022-22761: frame-ancestors Content Security Policy directive was not
+                    enforced for framed extension pages
+    CVE-2022-22763: Script Execution during invalid object state
+    CVE-2022-22764: Memory safety bugs fixed in Thunderbird 91.6
+    (Closes: #1004951)
+
+ -- Carsten Schoenert <c.schoenert@t-online.de>  Fri, 11 Feb 2022 18:50:23 +0100
+
+thunderbird (1:91.5.1-1) unstable; urgency=medium
+
+  * [130bab2] New upstream version 91.5.1
+
+ -- Carsten Schoenert <c.schoenert@t-online.de>  Sun, 23 Jan 2022 18:41:12 +0100
+
+thunderbird (1:91.5.0-2) unstable; urgency=medium
+
+  * [fd07163] autopkgtest: Run check-global-config-path.py only on Intel
+
+ -- Carsten Schoenert <c.schoenert@t-online.de>  Wed, 12 Jan 2022 20:46:54 +0100
+
+thunderbird (1:91.5.0-1) unstable; urgency=medium
+
+  [ Carsten Schoenert ]
+  * [8d4e5f8] New upstream version 91.5.0
+    Fixed CVE issues in upstream version 91.5 (MFSA 2022-03):
+    CVE-2022-22743: Browser window spoof using fullscreen mode
+    CVE-2022-22742: Out-of-bounds memory access when inserting text in edit
+                    mode
+    CVE-2022-22741: Browser window spoof using fullscreen mode
+    CVE-2022-22740: Use-after-free of ChannelEventQueue::mOwner
+    CVE-2022-22738: Heap-buffer-overflow in blendGaussianBlur
+    CVE-2022-22737: Race condition when playing audio files
+    CVE-2021-4140: Iframe sandbox bypass with XSLT
+    CVE-2022-22748: Spoofed origin on external protocol launch dialog
+    CVE-2022-22745: Leaking cross-origin URLs through securitypolicyviolation
+                    event
+    CVE-2022-22744: The 'Copy as curl' feature in DevTools did not fully
+                    escape website-controlled data, potentially leading to
+                    command injection
+    CVE-2022-22747: Crash when handling empty pkcs7 sequence
+    CVE-2022-22739: Missing throttling on external protocol launch dialog
+    CVE-2022-22751: Memory safety bugs fixed in Thunderbird 91.5
+  * [a86c0b4] Rebuild patch queue from patch-queue branch
+    Modified patch:
+    debian-hacks/Add-another-preferences-directory-for-applications-p.patch
+    Reworking the patch so LoadDirIntoArray is working again that is adding
+    an additional syspref folder for global settings to use.
+    (Closes: #997841, #1003280)
+  * [442988b] autopkgtest: Adding check for accessing syspref folder
+
+  [ Jochen Sprickerhof ]
+  * [5b5d508] d/thunderbird-wrapper.sh: Use 'command -v'
+    (Closes:#1002570 )
+
+ -- Carsten Schoenert <c.schoenert@t-online.de>  Tue, 11 Jan 2022 19:12:50 +0100
+
+thunderbird (1:91.4.1-1) unstable; urgency=medium
+
+  * [c5b36d3] New upstream version 91.4.1
+    Fixed CVE issues in upstream version 91.4.1 (MFSA 2021-55):
+    CVE-2021-4126: OpenPGP signature status doesn't consider additional
+                   message content
+    CVE-2021-44538: Matrix chat library libolm bundled with Thunderbird
+                    vulnerable to a buffer overflow
+  * [b66bebb] d/changelog: Update some MOZ-* entries with assigned CVEs
+
+ -- Carsten Schoenert <c.schoenert@t-online.de>  Mon, 20 Dec 2021 16:05:02 +0100
+
+thunderbird (1:91.4.0-1) unstable; urgency=medium
+
+  * [7752be0] d/source.filter: Small updates to filtering list
+  * [0899850] New upstream version 91.4.0
+    Fixed CVE issues in upstream version 91.4 (MFSA 2021-54):
+    CVE-2021-43536: URL leakage when navigating while executing asynchronous
+                    function
+    CVE-2021-43537: Heap buffer overflow when using structured clone
+    CVE-2021-43538: Missing fullscreen and pointer lock notification when
+                    requesting both
+    CVE-2021-43539: GC rooting failure when calling wasm instance methods
+    CVE-2021-43541: External protocol handler parameters were unescaped
+    CVE-2021-43542: XMLHttpRequest error codes could have leaked the existence
+                    of an external protocol handler
+    CVE-2021-43543: Bypass of CSP sandbox directive when embedding
+    CVE-2021-43545: Denial of Service when using the Location API in a loop
+    CVE-2021-43546: Cursor spoofing could overlay user interface when native
+                    cursor is zoomed
+    CVE-2021-43528: JavaScript unexpectedly enabled for the composition area
+    CVE-2021-4129: Memory safety bugs fixed in Thunderbird 91.4.0
+  * [afd7750] d/t.lintian-overrides: Update entries due renamed tags
+    Some Lintan tags were renamed, thus requires am adjustment of the existing
+    overrides.
+  * [30a387c] d/s/lintian-overrides: Adjust most of the existing entries
+    Same as before but for the source package.
+
+ -- Carsten Schoenert <c.schoenert@t-online.de>  Tue, 07 Dec 2021 18:26:44 +0100
+
+thunderbird (1:91.3.2-1) unstable; urgency=medium
+
+  * [7fd56f0] New upstream version 91.3.2
+  * [4fccecb] Rebuild patch queue from patch-queue branch
+    Added patch:
+    debian-hacks/Fix-Floating-Point-Normalization-breakage-on-32bit-Linux.patch
+
+ -- Carsten Schoenert <c.schoenert@t-online.de>  Sun, 21 Nov 2021 18:29:42 +0100
+
 thunderbird (1:91.3.0-1) unstable; urgency=medium
 
   * [1d3e0b1] Revert "Rebuild patch queue from patch-queue branch"
@@ -11,13 +1143,12 @@ thunderbird (1:91.3.0-1) unstable; urgency=medium
                     mode without notification or warning
     CVE-2021-38507: Opportunistic Encryption in HTTP2 could be used to bypass
                     the Same-Origin-Policy on services hosted on other ports
-    MOZ-2021-0008: Use-after-free in HTTP2 Session object (no CVE assigned yet)
+    CVE-2021-43535: Use-after-free in HTTP2 Session object
     CVE-2021-38508: Permission Prompt could be overlaid, resulting in user
                     confusion and potential spoofing
     CVE-2021-38509: Javascript alert box could have been spoofed onto an
                     arbitrary domain
-    MOZ-2021-0007: Memory safety bugs fixed in Thunderbird ESR 91.3 (no CVE
-                   assigned yet)
+    CVE-2021-43534: Memory safety bugs fixed in Thunderbird ESR 91.3
 
  -- Carsten Schoenert <c.schoenert@t-online.de>  Wed, 03 Nov 2021 18:14:09 +0100
 

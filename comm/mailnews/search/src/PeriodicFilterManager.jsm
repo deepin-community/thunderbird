@@ -14,7 +14,6 @@ const EXPORTED_SYMBOLS = ["PeriodicFilterManager"];
 const { MailServices } = ChromeUtils.import(
   "resource:///modules/MailServices.jsm"
 );
-const { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 
 const log = console.createInstance({
   prefix: "mail.periodicfilters",
@@ -151,7 +150,7 @@ var PeriodicFilterManager = {
    * Gets the periodic filter interval for the given server.
    * If the server's interval is not sane, clean it up.
    *
-   * @param {nsIMsgIncomingServer} server  The server to return interval for.
+   * @param {nsIMsgIncomingServer} server - The server to return interval for.
    */
   getServerPeriod(server) {
     const minimumPeriodMinutes = 1;

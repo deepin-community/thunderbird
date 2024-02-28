@@ -1,9 +1,8 @@
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 var { MailServices } = ChromeUtils.import(
   "resource:///modules/MailServices.jsm"
 );
-var { XPCOMUtils } = ChromeUtils.import(
-  "resource://gre/modules/XPCOMUtils.jsm"
+var { XPCOMUtils } = ChromeUtils.importESModule(
+  "resource://gre/modules/XPCOMUtils.sys.mjs"
 );
 var { mailTestUtils } = ChromeUtils.import(
   "resource://testing-common/mailnews/MailTestUtils.jsm"
@@ -30,8 +29,7 @@ do_get_profile();
 
 var gDEPTH = "../../../../../";
 
-registerCleanupFunction(function() {
-  httpServer.stop(function() {
-    load(gDEPTH + "mailnews/resources/mailShutdown.js");
-  });
+registerCleanupFunction(async () => {
+  await httpServer.stop();
+  load(gDEPTH + "mailnews/resources/mailShutdown.js");
 });

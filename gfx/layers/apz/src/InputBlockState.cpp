@@ -8,7 +8,6 @@
 
 #include "APZUtils.h"
 #include "AsyncPanZoomController.h"  // for AsyncPanZoomController
-#include "ScrollAnimationPhysics.h"  // for kScrollSeriesTimeoutMs
 
 #include "mozilla/MouseEvents.h"
 #include "mozilla/StaticPrefs_apz.h"
@@ -103,6 +102,28 @@ bool InputBlockState::SetConfirmedTargetApzc(
 
 void InputBlockState::UpdateTargetApzc(
     const RefPtr<AsyncPanZoomController>& aTargetApzc) {
+  if (mTargetApzc == aTargetApzc) {
+    MOZ_ASSERT_UNREACHABLE(
+        "The new target APZC should be different from the old one");
+    return;
+  }
+
+  if (mTargetApzc) {
+    // Restore overscroll state on the previous target APZC and ancestor APZCs
+    // in the scroll handoff chain other than the new one.
+    mTargetApzc->SnapBackIfOverscrolled();
+
+    uint32_t i = mOverscrollHandoffChain->IndexOf(mTargetApzc) + 1;
+    for (; i < mOverscrollHandoffChain->Length(); i++) {
+      AsyncPanZoomController* apzc = mOverscrollHandoffChain->GetApzcAtIndex(i);
+      if (apzc != aTargetApzc) {
+        MOZ_ASSERT(!apzc->IsOverscrolled() ||
+                   apzc->IsOverscrollAnimationRunning());
+        apzc->SnapBackIfOverscrolled();
+      }
+    }
+  }
+
   // note that aTargetApzc MAY be null here.
   mTargetApzc = aTargetApzc;
   mTransformToApzc = aTargetApzc ? aTargetApzc->GetTransformToThis()
@@ -221,10 +242,6 @@ bool CancelableBlockState::IsDefaultPrevented() const {
   return mPreventDefault;
 }
 
-bool CancelableBlockState::HasReceivedAllContentNotifications() const {
-  return HasReceivedRealConfirmedTarget() && mContentResponded;
-}
-
 bool CancelableBlockState::IsReadyForHandling() const {
   if (!IsTargetConfirmed()) {
     return false;
@@ -245,7 +262,7 @@ bool DragBlockState::HasReceivedMouseUp() { return mReceivedMouseUp; }
 
 void DragBlockState::MarkMouseUpReceived() { mReceivedMouseUp = true; }
 
-void DragBlockState::SetInitialThumbPos(CSSCoord aThumbPos) {
+void DragBlockState::SetInitialThumbPos(OuterCSSCoord aThumbPos) {
   mInitialThumbPos = aThumbPos;
 }
 
@@ -340,7 +357,7 @@ void WheelBlockState::Update(ScrollWheelInput& aEvent) {
   // This makes GetScrollWheelDelta() consistent.
   if (!mLastEventTime.IsNull() &&
       (aEvent.mTimeStamp - mLastEventTime).ToMilliseconds() >
-          kScrollSeriesTimeoutMs) {
+          StaticPrefs::mousewheel_scroll_series_timeout()) {
     mScrollSeriesCounter = 0;
   }
   aEvent.mScrollSeriesNumber = ++mScrollSeriesCounter;
@@ -425,10 +442,16 @@ bool WheelBlockState::MaybeTimeout(const TimeStamp& aTimeStamp) {
   return true;
 }
 
-void WheelBlockState::OnMouseMove(const ScreenIntPoint& aPoint) {
+void WheelBlockState::OnMouseMove(
+    const ScreenIntPoint& aPoint,
+    const Maybe<ScrollableLayerGuid>& aTargetGuid) {
   MOZ_ASSERT(InTransaction());
 
-  if (!GetTargetApzc()->Contains(aPoint)) {
+  if (!GetTargetApzc()->Contains(aPoint) ||
+      // If the mouse moved over to a different APZC, `mIsScrollable`
+      // may no longer be false and needs to be recomputed.
+      (!mIsScrollable && aTargetGuid.isSome() &&
+       aTargetGuid.value() != GetTargetApzc()->GetGuid())) {
     EndTransaction();
     return;
   }
@@ -487,7 +510,9 @@ PanGestureBlockState::PanGestureBlockState(
     TargetConfirmationFlags aFlags, const PanGestureInput& aInitialEvent)
     : CancelableBlockState(aTargetApzc, aFlags),
       mInterrupted(false),
-      mWaitingForContentResponse(false) {
+      mWaitingForContentResponse(false),
+      mWaitingForBrowserGestureResponse(false),
+      mStartedBrowserGesture(false) {
   if (aFlags.mTargetConfirmed) {
     // Find the nearest APZC in the overscroll handoff chain that is scrollable.
     // If we get a content confirmation later that the apzc is different, then
@@ -542,16 +567,23 @@ bool PanGestureBlockState::SetContentResponse(bool aPreventDefault) {
   return stateChanged;
 }
 
-bool PanGestureBlockState::HasReceivedAllContentNotifications() const {
-  return CancelableBlockState::HasReceivedAllContentNotifications() &&
-         !mWaitingForContentResponse;
-}
-
 bool PanGestureBlockState::IsReadyForHandling() const {
   if (!CancelableBlockState::IsReadyForHandling()) {
     return false;
   }
-  return !mWaitingForContentResponse || IsContentResponseTimerExpired();
+  return !mWaitingForBrowserGestureResponse &&
+         (!mWaitingForContentResponse || IsContentResponseTimerExpired());
+}
+
+bool PanGestureBlockState::ShouldDropEvents() const {
+  return CancelableBlockState::ShouldDropEvents() || mStartedBrowserGesture;
+}
+
+bool PanGestureBlockState::TimeoutContentResponse() {
+  // Reset mWaitingForBrowserGestureResponse here so that we will not wait for
+  // the response forever.
+  mWaitingForBrowserGestureResponse = false;
+  return CancelableBlockState::TimeoutContentResponse();
 }
 
 bool PanGestureBlockState::AllowScrollHandoff() const { return false; }
@@ -559,6 +591,17 @@ bool PanGestureBlockState::AllowScrollHandoff() const { return false; }
 void PanGestureBlockState::SetNeedsToWaitForContentResponse(
     bool aWaitForContentResponse) {
   mWaitingForContentResponse = aWaitForContentResponse;
+}
+
+void PanGestureBlockState::SetNeedsToWaitForBrowserGestureResponse(
+    bool aWaitForBrowserGestureResponse) {
+  mWaitingForBrowserGestureResponse = aWaitForBrowserGestureResponse;
+}
+
+void PanGestureBlockState::SetBrowserGestureResponse(
+    BrowserGestureResponse aResponse) {
+  mWaitingForBrowserGestureResponse = false;
+  mStartedBrowserGesture = bool(aResponse);
 }
 
 PinchGestureBlockState::PinchGestureBlockState(
@@ -585,11 +628,6 @@ bool PinchGestureBlockState::SetContentResponse(bool aPreventDefault) {
   return stateChanged;
 }
 
-bool PinchGestureBlockState::HasReceivedAllContentNotifications() const {
-  return CancelableBlockState::HasReceivedAllContentNotifications() &&
-         !mWaitingForContentResponse;
-}
-
 bool PinchGestureBlockState::IsReadyForHandling() const {
   if (!CancelableBlockState::IsReadyForHandling()) {
     return false;
@@ -613,9 +651,6 @@ TouchBlockState::TouchBlockState(
       mTouchCounter(aCounter),
       mStartTime(GetTargetApzc()->GetFrameTime().Time()) {
   TBS_LOG("Creating %p\n", this);
-  if (!StaticPrefs::layout_css_touch_action_enabled()) {
-    mAllowedTouchBehaviorSet = true;
-  }
 }
 
 bool TouchBlockState::SetAllowedTouchBehaviors(
@@ -645,35 +680,15 @@ bool TouchBlockState::HasAllowedTouchBehaviors() const {
 
 void TouchBlockState::CopyPropertiesFrom(const TouchBlockState& aOther) {
   TBS_LOG("%p copying properties from %p\n", this, &aOther);
-  if (StaticPrefs::layout_css_touch_action_enabled()) {
-    MOZ_ASSERT(aOther.mAllowedTouchBehaviorSet ||
-               aOther.IsContentResponseTimerExpired());
-    SetAllowedTouchBehaviors(aOther.mAllowedTouchBehaviors);
-  }
+  MOZ_ASSERT(aOther.mAllowedTouchBehaviorSet ||
+             aOther.IsContentResponseTimerExpired());
+  SetAllowedTouchBehaviors(aOther.mAllowedTouchBehaviors);
   mTransformToApzc = aOther.mTransformToApzc;
-}
-
-bool TouchBlockState::HasReceivedAllContentNotifications() const {
-  return CancelableBlockState::HasReceivedAllContentNotifications()
-         // See comment in TouchBlockState::IsReadyforHandling()
-         && (!StaticPrefs::layout_css_touch_action_enabled() ||
-             mAllowedTouchBehaviorSet);
 }
 
 bool TouchBlockState::IsReadyForHandling() const {
   if (!CancelableBlockState::IsReadyForHandling()) {
     return false;
-  }
-
-  if (!StaticPrefs::layout_css_touch_action_enabled()) {
-    // If layout_css_touch_action_enabled() was false when this block was
-    // created, then mAllowedTouchBehaviorSet is guaranteed to the true.
-    // However, the pref may have been flipped to false after the block was
-    // created. In that case, we should eventually get the touch-behaviour
-    // notification, or expire the content response timeout, but we don't really
-    // need to wait for those, since we don't care about the touch-behaviour
-    // values any more.
-    return true;
   }
 
   return mAllowedTouchBehaviorSet || IsContentResponseTimerExpired();
@@ -708,12 +723,9 @@ void TouchBlockState::DispatchEvent(const InputData& aEvent) const {
 }
 
 bool TouchBlockState::TouchActionAllowsPinchZoom() const {
-  if (!StaticPrefs::layout_css_touch_action_enabled()) {
-    return true;
-  }
   // Pointer events specification requires that all touch points allow zoom.
-  for (size_t i = 0; i < mAllowedTouchBehaviors.Length(); i++) {
-    if (!(mAllowedTouchBehaviors[i] & AllowedTouchBehavior::PINCH_ZOOM)) {
+  for (auto& behavior : mAllowedTouchBehaviors) {
+    if (!(behavior & AllowedTouchBehavior::PINCH_ZOOM)) {
       return false;
     }
   }
@@ -721,11 +733,8 @@ bool TouchBlockState::TouchActionAllowsPinchZoom() const {
 }
 
 bool TouchBlockState::TouchActionAllowsDoubleTapZoom() const {
-  if (!StaticPrefs::layout_css_touch_action_enabled()) {
-    return true;
-  }
-  for (size_t i = 0; i < mAllowedTouchBehaviors.Length(); i++) {
-    if (!(mAllowedTouchBehaviors[i] & AllowedTouchBehavior::DOUBLE_TAP_ZOOM)) {
+  for (auto& behavior : mAllowedTouchBehaviors) {
+    if (!(behavior & AllowedTouchBehavior::ANIMATING_ZOOM)) {
       return false;
     }
   }
@@ -733,9 +742,6 @@ bool TouchBlockState::TouchActionAllowsDoubleTapZoom() const {
 }
 
 bool TouchBlockState::TouchActionAllowsPanningX() const {
-  if (!StaticPrefs::layout_css_touch_action_enabled()) {
-    return true;
-  }
   if (mAllowedTouchBehaviors.IsEmpty()) {
     // Default to allowed
     return true;
@@ -745,9 +751,6 @@ bool TouchBlockState::TouchActionAllowsPanningX() const {
 }
 
 bool TouchBlockState::TouchActionAllowsPanningY() const {
-  if (!StaticPrefs::layout_css_touch_action_enabled()) {
-    return true;
-  }
   if (mAllowedTouchBehaviors.IsEmpty()) {
     // Default to allowed
     return true;
@@ -757,9 +760,6 @@ bool TouchBlockState::TouchActionAllowsPanningY() const {
 }
 
 bool TouchBlockState::TouchActionAllowsPanningXY() const {
-  if (!StaticPrefs::layout_css_touch_action_enabled()) {
-    return true;
-  }
   if (mAllowedTouchBehaviors.IsEmpty()) {
     // Default to allowed
     return true;

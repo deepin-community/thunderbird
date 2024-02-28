@@ -7,12 +7,35 @@
 var { MailServices } = ChromeUtils.import("resource:///modules/MailServices.jsm");
 
 /**
+ * @callback onOkCallback
+ * @param {nsIMsgIdentity} identity - The identity the user selected.
+ */
+
+/**
+ * @typdef {object} CalendarItipIdentityDialogArgs
+ * @property {nsIMsgIdentity[]} identities - List of identities to select from.
+ * @property {number} responseMode         - One of the response mode constants
+ *                                           from calIItipItem indicating the
+ *                                           mode the user choose.
+ * @property {Function} onCancel           - Called when the user clicks cancel.
+ * @property {onOkCallback} onOk           - Called when the user selects an
+ *                                           identity.
+ */
+
+/**
  * Populates the identity menu list with the available identities.
  */
 function onLoad() {
-  let identityMenu = document.getElementById("identity-menu");
+  let label = document.getElementById("identity-menu-label");
+  document.l10n.setAttributes(
+    label,
+    window.arguments[0].responseMode == Ci.calIItipItem.NONE
+      ? "calendar-itip-identity-label-none"
+      : "calendar-itip-identity-label"
+  );
 
-  for (let identity of MailServices.accounts.allIdentities) {
+  let identityMenu = document.getElementById("identity-menu");
+  for (let identity of window.arguments[0].identities) {
     let menuitem = addMenuItem(identityMenu, identity.fullAddress, identity.fullAddress);
     menuitem.identity = identity;
   }

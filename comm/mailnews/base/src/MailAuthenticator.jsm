@@ -2,11 +2,18 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-const EXPORTED_SYMBOLS = ["SmtpAuthenticator"];
+const EXPORTED_SYMBOLS = [
+  "SmtpAuthenticator",
+  "NntpAuthenticator",
+  "Pop3Authenticator",
+  "ImapAuthenticator",
+];
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-var { MailServices } = ChromeUtils.import(
-  "resource:///modules/MailServices.jsm"
+var { MailCryptoUtils } = ChromeUtils.import(
+  "resource:///modules/MailCryptoUtils.jsm"
+);
+var { MailStringUtils } = ChromeUtils.import(
+  "resource:///modules/MailStringUtils.jsm"
 );
 
 /**
@@ -15,7 +22,8 @@ var { MailServices } = ChromeUtils.import(
 class MailAuthenticator {
   /**
    * Get the hostname for a connection.
-   * @returns string
+   *
+   * @returns {string}
    */
   get hostname() {
     throw Components.Exception(
@@ -26,7 +34,8 @@ class MailAuthenticator {
 
   /**
    * Get the username for a connection.
-   * @returns string
+   *
+   * @returns {string}
    */
   get username() {
     throw Components.Exception(
@@ -47,7 +56,8 @@ class MailAuthenticator {
 
   /**
    * Get the password for a connection.
-   * @returns string
+   *
+   * @returns {string}
    */
   getPassword() {
     throw Components.Exception(
@@ -57,8 +67,27 @@ class MailAuthenticator {
   }
 
   /**
+   * Get the CRAM-MD5 auth token for a connection.
+   *
+   * @param {string} password - The password, used as HMAC-MD5 secret.
+   * @param {string} challenge - The base64 encoded server challenge.
+   * @returns {string}
+   */
+  getCramMd5Token(password, challenge) {
+    // Hash the challenge.
+    let signature = MailCryptoUtils.hmacMd5(
+      new TextEncoder().encode(password),
+      new TextEncoder().encode(atob(challenge))
+    );
+    // Get the hex form of the signature.
+    let hex = [...signature].map(x => x.toString(16).padStart(2, "0")).join("");
+    return btoa(`${this.username} ${hex}`);
+  }
+
+  /**
    * Get the OAuth token for a connection.
-   * @returns string
+   *
+   * @returns {string}
    */
   async getOAuthToken() {
     throw Components.Exception(
@@ -69,6 +98,7 @@ class MailAuthenticator {
 
   /**
    * Init a nsIMailAuthModule instance for GSSAPI auth.
+   *
    * @param {('smtp'|'imap')} protocol - The protocol name.
    */
   initGssapiAuth(protocol) {
@@ -87,6 +117,7 @@ class MailAuthenticator {
 
   /**
    * Get the next token in a sequence of GSSAPI auth steps.
+   *
    * @param {string} inToken - A base64 encoded string, usually server challenge.
    * @returns {string}
    */
@@ -113,6 +144,7 @@ class MailAuthenticator {
 
   /**
    * Get the next token in a sequence of NTLM auth steps.
+   *
    * @param {string} inToken - A base64 encoded string, usually server challenge.
    * @returns {string}
    */
@@ -122,6 +154,7 @@ class MailAuthenticator {
 
   /**
    * Show a dialog for authentication failure.
+   *
    * @returns {number} - 0: Retry; 1: Cancel; 2: New password.
    */
   promptAuthFailed() {
@@ -133,19 +166,12 @@ class MailAuthenticator {
 
   /**
    * Show a dialog for authentication failure.
-   * @param {nsIMsgWindow} - The associated msg window.
-   * @param {string} - A user defined account name or the server hostname.
-   * @returns {number} - 0: Retry; 1: Cancel; 2: New password.
+   *
+   * @param {nsIMsgWindow} msgWindow - The associated msg window.
+   * @param {string} accountname - A user defined account name or the server hostname.
+   * @returns {number} 0: Retry; 1: Cancel; 2: New password.
    */
   _promptAuthFailed(msgWindow, accountname) {
-    let dialog;
-    if (msgWindow) {
-      dialog = msgWindow.promptDialog;
-    }
-    if (!dialog) {
-      dialog = Services.ww.getNewPrompter(null);
-    }
-
     let bundle = Services.strings.createBundle(
       "chrome://messenger/locale/messenger.properties"
     );
@@ -171,7 +197,8 @@ class MailAuthenticator {
       Ci.nsIPrompt.BUTTON_POS_2 * Ci.nsIPrompt.BUTTON_TITLE_IS_STRING;
     let dummyValue = { value: false };
 
-    return dialog.confirmEx(
+    return Services.prompt.confirmEx(
+      msgWindow?.domWindow,
       title,
       message,
       buttonFlags,
@@ -186,7 +213,8 @@ class MailAuthenticator {
 
 /**
  * Collection of helper functions for authenticating an SMTP connection.
- * @extends MailAuthenticator
+ *
+ * @augments {MailAuthenticator}
  */
 class SmtpAuthenticator extends MailAuthenticator {
   /**
@@ -233,19 +261,27 @@ class SmtpAuthenticator extends MailAuthenticator {
       "smtpEnterPasswordPromptTitleWithHostname",
       [this._server.hostname]
     );
-    let authPrompt;
-    try {
-      // This prompt has a checkbox for saving password.
-      authPrompt = MailServices.mailSession.topmostMsgWindow.authPrompt;
-    } catch (e) {
-      // Often happens in tests. This prompt has no checkbox for saving password.
-      authPrompt = Services.ww.getNewAuthPrompter(null);
-    }
-    return this._server.getPasswordWithUI(
-      promptString,
-      promptTitle,
-      authPrompt
-    );
+    return this._server.getPasswordWithUI(promptString, promptTitle);
+  }
+
+  /**
+   * Get the ByteString form of the current password.
+   *
+   * @returns {string}
+   */
+  getByteStringPassword() {
+    return MailStringUtils.stringToByteString(this.getPassword());
+  }
+
+  /**
+   * Get the PLAIN auth token for a connection.
+   *
+   * @returns {string}
+   */
+  getPlainToken() {
+    // According to rfc4616#section-2, password should be UTF-8 BinaryString
+    // before base64 encoded.
+    return btoa("\0" + this.username + "\0" + this.getByteStringPassword());
   }
 
   async getOAuthToken() {
@@ -253,9 +289,7 @@ class SmtpAuthenticator extends MailAuthenticator {
       Ci.msgIOAuth2Module
     );
     if (!oauth2Module.initFromSmtp(this._server)) {
-      return Promise.reject(
-        `initFromSmtp failed, hostname: ${this._server.hostname}`
-      );
+      return Promise.reject(`initFromSmtp failed, hostname: ${this.hostname}`);
     }
     return new Promise((resolve, reject) => {
       oauth2Module.connect(true, {
@@ -274,5 +308,161 @@ class SmtpAuthenticator extends MailAuthenticator {
       null,
       this._server.description || this.hostname
     );
+  }
+}
+
+/**
+ * Collection of helper functions for authenticating an incoming server.
+ *
+ * @augments {MailAuthenticator}
+ */
+class IncomingServerAuthenticator extends MailAuthenticator {
+  /**
+   * @param {nsIMsgIncomingServer} server - The associated server instance.
+   */
+  constructor(server) {
+    super();
+    this._server = server;
+  }
+
+  get hostname() {
+    return this._server.hostName;
+  }
+
+  get username() {
+    return this._server.username;
+  }
+
+  forgetPassword() {
+    this._server.forgetPassword();
+  }
+
+  /**
+   * Get the ByteString form of the current password.
+   *
+   * @returns {string}
+   */
+  async getByteStringPassword() {
+    return MailStringUtils.stringToByteString(await this.getPassword());
+  }
+
+  /**
+   * Get the PLAIN auth token for a connection.
+   *
+   * @returns {string}
+   */
+  async getPlainToken() {
+    // According to rfc4616#section-2, password should be UTF-8 BinaryString
+    // before base64 encoded.
+    return btoa(
+      "\0" + this.username + "\0" + (await this.getByteStringPassword())
+    );
+  }
+
+  async getOAuthToken() {
+    let oauth2Module = Cc["@mozilla.org/mail/oauth2-module;1"].createInstance(
+      Ci.msgIOAuth2Module
+    );
+    if (!oauth2Module.initFromMail(this._server)) {
+      return Promise.reject(`initFromMail failed, hostname: ${this.hostname}`);
+    }
+    return new Promise((resolve, reject) => {
+      oauth2Module.connect(true, {
+        onSuccess: token => {
+          resolve(token);
+        },
+        onFailure: e => {
+          reject(e);
+        },
+      });
+    });
+  }
+}
+
+/**
+ * Collection of helper functions for authenticating a NNTP connection.
+ *
+ * @augments {IncomingServerAuthenticator}
+ */
+class NntpAuthenticator extends IncomingServerAuthenticator {
+  /**
+   * @returns {string} - NNTP server has no userName pref, need to pass it in.
+   */
+  get username() {
+    return this._username;
+  }
+
+  set username(value) {
+    this._username = value;
+  }
+
+  promptAuthFailed() {
+    return this._promptAuthFailed(null, this._server.prettyName);
+  }
+}
+
+/**
+ * Collection of helper functions for authenticating a POP connection.
+ *
+ * @augments {IncomingServerAuthenticator}
+ */
+class Pop3Authenticator extends IncomingServerAuthenticator {
+  async getPassword() {
+    if (this._server.password) {
+      return this._server.password;
+    }
+    let composeBundle = Services.strings.createBundle(
+      "chrome://messenger/locale/localMsgs.properties"
+    );
+    let params = [this._server.username, this._server.hostName];
+    let promptString = composeBundle.formatStringFromName(
+      "pop3EnterPasswordPrompt",
+      params
+    );
+    let promptTitle = composeBundle.formatStringFromName(
+      "pop3EnterPasswordPromptTitleWithUsername",
+      [this._server.hostName]
+    );
+    return this._server.wrappedJSObject.getPasswordWithUIAsync(
+      promptString,
+      promptTitle
+    );
+  }
+
+  promptAuthFailed() {
+    return this._promptAuthFailed(null, this._server.prettyName);
+  }
+}
+
+/**
+ * Collection of helper functions for authenticating an IMAP connection.
+ *
+ * @augments {IncomingServerAuthenticator}
+ */
+class ImapAuthenticator extends IncomingServerAuthenticator {
+  async getPassword() {
+    if (this._server.password) {
+      return this._server.password;
+    }
+    let composeBundle = Services.strings.createBundle(
+      "chrome://messenger/locale/imapMsgs.properties"
+    );
+    let params = [this._server.username, this._server.hostName];
+    let promptString = composeBundle.formatStringFromName(
+      "imapEnterServerPasswordPrompt",
+      params
+    );
+    let promptTitle = composeBundle.formatStringFromName(
+      "imapEnterPasswordPromptTitleWithUsername",
+      [this._server.hostName]
+    );
+    return this._server.wrappedJSObject.getPasswordWithUIAsync(
+      promptString,
+      promptTitle
+    );
+  }
+
+  promptAuthFailed() {
+    return this._promptAuthFailed(null, this._server.prettyName);
   }
 }

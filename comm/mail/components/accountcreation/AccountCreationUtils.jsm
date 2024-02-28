@@ -1,4 +1,3 @@
-/* -*- Mode: Java; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
@@ -8,19 +7,22 @@
 
 const EXPORTED_SYMBOLS = ["AccountCreationUtils"];
 
+const lazy = {};
+
 ChromeUtils.defineModuleGetter(
-  this,
+  lazy,
   "Sanitizer",
   "resource:///modules/accountcreation/Sanitizer.jsm"
 );
 
-const { AddonManager } = ChromeUtils.import(
-  "resource://gre/modules/AddonManager.jsm"
+const { AddonManager } = ChromeUtils.importESModule(
+  "resource://gre/modules/AddonManager.sys.mjs"
 );
-const { ConsoleAPI } = ChromeUtils.import("resource://gre/modules/Console.jsm");
-const { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-const { clearInterval, clearTimeout, setTimeout } = ChromeUtils.import(
-  "resource://gre/modules/Timer.jsm"
+const { ConsoleAPI } = ChromeUtils.importESModule(
+  "resource://gre/modules/Console.sys.mjs"
+);
+const { clearInterval, clearTimeout, setTimeout } = ChromeUtils.importESModule(
+  "resource://gre/modules/Timer.sys.mjs"
 );
 
 // --------------------------
@@ -54,8 +56,8 @@ function runAsync(func) {
 /**
  * Reads UTF8 data from a URL.
  *
- * @param uri {nsIURI}   what you want to read
- * @return {Array of String}   the contents of the file, one string per line
+ * @param uri {nsIURI} - what you want to read
+ * @returns {Array of String} the contents of the file, one string per line
  */
 function readURLasUTF8(uri) {
   assert(uri instanceof Ci.nsIURI, "uri must be an nsIURI");
@@ -93,8 +95,8 @@ function readURLasUTF8(uri) {
 }
 
 /**
- * @param bundleURI {String}   chrome URL to properties file
- * @return nsIStringBundle
+ * @param bundleURI {String} - chrome URL to properties file
+ * @returns nsIStringBundle
  */
 function getStringBundle(bundleURI) {
   try {
@@ -124,7 +126,7 @@ Exception.prototype = {
 
 function NotReached(msg) {
   Exception.call(this, msg); // call super constructor
-  Cu.reportError(this);
+  console.error(this);
 }
 // Make NotReached extend Exception.
 NotReached.prototype = Object.create(Exception.prototype);
@@ -167,20 +169,20 @@ UserCancelledException.prototype.constructor = UserCancelledException;
 function PromiseAbortable(promise, successCallback, errorCallback) {
   Abortable.call(this); // call super constructor
   let complete = false;
-  this.cancel = function(e) {
+  this.cancel = function (e) {
     if (!complete) {
       complete = true;
       errorCallback(e || new CancelledException());
     }
   };
   promise
-    .then(function(result) {
+    .then(function (result) {
       if (!complete) {
         successCallback(result);
         complete = true;
       }
     })
-    .catch(function(e) {
+    .catch(function (e) {
       if (!complete) {
         complete = true;
         errorCallback(e);
@@ -193,7 +195,8 @@ PromiseAbortable.prototype.constructor = PromiseAbortable;
 /**
  * Utility implementation, for allowing to abort a setTimeout.
  * Use like: return new TimeoutAbortable(setTimeout(function(){ ... }, 0));
- * @param setTimeoutID {Integer}  Return value of setTimeout()
+ *
+ * @param setTimeoutID {Integer} - Return value of setTimeout()
  */
 function TimeoutAbortable(setTimeoutID) {
   Abortable.call(this); // call super constructor
@@ -201,14 +204,15 @@ function TimeoutAbortable(setTimeoutID) {
 }
 TimeoutAbortable.prototype = Object.create(Abortable.prototype);
 TimeoutAbortable.prototype.constructor = TimeoutAbortable;
-TimeoutAbortable.prototype.cancel = function() {
+TimeoutAbortable.prototype.cancel = function () {
   clearTimeout(this._id);
 };
 
 /**
  * Utility implementation, for allowing to abort a setTimeout.
  * Use like: return new TimeoutAbortable(setTimeout(function(){ ... }, 0));
- * @param setIntervalID {Integer}  Return value of setInterval()
+ *
+ * @param setIntervalID {Integer} - Return value of setInterval()
  */
 function IntervalAbortable(setIntervalID) {
   Abortable.call(this); // call super constructor
@@ -216,7 +220,7 @@ function IntervalAbortable(setIntervalID) {
 }
 IntervalAbortable.prototype = Object.create(Abortable.prototype);
 IntervalAbortable.prototype.constructor = IntervalAbortable;
-IntervalAbortable.prototype.cancel = function() {
+IntervalAbortable.prototype.cancel = function () {
   clearInterval(this._id);
 };
 
@@ -277,6 +281,7 @@ ParallelAbortable.prototype = {
   /**
    * Observers will be called once one of the functions
    * finishes, i.e. returns successfully or fails.
+   *
    * @param {Function({ParallelCall} call)} func
    */
   addOneFinishedObserver(func) {
@@ -287,6 +292,7 @@ ParallelAbortable.prototype = {
    * Will be called once *all* of the functions finished,
    * It gives you a list of all functions that succeeded or failed,
    * respectively.
+   *
    * @param {Function(
    *    {Array of ParallelCall} succeeded,
    *    {Array of ParallelCall} failed
@@ -324,6 +330,7 @@ ParallelAbortable.prototype = {
 /**
  * Returned by ParallelAbortable.addCall().
  * Do not create this object directly
+ *
  * @param {ParallelAbortable} parallelAbortable - The controlling ParallelAbortable
  */
 function ParallelCall(parallelAbortable) {
@@ -349,6 +356,7 @@ ParallelCall.prototype = {
   /**
    * Returns a successCallback(result) function that you pass
    * to your function that runs in parallel.
+   *
    * @returns {Function(result)} successCallback
    */
   successCallback() {
@@ -372,6 +380,7 @@ ParallelCall.prototype = {
   /**
    * Returns an errorCallback(e) function that you pass
    * to your function that runs in parallel.
+   *
    * @returns {Function(e)} errorCallback
    */
   errorCallback() {
@@ -399,6 +408,7 @@ ParallelCall.prototype = {
   /**
    * Call your function that needs to run in parallel
    * and pass the resulting |Abortable| of your function here.
+   *
    * @param {Abortable} abortable
    */
   setAbortable(abortable) {
@@ -497,7 +507,7 @@ NoLongerNeededException.prototype.constructor = NoLongerNeededException;
  * var installer = new AddonInstaller({ xpiURL : "https://...xpi", id: "...", ...});
  * installer.install();
  *
- * @param {Object} args - Contains parameters:
+ * @param {object} args - Contains parameters:
  * @param {string} name (Optional) - Name of the addon (not important)
  * @param {string} id (Optional) - Addon ID
  * If you pass an ID, and the addon is already installed (and the version matches),
@@ -517,10 +527,10 @@ NoLongerNeededException.prototype.constructor = NoLongerNeededException;
  */
 function AddonInstaller(args) {
   Abortable.call(this);
-  this._name = Sanitizer.label(args.name);
-  this._id = Sanitizer.string(args.id);
-  this._minVersion = Sanitizer.string(args.minVersion);
-  this._url = Sanitizer.url(args.xpiURL);
+  this._name = lazy.Sanitizer.label(args.name);
+  this._id = lazy.Sanitizer.string(args.id);
+  this._minVersion = lazy.Sanitizer.string(args.minVersion);
+  this._url = lazy.Sanitizer.url(args.xpiURL);
 }
 AddonInstaller.prototype = Object.create(Abortable.prototype);
 AddonInstaller.prototype.constructor = AddonInstaller;
@@ -528,10 +538,11 @@ AddonInstaller.prototype.constructor = AddonInstaller;
 /**
  * Checks whether the passed-in addon matches the
  * id and minVersion requested by the caller.
+ *
  * @param {nsIAddon} addon
- * @returns {Boolean} is OK
+ * @returns {boolean} is OK
  */
-AddonInstaller.prototype.matches = function(addon) {
+AddonInstaller.prototype.matches = function (addon) {
   return (
     !this._id ||
     (this._id == addon.id &&
@@ -542,9 +553,10 @@ AddonInstaller.prototype.matches = function(addon) {
 
 /**
  * Start the installation
+ *
  * @throws Exception in case of failure
  */
-AddonInstaller.prototype.install = async function() {
+AddonInstaller.prototype.install = async function () {
   if (await this.isInstalled()) {
     return;
   }
@@ -554,9 +566,10 @@ AddonInstaller.prototype.install = async function() {
 /**
  * Checks whether we already have an addon installed that matches the
  * id and minVersion requested by the caller.
+ *
  * @returns {boolean} is already installed and enabled
  */
-AddonInstaller.prototype.isInstalled = async function() {
+AddonInstaller.prototype.isInstalled = async function () {
   if (!this._id) {
     return false;
   }
@@ -565,10 +578,23 @@ AddonInstaller.prototype.isInstalled = async function() {
 };
 
 /**
+ * Checks whether we already have an addon but it is disabled.
+ *
+ * @returns {boolean} is already installed but disabled
+ */
+AddonInstaller.prototype.isDisabled = async function () {
+  if (!this._id) {
+    return false;
+  }
+  let addon = await AddonManager.getAddonByID(this._id);
+  return addon && !addon.isActive;
+};
+
+/**
  * Downloads and installs the addon.
  * The downloaded XPI will be checked using prompt().
  */
-AddonInstaller.prototype._installDirect = async function() {
+AddonInstaller.prototype._installDirect = async function () {
   var installer = (this._installer = await AddonManager.getInstallForURL(
     this._url,
     { name: this._name }
@@ -590,9 +616,10 @@ AddonInstaller.prototype._installDirect = async function() {
 
 /**
  * Install confirmation. You may override this, if needed.
+ *
  * @throws Exception If you want to cancel install, then throw an exception.
  */
-AddonInstaller.prototype.prompt = async function(info) {
+AddonInstaller.prototype.prompt = async function (info) {
   if (!this.matches(info.addon)) {
     // happens only when we got the wrong XPI
     throw new Exception(
@@ -601,7 +628,7 @@ AddonInstaller.prototype.prompt = async function(info) {
   }
 };
 
-AddonInstaller.prototype.cancel = function() {
+AddonInstaller.prototype.cancel = function () {
   if (this._installer) {
     try {
       this._installer.cancel();

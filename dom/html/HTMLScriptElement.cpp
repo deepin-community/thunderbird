@@ -20,8 +20,11 @@
 #include "nsISupportsImpl.h"
 #include "mozilla/dom/HTMLScriptElement.h"
 #include "mozilla/dom/HTMLScriptElementBinding.h"
+#include "mozilla/StaticPrefs_dom.h"
 
 NS_IMPL_NS_NEW_HTML_ELEMENT_CHECK_PARSER(Script)
+
+using JS::loader::ScriptKind;
 
 namespace mozilla::dom {
 
@@ -96,11 +99,11 @@ nsresult HTMLScriptElement::Clone(dom::NodeInfo* aNodeInfo,
   return NS_OK;
 }
 
-nsresult HTMLScriptElement::AfterSetAttr(int32_t aNamespaceID, nsAtom* aName,
-                                         const nsAttrValue* aValue,
-                                         const nsAttrValue* aOldValue,
-                                         nsIPrincipal* aMaybeScriptedPrincipal,
-                                         bool aNotify) {
+void HTMLScriptElement::AfterSetAttr(int32_t aNamespaceID, nsAtom* aName,
+                                     const nsAttrValue* aValue,
+                                     const nsAttrValue* aOldValue,
+                                     nsIPrincipal* aMaybeScriptedPrincipal,
+                                     bool aNotify) {
   if (nsGkAtoms::async == aName && kNameSpaceID_None == aNamespaceID) {
     mForceAsync = false;
   }
@@ -126,7 +129,7 @@ void HTMLScriptElement::SetInnerHTML(const nsAString& aInnerHTML,
   aError = nsContentUtils::SetNodeTextContent(this, aInnerHTML, true);
 }
 
-void HTMLScriptElement::GetText(nsAString& aValue, ErrorResult& aRv) {
+void HTMLScriptElement::GetText(nsAString& aValue, ErrorResult& aRv) const {
   if (!nsContentUtils::GetNodeTextContent(this, false, aValue, fallible)) {
     aRv.Throw(NS_ERROR_OUT_OF_MEMORY);
   }
@@ -148,13 +151,22 @@ bool HTMLScriptElement::GetScriptType(nsAString& aType) {
   // ASCII whitespace https://infra.spec.whatwg.org/#ascii-whitespace:
   // U+0009 TAB, U+000A LF, U+000C FF, U+000D CR, or U+0020 SPACE.
   static const char kASCIIWhitespace[] = "\t\n\f\r ";
+
+  const bool wasEmptyBeforeTrim = type.IsEmpty();
   type.Trim(kASCIIWhitespace);
+
+  // If the value before trim was not empty and the value is now empty, do not
+  // trim as we want to retain pure whitespace (by restoring original value)
+  // because we need to treat "" and " " (etc) differently.
+  if (!wasEmptyBeforeTrim && type.IsEmpty()) {
+    return GetAttr(kNameSpaceID_None, nsGkAtoms::type, aType);
+  }
 
   aType.Assign(type);
   return true;
 }
 
-void HTMLScriptElement::GetScriptText(nsAString& text) {
+void HTMLScriptElement::GetScriptText(nsAString& text) const {
   GetText(text, IgnoreErrors());
 }
 
@@ -167,13 +179,28 @@ void HTMLScriptElement::FreezeExecutionAttrs(Document* aOwnerDoc) {
     return;
   }
 
-  MOZ_ASSERT(!mIsModule && !mAsync && !mDefer && !mExternal);
+  MOZ_ASSERT((mKind != ScriptKind::eModule) &&
+             (mKind != ScriptKind::eImportMap) && !mAsync && !mDefer &&
+             !mExternal);
 
-  // Determine whether this is a classic script or a module script.
+  // Determine whether this is a(n) classic/module/importmap script.
   nsAutoString type;
   GetScriptType(type);
-  mIsModule = aOwnerDoc->ModuleScriptsEnabled() && !type.IsEmpty() &&
-              type.LowerCaseEqualsASCII("module");
+  if (!type.IsEmpty()) {
+    if (aOwnerDoc->ModuleScriptsEnabled() &&
+        type.LowerCaseEqualsASCII("module")) {
+      mKind = ScriptKind::eModule;
+    }
+
+    // https://html.spec.whatwg.org/multipage/scripting.html#prepare-the-script-element
+    // Step 11. Otherwise, if the script block's type string is an ASCII
+    // case-insensitive match for the string "importmap", then set el's type to
+    // "importmap".
+    if (aOwnerDoc->ImportMapsEnabled() &&
+        type.LowerCaseEqualsASCII("importmap")) {
+      mKind = ScriptKind::eImportMap;
+    }
+  }
 
   // variation of this code in SVGScriptElement - check if changes
   // need to be transfered when modifying.  Note that we don't use GetSrc here
@@ -206,7 +233,7 @@ void HTMLScriptElement::FreezeExecutionAttrs(Document* aOwnerDoc) {
     mExternal = true;
   }
 
-  bool async = (mExternal || mIsModule) && Async();
+  bool async = (mExternal || mKind == ScriptKind::eModule) && Async();
   bool defer = mExternal && Defer();
 
   mDefer = !async && defer;
@@ -226,6 +253,16 @@ mozilla::dom::ReferrerPolicy HTMLScriptElement::GetReferrerPolicy() {
 bool HTMLScriptElement::HasScriptContent() {
   return (mFrozen ? mExternal : HasAttr(kNameSpaceID_None, nsGkAtoms::src)) ||
          nsContentUtils::HasNonEmptyTextContent(this);
+}
+
+// https://html.spec.whatwg.org/multipage/scripting.html#dom-script-supports
+/* static */
+bool HTMLScriptElement::Supports(const GlobalObject& aGlobal,
+                                 const nsAString& aType) {
+  nsAutoString type(aType);
+  return aType.EqualsLiteral("classic") || aType.EqualsLiteral("module") ||
+         (StaticPrefs::dom_importMaps_enabled() &&
+          aType.EqualsLiteral("importmap"));
 }
 
 }  // namespace mozilla::dom

@@ -3,12 +3,13 @@
  * file, You can obtain one at <http://mozilla.org/MPL/2.0/>. */
 
 import { PureComponent } from "react";
-import classnames from "classnames";
+import PropTypes from "prop-types";
 import { showMenu } from "../../context-menu/menu";
 
 import { getDocument } from "../../utils/editor";
 import { breakpointItems, createBreakpointItems } from "./menus/breakpoints";
 import { getSelectedLocation } from "../../utils/selected-location";
+const classnames = require("devtools/client/shared/classnames.js");
 
 // eslint-disable-next-line max-len
 
@@ -39,8 +40,16 @@ function makeBookmark({ breakpoint }, { onClick, onContextMenu }) {
 }
 
 export default class ColumnBreakpoint extends PureComponent {
-  addColumnBreakpoint;
   bookmark;
+
+  static get propTypes() {
+    return {
+      breakpointActions: PropTypes.object.isRequired,
+      columnBreakpoint: PropTypes.object.isRequired,
+      cx: PropTypes.object.isRequired,
+      source: PropTypes.object.isRequired,
+    };
+  }
 
   addColumnBreakpoint = nextProps => {
     const { columnBreakpoint, source } = nextProps || this.props;
@@ -75,7 +84,8 @@ export default class ColumnBreakpoint extends PureComponent {
     // disable column breakpoint on shift-click.
     if (event.shiftKey) {
       const breakpoint = columnBreakpoint.breakpoint;
-      return breakpointActions.toggleDisabledBreakpoint(cx, breakpoint);
+      breakpointActions.toggleDisabledBreakpoint(cx, breakpoint);
+      return;
     }
 
     if (columnBreakpoint.breakpoint) {

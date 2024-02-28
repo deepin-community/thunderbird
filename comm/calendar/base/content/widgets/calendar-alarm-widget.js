@@ -12,7 +12,8 @@
   /**
    * Represents an alarm in the alarms dialog. It appears there when an alarm is fired, and
    * allows the alarm to be snoozed, dismissed, etc.
-   * @extends MozElements.MozRichlistitem
+   *
+   * @augments MozElements.MozRichlistitem
    */
   class MozCalendarAlarmWidgetRichlistitem extends MozElements.MozRichlistitem {
     connectedCallback() {
@@ -28,7 +29,7 @@
                       src="chrome://calendar/skin/shared/icons/icon32.svg"
                       alt="" />
           </vbox>
-          <vbox flex="1">
+          <vbox class="alarm-calendar-event">
             <label class="alarm-title-label" crop="end"/>
             <vbox class="additional-information-box">
               <label class="alarm-date-label"/>
@@ -206,6 +207,7 @@
 
     /**
      * Click/keypress handler for "Details" link. Dispatches an event to open an item dialog.
+     *
      * @param event {Event} The click or keypress event.
      */
     showDetails(event) {
@@ -231,7 +233,8 @@
   /**
    * A popup panel for selecting how long to snooze alarms/reminders.
    * It appears when a snooze button is clicked.
-   * @extends MozElements.MozMenuPopup
+   *
+   * @augments MozElements.MozMenuPopup
    */
   class MozCalendarSnoozePopup extends MozElements.MozMenuPopup {
     connectedCallback() {
@@ -319,6 +322,7 @@
 
     /**
      * Dispatch a snooze event when an alarm is snoozed.
+     *
      * @param minutes {number|string} The number of minutes to snooze for.
      */
     snoozeAlarm(minutes) {
@@ -335,6 +339,7 @@
 
     /**
      * Click handler for snooze popup menu items (like "5 Minutes", "1 Hour", etc.).
+     *
      * @param event {Event} The click event.
      */
     snoozeItem(event) {
@@ -388,9 +393,7 @@
       for (let menuItem of items) {
         pluralString = cal.l10n.getCalString(unitName(menuItem));
 
-        menuItem.label = PluralForm.get(unitValue.value, pluralString)
-          .replace("#1", "")
-          .trim();
+        menuItem.label = PluralForm.get(unitValue.value, pluralString).replace("#1", "").trim();
       }
     }
   }

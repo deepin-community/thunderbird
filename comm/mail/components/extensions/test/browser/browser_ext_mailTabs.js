@@ -3,8 +3,9 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 let account, rootFolder, subFolders;
+let tabmail = document.getElementById("tabmail");
 
-add_task(async function setup() {
+add_setup(async () => {
   account = createAccount();
   rootFolder = account.incomingServer.rootFolder;
   rootFolder.createSubfolder("test1", null);
@@ -16,10 +17,13 @@ add_task(async function setup() {
   createMessages(subFolders.test1, 10);
   createMessages(subFolders.test2, 50);
 
-  window.gFolderTreeView.selectFolder(rootFolder);
+  tabmail.currentTabInfo.folder = rootFolder;
+  tabmail.currentAbout3Pane.displayFolder(subFolders.test1.URI);
+  await ensure_table_view();
 
   Services.prefs.setIntPref("extensions.webextensions.messagesPerPage", 10);
-  registerCleanupFunction(() => {
+  registerCleanupFunction(async () => {
+    await ensure_cards_view();
     Services.prefs.clearUserPref("extensions.webextensions.messagesPerPage");
   });
   await new Promise(resolve => executeSoon(resolve));
@@ -46,9 +50,9 @@ add_task(async function test_update() {
     let expected = {
       sortType: "date",
       sortOrder: "ascending",
-      viewType: "ungrouped",
+      viewType: "groupedByThread",
       layout: "standard",
-      folderPaneVisible: false,
+      folderPaneVisible: true,
       messagePaneVisible: true,
       displayedFolder: folders[0],
     };
@@ -133,24 +137,43 @@ add_task(async function test_update() {
     },
   });
 
-  extension.onMessage("checkRealLayout", expected => {
+  extension.onMessage("checkRealLayout", async expected => {
     let intValue = ["standard", "wide", "vertical"].indexOf(expected.layout);
     is(Services.prefs.getIntPref("mail.pane_config.dynamic"), intValue);
-    check3PaneState(expected.folderPaneVisible, expected.messagePaneVisible);
+    await check3PaneState(
+      expected.folderPaneVisible,
+      expected.messagePaneVisible
+    );
+    Assert.equal(
+      "/" + (tabmail.currentTabInfo.folder.URI || "").split("/").pop(),
+      expected.displayedFolder.path,
+      "Should display the correct folder"
+    );
     extension.sendMessage();
   });
 
   extension.onMessage("checkRealSort", expected => {
-    for (let [columnId, sortType] of window.gFolderDisplay.COLUMNS_MAP) {
-      sortType = sortType[2].toLowerCase() + sortType.substring(3);
-      if (sortType == expected.sortType) {
-        let column = document.getElementById(columnId);
-        is(column.getAttribute("sortDirection"), expected.sortOrder);
-        extension.sendMessage();
-        return;
-      }
-    }
-    throw new Error("This test should never get here.");
+    const sortTypes = {
+      date: Ci.nsMsgViewSortType.byDate,
+      subject: Ci.nsMsgViewSortType.bySubject,
+      author: Ci.nsMsgViewSortType.byAuthor,
+    };
+
+    let { primarySortType, primarySortOrder } =
+      tabmail.currentAbout3Pane.gViewWrapper;
+
+    Assert.equal(
+      primarySortOrder,
+      Ci.nsMsgViewSortOrder[expected.sortOrder],
+      `sort order should be ${expected.sortOrder}`
+    );
+    Assert.equal(
+      primarySortType,
+      sortTypes[expected.sortType],
+      `sort type should be ${expected.sortType}`
+    );
+
+    extension.sendMessage();
   });
 
   extension.onMessage("checkRealView", expected => {
@@ -171,33 +194,36 @@ add_task(async function test_update() {
         showUnthreaded: true,
       },
     };
-    let view = window.gFolderDisplay.view;
+
+    let { showThreaded, showUnthreaded, showGroupedBySort } =
+      tabmail.currentAbout3Pane.gViewWrapper;
+
     Assert.equal(
-      view.showThreaded,
+      showThreaded,
       viewTypes[expected.viewType].showThreaded,
       `Correct value for showThreaded for viewType <${expected.viewType}>`
     );
     Assert.equal(
-      view.showUnthreaded,
+      showUnthreaded,
       viewTypes[expected.viewType].showUnthreaded,
       `Correct value for showUnthreaded for viewType <${expected.viewType}>`
     );
     Assert.equal(
-      view.showGroupedBySort,
+      showGroupedBySort,
       viewTypes[expected.viewType].showGroupedBySort,
       `Correct value for showGroupedBySort for viewType <${expected.viewType}>`
     );
     extension.sendMessage();
   });
 
-  check3PaneInInitialState();
+  await check3PaneState(true, true);
 
   await extension.startup();
   extension.sendMessage(account.key);
   await extension.awaitFinish("mailTabs");
   await extension.unload();
 
-  window.gFolderTreeView.selectFolder(rootFolder);
+  tabmail.currentTabInfo.folder = rootFolder;
 });
 
 add_task(async function test_displayedFolderChanged() {
@@ -264,7 +290,7 @@ add_task(async function test_displayedFolderChanged() {
   });
 
   extension.onMessage("selectFolder", async newFolderPath => {
-    window.gFolderTreeView.selectFolder(folderMap.get(newFolderPath));
+    tabmail.currentTabInfo.folder = folderMap.get(newFolderPath);
     await new Promise(resolve => executeSoon(resolve));
   });
 
@@ -273,7 +299,7 @@ add_task(async function test_displayedFolderChanged() {
   await extension.awaitFinish("mailTabs");
   await extension.unload();
 
-  window.gFolderTreeView.selectFolder(rootFolder);
+  tabmail.currentTabInfo.folder = rootFolder;
 });
 
 add_task(async function test_selectedMessagesChanged() {
@@ -348,14 +374,11 @@ add_task(async function test_selectedMessagesChanged() {
     },
   });
 
-  window.gFolderTreeView.selectFolder(subFolders.test2);
-  if (!window.IsMessagePaneCollapsed()) {
-    window.MsgToggleMessagePane();
-  }
-  let allMessages = [...subFolders.test2.messages];
+  tabmail.currentTabInfo.folder = subFolders.test2;
+  tabmail.currentTabInfo.messagePaneVisible = true;
 
   extension.onMessage("selectMessage", newMessages => {
-    window.gFolderDisplay.selectMessages(newMessages.map(i => allMessages[i]));
+    tabmail.currentAbout3Pane.threadTree.selectedIndices = newMessages;
   });
 
   await extension.startup();
@@ -363,8 +386,7 @@ add_task(async function test_selectedMessagesChanged() {
   await extension.awaitFinish("mailTabs");
   await extension.unload();
 
-  window.gFolderTreeView.selectFolder(rootFolder);
-  window.MsgToggleMessagePane();
+  tabmail.currentTabInfo.folder = rootFolder;
 });
 
 add_task(async function test_background_tab() {
@@ -461,76 +483,35 @@ add_task(async function test_background_tab() {
   });
 
   extension.onMessage("checkRealLayout", async expected => {
-    check3PaneState(expected.folderPaneVisible, expected.messagePaneVisible);
+    await check3PaneState(
+      expected.folderPaneVisible,
+      expected.messagePaneVisible
+    );
+    Assert.equal(
+      "/" + (tabmail.currentTabInfo.folder.URI || "").split("/").pop(),
+      expected.displayedFolder,
+      "Should display the correct folder"
+    );
     extension.sendMessage();
   });
 
-  let tabmail = document.getElementById("tabmail");
   window.openContentTab("about:buildconfig");
   window.openContentTab("about:mozilla");
-  tabmail.openTab("folder", { folder: subFolders.test1 });
+  tabmail.openTab("mail3PaneTab", { folderURI: subFolders.test1.URI });
+  await BrowserTestUtils.waitForEvent(
+    tabmail.currentTabInfo.chromeBrowser,
+    "folderURIChanged",
+    false,
+    event => event.detail == subFolders.test1.URI
+  );
 
   await extension.startup();
   extension.sendMessage(account.key);
   await extension.awaitFinish("mailTabs");
   await extension.unload();
 
-  tabmail.closeOtherTabs(tabmail.tabModes.folder.tabs[0]);
-  window.gFolderTreeView.selectFolder(rootFolder);
-});
-
-add_task(async function test_glodaList_tab() {
-  async function background() {
-    let mailTabs = await browser.mailTabs.query({});
-    browser.test.assertEq(2, mailTabs.length);
-
-    let [tab] = await browser.mailTabs.query({ active: true });
-    browser.test.assertTrue(!tab.folderPaneVisible);
-    browser.test.assertTrue(tab.messagePaneVisible);
-
-    // This should have no effect, and it certainly shouldn't throw.
-    await browser.mailTabs.update({
-      folderPaneVisible: true,
-      messagePaneVisible: false,
-    });
-
-    await window.sendMessage("checkRealLayout", {
-      folderPaneVisible: false,
-      messagePaneVisible: true,
-    });
-
-    [tab] = await browser.mailTabs.query({ active: true });
-    browser.test.assertEq(2, mailTabs.length);
-    browser.test.assertTrue(!tab.folderPaneVisible);
-    browser.test.assertTrue(tab.messagePaneVisible);
-
-    browser.test.notifyPass("mailTabs");
-  }
-
-  let tabmail = document.getElementById("tabmail");
-  tabmail.openTab("glodaList", { collection: { items: [] } });
-
-  let extension = ExtensionTestUtils.loadExtension({
-    files: {
-      "background.js": background,
-      "utils.js": await getUtilsJS(),
-    },
-    manifest: {
-      background: { scripts: ["utils.js", "background.js"] },
-      permissions: ["accountsRead", "messagesRead"],
-    },
-  });
-
-  extension.onMessage("checkRealLayout", expected => {
-    check3PaneState(expected.folderPaneVisible, expected.messagePaneVisible);
-    extension.sendMessage();
-  });
-
-  await extension.startup();
-  await extension.awaitFinish("mailTabs");
-  await extension.unload();
-
-  tabmail.closeOtherTabs(tabmail.tabModes.folder.tabs[0]);
+  tabmail.closeOtherTabs(0);
+  tabmail.currentTabInfo.folder = rootFolder;
 });
 
 add_task(async function test_get_and_query() {
@@ -673,13 +654,23 @@ add_task(async function test_get_and_query() {
 
   let window2 = await openNewMailWindow();
   for (let win of [window, window2]) {
-    // The folder selection throws errors, if the tree view is not yet initialized.
-    await TestUtils.waitForCondition(() => win.gFolderTreeView.isInited);
-    win.gFolderTreeView.selectFolder(rootFolder);
-    let tabmail = win.document.getElementById("tabmail");
+    let winTabmail = win.document.getElementById("tabmail");
+    winTabmail.currentTabInfo.folder = rootFolder;
     win.openContentTab("about:mozilla");
-    tabmail.openTab("folder", { folder: subFolders.test1 });
-    tabmail.openTab("folder", { folder: subFolders.test2 });
+    winTabmail.openTab("mail3PaneTab", { folderURI: subFolders.test1.URI });
+    await BrowserTestUtils.waitForEvent(
+      winTabmail.currentTabInfo.chromeBrowser,
+      "folderURIChanged",
+      false,
+      event => event.detail == subFolders.test1.URI
+    );
+    winTabmail.openTab("mail3PaneTab", { folderURI: subFolders.test2.URI });
+    await BrowserTestUtils.waitForEvent(
+      winTabmail.currentTabInfo.chromeBrowser,
+      "folderURIChanged",
+      false,
+      event => event.detail == subFolders.test2.URI
+    );
   }
 
   await extension.startup();
@@ -689,7 +680,219 @@ add_task(async function test_get_and_query() {
 
   await BrowserTestUtils.closeWindow(window2);
 
-  window.gFolderTreeView.selectFolder(rootFolder);
-  let tabmail = window.document.getElementById("tabmail");
-  tabmail.closeOtherTabs(tabmail.tabModes.folder.tabs[0]);
+  tabmail.closeOtherTabs(0);
+  tabmail.currentTabInfo.folder = rootFolder;
+});
+
+add_task(async function test_setSelectedMessages() {
+  async function background() {
+    let [accountId] = await window.waitForMessage();
+    let { folders } = await browser.accounts.get(accountId);
+    let allTabs = await browser.tabs.query({});
+    let queryTabs = await browser.tabs.query({ mailTab: true });
+    let allMailTabs = await browser.mailTabs.query({});
+
+    let { messages: messages1 } = await browser.messages.list(
+      folders.find(f => f.path == "/test1")
+    );
+    browser.test.assertTrue(
+      messages1.length > 7,
+      "There should be more than 7 messages in /test1"
+    );
+
+    let { messages: messages2 } = await browser.messages.list(
+      folders.find(f => f.path == "/test2")
+    );
+    browser.test.assertTrue(
+      messages2.length > 4,
+      "There should be more than 4 messages in /test2"
+    );
+
+    browser.test.assertEq(3, allMailTabs.length);
+    browser.test.assertEq(5, allTabs.length);
+    browser.test.assertEq(3, queryTabs.length);
+
+    let foregroundTab = allMailTabs[1].id;
+    browser.test.assertEq(accountId, allMailTabs[1].displayedFolder.accountId);
+    browser.test.assertEq("/test1", allMailTabs[1].displayedFolder.path);
+    browser.test.assertTrue(allMailTabs[1].active);
+
+    let backgroundTab = allMailTabs[2].id;
+    browser.test.assertEq(accountId, allMailTabs[2].displayedFolder.accountId);
+    browser.test.assertEq("/", allMailTabs[2].displayedFolder.path);
+
+    // Check the initial real state.
+    await window.sendMessage("checkRealLayout", {
+      messagePaneVisible: true,
+      folderPaneVisible: true,
+      displayedFolder: "/test1",
+    });
+
+    // Change the selection in the foreground tab.
+    await browser.mailTabs.setSelectedMessages(foregroundTab, [
+      messages1[6].id,
+      messages1[7].id,
+    ]);
+    // Check the current real state.
+    await window.sendMessage("checkRealLayout", {
+      messagePaneVisible: true,
+      folderPaneVisible: true,
+      displayedFolder: "/test1",
+    });
+    // Check API return value of the foreground tab.
+    let { messages: readMessagesA } =
+      await browser.mailTabs.getSelectedMessages(foregroundTab);
+    window.assertDeepEqual(
+      [messages1[6].id, messages1[7].id],
+      readMessagesA.map(m => m.id)
+    );
+
+    // Change the selection in the background tab.
+    await browser.mailTabs.setSelectedMessages(backgroundTab, [
+      messages2[0].id,
+      messages2[3].id,
+    ]);
+    // Real state should be the same, since we're updating a background tab.
+    await window.sendMessage("checkRealLayout", {
+      messagePaneVisible: true,
+      folderPaneVisible: true,
+      displayedFolder: "/test1",
+    });
+    // Check unchanged API return value of the foreground tab.
+    let { messages: readMessagesB } =
+      await browser.mailTabs.getSelectedMessages(foregroundTab);
+    window.assertDeepEqual(
+      [messages1[6].id, messages1[7].id],
+      readMessagesB.map(m => m.id)
+    );
+    // Check API return value of the inactive background tab.
+    let { messages: readMessagesC } =
+      await browser.mailTabs.getSelectedMessages(backgroundTab);
+    window.assertDeepEqual(
+      [messages2[0].id, messages2[3].id],
+      readMessagesC.map(m => m.id)
+    );
+    // Switch to the background tab.
+    await browser.tabs.update(backgroundTab, { active: true });
+    // Check API return value of the background tab (now active).
+    let { messages: readMessagesD } =
+      await browser.mailTabs.getSelectedMessages(backgroundTab);
+    window.assertDeepEqual(
+      [messages2[0].id, messages2[3].id],
+      readMessagesD.map(m => m.id)
+    );
+    // Check real state, should now match the active background tab.
+    await window.sendMessage("checkRealLayout", {
+      messagePaneVisible: true,
+      folderPaneVisible: true,
+      displayedFolder: "/test2",
+    });
+    // Check unchanged API return value of the foreground tab (now inactive).
+    let { messages: readMessagesE } =
+      await browser.mailTabs.getSelectedMessages(foregroundTab);
+    window.assertDeepEqual(
+      [messages1[6].id, messages1[7].id],
+      readMessagesE.map(m => m.id)
+    );
+    // Switch back to the foreground tab.
+    await browser.tabs.update(foregroundTab, { active: true });
+
+    // Change the selection in the foreground tab.
+    await browser.mailTabs.setSelectedMessages(foregroundTab, [
+      messages2[2].id,
+      messages2[4].id,
+    ]);
+    // Check API return value of the foreground tab.
+    let { messages: readMessagesF } =
+      await browser.mailTabs.getSelectedMessages(foregroundTab);
+    window.assertDeepEqual(
+      [messages2[2].id, messages2[4].id],
+      readMessagesF.map(m => m.id)
+    );
+    // Check real state.
+    await window.sendMessage("checkRealLayout", {
+      messagePaneVisible: true,
+      folderPaneVisible: true,
+      displayedFolder: "/test2",
+    });
+    // Check API return value of the inactive background tab.
+    let { messages: readMessagesG } =
+      await browser.mailTabs.getSelectedMessages(backgroundTab);
+    window.assertDeepEqual(
+      [messages2[0].id, messages2[3].id],
+      readMessagesG.map(m => m.id)
+    );
+
+    // Clear selection in background tab.
+    await browser.mailTabs.setSelectedMessages(backgroundTab, []);
+    // Check API return value of the inactive background tab.
+    let { messages: readMessagesH } =
+      await browser.mailTabs.getSelectedMessages(backgroundTab);
+    browser.test.assertEq(0, readMessagesH.length);
+
+    // Clear selection in foreground tab.
+    await browser.mailTabs.setSelectedMessages(foregroundTab, []);
+    // Check API return value of the foreground tab.
+    let { messages: readMessagesI } =
+      await browser.mailTabs.getSelectedMessages(foregroundTab);
+    browser.test.assertEq(0, readMessagesI.length);
+
+    // Should throw if messages belong to different folders.
+    await browser.test.assertRejects(
+      browser.mailTabs.setSelectedMessages(foregroundTab, [
+        messages2[2].id,
+        messages1[4].id,
+      ]),
+      `Message ${messages2[2].id} and message ${messages1[4].id} are not in the same folder, cannot select them both.`,
+      "browser.mailTabs.setSelectedMessages() should reject, if the requested message do not belong to the same folder."
+    );
+
+    browser.test.notifyPass("mailTabs");
+  }
+
+  let extension = ExtensionTestUtils.loadExtension({
+    files: {
+      "background.js": background,
+      "utils.js": await getUtilsJS(),
+    },
+    manifest: {
+      background: { scripts: ["utils.js", "background.js"] },
+      permissions: ["accountsRead", "messagesRead"],
+    },
+  });
+
+  extension.onMessage("checkRealLayout", async expected => {
+    await check3PaneState(
+      expected.folderPaneVisible,
+      expected.messagePaneVisible
+    );
+    Assert.equal(
+      "/" + (tabmail.currentTabInfo.folder.URI || "").split("/").pop(),
+      expected.displayedFolder,
+      "Should display the correct folder"
+    );
+    extension.sendMessage();
+  });
+
+  window.openContentTab("about:buildconfig");
+  window.openContentTab("about:mozilla");
+  tabmail.openTab("mail3PaneTab", { folderURI: subFolders.test1.URI });
+  tabmail.openTab("mail3PaneTab", {
+    folderURI: rootFolder.URI,
+    background: true,
+  });
+  await BrowserTestUtils.waitForEvent(
+    tabmail.currentTabInfo.chromeBrowser,
+    "folderURIChanged",
+    false,
+    event => event.detail == subFolders.test1.URI
+  );
+
+  await extension.startup();
+  extension.sendMessage(account.key);
+  await extension.awaitFinish("mailTabs");
+  await extension.unload();
+
+  tabmail.closeOtherTabs(0);
+  tabmail.currentTabInfo.folder = rootFolder;
 });

@@ -4,6 +4,7 @@
 /*---
 esid: sec-applying-the-exp-operator
 description: If base is +0 and exponent > 0, the result is +0.
+features: [exponentiation]
 ---*/
 
 
@@ -16,7 +17,7 @@ exponents[0] = 0.000000000000001;
 
 for (var i = 0; i < exponents.length; i++) {
   if ((base ** exponents[i]) !== +0) {
-    $ERROR("(" + base + " **  " + exponents[i] + ") !== +0");
+    throw new Test262Error("(" + base + " **  " + exponents[i] + ") !== +0");
   }
 }
 

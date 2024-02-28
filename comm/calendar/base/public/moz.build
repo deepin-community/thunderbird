@@ -39,17 +39,15 @@ XPIDL_SOURCES += [
     "calIStartupService.idl",
     "calIStatusObserver.idl",
     "calITimezone.idl",
-    "calITimezoneProvider.idl",
+    "calITimezoneDatabase.idl",
+    "calITimezoneService.idl",
     "calITodo.idl",
-    "calITransactionManager.idl",
     "calIWeekInfoService.idl",
 ]
 
 XPIDL_MODULE = "calbase"
 
-EXPORTS += [
-    "calBaseCID.h",
-]
+EXPORTS += []
 
 with Files("**"):
     BUG_COMPONENT = ("Calendar", "Internal Components")

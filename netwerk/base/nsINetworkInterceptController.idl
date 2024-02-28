@@ -138,49 +138,18 @@ interface nsIInterceptedChannel : nsISupports
     [noscript]
     readonly attribute nsIConsoleReportCollector consoleReportCollector;
 
+    [noscript]
+    void SetFetchHandlerStart(in TimeStamp aTimeStamp);
+
+    [noscript]
+    void SetFetchHandlerFinish(in TimeStamp aTimeStamp);
+
     /**
-     * Save the timestamps of various service worker interception phases.
+     * This method indicates if the ServiceWorker Interception is reset to
+     * network or not.
      */
     [noscript]
-    void SetLaunchServiceWorkerStart(in TimeStamp aTimeStamp);
-
-    // A hack to get sw launch start time for telemetry.
-    [noscript]
-    void GetLaunchServiceWorkerStart(out TimeStamp aTimeStamp);
-
-    [noscript]
-    void SetLaunchServiceWorkerEnd(in TimeStamp aTimeStamp);
-
-    // A hack to get sw launch end time for telemetry.
-    [noscript]
-    void GetLaunchServiceWorkerEnd(out TimeStamp aTimeStamp);
-
-    [noscript]
-    void SetDispatchFetchEventStart(in TimeStamp aTimeStamp);
-
-    [noscript]
-    void SetDispatchFetchEventEnd(in TimeStamp aTimeStamp);
-
-    [noscript]
-    void SetHandleFetchEventStart(in TimeStamp aTimeStamp);
-
-    [noscript]
-    void SetHandleFetchEventEnd(in TimeStamp aTimeStamp);
-
-    // Depending on the outcome we measure the time difference between
-    // |FinishResponseStart| and either |FinishSynthesizedResponseEnd| or
-    // |ChannelResetEnd|.
-    [noscript]
-    void SetFinishResponseStart(in TimeStamp aTimeStamp);
-
-    [noscript]
-    void SetFinishSynthesizedResponseEnd(in TimeStamp aTimeStamp);
-
-    [noscript]
-    void SetChannelResetEnd(in TimeStamp aTimeStamp);
-
-    [noscript]
-    void SaveTimeStamps();
+    bool GetIsReset();
 
 %{C++
     already_AddRefed<nsIConsoleReportCollector>
@@ -202,7 +171,8 @@ interface nsIInterceptedChannel : nsISupports
           case nsIContentPolicy::TYPE_INTERNAL_SCRIPT_PRELOAD:
           case nsIContentPolicy::TYPE_INTERNAL_MODULE:
           case nsIContentPolicy::TYPE_INTERNAL_MODULE_PRELOAD:
-          case nsIContentPolicy::TYPE_INTERNAL_WORKER_IMPORT_SCRIPTS: {
+          case nsIContentPolicy::TYPE_INTERNAL_WORKER_IMPORT_SCRIPTS:
+          case nsIContentPolicy::TYPE_INTERNAL_WORKER_STATIC_MODULE: {
             aKey = "subresource-script"_ns;
             break;
           }
@@ -225,6 +195,14 @@ interface nsIInterceptedChannel : nsISupports
           }
         }
       }
+    }
+
+    bool
+    IsReset()
+    {
+      bool result;
+      GetIsReset(&result);
+      return result;
     }
 %}
 

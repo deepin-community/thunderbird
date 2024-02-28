@@ -12,13 +12,13 @@ const TEST_URL = URL_ROOT + "doc_markup_pagesize_02.html";
 // Make sure nodes are hidden when there are more than 5 in a row
 Services.prefs.setIntPref("devtools.markup.pagesize", 5);
 
-add_task(async function() {
+add_task(async function () {
   const { inspector } = await openInspectorForURL(TEST_URL);
 
   info("Selecting the UL node");
   await clickContainer("ul", inspector);
   info("Reloading the page with the UL node selected will expand its children");
-  await refreshTab();
+  await reloadBrowser();
   await inspector.markup._waitForChildren();
 
   info("Click on the 'show all nodes' button in the UL's list of children");

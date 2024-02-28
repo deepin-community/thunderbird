@@ -13,6 +13,7 @@
 #include "nsNetUtil.h"
 #include "nsIObserverService.h"
 
+#include "mozilla/AppShutdown.h"
 #include "mozilla/Assertions.h"
 #include "mozilla/Services.h"
 
@@ -153,28 +154,28 @@ class AsyncNotifyRunnable : public Runnable {
   nsTArray<RefPtr<IProgressObserver>> mObservers;
 };
 
-ProgressTracker::MediumHighRunnable::MediumHighRunnable(
+ProgressTracker::RenderBlockingRunnable::RenderBlockingRunnable(
     already_AddRefed<AsyncNotifyRunnable>&& aEvent)
     : PrioritizableRunnable(std::move(aEvent),
-                            nsIRunnablePriority::PRIORITY_MEDIUMHIGH) {}
+                            nsIRunnablePriority::PRIORITY_RENDER_BLOCKING) {}
 
-void ProgressTracker::MediumHighRunnable::AddObserver(
+void ProgressTracker::RenderBlockingRunnable::AddObserver(
     IProgressObserver* aObserver) {
   static_cast<AsyncNotifyRunnable*>(mRunnable.get())->AddObserver(aObserver);
 }
 
-void ProgressTracker::MediumHighRunnable::RemoveObserver(
+void ProgressTracker::RenderBlockingRunnable::RemoveObserver(
     IProgressObserver* aObserver) {
   static_cast<AsyncNotifyRunnable*>(mRunnable.get())->RemoveObserver(aObserver);
 }
 
 /* static */
-already_AddRefed<ProgressTracker::MediumHighRunnable>
-ProgressTracker::MediumHighRunnable::Create(
+already_AddRefed<ProgressTracker::RenderBlockingRunnable>
+ProgressTracker::RenderBlockingRunnable::Create(
     already_AddRefed<AsyncNotifyRunnable>&& aEvent) {
   MOZ_ASSERT(NS_IsMainThread());
-  RefPtr<ProgressTracker::MediumHighRunnable> event(
-      new ProgressTracker::MediumHighRunnable(std::move(aEvent)));
+  RefPtr<ProgressTracker::RenderBlockingRunnable> event(
+      new ProgressTracker::RenderBlockingRunnable(std::move(aEvent)));
   return event.forget();
 }
 
@@ -198,9 +199,10 @@ void ProgressTracker::Notify(IProgressObserver* aObserver) {
   // unnecessarily delay onload.
   if (mRunnable) {
     mRunnable->AddObserver(aObserver);
-  } else {
+  } else if (!AppShutdown::IsInOrBeyond(ShutdownPhase::XPCOMShutdownThreads)) {
+    // Avoid dispatch if we are late in shutdown.
     RefPtr<AsyncNotifyRunnable> ev = new AsyncNotifyRunnable(this, aObserver);
-    mRunnable = ProgressTracker::MediumHighRunnable::Create(ev.forget());
+    mRunnable = ProgressTracker::RenderBlockingRunnable::Create(ev.forget());
     mEventTarget->Dispatch(mRunnable, NS_DISPATCH_NORMAL);
   }
 }
@@ -253,9 +255,12 @@ void ProgressTracker::NotifyCurrentState(IProgressObserver* aObserver) {
 
   aObserver->MarkPendingNotify();
 
-  nsCOMPtr<nsIRunnable> ev =
-      new AsyncNotifyCurrentStateRunnable(this, aObserver);
-  mEventTarget->Dispatch(ev.forget(), NS_DISPATCH_NORMAL);
+  // Avoid dispatch if we are late in shutdown.
+  if (!AppShutdown::IsInOrBeyond(ShutdownPhase::XPCOMShutdownThreads)) {
+    nsCOMPtr<nsIRunnable> ev =
+        new AsyncNotifyCurrentStateRunnable(this, aObserver);
+    mEventTarget->Dispatch(ev.forget(), NS_DISPATCH_NORMAL);
+  }
 }
 
 /**
@@ -465,9 +470,9 @@ bool ProgressTracker::RemoveObserver(IProgressObserver* aObserver) {
       MOZ_ASSERT(mObserversWithTargets > 0);
       --mObserversWithTargets;
 
-      // If we've shutdown the main thread there's no need to update
-      // event targets.
-      if ((mObserversWithTargets == 0) && !gXPCOMThreadsShutDown) {
+      // If we're shutting down there's no need to update event targets.
+      if ((mObserversWithTargets == 0) &&
+          !AppShutdown::IsInOrBeyond(ShutdownPhase::XPCOMShutdownThreads)) {
         MutexAutoLock lock(mMutex);
         nsCOMPtr<nsIEventTarget> target(do_GetMainThread());
         mEventTarget = WrapNotNull(target);

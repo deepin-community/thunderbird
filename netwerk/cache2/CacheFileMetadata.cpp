@@ -12,8 +12,8 @@
 #include "CacheFileUtils.h"
 #include "nsILoadContextInfo.h"
 #include "nsICacheEntry.h"  // for nsICacheEntryMetaDataVisitor
-#include "../cache/nsCacheUtils.h"
 #include "nsIFile.h"
+#include "mozilla/ScopeExit.h"
 #include "mozilla/Telemetry.h"
 #include "mozilla/DebugOnly.h"
 #include "mozilla/IntegerPrintfMacros.h"
@@ -38,15 +38,17 @@ namespace mozilla::net {
 
 NS_IMPL_ISUPPORTS(CacheFileMetadata, CacheFileIOListener)
 
-CacheFileMetadata::CacheFileMetadata(CacheFileHandle* aHandle,
-                                     const nsACString& aKey)
+CacheFileMetadata::CacheFileMetadata(
+    CacheFileHandle* aHandle, const nsACString& aKey,
+    NotNull<CacheFileUtils::CacheFileLock*> aLock)
     : CacheMemoryConsumer(NORMAL),
       mHandle(aHandle),
       mOffset(-1),
       mIsDirty(false),
       mAnonymous(false),
       mAllocExactSize(false),
-      mFirstRead(true) {
+      mFirstRead(true),
+      mLock(aLock) {
   LOG(("CacheFileMetadata::CacheFileMetadata() [this=%p, handle=%p, key=%s]",
        this, aHandle, PromiseFlatCString(aKey).get()));
 
@@ -60,13 +62,15 @@ CacheFileMetadata::CacheFileMetadata(CacheFileHandle* aHandle,
   MOZ_ASSERT(NS_SUCCEEDED(rv));
 }
 
-CacheFileMetadata::CacheFileMetadata(bool aMemoryOnly, bool aPinned,
-                                     const nsACString& aKey)
+CacheFileMetadata::CacheFileMetadata(
+    bool aMemoryOnly, bool aPinned, const nsACString& aKey,
+    NotNull<CacheFileUtils::CacheFileLock*> aLock)
     : CacheMemoryConsumer(aMemoryOnly ? MEMORY_ONLY : NORMAL),
       mIsDirty(true),
       mAnonymous(false),
       mAllocExactSize(false),
-      mFirstRead(true) {
+      mFirstRead(true),
+      mLock(aLock) {
   LOG(("CacheFileMetadata::CacheFileMetadata() [this=%p, key=%s]", this,
        PromiseFlatCString(aKey).get()));
 
@@ -89,7 +93,8 @@ CacheFileMetadata::CacheFileMetadata()
       mIsDirty(false),
       mAnonymous(false),
       mAllocExactSize(false),
-      mFirstRead(true) {
+      mFirstRead(true),
+      mLock(new CacheFileUtils::CacheFileLock()) {
   LOG(("CacheFileMetadata::CacheFileMetadata() [this=%p]", this));
 
   memset(&mMetaHdr, 0, sizeof(CacheFileMetadataHeader));
@@ -386,6 +391,8 @@ nsresult CacheFileMetadata::SetElement(const char* aKey, const char* aValue) {
   LOG(("CacheFileMetadata::SetElement() [this=%p, key=%s, value=%p]", this,
        aKey, aValue));
 
+  mLock->Lock().AssertCurrentThreadOwns();
+
   MarkDirty();
 
   nsresult rv;
@@ -463,6 +470,8 @@ void CacheFileMetadata::Visit(nsICacheEntryMetaDataVisitor* aVisitor) {
 }
 
 CacheHash::Hash16_t CacheFileMetadata::GetHash(uint32_t aIndex) {
+  mLock->Lock().AssertCurrentThreadOwns();
+
   MOZ_ASSERT(aIndex < mHashCount);
   return NetworkEndian::readUint16(&mHashArray[aIndex]);
 }
@@ -471,6 +480,8 @@ nsresult CacheFileMetadata::SetHash(uint32_t aIndex,
                                     CacheHash::Hash16_t aHash) {
   LOG(("CacheFileMetadata::SetHash() [this=%p, idx=%d, hash=%x]", this, aIndex,
        aHash));
+
+  mLock->Lock().AssertCurrentThreadOwns();
 
   MarkDirty();
 
@@ -503,6 +514,8 @@ nsresult CacheFileMetadata::SetHash(uint32_t aIndex,
 
 nsresult CacheFileMetadata::RemoveHash(uint32_t aIndex) {
   LOG(("CacheFileMetadata::RemoveHash() [this=%p, idx=%d]", this, aIndex));
+
+  mLock->Lock().AssertCurrentThreadOwns();
 
   MarkDirty();
 
@@ -569,18 +582,21 @@ nsresult CacheFileMetadata::OnDataWritten(CacheFileHandle* aHandle,
        "result=0x%08" PRIx32 "]",
        this, aHandle, static_cast<uint32_t>(aResult)));
 
-  MOZ_ASSERT(mListener);
-  MOZ_ASSERT(mWriteBuf);
-
-  CacheFileUtils::FreeBuffer(mWriteBuf);
-  mWriteBuf = nullptr;
-
   nsCOMPtr<CacheFileMetadataListener> listener;
+  {
+    MutexAutoLock lock(mLock->Lock());
 
-  mListener.swap(listener);
+    MOZ_ASSERT(mListener);
+    MOZ_ASSERT(mWriteBuf);
+
+    CacheFileUtils::FreeBuffer(mWriteBuf);
+    mWriteBuf = nullptr;
+
+    mListener.swap(listener);
+    DoMemoryReport(MemoryUsage());
+  }
+
   listener->OnMetadataWritten(aResult);
-
-  DoMemoryReport(MemoryUsage());
 
   return NS_OK;
 }
@@ -597,6 +613,14 @@ nsresult CacheFileMetadata::OnDataRead(CacheFileHandle* aHandle, char* aBuf,
   nsresult rv;
   nsCOMPtr<CacheFileMetadataListener> listener;
 
+  auto notifyListenerOutsideLock = mozilla::MakeScopeExit([&listener] {
+    if (listener) {
+      listener->OnMetadataRead(NS_OK);
+    }
+  });
+
+  MutexAutoLock lock(mLock->Lock());
+
   if (NS_FAILED(aResult)) {
     LOG(
         ("CacheFileMetadata::OnDataRead() - CacheFileIOManager::Read() failed"
@@ -606,7 +630,6 @@ nsresult CacheFileMetadata::OnDataRead(CacheFileHandle* aHandle, char* aBuf,
     InitEmptyMetadata();
 
     mListener.swap(listener);
-    listener->OnMetadataRead(NS_OK);
     return NS_OK;
   }
 
@@ -634,7 +657,6 @@ nsresult CacheFileMetadata::OnDataRead(CacheFileHandle* aHandle, char* aBuf,
     InitEmptyMetadata();
 
     mListener.swap(listener);
-    listener->OnMetadataRead(NS_OK);
     return NS_OK;
   }
 
@@ -650,7 +672,6 @@ nsresult CacheFileMetadata::OnDataRead(CacheFileHandle* aHandle, char* aBuf,
     InitEmptyMetadata();
 
     mListener.swap(listener);
-    listener->OnMetadataRead(NS_OK);
     return NS_OK;
   }
 
@@ -670,7 +691,6 @@ nsresult CacheFileMetadata::OnDataRead(CacheFileHandle* aHandle, char* aBuf,
       InitEmptyMetadata();
 
       mListener.swap(listener);
-      listener->OnMetadataRead(NS_OK);
       return NS_OK;
     }
 
@@ -698,7 +718,6 @@ nsresult CacheFileMetadata::OnDataRead(CacheFileHandle* aHandle, char* aBuf,
       InitEmptyMetadata();
 
       mListener.swap(listener);
-      listener->OnMetadataRead(NS_OK);
       return NS_OK;
     }
 
@@ -729,7 +748,6 @@ nsresult CacheFileMetadata::OnDataRead(CacheFileHandle* aHandle, char* aBuf,
   }
 
   mListener.swap(listener);
-  listener->OnMetadataRead(NS_OK);
 
   return NS_OK;
 }

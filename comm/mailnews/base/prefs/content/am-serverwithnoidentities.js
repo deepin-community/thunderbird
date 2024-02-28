@@ -1,9 +1,7 @@
-/* -*- Mode: Java; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*-
- * This Source Code Form is subject to the terms of the Mozilla Public
+/* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 var { MailUtils } = ChromeUtils.import("resource:///modules/MailUtils.jsm");
 
 var gAccount;
@@ -11,7 +9,8 @@ var gOriginalStoreType;
 
 /**
  * Called when the store type menu is clicked.
- * @param {Object} aStoreTypeElement - store type menu list element.
+ *
+ * @param {object} aStoreTypeElement - store type menu list element.
  */
 function clickStoreTypeMenu(aStoreTypeElement) {
   if (aStoreTypeElement.value == gOriginalStoreType) {
@@ -38,7 +37,8 @@ function clickStoreTypeMenu(aStoreTypeElement) {
  * Revert store type to the original store type if converter modal closes
  * before migration is complete, otherwise change original store type to
  * currently selected store type.
- * @param {Object} aResponse - response from migration dialog modal.
+ *
+ * @param {object} aResponse - response from migration dialog modal.
  */
 function changeStoreType(aResponse) {
   if (aResponse.newRootFolder) {
@@ -46,15 +46,15 @@ function changeStoreType(aResponse) {
     // Set local path to the new account root folder which is present
     // in 'aResponse.newRootFolder'.
     document.getElementById("server.localPath").value = aResponse.newRootFolder;
-    gOriginalStoreType = document.getElementById("server.storeTypeMenulist")
-      .value;
+    gOriginalStoreType = document.getElementById(
+      "server.storeTypeMenulist"
+    ).value;
     MailUtils.restartApplication();
   } else {
     // The conversion failed or was cancelled.
     // Restore selected item to what was selected before conversion.
-    document.getElementById(
-      "server.storeTypeMenulist"
-    ).value = gOriginalStoreType;
+    document.getElementById("server.storeTypeMenulist").value =
+      gOriginalStoreType;
   }
 }
 

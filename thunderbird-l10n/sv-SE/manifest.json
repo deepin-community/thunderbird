@@ -1,29 +1,28 @@
 {
   "langpack_id": "sv-SE",
   "manifest_version": 2,
-  "applications": {
+  "browser_specific_settings": {
     "gecko": {
       "id": "langpack-sv-SE@thunderbird.mozilla.org",
-      "strict_min_version": "91.0",
-      "strict_max_version": "91.*"
+      "strict_min_version": "115.0",
+      "strict_max_version": "115.*"
     }
   },
-  "name": "Svenska (SE) Language Pack",
-  "description": "Language pack for Thunderbird for sv-SE",
-  "version": "91.0buildid20211101223011",
+  "name": "Language: Svenska (Swedish)",
+  "description": "Thunderbird Language Pack for Svenska (sv-SE) – Swedish",
+  "version": "115.8.20240216.174500",
   "languages": {
     "sv-SE": {
-      "version": "20211011174801",
+      "version": "20240216183658",
       "chrome_resources": {
         "alerts": "chrome/sv-SE/locale/sv-SE/alerts/",
         "autoconfig": "chrome/sv-SE/locale/sv-SE/autoconfig/",
-        "branding": "chrome/sv-SE/locale/sv-SE/branding/",
+        "branding": "chrome/sv-SE/locale/branding/",
         "calendar": "chrome/sv-SE/locale/sv-SE/calendar/",
         "chat": "chrome/sv-SE/locale/sv-SE/chat/",
         "communicator": "chrome/sv-SE/locale/sv-SE/communicator/",
         "devtools": "chrome/sv-SE/locale/sv-SE/devtools/client/",
         "devtools-shared": "chrome/sv-SE/locale/sv-SE/devtools/shared/",
-        "devtools-startup": "chrome/sv-SE/locale/sv-SE/devtools/startup/",
         "global": "chrome/sv-SE/locale/sv-SE/global/",
         "global-platform": {
           "macosx": "chrome/sv-SE/locale/sv-SE/global-platform/mac/",

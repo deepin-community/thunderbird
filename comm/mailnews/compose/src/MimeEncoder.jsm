@@ -4,8 +4,6 @@
 
 const EXPORTED_SYMBOLS = ["MimeEncoder"];
 
-let { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-
 const LINELENGTH_ENCODING_THRESHOLD = 990;
 const MESSAGE_RFC822 = "message/rfc822";
 
@@ -16,6 +14,7 @@ const MESSAGE_RFC822 = "message/rfc822";
 class MimeEncoder {
   /**
    * Create a MimeEncoder.
+   *
    * @param {string} charset
    * @param {string} contentType
    * @param {boolean} forceMsgEncoding

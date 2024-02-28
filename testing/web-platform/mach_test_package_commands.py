@@ -2,17 +2,11 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-from __future__ import unicode_literals
-
 import os
 import sys
 
+from mach.decorators import Command
 from mach_commands_base import WebPlatformTestsRunner, create_parser_wpt
-from mach.decorators import (
-    CommandProvider,
-    Command,
-)
-from mozbuild.base import MachCommandBase
 
 
 class WebPlatformTestsRunnerSetup(object):
@@ -72,15 +66,14 @@ class WebPlatformTestsRunnerSetup(object):
         raise NotImplementedError
 
 
-@CommandProvider
-class MachCommands(MachCommandBase):
-    @Command("web-platform-tests", category="testing", parser=create_parser_wpt)
-    def run_web_platform_tests(self, command_context, **kwargs):
-        self._mach_context.activate_mozharness_venv()
-        return WebPlatformTestsRunner(
-            WebPlatformTestsRunnerSetup(self._mach_context)
-        ).run(**kwargs)
+@Command("web-platform-tests", category="testing", parser=create_parser_wpt)
+def run_web_platform_tests(command_context, **kwargs):
+    command_context._mach_context.activate_mozharness_venv()
+    return WebPlatformTestsRunner(
+        WebPlatformTestsRunnerSetup(command_context._mach_context)
+    ).run(**kwargs)
 
-    @Command("wpt", category="testing", parser=create_parser_wpt)
-    def run_wpt(self, command_context, **params):
-        return self.run_web_platform_tests(**params)
+
+@Command("wpt", category="testing", parser=create_parser_wpt)
+def run_wpt(command_context, **params):
+    return command_context.run_web_platform_tests(**params)

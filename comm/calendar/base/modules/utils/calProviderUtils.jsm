@@ -3,35 +3,39 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 var { MailServices } = ChromeUtils.import("resource:///modules/MailServices.jsm");
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-var { XPCOMUtils } = ChromeUtils.import("resource://gre/modules/XPCOMUtils.jsm");
+var { XPCOMUtils } = ChromeUtils.importESModule("resource://gre/modules/XPCOMUtils.sys.mjs");
 
-ChromeUtils.defineModuleGetter(this, "cal", "resource:///modules/calendar/calUtils.jsm");
-
-/*
+/**
  * Helpers and base class for calendar providers
  */
 
 // NOTE: This module should not be loaded directly, it is available when
 // including calUtils.jsm under the cal.provider namespace.
 
-const EXPORTED_SYMBOLS = ["calprovider"]; /* exported calprovider */
+const EXPORTED_SYMBOLS = ["calprovider"];
+
+const lazy = {};
+XPCOMUtils.defineLazyModuleGetters(lazy, {
+  cal: "resource:///modules/calendar/calUtils.jsm",
+  CalPeriod: "resource:///modules/CalPeriod.jsm",
+  CalReadableStreamFactory: "resource:///modules/CalReadableStreamFactory.jsm",
+});
 
 var calprovider = {
   /**
    * Prepare HTTP channel with standard request headers and upload data/content-type if needed.
    *
    * @param {nsIURI} aUri - The channel URI, only used for a new channel.
-   * @param {nsIInputStream|String} aUploadData - Data to be uploaded, if any. If a string,
+   * @param {nsIInputStream | string} aUploadData - Data to be uploaded, if any. If a string,
    *   it will be converted to an nsIInputStream.
-   * @param {String} aContentType - Value for Content-Type header, if any.
+   * @param {string} aContentType - Value for Content-Type header, if any.
    * @param {nsIInterfaceRequestor} aNotificationCallbacks - Typically a CalDavRequestBase which
    *   implements nsIInterfaceRequestor and nsIChannelEventSink, and provides access to the
    *   calICalendar associated with the channel.
    * @param {nsIChannel} [aExistingChannel] - An existing channel to modify (optional).
    * @param {boolean} [aForceNewAuth=false] - If true, use a new user context to avoid cached
    *   authentication (see code comments). Optional, ignored if aExistingChannel is passed.
-   * @return {nsIChannel} - The prepared channel.
+   * @returns {nsIChannel} - The prepared channel.
    */
   prepHttpChannel(
     aUri,
@@ -57,8 +61,8 @@ var calprovider = {
     if (aForceNewAuth) {
       // A random "username" that won't be the same as any existing one.
       // The value is not used for any other reason, so a UUID will do.
-      originAttributes.userContextId = cal.auth.containerMap.getUserContextIdForUsername(
-        cal.getUUID()
+      originAttributes.userContextId = lazy.cal.auth.containerMap.getUserContextIdForUsername(
+        lazy.cal.getUUID()
       );
     } else if (!aExistingChannel) {
       try {
@@ -67,7 +71,7 @@ var calprovider = {
         // as in calendar detection.
         let calendar = aNotificationCallbacks.getInterface(Ci.calICalendar);
         if (calendar && calendar.getProperty("capabilities.username.supported") === true) {
-          originAttributes.userContextId = cal.auth.containerMap.getUserContextIdForUsername(
+          originAttributes.userContextId = lazy.cal.auth.containerMap.getUserContextIdForUsername(
             calendar.getProperty("username")
           );
         }
@@ -109,11 +113,10 @@ var calprovider = {
         stream.seek(Ci.nsISeekableStream.NS_SEEK_SET, 0);
       } else {
         // Otherwise its something that should be a string, convert it.
-        let converter = Cc["@mozilla.org/intl/scriptableunicodeconverter"].createInstance(
-          Ci.nsIScriptableUnicodeConverter
+        stream = Cc["@mozilla.org/io/string-input-stream;1"].createInstance(
+          Ci.nsIStringInputStream
         );
-        converter.charset = "UTF-8";
-        stream = converter.convertToInputStream(aUploadData.toString());
+        stream.setUTF8Data(aUploadData, aUploadData.length);
       }
 
       httpchannel.setUploadStream(stream, aContentType, -1);
@@ -125,9 +128,9 @@ var calprovider = {
   /**
    * Send prepared HTTP request asynchronously
    *
-   * @param {nsIStreamLoader} aStreamLoader       Stream loader for request
-   * @param {nsIChannel} aChannel                 Channel for request
-   * @param {nsIStreamLoaderObserver} aListener   Listener for method completion
+   * @param {nsIStreamLoader} aStreamLoader - Stream loader for request
+   * @param {nsIChannel} aChannel - Channel for request
+   * @param {nsIStreamLoaderObserver} aListener - Listener for method completion
    */
   sendHttpRequest(aStreamLoader, aChannel, aListener) {
     aStreamLoader.init(aListener);
@@ -137,7 +140,7 @@ var calprovider = {
   /**
    * Shortcut to create an nsIStreamLoader
    *
-   * @return {nsIStreamLoader}        A fresh streamloader
+   * @returns {nsIStreamLoader} A fresh streamloader
    */
   createStreamLoader() {
     return Cc["@mozilla.org/network/stream-loader;1"].createInstance(Ci.nsIStreamLoader);
@@ -159,8 +162,8 @@ var calprovider = {
    * will be appended to the realm. If you need that feature disabled, see the
    * capabilities section of calICalendar.idl
    *
-   * @param {nsIIDRef} aIID       The interface ID to return
-   * @return {nsISupports}        The requested interface
+   * @param {nsIIDRef} aIID - The interface ID to return
+   * @returns {nsISupports} The requested interface
    */
   InterfaceRequestor_getInterface(aIID) {
     try {
@@ -169,7 +172,7 @@ var calprovider = {
       // Support Auth Prompt Interfaces
       if (aIID.equals(Ci.nsIAuthPrompt2)) {
         if (!this.calAuthPrompt) {
-          this.calAuthPrompt = new cal.auth.Prompt();
+          this.calAuthPrompt = new lazy.cal.auth.Prompt();
         }
         return this.calAuthPrompt;
       } else if (aIID.equals(Ci.nsIAuthPromptProvider) || aIID.equals(Ci.nsIPrompt)) {
@@ -185,19 +188,19 @@ var calprovider = {
    */
   BadCertHandler: class {
     /**
-     * @param {calICalendar} [calendar]  A calendar associated with the request, may be null.
+     * @param {calICalendar} [calendar] - A calendar associated with the request, may be null.
      */
     constructor(calendar) {
       this.calendar = calendar;
       this.timer = null;
     }
 
-    notifyCertProblem(socketInfo, secInfo, targetSite) {
+    notifyCertProblem(secInfo, targetSite) {
       // Unfortunately we can't pass js objects using the window watcher, so
       // we'll just take the first available calendar window. We also need to
       // do this on a timer so that the modal window doesn't block the
       // network request.
-      let calWindow = cal.window.getCalendarWindow();
+      let calWindow = lazy.cal.window.getCalendarWindow();
 
       let timerCallback = {
         calendar: this.calendar,
@@ -229,9 +232,9 @@ var calprovider = {
   /**
    * Check for bad server certificates on SSL/TLS connections.
    *
-   * @param {nsIRequest} request       request from the Stream loader.
-   * @param {Number} status            A Components.results result.
-   * @param {calICalendar} [calendar]  A calendar associated with the request, may be null.
+   * @param {nsIRequest} request - request from the Stream loader.
+   * @param {number} status - A Components.results result.
+   * @param {calICalendar} [calendar] - A calendar associated with the request, may be null.
    */
   checkBadCertStatus(request, status, calendar) {
     let nssErrorsService = Cc["@mozilla.org/nss_errors_service;1"].getService(
@@ -250,7 +253,7 @@ var calprovider = {
     if (isCertError && request.securityInfo) {
       let secInfo = request.securityInfo.QueryInterface(Ci.nsITransportSecurityInfo);
       let badCertHandler = new calprovider.BadCertHandler(calendar);
-      badCertHandler.notifyCertProblem(null, secInfo, request.originalURI.displayHost);
+      badCertHandler.notifyCertProblem(secInfo, request.originalURI.displayHostPort);
     }
   },
 
@@ -261,7 +264,7 @@ var calprovider = {
    * @param aFreeBusyType  The type from calIFreeBusyInterval.
    * @param aStart         The start of the interval.
    * @param aEnd           The end of the interval.
-   * @return               The fresh calIFreeBusyInterval.
+   * @returns The fresh calIFreeBusyInterval.
    */
   FreeBusyInterval: class {
     QueryInterface() {
@@ -270,7 +273,7 @@ var calprovider = {
 
     constructor(aCalId, aFreeBusyType, aStart, aEnd) {
       this.calId = aCalId;
-      this.interval = Cc["@mozilla.org/calendar/period;1"].createInstance(Ci.calIPeriod);
+      this.interval = new lazy.CalPeriod();
       this.interval.start = aStart;
       this.interval.end = aEnd;
 
@@ -281,8 +284,8 @@ var calprovider = {
   /**
    * Gets the iTIP/iMIP transport if the passed calendar has configured email.
    *
-   * @param {calICalendar} aCalendar      The calendar to get the transport for
-   * @return {?calIItipTransport}         The email transport, or null if no identity configured
+   * @param {calICalendar} aCalendar - The calendar to get the transport for
+   * @returns {?calIItipTransport} The email transport, or null if no identity configured
    */
   getImipTransport(aCalendar) {
     // assure an identity is configured for the calendar
@@ -295,16 +298,16 @@ var calprovider = {
   /**
    * Gets the configured identity and account of a particular calendar instance, or null.
    *
-   * @param {calICalendar} aCalendar      Calendar instance
-   * @param {?Object} outAccount          Optional out value for account
-   * @return {nsIMsgIdentity}             The configured identity
+   * @param {calICalendar} aCalendar - Calendar instance
+   * @param {?object} outAccount - Optional out value for account
+   * @returns {nsIMsgIdentity} The configured identity
    */
   getEmailIdentityOfCalendar(aCalendar, outAccount) {
-    cal.ASSERT(aCalendar, "no calendar!", Cr.NS_ERROR_INVALID_ARG);
+    lazy.cal.ASSERT(aCalendar, "no calendar!", Cr.NS_ERROR_INVALID_ARG);
     let key = aCalendar.getProperty("imip.identity.key");
     if (key === null) {
       // take default account/identity:
-      let findIdentity = function(account) {
+      let findIdentity = function (account) {
         if (account && account.identities.length) {
           return account.defaultIdentity || account.identities[0];
         }
@@ -336,7 +339,7 @@ var calprovider = {
       return null;
     }
     let identity = null;
-    cal.email.iterateIdentities((identity_, account) => {
+    lazy.cal.email.iterateIdentities((identity_, account) => {
       if (identity_.key == key) {
         identity = identity_;
         if (outAccount) {
@@ -348,7 +351,7 @@ var calprovider = {
 
     if (!identity) {
       // dangling identity:
-      cal.WARN(
+      lazy.cal.WARN(
         "Calendar " +
           (aCalendar.uri ? aCalendar.uri.spec : aCalendar.id) +
           " has a dangling E-Mail identity configured."
@@ -360,12 +363,12 @@ var calprovider = {
   /**
    * Opens the calendar conflict dialog
    *
-   * @param {String} aMode        The conflict mode, either "modify" or "delete"
-   * @param {calIItemBase} aItem  The item to raise a conflict for
-   * @return {Boolean}            True, if the item should be overwritten
+   * @param {string} aMode - The conflict mode, either "modify" or "delete"
+   * @param {calIItemBase} aItem - The item to raise a conflict for
+   * @returns {boolean} True, if the item should be overwritten
    */
   promptOverwrite(aMode, aItem) {
-    let window = cal.window.getCalendarWindow();
+    let window = lazy.cal.window.getCalendarWindow();
     let args = {
       item: aItem,
       mode: aMode,
@@ -385,7 +388,7 @@ var calprovider = {
   /**
    * Gets the calendar directory, defaults to <profile-dir>/calendar-data
    *
-   * @return {nsIFile}        The calendar-data directory as nsIFile
+   * @returns {nsIFile} The calendar-data directory as nsIFile
    */
   getCalendarDirectory() {
     if (calprovider.getCalendarDirectory.mDir === undefined) {
@@ -395,7 +398,7 @@ var calprovider = {
         try {
           dir.create(Ci.nsIFile.DIRECTORY_TYPE, 0o700);
         } catch (exc) {
-          cal.ASSERT(false, exc);
+          lazy.cal.ASSERT(false, exc);
           throw exc;
         }
       }
@@ -437,7 +440,7 @@ var calprovider = {
       this.mACLEntry = null;
       this.mBatchCount = 0;
       this.transientProperties = false;
-      this.mObservers = new cal.data.ObserverSet(Ci.calIObserver);
+      this.mObservers = new lazy.cal.data.ObserverSet(Ci.calIObserver);
       this.mProperties = {};
       this.mProperties.currentStatus = Cr.NS_OK;
     }
@@ -459,14 +462,12 @@ var calprovider = {
       }
       this.mID = aValue;
 
-      let calMgr = cal.getCalendarManager();
-
       // make all properties persistent that have been set so far:
       for (let aName in this.mProperties) {
         if (!this.constructor.mTransientProperties[aName]) {
           let value = this.mProperties[aName];
           if (value !== null) {
-            calMgr.setCalendarPref_(this, aName, value);
+            lazy.cal.manager.setCalendarPref_(this, aName, value);
           }
         }
       }
@@ -540,26 +541,55 @@ var calprovider = {
           this.mObservers.notify("onEndBatch", [this]);
         }
       } else {
-        cal.ASSERT(this.mBatchCount > 0, "unexpected endBatch!");
+        lazy.cal.ASSERT(this.mBatchCount > 0, "unexpected endBatch!");
       }
+    }
+
+    /**
+     * Implementation of calICalendar.getItems(). This should be overridden by
+     * all child classes.
+     *
+     * @param {number} itemFilter
+     * @param {number} count
+     * @param {calIDateTime} rangeStart
+     * @param {calIDateTime} rangeEnd
+     *
+     * @returns {ReadableStream<calIItemBase>}
+     */
+    getItems(itemFilter, count, rangeStart, rangeEnd) {
+      return lazy.CalReadableStreamFactory.createEmptyReadableStream();
+    }
+
+    /**
+     * Implementation of calICalendar.getItemsAsArray().
+     *
+     * @param {number} itemFilter
+     * @param {number} count
+     * @param {calIDateTime} rangeStart
+     * @param {calIDateTime} rangeEnd
+     *
+     * @returns {calIItemBase[]}
+     */
+    async getItemsAsArray(itemFilter, count, rangeStart, rangeEnd) {
+      return lazy.cal.iterate.streamToArray(this.getItems(itemFilter, count, rangeStart, rangeEnd));
     }
 
     /**
      * Notifies the given listener for onOperationComplete, ignoring (but logging) any
      * exceptions that occur. If no listener is passed the function is a no-op.
      *
-     * @param {?calIOperationListener} aListener        The listener to notify
-     * @param {Number} aStatus                          A Components.results result
-     * @param {Number} aOperationType                   The operation type component
-     * @param {String} aId                              The item id
-     * @param {*} aDetail                               The item detail for the listener
+     * @param {?calIOperationListener} aListener - The listener to notify
+     * @param {number} aStatus - A Components.results result
+     * @param {number} aOperationType - The operation type component
+     * @param {string} aId - The item id
+     * @param {*} aDetail - The item detail for the listener
      */
     notifyPureOperationComplete(aListener, aStatus, aOperationType, aId, aDetail) {
       if (aListener) {
         try {
           aListener.onOperationComplete(this.superCalendar, aStatus, aOperationType, aId, aDetail);
         } catch (exc) {
-          cal.ERROR(exc);
+          lazy.cal.ERROR(exc);
         }
       }
     }
@@ -568,12 +598,12 @@ var calprovider = {
      * Notifies the given listener for onOperationComplete, also setting various calendar status
      * variables and notifying about the error.
      *
-     * @param {?calIOperationListener} aListener        The listener to notify
-     * @param {Number} aStatus                          A Components.results result
-     * @param {Number} aOperationType                   The operation type component
-     * @param {String} aId                              The item id
-     * @param {*} aDetail                               The item detail for the listener
-     * @param {String} aExtraMessage                    An extra message to pass to notifyError
+     * @param {?calIOperationListener} aListener - The listener to notify
+     * @param {number} aStatus - A Components.results result
+     * @param {number} aOperationType - The operation type component
+     * @param {string} aId - The item id
+     * @param {*} aDetail - The item detail for the listener
+     * @param {string} aExtraMessage - An extra message to pass to notifyError
      */
     notifyOperationComplete(aListener, aStatus, aOperationType, aId, aDetail, aExtraMessage) {
       this.notifyPureOperationComplete(aListener, aStatus, aOperationType, aId, aDetail);
@@ -601,9 +631,9 @@ var calprovider = {
     /**
      * Notify observers using the onError notification with a readable error message
      *
-     * @param {Number|nsIException} aErrNo      The error number from Components.results, or
+     * @param {number | nsIException} aErrNo      The error number from Components.results, or
      *                                            the exception which contains the error number
-     * @param {?String} aMessage                The message to show for the error
+     * @param {?string} aMessage - The message to show for the error
      */
     notifyError(aErrNo, aMessage = null) {
       if (aErrNo == Ci.calIErrors.OPERATION_CANCELLED) {
@@ -665,7 +695,7 @@ var calprovider = {
           !this.transientProperties
         ) {
           if (this.id) {
-            ret = cal.getCalendarManager().getCalendarPref_(this, aName);
+            ret = lazy.cal.manager.getCalendarPref_(this, aName);
           }
           switch (aName) {
             case "suppressAlarms":
@@ -696,7 +726,7 @@ var calprovider = {
             break;
         }
         if (!this.transientProperties && !this.constructor.mTransientProperties[aName] && this.id) {
-          cal.getCalendarManager().setCalendarPref_(this, aName, aValue);
+          lazy.cal.manager.setCalendarPref_(this, aName, aValue);
         }
         this.mObservers.notify("onPropertyChanged", [this.superCalendar, aName, aValue, oldValue]);
       }
@@ -707,7 +737,7 @@ var calprovider = {
     deleteProperty(aName) {
       this.mObservers.notify("onPropertyDeleting", [this.superCalendar, aName]);
       delete this.mProperties[aName];
-      cal.getCalendarManager().deleteCalendarPref_(this, aName);
+      lazy.cal.manager.deleteCalendarPref_(this, aName);
     }
 
     // calIOperation refresh
@@ -803,7 +833,7 @@ var calprovider = {
   /**
    * Register a provider.
    *
-   * @param {calICalendarProvider} provider     The provider object.
+   * @param {calICalendarProvider} provider - The provider object.
    */
   register(provider) {
     this.providers.set(provider.type, provider);
@@ -812,8 +842,8 @@ var calprovider = {
   /**
    * Unregister a provider.
    *
-   * @param {string} type     The type of the provider to unregister.
-   * @return {boolean}        True if the provider was unregistered, false if
+   * @param {string} type - The type of the provider to unregister.
+   * @returns {boolean} True if the provider was unregistered, false if
    *                            it was not registered in the first place.
    */
   unregister(type) {
@@ -823,8 +853,8 @@ var calprovider = {
   /**
    * Get a provider by its type property, e.g. "ics", "caldav".
    *
-   * @param {string} type                         Type of the provider to get.
-   * @return {calICalendarProvider | undefined}   Provider or undefined if none
+   * @param {string} type - Type of the provider to get.
+   * @returns {calICalendarProvider | undefined} Provider or undefined if none
    *                                                is registered for the type.
    */
   byType(type) {

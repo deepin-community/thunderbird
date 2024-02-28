@@ -1,4 +1,3 @@
-/* -*- Mode: Java; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
@@ -29,10 +28,11 @@
  */
 
 /* import-globals-from ../../../../../toolkit/components/printing/content/printUtils.js */
-/* import-globals-from ../../../../../toolkit/content/globalOverlay.js */
+/* import-globals-from ../../../base/content/globalOverlay.js */
 /* import-globals-from ../../../base/content/utilityOverlay.js */
 /* import-globals-from editor.js */
 /* import-globals-from editorUtilities.js */
+/* import-globals-from MsgComposeCommands.js */
 
 var gComposerJSCommandControllerID = 0;
 
@@ -165,18 +165,16 @@ function GetComposerCommandTable() {
   }
   if (!controller) {
     // create it
-    controller = Cc[
-      "@mozilla.org/embedcomp/base-command-controller;1"
-    ].createInstance();
+    controller =
+      Cc["@mozilla.org/embedcomp/base-command-controller;1"].createInstance();
 
     var editorController = controller.QueryInterface(Ci.nsIControllerContext);
     editorController.setCommandContext(GetCurrentEditorElement());
     window.content.controllers.insertControllerAt(0, controller);
 
     // Store the controller ID so we can be sure to get the right one later
-    gComposerJSCommandControllerID = window.content.controllers.getControllerId(
-      controller
-    );
+    gComposerJSCommandControllerID =
+      window.content.controllers.getControllerId(controller);
   }
 
   if (controller) {
@@ -198,9 +196,8 @@ function GetComposerCommandTable() {
  */
 function goUpdateCommandState(command) {
   try {
-    var controller = document.commandDispatcher.getControllerForCommand(
-      command
-    );
+    var controller =
+      document.commandDispatcher.getControllerForCommand(command);
     if (!(controller instanceof Ci.nsICommandController)) {
       return;
     }
@@ -257,7 +254,7 @@ function goUpdateCommandState(command) {
         dump("no update for command: " + command + "\n");
     }
   } catch (e) {
-    Cu.reportError(e);
+    console.error(e);
   }
 }
 /* eslint-enable complexity */
@@ -299,9 +296,8 @@ function goDoCommandParams(command, paramValue) {
   try {
     let params = newCommandParams();
     params.setStringValue("state_attribute", paramValue);
-    let controller = document.commandDispatcher.getControllerForCommand(
-      command
-    );
+    let controller =
+      document.commandDispatcher.getControllerForCommand(command);
     if (controller && controller.isCommandEnabled(command)) {
       if (controller instanceof Ci.nsICommandController) {
         controller.doCommandWithParams(command, params);
@@ -310,7 +306,7 @@ function goDoCommandParams(command, paramValue) {
       }
     }
   } catch (e) {
-    Cu.reportError(e);
+    console.error(e);
   }
 }
 
@@ -566,7 +562,7 @@ function GetSuggestedFileName(aDocumentURLString, aMIMEType) {
 }
 
 /**
- * @return {Promise} dialogResult
+ * @returns {Promise} dialogResult
  */
 function PromptForSaveLocation(
   aDoSaveAsText,
@@ -575,13 +571,13 @@ function PromptForSaveLocation(
   aDocumentURLString
 ) {
   var dialogResult = {};
-  dialogResult.filepickerClick = nsIFilePicker.returnCancel;
+  dialogResult.filepickerClick = Ci.nsIFilePicker.returnCancel;
   dialogResult.resultingURI = "";
   dialogResult.resultingLocalFile = null;
 
   var fp = null;
   try {
-    fp = Cc["@mozilla.org/filepicker;1"].createInstance(nsIFilePicker);
+    fp = Cc["@mozilla.org/filepicker;1"].createInstance(Ci.nsIFilePicker);
   } catch (e) {}
   if (!fp) {
     return dialogResult;
@@ -595,15 +591,15 @@ function PromptForSaveLocation(
     promptString = GetString("SaveDocumentAs");
   }
 
-  fp.init(window, promptString, nsIFilePicker.modeSave);
+  fp.init(window, promptString, Ci.nsIFilePicker.modeSave);
 
   // Set filters according to the type of output
   if (aDoSaveAsText) {
-    fp.appendFilters(nsIFilePicker.filterText);
+    fp.appendFilters(Ci.nsIFilePicker.filterText);
   } else {
-    fp.appendFilters(nsIFilePicker.filterHTML);
+    fp.appendFilters(Ci.nsIFilePicker.filterHTML);
   }
-  fp.appendFilters(nsIFilePicker.filterAll);
+  fp.appendFilters(Ci.nsIFilePicker.filterAll);
 
   // now let's actually set the filepicker's suggested filename
   var suggestedFileName = GetSuggestedFileName(aDocumentURLString, aMIMEType);
@@ -646,10 +642,10 @@ function PromptForSaveLocation(
   return new Promise(resolve => {
     fp.open(rv => {
       dialogResult.filepickerClick = rv;
-      if (rv != nsIFilePicker.returnCancel && fp.file) {
+      if (rv != Ci.nsIFilePicker.returnCancel && fp.file) {
         // Allow OK and replace.
         // reset urlstring to new save location
-        dialogResult.resultingURIString = fileHandler.getURLSpecFromFile(
+        dialogResult.resultingURIString = fileHandler.getURLSpecFromActualFile(
           fp.file
         );
         dialogResult.resultingLocalFile = fp.file;
@@ -666,7 +662,8 @@ function PromptForSaveLocation(
 /**
  * If needed, prompt for document title and set the document title to the
  * preferred value.
- * @return true if the title was set up successfully;
+ *
+ * @returns true if the title was set up successfully;
  *         false if the user cancelled the title prompt
  */
 function PromptAndSetTitleIfNone() {
@@ -697,14 +694,11 @@ var gPersistObj;
 
 // Don't forget to do these things after calling OutputFileWithPersistAPI:
 // we need to update the uri before notifying listeners
-//    if (doUpdateURI)
-//      SetDocumentURI(docURI);
 //    UpdateWindowTitle();
 //    if (!aSaveCopy)
 //      editor.resetModificationCount();
 // this should cause notification to listeners that document has changed
 
-const webPersist = Ci.nsIWebBrowserPersist;
 function OutputFileWithPersistAPI(
   editorDoc,
   aDestinationLocation,
@@ -732,7 +726,7 @@ function OutputFileWithPersistAPI(
     // we should supply a parent directory if/when we turn on functionality to save related documents
     var persistObj = Cc[
       "@mozilla.org/embedding/browser/nsWebBrowserPersist;1"
-    ].createInstance(webPersist);
+    ].createInstance(Ci.nsIWebBrowserPersist);
     persistObj.progressListener = gEditorOutputProgressListener;
 
     var wrapColumn = GetWrapColumn();
@@ -743,14 +737,15 @@ function OutputFileWithPersistAPI(
     if (!isLocalFile) {
       // if we aren't saving locally then send both cr and lf
       outputFlags |=
-        webPersist.ENCODE_FLAGS_CR_LINEBREAKS |
-        webPersist.ENCODE_FLAGS_LF_LINEBREAKS;
+        Ci.nsIWebBrowserPersist.ENCODE_FLAGS_CR_LINEBREAKS |
+        Ci.nsIWebBrowserPersist.ENCODE_FLAGS_LF_LINEBREAKS;
 
       // we want to serialize the output for all remote publishing
       // some servers can handle only one connection at a time
       // some day perhaps we can make this user-configurable per site?
       persistObj.persistFlags =
-        persistObj.persistFlags | webPersist.PERSIST_FLAGS_SERIALIZE_OUTPUT;
+        persistObj.persistFlags |
+        Ci.nsIWebBrowserPersist.PERSIST_FLAGS_SERIALIZE_OUTPUT;
     }
 
     // note: we always want to set the replace existing files flag since we have
@@ -758,11 +753,11 @@ function OutputFileWithPersistAPI(
     // or the user picked an option where the file is implicitly being replaced (save)
     persistObj.persistFlags =
       persistObj.persistFlags |
-      webPersist.PERSIST_FLAGS_NO_BASE_TAG_MODIFICATIONS |
-      webPersist.PERSIST_FLAGS_REPLACE_EXISTING_FILES |
-      webPersist.PERSIST_FLAGS_DONT_FIXUP_LINKS |
-      webPersist.PERSIST_FLAGS_DONT_CHANGE_FILENAMES |
-      webPersist.PERSIST_FLAGS_FIXUP_ORIGINAL_DOM;
+      Ci.nsIWebBrowserPersist.PERSIST_FLAGS_NO_BASE_TAG_MODIFICATIONS |
+      Ci.nsIWebBrowserPersist.PERSIST_FLAGS_REPLACE_EXISTING_FILES |
+      Ci.nsIWebBrowserPersist.PERSIST_FLAGS_DONT_FIXUP_LINKS |
+      Ci.nsIWebBrowserPersist.PERSIST_FLAGS_DONT_CHANGE_FILENAMES |
+      Ci.nsIWebBrowserPersist.PERSIST_FLAGS_FIXUP_ORIGINAL_DOM;
     persistObj.saveDocument(
       editorDoc,
       aDestinationLocation,
@@ -786,28 +781,31 @@ function GetOutputFlags(aMimeType, aWrapColumn) {
   var editor = GetCurrentEditor();
   var outputEntity =
     editor && editor.documentCharacterSet == "ISO-8859-1"
-      ? webPersist.ENCODE_FLAGS_ENCODE_LATIN1_ENTITIES
-      : webPersist.ENCODE_FLAGS_ENCODE_BASIC_ENTITIES;
+      ? Ci.nsIWebBrowserPersist.ENCODE_FLAGS_ENCODE_LATIN1_ENTITIES
+      : Ci.nsIWebBrowserPersist.ENCODE_FLAGS_ENCODE_BASIC_ENTITIES;
   if (aMimeType == "text/plain") {
     // When saving in "text/plain" format, always do formatting
-    outputFlags |= webPersist.ENCODE_FLAGS_FORMATTED;
+    outputFlags |= Ci.nsIWebBrowserPersist.ENCODE_FLAGS_FORMATTED;
   } else {
     // Should we prettyprint? Check the pref
     if (Services.prefs.getBoolPref("editor.prettyprint")) {
-      outputFlags |= webPersist.ENCODE_FLAGS_FORMATTED;
+      outputFlags |= Ci.nsIWebBrowserPersist.ENCODE_FLAGS_FORMATTED;
     }
 
     try {
       // How much entity names should we output? Check the pref
       switch (Services.prefs.getCharPref("editor.encode_entity")) {
         case "basic":
-          outputEntity = webPersist.ENCODE_FLAGS_ENCODE_BASIC_ENTITIES;
+          outputEntity =
+            Ci.nsIWebBrowserPersist.ENCODE_FLAGS_ENCODE_BASIC_ENTITIES;
           break;
         case "latin1":
-          outputEntity = webPersist.ENCODE_FLAGS_ENCODE_LATIN1_ENTITIES;
+          outputEntity =
+            Ci.nsIWebBrowserPersist.ENCODE_FLAGS_ENCODE_LATIN1_ENTITIES;
           break;
         case "html":
-          outputEntity = webPersist.ENCODE_FLAGS_ENCODE_HTML_ENTITIES;
+          outputEntity =
+            Ci.nsIWebBrowserPersist.ENCODE_FLAGS_ENCODE_HTML_ENTITIES;
           break;
         case "none":
           outputEntity = 0;
@@ -818,7 +816,7 @@ function GetOutputFlags(aMimeType, aWrapColumn) {
   outputFlags |= outputEntity;
 
   if (aWrapColumn > 0) {
-    outputFlags |= webPersist.ENCODE_FLAGS_WRAP;
+    outputFlags |= Ci.nsIWebBrowserPersist.ENCODE_FLAGS_WRAP;
   }
 
   return outputFlags;
@@ -839,9 +837,6 @@ const gShowDebugOutputStatusChange = false;
 const gShowDebugOutputLocationChange = false;
 const gShowDebugOutputSecurityChange = false;
 
-const nsIWebProgressListener = Ci.nsIWebProgressListener;
-const nsIChannel = Ci.nsIChannel;
-
 const kErrorBindingAborted = 2152398850;
 const kErrorBindingRedirected = 2152398851;
 const kFileNotFound = 2152857618;
@@ -851,7 +846,7 @@ var gEditorOutputProgressListener = {
     // Use this to access onStateChange flags
     var requestSpec;
     try {
-      var channel = aRequest.QueryInterface(nsIChannel);
+      var channel = aRequest.QueryInterface(Ci.nsIChannel);
       requestSpec = StripUsernamePasswordFromURI(channel.URI);
     } catch (e) {
       if (gShowDebugOutputStateChange) {
@@ -863,13 +858,13 @@ var gEditorOutputProgressListener = {
       dump("\n***** onStateChange request: " + requestSpec + "\n");
       dump("      state flags: ");
 
-      if (aStateFlags & nsIWebProgressListener.STATE_START) {
+      if (aStateFlags & Ci.nsIWebProgressListener.STATE_START) {
         dump(" STATE_START, ");
       }
-      if (aStateFlags & nsIWebProgressListener.STATE_STOP) {
+      if (aStateFlags & Ci.nsIWebProgressListener.STATE_STOP) {
         dump(" STATE_STOP, ");
       }
-      if (aStateFlags & nsIWebProgressListener.STATE_IS_NETWORK) {
+      if (aStateFlags & Ci.nsIWebProgressListener.STATE_IS_NETWORK) {
         dump(" STATE_IS_NETWORK ");
       }
 
@@ -896,7 +891,7 @@ var gEditorOutputProgressListener = {
         "\n onProgressChange: gPersistObj.result=" + gPersistObj.result + "\n"
       );
       try {
-        var channel = aRequest.QueryInterface(nsIChannel);
+        var channel = aRequest.QueryInterface(Ci.nsIChannel);
         dump("***** onProgressChange request: " + channel.URI.spec + "\n");
       } catch (e) {}
       dump(
@@ -930,7 +925,7 @@ var gEditorOutputProgressListener = {
     if (gShowDebugOutputLocationChange) {
       dump("***** onLocationChange: " + aLocation.spec + "\n");
       try {
-        var channel = aRequest.QueryInterface(nsIChannel);
+        var channel = aRequest.QueryInterface(Ci.nsIChannel);
         dump("*****          request: " + channel.URI.spec + "\n");
       } catch (e) {}
     }
@@ -940,7 +935,7 @@ var gEditorOutputProgressListener = {
     if (gShowDebugOutputStatusChange) {
       dump("***** onStatusChange: " + aMessage + "\n");
       try {
-        var channel = aRequest.QueryInterface(nsIChannel);
+        var channel = aRequest.QueryInterface(Ci.nsIChannel);
         dump("*****        request: " + channel.URI.spec + "\n");
       } catch (e) {
         dump("          couldn't get request\n");
@@ -967,7 +962,7 @@ var gEditorOutputProgressListener = {
   onSecurityChange(aWebProgress, aRequest, state) {
     if (gShowDebugOutputSecurityChange) {
       try {
-        var channel = aRequest.QueryInterface(nsIChannel);
+        var channel = aRequest.QueryInterface(Ci.nsIChannel);
         dump("***** onSecurityChange request: " + channel.URI.spec + "\n");
       } catch (e) {}
     }
@@ -1167,7 +1162,7 @@ async function SaveDocument(aSaveAs, aSaveCopy, aMimeType) {
       // What is this unused 'replacing' var supposed to be doing?
       /* eslint-disable-next-line no-unused-vars */
       var replacing =
-        dialogResult.filepickerClick == nsIFilePicker.returnReplace;
+        dialogResult.filepickerClick == Ci.nsIFilePicker.returnReplace;
 
       urlstring = dialogResult.resultingURIString;
       tempLocalFile = dialogResult.resultingLocalFile;
@@ -1177,7 +1172,7 @@ async function SaveDocument(aSaveAs, aSaveCopy, aMimeType) {
         doUpdateURI = true;
       }
     } catch (e) {
-      Cu.reportError(e);
+      console.error(e);
       return false;
     }
   } // mustShowFileDialog
@@ -1265,9 +1260,6 @@ async function SaveDocument(aSaveAs, aSaveCopy, aMimeType) {
         if (tempLocalFile) {
           docURI = GetFileProtocolHandler().newFileURI(tempLocalFile);
         }
-
-        // We need to set new document uri before notifying listeners
-        SetDocumentURI(docURI);
       }
 
       // Update window title to show possibly different filename
@@ -1293,15 +1285,6 @@ async function SaveDocument(aSaveAs, aSaveCopy, aMimeType) {
   return success;
 }
 /* eslint-enable complexity */
-
-function SetDocumentURI(uri) {
-  try {
-    // XXX WE'LL NEED TO GET "CURRENT" CONTENT FRAME ONCE MULTIPLE EDITORS ARE ALLOWED
-    GetCurrentEditorElement().docShell.setCurrentURI(uri);
-  } catch (e) {
-    dump("SetDocumentURI:\n" + e + "\n");
-  }
-}
 
 var nsFindReplaceCommand = {
   isCommandEnabled(aCommand, editorElement) {
@@ -1363,9 +1346,7 @@ var nsRewrapCommand = {
   doCommandParams(aCommand, aParams, aRefCon) {},
 
   doCommand(aCommand) {
-    GetCurrentEditor()
-      .QueryInterface(Ci.nsIEditorMailSupport)
-      .rewrap(false);
+    GetCurrentEditor().QueryInterface(Ci.nsIEditorMailSupport).rewrap(false);
   },
 };
 
@@ -1537,6 +1518,7 @@ var nsInsertHTMLWithDialogCommand = {
   doCommandParams(aCommand, aParams, aRefCon) {},
 
   doCommand(aCommand) {
+    gMsgCompose.allowRemoteContent = true;
     window.openDialog(
       "chrome://messenger/content/messengercompose/EdInsSrc.xhtml",
       "_blank",
@@ -1630,6 +1612,7 @@ var nsObjectPropertiesCommand = {
       var name = element.nodeName.toLowerCase();
       switch (name) {
         case "img":
+          gMsgCompose.allowRemoteContent = true;
           goDoCommand("cmd_image");
           break;
         case "hr":

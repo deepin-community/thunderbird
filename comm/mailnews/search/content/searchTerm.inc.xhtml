@@ -5,21 +5,20 @@
           <radiogroup id="booleanAndGroup" orient="horizontal" value="and"
                       oncommand="booleanChanged(event);">
             <radio value="and" label="&matchAll.label;"
-                   accesskey="&matchAll.accesskey;"/>
+                   accesskey="&matchAll.accesskey;" flex="1"/>
             <radio value="or" label="&matchAny.label;"
-                   accesskey="&matchAny.accesskey;"/>
+                   accesskey="&matchAny.accesskey;" flex="1"/>
             <radio value="matchAll" id="matchAllItem" label="&matchAllMsgs.label;"
-                   accesskey="&matchAllMsgs.accesskey;"/>
+                   accesskey="&matchAllMsgs.accesskey;" flex="1"/>
           </radiogroup>
 
-          <hbox id="searchTermBox" flex="1"
-                style="min-height:100px; max-height:100vh;">
+          <hbox id="searchTermBox" style="flex: 1 1 0;">
             <hbox id="searchterms" class="themeable-brighttext"/>
-            <richlistbox flex="1" id="searchTermList">
+            <richlistbox id="searchTermList" flex="1">
               <treecols hidden="true">
-                <treecol flex="&searchTermListAttributesFlexValue;"/>
-                <treecol flex="&searchTermListOperatorsFlexValue;"/>
-                <treecol flex="&searchTermListValueFlexValue;"/>
+                <treecol style="flex: &searchTermListAttributesFlexValue; auto"/>
+                <treecol style="flex: &searchTermListOperatorsFlexValue; auto"/>
+                <treecol style="flex: &searchTermListValueFlexValue; auto"/>
                 <treecol class="filler"/>
               </treecols>
             </richlistbox>

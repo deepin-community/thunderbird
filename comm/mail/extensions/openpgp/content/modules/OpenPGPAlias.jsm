@@ -4,10 +4,6 @@
 
 const EXPORTED_SYMBOLS = ["OpenPGPAlias"];
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-
-Cu.importGlobalProperties(["fetch"]);
-
 var OpenPGPAlias = {
   _aliasDomains: null,
   _aliasEmails: null,
@@ -150,5 +146,28 @@ var OpenPGPAlias = {
       return null;
     }
     return this._aliasEmails.get(email.toLowerCase());
+  },
+
+  hasAliasDefinition(email) {
+    if (!this._loaded()) {
+      return false;
+    }
+    email = email.toLowerCase();
+    let hasEmail = this._aliasEmails.has(email);
+    if (hasEmail) {
+      return true;
+    }
+
+    let lastAt = email.lastIndexOf("@");
+    if (lastAt == -1) {
+      return false;
+    }
+
+    let domain = email.substr(lastAt + 1);
+    if (!domain) {
+      return false;
+    }
+
+    return this._aliasDomains.has(domain);
   },
 };

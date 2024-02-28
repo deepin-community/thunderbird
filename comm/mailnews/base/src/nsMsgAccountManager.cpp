@@ -19,9 +19,6 @@
 #include "nsIComponentManager.h"
 #include "nsIServiceManager.h"
 #include "nsMsgAccountManager.h"
-#include "nsMsgBaseCID.h"
-#include "nsMsgCompCID.h"
-#include "nsMsgDBCID.h"
 #include "prmem.h"
 #include "prcmon.h"
 #include "prthread.h"
@@ -32,6 +29,7 @@
 #include "nscore.h"
 #include "prprf.h"
 #include "nsIMsgFolderCache.h"
+#include "nsMsgFolderCache.h"
 #include "nsMsgUtils.h"
 #include "nsMsgDBFolder.h"
 #include "nsIFile.h"
@@ -67,11 +65,15 @@
 #include "nsMsgMessageFlags.h"
 #include "nsIMsgFilterList.h"
 #include "nsDirectoryServiceUtils.h"
+#include "mozilla/Components.h"
 #include "mozilla/Services.h"
 #include "nsIFileStreams.h"
 #include "nsIOutputStream.h"
 #include "nsISafeOutputStream.h"
 #include "nsXULAppAPI.h"
+#include "nsICacheStorageService.h"
+#include "UrlListener.h"
+#include "nsIIDNService.h"
 
 #define PREF_MAIL_ACCOUNTMANAGER_ACCOUNTS "mail.accountmanager.accounts"
 #define PREF_MAIL_ACCOUNTMANAGER_DEFAULTACCOUNT \
@@ -89,8 +91,13 @@
 #define PREF_MAIL_ACCOUNTMANAGER_APPEND_ACCOUNTS \
   "mail.accountmanager.appendaccounts"
 
+#define NS_MSGACCOUNT_CID                          \
+  {                                                \
+    0x68b25510, 0xe641, 0x11d2, {                  \
+      0xb7, 0xfc, 0x0, 0x80, 0x5f, 0x5, 0xff, 0xa5 \
+    }                                              \
+  }
 static NS_DEFINE_CID(kMsgAccountCID, NS_MSGACCOUNT_CID);
-static NS_DEFINE_CID(kMsgFolderCacheCID, NS_MSGFOLDERCACHE_CID);
 
 #define SEARCH_FOLDER_FLAG "searchFolderFlag"
 #define SEARCH_FOLDER_FLAG_LEN (sizeof(SEARCH_FOLDER_FLAG) - 1)
@@ -101,7 +108,7 @@ bool nsMsgAccountManager::m_haveShutdown = false;
 bool nsMsgAccountManager::m_shutdownInProgress = false;
 
 NS_IMPL_ISUPPORTS(nsMsgAccountManager, nsIMsgAccountManager, nsIObserver,
-                  nsISupportsWeakReference, nsIUrlListener, nsIFolderListener)
+                  nsISupportsWeakReference, nsIFolderListener)
 
 nsMsgAccountManager::nsMsgAccountManager()
     : m_accountsLoaded(false),
@@ -109,7 +116,8 @@ nsMsgAccountManager::nsMsgAccountManager()
       m_cleanupInboxInProgress(false),
       m_userAuthenticated(false),
       m_loadingVirtualFolders(false),
-      m_virtualFoldersLoaded(false) {}
+      m_virtualFoldersLoaded(false),
+      m_lastFindServerPort(0) {}
 
 nsMsgAccountManager::~nsMsgAccountManager() {
   if (!m_haveShutdown) {
@@ -120,6 +128,7 @@ nsMsgAccountManager::~nsMsgAccountManager() {
     nsCOMPtr<nsIObserverService> observerService =
         mozilla::services::GetObserverService();
     if (observerService) {
+      observerService->RemoveObserver(this, "search-folders-changed");
       observerService->RemoveObserver(this, NS_XPCOM_SHUTDOWN_OBSERVER_ID);
       observerService->RemoveObserver(this, "quit-application-granted");
       observerService->RemoveObserver(this, ABOUT_TO_GO_OFFLINE_TOPIC);
@@ -141,6 +150,7 @@ nsresult nsMsgAccountManager::Init() {
   nsCOMPtr<nsIObserverService> observerService =
       mozilla::services::GetObserverService();
   if (observerService) {
+    observerService->AddObserver(this, "search-folders-changed", true);
     observerService->AddObserver(this, NS_XPCOM_SHUTDOWN_OBSERVER_ID, true);
     observerService->AddObserver(this, "quit-application-granted", true);
     observerService->AddObserver(this, ABOUT_TO_GO_OFFLINE_TOPIC, true);
@@ -162,18 +172,19 @@ nsresult nsMsgAccountManager::Shutdown() {
 
   SaveVirtualFolders();
 
-  nsCOMPtr<nsIMsgDBService> msgDBService =
-      do_GetService(NS_MSGDB_SERVICE_CONTRACTID, &rv);
-  if (msgDBService) {
+  if (m_dbService) {
     nsTObserverArray<RefPtr<VirtualFolderChangeListener>>::ForwardIterator iter(
         m_virtualFolderListeners);
     RefPtr<VirtualFolderChangeListener> listener;
 
     while (iter.HasMore()) {
       listener = iter.GetNext();
-      msgDBService->UnregisterPendingListener(listener);
+      m_dbService->UnregisterPendingListener(listener);
     }
+
+    m_dbService = nullptr;
   }
+  m_virtualFolders.Clear();
   if (m_msgFolderCache) WriteToFolderCache(m_msgFolderCache);
   (void)ShutdownServers();
   (void)UnloadAccounts();
@@ -181,16 +192,22 @@ nsresult nsMsgAccountManager::Shutdown() {
   // shutdown removes nsIIncomingServer listener from biff manager, so do it
   // after accounts have been unloaded
   nsCOMPtr<nsIMsgBiffManager> biffService =
-      do_GetService(NS_MSGBIFFMANAGER_CONTRACTID, &rv);
+      do_GetService("@mozilla.org/messenger/biffManager;1", &rv);
   if (NS_SUCCEEDED(rv) && biffService) biffService->Shutdown();
 
   // shutdown removes nsIIncomingServer listener from purge service, so do it
   // after accounts have been unloaded
   nsCOMPtr<nsIMsgPurgeService> purgeService =
-      do_GetService(NS_MSGPURGESERVICE_CONTRACTID, &rv);
+      do_GetService("@mozilla.org/messenger/purgeService;1", &rv);
   if (NS_SUCCEEDED(rv) && purgeService) purgeService->Shutdown();
 
-  m_msgFolderCache = nullptr;
+  if (m_msgFolderCache) {
+    // The DTOR is meant to do the flushing, but observed behaviour is
+    // that it doesn't always get called. So flush explicitly.
+    m_msgFolderCache->Flush();
+    m_msgFolderCache = nullptr;
+  }
+
   m_haveShutdown = true;
   return NS_OK;
 }
@@ -220,6 +237,17 @@ nsMsgAccountManager::SetUserNeedsToAuthenticate(bool aUserNeedsToAuthenticate) {
 NS_IMETHODIMP nsMsgAccountManager::Observe(nsISupports* aSubject,
                                            const char* aTopic,
                                            const char16_t* someData) {
+  if (!strcmp(aTopic, "search-folders-changed")) {
+    nsCOMPtr<nsIMsgFolder> virtualFolder = do_QueryInterface(aSubject);
+    nsCOMPtr<nsIMsgDatabase> db;
+    nsCOMPtr<nsIDBFolderInfo> dbFolderInfo;
+    virtualFolder->GetDBFolderInfoAndDB(getter_AddRefs(dbFolderInfo),
+                                        getter_AddRefs(db));
+    nsCString srchFolderUris;
+    dbFolderInfo->GetCharProperty(kSearchFolderUriProp, srchFolderUris);
+    AddVFListenersForVF(virtualFolder, srchFolderUris);
+    return NS_OK;
+  }
   if (!strcmp(aTopic, NS_XPCOM_SHUTDOWN_OBSERVER_ID)) {
     Shutdown();
     return NS_OK;
@@ -391,7 +419,7 @@ nsresult nsMsgAccountManager::createKeyedIdentity(const nsACString& key,
                                                   nsIMsgIdentity** aIdentity) {
   nsresult rv;
   nsCOMPtr<nsIMsgIdentity> identity =
-      do_CreateInstance(NS_MSGIDENTITY_CONTRACTID, &rv);
+      do_CreateInstance("@mozilla.org/messenger/identity;1", &rv);
   NS_ENSURE_SUCCESS(rv, rv);
 
   identity->SetKey(key);
@@ -495,9 +523,9 @@ nsMsgAccountManager::RemoveIncomingServer(nsIMsgIncomingServer* aServer,
   NS_ENSURE_SUCCESS(rv, rv);
 
   nsCOMPtr<nsIMsgFolderNotificationService> notifier =
-      do_GetService(NS_MSGNOTIFICATIONSERVICE_CONTRACTID);
+      do_GetService("@mozilla.org/messenger/msgnotificationservice;1");
   nsCOMPtr<nsIFolderListener> mailSession =
-      do_GetService(NS_MSGMAILSESSION_CONTRACTID);
+      do_GetService("@mozilla.org/messenger/services/session;1");
 
   for (auto folder : allDescendants) {
     folder->ForceDBClosed();
@@ -505,17 +533,23 @@ nsMsgAccountManager::RemoveIncomingServer(nsIMsgIncomingServer* aServer,
     if (mailSession) {
       nsCOMPtr<nsIMsgFolder> parentFolder;
       folder->GetParent(getter_AddRefs(parentFolder));
-      mailSession->OnItemRemoved(parentFolder, folder);
+      mailSession->OnFolderRemoved(parentFolder, folder);
     }
   }
   if (notifier) notifier->NotifyFolderDeleted(rootFolder);
-  if (mailSession) mailSession->OnItemRemoved(nullptr, rootFolder);
+  if (mailSession) mailSession->OnFolderRemoved(nullptr, rootFolder);
 
   removeListenersFromFolder(rootFolder);
   NotifyServerUnloaded(aServer);
   if (aRemoveFiles) {
     rv = aServer->RemoveFiles();
     NS_ENSURE_SUCCESS(rv, rv);
+  }
+
+  nsCOMPtr<nsIObserverService> obs = mozilla::services::GetObserverService();
+  if (obs) {
+    obs->NotifyObservers(aServer, "message-server-removed",
+                         NS_ConvertUTF8toUTF16(serverKey).get());
   }
 
   // now clear out the server once and for all.
@@ -536,7 +570,7 @@ nsresult nsMsgAccountManager::createKeyedServer(
   *aServer = nullptr;
 
   // construct the contractid
-  nsAutoCString serverContractID(NS_MSGINCOMINGSERVER_CONTRACTID_PREFIX);
+  nsAutoCString serverContractID("@mozilla.org/messenger/server;1?type=");
   serverContractID += type;
 
   // finally, create the server
@@ -552,8 +586,7 @@ nsresult nsMsgAccountManager::createKeyedServer(
   server->SetUsername(username);
   server->SetHostName(hostname);
   server->GetPort(&port);
-  FindRealServer(username, hostname, type, port,
-                 getter_AddRefs(existingServer));
+  FindServer(username, hostname, type, port, getter_AddRefs(existingServer));
   // don't allow duplicate servers.
   if (existingServer) return NS_ERROR_FAILURE;
 
@@ -635,11 +668,20 @@ nsMsgAccountManager::RemoveAccount(nsIMsgAccount* aAccount,
     }
   }
 
+  nsCString accountKey;
+  aAccount->GetKey(accountKey);
+
   // It is not a critical problem if this fails as the account was already
   // removed from the list of accounts so should not ever be referenced.
   // Just print it out for debugging.
   rv = aAccount->ClearAllValues();
   NS_ASSERTION(NS_SUCCEEDED(rv), "removing of account prefs failed");
+
+  nsCOMPtr<nsIObserverService> obs = mozilla::services::GetObserverService();
+  if (obs) {
+    obs->NotifyObservers(nullptr, "message-account-removed",
+                         NS_ConvertUTF8toUTF16(accountKey).get());
+  }
   return NS_OK;
 }
 
@@ -804,7 +846,7 @@ void nsMsgAccountManager::LogoutOfServer(nsIMsgIncomingServer* aServer) {
   if (!aServer) return;
   mozilla::DebugOnly<nsresult> rv = aServer->Shutdown();
   NS_ASSERTION(NS_SUCCEEDED(rv), "Shutdown of server failed");
-  rv = aServer->ForgetSessionPassword();
+  rv = aServer->ForgetSessionPassword(false);
   NS_ASSERTION(NS_SUCCEEDED(rv),
                "failed to remove the password associated with server");
 }
@@ -812,21 +854,25 @@ void nsMsgAccountManager::LogoutOfServer(nsIMsgIncomingServer* aServer) {
 NS_IMETHODIMP nsMsgAccountManager::GetFolderCache(
     nsIMsgFolderCache** aFolderCache) {
   NS_ENSURE_ARG_POINTER(aFolderCache);
-  nsresult rv = NS_OK;
 
-  if (!m_msgFolderCache) {
-    m_msgFolderCache = do_CreateInstance(kMsgFolderCacheCID, &rv);
-    NS_ENSURE_SUCCESS(rv, rv);
-
-    nsCOMPtr<nsIFile> cacheFile;
-    rv = NS_GetSpecialDirectory(NS_APP_MESSENGER_FOLDER_CACHE_50_FILE,
-                                getter_AddRefs(cacheFile));
-    NS_ENSURE_SUCCESS(rv, rv);
-    m_msgFolderCache->Init(cacheFile);
+  if (m_msgFolderCache) {
+    NS_IF_ADDREF(*aFolderCache = m_msgFolderCache);
+    return NS_OK;
   }
 
+  // Create the foldercache.
+  nsCOMPtr<nsIFile> cacheFile;
+  nsresult rv = NS_GetSpecialDirectory(NS_APP_MESSENGER_FOLDER_CACHE_50_FILE,
+                                       getter_AddRefs(cacheFile));
+  NS_ENSURE_SUCCESS(rv, rv);
+  nsCOMPtr<nsIFile> legacyFile;
+  rv = NS_GetSpecialDirectory(NS_APP_MESSENGER_LEGACY_FOLDER_CACHE_50_FILE,
+                              getter_AddRefs(legacyFile));
+  NS_ENSURE_SUCCESS(rv, rv);
+  m_msgFolderCache = new nsMsgFolderCache();
+  m_msgFolderCache->Init(cacheFile, legacyFile);
   NS_IF_ADDREF(*aFolderCache = m_msgFolderCache);
-  return rv;
+  return NS_OK;
 }
 
 NS_IMETHODIMP
@@ -921,26 +967,33 @@ nsresult nsMsgAccountManager::LoadAccounts() {
   // for now safeguard multiple calls to this function
   if (m_accountsLoaded) return NS_OK;
 
+  // If we have code trying to do things after we've unloaded accounts,
+  // ignore it.
+  if (m_shutdownInProgress || m_haveShutdown) return NS_ERROR_FAILURE;
+
+  // Make sure correct modules are loaded before creating any server.
+  nsCOMPtr<nsIObserver> moduleLoader;
+  moduleLoader =
+      do_GetService("@mozilla.org/messenger/imap-module-loader;1", &rv);
+  NS_ENSURE_SUCCESS(rv, rv);
+
   nsCOMPtr<nsIMsgMailSession> mailSession =
-      do_GetService(NS_MSGMAILSESSION_CONTRACTID, &rv);
+      do_GetService("@mozilla.org/messenger/services/session;1", &rv);
 
   if (NS_SUCCEEDED(rv))
     mailSession->AddFolderListener(
         this, nsIFolderListener::added | nsIFolderListener::removed |
                   nsIFolderListener::intPropertyChanged);
-  // If we have code trying to do things after we've unloaded accounts,
-  // ignore it.
-  if (m_shutdownInProgress || m_haveShutdown) return NS_ERROR_FAILURE;
 
   // Ensure biff service has started
   nsCOMPtr<nsIMsgBiffManager> biffService =
-      do_GetService(NS_MSGBIFFMANAGER_CONTRACTID, &rv);
+      do_GetService("@mozilla.org/messenger/biffManager;1", &rv);
 
   if (NS_SUCCEEDED(rv)) biffService->Init();
 
   // Ensure purge service has started
   nsCOMPtr<nsIMsgPurgeService> purgeService =
-      do_GetService(NS_MSGPURGESERVICE_CONTRACTID, &rv);
+      do_GetService("@mozilla.org/messenger/purgeService;1", &rv);
 
   if (NS_SUCCEEDED(rv)) purgeService->Init();
 
@@ -1070,8 +1123,8 @@ nsresult nsMsgAccountManager::LoadAccounts() {
     // If we have an existing account with the same server, ignore this account
     if (serverAccount) continue;
 
-    if (NS_FAILED(
-            createKeyedAccount(accountsArray[i], true, getter_AddRefs(account))) ||
+    if (NS_FAILED(createKeyedAccount(accountsArray[i], true,
+                                     getter_AddRefs(account))) ||
         !account) {
       NS_WARNING("unexpected entry in account list; prefs corrupt?");
       continue;
@@ -1203,12 +1256,12 @@ nsresult nsMsgAccountManager::LoadAccounts() {
             serverPrefBranch->GetCharPref("type", type);
             // Find a server with the same info.
             nsCOMPtr<nsIMsgAccountManager> accountManager =
-                do_GetService(NS_MSGACCOUNTMANAGER_CONTRACTID, &rv);
+                do_GetService("@mozilla.org/messenger/account-manager;1", &rv);
             if (NS_FAILED(rv)) {
               continue;
             }
             nsCOMPtr<nsIMsgIncomingServer> server;
-            accountManager->FindServer(userName, hostName, type,
+            accountManager->FindServer(userName, hostName, type, 0,
                                        getter_AddRefs(server));
             if (server) {
               nsCOMPtr<nsIMsgAccount> replacement;
@@ -1388,7 +1441,7 @@ nsMsgAccountManager::UnloadAccounts() {
 
   if (m_accountsLoaded) {
     nsCOMPtr<nsIMsgMailSession> mailSession =
-        do_GetService(NS_MSGMAILSESSION_CONTRACTID);
+        do_GetService("@mozilla.org/messenger/services/session;1");
     if (mailSession) mailSession->RemoveFolderListener(this);
     m_accountsLoaded = false;
   }
@@ -1422,12 +1475,21 @@ nsMsgAccountManager::CleanupOnExit() {
 
   m_shutdownInProgress = true;
 
+  nsresult rv;
+  // If enabled, clear cache on shutdown. This is common to all accounts.
+  bool clearCache = false;
+  m_prefs->GetBoolPref("privacy.clearOnShutdown.cache", &clearCache);
+  if (clearCache) {
+    nsCOMPtr<nsICacheStorageService> cacheStorageService =
+        do_GetService("@mozilla.org/netwerk/cache-storage-service;1", &rv);
+    if (NS_SUCCEEDED(rv)) cacheStorageService->Clear();
+  }
+
   for (auto iter = m_incomingServers.Iter(); !iter.Done(); iter.Next()) {
     nsCOMPtr<nsIMsgIncomingServer>& server = iter.Data();
 
     bool emptyTrashOnExit = false;
     bool cleanupInboxOnExit = false;
-    nsresult rv;
 
     if (WeAreOffline()) break;
 
@@ -1446,23 +1508,24 @@ nsMsgAccountManager::CleanupOnExit() {
       server->GetType(type);
       if (root) {
         nsString passwd;
+        int32_t authMethod = 0;
         bool serverRequiresPasswordForAuthentication = true;
         bool isImap = type.EqualsLiteral("imap");
         if (isImap) {
           server->GetServerRequiresPasswordForBiff(
               &serverRequiresPasswordForAuthentication);
           server->GetPassword(passwd);
+          server->GetAuthMethod(&authMethod);
         }
         if (!isImap || (isImap && (!serverRequiresPasswordForAuthentication ||
-                                   !passwd.IsEmpty()))) {
-          nsCOMPtr<nsIUrlListener> urlListener;
+                                   !passwd.IsEmpty() ||
+                                   authMethod == nsMsgAuthMethod::OAuth2))) {
           nsCOMPtr<nsIMsgAccountManager> accountManager =
-              do_GetService(NS_MSGACCOUNTMANAGER_CONTRACTID, &rv);
+              do_GetService("@mozilla.org/messenger/account-manager;1", &rv);
           if (NS_FAILED(rv)) continue;
 
-          if (isImap) urlListener = do_QueryInterface(accountManager, &rv);
-
           if (isImap && cleanupInboxOnExit) {
+            // Find the inbox.
             nsTArray<RefPtr<nsIMsgFolder>> subFolders;
             rv = root->GetSubFolders(subFolders);
             if (NS_SUCCEEDED(rv)) {
@@ -1470,7 +1533,24 @@ nsMsgAccountManager::CleanupOnExit() {
                 uint32_t flags;
                 folder->GetFlags(&flags);
                 if (flags & nsMsgFolderFlags::Inbox) {
-                  rv = folder->Compact(urlListener, nullptr /* msgwindow */);
+                  // This is inbox, so Compact() it. There's an implied
+                  // Expunge too, because this is IMAP.
+                  RefPtr<UrlListener> cleanupListener = new UrlListener();
+                  RefPtr<nsMsgAccountManager> self = this;
+                  // This runs when the compaction (+expunge) is complete.
+                  cleanupListener->mStopFn =
+                      [self](nsIURI* url, nsresult status) -> nsresult {
+                    if (self->m_folderDoingCleanupInbox) {
+                      PR_CEnterMonitor(self->m_folderDoingCleanupInbox);
+                      PR_CNotifyAll(self->m_folderDoingCleanupInbox);
+                      self->m_cleanupInboxInProgress = false;
+                      PR_CExitMonitor(self->m_folderDoingCleanupInbox);
+                      self->m_folderDoingCleanupInbox = nullptr;
+                    }
+                    return NS_OK;
+                  };
+
+                  rv = folder->Compact(cleanupListener, nullptr);
                   if (NS_SUCCEEDED(rv))
                     accountManager->SetFolderDoingCleanupInbox(folder);
                   break;
@@ -1480,14 +1560,32 @@ nsMsgAccountManager::CleanupOnExit() {
           }
 
           if (emptyTrashOnExit) {
-            rv = root->EmptyTrash(nullptr, urlListener);
+            RefPtr<UrlListener> emptyTrashListener = new UrlListener();
+            RefPtr<nsMsgAccountManager> self = this;
+            // This runs when the trash-emptying is complete.
+            // (It'll be a nsIImapUrl::nsImapDeleteAllMsgs url).
+            emptyTrashListener->mStopFn = [self](nsIURI* url,
+                                                 nsresult status) -> nsresult {
+              if (self->m_folderDoingEmptyTrash) {
+                PR_CEnterMonitor(self->m_folderDoingEmptyTrash);
+                PR_CNotifyAll(self->m_folderDoingEmptyTrash);
+                self->m_emptyTrashInProgress = false;
+                PR_CExitMonitor(self->m_folderDoingEmptyTrash);
+                self->m_folderDoingEmptyTrash = nullptr;
+              }
+              return NS_OK;
+            };
+
+            rv = root->EmptyTrash(emptyTrashListener);
             if (isImap && NS_SUCCEEDED(rv))
               accountManager->SetFolderDoingEmptyTrash(root);
           }
 
-          if (isImap && urlListener) {
+          if (isImap) {
             nsCOMPtr<nsIThread> thread(do_GetCurrentThread());
 
+            // Pause until any possible inbox-compaction and trash-emptying
+            // are complete (or time out).
             bool inProgress = false;
             if (cleanupInboxOnExit) {
               int32_t loopCount = 0;  // used to break out after 5 seconds
@@ -1530,7 +1628,7 @@ nsMsgAccountManager::WriteToFolderCache(nsIMsgFolderCache* folderCache) {
   for (auto iter = m_incomingServers.Iter(); !iter.Done(); iter.Next()) {
     iter.Data()->WriteToFolderCache(folderCache);
   }
-  return folderCache ? folderCache->Close() : NS_ERROR_FAILURE;
+  return NS_OK;
 }
 
 nsresult nsMsgAccountManager::createKeyedAccount(const nsCString& key,
@@ -1573,7 +1671,8 @@ nsresult nsMsgAccountManager::createKeyedAccount(const nsCString& key,
     }
   }
 
-  if (!forcePositionToEnd && !localFoldersAccountKey.IsEmpty() && !lastFolderAccountKey.IsEmpty() &&
+  if (!forcePositionToEnd && !localFoldersAccountKey.IsEmpty() &&
+      !lastFolderAccountKey.IsEmpty() &&
       lastFolderAccountKey == localFoldersAccountKey) {
     // Insert account before Local Folders if that is the last account.
     m_accounts.InsertElementAt(m_accounts.Length() - 1, account);
@@ -1710,7 +1809,7 @@ NS_IMETHODIMP nsMsgAccountManager::NotifyServerChanged(
 }
 
 NS_IMETHODIMP
-nsMsgAccountManager::FindServerByURI(nsIURI* aURI, bool aRealFlag,
+nsMsgAccountManager::FindServerByURI(nsIURI* aURI,
                                      nsIMsgIncomingServer** aResult) {
   NS_ENSURE_ARG_POINTER(aURI);
 
@@ -1727,16 +1826,16 @@ nsMsgAccountManager::FindServerByURI(nsIURI* aURI, bool aRealFlag,
   nsAutoCString hostname;
   nsAutoCString escapedHostname;
   rv = aURI->GetHost(escapedHostname);
-  if (NS_SUCCEEDED(rv) && !escapedHostname.IsEmpty())
+  if (NS_SUCCEEDED(rv) && !escapedHostname.IsEmpty()) {
     MsgUnescapeString(escapedHostname, 0, hostname);
+  }
 
   nsAutoCString type;
   rv = aURI->GetScheme(type);
   if (NS_SUCCEEDED(rv) && !type.IsEmpty()) {
     // Remove "-message" from the scheme in case we get called with
     // "imap-message", "mailbox-message", or friends.
-    if (StringEndsWith(type, nsDependentCString("-message")))
-      type.SetLength(type.Length() - 8);
+    if (StringEndsWith(type, "-message"_ns)) type.SetLength(type.Length() - 8);
     // now modify type if pop or news
     if (type.EqualsLiteral("pop")) type.AssignLiteral("pop3");
     // we use "nntp" in the server list so translate it here.
@@ -1755,23 +1854,26 @@ nsMsgAccountManager::FindServerByURI(nsIURI* aURI, bool aRealFlag,
     if (NS_SUCCEEDED(rv) && (port == -1)) port = 0;
   }
 
-  return findServerInternal(username, hostname, type, port, aRealFlag, aResult);
+  return findServerInternal(username, hostname, type, port, aResult);
 }
 
 nsresult nsMsgAccountManager::findServerInternal(
-    const nsACString& username, const nsACString& hostname,
-    const nsACString& type, int32_t port, bool aRealFlag,
-    nsIMsgIncomingServer** aResult) {
-  // If 'aRealFlag' is set then we want to scan all existing accounts
-  // to make sure there's no duplicate including those whose host and/or
-  // user names have been changed.
-  if (!aRealFlag && (m_lastFindServerUserName.Equals(username)) &&
-      (m_lastFindServerHostName.Equals(hostname)) &&
+    const nsACString& username, const nsACString& serverHostname,
+    const nsACString& type, int32_t port, nsIMsgIncomingServer** aResult) {
+  if ((m_lastFindServerUserName.Equals(username)) &&
+      (m_lastFindServerHostName.Equals(serverHostname)) &&
       (m_lastFindServerType.Equals(type)) && (m_lastFindServerPort == port) &&
       m_lastFindServerResult) {
     NS_ADDREF(*aResult = m_lastFindServerResult);
     return NS_OK;
   }
+
+  nsresult rv;
+  nsCString hostname;
+  nsCOMPtr<nsIIDNService> idnService =
+      do_GetService("@mozilla.org/network/idn-service;1");
+  rv = idnService->Normalize(serverHostname, hostname);
+  NS_ENSURE_SUCCESS(rv, rv);
 
   for (auto iter = m_incomingServers.Iter(); !iter.Done(); iter.Next()) {
     // Find matching server by user+host+type+port.
@@ -1779,19 +1881,25 @@ nsresult nsMsgAccountManager::findServerInternal(
 
     if (!server) continue;
 
-    nsresult rv;
     nsCString thisHostname;
-    if (aRealFlag)
-      rv = server->GetRealHostName(thisHostname);
-    else
-      rv = server->GetHostName(thisHostname);
+    rv = server->GetHostName(thisHostname);
     if (NS_FAILED(rv)) continue;
 
+    rv = idnService->Normalize(thisHostname, thisHostname);
+    if (NS_FAILED(rv)) continue;
+
+    // If the hostname was a IP with trailing dot, that dot gets removed
+    // during URI mutation. We may well be here in findServerInternal to
+    // find a server from a folder URI. Remove the trailing dot so we can
+    // find the server.
+    nsCString thisHostnameNoDot(thisHostname);
+    if (!thisHostname.IsEmpty() &&
+        thisHostname.CharAt(thisHostname.Length() - 1) == '.') {
+      thisHostnameNoDot.Cut(thisHostname.Length() - 1, 1);
+    }
+
     nsCString thisUsername;
-    if (aRealFlag)
-      rv = server->GetRealUsername(thisUsername);
-    else
-      rv = server->GetUsername(thisUsername);
+    rv = server->GetUsername(thisUsername);
     if (NS_FAILED(rv)) continue;
 
     nsCString thisType;
@@ -1811,12 +1919,13 @@ nsresult nsMsgAccountManager::findServerInternal(
     // attribute treat it as a match
     if ((type.IsEmpty() || thisType.Equals(type)) &&
         (hostname.IsEmpty() ||
-         thisHostname.Equals(hostname, nsCaseInsensitiveCStringComparator)) &&
+         thisHostname.Equals(hostname, nsCaseInsensitiveCStringComparator) ||
+         thisHostnameNoDot.Equals(hostname,
+                                  nsCaseInsensitiveCStringComparator)) &&
         (!(port != 0) || (port == thisPort)) &&
         (username.IsEmpty() || thisUsername.Equals(username))) {
       // stop on first find; cache for next time
-      if (!aRealFlag)
-        SetLastServerFound(server, hostname, username, port, type);
+      SetLastServerFound(server, hostname, username, port, type);
 
       NS_ADDREF(*aResult = server);  // Was populated from member variable.
       return NS_OK;
@@ -1826,22 +1935,14 @@ nsresult nsMsgAccountManager::findServerInternal(
   return NS_ERROR_UNEXPECTED;
 }
 
+// Always return NS_OK;
 NS_IMETHODIMP
 nsMsgAccountManager::FindServer(const nsACString& username,
                                 const nsACString& hostname,
-                                const nsACString& type,
+                                const nsACString& type, int32_t port,
                                 nsIMsgIncomingServer** aResult) {
-  return findServerInternal(username, hostname, type, 0, false, aResult);
-}
-
-// Interface called by UI js only (always return true).
-NS_IMETHODIMP
-nsMsgAccountManager::FindRealServer(const nsACString& username,
-                                    const nsACString& hostname,
-                                    const nsACString& type, int32_t port,
-                                    nsIMsgIncomingServer** aResult) {
   *aResult = nullptr;
-  findServerInternal(username, hostname, type, port, true, aResult);
+  findServerInternal(username, hostname, type, port, aResult);
   return NS_OK;
 }
 
@@ -2029,13 +2130,16 @@ NS_IMETHODIMP nsMsgAccountManager::GetLocalFoldersServer(
   }
 
   // try ("nobody","Local Folders","none"), and work down to any "none" server.
-  rv = FindServer("nobody"_ns, "Local Folders"_ns, "none"_ns, aServer);
+  rv = findServerInternal("nobody"_ns, "Local Folders"_ns, "none"_ns, 0,
+                          aServer);
   if (NS_FAILED(rv) || !*aServer) {
-    rv = FindServer("nobody"_ns, EmptyCString(), "none"_ns, aServer);
+    rv = findServerInternal("nobody"_ns, EmptyCString(), "none"_ns, 0, aServer);
     if (NS_FAILED(rv) || !*aServer) {
-      rv = FindServer(EmptyCString(), "Local Folders"_ns, "none"_ns, aServer);
+      rv = findServerInternal(EmptyCString(), "Local Folders"_ns, "none"_ns, 0,
+                              aServer);
       if (NS_FAILED(rv) || !*aServer)
-        rv = FindServer(EmptyCString(), EmptyCString(), "none"_ns, aServer);
+        rv = findServerInternal(EmptyCString(), EmptyCString(), "none"_ns, 0,
+                                aServer);
     }
   }
 
@@ -2058,7 +2162,7 @@ nsresult nsMsgAccountManager::GetLocalFoldersPrettyName(
   nsCOMPtr<nsIStringBundle> bundle;
   nsresult rv;
   nsCOMPtr<nsIStringBundleService> sBundleService =
-      mozilla::services::GetStringBundleService();
+      mozilla::components::StringBundle::Service();
   NS_ENSURE_TRUE(sBundleService, NS_ERROR_UNEXPECTED);
 
   rv = sBundleService->CreateBundle(
@@ -2119,45 +2223,6 @@ nsMsgAccountManager::CreateLocalMailAccount() {
 
   // remember this as the local folders server
   return SetLocalFoldersServer(server);
-}
-
-// nsIUrlListener methods
-
-NS_IMETHODIMP
-nsMsgAccountManager::OnStartRunningUrl(nsIURI* aUrl) { return NS_OK; }
-
-NS_IMETHODIMP
-nsMsgAccountManager::OnStopRunningUrl(nsIURI* aUrl, nsresult aExitCode) {
-  if (aUrl) {
-    nsCOMPtr<nsIImapUrl> imapUrl = do_QueryInterface(aUrl);
-    if (imapUrl) {
-      nsImapAction imapAction = nsIImapUrl::nsImapTest;
-      imapUrl->GetImapAction(&imapAction);
-      switch (imapAction) {
-        case nsIImapUrl::nsImapExpungeFolder:
-          if (m_folderDoingCleanupInbox) {
-            PR_CEnterMonitor(m_folderDoingCleanupInbox);
-            PR_CNotifyAll(m_folderDoingCleanupInbox);
-            m_cleanupInboxInProgress = false;
-            PR_CExitMonitor(m_folderDoingCleanupInbox);
-            m_folderDoingCleanupInbox = nullptr;  // reset to nullptr
-          }
-          break;
-        case nsIImapUrl::nsImapDeleteAllMsgs:
-          if (m_folderDoingEmptyTrash) {
-            PR_CEnterMonitor(m_folderDoingEmptyTrash);
-            PR_CNotifyAll(m_folderDoingEmptyTrash);
-            m_emptyTrashInProgress = false;
-            PR_CExitMonitor(m_folderDoingEmptyTrash);
-            m_folderDoingEmptyTrash = nullptr;  // reset to nullptr;
-          }
-          break;
-        default:
-          break;
-      }
-    }
-  }
-  return NS_OK;
 }
 
 NS_IMETHODIMP
@@ -2285,7 +2350,7 @@ nsresult VirtualFolderChangeListener::Init() {
     nsCString searchTermString;
     dbFolderInfo->GetCharProperty("searchStr", searchTermString);
     nsCOMPtr<nsIMsgFilterService> filterService =
-        do_GetService(NS_MSGFILTERSERVICE_CONTRACTID, &rv);
+        do_GetService("@mozilla.org/messenger/services/filters;1", &rv);
     nsCOMPtr<nsIMsgFilterList> filterList;
     rv = filterService->GetTempFilterList(m_virtualFolder,
                                           getter_AddRefs(filterList));
@@ -2295,7 +2360,8 @@ nsresult VirtualFolderChangeListener::Init() {
     NS_ENSURE_SUCCESS(rv, rv);
     filterList->ParseCondition(tempFilter, searchTermString.get());
     NS_ENSURE_SUCCESS(rv, rv);
-    m_searchSession = do_CreateInstance(NS_MSGSEARCHSESSION_CONTRACTID, &rv);
+    m_searchSession =
+        do_CreateInstance("@mozilla.org/messenger/searchSession;1", &rv);
     NS_ENSURE_SUCCESS(rv, rv);
 
     nsTArray<RefPtr<nsIMsgSearchTerm>> searchTerms;
@@ -2324,8 +2390,8 @@ nsresult VirtualFolderChangeListener::Init() {
 
 NS_IMETHODIMP
 VirtualFolderChangeListener::OnHdrPropertyChanged(
-    nsIMsgDBHdr* aHdrChanged, bool aPreChange, uint32_t* aStatus,
-    nsIDBChangeListener* aInstigator) {
+    nsIMsgDBHdr* aHdrChanged, const nsACString& property, bool aPreChange,
+    uint32_t* aStatus, nsIDBChangeListener* aInstigator) {
   const uint32_t kMatch = 0x1;
   const uint32_t kRead = 0x2;
   const uint32_t kNew = 0x4;
@@ -2396,7 +2462,7 @@ VirtualFolderChangeListener::OnHdrPropertyChanged(
     dbFolderInfo->ChangeNumMessages(totalDelta);
     nsCString searchUri;
     m_virtualFolder->GetURI(searchUri);
-    msgDB->UpdateHdrInCache(searchUri.get(), aHdrChanged, totalDelta == 1);
+    msgDB->UpdateHdrInCache(searchUri, aHdrChanged, totalDelta == 1);
   }
 
   PostUpdateEvent(m_virtualFolder, virtDatabase);
@@ -2456,7 +2522,7 @@ NS_IMETHODIMP VirtualFolderChangeListener::OnHdrFlagsChanged(
     if (oldMatch != newMatch) {
       // bool isOpen = false;
       // nsCOMPtr<nsIMsgMailSession> mailSession =
-      //     do_GetService(NS_MSGMAILSESSION_CONTRACTID);
+      //     do_GetService("@mozilla.org/messenger/services/session;1");
       // if (mailSession && aFolder)
       //   mailSession->IsFolderOpenInWindow(m_virtualFolder, &isOpen);
       // we can't remove headers that no longer match - but we might add headers
@@ -2480,7 +2546,7 @@ NS_IMETHODIMP VirtualFolderChangeListener::OnHdrFlagsChanged(
     if (totalDelta) {
       nsCString searchUri;
       m_virtualFolder->GetURI(searchUri);
-      msgDB->UpdateHdrInCache(searchUri.get(), aHdrChanged, totalDelta == 1);
+      msgDB->UpdateHdrInCache(searchUri, aHdrChanged, totalDelta == 1);
     }
 
     PostUpdateEvent(m_virtualFolder, virtDatabase);
@@ -2529,7 +2595,7 @@ NS_IMETHODIMP VirtualFolderChangeListener::OnHdrDeleted(
 
     nsCString searchUri;
     m_virtualFolder->GetURI(searchUri);
-    msgDB->UpdateHdrInCache(searchUri.get(), aHdrDeleted, false);
+    msgDB->UpdateHdrInCache(searchUri, aHdrDeleted, false);
 
     PostUpdateEvent(m_virtualFolder, virtDatabase);
   }
@@ -2570,7 +2636,7 @@ NS_IMETHODIMP VirtualFolderChangeListener::OnHdrAdded(
     }
     nsCString searchUri;
     m_virtualFolder->GetURI(searchUri);
-    msgDB->UpdateHdrInCache(searchUri.get(), aNewHdr, true);
+    msgDB->UpdateHdrInCache(searchUri, aNewHdr, true);
     dbFolderInfo->ChangeNumMessages(1);
     PostUpdateEvent(m_virtualFolder, virtDatabase);
   }
@@ -2627,7 +2693,7 @@ nsresult nsMsgAccountManager::GetVirtualFoldersFile(nsCOMPtr<nsIFile>& aFile) {
                                        getter_AddRefs(profileDir));
   NS_ENSURE_SUCCESS(rv, rv);
 
-  rv = profileDir->AppendNative(nsDependentCString("virtualFolders.dat"));
+  rv = profileDir->AppendNative("virtualFolders.dat"_ns);
   if (NS_SUCCEEDED(rv)) aFile = profileDir;
   return rv;
 }
@@ -2641,113 +2707,128 @@ NS_IMETHODIMP nsMsgAccountManager::LoadVirtualFolders() {
 
   m_loadingVirtualFolders = true;
 
-  nsresult rv;
-  nsCOMPtr<nsIMsgDBService> msgDBService =
-      do_GetService(NS_MSGDB_SERVICE_CONTRACTID, &rv);
-  if (msgDBService) {
+  // Before loading virtual folders, ensure that all real folders exist.
+  // Some may not have been created yet, which would break virtual folders
+  // that depend on them.
+  nsTArray<RefPtr<nsIMsgIncomingServer>> allServers;
+  nsresult rv = GetAllServers(allServers);
+  NS_ENSURE_SUCCESS(rv, rv);
+  for (auto server : allServers) {
+    if (server) {
+      nsCOMPtr<nsIMsgFolder> rootFolder;
+      server->GetRootFolder(getter_AddRefs(rootFolder));
+      if (rootFolder) {
+        nsTArray<RefPtr<nsIMsgFolder>> dummy;
+        rootFolder->GetSubFolders(dummy);
+      }
+    }
+  }
+
+  if (!m_dbService) {
+    m_dbService = do_GetService("@mozilla.org/msgDatabase/msgDBService;1", &rv);
     NS_ENSURE_SUCCESS(rv, rv);
-    nsCOMPtr<nsIFileInputStream> fileStream =
-        do_CreateInstance(NS_LOCALFILEINPUTSTREAM_CONTRACTID, &rv);
-    NS_ENSURE_SUCCESS(rv, rv);
+  }
 
-    rv = fileStream->Init(file, PR_RDONLY, 0664, false);
-    nsCOMPtr<nsILineInputStream> lineInputStream(do_QueryInterface(fileStream));
+  nsCOMPtr<nsIFileInputStream> fileStream =
+      do_CreateInstance(NS_LOCALFILEINPUTSTREAM_CONTRACTID, &rv);
+  NS_ENSURE_SUCCESS(rv, rv);
 
-    bool isMore = true;
-    nsAutoCString buffer;
-    int32_t version = -1;
-    nsCOMPtr<nsIMsgFolder> virtualFolder;
-    nsCOMPtr<nsIDBFolderInfo> dbFolderInfo;
+  rv = fileStream->Init(file, PR_RDONLY, 0664, false);
+  nsCOMPtr<nsILineInputStream> lineInputStream(do_QueryInterface(fileStream));
 
-    while (isMore && NS_SUCCEEDED(lineInputStream->ReadLine(buffer, &isMore))) {
-      if (!buffer.IsEmpty()) {
-        if (version == -1) {
-          buffer.Cut(0, 8);
-          nsresult irv;
-          version = buffer.ToInteger(&irv);
-          continue;
-        }
-        if (StringBeginsWith(buffer, "uri="_ns)) {
-          buffer.Cut(0, 4);
-          dbFolderInfo = nullptr;
+  bool isMore = true;
+  nsAutoCString buffer;
+  int32_t version = -1;
+  nsCOMPtr<nsIMsgFolder> virtualFolder;
+  nsCOMPtr<nsIDBFolderInfo> dbFolderInfo;
 
-          rv = GetOrCreateFolder(buffer, getter_AddRefs(virtualFolder));
+  while (isMore && NS_SUCCEEDED(lineInputStream->ReadLine(buffer, &isMore))) {
+    if (!buffer.IsEmpty()) {
+      if (version == -1) {
+        buffer.Cut(0, 8);
+        nsresult irv;
+        version = buffer.ToInteger(&irv);
+        continue;
+      }
+      if (StringBeginsWith(buffer, "uri="_ns)) {
+        buffer.Cut(0, 4);
+        dbFolderInfo = nullptr;
+
+        rv = GetOrCreateFolder(buffer, getter_AddRefs(virtualFolder));
+        NS_ENSURE_SUCCESS(rv, rv);
+
+        virtualFolder->SetFlag(nsMsgFolderFlags::Virtual);
+
+        nsCOMPtr<nsIMsgFolder> grandParent;
+        nsCOMPtr<nsIMsgFolder> oldParent;
+        nsCOMPtr<nsIMsgFolder> parentFolder;
+        bool isServer;
+        // This loop handles creating virtual folders without an existing
+        // parent.
+        do {
+          // need to add the folder as a sub-folder of its parent.
+          int32_t lastSlash = buffer.RFindChar('/');
+          if (lastSlash == kNotFound) break;
+          nsDependentCSubstring parentUri(buffer, 0, lastSlash);
+          // hold a reference so it won't get deleted before it's parented.
+          oldParent = parentFolder;
+
+          rv = GetOrCreateFolder(parentUri, getter_AddRefs(parentFolder));
           NS_ENSURE_SUCCESS(rv, rv);
 
-          virtualFolder->SetFlag(nsMsgFolderFlags::Virtual);
+          nsAutoString currentFolderNameStr;
+          nsAutoCString currentFolderNameCStr;
+          MsgUnescapeString(
+              nsCString(Substring(buffer, lastSlash + 1, buffer.Length())), 0,
+              currentFolderNameCStr);
+          CopyUTF8toUTF16(currentFolderNameCStr, currentFolderNameStr);
+          nsCOMPtr<nsIMsgFolder> childFolder;
+          nsCOMPtr<nsIMsgDatabase> db;
+          // force db to get created.
+          // XXX TODO: is this SetParent() right? Won't it screw up if virtual
+          // folder is nested >2 deep? Leave for now, but revisit when getting
+          // rid of dangling folders (BenC).
+          virtualFolder->SetParent(parentFolder);
+          rv = virtualFolder->GetMsgDatabase(getter_AddRefs(db));
+          if (rv == NS_MSG_ERROR_FOLDER_SUMMARY_MISSING)
+            m_dbService->CreateNewDB(virtualFolder, getter_AddRefs(db));
+          if (db)
+            rv = db->GetDBFolderInfo(getter_AddRefs(dbFolderInfo));
+          else
+            break;
 
-          nsCOMPtr<nsIMsgFolder> grandParent;
-          nsCOMPtr<nsIMsgFolder> oldParent;
-          nsCOMPtr<nsIMsgFolder> parentFolder;
-          bool isServer;
-          // This loop handles creating virtual folders without an existing
-          // parent.
-          do {
-            // need to add the folder as a sub-folder of its parent.
-            int32_t lastSlash = buffer.RFindChar('/');
-            if (lastSlash == kNotFound) break;
-            nsDependentCSubstring parentUri(buffer, 0, lastSlash);
-            // hold a reference so it won't get deleted before it's parented.
-            oldParent = parentFolder;
-
-            rv = GetOrCreateFolder(parentUri, getter_AddRefs(parentFolder));
-            NS_ENSURE_SUCCESS(rv, rv);
-
-            nsAutoString currentFolderNameStr;
-            nsAutoCString currentFolderNameCStr;
-            MsgUnescapeString(
-                nsCString(Substring(buffer, lastSlash + 1, buffer.Length())), 0,
-                currentFolderNameCStr);
-            CopyUTF8toUTF16(currentFolderNameCStr, currentFolderNameStr);
-            nsCOMPtr<nsIMsgFolder> childFolder;
-            nsCOMPtr<nsIMsgDatabase> db;
-            // force db to get created.
-            // XXX TODO: is this SetParent() right? Won't it screw up if virtual
-            // folder is nested >2 deep? Leave for now, but revisit when getting
-            // rid of dangling folders (BenC).
-            virtualFolder->SetParent(parentFolder);
-            rv = virtualFolder->GetMsgDatabase(getter_AddRefs(db));
-            if (rv == NS_MSG_ERROR_FOLDER_SUMMARY_MISSING)
-              msgDBService->CreateNewDB(virtualFolder, getter_AddRefs(db));
-            if (db)
-              rv = db->GetDBFolderInfo(getter_AddRefs(dbFolderInfo));
-            else
-              break;
-
-            parentFolder->AddSubfolder(currentFolderNameStr,
-                                       getter_AddRefs(childFolder));
-            if (childFolder) parentFolder->NotifyItemAdded(childFolder);
-            // here we make sure if our parent is rooted - if not, we're
-            // going to loop and add our parent as a child of its grandparent
-            // and repeat until we get to the server, or a folder that
-            // has its parent set.
-            parentFolder->GetParent(getter_AddRefs(grandParent));
-            parentFolder->GetIsServer(&isServer);
-            buffer.SetLength(lastSlash);
-          } while (!grandParent && !isServer);
-        } else if (dbFolderInfo && StringBeginsWith(buffer, "scope="_ns)) {
-          buffer.Cut(0, 6);
-          // if this is a cross folder virtual folder, we have a list of folders
-          // uris, and we have to add a pending listener for each of them.
-          if (!buffer.IsEmpty()) {
-            ParseAndVerifyVirtualFolderScope(buffer);
-            dbFolderInfo->SetCharProperty(kSearchFolderUriProp, buffer);
-            AddVFListenersForVF(virtualFolder, buffer, msgDBService);
-          }
-        } else if (dbFolderInfo && StringBeginsWith(buffer, "terms="_ns)) {
-          buffer.Cut(0, 6);
-          dbFolderInfo->SetCharProperty("searchStr", buffer);
-        } else if (dbFolderInfo &&
-                   StringBeginsWith(buffer, "searchOnline="_ns)) {
-          buffer.Cut(0, 13);
-          dbFolderInfo->SetBooleanProperty("searchOnline",
-                                           buffer.EqualsLiteral("true"));
-        } else if (dbFolderInfo &&
-                   Substring(buffer, 0, SEARCH_FOLDER_FLAG_LEN + 1)
-                       .Equals(SEARCH_FOLDER_FLAG "=")) {
-          buffer.Cut(0, SEARCH_FOLDER_FLAG_LEN + 1);
-          dbFolderInfo->SetCharProperty(SEARCH_FOLDER_FLAG, buffer);
+          parentFolder->AddSubfolder(currentFolderNameStr,
+                                     getter_AddRefs(childFolder));
+          if (childFolder) parentFolder->NotifyFolderAdded(childFolder);
+          // here we make sure if our parent is rooted - if not, we're
+          // going to loop and add our parent as a child of its grandparent
+          // and repeat until we get to the server, or a folder that
+          // has its parent set.
+          parentFolder->GetParent(getter_AddRefs(grandParent));
+          parentFolder->GetIsServer(&isServer);
+          buffer.SetLength(lastSlash);
+        } while (!grandParent && !isServer);
+      } else if (dbFolderInfo && StringBeginsWith(buffer, "scope="_ns)) {
+        buffer.Cut(0, 6);
+        // if this is a cross folder virtual folder, we have a list of folders
+        // uris, and we have to add a pending listener for each of them.
+        if (!buffer.IsEmpty()) {
+          ParseAndVerifyVirtualFolderScope(buffer);
+          dbFolderInfo->SetCharProperty(kSearchFolderUriProp, buffer);
+          AddVFListenersForVF(virtualFolder, buffer);
         }
+      } else if (dbFolderInfo && StringBeginsWith(buffer, "terms="_ns)) {
+        buffer.Cut(0, 6);
+        dbFolderInfo->SetCharProperty("searchStr", buffer);
+      } else if (dbFolderInfo && StringBeginsWith(buffer, "searchOnline="_ns)) {
+        buffer.Cut(0, 13);
+        dbFolderInfo->SetBooleanProperty("searchOnline",
+                                         buffer.EqualsLiteral("true"));
+      } else if (dbFolderInfo &&
+                 Substring(buffer, 0, SEARCH_FOLDER_FLAG_LEN + 1)
+                     .Equals(SEARCH_FOLDER_FLAG "=")) {
+        buffer.Cut(0, SEARCH_FOLDER_FLAG_LEN + 1);
+        dbFolderInfo->SetCharProperty(SEARCH_FOLDER_FLAG, buffer);
       }
     }
   }
@@ -2848,6 +2929,11 @@ nsresult nsMsgAccountManager::WriteLineToOutputStream(
  * @param buffer On input, list of folder uri's, on output, verified list.
  */
 void nsMsgAccountManager::ParseAndVerifyVirtualFolderScope(nsCString& buffer) {
+  if (buffer.Equals("*")) {
+    // This is a special virtual folder that searches all folders in all
+    // accounts. Folders are chosen by the front end at search time.
+    return;
+  }
   nsCString verifiedFolders;
   nsTArray<nsCString> folderUris;
   ParseString(buffer, '|', folderUris);
@@ -2872,14 +2958,26 @@ void nsMsgAccountManager::ParseAndVerifyVirtualFolderScope(nsCString& buffer) {
 
 // This conveniently works to add a single folder as well.
 nsresult nsMsgAccountManager::AddVFListenersForVF(
-    nsIMsgFolder* virtualFolder, const nsCString& srchFolderUris,
-    nsIMsgDBService* msgDBService) {
+    nsIMsgFolder* virtualFolder, const nsCString& srchFolderUris) {
+  if (srchFolderUris.Equals("*")) {
+    return NS_OK;
+  }
+
+  nsresult rv;
+  if (!m_dbService) {
+    m_dbService = do_GetService("@mozilla.org/msgDatabase/msgDBService;1", &rv);
+    NS_ENSURE_SUCCESS(rv, rv);
+  }
+
+  // Avoid any possible duplicate listeners for this virtual folder.
+  RemoveVFListenerForVF(virtualFolder, nullptr);
+
   nsTArray<nsCString> folderUris;
   ParseString(srchFolderUris, '|', folderUris);
 
   for (uint32_t i = 0; i < folderUris.Length(); i++) {
     nsCOMPtr<nsIMsgFolder> realFolder;
-    nsresult rv = GetOrCreateFolder(folderUris[i], getter_AddRefs(realFolder));
+    rv = GetOrCreateFolder(folderUris[i], getter_AddRefs(realFolder));
     NS_ENSURE_SUCCESS(rv, rv);
     RefPtr<VirtualFolderChangeListener> dbListener =
         new VirtualFolderChangeListener();
@@ -2891,7 +2989,10 @@ nsresult nsMsgAccountManager::AddVFListenersForVF(
       continue;
     }
     m_virtualFolderListeners.AppendElement(dbListener);
-    msgDBService->RegisterPendingListener(realFolder, dbListener);
+    m_dbService->RegisterPendingListener(realFolder, dbListener);
+  }
+  if (!m_virtualFolders.Contains(virtualFolder)) {
+    m_virtualFolders.AppendElement(virtualFolder);
   }
   return NS_OK;
 }
@@ -2901,9 +3002,10 @@ nsresult nsMsgAccountManager::AddVFListenersForVF(
 nsresult nsMsgAccountManager::RemoveVFListenerForVF(nsIMsgFolder* virtualFolder,
                                                     nsIMsgFolder* folder) {
   nsresult rv;
-  nsCOMPtr<nsIMsgDBService> msgDBService(
-      do_GetService(NS_MSGDB_SERVICE_CONTRACTID, &rv));
-  NS_ENSURE_SUCCESS(rv, rv);
+  if (!m_dbService) {
+    m_dbService = do_GetService("@mozilla.org/msgDatabase/msgDBService;1", &rv);
+    NS_ENSURE_SUCCESS(rv, rv);
+  }
 
   nsTObserverArray<RefPtr<VirtualFolderChangeListener>>::ForwardIterator iter(
       m_virtualFolderListeners);
@@ -2911,11 +3013,13 @@ nsresult nsMsgAccountManager::RemoveVFListenerForVF(nsIMsgFolder* virtualFolder,
 
   while (iter.HasMore()) {
     listener = iter.GetNext();
-    if (listener->m_folderWatching == folder &&
-        listener->m_virtualFolder == virtualFolder) {
-      msgDBService->UnregisterPendingListener(listener);
+    if (listener->m_virtualFolder == virtualFolder &&
+        (!folder || listener->m_folderWatching == folder)) {
+      m_dbService->UnregisterPendingListener(listener);
       m_virtualFolderListeners.RemoveElement(listener);
-      break;
+      if (folder) {
+        break;
+      }
     }
   }
   return NS_OK;
@@ -2942,19 +3046,24 @@ NS_IMETHODIMP nsMsgAccountManager::GetAllFolders(
   return NS_OK;
 }
 
-NS_IMETHODIMP nsMsgAccountManager::OnItemAdded(nsIMsgFolder* parentItem,
-                                               nsISupports* item) {
-  nsCOMPtr<nsIMsgFolder> folder = do_QueryInterface(item);
-  // just kick out with a success code if the item in question is not a folder
-  if (!folder) return NS_OK;
+NS_IMETHODIMP nsMsgAccountManager::OnFolderAdded(nsIMsgFolder* parent,
+                                                 nsIMsgFolder* folder) {
+  if (!parent) {
+    // This method gets called for folders that aren't connected to anything,
+    // such as a junk folder that appears when an IMAP account is created. We
+    // don't want these added to the virtual folder.
+    return NS_OK;
+  }
 
   uint32_t folderFlags;
   folder->GetFlags(&folderFlags);
+
   bool addToSmartFolders = false;
-  folder->IsSpecialFolder(
-      nsMsgFolderFlags::Inbox | nsMsgFolderFlags::Templates |
-          nsMsgFolderFlags::Trash | nsMsgFolderFlags::Drafts,
-      false, &addToSmartFolders);
+  folder->IsSpecialFolder(nsMsgFolderFlags::Inbox |
+                              nsMsgFolderFlags::Templates |
+                              nsMsgFolderFlags::Trash |
+                              nsMsgFolderFlags::Drafts | nsMsgFolderFlags::Junk,
+                          false, &addToSmartFolders);
   // For Sent/Archives/Trash, we treat sub-folders of those folders as
   // "special", and want to add them the smart folders search scope.
   // So we check if this is a sub-folder of one of those special folders
@@ -2982,16 +3091,11 @@ NS_IMETHODIMP nsMsgAccountManager::OnItemAdded(nsIMsgFolder* parentItem,
   // folders with this flag, and if so, add this folder to the scope.
   if (addToSmartFolders) {
     // quick way to enumerate the saved searches.
-    nsTObserverArray<RefPtr<VirtualFolderChangeListener>>::ForwardIterator iter(
-        m_virtualFolderListeners);
-    RefPtr<VirtualFolderChangeListener> listener;
-
-    while (iter.HasMore()) {
-      listener = iter.GetNext();
+    for (nsCOMPtr<nsIMsgFolder> virtualFolder : m_virtualFolders) {
       nsCOMPtr<nsIMsgDatabase> db;
       nsCOMPtr<nsIDBFolderInfo> dbFolderInfo;
-      listener->m_virtualFolder->GetDBFolderInfoAndDB(
-          getter_AddRefs(dbFolderInfo), getter_AddRefs(db));
+      virtualFolder->GetDBFolderInfoAndDB(getter_AddRefs(dbFolderInfo),
+                                          getter_AddRefs(db));
       if (dbFolderInfo) {
         uint32_t vfFolderFlag;
         dbFolderInfo->GetUint32Property("searchFolderFlag", 0, &vfFolderFlag);
@@ -3007,62 +3111,114 @@ NS_IMETHODIMP nsMsgAccountManager::OnItemAdded(nsIMsgFolder* parentItem,
           }
           nsCString folderURI;
           folder->GetURI(folderURI);
+          folderURI.Insert('|', 0);
+          folderURI.Append('|');
 
           int32_t index = searchURI.Find(folderURI);
           if (index == kNotFound) {
             searchURI.Cut(0, 1);
+            folderURI.Cut(0, 1);
+            folderURI.SetLength(folderURI.Length() - 1);
             searchURI.Append(folderURI);
             dbFolderInfo->SetCharProperty(kSearchFolderUriProp, searchURI);
-            break;
+            nsCOMPtr<nsIObserverService> obs =
+                mozilla::services::GetObserverService();
+            obs->NotifyObservers(virtualFolder, "search-folders-changed",
+                                 nullptr);
           }
-          // New sent or archive folder, need to add sub-folders to smart
-          // folder.
-          if (vfFolderFlag &
-              (nsMsgFolderFlags::Archive | nsMsgFolderFlags::SentMail)) {
-            nsTArray<RefPtr<nsIMsgFolder>> allDescendants;
-            rv = folder->GetDescendants(allDescendants);
-            NS_ENSURE_SUCCESS(rv, rv);
 
-            nsCOMPtr<nsIMsgFolder> parent;
-            for (auto subFolder : allDescendants) {
-              subFolder->GetParent(getter_AddRefs(parent));
-              OnItemAdded(parent, subFolder);
-            }
+          // Add sub-folders to smart folder.
+          nsTArray<RefPtr<nsIMsgFolder>> allDescendants;
+          rv = folder->GetDescendants(allDescendants);
+          NS_ENSURE_SUCCESS(rv, rv);
+
+          nsCOMPtr<nsIMsgFolder> parentFolder;
+          for (auto subFolder : allDescendants) {
+            subFolder->GetParent(getter_AddRefs(parentFolder));
+            OnFolderAdded(parentFolder, subFolder);
           }
         }
       }
     }
   }
+
+  // Find any virtual folders that search `parent`, and add `folder` to them.
+  if (!(folderFlags & nsMsgFolderFlags::Virtual)) {
+    nsTObserverArray<RefPtr<VirtualFolderChangeListener>>::ForwardIterator iter(
+        m_virtualFolderListeners);
+    RefPtr<VirtualFolderChangeListener> listener;
+
+    while (iter.HasMore()) {
+      listener = iter.GetNext();
+      if (listener->m_folderWatching == parent) {
+        nsCOMPtr<nsIMsgDatabase> db;
+        nsCOMPtr<nsIDBFolderInfo> dbFolderInfo;
+        listener->m_virtualFolder->GetDBFolderInfoAndDB(
+            getter_AddRefs(dbFolderInfo), getter_AddRefs(db));
+
+        uint32_t vfFolderFlag;
+        dbFolderInfo->GetUint32Property("searchFolderFlag", 0, &vfFolderFlag);
+        if (addToSmartFolders && vfFolderFlag &&
+            !(vfFolderFlag & nsMsgFolderFlags::Trash)) {
+          // Don't add folders of one type to the unified folder of another
+          // type, unless it's the Trash unified folder.
+          continue;
+        }
+        nsCString searchURI;
+        dbFolderInfo->GetCharProperty(kSearchFolderUriProp, searchURI);
+
+        // "normalize" searchURI so we can search for |folderURI|.
+        if (!searchURI.IsEmpty()) {
+          searchURI.Insert('|', 0);
+          searchURI.Append('|');
+        }
+        nsCString folderURI;
+        folder->GetURI(folderURI);
+
+        int32_t index = searchURI.Find(folderURI);
+        if (index == kNotFound) {
+          searchURI.Cut(0, 1);
+          searchURI.Append(folderURI);
+          dbFolderInfo->SetCharProperty(kSearchFolderUriProp, searchURI);
+          nsCOMPtr<nsIObserverService> obs =
+              mozilla::services::GetObserverService();
+          obs->NotifyObservers(listener->m_virtualFolder,
+                               "search-folders-changed", nullptr);
+        }
+      }
+    }
+  }
+
   // need to make sure this isn't happening during loading of virtualfolders.dat
   if (folderFlags & nsMsgFolderFlags::Virtual && !m_loadingVirtualFolders) {
     // When a new virtual folder is added, need to create a db Listener for it.
-    nsCOMPtr<nsIMsgDBService> msgDBService =
-        do_GetService(NS_MSGDB_SERVICE_CONTRACTID, &rv);
-    if (msgDBService) {
-      nsCOMPtr<nsIMsgDatabase> virtDatabase;
-      nsCOMPtr<nsIDBFolderInfo> dbFolderInfo;
-      rv = folder->GetDBFolderInfoAndDB(getter_AddRefs(dbFolderInfo),
-                                        getter_AddRefs(virtDatabase));
-      NS_ENSURE_SUCCESS(rv, rv);
-      nsCString srchFolderUri;
-      dbFolderInfo->GetCharProperty(kSearchFolderUriProp, srchFolderUri);
-      AddVFListenersForVF(folder, srchFolderUri, msgDBService);
-    }
+    nsCOMPtr<nsIMsgDatabase> virtDatabase;
+    nsCOMPtr<nsIDBFolderInfo> dbFolderInfo;
+    rv = folder->GetDBFolderInfoAndDB(getter_AddRefs(dbFolderInfo),
+                                      getter_AddRefs(virtDatabase));
+    NS_ENSURE_SUCCESS(rv, rv);
+    nsCString srchFolderUri;
+    dbFolderInfo->GetCharProperty(kSearchFolderUriProp, srchFolderUri);
+    AddVFListenersForVF(folder, srchFolderUri);
     rv = SaveVirtualFolders();
   }
   return rv;
 }
 
-NS_IMETHODIMP nsMsgAccountManager::OnItemRemoved(nsIMsgFolder* parentItem,
-                                                 nsISupports* item) {
-  nsCOMPtr<nsIMsgFolder> folder = do_QueryInterface(item);
-  // just kick out with a success code if the item in question is not a folder
-  if (!folder) return NS_OK;
+NS_IMETHODIMP nsMsgAccountManager::OnMessageAdded(nsIMsgFolder* parent,
+                                                  nsIMsgDBHdr* msg) {
+  return NS_OK;
+}
+
+NS_IMETHODIMP nsMsgAccountManager::OnFolderRemoved(nsIMsgFolder* parentFolder,
+                                                   nsIMsgFolder* folder) {
   nsresult rv = NS_OK;
   uint32_t folderFlags;
   folder->GetFlags(&folderFlags);
   // if we removed a VF, flush VF list to disk.
   if (folderFlags & nsMsgFolderFlags::Virtual) {
+    RemoveVFListenerForVF(folder, nullptr);
+    m_virtualFolders.RemoveElement(folder);
     rv = SaveVirtualFolders();
     // clear flags on deleted folder if it's a virtual folder, so that creating
     // a new folder with the same name doesn't cause confusion.
@@ -3107,8 +3263,12 @@ NS_IMETHODIMP nsMsgAccountManager::OnItemRemoved(nsIMsgFolder* parentItem,
         // remove last '|' we added
         searchURI.SetLength(searchURI.Length() - 1);
 
-        // if saved search is empty now, delete it.
-        if (searchURI.IsEmpty()) {
+        uint32_t vfFolderFlag;
+        dbFolderInfo->GetUint32Property("searchFolderFlag", 0, &vfFolderFlag);
+
+        // If saved search is empty now, delete it. But not if it's a smart
+        // folder.
+        if (searchURI.IsEmpty() && !vfFolderFlag) {
           db = nullptr;
           dbFolderInfo = nullptr;
 
@@ -3117,11 +3277,17 @@ NS_IMETHODIMP nsMsgAccountManager::OnItemRemoved(nsIMsgFolder* parentItem,
           NS_ENSURE_SUCCESS(rv, rv);
 
           if (!parent) continue;
-          parent->PropagateDelete(savedSearch, true, nullptr);
+          parent->PropagateDelete(savedSearch, true);
         } else {
-          // remove leading '|' we added (or one after |folderURI, if first URI)
-          searchURI.Cut(0, 1);
+          if (!searchURI.IsEmpty()) {
+            // Remove leading '|' we added (or one after |folderURI, if first
+            // URI).
+            searchURI.Cut(0, 1);
+          }
           dbFolderInfo->SetCharProperty(kSearchFolderUriProp, searchURI);
+          nsCOMPtr<nsIObserverService> obs =
+              mozilla::services::GetObserverService();
+          obs->NotifyObservers(savedSearch, "search-folders-changed", nullptr);
         }
       }
     }
@@ -3130,39 +3296,54 @@ NS_IMETHODIMP nsMsgAccountManager::OnItemRemoved(nsIMsgFolder* parentItem,
   return rv;
 }
 
-NS_IMETHODIMP nsMsgAccountManager::OnItemPropertyChanged(
-    nsIMsgFolder* item, const nsACString& property, const nsACString& oldValue,
-    const nsACString& newValue) {
+NS_IMETHODIMP nsMsgAccountManager::OnMessageRemoved(nsIMsgFolder* parent,
+                                                    nsIMsgDBHdr* msg) {
+  return NS_OK;
+}
+
+NS_IMETHODIMP nsMsgAccountManager::OnFolderPropertyChanged(
+    nsIMsgFolder* folder, const nsACString& property,
+    const nsACString& oldValue, const nsACString& newValue) {
   return NS_ERROR_NOT_IMPLEMENTED;
 }
 
 NS_IMETHODIMP
-nsMsgAccountManager::OnItemIntPropertyChanged(nsIMsgFolder* aFolder,
-                                              const nsACString& aProperty,
-                                              int64_t oldValue,
-                                              int64_t newValue) {
+nsMsgAccountManager::OnFolderIntPropertyChanged(nsIMsgFolder* aFolder,
+                                                const nsACString& aProperty,
+                                                int64_t oldValue,
+                                                int64_t newValue) {
   if (aProperty.Equals(kFolderFlag)) {
+    if (newValue & nsMsgFolderFlags::Virtual) {
+      // This is a virtual folder, let's get out of here.
+      return NS_OK;
+    }
     uint32_t smartFlagsChanged =
         (oldValue ^ newValue) &
         (nsMsgFolderFlags::SpecialUse & ~nsMsgFolderFlags::Queue);
     if (smartFlagsChanged) {
       if (smartFlagsChanged & newValue) {
-        // if the smart folder flag was set, calling OnItemAdded will
+        // if the smart folder flag was set, calling OnFolderAdded will
         // do the right thing.
         nsCOMPtr<nsIMsgFolder> parent;
         aFolder->GetParent(getter_AddRefs(parent));
-        return OnItemAdded(parent, aFolder);
+        nsresult rv = OnFolderAdded(parent, aFolder);
+        NS_ENSURE_SUCCESS(rv, rv);
+
+        // This folder has one of the smart folder flags.
+        // Remove it from any other smart folders it might've been included in
+        // because of the flags of its ancestors.
+        RemoveFolderFromSmartFolder(
+            aFolder, (nsMsgFolderFlags::SpecialUse & ~nsMsgFolderFlags::Queue) &
+                         ~newValue);
+        return NS_OK;
       }
       RemoveFolderFromSmartFolder(aFolder, smartFlagsChanged);
-      // sent|archive flag removed, remove sub-folders from smart folder.
-      if (smartFlagsChanged &
-          (nsMsgFolderFlags::Archive | nsMsgFolderFlags::SentMail)) {
-        nsTArray<RefPtr<nsIMsgFolder>> allDescendants;
-        nsresult rv = aFolder->GetDescendants(allDescendants);
-        NS_ENSURE_SUCCESS(rv, rv);
-        for (auto subFolder : allDescendants) {
-          RemoveFolderFromSmartFolder(subFolder, smartFlagsChanged);
-        }
+
+      nsTArray<RefPtr<nsIMsgFolder>> allDescendants;
+      nsresult rv = aFolder->GetDescendants(allDescendants);
+      NS_ENSURE_SUCCESS(rv, rv);
+      for (auto subFolder : allDescendants) {
+        RemoveFolderFromSmartFolder(subFolder, smartFlagsChanged);
       }
     }
   }
@@ -3180,16 +3361,11 @@ nsresult nsMsgAccountManager::RemoveFolderFromSmartFolder(
   NS_ASSERTION(!(flags & flagsChanged), "smart folder flag should not be set");
   // Flag was removed. Look for smart folder based on that flag,
   // and remove this folder from its scope.
-  nsTObserverArray<RefPtr<VirtualFolderChangeListener>>::ForwardIterator iter(
-      m_virtualFolderListeners);
-  RefPtr<VirtualFolderChangeListener> listener;
-
-  while (iter.HasMore()) {
-    listener = iter.GetNext();
+  for (nsCOMPtr<nsIMsgFolder> virtualFolder : m_virtualFolders) {
     nsCOMPtr<nsIMsgDatabase> db;
     nsCOMPtr<nsIDBFolderInfo> dbFolderInfo;
-    listener->m_virtualFolder->GetDBFolderInfoAndDB(
-        getter_AddRefs(dbFolderInfo), getter_AddRefs(db));
+    virtualFolder->GetDBFolderInfoAndDB(getter_AddRefs(dbFolderInfo),
+                                        getter_AddRefs(db));
     if (dbFolderInfo) {
       uint32_t vfFolderFlag;
       dbFolderInfo->GetUint32Property("searchFolderFlag", 0, &vfFolderFlag);
@@ -3202,7 +3378,7 @@ nsresult nsMsgAccountManager::RemoveFolderFromSmartFolder(
         searchURI.Append('|');
         int32_t index = searchURI.Find(removedFolderURI);
         if (index != kNotFound) {
-          RemoveVFListenerForVF(listener->m_virtualFolder, aFolder);
+          RemoveVFListenerForVF(virtualFolder, aFolder);
 
           // remove |folderURI
           searchURI.Cut(index, removedFolderURI.Length() - 1);
@@ -3212,6 +3388,10 @@ nsresult nsMsgAccountManager::RemoveFolderFromSmartFolder(
           // remove leading '|' we added (or one after |folderURI, if first URI)
           searchURI.Cut(0, 1);
           dbFolderInfo->SetCharProperty(kSearchFolderUriProp, searchURI);
+          nsCOMPtr<nsIObserverService> obs =
+              mozilla::services::GetObserverService();
+          obs->NotifyObservers(virtualFolder, "search-folders-changed",
+                               nullptr);
         }
       }
     }
@@ -3219,60 +3399,27 @@ nsresult nsMsgAccountManager::RemoveFolderFromSmartFolder(
   return NS_OK;
 }
 
-NS_IMETHODIMP nsMsgAccountManager::OnItemBoolPropertyChanged(
-    nsIMsgFolder* item, const nsACString& property, bool oldValue,
+NS_IMETHODIMP nsMsgAccountManager::OnFolderBoolPropertyChanged(
+    nsIMsgFolder* folder, const nsACString& property, bool oldValue,
     bool newValue) {
   return NS_ERROR_NOT_IMPLEMENTED;
 }
 
-NS_IMETHODIMP nsMsgAccountManager::OnItemUnicharPropertyChanged(
-    nsIMsgFolder* item, const nsACString& property, const nsAString& oldValue,
+NS_IMETHODIMP nsMsgAccountManager::OnFolderUnicharPropertyChanged(
+    nsIMsgFolder* folder, const nsACString& property, const nsAString& oldValue,
     const nsAString& newValue) {
   return NS_ERROR_NOT_IMPLEMENTED;
 }
 
-NS_IMETHODIMP nsMsgAccountManager::OnItemPropertyFlagChanged(
-    nsIMsgDBHdr* item, const nsACString& property, uint32_t oldFlag,
+NS_IMETHODIMP nsMsgAccountManager::OnFolderPropertyFlagChanged(
+    nsIMsgDBHdr* msg, const nsACString& property, uint32_t oldFlag,
     uint32_t newFlag) {
   return NS_ERROR_NOT_IMPLEMENTED;
 }
 
-NS_IMETHODIMP nsMsgAccountManager::OnItemEvent(nsIMsgFolder* aFolder,
-                                               const nsACString& aEvent) {
+NS_IMETHODIMP nsMsgAccountManager::OnFolderEvent(nsIMsgFolder* aFolder,
+                                                 const nsACString& aEvent) {
   return NS_ERROR_NOT_IMPLEMENTED;
-}
-
-NS_IMETHODIMP
-nsMsgAccountManager::FolderUriForPath(nsIFile* aLocalPath,
-                                      nsACString& aMailboxUri) {
-  NS_ENSURE_ARG_POINTER(aLocalPath);
-  bool equals;
-  if (m_lastPathLookedUp &&
-      NS_SUCCEEDED(aLocalPath->Equals(m_lastPathLookedUp, &equals)) && equals) {
-    aMailboxUri = m_lastFolderURIForPath;
-    return NS_OK;
-  }
-  nsTArray<RefPtr<nsIMsgFolder>> folders;
-  nsresult rv = GetAllFolders(folders);
-  NS_ENSURE_SUCCESS(rv, rv);
-
-  for (auto folder : folders) {
-    nsCOMPtr<nsIFile> folderPath;
-    rv = folder->GetFilePath(getter_AddRefs(folderPath));
-    NS_ENSURE_SUCCESS(rv, rv);
-
-    // Check if we're equal
-    rv = folderPath->Equals(aLocalPath, &equals);
-    NS_ENSURE_SUCCESS(rv, rv);
-
-    if (equals) {
-      rv = folder->GetURI(aMailboxUri);
-      m_lastFolderURIForPath = aMailboxUri;
-      aLocalPath->Clone(getter_AddRefs(m_lastPathLookedUp));
-      return rv;
-    }
-  }
-  return NS_ERROR_FAILURE;
 }
 
 NS_IMETHODIMP

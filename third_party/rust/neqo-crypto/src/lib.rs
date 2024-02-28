@@ -73,15 +73,11 @@ use std::ffi::CString;
 use std::path::{Path, PathBuf};
 use std::ptr::null;
 
-const MINIMUM_NSS_VERSION: &str = "3.66";
+const MINIMUM_NSS_VERSION: &str = "3.74";
 
 #[allow(non_upper_case_globals, clippy::redundant_static_lifetimes)]
-#[allow(
-    unknown_lints,
-    renamed_and_removed_lints,
-    clippy::unknown_clippy_lints,
-    clippy::upper_case_acronyms
-)] // Until we require rust 1.51.
+#[allow(clippy::upper_case_acronyms)]
+#[allow(unknown_lints, clippy::borrow_as_ptr)]
 mod nss {
     include!(concat!(env!("OUT_DIR"), "/nss_init.rs"));
 }
@@ -100,7 +96,9 @@ enum NssLoaded {
 impl Drop for NssLoaded {
     fn drop(&mut self) {
         if !matches!(self, Self::External) {
-            unsafe { secstatus_to_res(nss::NSS_Shutdown()).expect("NSS Shutdown failed") }
+            unsafe {
+                secstatus_to_res(nss::NSS_Shutdown()).expect("NSS Shutdown failed");
+            }
         }
     }
 }
@@ -147,8 +145,8 @@ pub fn init() {
 #[cfg(debug_assertions)]
 fn enable_ssl_trace() {
     let opt = ssl::Opt::Locking.as_int();
-    let mut _v: ::std::os::raw::c_int = 0;
-    secstatus_to_res(unsafe { ssl::SSL_OptionGetDefault(opt, &mut _v) })
+    let mut v: ::std::os::raw::c_int = 0;
+    secstatus_to_res(unsafe { ssl::SSL_OptionGetDefault(opt, &mut v) })
         .expect("SSL_OptionGetDefault failed");
 }
 

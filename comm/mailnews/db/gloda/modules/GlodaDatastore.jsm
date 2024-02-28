@@ -9,8 +9,6 @@
 
 const EXPORTED_SYMBOLS = ["GlodaDatastore"];
 
-const { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-
 const {
   GlodaAttributeDBDef,
   GlodaConversation,
@@ -24,6 +22,9 @@ const { GlodaDatabind } = ChromeUtils.import(
 );
 const { GlodaCollection, GlodaCollectionManager } = ChromeUtils.import(
   "resource:///modules/gloda/Collection.jsm"
+);
+const { GlodaConstants } = ChromeUtils.import(
+  "resource:///modules/gloda/GlodaConstants.jsm"
 );
 
 var MIN_CACHE_SIZE = 8 * 1048576;
@@ -192,9 +193,11 @@ function QueryFromQueryCallback(aStatement, aNounDef, aCollection) {
 
   // the master collection holds the referencesByNounID
   this.referencesByNounID = {};
-  this.masterReferencesByNounID = this.collection.masterCollection.referencesByNounID;
+  this.masterReferencesByNounID =
+    this.collection.masterCollection.referencesByNounID;
   this.inverseReferencesByNounID = {};
-  this.masterInverseReferencesByNounID = this.collection.masterCollection.inverseReferencesByNounID;
+  this.masterInverseReferencesByNounID =
+    this.collection.masterCollection.inverseReferencesByNounID;
   // we need to contribute our references as we load things; we need this
   //  because of the potential for circular dependencies and our inability to
   //  put things into the caching layer (or collection's _idMap) until we have
@@ -206,9 +209,8 @@ function QueryFromQueryCallback(aStatement, aNounDef, aCollection) {
   }
   if (this.nounDef.parentColumnAttr) {
     if (this.nounDef.id in this.masterInverseReferencesByNounID) {
-      this.selfInverseReferences = this.masterInverseReferencesByNounID[
-        this.nounDef.id
-      ];
+      this.selfInverseReferences =
+        this.masterInverseReferencesByNounID[this.nounDef.id];
     } else {
       this.selfInverseReferences = this.masterInverseReferencesByNounID[
         this.nounDef.id
@@ -339,22 +341,18 @@ QueryFromQueryCallback.prototype = {
             } else {
               outReferences = masterReferences;
             }
-            let [
-              ,
-              notFoundCount,
-              notFound,
-            ] = GlodaCollectionManager.cacheLookupMany(
-              nounDef.id,
-              references,
-              outReferences
-            );
+            let [, notFoundCount, notFound] =
+              GlodaCollectionManager.cacheLookupMany(
+                nounDef.id,
+                references,
+                outReferences
+              );
 
             if (nounDef.parentColumnAttr) {
               let inverseReferences;
               if (nounDef.id in this.masterInverseReferencesByNounID) {
-                inverseReferences = this.masterInverseReferencesByNounID[
-                  nounDef.id
-                ];
+                inverseReferences =
+                  this.masterInverseReferencesByNounID[nounDef.id];
               } else {
                 inverseReferences = this.masterInverseReferencesByNounID[
                   nounDef.id
@@ -387,16 +385,15 @@ QueryFromQueryCallback.prototype = {
                 nounDef.id in this.collection.masterCollection.subCollections
                   ? this.collection.masterCollection.subCollections[nounDef.id]
                   : undefined;
-              this.collection.masterCollection.subCollections[
-                nounDef.id
-              ] = GlodaDatastore.queryFromQuery(
-                query,
-                QueryFromQueryResolver,
-                this.collection,
-                subCollection,
-                this.collection.masterCollection,
-                { becomeExplicit: true }
-              );
+              this.collection.masterCollection.subCollections[nounDef.id] =
+                GlodaDatastore.queryFromQuery(
+                  query,
+                  QueryFromQueryResolver,
+                  this.collection,
+                  subCollection,
+                  this.collection.masterCollection,
+                  { becomeExplicit: true }
+                );
             }
           }
 
@@ -416,16 +413,15 @@ QueryFromQueryCallback.prototype = {
               nounDef.id in this.collection.masterCollection.subCollections
                 ? this.collection.masterCollection.subCollections[nounDef.id]
                 : undefined;
-            this.collection.masterCollection.subCollections[
-              nounDef.id
-            ] = GlodaDatastore.queryFromQuery(
-              query,
-              QueryFromQueryResolver,
-              this.collection,
-              subCollection,
-              this.collection.masterCollection,
-              { becomeExplicit: true }
-            );
+            this.collection.masterCollection.subCollections[nounDef.id] =
+              GlodaDatastore.queryFromQuery(
+                query,
+                QueryFromQueryResolver,
+                this.collection,
+                subCollection,
+                this.collection.masterCollection,
+                { becomeExplicit: true }
+              );
           }
         } else {
           this.collection.deferredCount--;
@@ -449,7 +445,7 @@ QueryFromQueryCallback.prototype = {
           QueryFromQueryResolver.onQueryCompleted({ data: this.collection });
         }
       } catch (e) {
-        Cu.reportError(e);
+        console.error(e);
         QFQ_LOG.error("Exception:", e);
       }
     } finally {
@@ -607,7 +603,7 @@ ExplainedStatementProcessor.prototype = {
     }
   },
   handleError(aError) {
-    Cu.reportError("Unexpected error in EXPLAIN handler: " + aError);
+    console.error("Unexpected error in EXPLAIN handler: " + aError);
   },
   handleCompletion(aReason) {
     let obj = {
@@ -731,26 +727,11 @@ var DB_SCHEMA_ACCEPT_LEAVE_LOW = 31,
  *  states of attributes to accomplish this, but that is not desirable.)  This
  *  needs to be addressed, and may be best addressed at layers above
  *  GlodaDatastore.jsm.
+ *
  * @namespace
  */
 var GlodaDatastore = {
   _log: null,
-
-  /* see Gloda's documentation for these constants */
-  kSpecialNotAtAll: 0,
-  kSpecialColumn: 16,
-  kSpecialColumnChildren: 16 | 1,
-  kSpecialColumnParent: 16 | 2,
-  kSpecialString: 32,
-  kSpecialFulltext: 64,
-  IGNORE_FACET: {},
-
-  kConstraintIdIn: 0,
-  kConstraintIn: 1,
-  kConstraintRanges: 2,
-  kConstraintEquals: 3,
-  kConstraintStringLike: 4,
-  kConstraintFulltext: 5,
 
   /* ******************* SCHEMA ******************* */
 
@@ -1217,13 +1198,6 @@ var GlodaDatastore = {
     this._populateContactManagedId();
     this._populateIdentityManagedId();
 
-    // create the timer we use to periodically drop our references to folders
-    //  we no longer need XPCOM references to (or more significantly, their
-    //  message databases.)
-    this._folderCleanupTimer = Cc["@mozilla.org/timer;1"].createInstance(
-      Ci.nsITimer
-    );
-
     this._log.debug("Completed datastore initialization.");
   },
 
@@ -1285,12 +1259,6 @@ var GlodaDatastore = {
 
     this.datastoreIsShutdown = true;
 
-    // shutdown our folder cleanup timer, if active and null it out.
-    if (this._folderCleanupActive) {
-      this._folderCleanupTimer.cancel();
-    }
-    this._folderCleanupTimer = null;
-
     this._log.info("Closing db connection");
 
     // we do not expect exceptions, but it's a good idea to avoid having our
@@ -1336,13 +1304,10 @@ var GlodaDatastore = {
   /**
    * Generates and returns a UUID.
    *
-   * @return a UUID as a string, ex: "c4dd0159-9287-480f-a648-a4613e147fdb"
+   * @returns a UUID as a string, ex: "c4dd0159-9287-480f-a648-a4613e147fdb"
    */
   _generateDatastoreID() {
-    let uuidGen = Cc["@mozilla.org/uuid-generator;1"].getService(
-      Ci.nsIUUIDGenerator
-    );
-    let uuid = uuidGen.generateUUID().toString();
+    let uuid = Services.uuid.generateUUID().toString();
     // We snip off the { and } from each end of the UUID.
     return uuid.substring(1, uuid.length - 2);
   },
@@ -1504,7 +1469,8 @@ var GlodaDatastore = {
       this._createTableSchema(aDBConnection, tableName, tableDef);
     }
 
-    aDBConnection.schemaVersion = this._actualSchemaVersion = this._schemaVersion;
+    aDBConnection.schemaVersion = this._actualSchemaVersion =
+      this._schemaVersion;
   },
 
   /**
@@ -2002,7 +1968,7 @@ var GlodaDatastore = {
    *  to the caller since they know much more than actually needs to go in the
    *  database.
    *
-   * @return The attribute id allocated to this attribute.
+   * @returns The attribute id allocated to this attribute.
    */
   _createAttributeDef(aAttrType, aExtensionName, aAttrName, aParameter) {
     let attributeId = this._nextAttributeId++;
@@ -2170,7 +2136,7 @@ var GlodaDatastore = {
    *
    * @param {nsIMsgFolder} aFolder
    * @param {boolean} aAllowSpecialFolderIndexing
-   * @returns {Number}
+   * @returns {number}
    */
   getDefaultIndexingPriority(aFolder, aAllowSpecialFolderIndexing) {
     let indexingPriority = GlodaFolder.prototype.kIndexingDefaultPriority;
@@ -2227,13 +2193,14 @@ var GlodaDatastore = {
 
     let folderID = this._nextFolderId++;
 
-    // if there's an indexingPriority stored on the folder, just use that
-    let indexingPriority;
-    let stringPrio = aFolder.getStringProperty("indexingPriority");
-    if (stringPrio.length) {
-      indexingPriority = parseInt(stringPrio);
-    } else {
-      // Otherwise, fall back to the default for folders of this type.
+    // If there's an indexingPriority stored on the folder, just use that.
+    // Otherwise, fall back to the default for folders of this type.
+    let indexingPriority = NaN;
+    try {
+      let pri = aFolder.getStringProperty("indexingPriority"); // Might throw.
+      indexingPriority = parseInt(pri); // Might return NaN.
+    } catch (ex) {}
+    if (isNaN(indexingPriority)) {
       indexingPriority = this.getDefaultIndexingPriority(aFolder);
     }
 
@@ -2269,7 +2236,7 @@ var GlodaDatastore = {
    *
    * @param aFolderID The known valid gloda folder ID for which you would like
    *     a GlodaFolder instance.
-   * @return The GlodaFolder instance with the given id.  If no such instance
+   * @returns The GlodaFolder instance with the given id.  If no such instance
    *     exists, we will throw an exception.
    */
   _mapFolderID(aFolderID) {
@@ -2373,82 +2340,6 @@ var GlodaDatastore = {
     let dfbis = this._deleteFolderByIDStatement;
     dfbis.bindByIndex(0, aFolderID);
     dfbis.executeAsync(this.trackAsync());
-  },
-
-  /**
-   * This timer drives our folder cleanup logic that is in charge of dropping
-   *  our folder references and more importantly the folder's msgDatabase
-   *  reference, but only if they are no longer in use.
-   * This timer is only active when we have one or more live gloda folders (as
-   *  tracked by _liveGlodaFolders).  Although we choose our timer interval to
-   *  be power-friendly, it doesn't really matter because unless the user or the
-   *  indexing process is actively doing things, all of the folders will 'die'
-   *  and so we will stop scheduling the timer.
-   */
-  _folderCleanupTimer: null,
-
-  /**
-   * When true, we have a folder cleanup timer event active.
-   */
-  _folderCleanupActive: false,
-
-  /**
-   * Interval at which we call the folder cleanup code, in milliseconds.
-   */
-  _folderCleanupTimerInterval: 2000,
-
-  /**
-   * Maps the id of 'live' GlodaFolders to the instances.  If a GlodaFolder is
-   *  in here, it means that it has a reference to its nsIMsgDBFolder which
-   *  should have an open nsIMsgDatabase that we will need to close.  This does
-   *  not count folders that are being indexed unless they have also been used
-   *  for header retrieval.
-   */
-  _liveGlodaFolders: {},
-
-  /**
-   * Mark a GlodaFolder as having a live reference to its nsIMsgFolder with an
-   *  implied opened associated message database.  GlodaFolder calls this when
-   *  it first acquires its reference.  It is removed from the list of live
-   *  folders only when our timer check calls the GlodaFolder's
-   *  forgetFolderIfUnused method and that method returns true.
-   */
-  markFolderLive(aGlodaFolder) {
-    this._liveGlodaFolders[aGlodaFolder.id] = aGlodaFolder;
-    if (!this._folderCleanupActive) {
-      this._folderCleanupTimer.initWithCallback(
-        this._performFolderCleanup,
-        this._folderCleanupTimerInterval,
-        Ci.nsITimer.TYPE_REPEATING_SLACK
-      );
-      this._folderCleanupActive = true;
-    }
-  },
-
-  /**
-   * Timer-driven folder cleanup logic.  For every live folder tracked in
-   *  _liveGlodaFolders, we call their forgetFolderIfUnused method each time
-   *  until they return true indicating they have cleaned themselves up.
-   * This method is called without a 'this' context!
-   */
-  _performFolderCleanup() {
-    // we only need to keep going if there is at least one folder in the table
-    //  that is still alive after this pass.
-    let keepGoing = false;
-    for (let id in GlodaDatastore._liveGlodaFolders) {
-      let glodaFolder = GlodaDatastore._liveGlodaFolders[id];
-      // returns true if it is now 'dead' and doesn't need this heartbeat check
-      if (glodaFolder.forgetFolderIfUnused()) {
-        delete GlodaDatastore._liveGlodaFolders[glodaFolder.id];
-      } else {
-        keepGoing = true;
-      }
-    }
-
-    if (!keepGoing) {
-      GlodaDatastore._folderCleanupTimer.cancel();
-      GlodaDatastore._folderCleanupActive = false;
-    }
   },
 
   /* ********** Conversation ********** */
@@ -2661,6 +2552,7 @@ var GlodaDatastore = {
   },
 
   insertMessage(aMessage) {
+    this._log.debug("insertMessage " + aMessage);
     let ims = this._insertMessageStatement;
     ims.bindByIndex(0, aMessage.id);
     if (aMessage.folderID == null) {
@@ -2790,6 +2682,7 @@ var GlodaDatastore = {
    * we don't do anything.
    */
   updateMessage(aMessage) {
+    this._log.debug("updateMessage " + aMessage);
     let ums = this._updateMessageStatement;
     ums.bindByIndex(8, aMessage.id);
     if (aMessage.folderID === null) {
@@ -2900,6 +2793,21 @@ var GlodaDatastore = {
     aDestFolder,
     aDoNotNotify
   ) {
+    this._log.debug(
+      "updateMessageLocations:\n" +
+        "ids: " +
+        aMessageIds +
+        "\n" +
+        "keys: " +
+        aNewMessageKeys +
+        "\n" +
+        "dest folder: " +
+        aDestFolder +
+        "\n" +
+        "do not notify?" +
+        aDoNotNotify +
+        "\n"
+    );
     let statement = this._updateMessageLocationStatement;
     let destFolderID =
       typeof aDestFolder == "number"
@@ -2963,6 +2871,15 @@ var GlodaDatastore = {
    *  intended to be relevant to the gloda message abstraction).
    */
   updateMessageKeys(aMessageIds, aNewMessageKeys) {
+    this._log.debug(
+      "updateMessageKeys:\n" +
+        "ids: " +
+        aMessageIds +
+        "\n" +
+        "keys:" +
+        aNewMessageKeys +
+        "\n"
+    );
     let statement = this._updateMessageKeyStatement;
 
     // map gloda id to the new message key for in-memory rep transform below
@@ -3026,6 +2943,7 @@ var GlodaDatastore = {
   },
 
   _messageFromRow(aRow) {
+    this._log.debug("_messageFromRow " + aRow);
     let folderId,
       messageKey,
       date,
@@ -3668,7 +3586,7 @@ var GlodaDatastore = {
         let constraintValues = constraint.slice(2);
 
         let tableName, idColumnName, valueColumnName;
-        if (constraintType == this.kConstraintIdIn) {
+        if (constraintType == GlodaConstants.kConstraintIdIn) {
           // we don't need any of the next cases' setup code, and we especially
           //  would prefer that attrDef isn't accessed since it's null for us.
         } else if (attrDef.special) {
@@ -3685,14 +3603,14 @@ var GlodaDatastore = {
 
         let select = null,
           test = null;
-        if (constraintType === this.kConstraintIdIn) {
+        if (constraintType === GlodaConstants.kConstraintIdIn) {
           // this is somewhat of a trick.  this does mean that this can be the
           //  only constraint.  Namely, our idiom is:
           // SELECT * FROM blah WHERE id IN (a INTERSECT b INTERSECT c)
           //  but if we only have 'a', then that becomes "...IN (a)", and if
           //  'a' is not a select but a list of id's... tricky, no?
           select = constraintValues.join(",");
-        } else if (constraintType === this.kConstraintIn) {
+        } else if (constraintType === GlodaConstants.kConstraintIn) {
           // @testpoint gloda.datastore.sqlgen.kConstraintIn
           let clauses = [];
           for (let [
@@ -3716,7 +3634,7 @@ var GlodaDatastore = {
               //  feels wrong to do it. (just double the quote character...)
               if (
                 "special" in attrDef &&
-                attrDef.special == this.kSpecialString
+                attrDef.special == GlodaConstants.kSpecialString
               ) {
                 clausePart +=
                   valueColumnName +
@@ -3735,7 +3653,7 @@ var GlodaDatastore = {
             clauses.push(clausePart);
           }
           test = clauses.join(" OR ");
-        } else if (constraintType === this.kConstraintRanges) {
+        } else if (constraintType === GlodaConstants.kConstraintRanges) {
           // @testpoint gloda.datastore.sqlgen.kConstraintRanges
           let clauses = [];
           for (let [
@@ -3759,7 +3677,7 @@ var GlodaDatastore = {
             }
           }
           test = clauses.join(" OR ");
-        } else if (constraintType === this.kConstraintEquals) {
+        } else if (constraintType === GlodaConstants.kConstraintEquals) {
           // @testpoint gloda.datastore.sqlgen.kConstraintEquals
           let clauses = [];
           for (let [
@@ -3787,7 +3705,7 @@ var GlodaDatastore = {
             boundArgs.push.apply(boundArgs, values);
           }
           test = clauses.join(" OR ");
-        } else if (constraintType === this.kConstraintStringLike) {
+        } else if (constraintType === GlodaConstants.kConstraintStringLike) {
           // @testpoint gloda.datastore.sqlgen.kConstraintStringLike
           let likePayload = "";
           for (let valuePart of constraintValues) {
@@ -3802,7 +3720,7 @@ var GlodaDatastore = {
           }
           test = valueColumnName + " LIKE ? ESCAPE '/'";
           boundArgs.push(likePayload);
-        } else if (constraintType === this.kConstraintFulltext) {
+        } else if (constraintType === GlodaConstants.kConstraintFulltext) {
           // @testpoint gloda.datastore.sqlgen.kConstraintFulltext
           let matchStr = constraintValues[0];
           select =
@@ -3984,7 +3902,7 @@ var GlodaDatastore = {
 
       if (
         "special" in attrib &&
-        attrib.special === this.kSpecialColumnChildren
+        attrib.special === GlodaConstants.kSpecialColumnChildren
       ) {
         let invReferences = aInverseReferencesByNounID[objectNounDef.id];
         if (invReferences === undefined) {
@@ -4004,7 +3922,7 @@ var GlodaDatastore = {
         }
       } else if (
         "special" in attrib &&
-        attrib.special === this.kSpecialColumnParent
+        attrib.special === GlodaConstants.kSpecialColumnParent
       ) {
         let references = aReferencesByNounID[objectNounDef.id];
         if (references === undefined) {
@@ -4166,12 +4084,12 @@ var GlodaDatastore = {
       let objectNounDef = attrib.objectNounDef;
       let references = aReferencesByNounID[objectNounDef.id];
       if (attrib.special) {
-        if (attrib.special === this.kSpecialColumnChildren) {
+        if (attrib.special === GlodaConstants.kSpecialColumnChildren) {
           let inverseReferences = aInverseReferencesByNounID[objectNounDef.id];
           // this._log.info("inverse assignment: " + objectNounDef.id +
           //    " of " + aItem.id)
           aItem[attrib.storageAttributeName] = inverseReferences[aItem.id];
-        } else if (attrib.special === this.kSpecialColumnParent) {
+        } else if (attrib.special === GlodaConstants.kSpecialColumnParent) {
           // this._log.info("parent column load: " + objectNounDef.id +
           //    " storage value: " + aItem[attrib.idStorageAttributeName]);
           aItem[attrib.valueStorageAttributeName] =

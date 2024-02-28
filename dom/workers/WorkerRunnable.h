@@ -78,6 +78,10 @@ class WorkerRunnable : public nsIRunnable, public nsICancelableRunnable {
   // If you override Cancel() then you'll need to either call the base class
   // Cancel() method or override IsCanceled() so that the Run() method bails out
   // appropriately.
+  // Cancel() should not be called more than once and we throw
+  // NS_ERROR_UNEXPECTED if it is. If you override it, ensure to call the base
+  // class method first and bail out on failure to avoid unexpected side
+  // effects.
   nsresult Cancel() override;
 
   // The return value is true if and only if both PreDispatch and
@@ -85,6 +89,7 @@ class WorkerRunnable : public nsIRunnable, public nsICancelableRunnable {
   bool Dispatch();
 
   // See above note about Cancel().
+  // TODO: Check if we can remove the possibility to override IsCanceled.
   virtual bool IsCanceled() const { return mCanceled != 0; }
 
   // True if this runnable is handled by running JavaScript in some global that
@@ -356,7 +361,7 @@ class WorkerSameThreadRunnable : public WorkerRunnable {
 class WorkerMainThreadRunnable : public Runnable {
  protected:
   WorkerPrivate* mWorkerPrivate;
-  nsCOMPtr<nsIEventTarget> mSyncLoopTarget;
+  nsCOMPtr<nsISerialEventTarget> mSyncLoopTarget;
   const nsCString mTelemetryKey;
 
   explicit WorkerMainThreadRunnable(WorkerPrivate* aWorkerPrivate,
@@ -420,13 +425,13 @@ class WorkerProxyToMainThreadRunnable : public Runnable {
 // they run this runnable does not modify the busy count
 // in any way.
 class MainThreadStopSyncLoopRunnable : public WorkerSyncRunnable {
-  bool mResult;
+  nsresult mResult;
 
  public:
   // Passing null for aSyncLoopTarget is not allowed.
   MainThreadStopSyncLoopRunnable(WorkerPrivate* aWorkerPrivate,
                                  nsCOMPtr<nsIEventTarget>&& aSyncLoopTarget,
-                                 bool aResult);
+                                 nsresult aResult);
 
   // By default StopSyncLoopRunnables cannot be canceled since they could leave
   // a sync loop spinning forever.

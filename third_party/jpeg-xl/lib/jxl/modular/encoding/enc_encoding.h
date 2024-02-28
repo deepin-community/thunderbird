@@ -11,7 +11,6 @@
 
 #include <vector>
 
-#include "lib/jxl/aux_out_fwd.h"
 #include "lib/jxl/base/compiler_specific.h"
 #include "lib/jxl/base/padded_bytes.h"
 #include "lib/jxl/base/span.h"
@@ -28,7 +27,6 @@
 
 namespace jxl {
 
-void PrintTree(const Tree &tree, const std::string &path);
 Tree LearnTree(TreeSamples &&tree_samples, size_t total_pixels,
                const ModularOptions &options,
                const std::vector<ModularMultiplierInfo> &multiplier_info = {},

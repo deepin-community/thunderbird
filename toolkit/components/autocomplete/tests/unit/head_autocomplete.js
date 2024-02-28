@@ -1,8 +1,8 @@
 /* Any copyright is dedicated to the Public Domain.
    http://creativecommons.org/publicdomain/zero/1.0/ */
 
-var { XPCOMUtils } = ChromeUtils.import(
-  "resource://gre/modules/XPCOMUtils.jsm"
+var { XPCOMUtils } = ChromeUtils.importESModule(
+  "resource://gre/modules/XPCOMUtils.sys.mjs"
 );
 
 /**
@@ -109,6 +109,10 @@ AutoCompleteResultBase.prototype = {
     return this._finalCompleteValues[aIndex] || this._values[aIndex];
   },
 
+  isRemovableAt(aRowIndex) {
+    return true;
+  },
+
   removeValueAt(aRowIndex) {},
 
   // nsISupports implementation
@@ -146,7 +150,7 @@ AutoCompleteSearchBase.prototype = {
   ]),
 
   // nsIFactory implementation
-  createInstance(outer, iid) {
+  createInstance(iid) {
     return this.QueryInterface(iid);
   },
 };
@@ -176,9 +180,7 @@ AutocompletePopupBase.prototype = {
  */
 function registerAutoCompleteSearch(aSearch) {
   var name = "@mozilla.org/autocomplete/search;1?name=" + aSearch.name;
-  var cid = Cc["@mozilla.org/uuid-generator;1"]
-    .getService(Ci.nsIUUIDGenerator)
-    .generateUUID();
+  var cid = Services.uuid.generateUUID();
 
   var desc = "Test AutoCompleteSearch";
   var componentManager = Components.manager.QueryInterface(

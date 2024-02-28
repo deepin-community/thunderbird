@@ -9,14 +9,18 @@
  *  implemented as an XPCOM object
  */
 
+const EXPORTED_SYMBOLS = ["EnigmailPgpmimeHander"];
+
 const { manager: Cm } = Components;
 Cm.QueryInterface(Ci.nsIComponentRegistrar);
 
-const { XPCOMUtils } = ChromeUtils.import(
-  "resource://gre/modules/XPCOMUtils.jsm"
+const { XPCOMUtils } = ChromeUtils.importESModule(
+  "resource://gre/modules/XPCOMUtils.sys.mjs"
 );
 
-XPCOMUtils.defineLazyModuleGetters(this, {
+const lazy = {};
+
+XPCOMUtils.defineLazyModuleGetters(lazy, {
   EnigmailCore: "chrome://openpgp/content/modules/core.jsm",
   EnigmailLog: "chrome://openpgp/content/modules/log.jsm",
   EnigmailMime: "chrome://openpgp/content/modules/mime.jsm",
@@ -24,10 +28,7 @@ XPCOMUtils.defineLazyModuleGetters(this, {
   EnigmailSingletons: "chrome://openpgp/content/modules/singletons.jsm",
   EnigmailVerify: "chrome://openpgp/content/modules/mimeVerify.jsm",
   EnigmailWksMimeHandler: "chrome://openpgp/content/modules/wksMimeHandler.jsm",
-  Services: "resource://gre/modules/Services.jsm",
 });
-
-var EXPORTED_SYMBOLS = ["EnigmailPgpmimeHander"];
 
 const PGPMIME_JS_DECRYPTOR_CONTRACTID =
   "@mozilla.org/mime/pgp-mime-js-decrypt;1";
@@ -57,7 +58,7 @@ const throwErrors = {
 };
 
 /**
- * UnknownProtoHandler is a default handler for unkonwn protocols. It ensures that the
+ * UnknownProtoHandler is a default handler for unknown protocols. It ensures that the
  * signed message part is always displayed without any further action.
  */
 function UnknownProtoHandler() {
@@ -80,12 +81,12 @@ UnknownProtoHandler.prototype = {
     if (!("outputDecryptedData" in this.mimeSvc)) {
       this.mimeSvc.onStartRequest(null, ctxt);
     }
-    this.bound = EnigmailMime.getBoundary(this.mimeSvc.contentType);
+    this.bound = lazy.EnigmailMime.getBoundary(this.mimeSvc.contentType);
     /*
       readMode:
         0: before message
         1: inside message
-        2: afer message
+        2: after message
     */
     this.readMode = 0;
   },
@@ -142,7 +143,7 @@ UnknownProtoHandler.prototype = {
 };
 
 function PgpMimeHandler() {
-  EnigmailLog.DEBUG("pgpmimeHandler.js: PgpMimeHandler()\n"); // always log this one
+  lazy.EnigmailLog.DEBUG("pgpmimeHandler.js: PgpMimeHandler()\n"); // always log this one
 }
 
 PgpMimeHandler.prototype = {
@@ -165,7 +166,7 @@ PgpMimeHandler.prototype = {
       uri = ctxt;
     }
 
-    if (!EnigmailCore.getService()) {
+    if (!lazy.EnigmailCore.getService()) {
       // Ensure Enigmail is initialized
       if (ct.search(/application\/(x-)?pkcs7-signature/i) > 0) {
         return this.handleSmime(uri);
@@ -173,8 +174,8 @@ PgpMimeHandler.prototype = {
       return null;
     }
 
-    EnigmailLog.DEBUG("pgpmimeHandler.js: onStartRequest\n");
-    EnigmailLog.DEBUG("pgpmimeHandler.js: ct= " + ct + "\n");
+    lazy.EnigmailLog.DEBUG("pgpmimeHandler.js: onStartRequest\n");
+    lazy.EnigmailLog.DEBUG("pgpmimeHandler.js: ct= " + ct + "\n");
 
     let cth = null;
 
@@ -185,11 +186,11 @@ PgpMimeHandler.prototype = {
       }
       // PGP/MIME encrypted message
 
-      cth = EnigmailMimeDecrypt.newPgpMimeHandler();
+      cth = lazy.EnigmailMimeDecrypt.newPgpMimeHandler();
     } else if (ct.search(/^multipart\/signed/i) === 0) {
       if (ct.search(/application\/pgp-signature/i) > 0) {
         // PGP/MIME signed message
-        cth = EnigmailVerify.newVerifier();
+        cth = lazy.EnigmailVerify.newVerifier();
       } else if (ct.search(/application\/(x-)?pkcs7-signature/i) > 0) {
         let lastUriSpec = "";
         if (uri) {
@@ -197,20 +198,25 @@ PgpMimeHandler.prototype = {
           lastUriSpec = u.spec;
         }
         // S/MIME signed message
-        if (lastUriSpec !== gLastEncryptedUri && EnigmailVerify.lastMsgWindow) {
+        if (
+          lastUriSpec !== gLastEncryptedUri &&
+          lazy.EnigmailVerify.lastWindow
+        ) {
           // if message is displayed then handle like S/MIME message
           return this.handleSmime(uri);
         }
 
         // otherwise just make sure message body is returned
-        cth = EnigmailVerify.newVerifier("application/(x-)?pkcs7-signature");
+        cth = lazy.EnigmailVerify.newVerifier(
+          "application/(x-)?pkcs7-signature"
+        );
       }
     } else if (ct.search(/application\/vnd.gnupg.wks/i) === 0) {
-      cth = EnigmailWksMimeHandler.newHandler();
+      cth = lazy.EnigmailWksMimeHandler.newHandler();
     }
 
     if (!cth) {
-      EnigmailLog.ERROR(
+      lazy.EnigmailLog.ERROR(
         "pgpmimeHandler.js: unknown protocol for content-type: " + ct + "\n"
       );
       cth = new UnknownProtoHandler();
@@ -236,8 +242,8 @@ PgpMimeHandler.prototype = {
       uri = uri.QueryInterface(Ci.nsIURI);
     }
 
-    let headerSink = EnigmailSingletons.messageReader;
-    headerSink.handleSMimeMessage(uri);
+    let headerSink = lazy.EnigmailSingletons.messageReader;
+    headerSink?.handleSMimeMessage(uri);
   },
 
   getMessengerWindow() {
@@ -260,10 +266,7 @@ class Factory {
     Object.freeze(this);
   }
 
-  createInstance(outer, iid) {
-    if (outer) {
-      throw Components.Exception("", Cr.NS_ERROR_NO_AGGREGATION);
-    }
+  createInstance(iid) {
     return new this.component();
   }
 

@@ -10,7 +10,7 @@
 "use strict";
 
 var {
-  add_sets_to_folders,
+  add_message_sets_to_folders,
   assert_selected_and_displayed,
   be_in_folder,
   create_folder,
@@ -30,19 +30,19 @@ var { plan_for_window_close, wait_for_window_close } = ChromeUtils.import(
 var folderA, folderB;
 var curMessage;
 
-add_task(function setupModule(module) {
-  folderA = create_folder("MessageWindowA");
-  folderB = create_folder("MessageWindowB");
+add_setup(async function () {
+  folderA = await create_folder("MessageWindowA");
+  folderB = await create_folder("MessageWindowB");
   // create three messages in the folder to display
   let msg1 = create_thread(1);
   let msg2 = create_thread(1);
   let thread1 = create_thread(2);
   let thread2 = create_thread(2);
-  add_sets_to_folders([folderA], [msg1, msg2, thread1, thread2]);
+  await add_message_sets_to_folders([folderA], [msg1, msg2, thread1, thread2]);
   // add two more messages in another folder
   let msg3 = create_thread(1);
   let msg4 = create_thread(1);
-  add_sets_to_folders([folderB], [msg3, msg4]);
+  await add_message_sets_to_folders([folderB], [msg3, msg4]);
   folderA.msgDatabase.dBFolderInfo.viewFlags =
     Ci.nsMsgViewFlagsType.kThreadedDisplay;
 });
@@ -51,7 +51,7 @@ add_task(function setupModule(module) {
 var msgc;
 
 add_task(async function test_open_message_window() {
-  be_in_folder(folderA);
+  await be_in_folder(folderA);
 
   // select the first message
   curMessage = select_click_row(0);
@@ -82,7 +82,7 @@ add_task(function test_navigate_to_next_message() {
   EventUtils.synthesizeKey("f", {}, msgc.window);
   wait_for_message_display_completion(msgc, true);
   assert_selected_and_displayed(msgc, 1);
-});
+}).skip();
 
 /**
  * Delete a single message and verify the next message is loaded. This sets
@@ -94,7 +94,7 @@ add_task(function test_delete_single_message() {
   press_delete(msgc);
   wait_for_message_display_completion(msgc, true);
   assert_selected_and_displayed(msgc, 1);
-});
+}).skip();
 
 /**
  * Delete the current message, and verify that it only deletes
@@ -108,7 +108,7 @@ add_task(function test_del_collapsed_thread() {
   }
   wait_for_message_display_completion(msgc, true);
   assert_selected_and_displayed(msgc, 1);
-});
+}).skip();
 
 /**
  * Hit n enough times to mark all messages in folder A read, and then accept the
@@ -134,14 +134,14 @@ add_task(async function test_next_unread() {
   wait_for_message_display_completion(msgc, true);
 
   // move to folder B
-  be_in_folder(folderB);
+  await be_in_folder(folderB);
 
   // select the first message, and make sure it's not read
   let msg = select_click_row(0);
 
   // make sure we've been displaying the right message
   assert_selected_and_displayed(msgc, msg);
-});
+}).skip();
 
 /**
  * Close the window by hitting escape.

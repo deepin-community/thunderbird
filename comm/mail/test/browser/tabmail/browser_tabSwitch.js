@@ -2,7 +2,7 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, you can obtain one at http://mozilla.org/MPL/2.0/. */
 
-add_task(async function() {
+add_task(async function () {
   // Helper functions.
 
   function assertSelected(element, name) {
@@ -71,14 +71,15 @@ add_task(async function() {
   // Collect some elements.
 
   let tabmail = document.getElementById("tabmail");
-  let calendarTabButton = document.getElementById("calendar-tab-button");
+  let calendarTabButton = document.getElementById("calendarButton");
 
-  let mailTabPanel = document.getElementById("mailContent");
+  let mailTabPanel = document.getElementById("mail3PaneTab1");
+  let mailTabBrowser = document.getElementById("mail3PaneTabBrowser1");
+  let folderTree = mailTabBrowser.contentDocument.getElementById("folderTree");
   let calendarTabPanel = document.getElementById("calendarTabPanel");
   let contentTab;
   let contentTabPanel;
 
-  let folderTree = document.getElementById("folderTree");
   let calendarList = document.getElementById("calendar-list");
 
   let eventPromise;
@@ -90,17 +91,19 @@ add_task(async function() {
   checkTabElements(1, 0);
   assertSelected(mailTabPanel, "mail tab's panel");
 
-  // Set the focus on the folder tree.
+  // Set the focus on the mail tab.
 
-  if (
-    document.getElementById("folderpane_splitter").getAttribute("state") ==
-    "collapsed"
-  ) {
-    window.MsgToggleFolderPane();
-  }
-
-  EventUtils.synthesizeMouseAtCenter(folderTree, {});
-  Assert.equal(document.activeElement, folderTree, "folder tree has focus");
+  folderTree.focus();
+  Assert.equal(
+    document.activeElement,
+    mailTabBrowser,
+    "mail tab's browser has focus"
+  );
+  Assert.equal(
+    mailTabBrowser.contentDocument.activeElement,
+    folderTree,
+    "folder tree has focus"
+  );
 
   // Switch to the calendar tab.
 
@@ -119,7 +122,16 @@ add_task(async function() {
   Assert.equal(
     document.activeElement,
     document.body,
-    "folder tree does NOT have focus"
+    "mail tab's browser does NOT have focus"
+  );
+  Assert.equal(
+    tabmail.tabInfo[0].lastActiveElement,
+    folderTree,
+    "mail tab's last active element should be stored"
+  );
+  Assert.ok(
+    !tabmail.tabInfo[1].lastActiveElement,
+    "calendar tab's last active element should not be stored yet"
   );
 
   // Set the focus on the calendar list.
@@ -134,7 +146,25 @@ add_task(async function() {
   checkTabElements(2, 0);
   assertSelected(mailTabPanel, "mail tab's panel");
   assertNotSelected(calendarTabPanel, "calendar tab's panel");
-  Assert.equal(document.activeElement, folderTree, "folder tree has focus");
+  Assert.equal(
+    document.activeElement,
+    mailTabBrowser,
+    "mail tab's browser has focus"
+  );
+  Assert.equal(
+    mailTabBrowser.contentDocument.activeElement,
+    folderTree,
+    "folder tree has focus"
+  );
+  Assert.ok(
+    !tabmail.tabInfo[0].lastActiveElement,
+    "mail tab's last active element should have been cleaned up"
+  );
+  Assert.equal(
+    tabmail.tabInfo[1].lastActiveElement,
+    calendarList,
+    "calendar tab's last active element should be stored"
+  );
 
   // Switch to the calendar tab.
 
@@ -144,13 +174,23 @@ add_task(async function() {
   assertNotSelected(mailTabPanel, "mail tab's panel");
   assertSelected(calendarTabPanel, "calendar tab's panel");
   Assert.equal(document.activeElement, calendarList, "calendar list has focus");
+  Assert.equal(
+    tabmail.tabInfo[0].lastActiveElement,
+    folderTree,
+    "mail tab's last active element should be stored"
+  );
+  Assert.ok(
+    !tabmail.tabInfo[1].lastActiveElement,
+    "calendar tab's last active element should have been cleaned up"
+  );
 
   // Open a content tab.
 
   eventPromise = BrowserTestUtils.waitForEvent(tabmail.tabContainer, "TabOpen");
-  contentTab = window.openContentTab("http://example.org/");
-  contentTabPanel = contentTab.browser.closest(".contentTabInstance")
-    .parentNode;
+  contentTab = window.openContentTab("https://example.org/");
+  contentTabPanel = contentTab.browser.closest(
+    ".contentTabInstance"
+  ).parentNode;
   event = await eventPromise;
   Assert.equal(
     event.target,
@@ -167,6 +207,20 @@ add_task(async function() {
     document.body,
     "folder tree and calendar list do NOT have focus"
   );
+  Assert.equal(
+    tabmail.tabInfo[0].lastActiveElement,
+    folderTree,
+    "mail tab's last active element should be stored"
+  );
+  Assert.equal(
+    tabmail.tabInfo[1].lastActiveElement,
+    calendarList,
+    "calendar tab's last active element should be stored"
+  );
+  Assert.ok(
+    !tabmail.tabInfo[2].lastActiveElement,
+    "content tab should have no last active element"
+  );
 
   // Switch to the mail tab.
 
@@ -175,7 +229,24 @@ add_task(async function() {
   checkTabElements(3, 0);
   assertSelected(mailTabPanel, "mail tab's panel");
   assertNotSelected(calendarTabPanel, "calendar tab's panel");
-  Assert.equal(document.activeElement, folderTree, "folder tree has focus");
+  Assert.equal(
+    document.activeElement,
+    mailTabBrowser,
+    "mail tab's browser has focus"
+  );
+  Assert.ok(
+    !tabmail.tabInfo[0].lastActiveElement,
+    "mail tab's last active element should be cleaned up"
+  );
+  Assert.equal(
+    tabmail.tabInfo[1].lastActiveElement,
+    calendarList,
+    "calendar tab's last active element should be stored"
+  );
+  Assert.ok(
+    !tabmail.tabInfo[2].lastActiveElement,
+    "content tab should have no last active element"
+  );
 
   // Switch to the calendar tab.
 
@@ -185,6 +256,19 @@ add_task(async function() {
   assertNotSelected(mailTabPanel, "mail tab's panel");
   assertSelected(calendarTabPanel, "calendar tab's panel");
   Assert.equal(document.activeElement, calendarList, "calendar list has focus");
+  Assert.equal(
+    tabmail.tabInfo[0].lastActiveElement,
+    folderTree,
+    "mail tab's last active element should be stored"
+  );
+  Assert.ok(
+    !tabmail.tabInfo[1].lastActiveElement,
+    "calendar tab's last active element should be cleaned up"
+  );
+  Assert.ok(
+    !tabmail.tabInfo[2].lastActiveElement,
+    "content tab should have no last active element"
+  );
 
   // Switch to the content tab.
 
@@ -199,6 +283,20 @@ add_task(async function() {
     document.body,
     "folder tree and calendar list do NOT have focus"
   );
+  Assert.equal(
+    tabmail.tabInfo[0].lastActiveElement,
+    folderTree,
+    "mail tab's last active element should be stored"
+  );
+  Assert.equal(
+    tabmail.tabInfo[1].lastActiveElement,
+    calendarList,
+    "calendar tab's last active element should be stored"
+  );
+  Assert.ok(
+    !tabmail.tabInfo[2].lastActiveElement,
+    "content tab should have no last active element"
+  );
 
   // Close the content tab.
 
@@ -211,6 +309,15 @@ add_task(async function() {
   // after the TabClose event.
   assertNotSelected(contentTabPanel, "content tab's panel");
   Assert.equal(document.activeElement, calendarList, "calendar list has focus");
+  Assert.equal(
+    tabmail.tabInfo[0].lastActiveElement,
+    folderTree,
+    "mail tab's last active element should be stored"
+  );
+  Assert.ok(
+    !tabmail.tabInfo[1].lastActiveElement,
+    "calendar tab's last active element should have been cleaned up"
+  );
 
   await new Promise(resolve => setTimeout(resolve));
   Assert.ok(
@@ -225,5 +332,13 @@ add_task(async function() {
   checkTabElements(1, 0);
   assertSelected(mailTabPanel, "mail tab's panel");
   assertNotSelected(calendarTabPanel, "calendar tab's panel");
-  Assert.equal(document.activeElement, folderTree, "folder tree has focus");
+  Assert.equal(
+    document.activeElement,
+    mailTabBrowser,
+    "mail tab's browser has focus"
+  );
+  Assert.ok(
+    !tabmail.tabInfo[0].lastActiveElement,
+    "mail tab's last active element should have been cleaned up"
+  );
 });

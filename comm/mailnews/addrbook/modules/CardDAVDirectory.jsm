@@ -4,20 +4,28 @@
 
 const EXPORTED_SYMBOLS = ["CardDAVDirectory"];
 
-const { XPCOMUtils } = ChromeUtils.import(
-  "resource://gre/modules/XPCOMUtils.jsm"
+const { XPCOMUtils } = ChromeUtils.importESModule(
+  "resource://gre/modules/XPCOMUtils.sys.mjs"
 );
 
-XPCOMUtils.defineLazyModuleGetters(this, {
+const lazy = {};
+
+const { SQLiteDirectory } = ChromeUtils.import(
+  "resource:///modules/SQLiteDirectory.jsm"
+);
+
+ChromeUtils.defineESModuleGetters(lazy, {
+  clearInterval: "resource://gre/modules/Timer.sys.mjs",
+  setInterval: "resource://gre/modules/Timer.sys.mjs",
+  setTimeout: "resource://gre/modules/Timer.sys.mjs",
+});
+
+XPCOMUtils.defineLazyModuleGetters(lazy, {
   CardDAVUtils: "resource:///modules/CardDAVUtils.jsm",
-  clearInterval: "resource://gre/modules/Timer.jsm",
   NotificationCallbacks: "resource:///modules/CardDAVUtils.jsm",
   OAuth2Module: "resource:///modules/OAuth2Module.jsm",
   OAuth2Providers: "resource:///modules/OAuth2Providers.jsm",
-  Services: "resource://gre/modules/Services.jsm",
-  setInterval: "resource://gre/modules/Timer.jsm",
-  setTimeout: "resource://gre/modules/Timer.jsm",
-  SQLiteDirectory: "resource:///modules/SQLiteDirectory.jsm",
+  VCardProperties: "resource:///modules/VCardUtils.jsm",
   VCardUtils: "resource:///modules/VCardUtils.jsm",
 });
 
@@ -45,11 +53,29 @@ class CardDAVDirectory extends SQLiteDirectory {
   init(uri) {
     super.init(uri);
 
-    // If this directory is configured, start sync'ing with the server in 30s.
-    // Don't do this immediately, as this code runs at start-up and could
-    // impact performance if there are lots of changes to process.
-    if (this._serverURL && this.getIntValue("carddav.syncinterval", 30) > 0) {
-      this._syncTimer = setTimeout(() => this.syncWithServer(), 30000);
+    let serverURL = this._serverURL;
+    if (serverURL) {
+      // Google's server enforces some vCard 3.0-isms (or just fails badly if
+      // you don't provide exactly what it wants) so we use this property to
+      // determine when to do things differently. Cards from this directory
+      // inherit the same property.
+      if (this.getBoolValue("carddav.vcard3")) {
+        this._isGoogleCardDAV = true;
+      } else {
+        this._isGoogleCardDAV = serverURL.startsWith(
+          "https://www.googleapis.com/"
+        );
+        if (this._isGoogleCardDAV) {
+          this.setBoolValue("carddav.vcard3", true);
+        }
+      }
+
+      // If this directory is configured, start sync'ing with the server in 30s.
+      // Don't do this immediately, as this code runs at start-up and could
+      // impact performance if there are lots of changes to process.
+      if (this.getIntValue("carddav.syncinterval", 30) > 0) {
+        this._syncTimer = lazy.setTimeout(() => this.syncWithServer(), 30000);
+      }
     }
 
     let uidsToSync = this.getStringValue("carddav.uidsToSync", "");
@@ -74,7 +100,7 @@ class CardDAVDirectory extends SQLiteDirectory {
     await super.cleanUp();
 
     if (this._syncTimer) {
-      clearInterval(this._syncTimer);
+      lazy.clearInterval(this._syncTimer);
       this._syncTimer = null;
     }
 
@@ -103,52 +129,14 @@ class CardDAVDirectory extends SQLiteDirectory {
   modifyCard(card) {
     // Well this is awkward. Because it's defined in nsIAbDirectory,
     // modifyCard must not be async, but we need to do async operations.
-
-    if (this._readOnly) {
-      throw new Components.Exception(
-        "Directory is read-only",
-        Cr.NS_ERROR_FAILURE
-      );
-    }
-
-    // We've thrown the most likely exception synchronously, now do the rest.
-
-    this._modifyCard(card);
+    let newCard = super.modifyCard(card);
+    this._modifyCard(newCard);
   }
   async _modifyCard(card) {
-    let oldProperties = this.loadCardProperties(card.UID);
-
-    let newProperties = new Map();
-    for (let { name, value } of card.properties) {
-      newProperties.set(name, value);
-    }
-
-    let sendSucceeded;
     try {
-      sendSucceeded = await this._sendCardToServer(card);
-    } catch (ex) {
-      Cu.reportError(ex);
-      super.modifyCard(card);
-      return;
-    }
-
-    if (!sendSucceeded) {
-      // _etag and _vCard properties have now been updated. Work out what
-      // properties changed on the server, and copy them to `card`, but only
-      // if they haven't also changed on the client.
-      let serverCard = VCardUtils.vCardToAbCard(card.getProperty("_vCard", ""));
-      for (let { name, value } of serverCard.properties) {
-        if (
-          value != newProperties.get(name) &&
-          newProperties.get(name) == oldProperties.get(name)
-        ) {
-          card.setProperty(name, value);
-        }
-      }
-
-      // Send the card back to the server. This time, the ETag matches what's
-      // on the server, so this should succeed.
       await this._sendCardToServer(card);
+    } catch (ex) {
+      console.error(ex);
     }
   }
   deleteCards(cards) {
@@ -160,7 +148,7 @@ class CardDAVDirectory extends SQLiteDirectory {
       try {
         await this._deleteCardFromServer(card);
       } catch (ex) {
-        Cu.reportError(ex);
+        console.error(ex);
         break;
       }
     }
@@ -173,7 +161,7 @@ class CardDAVDirectory extends SQLiteDirectory {
     // Ideally, we'd not add the card until it was on the server, but we have
     // to return newCard synchronously.
     let newCard = super.dropCard(card, needToCopyCard);
-    this._sendCardToServer(newCard).catch(Cu.reportError);
+    this._sendCardToServer(newCard).catch(console.error);
     return newCard;
   }
   addMailList() {
@@ -210,17 +198,17 @@ class CardDAVDirectory extends SQLiteDirectory {
    * URL, and providing a mechanism to give a username and password specific
    * to this directory.
    *
-   * @param {String} path - A path relative to the server URL.
-   * @param {Object} details - See CardDAVUtils.makeRequest.
-   * @return {Promise<Object>} - See CardDAVUtils.makeRequest.
+   * @param {string} path - A path relative to the server URL.
+   * @param {object} details - See CardDAVUtils.makeRequest.
+   * @returns {Promise<object>} - See CardDAVUtils.makeRequest.
    */
   async _makeRequest(path, details = {}) {
     let serverURI = Services.io.newURI(this._serverURL);
     let uri = serverURI.resolve(path);
 
     if (!("_oAuth" in this)) {
-      if (OAuth2Providers.getHostnameDetails(serverURI.host)) {
-        this._oAuth = new OAuth2Module();
+      if (lazy.OAuth2Providers.getHostnameDetails(serverURI.host)) {
+        this._oAuth = new lazy.OAuth2Module();
         this._oAuth.initFromABDirectory(this, serverURI.host);
       } else {
         this._oAuth = null;
@@ -229,13 +217,27 @@ class CardDAVDirectory extends SQLiteDirectory {
     details.oAuth = this._oAuth;
 
     let username = this.getStringValue("carddav.username", "");
-    let callbacks = new NotificationCallbacks(username);
+    let callbacks = new lazy.NotificationCallbacks(username);
     details.callbacks = callbacks;
 
     details.userContextId =
-      this._userContextId ?? CardDAVUtils.contextForUsername(username);
+      this._userContextId ?? lazy.CardDAVUtils.contextForUsername(username);
 
-    let response = await CardDAVUtils.makeRequest(uri, details);
+    let response;
+    try {
+      Services.obs.notifyObservers(
+        this,
+        "addrbook-directory-request-start",
+        this.UID
+      );
+      response = await lazy.CardDAVUtils.makeRequest(uri, details);
+    } finally {
+      Services.obs.notifyObservers(
+        this,
+        "addrbook-directory-request-end",
+        this.UID
+      );
+    }
     if (
       details.expectedStatuses &&
       !details.expectedStatuses.includes(response.status)
@@ -259,7 +261,7 @@ class CardDAVDirectory extends SQLiteDirectory {
    * already exist on the server have this value in the _href property.
    *
    * @param {nsIAbCard} card
-   * @return {String}
+   * @returns {string}
    */
   _getCardHref(card) {
     let href = card.getProperty("_href", "");
@@ -296,7 +298,7 @@ class CardDAVDirectory extends SQLiteDirectory {
    * Performs a multiget request for the provided hrefs, and adds each response
    * to the directory, adding or modifying as necessary.
    *
-   * @param {String[]} hrefsToFetch - The href of each card to be requested.
+   * @param {string[]} hrefsToFetch - The href of each card to be requested.
    */
   async _fetchAndStore(hrefsToFetch) {
     if (hrefsToFetch.length == 0) {
@@ -324,10 +326,9 @@ class CardDAVDirectory extends SQLiteDirectory {
           properties.querySelector("address-data")?.textContent
         );
 
-        let abCard = VCardUtils.vCardToAbCard(vCard);
+        let abCard = lazy.VCardUtils.vCardToAbCard(vCard);
         abCard.setProperty("_etag", etag);
         abCard.setProperty("_href", href);
-        abCard.setProperty("_vCard", vCard);
 
         if (!this.cards.has(abCard.UID)) {
           super.dropCard(abCard, false);
@@ -344,14 +345,14 @@ class CardDAVDirectory extends SQLiteDirectory {
    * Reads a multistatus response, yielding once for each response element.
    *
    * @param {Document} dom - as returned by CardDAVUtils.makeRequest.
-   * @yields {Object} - An object representing a single <response> element
+   * @yields {object} - An object representing a single <response> element
    *     from the document:
    *     - href, the href of the object represented
    *     - notFound, if a 404 status applies to this response
    *     - properties, the <prop> element, if any, containing properties
    *         of the object represented
    */
-  _readResponse = function*(dom) {
+  _readResponse = function* (dom) {
     if (!dom || dom.documentElement.localName != "multistatus") {
       throw Components.Exception(
         `Expected a multistatus response, but didn't get one`,
@@ -400,16 +401,16 @@ class CardDAVDirectory extends SQLiteDirectory {
       contentType: "text/vcard",
     };
 
-    let existingVCard = card.getProperty("_vCard", "");
-    if (existingVCard) {
-      requestDetails.body = VCardUtils.modifyVCard(existingVCard, card);
-      let existingETag = card.getProperty("_etag", "");
-      if (existingETag) {
-        requestDetails.headers = { "If-Match": existingETag };
+    let vCard = card.getProperty("_vCard", "");
+    if (this._isGoogleCardDAV) {
+      // There must be an `N` property, even if empty.
+      let vCardProperties = lazy.VCardProperties.fromVCard(vCard);
+      if (!vCardProperties.getFirstEntry("n")) {
+        vCardProperties.addValue("n", ["", "", "", "", ""]);
       }
+      requestDetails.body = vCardProperties.toVCard();
     } else {
-      // TODO 3.0 is the default, should we be able to use other versions?
-      requestDetails.body = VCardUtils.abCardToVCard(card, "3.0");
+      requestDetails.body = vCard;
     }
 
     let response;
@@ -422,8 +423,7 @@ class CardDAVDirectory extends SQLiteDirectory {
       throw ex;
     }
 
-    let conflictResponse = [409, 412].includes(response.status);
-    if (response.status >= 400 && !conflictResponse) {
+    if (response.status >= 400) {
       throw Components.Exception(
         `Sending card to the server failed, response was ${response.status} ${response.statusText}`,
         Cr.NS_ERROR_FAILURE
@@ -447,33 +447,26 @@ class CardDAVDirectory extends SQLiteDirectory {
         properties.querySelector("address-data")?.textContent
       );
 
-      if (conflictResponse) {
-        card.setProperty("_etag", etag);
-        card.setProperty("_href", href);
-        card.setProperty("_vCard", vCard);
-        return false;
-      }
-
-      let abCard = VCardUtils.vCardToAbCard(vCard);
+      let abCard = lazy.VCardUtils.vCardToAbCard(vCard);
       abCard.setProperty("_etag", etag);
       abCard.setProperty("_href", href);
-      abCard.setProperty("_vCard", vCard);
 
       if (abCard.UID == card.UID) {
         super.modifyCard(abCard);
       } else {
+        // Add a property so the UI can work out if it's still displaying the
+        // old card and respond appropriately.
+        abCard.setProperty("_originalUID", card.UID);
         super.dropCard(abCard, false);
         super.deleteCards([card]);
       }
     }
-
-    return !conflictResponse;
   }
 
   /**
    * Deletes card from the server.
    *
-   * @param {nsIAbCard} card
+   * @param {nsIAbCard|string} cardOrHRef
    */
   async _deleteCardFromServer(cardOrHRef) {
     let href;
@@ -502,7 +495,7 @@ class CardDAVDirectory extends SQLiteDirectory {
    */
   _scheduleNextSync() {
     if (this._syncTimer) {
-      clearInterval(this._syncTimer);
+      lazy.clearInterval(this._syncTimer);
       this._syncTimer = null;
     }
 
@@ -511,17 +504,20 @@ class CardDAVDirectory extends SQLiteDirectory {
       return;
     }
 
-    this._syncTimer = setInterval(
+    this._syncTimer = lazy.setInterval(
       () => this.syncWithServer(false),
       interval * 60000
     );
   }
 
   /**
-   * Get all cards on the server and add them to this directory. This should
-   * be used for the initial population of a directory.
+   * Get all cards on the server and add them to this directory.
+   *
+   * This is usually used for the initial population of a directory, but it
+   * can also be used for a complete re-sync.
    */
   async fetchAllFromServer() {
+    log.log("Fetching all cards from the server.");
     this._syncInProgress = true;
 
     let data = `<propfind xmlns="${PREFIX_BINDINGS.d}" ${NAMESPACE_STRING}>
@@ -541,13 +537,40 @@ class CardDAVDirectory extends SQLiteDirectory {
       expectedStatuses: [207],
     });
 
+    // A map of all existing hrefs and etags. If the etag for an href matches
+    // what we already have, we won't fetch it.
+    let currentHrefs = new Map(
+      Array.from(this.cards.values(), c => [c.get("_href"), c.get("_etag")])
+    );
+
     let hrefsToFetch = [];
     for (let { href, properties } of this._readResponse(response.dom)) {
-      if (properties && !properties.querySelector("resourcetype collection")) {
-        hrefsToFetch.push(href);
+      if (!properties || properties.querySelector("resourcetype collection")) {
+        continue;
       }
+
+      let currentEtag = currentHrefs.get(href);
+      currentHrefs.delete(href);
+
+      let etag = properties.querySelector("getetag")?.textContent;
+      if (etag && currentEtag == etag) {
+        continue;
+      }
+
+      hrefsToFetch.push(href);
     }
 
+    // Delete any existing cards we didn't see. They're not on the server so
+    // they shouldn't be on the client.
+    let cardsToDelete = [];
+    for (let href of currentHrefs.keys()) {
+      cardsToDelete.push(this.getCardFromProperty("_href", href, true));
+    }
+    if (cardsToDelete.length > 0) {
+      super.deleteCards(cardsToDelete);
+    }
+
+    // Fetch any cards we don't already have, or that have changed.
     if (hrefsToFetch.length > 0) {
       response = await this._multigetRequest(hrefsToFetch);
 
@@ -564,22 +587,22 @@ class CardDAVDirectory extends SQLiteDirectory {
         );
 
         try {
-          let abCard = VCardUtils.vCardToAbCard(vCard);
+          let abCard = lazy.VCardUtils.vCardToAbCard(vCard);
           abCard.setProperty("_etag", etag);
           abCard.setProperty("_href", href);
-          abCard.setProperty("_vCard", vCard);
           abCards.push(abCard);
         } catch (ex) {
           log.error(`Error parsing: ${vCard}`);
-          Cu.reportError(ex);
+          console.error(ex);
         }
       }
 
-      await this._bulkAddCards(abCards);
+      await this.bulkAddCards(abCards);
     }
 
     await this._getSyncToken();
 
+    log.log("Sync with server completed successfully.");
     Services.obs.notifyObservers(this, "addrbook-directory-synced");
 
     this._scheduleNextSync();
@@ -730,6 +753,8 @@ class CardDAVDirectory extends SQLiteDirectory {
    * @see RFC 6578
    */
   async _getSyncToken() {
+    log.log("Fetching new sync token");
+
     let data = `<propfind xmlns="${PREFIX_BINDINGS.d}" ${NAMESPACE_STRING}>
       <prop>
          <displayname/>
@@ -789,8 +814,17 @@ class CardDAVDirectory extends SQLiteDirectory {
       headers: {
         Depth: 1, // Only Google seems to need this.
       },
-      expectedStatuses: [207],
+      expectedStatuses: [207, 400],
     });
+
+    if (response.status == 400) {
+      log.warn(
+        `Server responded with: ${response.status} ${response.statusText}`
+      );
+      await this.fetchAllFromServer();
+      return;
+    }
+
     let dom = response.dom;
 
     // If this directory is set to read-only, the following operations would
@@ -827,10 +861,9 @@ class CardDAVDirectory extends SQLiteDirectory {
         }
         vCard = normalizeLineEndings(vCard);
 
-        let abCard = VCardUtils.vCardToAbCard(vCard);
+        let abCard = lazy.VCardUtils.vCardToAbCard(vCard);
         abCard.setProperty("_etag", etag);
         abCard.setProperty("_href", href);
-        abCard.setProperty("_vCard", vCard);
 
         if (card) {
           if (card.getProperty("_etag", "") != etag) {

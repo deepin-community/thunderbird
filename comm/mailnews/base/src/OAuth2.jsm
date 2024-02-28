@@ -4,13 +4,14 @@
 
 /**
  * Provides OAuth 2.0 authentication.
+ *
  * @see RFC 6749
  */
 var EXPORTED_SYMBOLS = ["OAuth2"];
 
-const { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-
-Cu.importGlobalProperties(["fetch"]);
+var { CryptoUtils } = ChromeUtils.importESModule(
+  "resource://services-crypto/utils.sys.mjs"
+);
 
 // Only allow one connecting window per endpoint.
 var gConnecting = {};
@@ -18,30 +19,32 @@ var gConnecting = {};
 /**
  * Constructor for the OAuth2 object.
  *
- * @constructor
- * @param {string} authorizationEndpoint - The authorization endpoint as
- *   defined by RFC 6749 Section 3.1.
- * @param {string} tokenEndpoint - The token endpoint as defined by
- *   RFC 6749 Section 3.2.
+ * @class
  * @param {?string} scope - The scope as specified by RFC 6749 Section 3.3.
  *   Will not be included in the requests if falsy.
- * @param {string} clientId - The client_id as specified by RFC 6749 Section
- *   2.3.1.
- * @param {string} [clientSecret=null] - The client_secret as specified in
- *    RFC 6749 section 2.3.1. Will not be included in the requests if null.
+ * @param {object} issuerDetails
+ * @param {string} issuerDetails.authorizationEndpoint - The authorization
+ *   endpoint as defined by RFC 6749 Section 3.1.
+ * @param {string} issuerDetails.clientId - The client_id as specified by RFC
+ *   6749 Section 2.3.1.
+ * @param {string} issuerDetails.clientSecret - The client_secret as specified
+ *   in RFC 6749 section 2.3.1. Will not be included in the requests if null.
+ * @param {boolean} issuerDetails.usePKCE - Whether to use PKCE as specified
+ *   in RFC 7636 during the oauth registration process
+ * @param {string} issuerDetails.redirectionEndpoint - The redirect_uri as
+ *   specified by RFC 6749 section 3.1.2.
+ * @param {string} issuerDetails.tokenEndpoint - The token endpoint as defined
+ *   by RFC 6749 Section 3.2.
  */
-function OAuth2(
-  authorizationEndpoint,
-  tokenEndpoint,
-  scope,
-  clientId,
-  clientSecret = null
-) {
-  this.authorizationEndpoint = authorizationEndpoint;
-  this.tokenEndpoint = tokenEndpoint;
+function OAuth2(scope, issuerDetails) {
   this.scope = scope;
-  this.clientId = clientId;
-  this.consumerSecret = clientSecret;
+  this.authorizationEndpoint = issuerDetails.authorizationEndpoint;
+  this.clientId = issuerDetails.clientId;
+  this.consumerSecret = issuerDetails.clientSecret || null;
+  this.usePKCE = issuerDetails.usePKCE;
+  this.redirectionEndpoint =
+    issuerDetails.redirectionEndpoint || "http://localhost";
+  this.tokenEndpoint = issuerDetails.tokenEndpoint;
 
   this.extraAuthParams = [];
 
@@ -55,11 +58,12 @@ function OAuth2(
 OAuth2.prototype = {
   clientId: null,
   consumerSecret: null,
-  redirectionEndpoint: "http://localhost",
   requestWindowURI: "chrome://messenger/content/browserRequest.xhtml",
-  requestWindowFeatures: "chrome,private,centerscreen,width=980,height=750",
+  requestWindowFeatures: "chrome,centerscreen,width=980,height=750",
   requestWindowTitle: "",
   scope: null,
+  usePKCE: false,
+  codeChallenge: null,
 
   accessToken: null,
   refreshToken: null,
@@ -105,6 +109,28 @@ OAuth2.prototype = {
     // The scope is optional.
     if (this.scope) {
       params.append("scope", this.scope);
+    }
+
+    // See rfc7636
+    if (this.usePKCE) {
+      // Convert base64 to base64url (rfc4648#section-5)
+      const to_b64url = b =>
+        b.replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
+
+      params.append("code_challenge_method", "S256");
+
+      // rfc7636#section-4.1
+      //  code_verifier = high-entropy cryptographic random STRING ... with a minimum
+      //  length of 43 characters and a maximum length of 128 characters.
+      const code_verifier = to_b64url(
+        btoa(CryptoUtils.generateRandomBytesLegacy(64))
+      );
+      this.codeVerifier = code_verifier;
+
+      // rfc7636#section-4.2
+      //  code_challenge = BASE64URL-ENCODE(SHA256(ASCII(code_verifier)))
+      const code_challenge = to_b64url(CryptoUtils.sha256Base64(code_verifier));
+      params.append("code_challenge", code_challenge);
     }
 
     for (let [name, value] of this.extraAuthParams) {
@@ -168,7 +194,8 @@ OAuth2.prototype = {
           onStateChange(aWebProgress, aRequest, aStateFlags, aStatus) {
             const wpl = Ci.nsIWebProgressListener;
             if (aStateFlags & (wpl.STATE_START | wpl.STATE_IS_NETWORK)) {
-              this._checkForRedirect(aRequest.name);
+              let channel = aRequest.QueryInterface(Ci.nsIChannel);
+              this._checkForRedirect(channel.URI.spec);
             }
           },
           onLocationChange(aWebProgress, aRequest, aLocation) {
@@ -186,13 +213,21 @@ OAuth2.prototype = {
       },
     };
 
+    const windowPrivacy = Services.prefs.getBoolPref(
+      "mailnews.oauth.usePrivateBrowser",
+      false
+    )
+      ? "private"
+      : "non-private";
+    const windowFeatures = `${this.requestWindowFeatures},${windowPrivacy}`;
+
     this.wrappedJSObject = this._browserRequest;
     gConnecting[this.authorizationEndpoint] = true;
     Services.ww.openWindow(
       null,
       this.requestWindowURI,
       null,
-      this.requestWindowFeatures,
+      windowFeatures,
       this
     );
   },
@@ -209,13 +244,28 @@ OAuth2.prototype = {
     delete this._browserRequest;
   },
 
-  // @see RFC 6749 section 4.1.2: Authorization Response
+  /**
+   * @param {string} aURL - Redirection URI with additional parameters.
+   */
   onAuthorizationReceived(aURL) {
-    this.log.info("OAuth2 authorization received: url=" + aURL);
-    let params = new URLSearchParams(aURL.split("?", 2)[1]);
-    if (params.has("code")) {
-      this.requestAccessToken(params.get("code"), false);
+    this.log.info("OAuth2 authorization response received: url=" + aURL);
+    const url = new URL(aURL);
+    if (url.searchParams.has("code")) {
+      // @see RFC 6749 section 4.1.2: Authorization Response
+      this.requestAccessToken(url.searchParams.get("code"), false);
     } else {
+      // @see RFC 6749 section 4.1.2.1: Error Response
+      if (url.searchParams.has("error")) {
+        let error = url.searchParams.get("error");
+        let errorDescription = url.searchParams.get("error_description") || "";
+        if (error == "invalid_scope") {
+          errorDescription += ` Invalid scope: ${this.scope}.`;
+        }
+        if (url.searchParams.has("error_uri")) {
+          errorDescription += ` See ${url.searchParams.get("error_uri")}.`;
+        }
+        this.log.error(`Authorization error [${error}]: ${errorDescription}`);
+      }
       this.onAuthorizationFailed(null, aURL);
     }
   },
@@ -226,6 +276,7 @@ OAuth2.prototype = {
 
   /**
    * Request a new access token, or refresh an existing one.
+   *
    * @param {string} aCode - The token issued to the client.
    * @param {boolean} aRefresh - Whether it's a refresh of a token or not.
    */
@@ -255,6 +306,9 @@ OAuth2.prototype = {
       data.append("grant_type", "authorization_code");
       data.append("code", aCode);
       data.append("redirect_uri", this.redirectionEndpoint);
+      if (this.usePKCE) {
+        data.append("code_verifier", this.codeVerifier);
+      }
     }
 
     fetch(this.tokenEndpoint, {
@@ -267,9 +321,16 @@ OAuth2.prototype = {
         let resultStr = JSON.stringify(result, null, 2);
         if ("error" in result) {
           // RFC 6749 section 5.2. Error Response
-          this.log.info(
-            `The authorization server returned an error response: ${resultStr}`
-          );
+          let err = result.error;
+          if ("error_description" in result) {
+            err += "; " + result.error_description;
+          }
+          if ("error_uri" in result) {
+            err += "; " + result.error_uri;
+          }
+          this.log.warn(`Error response from the authorization server: ${err}`);
+          this.log.info(`Error response details: ${resultStr}`);
+
           // Typically in production this would be {"error": "invalid_grant"}.
           // That is, the token expired or was revoked (user changed password?).
           // Reset the tokens we have and call success so that the auth flow

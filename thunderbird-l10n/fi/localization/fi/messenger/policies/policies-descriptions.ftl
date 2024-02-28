@@ -14,6 +14,8 @@ policy-3rdparty = Aseta käytännöt, joita WebExtensionit voivat käyttää chr
 
 policy-AppAutoUpdate = Ota käyttöön tai poista käytöstä sovelluksen automaattiset päivitykset.
 
+policy-AppUpdatePin = Estä { -brand-short-name }in päivitykset määritettyä versiota uudemmaksi.
+
 policy-AppUpdateURL = Aseta omavalintainen sovelluksen päivitysosoite.
 
 policy-Authentication = Määritä integroitu tunnistautumisen sitä tukeville sivustoille.

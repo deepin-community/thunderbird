@@ -4,48 +4,36 @@
 
 receipts-dialog-window =
     .title = Обратни разписки
-
-return-receipt-checkbox =
+receipts-dialog-title = Обратни разписки
+return-receipt-checkbox-control =
     .label = При изпращане на писмо, винаги се изисква обратна разписка
-    .acceskey = П
-
+    .accesskey = о
 receipt-arrive-label = При пристигане на обратна разписка:
-
-receipt-leave-radio =
-    .label = Остава във Входяща папка
-    .acceskey = О
-
-receipt-move-radio =
+receipt-leave-radio-control =
+    .label = Остава в папка Получени
+    .accesskey = П
+receipt-move-radio-control =
     .label = Премества се в папка "Изпратени"
-    .acceskey = р
-
+    .accesskey = И
 receipt-request-label = При получаване на заявка за обратна разписка:
-
-receipt-return-never-radio =
+receipt-return-never-radio-control =
     .label = Никога не се изпраща обратна разписка
-    .acceskey = Н
-
-receipt-return-some-radio =
-    .label = Изпраща се обратна разписка според следните правила
-    .acceskey = И
-
-receipt-not-to-cc =
+    .accesskey = з
+receipt-return-some-radio-control =
+    .label = Разрешаване на обратни разписки за някои съобщения
+    .accesskey = ш
+receipt-not-to-cc-label =
     .value = Ако не съм в До или Копие на писмото:
-    .acceskey = А
-
+    .accesskey = н
 receipt-send-never-label =
     .label = Не изпраща
-
 receipt-send-always-label =
     .label = Автоматично изпращане
-
 receipt-send-ask-label =
     .label = Запитване
-
-sender-outside-domain =
-    .value = Ако подателя е извън моя домейн:
-    .acceskey = к
-
-other-cases-label =
+sender-outside-domain-label =
+    .value = Ако подателят е извън моя домейн:
+    .accesskey = д
+other-cases-text-label =
     .value = Във всички други случаи:
-    .acceskey = В
+    .accesskey = в

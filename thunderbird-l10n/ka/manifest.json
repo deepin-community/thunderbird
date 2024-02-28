@@ -1,29 +1,28 @@
 {
   "langpack_id": "ka",
   "manifest_version": 2,
-  "applications": {
+  "browser_specific_settings": {
     "gecko": {
       "id": "langpack-ka@thunderbird.mozilla.org",
-      "strict_min_version": "91.0",
-      "strict_max_version": "91.*"
+      "strict_min_version": "115.0",
+      "strict_max_version": "115.*"
     }
   },
-  "name": "Georgian (ქართული) Language Pack",
-  "description": "Language pack for Thunderbird for ka",
-  "version": "91.0buildid20211101223011",
+  "name": "Language: ქართული (Georgian)",
+  "description": "Thunderbird Language Pack for ქართული (ka) – Georgian",
+  "version": "115.8.20240216.174500",
   "languages": {
     "ka": {
-      "version": "20211018081114",
+      "version": "20240216183807",
       "chrome_resources": {
         "alerts": "chrome/ka/locale/ka/alerts/",
         "autoconfig": "chrome/ka/locale/ka/autoconfig/",
-        "branding": "chrome/ka/locale/ka/branding/",
+        "branding": "chrome/ka/locale/branding/",
         "calendar": "chrome/ka/locale/ka/calendar/",
         "chat": "chrome/ka/locale/ka/chat/",
         "communicator": "chrome/ka/locale/ka/communicator/",
         "devtools": "chrome/ka/locale/ka/devtools/client/",
         "devtools-shared": "chrome/ka/locale/ka/devtools/shared/",
-        "devtools-startup": "chrome/ka/locale/ka/devtools/startup/",
         "global": "chrome/ka/locale/ka/global/",
         "global-platform": {
           "macosx": "chrome/ka/locale/ka/global-platform/mac/",
@@ -53,5 +52,5 @@
       "base_path": "browser/"
     }
   },
-  "author": "giasher.com (contributors: გია შერვაშიძე, http://giasher.com)"
+  "author": "giasher.com (contributors: გია შერვაშიძე (giasher.com), Alan (G12r))"
 }

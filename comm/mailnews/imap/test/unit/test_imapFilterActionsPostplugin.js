@@ -73,7 +73,7 @@ var gTestArray = [
     await setupTest(gFilter, gAction);
     // In non-postplugin, count here is 0 and not 1.  Need to investigate.
     testCounts(false, 1, 0, 0);
-    let thread = db().GetThreadContainingMsgHdr(gHeader);
+    let thread = db().getThreadContainingMsgHdr(gHeader);
     Assert.notEqual(0, thread.flags & Ci.nsMsgMessageFlags.Ignored);
   },
   async function WatchThread() {
@@ -81,7 +81,7 @@ var gTestArray = [
     await setupTest(gFilter, gAction);
     // In non-postplugin, count here is 0 and not 1.  Need to investigate.
     testCounts(false, 1, 0, 0);
-    let thread = db().GetThreadContainingMsgHdr(gHeader);
+    let thread = db().getThreadContainingMsgHdr(gHeader);
     Assert.notEqual(0, thread.flags & Ci.nsMsgMessageFlags.Watched);
   },
   async function KillSubthread() {
@@ -119,13 +119,6 @@ var gTestArray = [
     await setupTest(gFilter, gAction);
     testCounts(true, 1, 1, 1);
     Assert.equal(Ci.nsMsgPriority.highest, gHeader.priority);
-  },
-  async function Label() {
-    gAction.type = Ci.nsMsgFilterAction.Label;
-    gAction.label = 2;
-    await setupTest(gFilter, gAction);
-    testCounts(true, 1, 1, 1);
-    Assert.equal(2, gHeader.label);
   },
   async function AddTag() {
     gAction.type = Ci.nsMsgFilterAction.AddTag;
@@ -226,7 +219,7 @@ async function setupTest(aFilter, aAction) {
   gInboxListener = new DBListener();
   gDbService.registerPendingListener(IMAPPump.inbox, gInboxListener);
   IMAPPump.mailbox.addMessage(
-    new imapMessage(specForFileName(gMessage), IMAPPump.mailbox.uidnext++, [])
+    new ImapMessage(specForFileName(gMessage), IMAPPump.mailbox.uidnext++, [])
   );
   let promiseUrlListener = new PromiseTestUtils.PromiseUrlListener();
   IMAPPump.inbox.updateFolderWithListener(null, promiseUrlListener);
@@ -251,7 +244,7 @@ function endTest() {
 
 // nsIFolderListener implementation
 var FolderListener = {
-  OnItemEvent(aEventFolder, aEvent) {
+  onFolderEvent(aEventFolder, aEvent) {
     dump(
       "received folder event " + aEvent + " folder " + aEventFolder.name + "\n"
     );
@@ -297,7 +290,7 @@ DBListener.prototype = {
   onAnnouncerGoingAway(instigator) {
     if (gInboxListener) {
       try {
-        IMAPPump.inbox.msgDatabase.RemoveListener(gInboxListener);
+        IMAPPump.inbox.msgDatabase.removeListener(gInboxListener);
       } catch (e) {
         dump(" listener not found\n");
       }
@@ -330,7 +323,7 @@ DBListener.prototype = {
 // folder counts match the database counts)
 function folderCount(folder) {
   // count using the database
-  let dbCount = [...folder.msgDatabase.EnumerateMessages()].length;
+  let dbCount = [...folder.msgDatabase.enumerateMessages()].length;
 
   // count using the folder
   let count = folder.getTotalMessages(false);

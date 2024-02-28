@@ -6,6 +6,7 @@
 
 #include "DecoderDoctorDiagnostics.h"
 #include "MediaKeySystemAccessPermissionRequest.h"
+#include "VideoUtils.h"
 #include "mozilla/dom/BrowserChild.h"
 #include "mozilla/dom/Document.h"
 #include "mozilla/DetailedPromise.h"
@@ -70,8 +71,9 @@ void MediaKeySystemAccessManager::PendingRequest::RejectPromiseWithTypeError(
 }
 
 NS_INTERFACE_MAP_BEGIN_CYCLE_COLLECTION(MediaKeySystemAccessManager)
-  NS_INTERFACE_MAP_ENTRY(nsISupports)
+  NS_INTERFACE_MAP_ENTRY_AMBIGUOUS(nsISupports, nsIObserver)
   NS_INTERFACE_MAP_ENTRY(nsIObserver)
+  NS_INTERFACE_MAP_ENTRY(nsINamed)
 NS_INTERFACE_MAP_END
 
 NS_IMPL_CYCLE_COLLECTING_ADDREF(MediaKeySystemAccessManager)
@@ -374,6 +376,9 @@ void MediaKeySystemAccessManager::RequestMediaKeySystemAccess(
   //   agent, reject promise with a NotSupportedError. String comparison is
   //   case-sensitive.
   if (!IsWidevineKeySystem(aRequest->mKeySystem) &&
+#ifdef MOZ_WMF_CDM
+      !IsPlayReadyKeySystemAndSupported(aRequest->mKeySystem) &&
+#endif
       !IsClearkeyKeySystem(aRequest->mKeySystem)) {
     // Not to inform user, because nothing to do if the keySystem is not
     // supported.
@@ -622,6 +627,11 @@ nsresult MediaKeySystemAccessManager::Observe(nsISupports* aSubject,
       }
     }
   }
+  return NS_OK;
+}
+
+nsresult MediaKeySystemAccessManager::GetName(nsACString& aName) {
+  aName.AssignLiteral("MediaKeySystemAccessManager");
   return NS_OK;
 }
 

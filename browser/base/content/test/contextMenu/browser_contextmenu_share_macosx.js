@@ -3,9 +3,12 @@
 
 "use strict";
 
-const { sinon } = ChromeUtils.import("resource://testing-common/Sinon.jsm");
+const { sinon } = ChromeUtils.importESModule(
+  "resource://testing-common/Sinon.sys.mjs"
+);
 const BASE = getRootDirectory(gTestPath).replace(
   "chrome://mochitests/content",
+  // eslint-disable-next-line @microsoft/sdl/no-insecure-url
   "http://example.com"
 );
 const TEST_URL = BASE + "browser_contextmenu_shareurl.html";
@@ -40,7 +43,7 @@ let stub = sinon.stub(gBrowser, "MacSharingService").get(() => {
   };
 });
 
-registerCleanupFunction(async function() {
+registerCleanupFunction(async function () {
   stub.restore();
 });
 
@@ -50,19 +53,20 @@ registerCleanupFunction(async function() {
 add_task(async function test_contextmenu_share_macosx() {
   await BrowserTestUtils.withNewTab(TEST_URL, async () => {
     let contextMenu = await openTabContextMenu(gBrowser.selectedTab);
-    await TestUtils.waitForCondition(() => {
-      let itemCreated = document.getElementById("context_shareTabURL");
-      return !!itemCreated;
-    }, "Failed to create the Share item.");
+    await BrowserTestUtils.waitForMutationCondition(
+      contextMenu,
+      { childList: true },
+      () => contextMenu.querySelector(".share-tab-url-item")
+    );
     ok(true, "Got Share item");
 
-    await openMenuPopup();
+    await openMenuPopup(contextMenu);
     ok(getSharingProvidersSpy.calledOnce, "getSharingProviders called");
 
     info(
       "Check we have a service and one extra menu item for the More... button"
     );
-    let popup = document.getElementById("context_shareTabURL_popup");
+    let popup = contextMenu.querySelector(".share-tab-url-item").menupopup;
     let items = popup.querySelectorAll("menuitem");
     is(items.length, 2, "There should be 2 sharing services.");
 
@@ -96,11 +100,11 @@ add_task(async function test_contextmenu_share_macosx() {
 
     info("Test the More... button");
     contextMenu = await openTabContextMenu(gBrowser.selectedTab);
-    await openMenuPopup();
+    await openMenuPopup(contextMenu);
     // Since the tab context menu was collapsed previously, the popup needs to get the
     // providers again.
     ok(getSharingProvidersSpy.calledTwice, "getSharingProviders called again");
-    popup = document.getElementById("context_shareTabURL_popup");
+    popup = contextMenu.querySelector(".share-tab-url-item").menupopup;
     items = popup.querySelectorAll("menuitem");
     is(items.length, 2, "There should be 2 sharing services.");
 
@@ -132,10 +136,9 @@ async function openTabContextMenu(tab) {
   return contextMenu;
 }
 
-async function openMenuPopup() {
+async function openMenuPopup(contextMenu) {
   info("Opening Share menu popup.");
-  let popup = document.getElementById("context_shareTabURL_popup");
-  let shareItem = document.getElementById("context_shareTabURL");
+  let shareItem = contextMenu.querySelector(".share-tab-url-item");
   shareItem.openMenu(true);
-  await BrowserTestUtils.waitForPopupEvent(popup, "shown");
+  await BrowserTestUtils.waitForPopupEvent(shareItem.menupopup, "shown");
 }

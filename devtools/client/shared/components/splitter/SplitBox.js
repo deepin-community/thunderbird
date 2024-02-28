@@ -7,12 +7,12 @@
 const {
   Component,
   createFactory,
-} = require("devtools/client/shared/vendor/react");
-const PropTypes = require("devtools/client/shared/vendor/react-prop-types");
-const dom = require("devtools/client/shared/vendor/react-dom-factories");
+} = require("resource://devtools/client/shared/vendor/react.js");
+const PropTypes = require("resource://devtools/client/shared/vendor/react-prop-types.js");
+const dom = require("resource://devtools/client/shared/vendor/react-dom-factories.js");
 
 const Draggable = createFactory(
-  require("devtools/client/shared/components/splitter/Draggable")
+  require("resource://devtools/client/shared/components/splitter/Draggable.js")
 );
 
 /**
@@ -25,19 +25,23 @@ class SplitBox extends Component {
       // Custom class name. You can use more names separated by a space.
       className: PropTypes.string,
       // Initial size of controlled panel.
-      initialSize: PropTypes.string,
+      initialSize: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
       // Initial width of controlled panel.
       initialWidth: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
       // Initial height of controlled panel.
       initialHeight: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
       // Left/top panel
       startPanel: PropTypes.any,
+      // Left/top panel collapse state.
+      startPanelCollapsed: PropTypes.bool,
       // Min panel size.
       minSize: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
       // Max panel size.
       maxSize: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
       // Right/bottom panel
       endPanel: PropTypes.any,
+      // Right/bottom panel collapse state.
+      endPanelCollapsed: PropTypes.bool,
       // True if the right/bottom panel should be controlled.
       endPanelControl: PropTypes.bool,
       // Size of the splitter handle bar.
@@ -48,6 +52,8 @@ class SplitBox extends Component {
       style: PropTypes.object,
       // Call when controlled panel was resized.
       onControlledPanelResized: PropTypes.func,
+      // Optional callback when splitbox resize stops
+      onResizeEnd: PropTypes.func,
       // Retrieve DOM reference to the start panel element
       onSelectContainerElement: PropTypes.any,
     };
@@ -87,7 +93,8 @@ class SplitBox extends Component {
     this.onMove = this.onMove.bind(this);
   }
 
-  componentWillReceiveProps(nextProps) {
+  // FIXME: https://bugzilla.mozilla.org/show_bug.cgi?id=1774507
+  UNSAFE_componentWillReceiveProps(nextProps) {
     const { endPanelControl, splitterSize, vert } = nextProps;
 
     if (endPanelControl != this.props.endPanelControl) {
@@ -144,7 +151,7 @@ class SplitBox extends Component {
     this.splitBox.classList.add("dragging");
 
     this.setState({
-      defaultCursor: defaultCursor,
+      defaultCursor,
     });
   }
 
@@ -153,6 +160,12 @@ class SplitBox extends Component {
     doc.documentElement.style.cursor = this.state.defaultCursor;
 
     this.splitBox.classList.remove("dragging");
+
+    if (this.props.onResizeEnd) {
+      this.props.onResizeEnd(
+        this.state.vert ? this.state.width : this.state.height
+      );
+    }
   }
 
   /**
@@ -225,7 +238,9 @@ class SplitBox extends Component {
     const { endPanelControl, splitterSize, vert } = this.state;
     const {
       startPanel,
+      startPanelCollapsed,
       endPanel,
+      endPanelCollapsed,
       minSize,
       maxSize,
       onSelectContainerElement,
@@ -291,7 +306,7 @@ class SplitBox extends Component {
         },
         style,
       },
-      startPanel
+      startPanel && !startPanelCollapsed
         ? dom.div(
             {
               className: endPanelControl ? "uncontrolled" : "controlled",
@@ -316,7 +331,7 @@ class SplitBox extends Component {
             onMove: this.onMove,
           })
         : null,
-      endPanel
+      endPanel && !endPanelCollapsed
         ? dom.div(
             {
               className: endPanelControl ? "controlled" : "uncontrolled",

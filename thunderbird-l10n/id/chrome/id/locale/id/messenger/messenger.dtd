@@ -24,8 +24,6 @@
 <!ENTITY moveToNewWindow.accesskey "J">
 <!ENTITY newVirtualFolderCmd.label "Pencarian Tersimpan…">
 <!ENTITY newVirtualFolderCmd.accesskey "c">
-<!ENTITY newOtherAccountsCmd.label "Akun Lainnya…">
-<!ENTITY newOtherAccountsCmd.accesskey "L">
 <!ENTITY newCreateEmailAccountCmd.label "Dapatkan Akun Email Baru…">
 <!ENTITY newCreateEmailAccountCmd.accesskey "B">
 <!ENTITY newExistingEmailAccountCmd.label "Akun Email yang Sudah Ada…">
@@ -48,8 +46,6 @@
 <!ENTITY openMessageFileCmd.accesskey "P">
 <!ENTITY saveAsMenu.label "Simpan sebagai">
 <!ENTITY saveAsMenu.accesskey "S">
-<!ENTITY saveAsFileCmd.label "Berkas">
-<!ENTITY saveAsFileCmd.accesskey "B">
 <!ENTITY saveAsFileCmd.key "s">
 <!ENTITY saveAsTemplateCmd.label "Templat">
 <!ENTITY saveAsTemplateCmd.accesskey "T">
@@ -320,7 +316,6 @@
 <!ENTITY goBackCmd.commandKey "[">
 <!ENTITY goChatCmd.label "Ngobrol">
 <!ENTITY goChatCmd.accesskey "N">
-<!ENTITY goChatCmd2.key "H">
 <!ENTITY prevStarredMsgCmd.label "Pesan Berbintang">
 <!ENTITY prevStarredMsgCmd.accesskey "B">
 <!ENTITY folderMenu.label "Folder">
@@ -948,3 +943,6 @@
 <!-- Content tab Navigation buttons -->
 <!ENTITY browseBackButton.tooltip    "Mundur satu laman">
 <!ENTITY browseForwardButton.tooltip "Maju satu laman">
+
+<!ENTITY exportCmd.label "Export…">
+<!ENTITY exportCmd.accesskey "x">

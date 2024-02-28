@@ -1,17 +1,15 @@
-/* -*- Mode: Java; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 /* import-globals-from searchTerm.js */
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 var { MailServices } = ChromeUtils.import(
   "resource:///modules/MailServices.jsm"
 );
 var { MailUtils } = ChromeUtils.import("resource:///modules/MailUtils.jsm");
-var { PluralForm } = ChromeUtils.import(
-  "resource://gre/modules/PluralForm.jsm"
+var { PluralForm } = ChromeUtils.importESModule(
+  "resource://gre/modules/PluralForm.sys.mjs"
 );
 
 // The actual filter that we're editing if it is a _saved_ filter or prefill;
@@ -54,16 +52,12 @@ var gFilterActionStrings = [
 
 // A temporary filter with the current state of actions in the UI.
 var gTempFilter = null;
-// A nsIArray of the currently defined actions in the order they will be run.
+// nsIMsgRuleAction[] - the currently defined actions in the order they will be run.
 var gActionListOrdered = null;
 
 var gFilterEditorMsgWindow = null;
 
-var nsMsgFilterAction = Ci.nsMsgFilterAction;
-var nsMsgFilterType = Ci.nsMsgFilterType;
-var nsIMsgRuleAction = Ci.nsIMsgRuleAction;
-var nsMsgSearchScope = Ci.nsMsgSearchScope;
-
+window.addEventListener("DOMContentLoaded", filterEditorOnLoad, { once: true });
 document.addEventListener("dialogaccept", onAccept);
 
 function filterEditorOnLoad() {
@@ -137,9 +131,9 @@ function filterEditorOnLoad() {
         // for everything else, it's MoveToFolder
         var filterAction = gFilter.createAction();
         filterAction.type =
-          getScopeFromFilterList(gFilterList) == nsMsgSearchScope.newsFilter
-            ? nsMsgFilterAction.Delete
-            : nsMsgFilterAction.MoveToFolder;
+          getScopeFromFilterList(gFilterList) == Ci.nsMsgSearchScope.newsFilter
+            ? Ci.nsMsgFilterAction.Delete
+            : Ci.nsMsgFilterAction.MoveToFolder;
         gFilter.appendAction(filterAction);
         initializeDialog(gFilter);
       } else if ("copiedFilter" in args) {
@@ -188,7 +182,7 @@ function filterEditorOnLoad() {
   if (!gFilter) {
     // This is a new filter. Set to both Incoming and Manual contexts.
     gFilterTypeSelector.setType(
-      nsMsgFilterType.Incoming | nsMsgFilterType.Manual
+      Ci.nsMsgFilterType.Incoming | Ci.nsMsgFilterType.Manual
     );
   }
 
@@ -218,7 +212,7 @@ function onAccept(event) {
       return;
     }
   } catch (e) {
-    Cu.reportError(e);
+    console.error(e);
     event.preventDefault();
     return;
   }
@@ -244,7 +238,7 @@ function duplicateFilterNameExists(filterName) {
 function getScopeFromFilterList(filterList) {
   if (!filterList) {
     dump("yikes, null filterList\n");
-    return nsMsgSearchScope.offlineMail;
+    return Ci.nsMsgSearchScope.offlineMail;
   }
   return filterList.folder.server.filterScope;
 }
@@ -279,37 +273,37 @@ function initializeFilterTypeSelector() {
 
     /**
      * Returns the currently set filter type (checkboxes) in terms
-     * of a Ci.nsMsgFilterType value.
+     * of a Ci.Ci.nsMsgFilterType value.
      */
     getType() {
-      let type = nsMsgFilterType.None;
+      let type = Ci.nsMsgFilterType.None;
 
       if (this.checkBoxManual.checked) {
-        type |= nsMsgFilterType.Manual;
+        type |= Ci.nsMsgFilterType.Manual;
       }
 
       if (this.checkBoxIncoming.checked) {
         if (this.menulistIncoming.selectedItem == this.menuitemAfterPlugins) {
-          type |= nsMsgFilterType.PostPlugin;
+          type |= Ci.nsMsgFilterType.PostPlugin;
         } else if (
-          getScopeFromFilterList(gFilterList) == nsMsgSearchScope.newsFilter
+          getScopeFromFilterList(gFilterList) == Ci.nsMsgSearchScope.newsFilter
         ) {
-          type |= nsMsgFilterType.NewsRule;
+          type |= Ci.nsMsgFilterType.NewsRule;
         } else {
-          type |= nsMsgFilterType.InboxRule;
+          type |= Ci.nsMsgFilterType.InboxRule;
         }
       }
 
       if (this.checkBoxArchive.checked) {
-        type |= nsMsgFilterType.Archive;
+        type |= Ci.nsMsgFilterType.Archive;
       }
 
       if (this.checkBoxOutgoing.checked) {
-        type |= nsMsgFilterType.PostOutgoing;
+        type |= Ci.nsMsgFilterType.PostOutgoing;
       }
 
       if (this.checkBoxPeriodic.checked) {
-        type |= nsMsgFilterType.Periodic;
+        type |= Ci.nsMsgFilterType.Periodic;
       }
 
       return type;
@@ -319,29 +313,29 @@ function initializeFilterTypeSelector() {
      * Sets the checkboxes to represent the filter type passed in.
      *
      * @param aType  the filter type to set in terms
-     *               of Ci.nsMsgFilterType values.
+     *               of Ci.Ci.nsMsgFilterType values.
      */
     setType(aType) {
       // If there is no type (event) requested, force "when manually run"
-      if (aType == nsMsgFilterType.None) {
-        aType = nsMsgFilterType.Manual;
+      if (aType == Ci.nsMsgFilterType.None) {
+        aType = Ci.nsMsgFilterType.Manual;
       }
 
-      this.checkBoxManual.checked = aType & nsMsgFilterType.Manual;
+      this.checkBoxManual.checked = aType & Ci.nsMsgFilterType.Manual;
 
       this.checkBoxIncoming.checked =
-        aType & (nsMsgFilterType.PostPlugin | nsMsgFilterType.Incoming);
+        aType & (Ci.nsMsgFilterType.PostPlugin | Ci.nsMsgFilterType.Incoming);
 
       this.menulistIncoming.selectedItem =
-        aType & nsMsgFilterType.PostPlugin
+        aType & Ci.nsMsgFilterType.PostPlugin
           ? this.menuitemAfterPlugins
           : this.menuitemBeforePlugins;
 
-      this.checkBoxArchive.checked = aType & nsMsgFilterType.Archive;
+      this.checkBoxArchive.checked = aType & Ci.nsMsgFilterType.Archive;
 
-      this.checkBoxOutgoing.checked = aType & nsMsgFilterType.PostOutgoing;
+      this.checkBoxOutgoing.checked = aType & Ci.nsMsgFilterType.PostOutgoing;
 
-      this.checkBoxPeriodic.checked = aType & nsMsgFilterType.Periodic;
+      this.checkBoxPeriodic.checked = aType & Ci.nsMsgFilterType.Periodic;
       const periodMinutes = gFilterList.folder.server.getIntValue(
         "periodicFilterRateMinutes"
       );
@@ -388,7 +382,7 @@ function initializeDialog(filter) {
     gFilterActionList.appendChild(newActionRow);
     newActionRow.setAttribute(
       "value",
-      filterAction.type == nsMsgFilterAction.Custom
+      filterAction.type == Ci.nsMsgFilterAction.Custom
         ? filterAction.customId
         : gFilterActionStrings[filterAction.type]
     );
@@ -419,7 +413,7 @@ function ensureActionRow() {
 // move to overlay
 function saveFilter() {
   // See if at least one filter type (activation event) is selected.
-  if (gFilterType == nsMsgFilterType.None) {
+  if (gFilterType == Ci.nsMsgFilterType.None) {
     Services.prompt.alert(
       window,
       gFilterBundle.getString("mustHaveFilterTypeTitle"),
@@ -479,7 +473,7 @@ function saveFilter() {
       );
       if (!customTerm) {
         invalidRule = true;
-        Cu.reportError(
+        console.error(
           "Filter not saved because custom search term '" +
             obj.searchattribute.value +
             "' in rule " +
@@ -490,7 +484,7 @@ function saveFilter() {
         !customTerm.getAvailable(obj.searchScope, obj.searchattribute.value)
       ) {
         invalidRule = true;
-        Cu.reportError(
+        console.error(
           "Filter not saved because custom search term '" +
             customTerm.name +
             "' in rule " +
@@ -511,7 +505,7 @@ function saveFilter() {
         )
       ) {
         invalidRule = true;
-        Cu.reportError(
+        console.error(
           "Filter not saved because standard search term '" +
             attribValue +
             "' in rule " +
@@ -693,49 +687,14 @@ function AssignMeaningfulName() {
     stub = gFilterBundle.getString("matchAllFilterName");
   } else {
     // Assign a name based on the first search term.
-    let searchValue = termRoot.searchvalue;
-    let activeItem = searchValue.findActiveItem();
-
-    // Values are either popup menu items or edit fields.
-    // For popup menus use activeItem.label; for
-    // edit fields, activeItem.value
-    let value;
-    switch (Number(termRoot.searchattribute.value)) {
-      case Ci.nsMsgSearchAttrib.Priority:
-      case Ci.nsMsgSearchAttrib.MsgStatus:
-      case Ci.nsMsgSearchAttrib.Keywords:
-      case Ci.nsMsgSearchAttrib.HasAttachmentStatus:
-      case Ci.nsMsgSearchAttrib.JunkStatus:
-      case Ci.nsMsgSearchAttrib.JunkScoreOrigin:
-        value = activeItem ? activeItem.label : "";
-        break;
-
-      default:
-        try {
-          value = activeItem.value;
-        } catch (ex) {
-          // We should never get here, but for safety's sake,
-          // let's name the filter "Untitled Filter".
-          stub = gFilterBundle.getString("untitledFilterName");
-          // Do not 'Return'. Instead fall through and deal with the untitled filter below.
-        }
-        break;
-    }
-    // We are now ready to name the filter.
-    // If at this point stub is empty, we know that this is not a Match All Filter
-    // and is not an "untitledFilterName" Filter, so assign it a name using
-    // a string format from the Filter Bundle.
-    if (!stub) {
-      // Term, Operator and Value are the three parts of a filter match.
-      // Term and Operator are easy to retrieve.
-      let term = termRoot.searchattribute.label;
-      let operator = termRoot.searchoperator.label;
-      stub = gFilterBundle.getFormattedString("filterAutoNameStr", [
-        term,
-        operator,
-        value,
-      ]);
-    }
+    let term = termRoot.searchattribute.label;
+    let operator = termRoot.searchoperator.label;
+    let value = termRoot.searchvalue.getReadableValue();
+    stub = gFilterBundle.getFormattedString("filterAutoNameStr", [
+      term,
+      operator,
+      value,
+    ]);
   }
 
   // Whatever name we have used, 'uniquify' it.
@@ -743,7 +702,7 @@ function AssignMeaningfulName() {
   let count = 1;
   while (duplicateFilterNameExists(tempName)) {
     count++;
-    tempName = stub + " " + count;
+    tempName = `${stub} ${count}`;
   }
   gFilter.filterName = tempName;
 }
@@ -757,9 +716,8 @@ function GetFilterEditorMsgWindow() {
   if (!gFilterEditorMsgWindow) {
     var msgWindowContractID = "@mozilla.org/messenger/msgwindow;1";
     var nsIMsgWindow = Ci.nsIMsgWindow;
-    gFilterEditorMsgWindow = Cc[msgWindowContractID].createInstance(
-      nsIMsgWindow
-    );
+    gFilterEditorMsgWindow =
+      Cc[msgWindowContractID].createInstance(nsIMsgWindow);
     gFilterEditorMsgWindow.domWindow = window;
     gFilterEditorMsgWindow.rootDocShell.appType = Ci.nsIDocShell.APP_TYPE_MAIL;
   }
@@ -822,17 +780,17 @@ function setFilterScope(aFilterType, aFilterList) {
 // hierarchy of contexts, with incoming the most restrictive,
 // followed by manual and post-plugin.
 function getFilterScope(aServerFilterScope, aFilterType, aFilterList) {
-  if (aFilterType & nsMsgFilterType.Incoming) {
+  if (aFilterType & Ci.nsMsgFilterType.Incoming) {
     return aServerFilterScope;
   }
 
   // Manual or PostPlugin
   // local mail allows body and junk types
-  if (aServerFilterScope == nsMsgSearchScope.offlineMailFilter) {
-    return nsMsgSearchScope.offlineMail;
+  if (aServerFilterScope == Ci.nsMsgSearchScope.offlineMailFilter) {
+    return Ci.nsMsgSearchScope.offlineMail;
   }
   // IMAP and NEWS online don't allow body
-  return nsMsgSearchScope.onlineManual;
+  return Ci.nsMsgSearchScope.onlineManual;
 }
 
 /**

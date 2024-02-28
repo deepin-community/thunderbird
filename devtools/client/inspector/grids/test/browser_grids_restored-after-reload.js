@@ -31,22 +31,14 @@ const OTHER_URI = `
   </div>
 `;
 
-add_task(async function() {
-  // Disable bfcache for Fission for now.
-  // If Fission is disabled, the pref is no-op.
-  await SpecialPowers.pushPrefEnv({
-    set: [["fission.bfcacheInParent", false]],
-  });
-
+add_task(async function () {
   await addTab("data:text/html;charset=utf-8," + encodeURIComponent(TEST_URI));
   const { gridInspector, inspector } = await openLayoutView();
   const { document: doc } = gridInspector;
   const { highlighters, store } = inspector;
   const HIGHLIGHTER_TYPE = inspector.highlighters.TYPES.GRID;
-  const {
-    waitForHighlighterTypeRestored,
-    waitForHighlighterTypeDiscarded,
-  } = getHighlighterTestHelpers(inspector);
+  const { waitForHighlighterTypeRestored, waitForHighlighterTypeDiscarded } =
+    getHighlighterTestHelpers(inspector);
 
   await selectNode("#grid", inspector);
   const gridList = doc.getElementById("grid-list");
@@ -83,7 +75,7 @@ add_task(async function() {
   );
 
   const onReloaded = inspector.once("reloaded");
-  await refreshTab();
+  await reloadBrowser();
   info("Wait for inspector to be reloaded after page reload");
   await onReloaded;
 

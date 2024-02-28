@@ -2,7 +2,6 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 var { EnigmailFuncs } = ChromeUtils.import(
   "chrome://openpgp/content/modules/funcs.jsm"
 );
@@ -67,12 +66,21 @@ async function setListEntries() {
       } else {
         statusStringDirect = await document.l10n.formatValue(
           "openpgp-compose-alias-status-direct",
-          { count: aliasKeys.length }
+          {
+            count: aliasKeys.length,
+          }
         );
       }
     } else {
+      // We ask to include keys which are expired, because that's what
+      // our sub dialog oneRecipientStatus needs. This is for
+      // efficiency - because otherwise the sub dialog would have to
+      // query all keys again.
+      // The consequence is, we need to later call isValidForEncryption
+      // for the keys we have obtained, to confirm they are really valid.
       let foundKeys = await EnigmailKeyRing.getMultValidKeysForOneRecipient(
-        addr
+        addr,
+        true
       );
       if (!foundKeys || !foundKeys.length) {
         statusStringID = "openpgp-recip-missing";
@@ -87,8 +95,9 @@ async function setListEntries() {
           }
           if (
             goodPersonal ||
-            keyObj.acceptance == "verified" ||
-            keyObj.acceptance == "unverified"
+            (EnigmailKeyRing.isValidForEncryption(keyObj) &&
+              (keyObj.acceptance == "verified" ||
+                keyObj.acceptance == "unverified"))
           ) {
             statusStringID = "openpgp-recip-good";
             break;

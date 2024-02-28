@@ -9,12 +9,10 @@
 <!ENTITY calendar.newevent.button.tooltip         "Crear un novo evento" >
 <!ENTITY calendar.newtask.button.tooltip          "Crear unha nova tarefa" >
 
-<!ENTITY calendar.unifinder.todoitems.label       "Tarefas" >
 <!ENTITY calendar.unifinder.showcompletedtodos.label "Amosar as tarefas rematadas">
 
 <!ENTITY calendar.today.button.label          "Hoxe">
 <!ENTITY calendar.tomorrow.button.label       "Mañá">
-<!ENTITY calendar.upcoming.button.label       "Proximamente">
 
 <!ENTITY calendar.events.filter.all.label "Todos os eventos">
 <!ENTITY calendar.events.filter.today.label "Eventos de hoxe">
@@ -87,13 +85,12 @@
 
 <!ENTITY calendar.newevent.button.label         "Novo evento" >
 <!ENTITY calendar.newtask.button.label          "Nova tarefa" >
-<!ENTITY calendar.print.button.label            "Imprimir" >
-<!ENTITY calendar.print.button.accesskey        "p">
 
 <!ENTITY calendar.day.button.label              "Día" >
 <!ENTITY calendar.week.button.label             "Semana" >
 <!ENTITY calendar.month.button.label            "Mes" >
 <!ENTITY calendar.multiweek.button.label        "Varias semanas" >
+
 <!ENTITY calendar.onlyworkday.checkbox.label    "Só días laborábeis" >
 <!ENTITY calendar.onlyworkday.checkbox.accesskey  "r" >
 <!ENTITY calendar.displaytodos.checkbox.label   "Tarefas na vista" >
@@ -178,8 +175,6 @@
 <!ENTITY calendar.context.attendance.menu.label                 "Asistencia">
 <!ENTITY calendar.context.attendance.menu.accesskey             "A">
 <!ENTITY calendar.context.attendance.occurrence.label           "Esta ocorrencia">
-<!ENTITY calendar.context.attendance.all.label        "Todas as ocorrencias" >
-
 <!ENTITY calendar.context.attendance.all2.label                 "Series completas">
 <!ENTITY calendar.context.attendance.send.label                 "Enviar unha notificación agora">
 <!ENTITY calendar.context.attendance.send.accesskey             "g">
@@ -196,7 +191,7 @@
 <!ENTITY calendar.context.attendance.occ.delegated.label        "Delegado">
 <!ENTITY calendar.context.attendance.occ.needsaction.accesskey  "s">
 <!ENTITY calendar.context.attendance.occ.needsaction.label      "Aínda precisa acción">
-<!ENTITY calendar.context.attendance.occ.inprogress.accesskey   "g">
+<!ENTITY calendar.context.attendance.occ.inprogress.accesskey   "">
 <!ENTITY calendar.context.attendance.occ.inprogress.label       "En progreso">
 <!ENTITY calendar.context.attendance.occ.completed.accesskey    "R">
 <!ENTITY calendar.context.attendance.occ.completed.label        "Rematada">
@@ -327,8 +322,8 @@
 <!ENTITY calendar.alarm.location.label              "Localización:" >
 <!ENTITY calendar.alarm.details.label               "Detalles…" >
 
-<!ENTITY calendar.alarm.snoozefor.label             "Suspender para" >
-<!ENTITY calendar.alarm.snoozeallfor.label          "Suspender todo para" >
+<!ENTITY calendar.alarm.snoozefor.label             "Aprazar por" >
+<!ENTITY calendar.alarm.snoozeallfor.label          "Aprazar todo por" >
 <!ENTITY calendar.alarm.title.label                 "Alarma do calendario" >
 <!ENTITY calendar.alarm.dismiss.label               "Rexeitar" >
 <!ENTITY calendar.alarm.dismissall.label            "Rexeitar todo" >
@@ -346,7 +341,7 @@
      This string is not seen in the UI, it is read by screen readers when the
      user focuses the "Cancel" button in the "Snooze for..." popup of the alarm
      dialog. -->
-<!ENTITY calendar.alarm.snooze.cancel               "Cancelar suspensión">
+<!ENTITY calendar.alarm.snooze.cancel               "Cancelar o aprazamento">
 
 <!-- Calendar Server Dialog -->
 <!ENTITY calendar.server.dialog.title.edit          "Editar calendario">
@@ -356,7 +351,6 @@
 <!ENTITY calendarproperties.color.label                    "Cor:">
 <!ENTITY calendarproperties.webdav.label                   "iCalendar (ICS)">
 <!ENTITY calendarproperties.caldav.label                   "CalDAV">
-<!ENTITY calendarproperties.wcap.label                     "Sun Java System Calendar Server (WCAP)">
 <!ENTITY calendarproperties.format.label                   "Formato:">
 <!ENTITY calendarproperties.location.label                 "Localización:">
 <!ENTITY calendarproperties.refreshInterval.label          "Refrescar calendario:">
@@ -365,7 +359,7 @@
 <!ENTITY calendarproperties.readonly.label                 "Só de lectura">
 <!ENTITY calendarproperties.firealarms.label               "Amosar alarmas">
 <!ENTITY calendarproperties.cache3.label                   "Compatíbel co modo sen conexión">
-<!ENTITY calendarproperties.enabled.label                  "Activar este calendario">
+<!ENTITY calendarproperties.enabled2.label                 "Activar este calendario">
 <!ENTITY calendarproperties.forceDisabled.label            "Non foi posíbel atopar o fornecedor para este calendario. Iso sucede frecuentemente se desactivou ou desinstalou certos complementos.">
 <!ENTITY calendarproperties.unsubscribe.label              "Cancelar subscrición">
 <!ENTITY calendarproperties.unsubscribe.accesskey          "u">
@@ -376,27 +370,8 @@
 <!ENTITY calendar.publish.publish.button      "Publicar">
 <!ENTITY calendar.publish.close.button      "Pechar">
 
-<!ENTITY calendar.publish.example.url.description   "Algo como http://www.myserver.com/webdav/test.ics">
-
 <!-- Select Calendar Dialog -->
 <!ENTITY calendar.select.dialog.title    "Seleccionar calendario">
-
-<!-- Calendar Printing -->
-<!ENTITY calendar.print.window.title "Imprimir un calendario">
-<!ENTITY calendar.print.title.label "Título:">
-<!ENTITY calendar.print.layout.label "Deseño:">
-<!ENTITY calendar.print.range.label "Que imprimir">
-<!ENTITY calendar.print.currentView2.label "Vista actual">
-<!ENTITY calendar.print.selectedEventsAndTasks.label "Eventos/tarefas seleccionados">
-<!ENTITY calendar.print.tasks.label "Tarefas">
-<!ENTITY calendar.print.events.label "Eventos">
-<!ENTITY calendar.print.custom.label "Personalizar o intervalo da data:">
-<!ENTITY calendar.print.from.label "De:">
-<!ENTITY calendar.print.to.label "Para:">
-<!ENTITY calendar.print.settingsGroup.label "Configuración da impresión">
-<!ENTITY calendar.print.optionsGroup.label "Opcións">
-<!ENTITY calendar.print.taskswithnoduedate.label "Tarefas sen data límite">
-<!ENTITY calendar.print.completedtasks.label "Tarefas rematadas">
 
 <!-- Error reporting -->
 <!ENTITY calendar.error.detail "Detalles…">
@@ -409,5 +384,3 @@
 <!ENTITY calendar.extract.task.button          "Engadir como tarefa">
 <!ENTITY calendar.extract.event.button.tooltip "Extrae a información temporal da mensaxe e engádea ao calendario como un evento">
 <!ENTITY calendar.extract.task.button.tooltip  "Extrae a información temporal da mensaxe e engádea ao calendario como unha tarefa">
-
-<!ENTITY calendarproperties.enabled2.label                 "Enable This Calendar">

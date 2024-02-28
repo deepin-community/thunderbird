@@ -109,6 +109,10 @@ AutoCompleteResult.prototype = {
     return this.getValueAt(aIndex);
   },
 
+  isRemovableAt(aRowIndex) {
+    return true;
+  },
+
   removeValueAt(aRowIndex) {},
 
   // nsISupports implementation
@@ -148,7 +152,7 @@ AutoCompleteSearch.prototype = {
   ]),
 
   // nsIFactory implementation
-  createInstance(outer, iid) {
+  createInstance(iid) {
     return this.QueryInterface(iid);
   },
 };
@@ -160,9 +164,7 @@ AutoCompleteSearch.prototype = {
 function registerAutoCompleteSearch(aSearch) {
   var name = "@mozilla.org/autocomplete/search;1?name=" + aSearch.name;
 
-  var uuidGenerator = Cc["@mozilla.org/uuid-generator;1"].getService(
-    Ci.nsIUUIDGenerator
-  );
+  var uuidGenerator = Services.uuid;
   var cid = uuidGenerator.generateUUID();
 
   var desc = "Test AutoCompleteSearch";
@@ -216,13 +218,13 @@ function run_test() {
   var input = new AutoCompleteInput([emptySearch.name, regularSearch.name]);
   var numSearchesStarted = 0;
 
-  input.onSearchBegin = function() {
+  input.onSearchBegin = function () {
     numSearchesStarted++;
     Assert.equal(numSearchesStarted, 1);
     Assert.equal(input.searchCount, 2);
   };
 
-  input.onSearchComplete = function() {
+  input.onSearchComplete = function () {
     Assert.equal(numSearchesStarted, 1);
 
     Assert.equal(

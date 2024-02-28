@@ -7,22 +7,21 @@
 var { MailServices } = ChromeUtils.import(
   "resource:///modules/MailServices.jsm"
 );
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 
 function ABView(
   directory,
   searchQuery,
   searchString,
-  listener,
   sortColumn,
   sortDirection
 ) {
   this.__proto__.__proto__ = new PROTO_TREE_VIEW();
   this.directory = directory;
-  this.listener = listener;
+  this.searchString = searchString;
 
   let directories = directory ? [directory] : MailServices.ab.directories;
   if (searchQuery) {
+    this._searchesInProgress = directories.length;
     searchQuery = searchQuery.replace(/^\?+/, "");
     for (let dir of directories) {
       dir.search(searchQuery, searchString, this);
@@ -33,9 +32,6 @@ function ABView(
         this._rowMap.push(new abViewCard(card, dir));
       }
     }
-    if (this.listener) {
-      this.listener.onCountChanged(this.rowCount);
-    }
   }
   this.sortBy(sortColumn, sortDirection);
 }
@@ -43,6 +39,9 @@ ABView.nameFormat = Services.prefs.getIntPref(
   "mail.addr_book.lastnamefirst",
   0
 );
+ABView.NOT_SEARCHING = 0;
+ABView.SEARCHING = 1;
+ABView.SEARCH_COMPLETE = 2;
 ABView.prototype = {
   QueryInterface: ChromeUtils.generateQI([
     "nsITreeView",
@@ -52,7 +51,6 @@ ABView.prototype = {
   ]),
 
   directory: null,
-  listener: null,
   _notifications: [
     "addrbook-directory-deleted",
     "addrbook-directory-invalidated",
@@ -72,7 +70,7 @@ ABView.prototype = {
 
   deleteSelectedCards() {
     let directoryMap = new Map();
-    for (let i of this.tree.selectedIndicies) {
+    for (let i of this._tree.selectedIndices) {
       let card = this.getCardFromRow(i);
       let cardSet = directoryMap.get(card.directoryUID);
       if (!cardSet) {
@@ -108,11 +106,13 @@ ABView.prototype = {
     return this._rowMap.findIndex(row => row.id == uid);
   },
   sortBy(sortColumn, sortDirection, resort) {
-    if (this.tree) {
+    let selectionExists = false;
+    if (this._tree) {
+      let { selectedIndices, currentIndex } = this._tree;
+      selectionExists = selectedIndices.length;
       // Remember what was selected.
-      let { selectedIndicies, currentIndex } = this.tree;
       for (let i = 0; i < this._rowMap.length; i++) {
-        this._rowMap[i].wasSelected = selectedIndicies.includes(i);
+        this._rowMap[i].wasSelected = selectedIndices.includes(i);
         this._rowMap[i].wasCurrent = currentIndex == i;
       }
     }
@@ -135,33 +135,41 @@ ABView.prototype = {
     }
 
     // Restore what was selected.
-    if (this.tree) {
-      this.tree.invalidate();
-      for (let i = 0; i < this._rowMap.length; i++) {
-        this.tree.toggleSelectionAtIndex(i, this._rowMap[i].wasSelected, true);
-      }
-      // Can't do this until updating the selection is finished.
-      for (let i = 0; i < this._rowMap.length; i++) {
-        if (this._rowMap[i].wasCurrent) {
-          this.tree.currentIndex = i;
-          break;
+    if (this._tree) {
+      this._tree.reset();
+      if (selectionExists) {
+        for (let i = 0; i < this._rowMap.length; i++) {
+          this._tree.toggleSelectionAtIndex(
+            i,
+            this._rowMap[i].wasSelected,
+            true
+          );
         }
+        // Can't do this until updating the selection is finished.
+        for (let i = 0; i < this._rowMap.length; i++) {
+          if (this._rowMap[i].wasCurrent) {
+            this._tree.currentIndex = i;
+            break;
+          }
+        }
+        this.selectionChanged();
       }
-      this.selectionChanged();
     }
     this.sortColumn = sortColumn;
     this.sortDirection = sortDirection;
   },
+  get searchState() {
+    if (this._searchesInProgress === undefined) {
+      return ABView.NOT_SEARCHING;
+    }
+    return this._searchesInProgress ? ABView.SEARCHING : ABView.SEARCH_COMPLETE;
+  },
 
   // nsITreeView
 
-  selectionChanged() {
-    if (this.listener) {
-      this.listener.onSelectionChanged();
-    }
-  },
+  selectionChanged() {},
   setTree(tree) {
-    this.tree = tree;
+    this._tree = tree;
     for (let topic of this._notifications) {
       if (tree) {
         Services.obs.addObserver(this, topic, true);
@@ -204,13 +212,18 @@ ABView.prototype = {
         prefetchCert: true,
         location,
       };
-      window.openDialog(
+      window.browsingContext.topChromeWindow.openDialog(
         "chrome://pippki/content/exceptionDialog.xhtml",
         "",
         "chrome,centerscreen,modal",
         params
       );
       // params.exceptionAdded will be set if the user added an exception.
+    }
+
+    this._searchesInProgress--;
+    if (!this._searchesInProgress && this._tree) {
+      this._tree.dispatchEvent(new CustomEvent("searchstatechange"));
     }
   },
 
@@ -225,20 +238,20 @@ ABView.prototype = {
       for (let card of this._rowMap) {
         delete card._getTextCache.GeneratedName;
       }
-      if (this.tree) {
+      if (this._tree) {
         if (this.sortColumn == "GeneratedName") {
           this.sortBy(this.sortColumn, this.sortDirection, true);
         } else {
           // Remember what was selected.
-          let { selectedIndicies, currentIndex } = this.tree;
+          let { selectedIndices, currentIndex } = this._tree;
           for (let i = 0; i < this._rowMap.length; i++) {
-            this._rowMap[i].wasSelected = selectedIndicies.includes(i);
+            this._rowMap[i].wasSelected = selectedIndices.includes(i);
             this._rowMap[i].wasCurrent = currentIndex == i;
           }
 
-          this.tree.invalidate();
+          this._tree.reset();
           for (let i = 0; i < this._rowMap.length; i++) {
-            this.tree.toggleSelectionAtIndex(
+            this._tree.toggleSelectionAtIndex(
               i,
               this._rowMap[i].wasSelected,
               true
@@ -247,7 +260,7 @@ ABView.prototype = {
           // Can't do this until updating the selection is finished.
           for (let i = 0; i < this._rowMap.length; i++) {
             if (this._rowMap[i].wasCurrent) {
-              this.tree.currentIndex = i;
+              this._tree.currentIndex = i;
               break;
             }
           }
@@ -269,20 +282,17 @@ ABView.prototype = {
         }
 
         subject.QueryInterface(Ci.nsIAbDirectory);
-        let scrollPosition = this.tree?.getFirstVisibleIndex();
+        let scrollPosition = this._tree?.getFirstVisibleIndex();
         for (let i = this._rowMap.length - 1; i >= 0; i--) {
           if (this._rowMap[i].directory.UID == subject.UID) {
             this._rowMap.splice(i, 1);
-            if (this.tree) {
-              this.tree.rowCountChanged(i, -1);
+            if (this._tree) {
+              this._tree.rowCountChanged(i, -1);
             }
           }
         }
-        if (this.listener) {
-          this.listener.onCountChanged(this.rowCount);
-        }
-        if (this.tree && scrollPosition !== null) {
-          this.tree.scrollToIndex(scrollPosition);
+        if (this._tree && scrollPosition !== null) {
+          this._tree.scrollToIndex(scrollPosition);
         }
         break;
       }
@@ -294,9 +304,6 @@ ABView.prototype = {
             this._rowMap.push(new abViewCard(card, this.directory));
           }
           this.sortBy(this.sortColumn, this.sortDirection, true);
-          if (this.listener) {
-            this.listener.onCountChanged(this.rowCount);
-          }
         }
         break;
       case "addrbook-list-created": {
@@ -337,11 +344,8 @@ ABView.prototype = {
           addIndex = this._rowMap.length;
         }
         this._rowMap.splice(addIndex, 0, viewCard);
-        if (this.tree) {
-          this.tree.rowCountChanged(addIndex, 1);
-        }
-        if (this.listener) {
-          this.listener.onCountChanged(this.rowCount);
+        if (this._tree) {
+          this._tree.rowCountChanged(addIndex, 1);
         }
         break;
 
@@ -380,20 +384,17 @@ ABView.prototype = {
 
       case "addrbook-list-deleted": {
         subject.QueryInterface(Ci.nsIAbDirectory);
-        let scrollPosition = this.tree?.getFirstVisibleIndex();
+        let scrollPosition = this._tree?.getFirstVisibleIndex();
         for (let i = this._rowMap.length - 1; i >= 0; i--) {
           if (this._rowMap[i].card.UID == subject.UID) {
             this._rowMap.splice(i, 1);
-            if (this.tree) {
-              this.tree.rowCountChanged(i, -1);
+            if (this._tree) {
+              this._tree.rowCountChanged(i, -1);
             }
           }
         }
-        if (this.listener) {
-          this.listener.onCountChanged(this.rowCount);
-        }
-        if (this.tree && scrollPosition !== null) {
-          this.tree.scrollToIndex(scrollPosition);
+        if (this._tree && scrollPosition !== null) {
+          this._tree.scrollToIndex(scrollPosition);
         }
         break;
       }
@@ -404,23 +405,20 @@ ABView.prototype = {
       // Falls through.
       case "addrbook-contact-deleted": {
         subject.QueryInterface(Ci.nsIAbCard);
-        let scrollPosition = this.tree?.getFirstVisibleIndex();
+        let scrollPosition = this._tree?.getFirstVisibleIndex();
         for (let i = this._rowMap.length - 1; i >= 0; i--) {
           if (
             this._rowMap[i].card.equals(subject) &&
             this._rowMap[i].card.directoryUID == subject.directoryUID
           ) {
             this._rowMap.splice(i, 1);
-            if (this.tree) {
-              this.tree.rowCountChanged(i, -1);
+            if (this._tree) {
+              this._tree.rowCountChanged(i, -1);
             }
           }
         }
-        if (this.listener) {
-          this.listener.onCountChanged(this.rowCount);
-        }
-        if (this.tree && scrollPosition !== null) {
-          this.tree.scrollToIndex(scrollPosition);
+        if (this._tree && scrollPosition !== null) {
+          this._tree.scrollToIndex(scrollPosition);
         }
         break;
       }
@@ -446,22 +444,92 @@ function abViewCard(card, directoryHint) {
     );
   }
 }
+abViewCard.listFormatter = new Services.intl.ListFormat(
+  Services.appinfo.name == "xpcshell" ? "en-US" : undefined,
+  { type: "unit" }
+);
 abViewCard.prototype = {
   _getText(columnID) {
     try {
+      let { getProperty, supportsVCard, vCardProperties } = this.card;
+
+      if (this.card.isMailList) {
+        if (columnID == "GeneratedName") {
+          return this.card.displayName;
+        }
+        if (["NickName", "Notes"].includes(columnID)) {
+          return getProperty(columnID, "");
+        }
+        if (columnID == "addrbook") {
+          return MailServices.ab.getDirectoryFromUID(this.card.directoryUID)
+            .dirName;
+        }
+        return "";
+      }
+
       switch (columnID) {
         case "addrbook":
           return this._directory.dirName;
         case "GeneratedName":
           return this.card.generateName(ABView.nameFormat);
-        case "_PhoneticName":
-          return this.card.generatePhoneticName(true);
-        case "ChatName":
-          return this.card.isMailList ? "" : this.card.generateChatName();
+        case "EmailAddresses":
+          return abViewCard.listFormatter.format(this.card.emailAddresses);
+        case "PhoneNumbers": {
+          let phoneNumbers;
+          if (supportsVCard) {
+            phoneNumbers = vCardProperties.getAllValues("tel");
+          } else {
+            phoneNumbers = [
+              getProperty("WorkPhone", ""),
+              getProperty("HomePhone", ""),
+              getProperty("CellularNumber", ""),
+              getProperty("FaxNumber", ""),
+              getProperty("PagerNumber", ""),
+            ];
+          }
+          return abViewCard.listFormatter.format(phoneNumbers.filter(Boolean));
+        }
+        case "Addresses": {
+          let addresses;
+          if (supportsVCard) {
+            addresses = vCardProperties
+              .getAllValues("adr")
+              .map(v => v.join(" ").trim());
+          } else {
+            addresses = [
+              this.formatAddress("Work"),
+              this.formatAddress("Home"),
+            ];
+          }
+          return abViewCard.listFormatter.format(addresses.filter(Boolean));
+        }
+        case "JobTitle":
+        case "Title":
+          if (supportsVCard) {
+            return vCardProperties.getFirstValue("title");
+          }
+          return getProperty("JobTitle", "");
+        case "Department":
+          if (supportsVCard) {
+            let vCardValue = vCardProperties.getFirstValue("org");
+            if (Array.isArray(vCardValue)) {
+              return vCardValue[1] || "";
+            }
+            return "";
+          }
+          return getProperty(columnID, "");
+        case "Company":
+        case "Organization":
+          if (supportsVCard) {
+            let vCardValue = vCardProperties.getFirstValue("org");
+            if (Array.isArray(vCardValue)) {
+              return vCardValue[0] || "";
+            }
+            return vCardValue;
+          }
+          return getProperty("Company", "");
         default:
-          return this.card.isMailList
-            ? ""
-            : this.card.getPropertyAsAString(columnID);
+          return getProperty(columnID, "");
       }
     } catch (ex) {
       return "";
@@ -469,7 +537,7 @@ abViewCard.prototype = {
   },
   getText(columnID) {
     if (!(columnID in this._getTextCache)) {
-      this._getTextCache[columnID] = this._getText(columnID);
+      this._getTextCache[columnID] = this._getText(columnID)?.trim() ?? "";
     }
     return this._getTextCache[columnID];
   },
@@ -486,9 +554,24 @@ abViewCard.prototype = {
     return [];
   },
   getProperties() {
-    return this.card.isMailList ? "MailList" : "";
+    return "";
   },
   get directory() {
     return this._directory;
+  },
+
+  /**
+   * Creates a string representation of an address from card properties.
+   *
+   * @param {"Work"|"Home"} prefix
+   * @returns {string}
+   */
+  formatAddress(prefix) {
+    return Array.from(
+      ["Address", "Address2", "City", "State", "ZipCode", "Country"],
+      field => this.card.getProperty(`${prefix}${field}`, "")
+    )
+      .join(" ")
+      .trim();
   },
 };

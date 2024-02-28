@@ -9,10 +9,11 @@
 #include "nsMsgProtocol.h"
 #include "nsIMsgMailNewsUrl.h"
 #include "nsIMsgMailSession.h"
-#include "nsMsgBaseCID.h"
 #include "nsIStreamTransportService.h"
 #include "nsISocketTransportService.h"
 #include "nsISocketTransport.h"
+#include "nsITLSSocketControl.h"
+#include "nsITransportSecurityInfo.h"
 #include "nsILoadGroup.h"
 #include "nsILoadInfo.h"
 #include "nsIIOService.h"
@@ -38,7 +39,7 @@
 #include "nsIInputStreamPump.h"
 #include "nsICancelable.h"
 #include "nsMimeTypes.h"
-#include "mozilla/Services.h"
+#include "mozilla/Components.h"
 #include "mozilla/SlicedInputStream.h"
 #include "nsContentSecurityManager.h"
 #include "nsPrintfCString.h"
@@ -47,9 +48,9 @@
 
 using namespace mozilla;
 
-NS_IMPL_ISUPPORTS_INHERITED(nsMsgProtocol, nsHashPropertyBag, nsIChannel,
-                            nsIStreamListener, nsIRequestObserver, nsIRequest,
-                            nsITransportEventSink)
+NS_IMPL_ISUPPORTS_INHERITED(nsMsgProtocol, nsHashPropertyBag, nsIMailChannel,
+                            nsIChannel, nsIStreamListener, nsIRequestObserver,
+                            nsIRequest, nsITransportEventSink)
 
 static char16_t* FormatStringWithHostNameByName(const char16_t* stringName,
                                                 nsIMsgMailNewsUrl* msgUri);
@@ -218,7 +219,7 @@ nsresult nsMsgProtocol::OpenFileSocket(nsIURI* aURL, uint64_t aStartPosition,
 nsresult nsMsgProtocol::GetTopmostMsgWindow(nsIMsgWindow** aWindow) {
   nsresult rv;
   nsCOMPtr<nsIMsgMailSession> mailSession(
-      do_GetService(NS_MSGMAILSESSION_CONTRACTID, &rv));
+      do_GetService("@mozilla.org/messenger/services/session;1", &rv));
   NS_ENSURE_SUCCESS(rv, rv);
   return mailSession->GetTopmostMsgWindow(aWindow);
 }
@@ -371,7 +372,7 @@ void nsMsgProtocol::ShowAlertMessage(nsIMsgMailNewsUrl* aMsgUrl,
   }
 
   nsCOMPtr<nsIMsgMailSession> mailSession =
-      do_GetService(NS_MSGMAILSESSION_CONTRACTID);
+      do_GetService("@mozilla.org/messenger/services/session;1");
   if (mailSession) mailSession->AlertUser(errorMsg, aMsgUrl);
 }
 
@@ -417,21 +418,6 @@ NS_IMETHODIMP nsMsgProtocol::OnStopRequest(nsIRequest* request,
   if (m_socketIsOpen) CloseSocket();
 
   return rv;
-}
-
-nsresult nsMsgProtocol::GetPromptDialogFromUrl(nsIMsgMailNewsUrl* aMsgUrl,
-                                               nsIPrompt** aPromptDialog) {
-  // get the nsIPrompt interface from the message window associated wit this
-  // url.
-  nsCOMPtr<nsIMsgWindow> msgWindow;
-  aMsgUrl->GetMsgWindow(getter_AddRefs(msgWindow));
-  NS_ENSURE_TRUE(msgWindow, NS_ERROR_FAILURE);
-
-  msgWindow->GetPromptDialog(aPromptDialog);
-
-  NS_ENSURE_TRUE(*aPromptDialog, NS_ERROR_FAILURE);
-
-  return NS_OK;
 }
 
 nsresult nsMsgProtocol::LoadUrl(nsIURI* aURL, nsISupports* aConsumer) {
@@ -649,14 +635,23 @@ NS_IMETHODIMP nsMsgProtocol::SetContentLength(int64_t aContentLength) {
   return NS_OK;
 }
 
-NS_IMETHODIMP nsMsgProtocol::GetSecurityInfo(nsISupports** secInfo) {
+NS_IMETHODIMP nsMsgProtocol::GetSecurityInfo(
+    nsITransportSecurityInfo** secInfo) {
+  *secInfo = nullptr;
   if (m_transport) {
     nsCOMPtr<nsISocketTransport> strans = do_QueryInterface(m_transport);
     if (strans) {
-      return strans->GetSecurityInfo(secInfo);
+      nsCOMPtr<nsITLSSocketControl> tlsSocketControl;
+      if (NS_SUCCEEDED(
+              strans->GetTlsSocketControl(getter_AddRefs(tlsSocketControl)))) {
+        nsCOMPtr<nsITransportSecurityInfo> transportSecInfo;
+        if (NS_SUCCEEDED(tlsSocketControl->GetSecurityInfo(
+                getter_AddRefs(transportSecInfo)))) {
+          transportSecInfo.forget(secInfo);
+        }
+      }
     }
   }
-  *secInfo = nullptr;
   return NS_OK;
 }
 
@@ -727,7 +722,7 @@ nsMsgProtocol::OnTransportStatus(nsITransport* transport, nsresult status,
   if (mailnewsUrl) {
     nsCOMPtr<nsIMsgIncomingServer> server;
     mailnewsUrl->GetServer(getter_AddRefs(server));
-    if (server) server->GetRealHostName(host);
+    if (server) server->GetHostName(host);
   }
   mProgressEventSink->OnStatus(this, status, NS_ConvertUTF8toUTF16(host).get());
 
@@ -753,6 +748,19 @@ NS_IMETHODIMP nsMsgProtocol::GetStatus(nsresult* status) {
 
   *status = NS_OK;
   return *status;
+}
+
+NS_IMETHODIMP nsMsgProtocol::SetCanceledReason(const nsACString& aReason) {
+  return SetCanceledReasonImpl(aReason);
+}
+
+NS_IMETHODIMP nsMsgProtocol::GetCanceledReason(nsACString& aReason) {
+  return GetCanceledReasonImpl(aReason);
+}
+
+NS_IMETHODIMP nsMsgProtocol::CancelWithReason(nsresult aStatus,
+                                              const nsACString& aReason) {
+  return CancelWithReasonImpl(aStatus, aReason);
 }
 
 NS_IMETHODIMP nsMsgProtocol::Cancel(nsresult status) {
@@ -827,7 +835,8 @@ nsresult nsMsgProtocol::PostMessage(nsIURI* url, nsIFile* postFile) {
   return NS_OK;
 }
 
-nsresult nsMsgProtocol::DoGSSAPIStep1(const char* service, const char* username,
+nsresult nsMsgProtocol::DoGSSAPIStep1(const nsACString& service,
+                                      const char* username,
                                       nsCString& response) {
   nsresult rv;
 #ifdef DEBUG_BenB
@@ -837,8 +846,8 @@ nsresult nsMsgProtocol::DoGSSAPIStep1(const char* service, const char* username,
   // if this fails, then it means that we cannot do GSSAPI SASL.
   m_authModule = nsIAuthModule::CreateInstance("sasl-gssapi");
 
-  m_authModule->Init(service, nsIAuthModule::REQ_DEFAULT, nullptr,
-                     NS_ConvertUTF8toUTF16(username).get(), nullptr);
+  m_authModule->Init(service, nsIAuthModule::REQ_DEFAULT, u""_ns,
+                     NS_ConvertUTF8toUTF16(username), u""_ns);
 
   void* outBuf;
   uint32_t outBufLen;
@@ -924,8 +933,8 @@ nsresult nsMsgProtocol::DoNtlmStep1(const nsACString& username,
 
   m_authModule = nsIAuthModule::CreateInstance("ntlm");
 
-  m_authModule->Init(nullptr, 0, nullptr, NS_ConvertUTF8toUTF16(username).get(),
-                     PromiseFlatString(password).get());
+  m_authModule->Init(""_ns, 0, u""_ns, NS_ConvertUTF8toUTF16(username),
+                     PromiseFlatString(password));
 
   void* outBuf;
   uint32_t outBufLen;
@@ -1165,6 +1174,8 @@ nsMsgAsyncWriteProtocol::nsMsgAsyncWriteProtocol(nsIURI* aURL)
   mGenerateProgressNotifications = false;
   mSuspendedReadBytesPostPeriod = 0;
   mFilePostHelper = nullptr;
+  mNumBytesPosted = 0;
+  mFilePostSize = 0;
 }
 
 nsMsgAsyncWriteProtocol::~nsMsgAsyncWriteProtocol() {}
@@ -1473,7 +1484,7 @@ char16_t* FormatStringWithHostNameByName(const char16_t* stringName,
   nsresult rv;
 
   nsCOMPtr<nsIStringBundleService> sBundleService =
-      mozilla::services::GetStringBundleService();
+      mozilla::components::StringBundle::Service();
   NS_ENSURE_TRUE(sBundleService, nullptr);
 
   nsCOMPtr<nsIStringBundle> sBundle;
@@ -1485,7 +1496,7 @@ char16_t* FormatStringWithHostNameByName(const char16_t* stringName,
   NS_ENSURE_SUCCESS(rv, nullptr);
 
   nsCString hostName;
-  rv = server->GetRealHostName(hostName);
+  rv = server->GetHostName(hostName);
   NS_ENSURE_SUCCESS(rv, nullptr);
 
   AutoTArray<nsString, 1> params;

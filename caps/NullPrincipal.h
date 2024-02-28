@@ -48,25 +48,35 @@ class NullPrincipal final : public BasePrincipal {
   NS_IMETHOD SetDomain(nsIURI* aDomain) override;
   NS_IMETHOD GetBaseDomain(nsACString& aBaseDomain) override;
   NS_IMETHOD GetAddonId(nsAString& aAddonId) override;
+  NS_IMETHOD GetPrecursorPrincipal(nsIPrincipal** aPrecursor) override;
 
+  // Create a NullPrincipal, inheriting origin attributes from the given
+  // principal.
+  // If aInheritFrom is a content principal, or has a content principal
+  // precursor, it will be used as the precursor for this principal.
   static already_AddRefed<NullPrincipal> CreateWithInheritedAttributes(
       nsIPrincipal* aInheritFrom);
 
-  // Create NullPrincipal with origin attributes from docshell.
-  // If aIsFirstParty is true, and the pref 'privacy.firstparty.isolate' is also
-  // enabled, the mFirstPartyDomain value of the origin attributes will be set
-  // to an unique value.
-  static already_AddRefed<NullPrincipal> CreateWithInheritedAttributes(
-      nsIDocShell* aDocShell, bool aIsFirstParty = false);
-  static already_AddRefed<NullPrincipal> CreateWithInheritedAttributes(
-      const OriginAttributes& aOriginAttributes, bool aIsFirstParty = false);
-
+  // Create a new NullPrincipal with the specified OriginAttributes.
+  //
+  // If `aNullPrincipalURI` is specified, it must be a NS_NULLPRINCIPAL_SCHEME
+  // URI previously created using `NullPrincipal::CreateURI`, and will be used
+  // as the origin URI for this principal.
   static already_AddRefed<NullPrincipal> Create(
-      const OriginAttributes& aOriginAttributes, nsIURI* aURI = nullptr);
+      const OriginAttributes& aOriginAttributes,
+      nsIURI* aNullPrincipalURI = nullptr);
 
   static already_AddRefed<NullPrincipal> CreateWithoutOriginAttributes();
 
-  static already_AddRefed<nsIURI> CreateURI();
+  // Generates a new unique `moz-nullprincipal:` URI. If `aPrecursor` is
+  // specified, it will be included in the generated URI as the null principal's
+  // precursor.
+  //
+  // The `aPrincipalID` attribute is used to force the creation of a
+  // deterministic NullPrincipal in situations where that is required. Avoid
+  // using this parameter unless absolutely necessary.
+  static already_AddRefed<nsIURI> CreateURI(nsIPrincipal* aPrecursor = nullptr,
+                                            const nsID* aPrincipalID = nullptr);
 
   virtual nsresult GetScriptLocation(nsACString& aStr) override;
 
@@ -106,16 +116,10 @@ class NullPrincipal final : public BasePrincipal {
   const nsCOMPtr<nsIURI> mURI;
 
  private:
-  FRIEND_TEST(OriginAttributes, NullPrincipal);
+  FRIEND_TEST(NullPrincipalPrecursor, EscapingRoundTrips);
 
-  // If aIsFirstParty is true, this NullPrincipal will be initialized based on
-  // the aOriginAttributes with FirstPartyDomain set to a unique value.
-  // This value is generated from mURI.path, with ".mozilla" appended at the
-  // end. aURI is used for testing purpose to assign specific UUID rather than
-  // random generated one.
-  static already_AddRefed<NullPrincipal> CreateInternal(
-      const OriginAttributes& aOriginAttributes, bool aIsFirstParty,
-      nsIURI* aURI = nullptr);
+  static void EscapePrecursorQuery(nsACString& aPrecursorQuery);
+  static void UnescapePrecursorQuery(nsACString& aPrecursorQuery);
 };
 
 }  // namespace mozilla

@@ -12,11 +12,11 @@
 #include "nsRegion.h"
 #include "nsCRT.h"
 #include "nsCOMPtr.h"
-#include "nsWidgetInitData.h"  // for nsWindowType
 #include "nsIWidgetListener.h"
 #include "Units.h"
 #include "mozilla/Attributes.h"
 #include "mozilla/EventForwards.h"
+#include "mozilla/UniquePtr.h"
 
 class nsViewManager;
 class nsIWidget;
@@ -24,6 +24,11 @@ class nsIFrame;
 
 namespace mozilla {
 class PresShell;
+namespace widget {
+struct InitData;
+enum class TransparencyMode : uint8_t;
+enum class WindowType : uint8_t;
+}  // namespace widget
 }  // namespace mozilla
 
 /**
@@ -89,10 +94,7 @@ class PresShell;
 // hide - the layer is not shown.
 // show - the layer is shown irrespective of the visibility of
 //        the layer's parent.
-enum nsViewVisibility {
-  nsViewVisibility_kHide = 0,
-  nsViewVisibility_kShow = 1
-};
+enum class ViewVisibility : uint8_t { Hide = 0, Show = 1 };
 
 // Public view flags
 
@@ -139,7 +141,7 @@ class nsView final : public nsIWidgetListener {
    * @return the view the widget belongs to, or null if the widget doesn't
    * belong to any view.
    */
-  static nsView* GetViewFor(nsIWidget* aWidget);
+  static nsView* GetViewFor(const nsIWidget* aWidget);
 
   /**
    * Destroy the view.
@@ -227,7 +229,7 @@ class nsView final : public nsIWidgetListener {
    * Called to query the visibility state of a view.
    * @result current visibility state
    */
-  nsViewVisibility GetVisibility() const { return mVis; }
+  ViewVisibility GetVisibility() const { return mVis; }
 
   /**
    * Get whether the view "floats" above all other views,
@@ -288,7 +290,7 @@ class nsView final : public nsIWidgetListener {
    *        its create is called.
    * @return error status
    */
-  nsresult CreateWidget(nsWidgetInitData* aWidgetInitData = nullptr,
+  nsresult CreateWidget(mozilla::widget::InitData* aWidgetInitData = nullptr,
                         bool aEnableDragDrop = true,
                         bool aResetVisibility = true);
 
@@ -298,7 +300,7 @@ class nsView final : public nsIWidgetListener {
    * as for |CreateWidget()|.
    */
   nsresult CreateWidgetForParent(nsIWidget* aParentWidget,
-                                 nsWidgetInitData* aWidgetInitData = nullptr,
+                                 mozilla::widget::InitData* = nullptr,
                                  bool aEnableDragDrop = true,
                                  bool aResetVisibility = true);
 
@@ -309,10 +311,8 @@ class nsView final : public nsIWidgetListener {
    * other params are the same as for |CreateWidget()|, except that
    * |aWidgetInitData| must be nonnull.
    */
-  nsresult CreateWidgetForPopup(nsWidgetInitData* aWidgetInitData,
-                                nsIWidget* aParentWidget = nullptr,
-                                bool aEnableDragDrop = true,
-                                bool aResetVisibility = true);
+  nsresult CreateWidgetForPopup(mozilla::widget::InitData*,
+                                nsIWidget* aParentWidget = nullptr);
 
   /**
    * Destroys the associated widget for this view.  If this method is
@@ -394,7 +394,10 @@ class nsView final : public nsIWidgetListener {
    */
   bool IsRoot() const;
 
-  LayoutDeviceIntRect CalcWidgetBounds(nsWindowType aType);
+  LayoutDeviceIntRect CalcWidgetBounds(mozilla::widget::WindowType,
+                                       mozilla::widget::TransparencyMode);
+
+  LayoutDeviceIntRect RecalcWidgetBounds();
 
   // This is an app unit offset to add when converting view coordinates to
   // widget coordinates.  It is the offset in view coordinates from widget
@@ -431,20 +434,20 @@ class nsView final : public nsIWidgetListener {
     mNextSibling = aSibling;
   }
 
-  nsRegion* GetDirtyRegion() {
+  nsRegion& GetDirtyRegion() {
     if (!mDirtyRegion) {
       NS_ASSERTION(!mParent || GetFloating(),
                    "Only display roots should have dirty regions");
-      mDirtyRegion = new nsRegion();
-      NS_ASSERTION(mDirtyRegion, "Out of memory!");
+      mDirtyRegion = mozilla::MakeUnique<nsRegion>();
     }
-    return mDirtyRegion;
+    return *mDirtyRegion;
   }
 
   // nsIWidgetListener
   virtual mozilla::PresShell* GetPresShell() override;
   virtual nsView* GetView() override { return this; }
-  virtual bool WindowMoved(nsIWidget* aWidget, int32_t x, int32_t y) override;
+  virtual bool WindowMoved(nsIWidget* aWidget, int32_t x, int32_t y,
+                           ByMoveToRect) override;
   virtual bool WindowResized(nsIWidget* aWidget, int32_t aWidth,
                              int32_t aHeight) override;
 #if defined(MOZ_WIDGET_ANDROID)
@@ -480,8 +483,8 @@ class nsView final : public nsIWidgetListener {
   bool IsPrimaryFramePaintSuppressed();
 
  private:
-  explicit nsView(nsViewManager* aViewManager = nullptr,
-                  nsViewVisibility aVisibility = nsViewVisibility_kShow);
+  explicit nsView(nsViewManager* = nullptr,
+                  ViewVisibility = ViewVisibility::Show);
 
   bool ForcedRepaint() { return mForcedRepaint; }
 
@@ -506,7 +509,7 @@ class nsView final : public nsIWidgetListener {
    * changed.
    * @param visibility new visibility state
    */
-  void SetVisibility(nsViewVisibility visibility);
+  void SetVisibility(ViewVisibility visibility);
 
   /**
    * Set/Get whether the view "floats" above all other views,
@@ -547,9 +550,9 @@ class nsView final : public nsIWidgetListener {
   nsView* mNextSibling;
   nsView* mFirstChild;
   nsIFrame* mFrame;
-  nsRegion* mDirtyRegion;
+  mozilla::UniquePtr<nsRegion> mDirtyRegion;
   int32_t mZIndex;
-  nsViewVisibility mVis;
+  ViewVisibility mVis;
   // position relative our parent view origin but in our appunits
   nscoord mPosX, mPosY;
   // relative to parent, but in our appunits

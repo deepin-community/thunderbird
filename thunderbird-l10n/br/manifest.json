@@ -1,29 +1,28 @@
 {
   "langpack_id": "br",
   "manifest_version": 2,
-  "applications": {
+  "browser_specific_settings": {
     "gecko": {
       "id": "langpack-br@thunderbird.mozilla.org",
-      "strict_min_version": "91.0",
-      "strict_max_version": "91.*"
+      "strict_min_version": "115.0",
+      "strict_max_version": "115.*"
     }
   },
-  "name": "Breton Language Pack",
-  "description": "Language pack for Thunderbird for br",
-  "version": "91.0buildid20211101223011",
+  "name": "Language: Brezhoneg (Breton)",
+  "description": "Thunderbird Language Pack for Brezhoneg (br) – Breton",
+  "version": "115.8.20240216.174500",
   "languages": {
     "br": {
-      "version": "20211015200019",
+      "version": "20240216183539",
       "chrome_resources": {
         "alerts": "chrome/br/locale/br/alerts/",
         "autoconfig": "chrome/br/locale/br/autoconfig/",
-        "branding": "chrome/br/locale/br/branding/",
+        "branding": "chrome/br/locale/branding/",
         "calendar": "chrome/br/locale/br/calendar/",
         "chat": "chrome/br/locale/br/chat/",
         "communicator": "chrome/br/locale/br/communicator/",
         "devtools": "chrome/br/locale/br/devtools/client/",
         "devtools-shared": "chrome/br/locale/br/devtools/shared/",
-        "devtools-startup": "chrome/br/locale/br/devtools/startup/",
         "global": "chrome/br/locale/br/global/",
         "global-platform": {
           "macosx": "chrome/br/locale/br/global-platform/mac/",

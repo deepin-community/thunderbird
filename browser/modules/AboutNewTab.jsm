@@ -4,19 +4,19 @@
 
 "use strict";
 
-const { AppConstants } = ChromeUtils.import(
-  "resource://gre/modules/AppConstants.jsm"
+const { AppConstants } = ChromeUtils.importESModule(
+  "resource://gre/modules/AppConstants.sys.mjs"
 );
 
-const { XPCOMUtils } = ChromeUtils.import(
-  "resource://gre/modules/XPCOMUtils.jsm"
+const { XPCOMUtils } = ChromeUtils.importESModule(
+  "resource://gre/modules/XPCOMUtils.sys.mjs"
 );
-const { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 
-XPCOMUtils.defineLazyModuleGetters(this, {
+const lazy = {};
+
+XPCOMUtils.defineLazyModuleGetters(lazy, {
   ActivityStream: "resource://activity-stream/lib/ActivityStream.jsm",
-  RemotePages:
-    "resource://gre/modules/remotepagemanager/RemotePageManagerParent.jsm",
+  ObjectUtils: "resource://gre/modules/ObjectUtils.jsm",
 });
 
 const ABOUT_URL = "about:newtab";
@@ -33,27 +33,21 @@ const AboutNewTab = {
   // AboutNewTab
   initialized: false,
 
-  pageListener: null,
-  isPageListenerOverridden: false,
   willNotifyUser: false,
 
   _activityStreamEnabled: false,
   activityStream: null,
   activityStreamDebug: false,
 
+  _cachedTopSites: null,
+
   _newTabURL: ABOUT_URL,
   _newTabURLOverridden: false,
 
   /**
-   * init - Initializes an instance of Activity Stream if one doesn't exist already
-   *        and creates the instance of Remote Page Manager which Activity Stream
-   *        uses for message passing.
-   *
-   * @param {obj} pageListener - Optional argument. An existing instance of RemotePages
-   *                             which Activity Stream has previously made, and we
-   *                             would like to re-use.
+   * init - Initializes an instance of Activity Stream if one doesn't exist already.
    */
-  init(pageListener) {
+  init() {
     Services.obs.addObserver(this, TOPIC_APP_QUIT);
     if (!AppConstants.RELEASE_OR_BETA) {
       XPCOMUtils.defineLazyPreferenceGetter(
@@ -81,20 +75,7 @@ const AboutNewTab = {
     this.toggleActivityStream(true);
     this.initialized = true;
 
-    if (this.isPageListenerOverridden) {
-      return;
-    }
-
-    // Since `init` can be called via `reset` at a later time with an existing
-    // pageListener, we want to only add the observer if we are initializing
-    // without this pageListener argument. This means it was the first call to `init`
-    if (!pageListener) {
-      Services.obs.addObserver(this, BROWSER_READY_NOTIFICATION);
-    }
-
-    this.pageListener =
-      pageListener ||
-      new RemotePages(["about:home", "about:newtab", "about:welcome"]);
+    Services.obs.addObserver(this, BROWSER_READY_NOTIFICATION);
   },
 
   /**
@@ -173,49 +154,54 @@ const AboutNewTab = {
       return;
     }
 
-    this.activityStream = new ActivityStream();
+    this.activityStream = new lazy.ActivityStream();
     try {
       this.activityStream.init();
+      this._subscribeToActivityStream();
     } catch (e) {
-      Cu.reportError(e);
+      console.error(e);
     }
   },
 
+  _subscribeToActivityStream() {
+    let unsubscribe = this.activityStream.store.subscribe(() => {
+      // If the top sites changed, broadcast "newtab-top-sites-changed". We
+      // ignore changes to the `screenshot` property in each site because
+      // screenshots are generated at times that are hard to predict and it ends
+      // up interfering with tests that rely on "newtab-top-sites-changed".
+      // Observers likely don't care about screenshots anyway.
+      let topSites = this.activityStream.store
+        .getState()
+        .TopSites.rows.map(site => {
+          site = { ...site };
+          delete site.screenshot;
+          return site;
+        });
+      if (!lazy.ObjectUtils.deepEqual(topSites, this._cachedTopSites)) {
+        this._cachedTopSites = topSites;
+        Services.obs.notifyObservers(null, "newtab-top-sites-changed");
+      }
+    });
+    this._unsubscribeFromActivityStream = () => {
+      try {
+        unsubscribe();
+      } catch (e) {
+        console.error(e);
+      }
+    };
+  },
+
   /**
-   * uninit - Uninitializes Activity Stream if it exists, and destroys the pageListener
-   *        if it exists.
+   * uninit - Uninitializes Activity Stream if it exists.
    */
   uninit() {
     if (this.activityStream) {
+      this._unsubscribeFromActivityStream?.();
       this.activityStream.uninit();
       this.activityStream = null;
     }
 
-    if (this.pageListener) {
-      this.pageListener.destroy();
-      this.pageListener = null;
-    }
     this.initialized = false;
-  },
-
-  overridePageListener(shouldPassPageListener) {
-    this.isPageListenerOverridden = true;
-
-    const pageListener = this.pageListener;
-    if (!pageListener) {
-      return null;
-    }
-    if (shouldPassPageListener) {
-      this.pageListener = null;
-      return pageListener;
-    }
-    this.uninit();
-    return null;
-  },
-
-  reset(pageListener) {
-    this.isPageListenerOverridden = false;
-    this.init(pageListener);
   },
 
   getTopSites() {

@@ -24,6 +24,7 @@ mod pace;
 mod packet;
 mod path;
 mod qlog;
+mod quic_datagrams;
 mod recovery;
 mod recv_stream;
 mod rtt;
@@ -35,6 +36,7 @@ pub mod stream_id;
 pub mod streams;
 pub mod tparams;
 mod tracking;
+pub mod version;
 
 pub use self::cc::CongestionControlAlgorithm;
 pub use self::cid::{
@@ -46,9 +48,10 @@ pub use self::connection::{
 };
 pub use self::events::{ConnectionEvent, ConnectionEvents};
 pub use self::frame::CloseError;
-pub use self::packet::QuicVersion;
+pub use self::quic_datagrams::DatagramTracking;
 pub use self::stats::Stats;
 pub use self::stream_id::{StreamId, StreamType};
+pub use self::version::Version;
 
 pub use self::recv_stream::RECV_BUFFER_SIZE;
 pub use self::send_stream::SEND_BUFFER_SIZE;
@@ -58,7 +61,6 @@ const ERROR_APPLICATION_CLOSE: TransportError = 12;
 const ERROR_AEAD_LIMIT_REACHED: TransportError = 15;
 
 #[derive(Clone, Debug, PartialEq, PartialOrd, Ord, Eq)]
-#[allow(clippy::pub_enum_variant_names)]
 pub enum Error {
     NoError,
     // Each time tihe error is return a different parameter is supply.
@@ -86,6 +88,7 @@ pub enum Error {
     ConnectionState,
     DecodingFrame,
     DecryptError,
+    DisabledVersion,
     HandshakeFailed,
     IdleTimeout,
     IntegerOverflow,
@@ -95,7 +98,7 @@ pub enum Error {
     InvalidResumptionToken,
     InvalidRetry,
     InvalidStreamId,
-    KeysDiscarded,
+    KeysDiscarded(crypto::CryptoSpace),
     /// Packet protection keys are exhausted.
     /// Also used when too many key updates have happened.
     KeysExhausted,
@@ -117,6 +120,7 @@ pub enum Error {
     UnknownFrameType,
     VersionNegotiation,
     WrongRole,
+    NotAvailable,
 }
 
 impl Error {
@@ -142,6 +146,7 @@ impl Error {
             // As we have a special error code for ECH fallbacks, we lose the alert.
             // Send the server "ech_required" directly.
             Self::EchRetry(_) => 0x100 + 121,
+            Self::VersionNegotiation => 0x53f8,
             // All the rest are internal errors.
             _ => 1,
         }

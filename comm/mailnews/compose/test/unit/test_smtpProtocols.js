@@ -2,7 +2,6 @@
 /*
  * Test suite for getting smtp urls via the protocol handler.
  */
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 
 var defaultProtocolFlags =
   Ci.nsIProtocolHandler.URI_NORELATIVE |
@@ -33,8 +32,11 @@ function run_test() {
     ].createInstance(Ci.nsIProtocolHandler);
 
     Assert.equal(pH.scheme, protocols[part].protocol);
-    Assert.equal(pH.defaultPort, protocols[part].defaultPort);
-    Assert.equal(pH.protocolFlags, defaultProtocolFlags);
+    Assert.equal(
+      Services.io.getDefaultPort(pH.scheme),
+      protocols[part].defaultPort
+    );
+    Assert.equal(Services.io.getProtocolFlags(pH.scheme), defaultProtocolFlags);
 
     // Whip through some of the ports to check we get the right results.
     for (let i = 0; i < 1024; ++i) {

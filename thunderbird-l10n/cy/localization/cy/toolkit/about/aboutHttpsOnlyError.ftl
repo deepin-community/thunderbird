@@ -3,7 +3,6 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 about-httpsonly-title-alert = Rhybudd Modd HTTPS-yn-Unig
-about-httpsonly-title-connection-not-available = Nid yw'r Cysylltiad Diogel ar Gael
 about-httpsonly-title-site-not-available = Nid yw'r Safle Diogel ar Gael
 # Variables:
 #   $websiteUrl (String) - Url of the website that failed to load. Example: www.example.com
@@ -14,11 +13,11 @@ about-httpsonly-explanation-risk = Mae hefyd yn bosibl bod ymosodwr yn ceisio ym
 about-httpsonly-explanation-continue = Os byddwch yn parhau, bydd y Modd HTTPS-yn-Unig yn cael ei ddiffodd dros dro ar gyfer y wefan hon.
 about-httpsonly-button-continue-to-site = Ymlaen i'r Wefan HTTP
 about-httpsonly-button-go-back = Mynd Nôl
-about-httpsonly-link-learn-more = Dysgu Rhagor…
+about-httpsonly-link-learn-more = Darllen Rhagor…
 
 ## Suggestion Box that only shows up if a secure connection to www can be established
 ## Variables:
-##   $websiteUrl (String) - Url of the website that can be securely loded with these alternatives. Example: example.com
+##   $websiteUrl (String) - Url of the website that can be securely loaded with these alternatives. Example: example.com
 
 about-httpsonly-suggestion-box-header = Dewisiadau Arall Posib
 about-httpsonly-suggestion-box-www-text = Mae fersiwn ddiogel o <em>www{ $websiteUrl }</em>. Gallwch ymweld â'r dudalen hon yn lle <em>{ $websiteUrl }</em>.

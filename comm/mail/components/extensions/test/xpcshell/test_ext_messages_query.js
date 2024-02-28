@@ -4,13 +4,19 @@
 
 "use strict";
 
-var { ExtensionTestUtils } = ChromeUtils.import(
-  "resource://testing-common/ExtensionXPCShellUtils.jsm"
+var { ExtensionTestUtils } = ChromeUtils.importESModule(
+  "resource://testing-common/ExtensionXPCShellUtils.sys.mjs"
 );
 
-// Create some folders and populate them.
-add_task(async function setup() {
+add_task(async function test_query() {
   let account = createAccount();
+
+  let textAttachment = {
+    body: "textAttachment",
+    filename: "test.txt",
+    contentType: "text/plain",
+  };
+
   let subFolders = {
     test1: await createSubfolder(account.incomingServer.rootFolder, "test1"),
     test2: await createSubfolder(account.incomingServer.rootFolder, "test2"),
@@ -40,6 +46,12 @@ add_task(async function setup() {
     do_get_file("messages/alternative.eml").path
   );
 
+  await createMessages(subFolders.test2, {
+    count: 1,
+    subject: "1 text attachment",
+    attachments: [textAttachment],
+  });
+
   let files = {
     "background.js": async () => {
       let [accountId] = await window.waitForMessage();
@@ -55,11 +67,11 @@ add_task(async function setup() {
         accountId,
         path: "/test2",
       });
-      browser.test.assertEq(8, messages2.messages.length);
+      browser.test.assertEq(9, messages2.messages.length);
 
       // Check all messages are returned.
       let { messages: allMessages } = await browser.messages.query({});
-      browser.test.assertEq(17, allMessages.length);
+      browser.test.assertEq(18, allMessages.length);
 
       let folder1 = { accountId, path: "/test1" };
       let folder2 = { accountId, path: "/test2" };
@@ -91,7 +103,7 @@ add_task(async function setup() {
         includeSubFolders: true,
       });
       browser.test.assertEq(
-        17,
+        18,
         searchRecursiveTrue.length,
         "includeSubFolders: True"
       );
@@ -106,6 +118,24 @@ add_task(async function setup() {
         searchRecursiveFalse.length,
         "includeSubFolders: False"
       );
+
+      // Test attachment query: False.
+      let { messages: searchAttachmentFalse } = await browser.messages.query({
+        attachment: false,
+        includeSubFolders: true,
+      });
+      browser.test.assertEq(
+        17,
+        searchAttachmentFalse.length,
+        "attachment: False"
+      );
+
+      // Test attachment query: True.
+      let { messages: searchAttachmentTrue } = await browser.messages.query({
+        attachment: true,
+        includeSubFolders: true,
+      });
+      browser.test.assertEq(1, searchAttachmentTrue.length, "attachment: True");
 
       // Dump the reference messages to the console for easier debugging.
       browser.test.log("Reference messages:");
@@ -122,7 +152,7 @@ add_task(async function setup() {
         );
       }
 
-      let subtest = async function(queryInfo, ...expectedMessageIndices) {
+      let subtest = async function (queryInfo, ...expectedMessageIndices) {
         if (!queryInfo.folder) {
           queryInfo.folder = folder1;
         }
@@ -250,6 +280,9 @@ add_task(async function setup() {
       await subtest({ headerMessageId: "8@made.up.invalid" }, 9);
       await subtest({ headerMessageId: "unknown@made.up.invalid" });
 
+      // attachment query
+      await subtest({ folder: folder2, attachment: true }, 18);
+
       // text in nested html part of multipart/alternative
       await subtest({ folder: folder2, body: "I am HTML!" }, 17);
 
@@ -294,5 +327,7 @@ add_task(async function setup() {
 
 registerCleanupFunction(() => {
   // Make sure any open address book database is given a chance to close.
-  Services.obs.notifyObservers(null, "quit-application");
+  Services.startup.advanceShutdownPhase(
+    Services.startup.SHUTDOWN_PHASE_APPSHUTDOWNCONFIRMED
+  );
 });

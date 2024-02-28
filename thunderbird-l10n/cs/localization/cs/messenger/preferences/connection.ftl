@@ -14,15 +14,9 @@ connection-dns-over-https-url-custom =
     .accesskey = n
     .tooltiptext = Zadejte vlastní URL adresu pro službu DNS over HTTPS
 connection-dns-over-https-custom-label = Vlastní
-connection-dialog-window =
+connection-dialog-window2 =
     .title = Nastavení připojení
-    .style =
-        { PLATFORM() ->
-            [macos] width: 44em !important
-           *[other] width: 49em !important
-        }
-connection-disable-extension =
-    .label = Zakázat rozšíření
+connection-dialog-title = Nastavení připojení
 disable-extension-button = Zakázat rozšíření
 # Variables:
 #   $name (String) - The extension that is controlling the proxy settings.
@@ -30,12 +24,10 @@ disable-extension-button = Zakázat rozšíření
 # The extension-icon is the extension's icon, or a fallback image. It should be
 # purely decoration for the actual extension name, with alt="".
 proxy-settings-controlled-by-extension =
-    Připojení { -brand-short-name.gender ->
-        [masculine] { -brand-short-name(case: "gen") }
-        [feminine] { -brand-short-name(case: "gen") }
-        [neuter] { -brand-short-name(case: "gen") }
-       *[other] aplikace { -brand-short-name }
-    } k internetu spravuje rozšíření <img data-l10n-name="extension-icon" alt="" /> { $name }.
+    { -brand-short-name.case-status ->
+        [with-cases] Připojení { -brand-short-name(case: "gen") } k internetu spravuje rozšíření <img data-l10n-name="extension-icon" alt="" /> { $name }.
+       *[no-cases] Připojení aplikace { -brand-short-name } k internetu spravuje rozšíření <img data-l10n-name="extension-icon" alt="" /> { $name }.
+    }
 connection-proxy-legend = Nastavení proxy serverů pro přístup k internetu
 proxy-type-no =
     .label = Bez proxy serveru

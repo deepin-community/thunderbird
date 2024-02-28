@@ -14,27 +14,20 @@
 
 "use strict";
 
-var {
-  close_compose_window,
-  open_compose_new_mail,
-  setup_msg_contents,
-} = ChromeUtils.import("resource://testing-common/mozmill/ComposeHelpers.jsm");
-var {
-  be_in_folder,
-  FAKE_SERVER_HOSTNAME,
-  get_special_folder,
-} = ChromeUtils.import(
-  "resource://testing-common/mozmill/FolderDisplayHelpers.jsm"
-);
+var { close_compose_window, open_compose_new_mail, setup_msg_contents } =
+  ChromeUtils.import("resource://testing-common/mozmill/ComposeHelpers.jsm");
+var { be_in_folder, FAKE_SERVER_HOSTNAME, get_special_folder } =
+  ChromeUtils.import(
+    "resource://testing-common/mozmill/FolderDisplayHelpers.jsm"
+  );
 
 var { MailServices } = ChromeUtils.import(
   "resource:///modules/MailServices.jsm"
 );
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 
 var cwc = null; // compose window controller
 
-add_task(function setupModule(module) {
+add_setup(async function () {
   requestLongerTimeout(2);
 
   // These prefs can't be set in the manifest as they contain white-space.
@@ -49,16 +42,20 @@ add_task(function setupModule(module) {
 
   // Ensure we're in the tinderbox account as that has the right identities set
   // up for this test.
-  let server = MailServices.accounts.FindServer(
+  let server = MailServices.accounts.findServer(
     "tinderbox",
     FAKE_SERVER_HOSTNAME,
     "pop3"
   );
-  let inbox = get_special_folder(Ci.nsMsgFolderFlags.Inbox, false, server);
-  be_in_folder(inbox);
+  let inbox = await get_special_folder(
+    Ci.nsMsgFolderFlags.Inbox,
+    false,
+    server
+  );
+  await be_in_folder(inbox);
 });
 
-registerCleanupFunction(function teardownModule(module) {
+registerCleanupFunction(function () {
   Services.prefs.clearUserPref("mail.compose.default_to_paragraph");
   Services.prefs.clearUserPref("mail.identity.id1.compose_html");
   Services.prefs.clearUserPref("mail.identity.id1.htmlSigText");
@@ -87,7 +84,7 @@ async function plaintextComposeWindowSwitchSignatures(suppressSigSep) {
   );
   cwc = open_compose_new_mail();
 
-  let contentFrame = cwc.e("content-frame");
+  let contentFrame = cwc.window.document.getElementById("messageEditor");
   let mailBody = contentFrame.contentDocument.body;
 
   // The first node in the body should be a BR node, which allows the user
@@ -201,7 +198,7 @@ async function HTMLComposeWindowSwitchSignatures(
 
   setup_msg_contents(cwc, "", "HTML compose window", "Body, first line.");
 
-  let contentFrame = cwc.e("content-frame");
+  let contentFrame = cwc.window.document.getElementById("messageEditor");
   let node = contentFrame.contentDocument.body.lastChild;
 
   // In html compose, the signature is inside the last node, which has a

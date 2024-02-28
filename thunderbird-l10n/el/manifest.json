@@ -1,29 +1,28 @@
 {
   "langpack_id": "el",
   "manifest_version": 2,
-  "applications": {
+  "browser_specific_settings": {
     "gecko": {
       "id": "langpack-el@thunderbird.mozilla.org",
-      "strict_min_version": "91.0",
-      "strict_max_version": "91.*"
+      "strict_min_version": "115.0",
+      "strict_max_version": "115.*"
     }
   },
-  "name": "Ελληνικά Language Pack",
-  "description": "Language pack for Thunderbird for el",
-  "version": "91.0buildid20211101223011",
+  "name": "Language: Ελληνικά (Greek)",
+  "description": "Thunderbird Language Pack for Ελληνικά (el) – Greek",
+  "version": "115.8.20240216.174500",
   "languages": {
     "el": {
-      "version": "20211014211647",
+      "version": "20240216183828",
       "chrome_resources": {
         "alerts": "chrome/el/locale/el/alerts/",
         "autoconfig": "chrome/el/locale/el/autoconfig/",
-        "branding": "chrome/el/locale/el/branding/",
+        "branding": "chrome/el/locale/branding/",
         "calendar": "chrome/el/locale/el/calendar/",
         "chat": "chrome/el/locale/el/chat/",
         "communicator": "chrome/el/locale/el/communicator/",
         "devtools": "chrome/el/locale/el/devtools/client/",
         "devtools-shared": "chrome/el/locale/el/devtools/shared/",
-        "devtools-startup": "chrome/el/locale/el/devtools/startup/",
         "global": "chrome/el/locale/el/global/",
         "global-platform": {
           "macosx": "chrome/el/locale/el/global-platform/mac/",

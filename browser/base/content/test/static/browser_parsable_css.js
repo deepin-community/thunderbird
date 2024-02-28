@@ -30,17 +30,19 @@ let whitelist = [
     platforms: ["windows"],
   },
   {
-    sourceName: /\b(contenteditable|EditorOverride|svg|forms|html|mathml|ua)\.css$/i,
+    sourceName:
+      /\b(contenteditable|EditorOverride|svg|forms|html|mathml|ua)\.css$/i,
     errorMessage: /Unknown pseudo-class.*-moz-/i,
     isFromDevTools: false,
   },
   {
-    sourceName: /\b(minimal-xul|html|mathml|ua|forms|svg|manageDialog|autocomplete-item-shared|formautofill)\.css$/i,
+    sourceName:
+      /\b(scrollbars|xul|html|mathml|ua|forms|svg|manageDialog|autocomplete-item-shared|formautofill)\.css$/i,
     errorMessage: /Unknown property.*-moz-/i,
     isFromDevTools: false,
   },
   {
-    sourceName: /(minimal-xul|xul)\.css$/i,
+    sourceName: /(scrollbars|xul)\.css$/i,
     errorMessage: /Unknown pseudo-class.*-moz-/i,
     isFromDevTools: false,
   },
@@ -59,12 +61,34 @@ let whitelist = [
     errorMessage: /Property contained reference to invalid variable.*color/i,
     isFromDevTools: true,
   },
+  // PDF.js uses a property that is currently only supported in chrome.
+  {
+    sourceName: /web\/viewer\.css$/i,
+    errorMessage:
+      /Unknown property ‘text-size-adjust’\. {2}Declaration dropped\./i,
+    isFromDevTools: false,
+  },
+  {
+    sourceName: /overlay\.css$/i,
+    errorMessage: /Unknown pseudo-class.*moz-native-anonymous/i,
+    isFromDevTools: false,
+  },
 ];
+
+if (!Services.prefs.getBoolPref("layout.css.color-mix.enabled")) {
+  // Reserved to UA sheets unless layout.css.color-mix.enabled flipped to true.
+  whitelist.push({
+    sourceName: /\b(autocomplete-item)\.css$/,
+    errorMessage: /Expected color but found \u2018color-mix\u2019./i,
+    isFromDevTools: false,
+    platforms: ["windows"],
+  });
+}
 
 if (!Services.prefs.getBoolPref("layout.css.math-depth.enabled")) {
   // mathml.css UA sheet rule for math-depth.
   whitelist.push({
-    sourceName: /\b(minimal-xul|mathml)\.css$/i,
+    sourceName: /\b(scrollbars|mathml)\.css$/i,
     errorMessage: /Unknown property .*\bmath-depth\b/i,
     isFromDevTools: false,
   });
@@ -95,6 +119,16 @@ if (!Services.prefs.getBoolPref("layout.css.forced-colors.enabled")) {
   });
 }
 
+if (!Services.prefs.getBoolPref("layout.css.forced-color-adjust.enabled")) {
+  // PDF.js uses a property that is currently not enabled.
+  whitelist.push({
+    sourceName: /web\/viewer\.css$/i,
+    errorMessage:
+      /Unknown property ‘forced-color-adjust’\. {2}Declaration dropped\./i,
+    isFromDevTools: false,
+  });
+}
+
 let propNameWhitelist = [
   // These custom properties are retrieved directly from CSSOM
   // in videocontrols.xml to get pre-defined style instead of computed
@@ -113,11 +147,16 @@ let propNameWhitelist = [
   // These variables are used in a shorthand, but the CSS parser deletes the values
   // when expanding the shorthands. See https://github.com/w3c/csswg-drafts/issues/2515
   { propName: "--bezier-diagonal-color", isFromDevTools: true },
-  { propName: "--bezier-grid-color", isFromDevTools: true },
-  { propName: "--page-border", isFromDevTools: false },
 
   // This variable is used from CSS embedded in JS in adjustableTitle.js
   { propName: "--icon-url", isFromDevTools: false },
+
+  // These are referenced from devtools files.
+  {
+    propName: "--browser-stack-z-index-devtools-splitter",
+    isFromDevTools: false,
+  },
+  { propName: "--browser-stack-z-index-rdm-toolbar", isFromDevTools: false },
 ];
 
 // Add suffix to stylesheets' URI so that we always load them here and
@@ -190,7 +229,7 @@ trackResourcePrefix("gre");
 trackResourcePrefix("app");
 
 function getBaseUriForChromeUri(chromeUri) {
-  let chromeFile = chromeUri + "gobbledygooknonexistentfile.reallynothere";
+  let chromeFile = chromeUri + "nonexistentfile.reallynothere";
   let uri = Services.io.newURI(chromeFile);
   let fileUri = gChromeReg.convertChromeURL(uri);
   return fileUri.resolve(".");
@@ -254,23 +293,58 @@ function messageIsCSSError(msg) {
 let imageURIsToReferencesMap = new Map();
 let customPropsToReferencesMap = new Map();
 
-function processCSSRules(sheet) {
-  for (let rule of sheet.cssRules) {
-    if (rule instanceof CSSConditionRule || rule instanceof CSSKeyframesRule) {
-      processCSSRules(rule);
-      continue;
+function neverMatches(mediaList) {
+  const perPlatformMediaQueryMap = {
+    macosx: ["(-moz-platform: macos)"],
+    win: [
+      "(-moz-platform: windows)",
+      "(-moz-platform: windows-win7)",
+      "(-moz-platform: windows-win8)",
+      "(-moz-platform: windows-win10)",
+    ],
+    linux: ["(-moz-platform: linux)"],
+    android: ["(-moz-platform: android)"],
+  };
+  for (let platform in perPlatformMediaQueryMap) {
+    const inThisPlatform = platform === AppConstants.platform;
+    for (const media of perPlatformMediaQueryMap[platform]) {
+      if (inThisPlatform && mediaList.mediaText == "not " + media) {
+        // This query can't match on this platform.
+        return true;
+      }
+      if (!inThisPlatform && mediaList.mediaText == media) {
+        // This query only matches on another platform that isn't ours.
+        return true;
+      }
     }
-    if (!(rule instanceof CSSStyleRule) && !(rule instanceof CSSKeyframeRule)) {
-      continue;
-    }
+  }
+  return false;
+}
 
+function processCSSRules(container) {
+  for (let rule of container.cssRules) {
+    if (rule.media && neverMatches(rule.media)) {
+      continue;
+    }
+    if (rule.styleSheet) {
+      processCSSRules(rule.styleSheet); // @import
+      continue;
+    }
+    if (rule.cssRules) {
+      processCSSRules(rule); // @supports, @media, @layer (block), @keyframes
+      continue;
+    }
+    if (!rule.style) {
+      continue; // @layer (statement), @font-feature-values, @counter-style
+    }
     // Extract urls from the css text.
-    // Note: CSSRule.cssText always has double quotes around URLs even
+    // Note: CSSRule.style.cssText always has double quotes around URLs even
     //       when the original CSS file didn't.
-    let urls = rule.cssText.match(/url\("[^"]*"\)/g);
-    // Extract props by searching all "--" preceeded by "var(" or a non-word
+    let cssText = rule.style.cssText;
+    let urls = cssText.match(/url\("[^"]*"\)/g);
+    // Extract props by searching all "--" preceded by "var(" or a non-word
     // character.
-    let props = rule.cssText.match(/(var\(|\W)(--[\w\-]+)/g);
+    let props = cssText.match(/(var\(|\W|^)(--[\w\-]+)/g);
     if (!urls && !props) {
       continue;
     }
@@ -302,8 +376,10 @@ function processCSSRules(sheet) {
         customPropsToReferencesMap.set(prop, prevValue + 1);
       } else {
         // Remove the extra non-word character captured by the regular
-        // expression.
-        prop = prop.substring(1);
+        // expression if needed.
+        if (prop[0] != "-") {
+          prop = prop.substring(1);
+        }
         if (!customPropsToReferencesMap.has(prop)) {
           customPropsToReferencesMap.set(prop, undefined);
         }
@@ -329,7 +405,7 @@ function chromeFileExists(aURI) {
   } catch (e) {
     if (e.result != Cr.NS_ERROR_FILE_NOT_FOUND) {
       dump("Checking " + aURI + ": " + e + "\n");
-      Cu.reportError(e);
+      console.error(e);
     }
   }
   return available > 0;
@@ -349,10 +425,9 @@ add_task(async function checkAllTheCSS() {
   // Create a clean iframe to load all the files into. This needs to live at a
   // chrome URI so that it's allowed to load and parse any styles.
   let testFile = getRootDirectory(gTestPath) + "dummy_page.html";
-  let HiddenFrame = ChromeUtils.import(
-    "resource://gre/modules/HiddenFrame.jsm",
-    {}
-  ).HiddenFrame;
+  let { HiddenFrame } = ChromeUtils.importESModule(
+    "resource://gre/modules/HiddenFrame.sys.mjs"
+  );
   let hiddenFrame = new HiddenFrame();
   let win = await hiddenFrame.get();
   let iframe = win.document.createElementNS(
@@ -378,7 +453,7 @@ add_task(async function checkAllTheCSS() {
     return true;
   });
   // Wait for all manifest to be parsed
-  await throttledMapPromises(manifestURIs, parseManifest);
+  await PerfTestHelpers.throttledMapPromises(manifestURIs, parseManifest);
 
   // filter out either the devtools paths or the non-devtools paths:
   let isDevtools = SimpleTest.harnessParameters.subsuite == "devtools";
@@ -429,13 +504,27 @@ add_task(async function checkAllTheCSS() {
   }
 
   // Wait for all the files to have actually loaded:
-  await throttledMapPromises(allPromises, loadCSS);
+  await PerfTestHelpers.throttledMapPromises(allPromises, loadCSS);
 
   // Check if all the files referenced from CSS actually exist.
+  // Files in browser/ should never be referenced outside browser/.
   for (let [image, references] of imageURIsToReferencesMap) {
     if (!chromeFileExists(image)) {
       for (let ref of references) {
         ok(false, "missing " + image + " referenced from " + ref);
+      }
+    }
+
+    let imageHost = image.split("/")[2];
+    if (imageHost == "browser") {
+      for (let ref of references) {
+        let refHost = ref.split("/")[2];
+        if (!["activity-stream", "browser"].includes(refHost)) {
+          ok(
+            false,
+            "browser file " + image + " referenced outside browser in " + ref
+          );
+        }
       }
     }
   }

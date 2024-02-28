@@ -4,6 +4,7 @@
 
 calendar-title = Kalendar
 calendar-title-reminder = Kujtues
+calendar-title-notification = Njoftime
 calendar-title-category = Kategori
 dateformat-label =
     .value = Format Teksti Date:
@@ -14,6 +15,10 @@ dateformat-long =
 #   $date (String) - the formatted example date
 dateformat-short =
     .label = I shkurtër: { $date }
+use-system-timezone-radio-button =
+    .label = Përdor zonë kohore sistemi
+set-timezone-manually-radio-button =
+    .label = Ujdiseni zonën kohore dorazi
 timezone-label =
     .value = Zonë kohore:
 weekstart-label =
@@ -100,12 +105,9 @@ previous-weeks-label =
     .value = Javë të kaluara për shfaqje:
     .accesskey = k
 todaypane-legend = Kuadrati Sot
-# Note: "Upcoming" is the name of a section and the translation must match the
-# translation of that section name (calendar.upcoming.button.label). Also,
-# it should be upper case (as a proper name) if the target language permits.
-soon-label =
-    .value = Ndarja Së Afërmi shfaq:
-    .accesskey = A
+agenda-days =
+    .value = Plani tregon:
+    .accesskey = l
 event-task-legend = Veprimtari dhe Punë
 default-length-label =
     .value = Gjatësi Parazgjedhje Aktesh dhe Punësh:
@@ -133,9 +135,12 @@ task-due-label =
 edit-intab-label =
     .label = Përpunoni veprimtari dhe punë te një skedë, në vend se të një dritare dialogu.
     .accesskey = P
-accessibility-legend = Përdorshmëri
+prompt-delete-label =
+    .label = Pyet, përpara se të fshihen veprimtari dhe punë.
+    .accesskey = v
+accessibility-legend = Përdorim nga persona me aftësi të kufizuara
 accessibility-colors-label =
-    .label = Optimizo ngjyrat për përdorshmëri
+    .label = Optimizo ngjyrat për përdorim nga persona me aftësi të kufizuara
     .accesskey = O
 reminder-legend = Kur një alarm mbaron:
 reminder-play-checkbox =
@@ -179,6 +184,7 @@ event-alarm-time-label =
 task-alarm-time-label =
     .value = Koha parazgjedhje pas së cilës një alarm pushon përpara një pune:
     .accesskey = o
+calendar-notifications-customize-label = Njoftimet për çdo kalendar mund të përshtaten që nga dritarja e vetive të kalendarit.
 category-new-label = Kategori e Re
 category-edit-label = Përpunoni Kategori
 category-overwrite-title = Kujdes: Emër i përsëdytur

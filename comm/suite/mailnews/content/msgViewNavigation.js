@@ -1,11 +1,11 @@
-/* -*- Mode: javascript; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
+/* -*- indent-tabs-mode: nil; js-indent-level: 2 -*- */
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 /*  This file contains the js functions necessary to implement view navigation within the 3 pane. */
 
-const {allAccountsSorted} = ChromeUtils.import("resource:///modules/folderUtils.jsm");
+const {FolderUtils} = ChromeUtils.import("resource:///modules/FolderUtils.jsm");
 
 //NOTE: gMessengerBundle must be defined and set or this Overlay won't work
 
@@ -111,7 +111,7 @@ function FindNextFolder()
 
 function GetRootFoldersInFolderPaneOrder()
 {
-  var accounts = allAccountsSorted(false);
+  var accounts = FolderUtils.allAccountsSorted(false);
 
   var serversMsgFolders = [];
   for (var account of accounts)
@@ -241,4 +241,3 @@ function GoNextMessage(type, startFromBeginning)
 
   SetFocusThreadPaneIfNotOnMessagePane();
 }
-

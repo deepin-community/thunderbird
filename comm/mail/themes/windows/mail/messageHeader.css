@@ -8,45 +8,12 @@
 
 @import url("chrome://messenger/skin/shared/messageHeader.css");
 
-/* ::::: for the entire area ::::: */
-#singleMessage,
-#calendar-task-details-container {
-  color: WindowText;
-  background-color: ButtonFace;
-}
-
 .inline-toolbox {
   padding-inline-end: 2px;
 }
 
-/* ::::: msg header captions ::::: */
+/* Customization options */
 
-.dateLabel {
-  line-height: 1.5em;
-  margin: 0;
-  padding-block: .1em;
-  margin-inline: 0 6px;
-}
-
-.headerName {
-  margin-top: 0;
-}
-
-.headerName,
-#attachmentSize {
-  color: #888a85; /* lower contrast */
-}
-
-@media (-moz-windows-compositor) and (-moz-windows-default-theme) {
-  #singleMessage {
-    background-color: #f8f8f8;
-  }
-}
-
-@media (-moz-os-version: windows-win7) and (-moz-windows-default-theme) {
-  #displayBox[collapsed="true"] + splitter + #messagepaneboxwrapper
-  #singleMessage {
-    background-image: none;
-    background-color: rgb(233, 239, 245);
-  }
+.message-header-buttons-only-icons .toolbarbutton-menu-dropmarker {
+  padding-inline-start: 0 !important;
 }

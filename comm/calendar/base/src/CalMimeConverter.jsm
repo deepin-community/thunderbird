@@ -4,7 +4,6 @@
 
 var EXPORTED_SYMBOLS = ["CalMimeConverter"];
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 var { cal } = ChromeUtils.import("resource:///modules/calendar/calUtils.jsm");
 
 function CalMimeConverter() {
@@ -15,6 +14,7 @@ CalMimeConverter.prototype = {
   QueryInterface: ChromeUtils.generateQI(["nsISimpleMimeConverter"]),
   classID: Components.ID("{c70acb08-464e-4e55-899d-b2c84c5409fa}"),
 
+  mailChannel: null,
   uri: null,
 
   convertToHTML(contentType, data) {
@@ -39,17 +39,13 @@ CalMimeConverter.prototype = {
       return "";
     }
 
-    let msgWindow = null;
-
     let itipItem = Cc["@mozilla.org/calendar/itip-item;1"].createInstance(Ci.calIItipItem);
     itipItem.init(data);
 
     // this.uri is the message URL that we are processing.
-    // We use it to get the nsMsgHeaderSink to store the calItipItem.
     if (this.uri) {
       try {
         let msgUrl = this.uri.QueryInterface(Ci.nsIMsgMailNewsUrl);
-        msgWindow = msgUrl.msgWindow;
         itipItem.sender = msgUrl.mimeHeaders.extractHeader("From", false);
       } catch (exc) {
         // msgWindow is optional in some scenarios
@@ -59,16 +55,15 @@ CalMimeConverter.prototype = {
 
     // msgOverlay needs to be defined irrespectively of the existence of msgWindow to not break
     // printing of invitation emails
-    let dom = cal.invitation.createInvitationOverlay(event, itipItem);
-    let msgOverlay = cal.xml.serializeDOM(dom);
+    let msgOverlay = "";
 
-    if (msgWindow) {
-      let sinkProps = msgWindow.msgHeaderSink.properties;
-      sinkProps.setPropertyAsInterface("itipItem", itipItem);
-
-      // Notify the observer that the itipItem is available
-      Services.obs.notifyObservers(null, "onItipItemCreation");
+    if (!Services.prefs.getBoolPref("calendar.itip.newInvitationDisplay")) {
+      let dom = cal.invitation.createInvitationOverlay(event, itipItem);
+      msgOverlay = cal.xml.serializeDOM(dom);
     }
+
+    this.mailChannel.imipItem = itipItem;
+
     return msgOverlay;
   },
 };

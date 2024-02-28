@@ -153,7 +153,7 @@ class GpsdLocationProvider::PollRunnable final : public Runnable {
   }
 
   static bool IsSupported() {
-    return GPSD_API_MAJOR_VERSION >= 5 && GPSD_API_MAJOR_VERSION <= 10;
+    return GPSD_API_MAJOR_VERSION >= 5 && GPSD_API_MAJOR_VERSION <= 12;
   }
 
   bool IsRunning() const { return mRunning; }
@@ -167,7 +167,7 @@ class GpsdLocationProvider::PollRunnable final : public Runnable {
     int err;
 
     switch (GPSD_API_MAJOR_VERSION) {
-      case 5 ... 10:
+      case 5 ... 12:
         err = PollLoop5();
         break;
       default:
@@ -187,7 +187,7 @@ class GpsdLocationProvider::PollRunnable final : public Runnable {
 
  protected:
   int PollLoop5() {
-#if GPSD_API_MAJOR_VERSION >= 5 && GPSD_API_MAJOR_VERSION <= 10
+#if GPSD_API_MAJOR_VERSION >= 5 && GPSD_API_MAJOR_VERSION <= 12
     static const int GPSD_WAIT_TIMEOUT_US =
         1000000; /* us to wait for GPS data */
 
@@ -216,7 +216,6 @@ class GpsdLocationProvider::PollRunnable final : public Runnable {
     while (IsRunning()) {
       errno = 0;
       auto hasGpsData = gps_waiting(&gpsData, GPSD_WAIT_TIMEOUT_US);
-      int status;
 
       if (errno) {
         err = ErrnoToError(errno);
@@ -240,15 +239,11 @@ class GpsdLocationProvider::PollRunnable final : public Runnable {
         continue; /* no data available */
       }
 
-#  if GPSD_API_MAJOR_VERSION >= 10
-      status = gpsData.fix.status;
-#  else
-      status = gpsData.status;
-#  endif
-
-      if (status == STATUS_NO_FIX) {
+#  if GPSD_API_MAJOR_VERSION < 10
+      if (gpsData.status == STATUS_NO_FIX) {
         continue;
       }
+#  endif
 
       switch (gpsData.fix.mode) {
         case MODE_3D:
@@ -259,31 +254,31 @@ class GpsdLocationProvider::PollRunnable final : public Runnable {
 #  else
           galt = gpsData.fix.altitude;
 #  endif
-          if (!IsNaN(galt)) {
+          if (!std::isnan(galt)) {
             alt = galt;
           }
           [[fallthrough]];
         case MODE_2D:
-          if (!IsNaN(gpsData.fix.latitude)) {
+          if (!std::isnan(gpsData.fix.latitude)) {
             lat = gpsData.fix.latitude;
           }
-          if (!IsNaN(gpsData.fix.longitude)) {
+          if (!std::isnan(gpsData.fix.longitude)) {
             lon = gpsData.fix.longitude;
           }
-          if (!IsNaN(gpsData.fix.epx) && !IsNaN(gpsData.fix.epy)) {
+          if (!std::isnan(gpsData.fix.epx) && !std::isnan(gpsData.fix.epy)) {
             hError = std::max(gpsData.fix.epx, gpsData.fix.epy);
-          } else if (!IsNaN(gpsData.fix.epx)) {
+          } else if (!std::isnan(gpsData.fix.epx)) {
             hError = gpsData.fix.epx;
-          } else if (!IsNaN(gpsData.fix.epy)) {
+          } else if (!std::isnan(gpsData.fix.epy)) {
             hError = gpsData.fix.epy;
           }
-          if (!IsNaN(gpsData.fix.epv)) {
+          if (!std::isnan(gpsData.fix.epv)) {
             vError = gpsData.fix.epv;
           }
-          if (!IsNaN(gpsData.fix.track)) {
+          if (!std::isnan(gpsData.fix.track)) {
             heading = gpsData.fix.track;
           }
-          if (!IsNaN(gpsData.fix.speed)) {
+          if (!std::isnan(gpsData.fix.speed)) {
             speed = gpsData.fix.speed;
           }
           break;
@@ -396,7 +391,7 @@ GpsdLocationProvider::Startup() {
   // ... or create a new one.
   if (!pollThread) {
     pollThread = MakeAndAddRef<LazyIdleThread>(GPSD_POLL_THREAD_TIMEOUT_MS,
-                                               "Gpsd poll thread"_ns,
+                                               "Gpsd poll thread",
                                                LazyIdleThread::ManualShutdown);
   }
 

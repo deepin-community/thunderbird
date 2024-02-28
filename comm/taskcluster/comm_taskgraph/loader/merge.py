@@ -2,9 +2,8 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-from __future__ import absolute_import, print_function, unicode_literals
+from gecko_taskgraph.loader.transform import loader as transform_loader
 
-from taskgraph.loader.transform import loader as transform_loader
 from comm_taskgraph.loader.reference import loader as reference_loader
 
 
@@ -20,8 +19,8 @@ def loader(kind, path, config, params, loaded_tasks):
     # fields that aren't used by the transform loader
     reference_config = {
         "kind-dependencies": config.get("kind-dependencies", None),
-        "base-path": config.pop("reference-base-path"),
-        "jobs": config.pop("reference-jobs", None),
+        "reference-base-path": config.pop("reference-base-path"),
+        "reference-jobs": config.pop("reference-jobs", None),
     }
     for job in reference_loader(kind, path, reference_config, params, loaded_tasks):
         yield job

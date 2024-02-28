@@ -11,7 +11,7 @@ const TEST_URI = `
   <p id='id2' style='width:100px;'>element 2</p>
 `;
 
-add_task(async function() {
+add_task(async function () {
   await addTab("data:text/html;charset=utf-8," + encodeURIComponent(TEST_URI));
   const { inspector, view } = await openRuleView();
 
@@ -30,7 +30,7 @@ add_task(async function() {
     "The modifications are stored as expected"
   );
 
-  await refreshTab();
+  await reloadBrowser();
 
   is(
     view.store.userProperties.map.size,

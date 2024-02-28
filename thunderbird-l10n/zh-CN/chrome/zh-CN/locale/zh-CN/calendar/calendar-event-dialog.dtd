@@ -38,18 +38,15 @@
 <!ENTITY event.attendees.notifyundisclosed.label     "分别邀请各参与者">
 <!ENTITY event.attendees.notifyundisclosed.accesskey "x">
 <!ENTITY event.attendees.notifyundisclosed.tooltip   "此选项将分别为每个参与者发送一封邀请信。每封邀请信只包含收件方，而不会披露其他参与者。">
-<!ENTITY event.attendees.disallowcounter.label       "不允许计数">
+<!ENTITY event.attendees.disallowcounter.label       "不接受意见">
 <!ENTITY event.attendees.disallowcounter.accesskey   "a">
-<!ENTITY event.attendees.disallowcounter.tooltip     "表示您不接受计数提案">
+<!ENTITY event.attendees.disallowcounter.tooltip     "表示您拒绝接受不同意见">
 
 <!-- Keyboard Shortcuts -->
-<!ENTITY event.dialog.new.event.key2              "I">
-<!ENTITY event.dialog.new.task.key2               "D">
 <!ENTITY event.dialog.new.message.key2            "N">
 <!ENTITY event.dialog.close.key                   "W">
 <!ENTITY event.dialog.save.key                    "S">
 <!ENTITY event.dialog.saveandclose.key            "L">
-<!ENTITY event.dialog.print.key                   "P">
 <!ENTITY event.dialog.undo.key                    "Z">
 <!ENTITY event.dialog.redo.key                    "Y">
 <!ENTITY event.dialog.cut.key                     "X">
@@ -91,10 +88,6 @@
 
 <!ENTITY  event.menu.item.delete.label                    "删除…">
 <!ENTITY  event.menu.item.delete.accesskey                "D">
-<!ENTITY  event.menu.item.page.setup.label                "页面设置">
-<!ENTITY  event.menu.item.page.setup.accesskey            "u">
-<!ENTITY  event.menu.item.print.label                     "打印">
-<!ENTITY  event.menu.item.print.accesskey                 "P">
 
 <!ENTITY  event.menu.edit.label                           "编辑">
 <!ENTITY  event.menu.edit.accesskey                       "E">
@@ -119,8 +112,6 @@
 <!ENTITY  event.menu.view.toolbars.event.accesskey        "E">
 <!ENTITY  event.menu.view.toolbars.customize.label        "定制">
 <!ENTITY  event.menu.view.toolbars.customize.accesskey    "C">
-<!ENTITY  event.menu.view.showlink.label                  "显示相关链接">
-<!ENTITY  event.menu.view.showlink.accesskey              "R">
 
 <!ENTITY  event.menu.options.label                            "选项">
 <!ENTITY  event.menu.options.accesskey                        "O">
@@ -188,46 +179,46 @@
    - populate the form fields in the dialog, there's no other immediate action on clicking like with
    - the imip bar. Rescheduling will happen after clicking on save&close as usual. This screenshot
    - illustrates how it might look like: https://bugzilla.mozilla.org/attachment.cgi?id=8810121 -->
-<!ENTITY counter.button.proposal.label                    "应用提案">
+<!ENTITY counter.button.proposal.label                    "应用意见">
 <!ENTITY counter.button.proposal.accesskey                "p">
-<!ENTITY counter.button.proposal.tooltip2                 "事件字段将会填入反对意见，不论是否有附加更改，保存后才会通知所有参与者">
+<!ENTITY counter.button.proposal.tooltip2                 "事件字段将填入反对意见中的内容。不论是否有附加更改，保存后才会通知所有参与者">
 <!ENTITY counter.button.original.label                    "应用原始数据">
 <!ENTITY counter.button.original.accesskey                "r">
 <!ENTITY counter.button.original.tooltip2                 "此字段将填入提出反对意见前原始事件的内容">
 
 <!-- Main page -->
-<!ENTITY event.title.textbox.label                        "标题：" >
+<!ENTITY event.title.textbox.label                        "标题" >
 <!ENTITY event.title.textbox.accesskey                    "i">
-<!ENTITY event.location.label                             "位置：" >
+<!ENTITY event.location.label                             "位置" >
 <!ENTITY event.location.accesskey                         "L">
-<!ENTITY event.categories.label                           "分类：">
+<!ENTITY event.categories.label                           "分类">
 <!ENTITY event.categories.accesskey                       "y">
 <!ENTITY event.categories.textbox.label                   "添加新分类" >
-<!ENTITY event.calendar.label                             "日历：" >
+<!ENTITY event.calendar.label                             "日历" >
 <!ENTITY event.calendar.accesskey                         "C">
-<!ENTITY event.attendees.label                            "参与者：" >
+<!ENTITY event.attendees.label                            "参与者" >
 <!ENTITY event.attendees.accesskey                        "I">
 <!ENTITY event.alldayevent.label                          "全天事件" >
 <!ENTITY event.alldayevent.accesskey                      "d">
-<!ENTITY event.from.label                                 "开始：" >
+<!ENTITY event.from.label                                 "开始" >
 <!ENTITY event.from.accesskey                             "S">
-<!ENTITY task.from.label                                  "开始：" >
-<!ENTITY task.from.accesskey                              "B">
-<!ENTITY event.to.label                                   "结束：" >
+<!ENTITY task.from.label                                  "开始" >
+<!ENTITY task.from.accesskey                              "S">
+<!ENTITY event.to.label                                   "结束" >
 <!ENTITY event.to.accesskey                               "n">
-<!ENTITY task.to.label                                    "截止时间：" >
+<!ENTITY task.to.label                                    "截止日期" >
 <!ENTITY task.to.accesskey                                "u">
-<!ENTITY task.status.label                                "状态：" >
+<!ENTITY task.status.label                                "状态" >
 <!ENTITY task.status.accesskey                            "a">
-<!ENTITY event.repeat.label                               "重复：" >
+<!ENTITY event.repeat.label                               "重复" >
 <!ENTITY event.repeat.accesskey                           "R">
-<!ENTITY event.until.label                                "直到：">
+<!ENTITY event.until.label                                "直到">
 <!ENTITY event.until.accesskey                            "i">
-<!ENTITY event.reminder.label                             "提醒：" >
+<!ENTITY event.reminder.label                             "提醒" >
 <!ENTITY event.reminder.accesskey                         "m">
-<!ENTITY event.description.label                          "描述：" >
+<!ENTITY event.description.label                          "描述" >
 <!ENTITY event.description.accesskey                      "p">
-<!ENTITY event.attachments.label                          "附件：" >
+<!ENTITY event.attachments.label                          "附件" >
 <!ENTITY event.attachments.accesskey                      "h" >
 <!ENTITY event.attachments.menubutton.label               "附加">
 <!ENTITY event.attachments.menubutton.accesskey           "A">
@@ -283,7 +274,7 @@
 
 <!ENTITY event.recurrence.pattern.every.label           "每" >
 <!ENTITY repeat.units.days.both                         "天" >
-<!ENTITY event.recurrence.pattern.every.weekday.label   "每个工作周" >
+<!ENTITY event.recurrence.pattern.every.weekday.label   "每个工作日" >
 
 <!ENTITY event.recurrence.pattern.weekly.every.label    "每" >
 <!ENTITY repeat.units.weeks.both                        "周" >
@@ -298,7 +289,7 @@
 <!ENTITY event.recurrence.monthly.fourth.label          "第四">
 <!ENTITY event.recurrence.monthly.fifth.label           "第五">
 <!ENTITY event.recurrence.monthly.last.label            "最后">
-<!ENTITY event.recurrence.pattern.monthly.week.1.label  "星期天" >
+<!ENTITY event.recurrence.pattern.monthly.week.1.label  "星期日" >
 <!ENTITY event.recurrence.pattern.monthly.week.2.label  "星期一" >
 <!ENTITY event.recurrence.pattern.monthly.week.3.label  "星期二" >
 <!ENTITY event.recurrence.pattern.monthly.week.4.label  "星期三" >
@@ -340,7 +331,7 @@
 <!ENTITY event.recurrence.yearly.fourth.label                "第四">
 <!ENTITY event.recurrence.yearly.fifth.label                 "第五">
 <!ENTITY event.recurrence.yearly.last.label                  "最后">
-<!ENTITY event.recurrence.pattern.yearly.week.1.label        "星期天" >
+<!ENTITY event.recurrence.pattern.yearly.week.1.label        "星期日" >
 <!ENTITY event.recurrence.pattern.yearly.week.2.label        "星期一" >
 <!ENTITY event.recurrence.pattern.yearly.week.3.label        "星期二" >
 <!ENTITY event.recurrence.pattern.yearly.week.4.label        "星期三" >
@@ -367,7 +358,6 @@
 <!ENTITY event.recurrence.repeat.for.label              "创建" >
 <!ENTITY event.recurrence.appointments.label            "指派" >
 <!ENTITY event.repeat.until.label                       "重复直到" >
-<!ENTITY event.recurrence.preview.label                 "预览">
 
 <!-- Attendees dialog -->
 <!ENTITY invite.title.label                     "邀请参与者">

@@ -1,29 +1,28 @@
 {
   "langpack_id": "uz",
   "manifest_version": 2,
-  "applications": {
+  "browser_specific_settings": {
     "gecko": {
       "id": "langpack-uz@thunderbird.mozilla.org",
-      "strict_min_version": "91.0",
-      "strict_max_version": "91.*"
+      "strict_min_version": "115.0",
+      "strict_max_version": "115.*"
     }
   },
-  "name": "Uzbek Language Pack",
-  "description": "Language pack for Thunderbird for uz",
-  "version": "91.0buildid20211101223011",
+  "name": "Language: O‘zbek (Uzbek)",
+  "description": "Thunderbird Language Pack for O‘zbek (uz) – Uzbek",
+  "version": "115.8.20240216.174500",
   "languages": {
     "uz": {
-      "version": "20211017152852",
+      "version": "20240216183540",
       "chrome_resources": {
         "alerts": "chrome/uz/locale/uz/alerts/",
         "autoconfig": "chrome/uz/locale/uz/autoconfig/",
-        "branding": "chrome/uz/locale/uz/branding/",
+        "branding": "chrome/uz/locale/branding/",
         "calendar": "chrome/uz/locale/uz/calendar/",
         "chat": "chrome/uz/locale/uz/chat/",
         "communicator": "chrome/uz/locale/uz/communicator/",
         "devtools": "chrome/uz/locale/uz/devtools/client/",
         "devtools-shared": "chrome/uz/locale/uz/devtools/shared/",
-        "devtools-startup": "chrome/uz/locale/uz/devtools/startup/",
         "global": "chrome/uz/locale/uz/global/",
         "global-platform": {
           "macosx": "chrome/uz/locale/uz/global-platform/mac/",

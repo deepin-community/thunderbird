@@ -3,7 +3,7 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 about-httpsonly-title-alert = Berre HTTPS-modus-åtvaring
-about-httpsonly-title-connection-not-available = Trygg tilkopling er ikkje tilgjengeleg
+about-httpsonly-title-site-not-available = Trygg nettstad ikkje tilgjengeleg
 
 # Variables:
 #   $websiteUrl (String) - Url of the website that failed to load. Example: www.example.com
@@ -20,6 +20,10 @@ about-httpsonly-link-learn-more = Les meir…
 ## Suggestion Box that only shows up if a secure connection to www can be established
 ## Variables:
 ##   $websiteUrl (String) - Url of the website that can be securely loded with these alternatives. Example: example.com
+
+## Suggestion Box that only shows up if a secure connection to www can be established
+## Variables:
+##   $websiteUrl (String) - Url of the website that can be securely loaded with these alternatives. Example: example.com
 
 about-httpsonly-suggestion-box-header = Mogleg alternativ
 about-httpsonly-suggestion-box-www-text = Det finst ein sikker versjon av <em>www.{ $websiteUrl }</em>. Du kan gå til denne nettsida i staden for <em>{ $websiteUrl }</em>.

@@ -13,7 +13,6 @@
 
 <!ENTITY calendar.today.button.label          "Heddiw">
 <!ENTITY calendar.tomorrow.button.label       "Yfory">
-<!ENTITY calendar.upcoming.button.label       "I Ddod">
 
 <!ENTITY calendar.events.filter.all.label "Pob Digwyddiad">
 <!ENTITY calendar.events.filter.today.label "Digwyddiadau Heddiw">
@@ -59,40 +58,9 @@
 <!ENTITY calendar.today.button.tooltip          "Mynd i Heddiw" >
 <!ENTITY calendar.todaypane.button.tooltip      "Dangos Paen Heddiw" >
 
-<!ENTITY calendar.day.button.tooltip            "Newid i golwg diwrnod" >
-<!ENTITY calendar.week.button.tooltip           "Newid i golwg wythnos" >
-<!ENTITY calendar.month.button.tooltip          "Newid i golwg mis" >
-<!ENTITY calendar.multiweek.button.tooltip      "Newid i golwg wythnosol" >
-
-<!ENTITY calendar.nextday.label                 "Diwrnod Nesaf" >
-<!ENTITY calendar.prevday.label                 "Diwrnod Blaenorol" >
-<!ENTITY calendar.nextday.accesskey             "N" >
-<!ENTITY calendar.prevday.accesskey             "B" >
-<!ENTITY calendar.nextweek.label                "Wythnos Nesaf" >
-<!ENTITY calendar.prevweek.label                "Wythnos Flaenorol" >
-<!ENTITY calendar.nextweek.accesskey            "W" >
-<!ENTITY calendar.prevweek.accesskey            "F" >
-<!ENTITY calendar.nextmonth.label               "Mis Nesaf" >
-<!ENTITY calendar.prevmonth.label               "Mis Blaenorol" >
-<!ENTITY calendar.nextmonth.accesskey           "M" >
-<!ENTITY calendar.prevmonth.accesskey           "l" >
-
-<!ENTITY calendar.navigation.nextday.tooltip    "Ymlaen Un Diwrnod" >
-<!ENTITY calendar.navigation.prevday.tooltip    "Yn Diwrnod Nôl" >
-<!ENTITY calendar.navigation.nextweek.tooltip   "Un Wythnos Ymlaen" >
-<!ENTITY calendar.navigation.prevweek.tooltip   "Un Wythnos Nôl" >
-<!ENTITY calendar.navigation.nextmonth.tooltip  "Un Mis Ymlaen" >
-<!ENTITY calendar.navigation.prevmonth.tooltip  "Un Mis Nôl" >
-
 <!ENTITY calendar.newevent.button.label         "Digwyddiad Newydd" >
 <!ENTITY calendar.newtask.button.label          "Tasg Newydd" >
-<!ENTITY calendar.print.button.label            "Argraffu" >
-<!ENTITY calendar.print.button.accesskey        "A">
 
-<!ENTITY calendar.day.button.label              "Diwrnod" >
-<!ENTITY calendar.week.button.label             "Wythnos" >
-<!ENTITY calendar.month.button.label            "Mis" >
-<!ENTITY calendar.multiweek.button.label        "Wythnosau" >
 <!ENTITY calendar.onlyworkday.checkbox.label    "Dyddiau'r wythnos waith yn unig" >
 <!ENTITY calendar.onlyworkday.checkbox.accesskey  "w" >
 <!ENTITY calendar.displaytodos.checkbox.label   "Tasgau mewn Golwg" >
@@ -108,8 +76,8 @@
 <!ENTITY calendar.list.header.label                 "Calendr">
 
 <!ENTITY calendar.task.filter.title.label           "Dangos">
-<!ENTITY calendar.task.filter.all.label             "Popeth">
-<!ENTITY calendar.task.filter.all.accesskey         "P">
+<!ENTITY calendar.task.filter.all.label             "Y Cyfan">
+<!ENTITY calendar.task.filter.all.accesskey         "C">
 <!ENTITY calendar.task.filter.today.label           "Heddiw">
 <!ENTITY calendar.task.filter.today.accesskey       "H">
 <!ENTITY calendar.task.filter.next7days.label       "Saith Diwrnod Nesaf">
@@ -132,7 +100,7 @@
 <!ENTITY calendar.task.filter.current.accesskey     "u">
 
 <!ENTITY calendar.task-details.title.label           "teitl">
-<!ENTITY calendar.task-details.organizer.label       "oddi wrth">
+<!ENTITY calendar.task-details.organizer.label       "o">
 <!ENTITY calendar.task-details.priority.label        "blaenoriaeth">
 <!ENTITY calendar.task-details.priority.low.label    "Isel">
 <!ENTITY calendar.task-details.priority.normal.label "Arferol">
@@ -159,7 +127,7 @@
 <!ENTITY calendar.context.modifyorviewtask.accesskey  "T">
 <!ENTITY calendar.context.newevent.label              "Digwyddiad Newydd…">
 <!ENTITY calendar.context.newevent.accesskey          "i">
-<!ENTITY calendar.context.newtodo.label               "Tasgau Newydd…">
+<!ENTITY calendar.context.newtodo.label               "Tasg Newydd…">
 <!ENTITY calendar.context.newtodo.accesskey           "a">
 <!ENTITY calendar.context.deletetask.label            "Dileu Tasg">
 <!ENTITY calendar.context.deletetask.accesskey        "l">
@@ -192,11 +160,11 @@
 <!ENTITY calendar.context.attendance.occ.delegated.accesskey    "r">
 <!ENTITY calendar.context.attendance.occ.delegated.label        "Dirprwyo">
 <!ENTITY calendar.context.attendance.occ.needsaction.accesskey  "G">
-<!ENTITY calendar.context.attendance.occ.needsaction.label      "Angen gwaith">
+<!ENTITY calendar.context.attendance.occ.needsaction.label      "Dal angen gwaith">
 <!ENTITY calendar.context.attendance.occ.inprogress.accesskey   "W">
 <!ENTITY calendar.context.attendance.occ.inprogress.label       "Ar waith">
 <!ENTITY calendar.context.attendance.occ.completed.accesskey    "W">
-<!ENTITY calendar.context.attendance.occ.completed.label        "Wedi cwblhau">
+<!ENTITY calendar.context.attendance.occ.completed.label        "Cwblhawyd">
 
 <!ENTITY calendar.context.attendance.all.accepted.accesskey     "d">
 <!ENTITY calendar.context.attendance.all.accepted.label         "Wedi derbyn">
@@ -211,7 +179,7 @@
 <!ENTITY calendar.context.attendance.all.inprogress.accesskey   "a">
 <!ENTITY calendar.context.attendance.all.inprogress.label       "Ar waith">
 <!ENTITY calendar.context.attendance.all.completed.accesskey    "h">
-<!ENTITY calendar.context.attendance.all.completed.label        "Wedi cwblhau">
+<!ENTITY calendar.context.attendance.all.completed.label        "Cwblhawyd">
 
 <!-- Task Context Menu -->
 <!ENTITY calendar.context.progress.label              "Cynnydd">
@@ -277,8 +245,6 @@
 <!ENTITY calendar.context.removeserver.accesskey       "T">
 <!ENTITY calendar.context.unsubscribeserver.label      "Dad-danysgrifio i Galendr…">
 <!ENTITY calendar.context.unsubscribeserver.accesskey  "D">
-<!ENTITY calendar.context.synccalendars.label          "Cydweddu Calendrau">
-<!ENTITY calendar.context.synccalendars.accesskey      "C">
 <!ENTITY calendar.context.publish.label                "Cyhoeddi Calendr…">
 <!ENTITY calendar.context.publish.accesskey            "C">
 <!ENTITY calendar.context.export.label                 "Allforio Calendr…">
@@ -300,8 +266,8 @@
 <!ENTITY calendar.context.showall.label                "Dangos Pob Calendr">
 <!ENTITY calendar.context.showall.accesskey            "P">
 
-<!ENTITY calendar.context.convertmenu.label              "Trosi I">
-<!ENTITY calendar.context.convertmenu.accesskey.mail     "n">
+<!ENTITY calendar.context.convertmenu.label              "Trosi i">
+<!ENTITY calendar.context.convertmenu.accesskey.mail     "r">
 <!ENTITY calendar.context.convertmenu.accesskey.calendar "T">
 <!ENTITY calendar.context.convertmenu.event.label        "Digwyddiad…">
 <!ENTITY calendar.context.convertmenu.event.accesskey    "D">
@@ -325,10 +291,10 @@
 <!ENTITY calendar.alarm.details.label               "Manylion…" >
 
 <!ENTITY calendar.alarm.snoozefor.label             "Cysgu am" >
-<!ENTITY calendar.alarm.snoozeallfor.label          "Cysgu Popeth am" >
+<!ENTITY calendar.alarm.snoozeallfor.label          "Cysgu'r Cyfan am" >
 <!ENTITY calendar.alarm.title.label                 "Atgoffwyr Calendr" >
 <!ENTITY calendar.alarm.dismiss.label               "Cau" >
-<!ENTITY calendar.alarm.dismissall.label            "Cau Popeth" >
+<!ENTITY calendar.alarm.dismissall.label            "Cau'r Cyfan" >
 
 <!ENTITY calendar.alarm.snooze.5minutes.label       "5 Munud" >
 <!ENTITY calendar.alarm.snooze.10minutes.label      "10 Munud" >
@@ -372,27 +338,8 @@
 <!ENTITY calendar.publish.publish.button      "Cyhoeddi">
 <!ENTITY calendar.publish.close.button      "Cau">
 
-<!ENTITY calendar.publish.example.url.description   "Rhywbeth fel http://www.myserver.com/webdav/test.ics">
-
 <!-- Select Calendar Dialog -->
 <!ENTITY calendar.select.dialog.title    "Dewis Calendr">
-
-<!-- Calendar Printing -->
-<!ENTITY calendar.print.window.title "Argraffu Calendr">
-<!ENTITY calendar.print.title.label "Teitl:">
-<!ENTITY calendar.print.layout.label "Cynllun:">
-<!ENTITY calendar.print.range.label "Beth i Argraffu">
-<!ENTITY calendar.print.currentView2.label "Golwg gyfredol">
-<!ENTITY calendar.print.selectedEventsAndTasks.label "Digwyddiadau/tasgau dewiswyd">
-<!ENTITY calendar.print.tasks.label "Tasgau">
-<!ENTITY calendar.print.events.label "Digwyddiadau">
-<!ENTITY calendar.print.custom.label "Ystod dyddiadau cyfaddas:">
-<!ENTITY calendar.print.from.label "Oddi wrth:">
-<!ENTITY calendar.print.to.label "Hyd:">
-<!ENTITY calendar.print.settingsGroup.label "Gosodiadau Argraffu">
-<!ENTITY calendar.print.optionsGroup.label "Dewisiadau">
-<!ENTITY calendar.print.taskswithnoduedate.label "Tasgau heb ddyddiad cwblhau">
-<!ENTITY calendar.print.completedtasks.label "Tasgau wedi'u cwblhau">
 
 <!-- Error reporting -->
 <!ENTITY calendar.error.detail "Manylion…">

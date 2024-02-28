@@ -7,7 +7,7 @@ StarUI._createPanelIfNeeded();
 const bookmarkPanel = document.getElementById("editBookmarkPanel");
 let folders;
 
-add_task(async function setup() {
+add_setup(async function () {
   await PlacesUtils.bookmarks.eraseEverything();
 
   bookmarkPanel.setAttribute("animate", false);
@@ -31,6 +31,10 @@ add_task(async function setup() {
 });
 
 add_task(async function test_newFolder() {
+  let newBookmarkObserver = PlacesTestUtils.waitForNotification(
+    "bookmark-added",
+    events => events.some(({ url }) => url === TEST_URL)
+  );
   await clickBookmarkStar();
 
   // Open folder selector.
@@ -53,8 +57,7 @@ add_task(async function test_newFolder() {
         }
       }
       return false;
-    },
-    "places"
+    }
   );
 
   let menulist = document.getElementById("editBMPanel_folderMenuList");
@@ -74,8 +77,8 @@ add_task(async function test_newFolder() {
   );
 
   let renameObserver = PlacesTestUtils.waitForNotification(
-    "onItemChanged",
-    (id, property, isAnno, aNewValue) => property == "title" && aNewValue == "f"
+    "bookmark-title-changed",
+    events => events.some(e => e.title === "f")
   );
 
   // Enter a new name.
@@ -95,6 +98,8 @@ add_task(async function test_newFolder() {
     "Should have the new folder title"
   );
 
+  await hideBookmarksPanel();
+  await newBookmarkObserver;
   let bookmark = await PlacesUtils.bookmarks.fetch({ url: TEST_URL });
 
   Assert.equal(
@@ -102,6 +107,4 @@ add_task(async function test_newFolder() {
     newFolderGuid,
     "The bookmark should be parented by the new folder"
   );
-
-  await hideBookmarksPanel();
 });

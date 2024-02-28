@@ -7,12 +7,12 @@
 // Size of the gradient pattern's rectangle, used to compute horizontal and vertical
 // repetitions. Not to be confused with another kind of repetition of the pattern
 // which happens along the gradient stops.
-flat varying vec2 v_repeated_size;
+flat varying highp vec2 v_repeated_size;
 
-varying vec2 v_pos;
+varying highp vec2 v_pos;
 
 #ifdef WR_FEATURE_ALPHA_PASS
-flat varying vec2 v_tile_repeat;
+flat varying highp vec2 v_tile_repeat;
 #endif
 
 #ifdef WR_VERTEX_SHADER
@@ -40,10 +40,10 @@ void write_gradient_vertex(
     // Normalize UV to 0..1 scale.
     v_pos /= v_repeated_size;
 
-    v_gradient_address = prim_user_data.x;
+    v_gradient_address.x = prim_user_data.x;
 
     // Whether to repeat the gradient along the line instead of clamping.
-    v_gradient_repeat = float(extend_mode == EXTEND_MODE_REPEAT);
+    v_gradient_repeat.x = float(extend_mode == EXTEND_MODE_REPEAT);
 
 #ifdef WR_FEATURE_ALPHA_PASS
     v_tile_repeat = tile_repeat;

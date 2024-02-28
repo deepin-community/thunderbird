@@ -9,8 +9,9 @@
 #include <algorithm>  // For std::stable_sort, std::min
 #include <utility>
 
-#include "js/ForOfIterator.h"  // For JS::ForOfIterator
 #include "jsapi.h"             // For most JSAPI
+#include "js/ForOfIterator.h"  // For JS::ForOfIterator
+#include "js/PropertyAndElement.h"  // JS_Enumerate, JS_GetProperty, JS_GetPropertyById
 #include "mozilla/ComputedStyle.h"
 #include "mozilla/ErrorResult.h"
 #include "mozilla/RangedArray.h"
@@ -96,7 +97,7 @@ struct KeyframeValueEntry {
   AnimationValue mValue;
 
   float mOffset;
-  Maybe<ComputedTimingFunction> mTimingFunction;
+  Maybe<StyleComputedTimingFunction> mTimingFunction;
   dom::CompositeOperation mComposite;
 
   struct PropertyOffsetComparator {
@@ -650,7 +651,7 @@ static Maybe<PropertyValuePair> MakePropertyValuePair(
 
   ServoCSSParser::ParsingEnvironment env =
       ServoCSSParser::GetParsingEnvironment(aDocument);
-  RefPtr<RawServoDeclarationBlock> servoDeclarationBlock =
+  RefPtr<StyleLockedDeclarationBlock> servoDeclarationBlock =
       ServoCSSParser::ParseProperty(aProperty, aStringValue, env);
 
   if (servoDeclarationBlock) {
@@ -1099,7 +1100,7 @@ static void GetKeyframeListFromPropertyIndexedKeyframe(
   //
   // This corresponds to step 5, "Otherwise," branch, substeps 7-11 of
   // https://drafts.csswg.org/web-animations/#processing-a-keyframes-argument
-  FallibleTArray<Maybe<ComputedTimingFunction>> easings;
+  FallibleTArray<Maybe<StyleComputedTimingFunction>> easings;
   auto parseAndAppendEasing = [&](const nsACString& easingString,
                                   ErrorResult& aRv) {
     auto easing = TimingParams::ParseEasing(easingString, aRv);

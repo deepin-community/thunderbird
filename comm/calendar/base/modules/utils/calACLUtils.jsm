@@ -2,16 +2,14 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-
-/*
+/**
  * Helpers for permission checks and other ACL features
  */
 
 // NOTE: This module should not be loaded directly, it is available when
 // including calUtils.jsm under the cal.acl namespace.
 
-const EXPORTED_SYMBOLS = ["calacl"]; /* exported calacl */
+const EXPORTED_SYMBOLS = ["calacl"];
 
 var calacl = {
   /**
@@ -20,7 +18,7 @@ var calacl = {
    * calendar is local.
    *
    * @param aCalendar     The calendar to check
-   * @return              True if the calendar is writable
+   * @returns True if the calendar is writable
    */
   isCalendarWritable(aCalendar) {
     return (
@@ -37,7 +35,7 @@ var calacl = {
    * Check if the specified calendar is writable from an ACL point of view.
    *
    * @param aCalendar     The calendar to check
-   * @return              True if the calendar is writable
+   * @returns True if the calendar is writable
    */
   userCanAddItemsToCalendar(aCalendar) {
     let aclEntry = aCalendar.aclEntry;
@@ -51,7 +49,7 @@ var calacl = {
    * ACL point of view.
    *
    * @param aCalendar     The calendar to check
-   * @return              True if the calendar is writable
+   * @returns True if the calendar is writable
    */
   userCanDeleteItemsFromCalendar(aCalendar) {
     let aclEntry = aCalendar.aclEntry;
@@ -66,7 +64,7 @@ var calacl = {
    * invitation, which is handled instead by userCanRespondToInvitation.
    *
    * @param aItem         The calendar item to check
-   * @return              True if the item is modifiable
+   * @returns True if the item is modifiable
    */
   userCanModifyItem(aItem) {
     let aclEntry = aItem.aclEntry;
@@ -83,7 +81,7 @@ var calacl = {
    * invitations for the item.
    *
    * @param aItem         The calendar item to check
-   * @return              True if the invitation w.r.t. the item can be
+   * @returns True if the invitation w.r.t. the item can be
    *                        responded to.
    */
   userCanRespondToInvitation(aItem) {

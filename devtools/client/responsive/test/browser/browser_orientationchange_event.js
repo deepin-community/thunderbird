@@ -26,7 +26,7 @@ const testDevice = {
 // Add the new device to the list
 addDeviceForTest(testDevice);
 
-addRDMTask(TEST_COM_URL, async function({ ui }) {
+addRDMTask(TEST_COM_URL, async function ({ ui }) {
   await pushPref("devtools.responsive.viewport.angle", 0);
 
   info("Check the original orientation values before the orientationchange");
@@ -68,10 +68,7 @@ addRDMTask(TEST_COM_URL, async function({ ui }) {
   );
 
   info("Check that the viewport orientation values persist after reload");
-  const browser = ui.getViewportBrowser();
-  let onViewportLoad = waitForViewportLoad(ui);
-  browser.reload();
-  await onViewportLoad;
+  await reloadBrowser();
 
   is(
     await getScreenOrientationType(ui.getViewportBrowser()),
@@ -97,14 +94,15 @@ addRDMTask(TEST_COM_URL, async function({ ui }) {
   info(
     "Check that the viewport orientation values persist after navigating to a page that forces the creation of a new browsing context"
   );
+  const browser = ui.getViewportBrowser();
   const previousBrowsingContextId = browser.browsingContext.id;
-  const onPageReloaded = BrowserTestUtils.browserLoaded(browser, true);
-  onViewportLoad = waitForViewportLoad(ui);
-  BrowserTestUtils.loadURI(
+  const waitForReload = await watchForDevToolsReload(browser);
+
+  BrowserTestUtils.loadURIString(
     browser,
     URL_ROOT_ORG_SSL + TEST_DOCUMENT + "?crossOriginIsolated=true"
   );
-  await Promise.all([onPageReloaded, onViewportLoad]);
+  await waitForReload();
 
   isnot(
     browser.browsingContext.id,

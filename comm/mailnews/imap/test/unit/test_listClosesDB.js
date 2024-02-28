@@ -1,18 +1,20 @@
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
 // This file tests that listing folders on startup because we're not using
 // subscription doesn't leave db's open.
 
-/* import-globals-from ../../../test/resources/logHelper.js */
-/* import-globals-from ../../../test/resources/asyncTestUtils.js */
-/* import-globals-from ../../../test/resources/MessageGenerator.jsm */
-load("../../../resources/logHelper.js");
-load("../../../resources/asyncTestUtils.js");
-load("../../../resources/MessageGenerator.jsm");
+var { MessageGenerator } = ChromeUtils.import(
+  "resource://testing-common/mailnews/MessageGenerator.jsm"
+);
+var { PromiseTestUtils } = ChromeUtils.import(
+  "resource://testing-common/mailnews/PromiseTestUtils.jsm"
+);
 
 var gSub3;
 
-var tests = [setup, updateInbox, checkCachedDBForFolder, teardown];
-
-function* setup() {
+add_setup(async function () {
   setupIMAPPump();
 
   IMAPPump.daemon.createMailbox("folder1", { subscribed: true });
@@ -29,32 +31,28 @@ function* setup() {
   );
   rootFolder.hierarchyDelimiter = "/";
   IMAPPump.inbox.hierarchyDelimiter = "/";
-  rootFolder.addSubfolder("folder1");
-  rootFolder.addSubfolder("folder1/sub1");
-  rootFolder.addSubfolder("folder1/sub1/sub2");
-  gSub3 = rootFolder.addSubfolder("folder1/sub1/sub2/sub3");
+  let folder1 = rootFolder.addSubfolder("folder1");
+  let sub1 = folder1.addSubfolder("sub1");
+  let sub2 = sub1.addSubfolder("sub2");
+  gSub3 = sub2.addSubfolder("sub3");
   IMAPPump.server.performTest("LIST");
 
-  do_timeout(1000, async_driver);
-  yield false;
-}
+  await PromiseTestUtils.promiseDelay(1000);
+});
 
-function* updateInbox() {
-  IMAPPump.inbox.updateFolderWithListener(null, asyncUrlListener);
-  yield false;
-}
+add_task(async function updateInbox() {
+  let listener = new PromiseTestUtils.PromiseUrlListener();
+  IMAPPump.inbox.updateFolderWithListener(null, listener);
+  await listener.promise;
+});
 
-function checkCachedDBForFolder() {
+add_task(function checkCachedDBForFolder() {
   const gDbService = Cc["@mozilla.org/msgDatabase/msgDBService;1"].getService(
     Ci.nsIMsgDBService
   );
   Assert.equal(gDbService.cachedDBForFolder(gSub3), null);
-}
+});
 
-function teardown() {
+add_task(function teardown() {
   teardownIMAPPump();
-}
-
-function run_test() {
-  async_run_tests(tests);
-}
+});

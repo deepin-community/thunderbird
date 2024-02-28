@@ -10,16 +10,22 @@
 const TEST_URI = `
   <style type="text/css">
     body {
-      background: url("chrome://global/skin/icons/warning-64.png"), linear-gradient(white, #F06 400px);
+      background: url("chrome://branding/content/icon64.png"), linear-gradient(white, #F06 400px);
     }
   </style>
   Testing the color picker tooltip!
 `;
 
-add_task(async function() {
+add_task(async function () {
   await addTab("data:text/html;charset=utf-8," + encodeURIComponent(TEST_URI));
   const { view } = await openRuleView();
-  const value = getRuleViewProperty(view, "body", "background").valueSpan;
+
+  // Bug 1767679 - Use { wait: true } to avoid frequent intermittents on linux.
+  const property = await getRuleViewProperty(view, "body", "background", {
+    wait: true,
+  });
+
+  const value = property.valueSpan;
   const swatch = value.querySelectorAll(".ruleview-colorswatch")[0];
   const url = value.querySelector(".theme-link");
   await testImageTooltipAfterColorChange(swatch, url, view);
@@ -40,12 +46,15 @@ async function testImageTooltipAfterColorChange(swatch, url, ruleView) {
     selector: "body",
     name: "background-image",
     value:
-      'url("chrome://global/skin/icons/warning-64.png"), linear-gradient(rgb(0, 0, 0), rgb(255, 0, 102) 400px)',
+      'url("chrome://branding/content/icon64.png"), linear-gradient(rgb(0, 0, 0), rgb(255, 0, 102) 400px)',
   });
 
   const spectrum = picker.spectrum;
   const onHidden = picker.tooltip.once("hidden");
-  const onModifications = ruleView.once("ruleview-changed");
+
+  // On "RETURN", `ruleview-changed` is triggered when the SwatchBasedEditorTooltip calls
+  // its `commit` method, and then another event is emitted when the editor is hidden.
+  const onModifications = waitForNEvents(ruleView, "ruleview-changed", 2);
   focusAndSendKey(spectrum.element.ownerDocument.defaultView, "RETURN");
   await onHidden;
   await onModifications;

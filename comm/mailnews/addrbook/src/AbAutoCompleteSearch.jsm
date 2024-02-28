@@ -4,7 +4,6 @@
 
 var EXPORTED_SYMBOLS = ["AbAutoCompleteSearch"];
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 var { MailServices } = ChromeUtils.import(
   "resource:///modules/MailServices.jsm"
 );
@@ -120,8 +119,8 @@ AbAutoCompleteSearch.prototype = {
    * translation bug whereby Thunderbird 2 stores its values in mork as
    * hexadecimal, and Thunderbird 3 stores as decimal.
    *
-   * @param aDirectory  The directory that the card is in.
-   * @param aCard       The card to return the popularity index for.
+   * @param {nsIAbDirectory} aDirectory - The directory that the card is in.
+   * @param {nsIAbCard} aCard - The card to return the popularity index for.
    */
   _getPopularityIndex(aDirectory, aCard) {
     let popularityValue = aCard.getProperty("PopularityIndex", "0");
@@ -143,7 +142,7 @@ AbAutoCompleteSearch.prototype = {
         try {
           aDirectory.modifyCard(aCard);
         } catch (ex) {
-          Cu.reportError(ex);
+          console.error(ex);
         }
       }
     }
@@ -155,10 +154,11 @@ AbAutoCompleteSearch.prototype = {
    * results that match the beginning of a "word" in the result to score better
    * than a result that matches only in the middle of the word.
    *
-   * @param aCard - the card whose score is being decided
-   * @param aAddress - full lower-cased address, including display name and address
-   * @param aSearchString - search string provided by user
-   * @return a score; a higher score is better than a lower one
+   * @param {nsIAbCard} aCard - The card whose score is being decided.
+   * @param {string} aAddress - Full lower-cased address, including display
+   *   name and address.
+   * @param {string} aSearchString - Search string provided by user.
+   * @returns {integer} a score; a higher score is better than a lower one.
    */
   _getScore(aCard, aAddress, aSearchString) {
     const BEST = 100;
@@ -206,10 +206,11 @@ AbAutoCompleteSearch.prototype = {
    * a mailing list) then the function will add a result for each email address
    * that exists.
    *
-   * @param searchQuery  The boolean search query to use.
-   * @param searchString The original search string.
-   * @param directory    An nsIAbDirectory to search.
-   * @param result       The result element to append results to.
+   * @param {string} searchQuery - The boolean search query to use.
+   * @param {string} searchString - The original search string.
+   * @param {nsIAbDirectory} directory - An nsIAbDirectory to search.
+   * @param {nsIAbAutoCompleteResult} result - The result element to append
+   *   results to.
    */
   _searchCards(searchQuery, searchString, directory, result) {
     // Cache this values to save going through xpconnect each time
@@ -224,28 +225,17 @@ AbAutoCompleteSearch.prototype = {
           if (card.isMailList) {
             this._addToResult(commentColumn, directory, card, "", true, result);
           } else {
-            let email = card.primaryEmail;
-            if (email) {
+            let first = true;
+            for (let emailAddress of card.emailAddresses) {
               this._addToResult(
                 commentColumn,
                 directory,
                 card,
-                email,
-                true,
+                emailAddress,
+                first,
                 result
               );
-            }
-
-            email = card.getProperty("SecondEmail", "");
-            if (email) {
-              this._addToResult(
-                commentColumn,
-                directory,
-                card,
-                email,
-                false,
-                result
-              );
+              first = false;
             }
           }
         },
@@ -261,11 +251,11 @@ AbAutoCompleteSearch.prototype = {
    * from a previous result against the search parameters to see if that entry
    * should still be included in the narrowed-down result.
    *
-   * @param aCard        The card to check.
-   * @param aEmailToUse  The email address to check against.
-   * @param aSearchWords Array of words in the multi word search string.
-   * @return             True if the card matches the search parameters, false
-   *                     otherwise.
+   * @param {nsIAbCard} aCard - The card to check.
+   * @param {string} aEmailToUse - The email address to check against.
+   * @param {string[]} aSearchWords - Words in the multi word search string.
+   * @returns {boolean} True if the card matches the search parameters,
+   *   false otherwise.
    */
   _checkEntry(aCard, aEmailToUse, aSearchWords) {
     // Joining values of many fields in a single string so that a single
@@ -301,11 +291,11 @@ AbAutoCompleteSearch.prototype = {
    * will remove the existing element if the popularity of the new card is
    * higher than the previous card.
    *
-   * @param directory       The directory that the card is in.
-   * @param card            The card that could be a duplicate.
-   * @param lcEmailAddress  The emailAddress (name/address combination) to check
-   *                        for duplicates against. Lowercased.
-   * @param currentResults  The current results list.
+   * @param {nsIAbDirectory} directory - The directory that the card is in.
+   * @param {nsIAbCard} card - The card that could be a duplicate.
+   * @param {string} lcEmailAddress - The emailAddress (name/address
+   *   combination) to check for duplicates against. Lowercased.
+   * @param {nsIAbAutoCompleteResult} currentResults - The current results list.
    */
   _checkDuplicate(directory, card, lcEmailAddress, currentResults) {
     let existingResult = currentResults._collectedValues.get(lcEmailAddress);
@@ -330,15 +320,15 @@ AbAutoCompleteSearch.prototype = {
    * Adds a card to the results list if it isn't a duplicate. The function will
    * order the results by popularity.
    *
-   * @param commentColumn  The text to be displayed in the comment column
-   *                       (if any).
-   * @param directory      The directory that the card is in.
-   * @param card           The card being added to the results.
-   * @param emailToUse     The email address from the card that should be used
-   *                       for this result.
-   * @param isPrimaryEmail Is the emailToUse the primary email? Set to true if
-   *                       it is the case. For mailing lists set it to true.
-   * @param result         The result to add the new entry to.
+   * @param {string} commentColumn - The text to be displayed in the comment
+   *   column (if any).
+   * @param {nsIAbDirectory} directory - The directory that the card is in.
+   * @param {nsIAbCard} card - The card being added to the results.
+   * @param {string} emailToUse - The email address from the card that should
+   *   be used for this result.
+   * @param {boolean} isPrimaryEmail - Is the emailToUse the primary email?
+   *   Set to true if it is the case. For mailing lists set it to true.
+   * @param {nsIAbAutoCompleteResult} result - The result to add the new entry to.
    */
   _addToResult(
     commentColumn,
@@ -491,7 +481,7 @@ AbAutoCompleteSearch.prototype = {
             asyncDirectories.push(dir);
           }
         } catch (ex) {
-          Cu.reportError(
+          console.error(
             new Components.Exception(
               `Exception thrown by ${dir.URI}: ${ex.message}`,
               ex
@@ -501,13 +491,19 @@ AbAutoCompleteSearch.prototype = {
       }
 
       result._searchResults = [...result._collectedValues.values()];
+      // Make sure a result with direct email match will be the one used.
+      for (let sr of result._searchResults) {
+        if (sr.emailToUse == fullString.replace(/.*<(.+@.+)>$/, "$1")) {
+          sr.score = 100;
+        }
+      }
     }
 
     // Sort the results. Scoring may have changed so do it even if this is
     // just filtered previous results. Only local results are sorted,
     // because the autocomplete widget doesn't let us alter the order of
     // results that have already been notified.
-    result._searchResults.sort(function(a, b) {
+    result._searchResults.sort(function (a, b) {
       // Order by 1) descending score, then 2) descending popularity,
       // then 3) any emails that actually match the search string,
       // 4) primary email before secondary for the same card, then

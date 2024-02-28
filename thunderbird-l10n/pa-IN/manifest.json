@@ -1,29 +1,28 @@
 {
   "langpack_id": "pa-IN",
   "manifest_version": 2,
-  "applications": {
+  "browser_specific_settings": {
     "gecko": {
       "id": "langpack-pa-IN@thunderbird.mozilla.org",
-      "strict_min_version": "91.0",
-      "strict_max_version": "91.*"
+      "strict_min_version": "115.0",
+      "strict_max_version": "115.*"
     }
   },
-  "name": "Punjabi (Gurmukhi) Language Pack",
-  "description": "Language pack for Thunderbird for pa-IN",
-  "version": "91.0buildid20211101223011",
+  "name": "Language: ਪੰਜਾਬੀ (Punjabi)",
+  "description": "Thunderbird Language Pack for ਪੰਜਾਬੀ (pa-IN) – Punjabi",
+  "version": "115.8.20240216.174500",
   "languages": {
     "pa-IN": {
-      "version": "20211011132039",
+      "version": "20240216183808",
       "chrome_resources": {
         "alerts": "chrome/pa-IN/locale/pa-IN/alerts/",
         "autoconfig": "chrome/pa-IN/locale/pa-IN/autoconfig/",
-        "branding": "chrome/pa-IN/locale/pa-IN/branding/",
+        "branding": "chrome/pa-IN/locale/branding/",
         "calendar": "chrome/pa-IN/locale/pa-IN/calendar/",
         "chat": "chrome/pa-IN/locale/pa-IN/chat/",
         "communicator": "chrome/pa-IN/locale/pa-IN/communicator/",
         "devtools": "chrome/pa-IN/locale/pa-IN/devtools/client/",
         "devtools-shared": "chrome/pa-IN/locale/pa-IN/devtools/shared/",
-        "devtools-startup": "chrome/pa-IN/locale/pa-IN/devtools/startup/",
         "global": "chrome/pa-IN/locale/pa-IN/global/",
         "global-platform": {
           "macosx": "chrome/pa-IN/locale/pa-IN/global-platform/mac/",

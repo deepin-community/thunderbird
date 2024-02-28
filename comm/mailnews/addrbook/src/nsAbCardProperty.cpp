@@ -4,7 +4,6 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 #include "nsAbCardProperty.h"
-#include "nsAbBaseCID.h"
 #include "nsIPrefService.h"
 #include "nsIAbDirectory.h"
 #include "plbase64.h"
@@ -24,7 +23,7 @@
 #include "nsCOMArray.h"
 #include "prmem.h"
 #include "mozilla/ArrayUtils.h"
-#include "mozilla/Services.h"
+#include "mozilla/Components.h"
 using namespace mozilla;
 
 #define PREF_MAIL_ADDR_BOOK_LASTNAMEFIRST "mail.addr_book.lastnamefirst"
@@ -95,8 +94,6 @@ static const AppendItem CHAT_ATTRS_ARRAY[] = {
 
 nsAbCardProperty::nsAbCardProperty() : m_IsMailList(false) {
   // Initialize some default properties
-  SetPropertyAsUint32(kPreferMailFormatProperty,
-                      nsIAbPreferMailFormat::unknown);
   SetPropertyAsUint32(kPopularityIndexProperty, 0);
   // Uninitialized...
   SetPropertyAsUint32(kLastModifiedDateProperty, 0);
@@ -223,13 +220,16 @@ NS_IMETHODIMP nsAbCardProperty::GetPropertyAsUint32(const char* name,
 }
 
 NS_IMETHODIMP nsAbCardProperty::GetPropertyAsBool(const char* name,
+                                                  bool defaultValue,
                                                   bool* value) {
   NS_ENSURE_ARG_POINTER(name);
+
+  *value = defaultValue;
 
   nsCOMPtr<nsIVariant> variant;
   return m_properties.Get(nsDependentCString(name), getter_AddRefs(variant))
              ? variant->GetAsBool(value)
-             : NS_ERROR_NOT_AVAILABLE;
+             : NS_OK;
 }
 
 NS_IMETHODIMP nsAbCardProperty::SetProperty(const nsACString& name,
@@ -283,6 +283,17 @@ NS_IMETHODIMP nsAbCardProperty::DeleteProperty(const nsACString& name) {
   return NS_OK;
 }
 
+NS_IMETHODIMP nsAbCardProperty::GetSupportsVCard(bool* aSupportsVCard) {
+  *aSupportsVCard = false;
+  return NS_OK;
+}
+
+NS_IMETHODIMP nsAbCardProperty::GetVCardProperties(
+    JS::MutableHandle<JS::Value> properties) {
+  properties.setNull();
+  return NS_OK;
+}
+
 NS_IMETHODIMP nsAbCardProperty::GetUID(nsACString& uid) {
   nsAutoString aString;
   nsresult rv = GetPropertyAsAString(kUIDProperty, aString);
@@ -291,7 +302,8 @@ NS_IMETHODIMP nsAbCardProperty::GetUID(nsACString& uid) {
     return rv;
   }
 
-  nsCOMPtr<nsIUUIDGenerator> uuidgen = mozilla::services::GetUUIDGenerator();
+  nsCOMPtr<nsIUUIDGenerator> uuidgen =
+      mozilla::components::UUIDGenerator::Service();
   NS_ENSURE_TRUE(uuidgen, NS_ERROR_FAILURE);
 
   nsID id;
@@ -323,7 +335,7 @@ NS_IMETHODIMP nsAbCardProperty::SetUID(const nsACString& aUID) {
   }
 
   nsCOMPtr<nsIAbManager> abManager =
-      do_GetService(NS_ABMANAGER_CONTRACTID, &rv);
+      do_GetService("@mozilla.org/abmanager;1", &rv);
   NS_ENSURE_SUCCESS(rv, rv);
 
   nsCOMPtr<nsIAbDirectory> directory = nullptr;
@@ -401,6 +413,26 @@ NS_IMETHODIMP nsAbCardProperty::SetPrimaryEmail(const nsAString& aString) {
   return SetPropertyAsAString(kPriEmailProperty, aString);
 }
 
+NS_IMETHODIMP nsAbCardProperty::GetEmailAddresses(
+    nsTArray<nsString>& aEmailAddresses) {
+  aEmailAddresses.Clear();
+
+  nsresult rv;
+  nsString emailAddress;
+
+  rv = GetPropertyAsAString(kPriEmailProperty, emailAddress);
+  if (rv != NS_ERROR_NOT_AVAILABLE && !emailAddress.IsEmpty()) {
+    aEmailAddresses.AppendElement(emailAddress);
+  }
+
+  rv = GetPropertyAsAString(k2ndEmailProperty, emailAddress);
+  if (rv != NS_ERROR_NOT_AVAILABLE && !emailAddress.IsEmpty()) {
+    aEmailAddresses.AppendElement(emailAddress);
+  }
+
+  return NS_OK;
+}
+
 NS_IMETHODIMP nsAbCardProperty::HasEmailAddress(const nsACString& aEmailAddress,
                                                 bool* aResult) {
   NS_ENSURE_ARG_POINTER(aResult);
@@ -420,6 +452,11 @@ NS_IMETHODIMP nsAbCardProperty::HasEmailAddress(const nsACString& aEmailAddress,
       emailAddress.Equals(aEmailAddress, nsCaseInsensitiveCStringComparator))
     *aResult = true;
 
+  return NS_OK;
+}
+
+NS_IMETHODIMP nsAbCardProperty::GetPhotoURL(nsAString& aPhotoURL) {
+  aPhotoURL.Truncate();
   return NS_OK;
 }
 
@@ -482,7 +519,7 @@ NS_IMETHODIMP nsAbCardProperty::TranslateTo(const nsACString& type,
 nsresult nsAbCardProperty::ConvertToEscapedVCard(nsACString& aResult) {
   nsresult rv;
   nsCOMPtr<nsIMsgVCardService> vCardService =
-      do_GetService(NS_MSGVCARDSERVICE_CONTRACTID, &rv);
+      do_GetService("@mozilla.org/addressbook/msgvcardservice;1", &rv);
   NS_ENSURE_SUCCESS(rv, rv);
 
   nsAutoString result;
@@ -500,13 +537,13 @@ nsresult nsAbCardProperty::ConvertToBase64EncodedXML(nsACString& result) {
   xmlStr.AppendLiteral(
       "<?xml version=\"1.0\"?>\n"
       "<?xml-stylesheet type=\"text/css\" "
-      "href=\"chrome://messagebody/content/addressbook/print.css\"?>\n"
+      "href=\"chrome://messagebody/skin/abPrint.css\"?>\n"
       "<directory>\n");
 
   // Get Address Book string and set it as title of XML document
   nsCOMPtr<nsIStringBundle> bundle;
   nsCOMPtr<nsIStringBundleService> stringBundleService =
-      mozilla::services::GetStringBundleService();
+      mozilla::components::StringBundle::Service();
   if (stringBundleService) {
     rv = stringBundleService->CreateBundle(sAddrbookProperties,
                                            getter_AddRefs(bundle));
@@ -547,7 +584,7 @@ nsresult nsAbCardProperty::ConvertToXMLPrintData(nsAString& aXMLSubstr) {
   NS_ENSURE_SUCCESS(rv, rv);
 
   nsCOMPtr<nsIStringBundleService> stringBundleService =
-      mozilla::services::GetStringBundleService();
+      mozilla::components::StringBundle::Service();
   NS_ENSURE_TRUE(stringBundleService, NS_ERROR_UNEXPECTED);
 
   nsCOMPtr<nsIStringBundle> bundle;
@@ -621,7 +658,7 @@ nsresult nsAbCardProperty::ConvertToXMLPrintData(nsAString& aXMLSubstr) {
     xmlStr.AppendLiteral("</sectiontitle>");
 
     nsCOMPtr<nsIAbManager> abManager =
-        do_GetService(NS_ABMANAGER_CONTRACTID, &rv);
+        do_GetService("@mozilla.org/abmanager;1", &rv);
     NS_ENSURE_SUCCESS(rv, rv);
 
     nsCOMPtr<nsIAbDirectory> mailList = nullptr;
@@ -881,7 +918,7 @@ NS_IMETHODIMP nsAbCardProperty::GenerateName(int32_t aGenerateFormat,
     nsCOMPtr<nsIStringBundle> bundle(aBundle);
     if (!bundle) {
       nsCOMPtr<nsIStringBundleService> stringBundleService =
-          mozilla::services::GetStringBundleService();
+          mozilla::components::StringBundle::Service();
       NS_ENSURE_TRUE(stringBundleService, NS_ERROR_UNEXPECTED);
 
       rv = stringBundleService->CreateBundle(sAddrbookProperties,

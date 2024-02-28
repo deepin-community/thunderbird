@@ -8,7 +8,7 @@
   -->
 
 <!-- Tools menu -->
-<!ENTITY lightning.preferencesLabel "Calendar">
+<!ENTITY lightning.preferencesLabel "Calendario">
 
 <!-- New menu popup in File menu -->
 <!ENTITY lightning.menupopup.new.event.label    "Evento…">
@@ -19,10 +19,6 @@
 <!ENTITY lightning.menupopup.new.calendar.accesskey "n">
 
 <!-- Open menu popup in File menu -->
-<!ENTITY lightning.menupopup.open.label               "Abrir">
-<!ENTITY lightning.menupopup.open.accesskey           "A">
-<!ENTITY lightning.menupopup.open.message.label       "Mensaxe gardada…">
-<!ENTITY lightning.menupopup.open.message.accesskey   "M">
 <!ENTITY lightning.menupopup.open.calendar.label      "Ficheiro de calendario…">
 <!ENTITY lightning.menupopup.open.calendar.accesskey  "c">
 
@@ -42,45 +38,62 @@
      These strings are used in the calendar wizard and the calendar properties dialog, but are only
      displayed when setting/using a caldav calendar -->
 <!ENTITY lightning.calendarproperties.email.label                           "Correo electrónico:">
+<!ENTITY lightning.calendarproperties.forceEmailScheduling.label            "Preferir programación do correo electrónico do lado do cliente">
 <!-- LOCALIZATON NOTE(lightning.calendarproperties.forceEmailScheduling.tooltiptext1,
      lightning.calendarproperties.forceEmailScheduling.tooltiptext2)
      - tooltiptext1 is used in the calendar wizard when setting a new caldav calendar
      - tooltiptext2 is used in the calendar properties dialog for caldav calendars -->
+<!ENTITY lightning.calendarproperties.forceEmailScheduling.tooltiptext1     "Por agora, só pode activar isto despois de configurar este calendario no diálogo de propiedades se o servidor do calendario se ocupa da programación.">
+<!ENTITY lightning.calendarproperties.forceEmailScheduling.tooltiptext2     "Esta opción só está dispoñíbel se o servidor do calendario xestiona a programación. A activación permitirá volver á programación baseada no correo electrónico estándar no canto de deixarlla ao servidor.">
+
+<!-- The notifications settings in the properties dialog -->
+<!ENTITY lightning.calendarproperties.notifications.label                   "Notificacións">
+<!ENTITY lightning.calendarproperties.globalNotifications.label             "Preferencias globais de notificación…">
 
 <!-- iMIP Bar (meeting support) -->
 <!ENTITY lightning.imipbar.btnAccept.label                                  "Aceptar">
-<!ENTITY lightning.imipbar.btnAccept2.tooltiptext                           "Aceptar invitación ao evento">
+<!ENTITY lightning.imipbar.btnAccept2.tooltiptext                           "Aceptar o convite ao evento">
 <!ENTITY lightning.imipbar.btnAcceptRecurrences.label                       "Aceptar todo">
-<!ENTITY lightning.imipbar.btnAcceptRecurrences2.tooltiptext                "Aceptar as invitacións para todas as ocorrencias do evento">
+<!ENTITY lightning.imipbar.btnAcceptRecurrences2.tooltiptext                "Aceptar os convites para todas as ocorrencias do evento">
 <!ENTITY lightning.imipbar.btnAdd.label                                     "Engadir">
 <!ENTITY lightning.imipbar.btnAdd.tooltiptext                               "Engadir o evento ao calendario">
 <!ENTITY lightning.imipbar.btnDecline.label                                 "Rexeitar">
-<!ENTITY lightning.imipbar.btnDecline2.tooltiptext                          "Rexeitar invitación ao evento">
+<!ENTITY lightning.imipbar.btnDecline2.tooltiptext                          "Declinar o convite ao evento">
 <!ENTITY lightning.imipbar.btnDeclineRecurrences.label                      "Rexeitar todo">
-<!ENTITY lightning.imipbar.btnDeclineRecurrences2.tooltiptext               "Rexeitar as invitacións para todas as ocorrencias do evento">
+<!ENTITY lightning.imipbar.btnDeclineRecurrences2.tooltiptext               "Declinar os convites para todas as ocorrencias do evento">
 <!ENTITY lightning.imipbar.btnDeclineCounter.label                          "Rexeitar">
+<!ENTITY lightning.imipbar.btnDeclineCounter.tooltiptext                    "Declinar a contraproposta">
 <!ENTITY lightning.imipbar.btnDelete.label                                  "Eliminar">
 <!ENTITY lightning.imipbar.btnDelete.tooltiptext                            "Eliminar do calendario">
 <!ENTITY lightning.imipbar.btnDetails.label                                 "Detalles…">
 <!ENTITY lightning.imipbar.btnDetails.tooltiptext                           "Amosar os detalles do evento">
+<!ENTITY lightning.imipbar.btnDoNotShowImipBar.label                        "Non amosar estas mensaxes">
+<!ENTITY lightning.imipbar.btnGoToCalendar.label                            "Calendario">
+<!ENTITY lightning.imipbar.btnGoToCalendar.tooltiptext                      "Ir á lapela do calendario">
 <!ENTITY lightning.imipbar.btnMore.label                                    "Máis">
 <!ENTITY lightning.imipbar.btnMore.tooltiptext                              "Prema para amosar máis opcións">
 <!ENTITY lightning.imipbar.btnReconfirm2.label                              "Volver a confirmar">
 <!ENTITY lightning.imipbar.btnReconfirm.tooltiptext                         "Envía a confirmación de novo ao organizador">
+<!ENTITY lightning.imipbar.btnReschedule.label                              "Programar de novo">
+<!ENTITY lightning.imipbar.btnReschedule.tooltiptext                        "Programar de novo o evento">
 <!ENTITY lightning.imipbar.btnSaveCopy.label                                "Gardar unha copia">
 <!ENTITY lightning.imipbar.btnSaveCopy.tooltiptext                          "Garda unha copia do evento no calendario independentemente da resposta dada ao organizador. Borrarase a lista de asistentes.">
 <!ENTITY lightning.imipbar.btnTentative.label                               "Aceptar provisionalmente">
-<!ENTITY lightning.imipbar.btnTentative2.tooltiptext                        "Aceptar provisionalmente a invitación ao evento">
+<!ENTITY lightning.imipbar.btnTentative2.tooltiptext                        "Aceptar provisionalmente o convite ao evento">
 <!ENTITY lightning.imipbar.btnTentativeRecurrences.label                    "Aceptar provisionalmente todas">
-<!ENTITY lightning.imipbar.btnTentativeRecurrences2.tooltiptext             "Aceptar provisionalmente as invitacións para todas as ocorrencias do evento">
+<!ENTITY lightning.imipbar.btnTentativeRecurrences2.tooltiptext             "Aceptar provisionalmente os convites para todas as ocorrencias do evento">
 <!ENTITY lightning.imipbar.btnUpdate.label                                  "Actualizar">
 <!ENTITY lightning.imipbar.btnUpdate.tooltiptext                            "Actualizar evento no calendario">
-<!ENTITY lightning.imipbar.description                                      "Esta mensaxe contén unha invitación a un evento.">
+<!ENTITY lightning.imipbar.description                                      "Esta mensaxe contén un convite a un evento.">
 
+<!ENTITY lightning.imipbar.btnSend.label                                    "Enviar unha resposta agora">
+<!ENTITY lightning.imipbar.btnSend.tooltiptext                              "Envia unha resposta ao organizador">
+<!ENTITY lightning.imipbar.btnSendSeries.tooltiptext                        "Enviar unha resposta ao organizador para todas as series">
+<!ENTITY lightning.imipbar.btnDontSend.label                                "Non enviar unha resposta">
+<!ENTITY lightning.imipbar.btnDontSend.tooltiptext                          "Cambia o seu estado de participación sen enviar unha resposta ao organizador">
+<!ENTITY lightning.imipbar.btnDontSendSeries.tooltiptext                    "Cambia o seu estado de participación nas series sen enviar unha resposta ao organizador">
 
 <!-- Lightning specific keybindings -->
-<!ENTITY lightning.keys.event.showCalendar.key "C">
-<!ENTITY lightning.keys.event.showTasks.key "D">
 <!ENTITY lightning.keys.event.new "I">
 <!ENTITY lightning.keys.todo.new "D">
 
@@ -97,26 +110,3 @@
 <!ENTITY todaypane.showTodayPane.label "Mostrar o panel de hoxe">
 <!ENTITY todaypane.showTodayPane.accesskey "o">
 <!ENTITY todaypane.statusButton.label "Panel de hoxe">
-
-<!ENTITY lightning.calendarproperties.forceEmailScheduling.label            "Prefer client-side email scheduling">
-<!-- LOCALIZATON NOTE(lightning.calendarproperties.forceEmailScheduling.tooltiptext1,
-     lightning.calendarproperties.forceEmailScheduling.tooltiptext2)
-     - tooltiptext1 is used in the calendar wizard when setting a new caldav calendar
-     - tooltiptext2 is used in the calendar properties dialog for caldav calendars -->
-<!ENTITY lightning.calendarproperties.forceEmailScheduling.tooltiptext1     "For now, you can only enable this after setting up this calendar in its property dialog if the calendar server takes care of scheduling.">
-<!ENTITY lightning.calendarproperties.forceEmailScheduling.tooltiptext2     "This option is only available if the calendar server handles scheduling. Enabling will allow to fall back to the standard email based scheduling instead of leaving it to the server.">
-<!-- The notifications settings in the properties dialog -->
-<!ENTITY lightning.calendarproperties.notifications.label                   "Notifications">
-<!ENTITY lightning.calendarproperties.globalNotifications.label             "Global Notification Preferences…">
-<!ENTITY lightning.imipbar.btnDeclineCounter.tooltiptext                    "Decline the counter proposal">
-<!ENTITY lightning.imipbar.btnDoNotShowImipBar.label                        "Don't show me these messages">
-<!ENTITY lightning.imipbar.btnGoToCalendar.label                            "Calendar">
-<!ENTITY lightning.imipbar.btnGoToCalendar.tooltiptext                      "Go to the calendar tab">
-<!ENTITY lightning.imipbar.btnReschedule.label                              "Reschedule">
-<!ENTITY lightning.imipbar.btnReschedule.tooltiptext                        "Reschedule the event">
-<!ENTITY lightning.imipbar.btnSend.label                                    "Send a response now">
-<!ENTITY lightning.imipbar.btnSend.tooltiptext                              "Send a response to the organizer">
-<!ENTITY lightning.imipbar.btnSendSeries.tooltiptext                        "Send a response for the entire series to the organizer">
-<!ENTITY lightning.imipbar.btnDontSend.label                                "Do not send a response">
-<!ENTITY lightning.imipbar.btnDontSend.tooltiptext                          "Change your participation status without sending a response to the organizer">
-<!ENTITY lightning.imipbar.btnDontSendSeries.tooltiptext                    "Change your participation status for the series without sending a response to the organizer">

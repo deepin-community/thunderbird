@@ -26,23 +26,25 @@ let whitelist = [
   },
   // UA-only media features.
   {
-    sourceName: /\b(autocomplete-item|svg|ua)\.css$/,
+    sourceName: /\b(autocomplete-item)\.css$/,
     errorMessage: /Expected media feature name but found \u2018-moz.*/i,
     isFromDevTools: false,
+    platforms: ["windows"],
   },
-
   {
-    sourceName: /\b(contenteditable|EditorOverride|svg|forms|html|mathml|ua|pluginproblem)\.css$/i,
+    sourceName:
+      /\b(contenteditable|EditorOverride|svg|forms|html|mathml|ua)\.css$/i,
     errorMessage: /Unknown pseudo-class.*-moz-/i,
     isFromDevTools: false,
   },
   {
-    sourceName: /\b(minimal-xul|html|mathml|ua|forms|svg)\.css$/i,
+    sourceName:
+      /\b(scrollbars|xul|html|mathml|ua|forms|svg|manageDialog|autocomplete-item-shared|formautofill)\.css$/i,
     errorMessage: /Unknown property.*-moz-/i,
     isFromDevTools: false,
   },
   {
-    sourceName: /(minimal-xul|xul)\.css$/i,
+    sourceName: /(scrollbars|xul)\.css$/i,
     errorMessage: /Unknown pseudo-class.*-moz-/i,
     isFromDevTools: false,
   },
@@ -61,12 +63,41 @@ let whitelist = [
     errorMessage: /Property contained reference to invalid variable.*color/i,
     isFromDevTools: true,
   },
+  // PDF.js uses a property that is currently only supported in chrome.
+  {
+    sourceName: /web\/viewer\.css$/i,
+    errorMessage:
+      /Unknown property ‘text-size-adjust’\. {2}Declaration dropped\./i,
+    isFromDevTools: false,
+  },
+  // PDF.js uses a property that is currently only supported in chrome.
+  {
+    sourceName: /web\/viewer\.css$/i,
+    errorMessage:
+      /Unknown property ‘forced-color-adjust’\. {2}Declaration dropped\./i,
+    isFromDevTools: false,
+  },
+  {
+    sourceName: /overlay\.css$/i,
+    errorMessage: /Unknown pseudo-class.*moz-native-anonymous/i,
+    isFromDevTools: false,
+  },
 ];
+
+if (!Services.prefs.getBoolPref("layout.css.color-mix.enabled")) {
+  // Reserved to UA sheets unless layout.css.color-mix.enabled flipped to true.
+  whitelist.push({
+    sourceName: /\b(autocomplete-item)\.css$/,
+    errorMessage: /Expected color but found \u2018color-mix\u2019./i,
+    isFromDevTools: false,
+    platforms: ["windows"],
+  });
+}
 
 if (!Services.prefs.getBoolPref("layout.css.math-depth.enabled")) {
   // mathml.css UA sheet rule for math-depth.
   whitelist.push({
-    sourceName: /\b(minimal-xul|mathml)\.css$/i,
+    sourceName: /\b(scrollbars|mathml)\.css$/i,
     errorMessage: /Unknown property .*\bmath-depth\b/i,
     isFromDevTools: false,
   });
@@ -81,32 +112,19 @@ if (!Services.prefs.getBoolPref("layout.css.math-style.enabled")) {
   });
 }
 
-if (
-  !Services.prefs.getBoolPref(
-    "layout.css.xul-box-display-values.content.enabled"
-  )
-) {
-  // These are UA sheets which use non-content-exposed `display` values.
-  whitelist.push({
-    sourceName: /(skin\/shared\/Heartbeat|((?:res|gre-resources)\/(ua|html)))\.css$/i,
-    errorMessage: /Error in parsing value for .*\bdisplay\b/i,
-    isFromDevTools: false,
-  });
-}
-
-// System colors reserved to UA / chrome sheets
-whitelist.push({
-  sourceName: /(?:res|gre-resources)\/forms\.css$/i,
-  errorMessage: /Expected color but found \u2018-moz.*/i,
-  platforms: ["linux"],
-  isFromDevTools: false,
-});
-
 if (!Services.prefs.getBoolPref("layout.css.scroll-anchoring.enabled")) {
   whitelist.push({
     sourceName: /webconsole\.css$/i,
     errorMessage: /Unknown property .*\boverflow-anchor\b/i,
     isFromDevTools: true,
+  });
+}
+
+if (!Services.prefs.getBoolPref("layout.css.forced-colors.enabled")) {
+  whitelist.push({
+    sourceName: /pdf\.js\/web\/viewer\.css$/,
+    errorMessage: /Expected media feature name but found ‘forced-colors’*/i,
+    isFromDevTools: false,
   });
 }
 
@@ -149,7 +167,7 @@ function dumpWhitelistItem(item) {
  * objects defined in whitelist
  *
  * @param aErrorObject the error to check
- * @return true if the error should be ignored, false otherwise.
+ * @returns true if the error should be ignored, false otherwise.
  */
 function ignoredError(aErrorObject) {
   for (let list of [whitelist, thunderbirdWhitelist]) {
@@ -269,13 +287,43 @@ function messageIsCSSError(msg) {
 let imageURIsToReferencesMap = new Map();
 let customPropsToReferencesMap = new Map();
 
+function neverMatches(mediaList) {
+  const perPlatformMediaQueryMap = {
+    macosx: ["(-moz-platform: macos)"],
+    win: [
+      "(-moz-platform: windows)",
+      "(-moz-platform: windows-win7)",
+      "(-moz-platform: windows-win8)",
+      "(-moz-platform: windows-win10)",
+    ],
+    linux: ["(-moz-platform: linux)"],
+    android: ["(-moz-platform: android)"],
+  };
+  for (let platform in perPlatformMediaQueryMap) {
+    if (platform === AppConstants.platform) {
+      continue;
+    }
+    if (perPlatformMediaQueryMap[platform].includes(mediaList.mediaText)) {
+      // This query only matches on another platform that isn't ours.
+      return true;
+    }
+  }
+  return false;
+}
+
 function processCSSRules(sheet) {
   for (let rule of sheet.cssRules) {
-    if (rule instanceof CSSConditionRule || rule instanceof CSSKeyframesRule) {
+    if (rule.media && neverMatches(rule.media)) {
+      continue;
+    }
+    if (
+      CSSConditionRule.isInstance(rule) ||
+      CSSKeyframesRule.isInstance(rule)
+    ) {
       processCSSRules(rule);
       continue;
     }
-    if (!(rule instanceof CSSStyleRule) && !(rule instanceof CSSKeyframeRule)) {
+    if (!CSSStyleRule.isInstance(rule) && !CSSKeyframeRule.isInstance(rule)) {
       continue;
     }
 
@@ -283,7 +331,7 @@ function processCSSRules(sheet) {
     // Note: CSSRule.cssText always has double quotes around URLs even
     //       when the original CSS file didn't.
     let urls = rule.cssText.match(/url\("[^"]*"\)/g);
-    // Extract props by searching all "--" preceeded by "var(" or a non-word
+    // Extract props by searching all "--" preceded by "var(" or a non-word
     // character.
     let props = rule.cssText.match(/(var\(|\W)(--[\w\-]+)/g);
     if (!urls && !props) {
@@ -344,7 +392,7 @@ function chromeFileExists(aURI) {
   } catch (e) {
     if (e.result != Cr.NS_ERROR_FILE_NOT_FOUND) {
       dump("Checking " + aURI + ": " + e + "\n");
-      Cu.reportError(e);
+      console.error(e);
     }
   }
   return available > 0;
@@ -364,10 +412,9 @@ add_task(async function checkAllTheCSS() {
   // Create a clean iframe to load all the files into. This needs to live at a
   // chrome URI so that it's allowed to load and parse any styles.
   let testFile = getRootDirectory(gTestPath) + "dummy_page.html";
-  let HiddenFrame = ChromeUtils.import(
-    "resource://gre/modules/HiddenFrame.jsm",
-    {}
-  ).HiddenFrame;
+  let { HiddenFrame } = ChromeUtils.importESModule(
+    "resource://gre/modules/HiddenFrame.sys.mjs"
+  );
   let hiddenFrame = new HiddenFrame();
   let win = await hiddenFrame.get();
   let iframe = win.document.createElementNS(

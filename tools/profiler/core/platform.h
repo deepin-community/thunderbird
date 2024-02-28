@@ -31,13 +31,20 @@
 
 #include "PlatformMacros.h"
 
+#include "json/json.h"
+#include "mozilla/Atomics.h"
+#include "mozilla/BaseProfilerDetail.h"
 #include "mozilla/Logging.h"
 #include "mozilla/MathAlgorithms.h"
 #include "mozilla/ProfileBufferEntrySerialization.h"
+#include "mozilla/ProfileJSONWriter.h"
+#include "mozilla/ProfilerUtils.h"
+#include "mozilla/ProgressLogger.h"
 #include "mozilla/TimeStamp.h"
 #include "mozilla/UniquePtr.h"
 #include "mozilla/Vector.h"
 #include "nsString.h"
+#include "shared-libraries.h"
 
 #include <cstddef>
 #include <cstdint>
@@ -56,55 +63,111 @@ extern mozilla::LazyLogModule gProfilerLog;
 #define LOG_TEST MOZ_LOG_TEST(gProfilerLog, mozilla::LogLevel::Info)
 #define LOG(arg, ...)                            \
   MOZ_LOG(gProfilerLog, mozilla::LogLevel::Info, \
-          ("[%d] " arg, profiler_current_process_id(), ##__VA_ARGS__))
+          ("[%" PRIu64 "] " arg,                 \
+           uint64_t(profiler_current_process_id().ToNumber()), ##__VA_ARGS__))
 
 // These are for MOZ_LOG="prof:4" or higher. It should be used for logging that
 // is somewhat more verbose than LOG.
 #define DEBUG_LOG_TEST MOZ_LOG_TEST(gProfilerLog, mozilla::LogLevel::Debug)
 #define DEBUG_LOG(arg, ...)                       \
   MOZ_LOG(gProfilerLog, mozilla::LogLevel::Debug, \
-          ("[%d] " arg, profiler_current_process_id(), ##__VA_ARGS__))
+          ("[%" PRIu64 "] " arg,                  \
+           uint64_t(profiler_current_process_id().ToNumber()), ##__VA_ARGS__))
 
 typedef uint8_t* Address;
+
+// Stringify the given JSON value, in the most compact format.
+// Note: Numbers are limited to a precision of 6 decimal digits, so that
+// timestamps in ms have a precision in ns.
+Json::String ToCompactString(const Json::Value& aJsonValue);
+
+// Profiling log stored in a Json::Value. The actual log only exists while the
+// profiler is running, and will be inserted at the end of the JSON profile.
+class ProfilingLog {
+ public:
+  // These will be called by ActivePS when the profiler starts/stops.
+  static void Init();
+  static void Destroy();
+
+  // Access the profiling log JSON object, in order to modify it.
+  // Only calls the given function if the profiler is active.
+  // Thread-safe. But `aF` must not call other locking profiler functions.
+  // This is intended to capture some internal logging that doesn't belong in
+  // other places like markers. The log is accessible through the JS console on
+  // profiler.firefox.com, in the `profile.profilingLog` object; the data format
+  // is intentionally not defined, and not intended to be shown in the
+  // front-end.
+  // Please use caution not to output too much data.
+  template <typename F>
+  static void Access(F&& aF) {
+    mozilla::baseprofiler::detail::BaseProfilerAutoLock lock{gMutex};
+    if (gLog) {
+      std::forward<F>(aF)(*gLog);
+    }
+  }
+
+#define DURATION_JSON_SUFFIX "_ms"
+
+  // Convert a TimeDuration to the value to be stored in the log.
+  // Use DURATION_JSON_SUFFIX as suffix in the property name.
+  static Json::Value Duration(const mozilla::TimeDuration& aDuration) {
+    return Json::Value{aDuration.ToMilliseconds()};
+  }
+
+#define TIMESTAMP_JSON_SUFFIX "_TSms"
+
+  // Convert a TimeStamp to the value to be stored in the log.
+  // Use TIMESTAMP_JSON_SUFFIX as suffix in the property name.
+  static Json::Value Timestamp(
+      const mozilla::TimeStamp& aTimestamp = mozilla::TimeStamp::Now()) {
+    if (aTimestamp.IsNull()) {
+      return Json::Value{0.0};
+    }
+    return Duration(aTimestamp - mozilla::TimeStamp::ProcessCreation());
+  }
+
+  static bool IsLockedOnCurrentThread();
+
+ private:
+  static mozilla::baseprofiler::detail::BaseProfilerMutex gMutex;
+  static mozilla::UniquePtr<Json::Value> gLog;
+};
 
 // ----------------------------------------------------------------------------
 // Miscellaneous
 
-class PlatformData;
+// If positive, skip stack-sampling in the sampler thread loop.
+// Users should increment it atomically when samplings should be avoided, and
+// later decrement it back. Multiple uses can overlap.
+// There could be a sampling in progress when this is first incremented, so if
+// it is critical to prevent any sampling, lock the profiler mutex instead.
+// Relaxed ordering, because it's used to request that the profiler pause
+// future sampling; this is not time critical, nor dependent on anything else.
+extern mozilla::Atomic<int, mozilla::MemoryOrdering::Relaxed> gSkipSampling;
 
-// We can't new/delete the type safely without defining it
-// (-Wdelete-incomplete).  Use these to hide the details from clients.
-struct PlatformDataDestructor {
-  void operator()(PlatformData*);
-};
-
-typedef mozilla::UniquePtr<PlatformData, PlatformDataDestructor>
-    UniquePlatformData;
-UniquePlatformData AllocPlatformData(int aThreadId);
-
-namespace mozilla {
-class JSONWriter;
-}
-void AppendSharedLibraries(mozilla::JSONWriter& aWriter);
+void AppendSharedLibraries(mozilla::JSONWriter& aWriter,
+                           const SharedLibraryInfo& aInfo);
 
 // Convert the array of strings to a bitfield.
 uint32_t ParseFeaturesFromStringArray(const char** aFeatures,
                                       uint32_t aFeatureCount,
                                       bool aIsStartup = false);
 
-void profiler_get_profile_json_into_lazily_allocated_buffer(
-    const std::function<char*(size_t)>& aAllocator, double aSinceTime,
-    bool aIsShuttingDown);
+// Add the begin/end 'Awake' markers for the thread.
+void profiler_mark_thread_awake();
+
+void profiler_mark_thread_asleep();
+
+[[nodiscard]] bool profiler_get_profile_json(
+    SpliceableChunkedJSONWriter& aSpliceableChunkedJSONWriter,
+    double aSinceTime, bool aIsShuttingDown,
+    mozilla::ProgressLogger aProgressLogger);
 
 // Flags to conveniently track various JS instrumentations.
 enum class JSInstrumentationFlags {
   StackSampling = 0x1,
-  TraceLogging = 0x2,
-  Allocations = 0x4,
+  Allocations = 0x2,
 };
-
-// Record an exit profile from a child process.
-void profiler_received_exit_profile(const nsCString& aExitProfile);
 
 // Write out the information of the active profiling configuration.
 void profiler_write_active_configuration(mozilla::JSONWriter& aWriter);
@@ -187,6 +250,13 @@ class RunningTimes {
       return mozilla::Some(m##name##unit);                            \
     }                                                                 \
     return mozilla::Nothing{};                                        \
+  }                                                                   \
+                                                                      \
+  constexpr mozilla::Maybe<uint64_t> GetJson##name##unit() const {    \
+    if (Is##name##unit##Known()) {                                    \
+      return mozilla::Some(ConvertRawToJson(m##name##unit));          \
+    }                                                                 \
+    return mozilla::Nothing{};                                        \
   }
 
   PROFILER_FOR_EACH_RUNNING_TIME(RUNNING_TIME_MEMBER)
@@ -232,6 +302,9 @@ class RunningTimes {
   friend mozilla::ProfileBufferEntryWriter::Serializer<RunningTimes>;
   friend mozilla::ProfileBufferEntryReader::Deserializer<RunningTimes>;
 
+  // Platform-dependent.
+  static uint64_t ConvertRawToJson(uint64_t aRawValue);
+
   mozilla::TimeStamp mPostMeasurementTimeStamp;
 
   uint32_t mKnownBits = 0u;
@@ -248,9 +321,17 @@ class RunningTimes {
 template <>
 struct mozilla::ProfileBufferEntryWriter::Serializer<RunningTimes> {
   static Length Bytes(const RunningTimes& aRunningTimes) {
-    return ULEB128Size(aRunningTimes.mKnownBits) +
-           mozilla::CountPopulation32(aRunningTimes.mKnownBits) *
-               sizeof(uint64_t);
+    Length bytes = 0;
+
+#define RUNNING_TIME_SERIALIZATION_BYTES(index, name, unit, jsonProperty) \
+  if (aRunningTimes.Is##name##unit##Known()) {                            \
+    bytes += ULEB128Size(aRunningTimes.m##name##unit);                    \
+  }
+
+    PROFILER_FOR_EACH_RUNNING_TIME(RUNNING_TIME_SERIALIZATION_BYTES)
+
+#undef RUNNING_TIME_SERIALIZATION_BYTES
+    return ULEB128Size(aRunningTimes.mKnownBits) + bytes;
   }
 
   static void Write(ProfileBufferEntryWriter& aEW,
@@ -259,7 +340,7 @@ struct mozilla::ProfileBufferEntryWriter::Serializer<RunningTimes> {
 
 #define RUNNING_TIME_SERIALIZE(index, name, unit, jsonProperty) \
   if (aRunningTimes.Is##name##unit##Known()) {                  \
-    aEW.WriteObject(aRunningTimes.m##name##unit);               \
+    aEW.WriteULEB128(aRunningTimes.m##name##unit);              \
   }
 
     PROFILER_FOR_EACH_RUNNING_TIME(RUNNING_TIME_SERIALIZE)
@@ -284,9 +365,9 @@ struct mozilla::ProfileBufferEntryReader::Deserializer<RunningTimes> {
     times.mKnownBits = aER.ReadULEB128<uint32_t>();
 
     // For each member that should be known, read its value.
-#define RUNNING_TIME_DESERIALIZE(index, name, unit, jsonProperty) \
-  if (times.Is##name##unit##Known()) {                            \
-    aER.ReadIntoObject(times.m##name##unit);                      \
+#define RUNNING_TIME_DESERIALIZE(index, name, unit, jsonProperty)           \
+  if (times.Is##name##unit##Known()) {                                      \
+    times.m##name##unit = aER.ReadULEB128<decltype(times.m##name##unit)>(); \
   }
 
     PROFILER_FOR_EACH_RUNNING_TIME(RUNNING_TIME_DESERIALIZE)

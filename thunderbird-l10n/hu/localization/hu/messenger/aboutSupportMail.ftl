@@ -14,7 +14,18 @@ accounts-conn-security = Kapcsolat biztonsága
 accounts-auth-method = Hitelesítési módszer
 accounts-default = Alapértelmezett?
 identity-name = Felhasználó
-
 send-via-email = Küldés e-mailben
-
 app-basics-telemetry = Telemetriai adatok
+app-basics-cache-use = Gyorsítótár használata
+mail-libs-title = Programkönyvtárak
+libs-table-heading-library = Programkönyvtár
+libs-table-heading-expected-version = Elvárt minimális verzió
+libs-table-heading-loaded-version = Használt verzió
+libs-table-heading-path = Útvonal
+libs-table-heading-status = Állapot
+libs-rnp-status-ok = OK
+libs-rnp-status-load-failed = Sikertelen betöltés. Az OpenPGP nem fog működni.
+libs-rnp-status-incompatible = Nem kompatibilis verzió. Az OpenPGP nem fog működni.
+libs-rnp-status-unofficial = Nem hivatalos verzió. Előfordulhat, hogy az OpenPGP nem a várt módon működik.
+libs-otr-status-ok = OK
+libs-otr-status-error = A betöltés sikertelen. Az OTR csevegéstitkosítás nem fog működni.

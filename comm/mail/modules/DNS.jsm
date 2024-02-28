@@ -7,15 +7,16 @@
  * loading system DNS libraries on Linux, Mac and Windows.
  */
 
-const EXPORTED_SYMBOLS = ["DNS"];
+const EXPORTED_SYMBOLS = ["DNS", "SRVRecord"];
 
 var DNS = null;
 
 if (typeof Components !== "undefined") {
-  var { ctypes } = ChromeUtils.import("resource://gre/modules/ctypes.jsm");
-  var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-  var { BasePromiseWorker } = ChromeUtils.import(
-    "resource://gre/modules/PromiseWorker.jsm"
+  var { ctypes } = ChromeUtils.importESModule(
+    "resource://gre/modules/ctypes.sys.mjs"
+  );
+  var { BasePromiseWorker } = ChromeUtils.importESModule(
+    "resource://gre/modules/PromiseWorker.sys.mjs"
   );
 }
 
@@ -27,22 +28,29 @@ var NS_T_SRV = 33; // DNS_TYPE_SRV
 var NS_T_MX = 15; // DNS_TYPE_MX
 
 // For Linux and Mac.
-function load_libresolv() {
-  this._open();
+function load_libresolv(os) {
+  this._open(os);
 }
 
 load_libresolv.prototype = {
   library: null,
 
   // Tries to find and load library.
-  _open() {
+  _open(os) {
     function findLibrary() {
       let lastException = null;
-      let candidates = [
-        { name: "resolv.9", suffix: "" },
-        { name: "resolv", suffix: ".2" },
-        { name: "resolv", suffix: "" },
-      ];
+      let candidates = [];
+      if (os == "FreeBSD") {
+        candidates = [{ name: "c", suffix: ".7" }];
+      } else if (os == "OpenBSD") {
+        candidates = [{ name: "c", suffix: "" }];
+      } else {
+        candidates = [
+          { name: "resolv.9", suffix: "" },
+          { name: "resolv", suffix: ".2" },
+          { name: "resolv", suffix: "" },
+        ];
+      }
       let tried = [];
       for (let candidate of candidates) {
         try {
@@ -125,13 +133,13 @@ load_libresolv.prototype = {
       ctypes.unsigned_char.ptr
     );
     this.ns_get16 = declare(
-      ["res_9_ns_get16", "ns_get16"],
+      ["res_9_ns_get16", "ns_get16", "_getshort"],
       ctypes.default_abi,
       ctypes.unsigned_int,
       ctypes.unsigned_char.ptr
     );
     this.ns_get32 = declare(
-      ["res_9_ns_get32", "ns_get32"],
+      ["res_9_ns_get32", "ns_get32", "_getlong"],
       ctypes.default_abi,
       ctypes.unsigned_long,
       ctypes.unsigned_char.ptr
@@ -418,24 +426,25 @@ if (typeof Components === "undefined") {
   /* eslint-env worker */
 
   // We are in a worker, wait for our message then execute the wanted method.
+  /* import-globals-from /toolkit/components/workerloader/require.js */
   importScripts("resource://gre/modules/workers/require.js");
   let PromiseWorker = require("resource://gre/modules/workers/PromiseWorker.js");
 
   let worker = new PromiseWorker.AbstractWorker();
-  worker.dispatch = function(aMethod, aArgs = []) {
+  worker.dispatch = function (aMethod, aArgs = []) {
     return self[aMethod](...aArgs);
   };
-  worker.postMessage = function(...aArgs) {
+  worker.postMessage = function (...aArgs) {
     self.postMessage(...aArgs);
   };
-  worker.close = function() {
+  worker.close = function () {
     self.close();
   };
   self.addEventListener("message", msg => worker.handleMessage(msg));
 
   // eslint-disable-next-line no-unused-vars
   function execute(aOS, aMethod, aArgs) {
-    let DNS = aOS == "WINNT" ? new load_dnsapi() : new load_libresolv();
+    let DNS = aOS == "WINNT" ? new load_dnsapi() : new load_libresolv(aOS);
     return DNS[aMethod].apply(DNS, aArgs);
   }
 } else {
@@ -458,7 +467,7 @@ if (typeof Components === "undefined") {
      *
      * @param aName           The aName to look up.
      * @param aTypeID         The RR type to look up as a constant.
-     * @return                A promise resolved when completed.
+     * @returns A promise resolved when completed.
      */
     lookup(aName, aTypeID) {
       let worker = new BasePromiseWorker(LOCATION);

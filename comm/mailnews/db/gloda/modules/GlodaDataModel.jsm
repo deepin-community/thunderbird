@@ -13,24 +13,17 @@ const EXPORTED_SYMBOLS = [
   "GlodaAttachment",
 ];
 
+const { GlodaConstants } = ChromeUtils.import(
+  "resource:///modules/gloda/GlodaConstants.jsm"
+);
 const { MailServices } = ChromeUtils.import(
   "resource:///modules/MailServices.jsm"
 );
-const { MailUtils } = ChromeUtils.import("resource:///modules/MailUtils.jsm");
 var LOG = console.createInstance({
   prefix: "gloda.datamodel",
   maxLogLevel: "Warn",
   maxLogLevelPref: "gloda.loglevel",
 });
-
-// Make it lazy.
-var gMessenger;
-function getMessenger() {
-  if (!gMessenger) {
-    gMessenger = Cc["@mozilla.org/messenger;1"].createInstance(Ci.nsIMessenger);
-  }
-  return gMessenger;
-}
 
 /**
  * @class Represents a gloda attribute definition's DB form.  This class
@@ -79,7 +72,7 @@ GlodaAttributeDBDef.prototype = {
    * Bind a parameter value to the attribute definition, allowing use of the
    *  attribute-parameter as an attribute.
    *
-   * @return
+   * @returns
    */
   bindParameter(aValue) {
     // people probably shouldn't call us with null, but handle it
@@ -229,7 +222,7 @@ function GlodaConversation(
 }
 
 GlodaConversation.prototype = {
-  NOUN_ID: 101,
+  NOUN_ID: GlodaConstants.NOUN_CONVERSATION,
   // set by GlodaDatastore
   _datastore: null,
   get id() {
@@ -273,17 +266,15 @@ function GlodaFolder(
   this._uri = aURI;
   this._dirtyStatus = aDirtyStatus;
   this._prettyName = aPrettyName;
-  this._xpcomFolder = null;
   this._account = null;
   this._activeIndexing = false;
-  this._activeHeaderRetrievalLastStamp = 0;
   this._indexingPriority = aIndexingPriority;
   this._deleted = false;
   this._compacting = false;
 }
 
 GlodaFolder.prototype = {
-  NOUN_ID: 100,
+  NOUN_ID: GlodaConstants.NOUN_FOLDER,
   // set by GlodaDatastore
   _datastore: null,
 
@@ -437,12 +428,7 @@ GlodaFolder.prototype = {
    */
   set indexing(aIndexing) {
     this._activeIndexing = aIndexing;
-    if (!aIndexing) {
-      this.forgetFolderIfUnused();
-    }
   },
-  /** When was this folder last used for header retrieval purposes? */
-  _activeHeaderRetrievalLastStamp: 0,
 
   /**
    * Retrieve the nsIMsgFolder instance corresponding to this folder, providing
@@ -451,12 +437,9 @@ GlodaFolder.prototype = {
    * @param aActivity One of the kActivity* constants.  If you pass
    *     kActivityIndexing, we will set indexing for you, but you will need to
    *     clear it when you are done.
-   * @return The nsIMsgFolder if available, null on failure.
+   * @returns The nsIMsgFolder if available, null on failure.
    */
   getXPCOMFolder(aActivity) {
-    if (!this._xpcomFolder) {
-      this._xpcomFolder = MailUtils.getExistingFolder(this.uri);
-    }
     switch (aActivity) {
       case this.kActivityIndexing:
         // mark us as indexing, but don't bother with live tracking.  we do
@@ -464,23 +447,18 @@ GlodaFolder.prototype = {
         this.indexing = true;
         break;
       case this.kActivityHeaderRetrieval:
-        if (this._activeHeaderRetrievalLastStamp === 0) {
-          this._datastore.markFolderLive(this);
-        }
-        this._activeHeaderRetrievalLastStamp = Date.now();
-        break;
       case this.kActivityFolderOnlyNoData:
         // we don't have to do anything here.
         break;
     }
 
-    return this._xpcomFolder;
+    return MailServices.folderLookup.getFolderForURL(this.uri);
   },
 
   /**
    * Retrieve a GlodaAccount instance corresponding to this folder.
    *
-   * @return The GlodaAccount instance.
+   * @returns The GlodaAccount instance.
    */
   getAccount() {
     if (!this._account) {
@@ -488,57 +466,6 @@ GlodaFolder.prototype = {
       this._account = new GlodaAccount(msgFolder.server);
     }
     return this._account;
-  },
-
-  /**
-   * How many milliseconds must a folder have not had any header retrieval
-   *  activity before it's okay to lose the database reference?
-   */
-  ACCEPTABLY_OLD_THRESHOLD: 10000,
-
-  /**
-   * Cleans up our nsIMsgFolder reference if we have one and it's not "in use".
-   * In use, from our perspective, means that it is not being used for indexing
-   *  and some arbitrary interval of time has elapsed since it was last
-   *  retrieved for header retrieval reasons.  The time interval is because if
-   *  we have one GlodaMessage requesting a header, there's a high probability
-   *  that another message will request a header in the near future.
-   * Because setting indexing to false disables us, we are written in an
-   *  idempotent fashion.  (It is possible for disabling indexing's call to us
-   *  to cause us to return true but for the datastore's timer call to have not
-   *  yet triggered.)
-   *
-   * @returns true if we are cleaned up and can be considered 'dead', false if
-   *     we should still be considered alive and this method should be called
-   *     again in the future.
-   */
-  forgetFolderIfUnused() {
-    // we are not cleaning/cleaned up if we are indexing
-    if (this._activeIndexing) {
-      return false;
-    }
-
-    // set a point in the past as the threshold.  the timestamp must be older
-    //  than this to be eligible for cleanup.
-    let acceptablyOld = Date.now() - this.ACCEPTABLY_OLD_THRESHOLD;
-    // we are not cleaning/cleaned up if we have retrieved a header more
-    //  recently than the acceptably old threshold.
-    if (this._activeHeaderRetrievalLastStamp > acceptablyOld) {
-      return false;
-    }
-
-    if (this._xpcomFolder) {
-      // This is the key action we take; the nsIMsgFolder will continue to
-      //  exist, but we want it to forget about its database so that it can
-      //  be closed and its memory can be reclaimed.
-      this._xpcomFolder.msgDatabase = null;
-      this._xpcomFolder = null;
-      // since the last retrieval time tracks whether we have marked live or
-      //  not, this needs to be reset to 0 too.
-      this._activeHeaderRetrievalLastStamp = 0;
-    }
-
-    return true;
   },
 };
 
@@ -583,7 +510,7 @@ function GlodaMessage(
 }
 
 GlodaMessage.prototype = {
-  NOUN_ID: 102,
+  NOUN_ID: GlodaConstants.NOUN_MESSAGE,
   // set by GlodaDatastore
   _datastore: null,
   get id() {
@@ -871,7 +798,7 @@ function GlodaContact(
 }
 
 GlodaContact.prototype = {
-  NOUN_ID: 103,
+  NOUN_ID: GlodaConstants.NOUN_CONTACT,
   // set by GlodaDatastore
   _datastore: null,
 
@@ -961,7 +888,7 @@ function GlodaIdentity(
 }
 
 GlodaIdentity.prototype = {
-  NOUN_ID: 104,
+  NOUN_ID: GlodaConstants.NOUN_IDENTITY,
   // set by GlodaDatastore
   _datastore: null,
   get id() {
@@ -1022,13 +949,6 @@ GlodaIdentity.prototype = {
     }
     return (this.abCard && true) || false;
   },
-
-  pictureURL(aSize) {
-    if (this.inAddressBook) {
-      // XXX should get the photo if we have it.
-    }
-    return "";
-  },
 };
 
 /**
@@ -1054,7 +974,7 @@ function GlodaAttachment(
 }
 
 GlodaAttachment.prototype = {
-  NOUN_ID: 105,
+  NOUN_ID: GlodaConstants.NOUN_ATTACHMENT,
   // set by GlodaDatastore
   get name() {
     return this._name;
@@ -1076,7 +996,7 @@ GlodaAttachment.prototype = {
         "The message doesn't exist anymore, unable to rebuild attachment URL"
       );
     }
-    let msgService = getMessenger().messageServiceFromURI(uri);
+    let msgService = MailServices.messageServiceFromURI(uri);
     let neckoURL = msgService.getUrlForUri(uri);
     let url = neckoURL.spec;
     let hasParamAlready = url.match(/\?[a-z]+=[^\/]+$/);

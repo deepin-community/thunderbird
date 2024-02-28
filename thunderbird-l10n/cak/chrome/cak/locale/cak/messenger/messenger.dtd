@@ -24,8 +24,6 @@
 <!ENTITY moveToNewWindow.accesskey "T">
 <!ENTITY newVirtualFolderCmd.label "Xyak Kanoxïk…">
 <!ENTITY newVirtualFolderCmd.accesskey "y">
-<!ENTITY newOtherAccountsCmd.label "Juley chik Rub'i' Taqoya'l…">
-<!ENTITY newOtherAccountsCmd.accesskey "J">
 <!ENTITY newCreateEmailAccountCmd.label "Tik'ul jun K'ak'a' Rub'i' Taqoya'l…">
 <!ENTITY newCreateEmailAccountCmd.accesskey "T">
 <!ENTITY newExistingEmailAccountCmd.label "Rub'i' Taqoya'l E K'o…">
@@ -48,8 +46,6 @@
 <!ENTITY openMessageFileCmd.accesskey "j">
 <!ENTITY saveAsMenu.label "Tiyak Achi'el">
 <!ENTITY saveAsMenu.accesskey "y">
-<!ENTITY saveAsFileCmd.label "Yakb'äl">
-<!ENTITY saveAsFileCmd.accesskey "Y">
 <!ENTITY saveAsFileCmd.key "s">
 <!ENTITY saveAsTemplateCmd.label "Kaxawäch">
 <!ENTITY saveAsTemplateCmd.accesskey "K">
@@ -320,7 +316,6 @@
 <!ENTITY goBackCmd.commandKey "[">
 <!ENTITY goChatCmd.label "Chat">
 <!ENTITY goChatCmd.accesskey "c">
-<!ENTITY goChatCmd2.key "H">
 <!ENTITY prevStarredMsgCmd.label "Rutzijol Ya'on Ruq'ij">
 <!ENTITY prevStarredMsgCmd.accesskey "Y">
 <!ENTITY folderMenu.label "Yakwuj">
@@ -490,6 +485,8 @@
 <!ENTITY deleteJunk.accesskey "T">
 <!ENTITY importCmd.label "Tijik' pe…">
 <!ENTITY importCmd.accesskey "j">
+<!ENTITY exportCmd.label "Tik'wäx el…">
+<!ENTITY exportCmd.accesskey "x">
 <!ENTITY clearRecentHistory.label "Tiyuj K'ak'a' Natab'äl…">
 <!ENTITY clearRecentHistory.accesskey "N">
 <!ENTITY accountManagerCmd2.label "Kinuk'ulem Rub'i' Taqoya'l">

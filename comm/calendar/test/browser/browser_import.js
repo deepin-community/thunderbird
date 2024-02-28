@@ -7,16 +7,14 @@
 
 /* globals loadEventsFromFile */
 
-var { CALENDARNAME, controller, createCalendar, deleteCalendars, goToDate } = ChromeUtils.import(
-  "resource://testing-common/calendar/CalendarUtils.jsm"
+const { MockFilePicker } = ChromeUtils.importESModule(
+  "resource://testing-common/MockFilePicker.sys.mjs"
 );
-
-const { MockFilePicker } = ChromeUtils.import("resource://specialpowers/MockFilePicker.jsm");
 const ChromeRegistry = Cc["@mozilla.org/chrome/chrome-registry;1"].getService(Ci.nsIChromeRegistry);
 
 add_task(async () => {
   await CalendarTestUtils.setCalendarView(window, "month");
-  goToDate(controller, 2019, 1, 1);
+  await CalendarTestUtils.goToDate(window, 2019, 1, 1);
 
   let chromeUrl = Services.io.newURI(getRootDirectory(gTestPath) + "data/import.ics");
   let fileUrl = ChromeRegistry.convertChromeURL(chromeUrl);
@@ -26,8 +24,12 @@ add_task(async () => {
   MockFilePicker.setFiles([file]);
   MockFilePicker.returnValue = MockFilePicker.returnCancel;
 
-  let calendarId = createCalendar(controller, CALENDARNAME);
-  let calendar = cal.getCalendarManager().getCalendarById(calendarId);
+  let calendar = CalendarTestUtils.createCalendar();
+
+  registerCleanupFunction(() => {
+    CalendarTestUtils.removeCalendar(calendar);
+    MockFilePicker.cleanup();
+  });
 
   let cancelReturn = await loadEventsFromFile();
   ok(!cancelReturn, "loadEventsFromFile returns false on cancel");
@@ -67,7 +69,7 @@ add_task(async () => {
         // 0 is the Home calendar.
         calendarMenu.selectedIndex = 1;
         let calendarMenuItems = calendarMenu.querySelectorAll("menuitem");
-        is(calendarMenu.value, "Mozmill", "correct calendar name is selected");
+        is(calendarMenu.value, "Test", "correct calendar name is selected");
         Assert.equal(calendarMenuItems.length, 1, "exactly one calendar is in the calendars menu");
         is(calendarMenuItems[0].selected, true, "calendar menu item is selected");
 
@@ -267,8 +269,7 @@ add_task(async () => {
   await dialogWindowPromise;
 
   // Check that the items were actually successfully imported.
-  let promiseCalendar = cal.async.promisifyCalendar(calendar);
-  let result = await promiseCalendar.getItems(
+  let result = await calendar.getItemsAsArray(
     Ci.calICalendar.ITEM_FILTER_ALL_ITEMS,
     0,
     cal.createDateTime("20190101T000000"),
@@ -279,8 +280,6 @@ add_task(async () => {
   await CalendarTestUtils.monthView.waitForItemAt(window, 1, 3, 4);
 
   for (let item of result) {
-    await promiseCalendar.deleteItem(item);
+    await calendar.deleteItem(item);
   }
-
-  MockFilePicker.cleanup();
 });

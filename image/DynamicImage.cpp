@@ -19,11 +19,8 @@
 
 using namespace mozilla;
 using namespace mozilla::gfx;
-using mozilla::layers::ImageContainer;
-using mozilla::layers::LayerManager;
 
-namespace mozilla {
-namespace image {
+namespace mozilla::image {
 
 // Inherited methods from Image.
 
@@ -52,7 +49,6 @@ uint32_t DynamicImage::GetAnimationConsumers() { return 0; }
 #endif
 
 nsresult DynamicImage::OnImageDataAvailable(nsIRequest* aRequest,
-                                            nsISupports* aContext,
                                             nsIInputStream* aInStr,
                                             uint64_t aSourceOffset,
                                             uint32_t aCount) {
@@ -60,7 +56,6 @@ nsresult DynamicImage::OnImageDataAvailable(nsIRequest* aRequest,
 }
 
 nsresult DynamicImage::OnImageDataComplete(nsIRequest* aRequest,
-                                           nsISupports* aContext,
                                            nsresult aStatus, bool aLastPart) {
   return NS_OK;
 }
@@ -93,11 +88,14 @@ DynamicImage::GetHeight(int32_t* aHeight) {
   return NS_OK;
 }
 
-nsresult DynamicImage::GetNativeSizes(nsTArray<IntSize>& aNativeSizes) const {
+void DynamicImage::MediaFeatureValuesChangedAllDocuments(
+    const mozilla::MediaFeatureChange& aChange) {}
+
+nsresult DynamicImage::GetNativeSizes(nsTArray<IntSize>&) {
   return NS_ERROR_NOT_IMPLEMENTED;
 }
 
-size_t DynamicImage::GetNativeSizesLength() const { return 0; }
+size_t DynamicImage::GetNativeSizesLength() { return 0; }
 
 NS_IMETHODIMP
 DynamicImage::GetIntrinsicSize(nsSize* aSize) {
@@ -124,7 +122,7 @@ DynamicImage::GetType(uint16_t* aType) {
 }
 
 NS_IMETHODIMP
-DynamicImage::GetProducerId(uint32_t* aId) {
+DynamicImage::GetProviderId(uint32_t* aId) {
   *aId = 0;
   return NS_OK;
 }
@@ -152,11 +150,10 @@ DynamicImage::GetFrameAtSize(const IntSize& aSize, uint32_t aWhichFrame,
         << "DynamicImage::GetFrame failed in CreateOffscreenContentDrawTarget";
     return nullptr;
   }
-  RefPtr<gfxContext> context = gfxContext::CreateOrNull(dt);
-  MOZ_ASSERT(context);  // already checked the draw target above
+  gfxContext context(dt);
 
-  auto result = Draw(context, aSize, ImageRegion::Create(aSize), aWhichFrame,
-                     SamplingFilter::POINT, Nothing(), aFlags, 1.0);
+  auto result = Draw(&context, aSize, ImageRegion::Create(aSize), aWhichFrame,
+                     SamplingFilter::POINT, SVGImageContext(), aFlags, 1.0);
 
   return result == ImgDrawResult::SUCCESS ? dt->Snapshot() : nullptr;
 }
@@ -165,30 +162,18 @@ NS_IMETHODIMP_(bool)
 DynamicImage::WillDrawOpaqueNow() { return false; }
 
 NS_IMETHODIMP_(bool)
-DynamicImage::IsImageContainerAvailable(LayerManager* aManager,
+DynamicImage::IsImageContainerAvailable(WindowRenderer* aRenderer,
                                         uint32_t aFlags) {
   return false;
 }
 
-NS_IMETHODIMP_(already_AddRefed<ImageContainer>)
-DynamicImage::GetImageContainer(LayerManager* aManager, uint32_t aFlags) {
-  return nullptr;
-}
-
-NS_IMETHODIMP_(bool)
-DynamicImage::IsImageContainerAvailableAtSize(LayerManager* aManager,
-                                              const IntSize& aSize,
-                                              uint32_t aFlags) {
-  return false;
-}
-
 NS_IMETHODIMP_(ImgDrawResult)
-DynamicImage::GetImageContainerAtSize(layers::LayerManager* aManager,
-                                      const gfx::IntSize& aSize,
-                                      const Maybe<SVGImageContext>& aSVGContext,
-                                      const Maybe<ImageIntRegion>& aRegion,
-                                      uint32_t aFlags,
-                                      layers::ImageContainer** aContainer) {
+DynamicImage::GetImageProvider(WindowRenderer* aRenderer,
+                               const gfx::IntSize& aSize,
+                               const SVGImageContext& aSVGContext,
+                               const Maybe<ImageIntRegion>& aRegion,
+                               uint32_t aFlags,
+                               WebRenderImageProvider** aProvider) {
   return ImgDrawResult::NOT_SUPPORTED;
 }
 
@@ -196,7 +181,7 @@ NS_IMETHODIMP_(ImgDrawResult)
 DynamicImage::Draw(gfxContext* aContext, const nsIntSize& aSize,
                    const ImageRegion& aRegion, uint32_t aWhichFrame,
                    SamplingFilter aSamplingFilter,
-                   const Maybe<SVGImageContext>& aSVGContext, uint32_t aFlags,
+                   const SVGImageContext& aSVGContext, uint32_t aFlags,
                    float aOpacity) {
   MOZ_ASSERT(!aSize.IsEmpty(), "Unexpected empty size");
 
@@ -209,14 +194,14 @@ DynamicImage::Draw(gfxContext* aContext, const nsIntSize& aSize,
     return ImgDrawResult::SUCCESS;
   }
 
-  gfxSize scale(double(aSize.width) / drawableSize.width,
-                double(aSize.height) / drawableSize.height);
+  MatrixScalesDouble scale(double(aSize.width) / drawableSize.width,
+                           double(aSize.height) / drawableSize.height);
 
   ImageRegion region(aRegion);
-  region.Scale(1.0 / scale.width, 1.0 / scale.height);
+  region.Scale(1.0 / scale.xScale, 1.0 / scale.yScale);
 
   gfxContextMatrixAutoSaveRestore saveMatrix(aContext);
-  aContext->Multiply(gfxMatrix::Scaling(scale.width, scale.height));
+  aContext->Multiply(gfxMatrix::Scaling(scale));
 
   gfxUtils::DrawPixelSnapped(aContext, mDrawable, SizeDouble(drawableSize),
                              region, SurfaceFormat::OS_RGBA, aSamplingFilter,
@@ -233,6 +218,8 @@ bool DynamicImage::StartDecodingWithResult(uint32_t aFlags,
                                            uint32_t aWhichFrame) {
   return true;
 }
+
+bool DynamicImage::HasDecodedPixels() { return true; }
 
 imgIContainer::DecodeResult DynamicImage::RequestDecodeWithResult(
     uint32_t aFlags, uint32_t aWhichFrame) {
@@ -308,5 +295,4 @@ nsresult DynamicImage::GetHotspotY(int32_t* aY) {
   return Image::GetHotspotY(aY);
 }
 
-}  // namespace image
-}  // namespace mozilla
+}  // namespace mozilla::image

@@ -3,6 +3,7 @@
  * file, You can obtain one at <http://mozilla.org/MPL/2.0/>. */
 
 import React, { Component } from "react";
+import PropTypes from "prop-types";
 import { connect } from "../../../utils/connect";
 
 import Reps from "devtools/client/shared/components/reps/index";
@@ -30,6 +31,20 @@ import "./Popup.css";
 export class Popup extends Component {
   constructor(props) {
     super(props);
+  }
+
+  static get propTypes() {
+    return {
+      clearPreview: PropTypes.func.isRequired,
+      cx: PropTypes.object.isRequired,
+      editorRef: PropTypes.object.isRequired,
+      highlightDomElement: PropTypes.func.isRequired,
+      openElementInInspector: PropTypes.func.isRequired,
+      openLink: PropTypes.func.isRequired,
+      preview: PropTypes.object.isRequired,
+      selectSourceURL: PropTypes.func.isRequired,
+      unHighlightDomElement: PropTypes.func.isRequired,
+    };
   }
 
   componentDidMount() {
@@ -71,6 +86,10 @@ export class Popup extends Component {
     return 250;
   };
 
+  createElement(element) {
+    return document.createElement(element);
+  }
+
   renderFunctionPreview() {
     const {
       cx,
@@ -101,14 +120,17 @@ export class Popup extends Component {
 
   renderObjectPreview() {
     const {
-      preview: { properties },
+      preview: { root, properties },
       openLink,
       openElementInInspector,
       highlightDomElement,
       unHighlightDomElement,
     } = this.props;
 
-    if (properties.length == 0) {
+    const usesCustomFormatter =
+      root?.contents?.value?.useCustomFormatter ?? false;
+
+    if (!properties.length) {
       return (
         <div className="preview-popup">
           <span className="label">{L10N.getStr("preview.noProperties")}</span>
@@ -116,21 +138,27 @@ export class Popup extends Component {
       );
     }
 
+    const roots = usesCustomFormatter ? [root] : properties;
+
     return (
       <div
         className="preview-popup"
         style={{ maxHeight: this.calculateMaxHeight() }}
       >
         <ObjectInspector
-          roots={properties}
+          roots={roots}
           autoExpandDepth={0}
+          autoReleaseObjectActors={false}
+          mode={usesCustomFormatter ? MODE.LONG : null}
           disableWrap={true}
           focusable={false}
           openLink={openLink}
+          createElement={this.createElement}
           onDOMNodeClick={grip => openElementInInspector(grip)}
           onInspectIconClick={grip => openElementInInspector(grip)}
           onDOMNodeMouseOver={grip => highlightDomElement(grip)}
           onDOMNodeMouseOut={grip => unHighlightDomElement(grip)}
+          mayUseCustomFormatter={true}
         />
       </div>
     );

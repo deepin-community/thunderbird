@@ -1,19 +1,18 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-from __future__ import absolute_import
-
 import os
 import pathlib
 
+from perfdocs.framework_gatherers import (
+    AwsyGatherer,
+    MozperftestGatherer,
+    RaptorGatherer,
+    StaticGatherer,
+    TalosGatherer,
+)
 from perfdocs.logger import PerfDocLogger
 from perfdocs.utils import read_yaml
-from perfdocs.framework_gatherers import (
-    RaptorGatherer,
-    MozperftestGatherer,
-    TalosGatherer,
-    AWSYGatherer,
-)
 
 logger = PerfDocLogger()
 
@@ -22,8 +21,11 @@ frameworks = {
     "raptor": RaptorGatherer,
     "mozperftest": MozperftestGatherer,
     "talos": TalosGatherer,
-    "awsy": AWSYGatherer,
+    "awsy": AwsyGatherer,
 }
+
+# List of file types allowed to be used as static files
+ALLOWED_STATIC_FILETYPES = ("rst", "png")
 
 
 class Gatherer(object):
@@ -76,9 +78,9 @@ class Gatherer(object):
         the perfdocs_tree attribute.
         """
         exclude_dir = [
-            ".hg",
-            os.path.join("tools", "lint"),
-            os.path.join("testing", "perfdocs"),
+            str(pathlib.Path(self.workspace_dir, ".hg")),
+            str(pathlib.Path("tools", "lint")),
+            str(pathlib.Path("testing", "perfdocs")),
         ]
 
         for path in pathlib.Path(self.workspace_dir).rglob("perfdocs"):
@@ -93,7 +95,7 @@ class Gatherer(object):
                     matched["yml"] = file
                 elif file == "index.rst":
                     matched["rst"] = file
-                elif file.endswith(".rst"):
+                elif file.split(".")[-1] in ALLOWED_STATIC_FILETYPES:
                     matched["static"].append(file)
 
             # Append to structdocs if all the searched files were found
@@ -121,7 +123,7 @@ class Gatherer(object):
         """
 
         # If it was computed before, return it
-        yaml_path = os.path.join(sdt_entry["path"], sdt_entry["yml"])
+        yaml_path = pathlib.Path(sdt_entry["path"], sdt_entry["yml"])
         for entry in self._test_list:
             if entry["yml_path"] == yaml_path:
                 return entry
@@ -135,15 +137,20 @@ class Gatherer(object):
             "test_list": {},
         }
 
+        if yaml_content["static-only"]:
+            framework_gatherer_cls = StaticGatherer
+        else:
+            framework_gatherer_cls = frameworks[framework["name"]]
+
         # Get and then store the frameworks tests
-        self.framework_gatherers[framework["name"]] = frameworks[framework["name"]](
+        framework_gatherer = self.framework_gatherers[
+            framework["name"]
+        ] = framework_gatherer_cls(
             framework["yml_path"], self.workspace_dir, self.taskgraph
         )
 
         if not yaml_content["static-only"]:
-            framework["test_list"] = self.framework_gatherers[
-                framework["name"]
-            ].get_test_list()
+            framework["test_list"] = framework_gatherer.get_test_list()
 
         self._test_list.append(framework)
         return framework

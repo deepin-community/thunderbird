@@ -1,4 +1,3 @@
-/* -*- Mode: Java; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*-
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
@@ -7,8 +6,8 @@
 /* import-globals-from ../editorUtilities.js */
 /* import-globals-from EdDialogCommon.js */
 
-var { InlineSpellChecker } = ChromeUtils.import(
-  "resource://gre/modules/InlineSpellChecker.jsm"
+var { InlineSpellChecker } = ChromeUtils.importESModule(
+  "resource://gre/modules/InlineSpellChecker.sys.mjs"
 );
 
 var gMisspelledWord;
@@ -16,7 +15,6 @@ var gSpellChecker = null;
 var gAllowSelectWord = true;
 var gPreviousReplaceWord = "";
 var gFirstTime = true;
-var gLastSelectedLang = null;
 var gDictCount = 0;
 
 document.addEventListener("dialogaccept", doDefault);
@@ -72,15 +70,15 @@ function spellCheckStarted() {
   // Fill in the language menulist and sync it up
   // with the spellchecker's current language.
 
-  var curLang;
+  var curLangs;
 
   try {
-    curLang = gSpellChecker.GetCurrentDictionary();
+    curLangs = new Set(gSpellChecker.getCurrentDictionaries());
   } catch (ex) {
-    curLang = "";
+    curLangs = new Set();
   }
 
-  InitLanguageMenu(curLang);
+  InitLanguageMenu(curLangs);
 
   // Get the first misspelled word and setup all UI
   NextWord();
@@ -113,7 +111,12 @@ function spellCheckStarted() {
   window.sizeToContent();
 }
 
-function InitLanguageMenu(aCurLang) {
+/**
+ * Populate the dictionary language selector menu.
+ *
+ * @param {Set<string>} activeDictionaries - Currently active dictionaries.
+ */
+function InitLanguageMenu(activeDictionaries) {
   // Get the list of dictionaries from
   // the spellchecker.
 
@@ -138,30 +141,21 @@ function InitLanguageMenu(aCurLang) {
   var sortedList = inlineSpellChecker.sortDictionaryList(dictList);
 
   // Remove any languages from the list.
-  var languageMenuPopup = gDialog.LanguageMenulist.menupopup;
-  while (languageMenuPopup.firstElementChild.localName != "menuseparator") {
-    languageMenuPopup.firstElementChild.remove();
-  }
+  let list = document.getElementById("dictionary-list");
+  let template = document.getElementById("language-item");
 
-  var defaultItem = null;
-
-  for (var i = 0; i < gDictCount; i++) {
-    let item = document.createXULElement("menuitem");
-    item.setAttribute("label", sortedList[i].displayName);
-    item.setAttribute("value", sortedList[i].localeCode);
-    let beforeItem = gDialog.LanguageMenulist.getItemAtIndex(i);
-    languageMenuPopup.insertBefore(item, beforeItem);
-
-    if (aCurLang && sortedList[i].localeCode == aCurLang) {
-      defaultItem = item;
-    }
-  }
-
-  // Now make sure the correct item in the menu list is selected.
-  if (defaultItem) {
-    gDialog.LanguageMenulist.selectedItem = defaultItem;
-    gLastSelectedLang = defaultItem;
-  }
+  list.replaceChildren(
+    ...sortedList.map(({ displayName, localeCode }) => {
+      let item = template.content.cloneNode(true);
+      item.querySelector(".checkbox-label").textContent = displayName;
+      let input = item.querySelector("input");
+      input.addEventListener("input", () => {
+        SelectLanguage(localeCode);
+      });
+      input.checked = activeDictionaries.has(localeCode);
+      return item;
+    })
+  );
 }
 
 function DoEnabling() {
@@ -347,42 +341,49 @@ function EditDictionary() {
   );
 }
 
-function SelectLanguage() {
-  var item = gDialog.LanguageMenulist.selectedItem;
-  if (item.value != "more-cmd") {
-    gSpellChecker.SetCurrentDictionary(item.value);
-    // For compose windows we need to set the "lang" attribute so the
-    // core editor uses the correct dictionary for the inline spell check.
-    if (window.arguments[1]) {
-      if ("ComposeChangeLanguage" in window.opener) {
-        // We came here from a compose window.
-        window.opener.ComposeChangeLanguage(item.value);
-      } else {
-        window.opener.document.documentElement.setAttribute("lang", item.value);
-      }
-    }
-    gLastSelectedLang = item;
+/**
+ * Change the selection state of the given dictionary language.
+ *
+ * @param {string} language
+ */
+function SelectLanguage(language) {
+  let activeDictionaries = new Set(gSpellChecker.getCurrentDictionaries());
+  if (activeDictionaries.has(language)) {
+    activeDictionaries.delete(language);
   } else {
-    openDictionaryList();
-
-    if (gLastSelectedLang) {
-      gDialog.LanguageMenulist.selectedItem = gLastSelectedLang;
+    activeDictionaries.add(language);
+  }
+  let activeDictionariesArray = Array.from(activeDictionaries);
+  gSpellChecker.setCurrentDictionaries(activeDictionariesArray);
+  // For compose windows we need to set the "lang" attribute so the
+  // core editor uses the correct dictionary for the inline spell check.
+  if (window.arguments[1]) {
+    if ("ComposeChangeLanguage" in window.opener) {
+      // We came here from a compose window.
+      window.opener.ComposeChangeLanguage(activeDictionariesArray);
+    } else if (activeDictionaries.size === 1) {
+      window.opener.document.documentElement.setAttribute(
+        "lang",
+        activeDictionariesArray[0]
+      );
+    } else {
+      window.opener.document.documentElement.setAttribute("lang", "");
     }
   }
 }
 
 function Recheck() {
-  var recheckLanguage;
+  var recheckLanguages;
 
   function finishRecheck() {
-    gSpellChecker.SetCurrentDictionary(recheckLanguage);
+    gSpellChecker.setCurrentDictionaries(recheckLanguages);
     gMisspelledWord = gSpellChecker.GetNextMisspelledWord();
     SetWidgetsForMisspelledWord();
   }
 
   // TODO: Should we bother to add a "Recheck" method to interface?
   try {
-    recheckLanguage = gSpellChecker.GetCurrentDictionary();
+    recheckLanguages = gSpellChecker.getCurrentDictionaries();
     gSpellChecker.UninitSpellChecker();
     // Clear the ignore all list.
     Cc["@mozilla.org/spellchecker/personaldictionary;1"]
@@ -390,7 +391,7 @@ function Recheck() {
       .endSession();
     gSpellChecker.InitSpellChecker(GetCurrentEditor(), false, finishRecheck);
   } catch (ex) {
-    Cu.reportError(ex);
+    console.error(ex);
   }
 }
 

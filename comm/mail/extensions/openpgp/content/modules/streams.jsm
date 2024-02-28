@@ -6,22 +6,17 @@
 
 "use strict";
 
-var EXPORTED_SYMBOLS = ["EnigmailStreams"];
+const EXPORTED_SYMBOLS = ["EnigmailStreams"];
 
-const { XPCOMUtils } = ChromeUtils.import(
-  "resource://gre/modules/XPCOMUtils.jsm"
+const { XPCOMUtils } = ChromeUtils.importESModule(
+  "resource://gre/modules/XPCOMUtils.sys.mjs"
 );
 
-XPCOMUtils.defineLazyModuleGetters(this, {
-  Services: "resource://gre/modules/Services.jsm",
-  setTimeout: "resource://gre/modules/Timer.jsm",
+const lazy = {};
+
+XPCOMUtils.defineLazyModuleGetters(lazy, {
   NetUtil: "resource://gre/modules/NetUtil.jsm",
 });
-
-const NS_STRING_INPUT_STREAM_CONTRACTID =
-  "@mozilla.org/io/string-input-stream;1";
-const NS_INPUT_STREAM_CHNL_CONTRACTID =
-  "@mozilla.org/network/input-stream-channel;1";
 
 var EnigmailStreams = {
   /**
@@ -32,7 +27,7 @@ var EnigmailStreams = {
    * @return: channel
    */
   createChannel(url) {
-    let c = NetUtil.newChannel({
+    let c = lazy.NetUtil.newChannel({
       uri: url,
       loadUsingSystemPrincipal: true,
     });
@@ -54,7 +49,6 @@ var EnigmailStreams = {
       inStream: Cc["@mozilla.org/binaryinputstream;1"].createInstance(
         Ci.nsIBinaryInputStream
       ),
-      _onStopCallback: onStopCallback,
       QueryInterface: ChromeUtils.generateQI([
         "nsIStreamListener",
         "nsIRequestObserver",
@@ -64,16 +58,11 @@ var EnigmailStreams = {
 
       onStopRequest(channel, status) {
         this.inStream = null;
-        var cbFunc = this._onStopCallback;
-        var cbData = this.data;
-
-        setTimeout(function() {
-          cbFunc(cbData);
-        }, 0);
+        onStopCallback(this.data);
       },
     };
 
-    listener.onDataAvailable = function(req, stream, offset, count) {
+    listener.onDataAvailable = function (req, stream, offset, count) {
       this.inStream.setInputStream(stream);
       this.data += this.inStream.readBytes(count);
     };
@@ -90,28 +79,27 @@ var EnigmailStreams = {
    * @data:           String - the data to feed to the stream
    * @loadInfo        nsILoadInfo - loadInfo (optional)
    *
-   * @return nsIChannel object
+   * @returns nsIChannel object
    */
   newStringChannel(uri, contentType, contentCharset, data, loadInfo) {
     if (!loadInfo) {
       loadInfo = createLoadInfo();
     }
 
-    const inputStream = Cc[NS_STRING_INPUT_STREAM_CONTRACTID].createInstance(
-      Ci.nsIStringInputStream
-    );
+    let inputStream = Cc[
+      "@mozilla.org/io/string-input-stream;1"
+    ].createInstance(Ci.nsIStringInputStream);
     inputStream.setData(data, -1);
 
     if (!contentCharset || contentCharset.length === 0) {
-      const ioServ = Services.io;
-      const netUtil = ioServ.QueryInterface(Ci.nsINetUtil);
+      let netUtil = Services.io.QueryInterface(Ci.nsINetUtil);
       const newCharset = {};
       const hadCharset = {};
       netUtil.parseResponseContentType(contentType, newCharset, hadCharset);
       contentCharset = newCharset.value;
     }
 
-    let isc = Cc[NS_INPUT_STREAM_CHNL_CONTRACTID].createInstance(
+    let isc = Cc["@mozilla.org/network/input-stream-channel;1"].createInstance(
       Ci.nsIInputStreamChannel
     );
     isc.QueryInterface(Ci.nsIChannel);
@@ -141,7 +129,7 @@ var EnigmailStreams = {
     const perm = 0;
     inputStream.init(file, ioFlags, perm, behaviorFlags);
 
-    let isc = Cc[NS_INPUT_STREAM_CHNL_CONTRACTID].createInstance(
+    let isc = Cc["@mozilla.org/network/input-stream-channel;1"].createInstance(
       Ci.nsIInputStreamChannel
     );
     isc.QueryInterface(Ci.nsIChannel);
@@ -158,7 +146,7 @@ var EnigmailStreams = {
 };
 
 function createLoadInfo() {
-  let c = NetUtil.newChannel({
+  let c = lazy.NetUtil.newChannel({
     uri: "chrome://openpgp/content/",
     loadUsingSystemPrincipal: true,
   });

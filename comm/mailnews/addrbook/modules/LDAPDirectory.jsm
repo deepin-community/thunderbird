@@ -7,20 +7,24 @@ const EXPORTED_SYMBOLS = ["LDAPDirectory"];
 const { AddrBookDirectory } = ChromeUtils.import(
   "resource:///modules/AddrBookDirectory.jsm"
 );
-const { XPCOMUtils } = ChromeUtils.import(
-  "resource://gre/modules/XPCOMUtils.jsm"
+const { XPCOMUtils } = ChromeUtils.importESModule(
+  "resource://gre/modules/XPCOMUtils.sys.mjs"
+);
+const { MailServices } = ChromeUtils.import(
+  "resource:///modules/MailServices.jsm"
 );
 
-XPCOMUtils.defineLazyModuleGetters(this, {
-  FileUtils: "resource://gre/modules/FileUtils.jsm",
+const lazy = {};
+
+ChromeUtils.defineESModuleGetters(lazy, {
+  FileUtils: "resource://gre/modules/FileUtils.sys.mjs",
+});
+
+XPCOMUtils.defineLazyModuleGetters(lazy, {
   QueryStringToExpression: "resource:///modules/QueryStringToExpression.jsm",
-  Services: "resource://gre/modules/Services.jsm",
-  MailServices: "resource:///modules/MailServices.jsm",
 });
 
 /**
- * Set `user_pref("mailnews.ldap.jsmodule", true);` to use this module.
- *
  * @implements {nsIAbLDAPDirectory}
  * @implements {nsIAbDirectory}
  */
@@ -72,7 +76,7 @@ class LDAPDirectory extends AddrBookDirectory {
   }
 
   get replicationFile() {
-    return FileUtils.getFile("ProfD", [this.replicationFileName]);
+    return lazy.FileUtils.getFile("ProfD", [this.replicationFileName]);
   }
 
   get protocolVersion() {
@@ -128,6 +132,10 @@ class LDAPDirectory extends AddrBookDirectory {
     this.setStringValue("uri", uri.spec);
   }
 
+  get childCardCount() {
+    return 0;
+  }
+
   get childCards() {
     if (Services.io.offline) {
       return this.replicationDB.childCards;
@@ -174,7 +182,7 @@ class LDAPDirectory extends AddrBookDirectory {
     let args = Cc[
       "@mozilla.org/addressbook/directory/query-arguments;1"
     ].createInstance(Ci.nsIAbDirectoryQueryArguments);
-    args.expression = QueryStringToExpression.convert(queryString);
+    args.expression = lazy.QueryStringToExpression.convert(queryString);
     args.querySubDirectories = true;
     args.typeSpecificArg = this.attributeMap;
 

@@ -24,8 +24,6 @@
 <!ENTITY moveToNewWindow.accesskey "f">
 <!ENTITY newVirtualFolderCmd.label "Cerca desada…">
 <!ENTITY newVirtualFolderCmd.accesskey "d">
-<!ENTITY newOtherAccountsCmd.label "Altres comptes…">
-<!ENTITY newOtherAccountsCmd.accesskey "A">
 <!ENTITY newCreateEmailAccountCmd.label "Obtén un compte nou de correu…">
 <!ENTITY newCreateEmailAccountCmd.accesskey "O">
 <!ENTITY newExistingEmailAccountCmd.label "Compte de correu existent…">
@@ -48,8 +46,6 @@
 <!ENTITY openMessageFileCmd.accesskey "O">
 <!ENTITY saveAsMenu.label "Anomena i desa">
 <!ENTITY saveAsMenu.accesskey "s">
-<!ENTITY saveAsFileCmd.label "Fitxer">
-<!ENTITY saveAsFileCmd.accesskey "F">
 <!ENTITY saveAsFileCmd.key "s">
 <!ENTITY saveAsTemplateCmd.label "Plantilla">
 <!ENTITY saveAsTemplateCmd.accesskey "t">
@@ -91,18 +87,6 @@
 <!ENTITY printCmd.key "p">
 
 <!-- Edit Menu -->
-<!ENTITY deleteMsgCmd.label "Suprimeix el missatge">
-<!ENTITY deleteMsgCmd.accesskey "u">
-<!ENTITY undeleteMsgCmd.label "Recupera el missatge esborrat">
-<!ENTITY undeleteMsgCmd.accesskey "b">
-<!ENTITY deleteMsgsCmd.label "Suprimeix els missatges seleccionats">
-<!ENTITY deleteMsgsCmd.accesskey "u">
-<!ENTITY undeleteMsgsCmd.label "Recupera els missatges esborrats seleccionats">
-<!ENTITY undeleteMsgsCmd.accesskey "m">
-<!ENTITY deleteFolderCmd.label "Suprimeix la carpeta">
-<!ENTITY deleteFolderCmd.accesskey "x">
-<!ENTITY unsubscribeNewsgroupCmd.label "Cancel·la la subscripció">
-<!ENTITY unsubscribeNewsgroupCmd.accesskey "n">
 <!ENTITY selectMenu.label "Selecciona">
 <!ENTITY selectMenu.accesskey "l">
 <!ENTITY all.label "Tot">
@@ -114,10 +98,6 @@
 <!ENTITY selectFlaggedCmd.accesskey "s">
 <!ENTITY menuFavoriteFolder.label "Carpeta preferida">
 <!ENTITY menuFavoriteFolder.accesskey "f">
-<!ENTITY folderPropsCmd2.label "Propietats">
-<!ENTITY folderPropsFolderCmd2.label "Propietats de la carpeta">
-<!ENTITY folderPropsNewsgroupCmd2.label "Propietats del grup de discussió">
-<!ENTITY folderPropsCmd.accesskey "o">
 <!ENTITY undoDeleteMsgCmd.label "Desfés Suprimeix el missatge">
 <!ENTITY redoDeleteMsgCmd.label "Refés Suprimeix el missatge">
 <!ENTITY undoMoveMsgCmd.label "Desfés Mou el missatge">
@@ -149,8 +129,6 @@
 <!ENTITY messagePaneVertical.accesskey "v">
 <!ENTITY showFolderPaneCmd.label "Carpetes">
 <!ENTITY showFolderPaneCmd.accesskey "C">
-<!ENTITY showFolderPaneColsCmd.label "Columnes de la subfinestra de carpetes">
-<!ENTITY showFolderPaneColsCmd.accesskey "o">
 <!ENTITY showMessageCmd.label "Subfinestra de missatge">
 <!ENTITY showMessageCmd.accesskey "e">
 
@@ -320,7 +298,6 @@
 <!ENTITY goBackCmd.commandKey "[">
 <!ENTITY goChatCmd.label "Xat">
 <!ENTITY goChatCmd.accesskey "X">
-<!ENTITY goChatCmd2.key "H">
 <!ENTITY prevStarredMsgCmd.label "Missatge destacat">
 <!ENTITY prevStarredMsgCmd.accesskey "s">
 <!ENTITY folderMenu.label "Carpeta">
@@ -476,7 +453,7 @@
 <!ENTITY savedFiles.label "Fitxers desats">
 <!ENTITY savedFiles.accesskey "d">
 <!ENTITY savedFiles.key "j">
-<!ENTITY filtersCmd2.label "Filtres de missatge">
+<!ENTITY filtersCmd2.label "Filtres de missatges">
 <!ENTITY filtersCmd2.accesskey "F">
 <!ENTITY filtersApply.label "Executa els filtres en la carpeta">
 <!ENTITY filtersApply.accesskey "r">
@@ -490,7 +467,9 @@
 <!ENTITY deleteJunk.accesskey "x">
 <!ENTITY importCmd.label "Importa…">
 <!ENTITY importCmd.accesskey "I">
-<!ENTITY clearRecentHistory.label "Neteja l'historial recent…">
+<!ENTITY exportCmd.label "Exporta…">
+<!ENTITY exportCmd.accesskey "x">
+<!ENTITY clearRecentHistory.label "Esborra l'historial recent…">
 <!ENTITY clearRecentHistory.accesskey "h">
 <!ENTITY accountManagerCmd2.label "Paràmetres dels comptes">
 <!ENTITY accountManagerCmd2.accesskey "P">
@@ -599,10 +578,7 @@
 <!-- AppMenu Popup -->
 <!ENTITY appmenuNewMsgCmd.label "Missatge nou">
 <!ENTITY appmenuNewContactCmd.label "Contacte de la llibreta d'adreces…">
-<!ENTITY appmenuEditMenu.label "Edita">
 <!ENTITY appmenuToolbarLayout.label "Format de la barra d'eines…">
-<!ENTITY appmenuSelectThread.label "Selecciona la conversa">
-<!ENTITY appmenuSelectFlagged.label "Selecciona els missatges amb estrella">
 
 <!-- Tags Menu Popup -->
 <!ENTITY addNewTag.label "Afegeix una etiqueta…">
@@ -675,7 +651,7 @@
 <!ENTITY saveAsVirtualFolderMenu.label "Desa la cerca com una carpeta…">
 
 <!-- Thread Pane -->
-<!ENTITY selectColumn.label "Seleccioneu missatges">
+<!ENTITY selectColumn.label "Selecció de missatges">
 <!ENTITY threadColumn.label "Conversa">
 <!ENTITY fromColumn.label "Remitent">
 <!ENTITY recipientColumn.label "Destinatari">
@@ -696,7 +672,6 @@
 <!ENTITY locationColumn.label "Ubicació">
 <!ENTITY idColumn.label "Ordre de recepció">
 <!ENTITY attachmentColumn.label "Adjuncions">
-
 <!ENTITY deleteColumn.label "Suprimeix">
 
 <!-- Thread Pane Tooltips -->
@@ -722,7 +697,6 @@
 <!ENTITY locationColumn2.tooltip "Ordena per ubicació">
 <!ENTITY idColumn2.tooltip "Ordena per ordre de recepció">
 <!ENTITY attachmentColumn2.tooltip "Ordena per adjuncions">
-
 <!ENTITY deleteColumn.tooltip "Suprimeix un missatge">
 
 <!-- Thread Pane Context Menu -->
@@ -909,10 +883,6 @@
 <!ENTITY copyImageAllCmd.accesskey "o">
 <!ENTITY copyEmailCmd.label "Copia l'adreça electrònica">
 <!ENTITY copyEmailCmd.accesskey "e">
-<!ENTITY stopCmd.label "Atura">
-<!ENTITY stopCmd.accesskey "A">
-<!ENTITY reloadCmd.label "Actualitza">
-<!ENTITY reloadCmd.accesskey "A">
 <!ENTITY openInBrowser.label "Obre en un navegador">
 <!ENTITY openInBrowser.accesskey "O">
 <!ENTITY openLinkInBrowser.label "Obre l'enllaç en un navegador">
@@ -942,7 +912,7 @@
 
 <!-- Mac OS X Dock Icon pop-up menu -->
 <!ENTITY dockOptions.label              "Opcions de la icona de l'aplicació…">
-<!ENTITY writeNewMessageDock.label      "Escriu un missatge nou">
+<!ENTITY writeNewMessageDock.label      "Redacta un missatge nou">
 <!ENTITY openAddressBookDock.label      "Obre la llibreta d'adreces">
 
 <!-- Content tab Navigation buttons -->

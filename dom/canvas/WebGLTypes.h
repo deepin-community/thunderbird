@@ -7,20 +7,26 @@
 #define WEBGLTYPES_H_
 
 #include <limits>
+#include <string>
+#include <string_view>
+#include <tuple>
 #include <type_traits>
 #include <unordered_map>
 #include <vector>
 
 #include "GLDefs.h"
+#include "GLVendor.h"
 #include "ImageContainer.h"
 #include "mozilla/Casting.h"
 #include "mozilla/CheckedInt.h"
 #include "mozilla/MathAlgorithms.h"
 #include "mozilla/Range.h"
 #include "mozilla/RefCounted.h"
+#include "mozilla/Result.h"
 #include "mozilla/ResultVariant.h"
 #include "mozilla/gfx/2D.h"
 #include "mozilla/gfx/BuildConstants.h"
+#include "mozilla/gfx/Logging.h"
 #include "mozilla/gfx/Point.h"
 #include "mozilla/gfx/Rect.h"
 #include "mozilla/ipc/Shmem.h"
@@ -31,12 +37,13 @@
 #include "nsString.h"
 #include "mozilla/dom/WebGLRenderingContextBinding.h"
 #include "mozilla/ipc/SharedMemoryBasic.h"
+#include "TiedFields.h"
 
 // Manual reflection of WebIDL typedefs that are different from their
 // OpenGL counterparts.
-typedef int64_t WebGLsizeiptr;
-typedef int64_t WebGLintptr;
-typedef bool WebGLboolean;
+using WebGLsizeiptr = int64_t;
+using WebGLintptr = int64_t;
+using WebGLboolean = bool;
 
 // -
 
@@ -99,6 +106,9 @@ template <typename From>
 inline auto AutoAssertCast(const From val) {
   return detail::AutoAssertCastT<From>(val);
 }
+
+const char* GetEnumName(GLenum val, const char* defaultRet = "<unknown>");
+std::string EnumString(GLenum val);
 
 namespace webgl {
 template <typename T>
@@ -228,6 +238,7 @@ enum class WebGLExtensionID : uint8_t {
   EXT_texture_filter_anisotropic,
   EXT_texture_norm16,
   MOZ_debug,
+  OES_draw_buffers_indexed,
   OES_element_index_uint,
   OES_fbo_render_mipmap,
   OES_standard_derivatives,
@@ -250,39 +261,31 @@ enum class WebGLExtensionID : uint8_t {
   WEBGL_draw_buffers,
   WEBGL_explicit_present,
   WEBGL_lose_context,
+  WEBGL_provoking_vertex,
   Max
 };
 
-class UniqueBuffer {
+class UniqueBuffer final {
   // Like UniquePtr<>, but for void* and malloc/calloc/free.
-  void* mBuffer;
+  void* mBuffer = nullptr;
 
  public:
-  static inline UniqueBuffer Alloc(const size_t byteSize) {
-    return {malloc(byteSize)};
+  static inline UniqueBuffer Take(void* buffer) {
+    UniqueBuffer ret;
+    ret.mBuffer = buffer;
+    return ret;
   }
 
-  UniqueBuffer() : mBuffer(nullptr) {}
+  UniqueBuffer() = default;
 
-  MOZ_IMPLICIT UniqueBuffer(void* buffer) : mBuffer(buffer) {}
+  ~UniqueBuffer() { reset(); }
 
-  ~UniqueBuffer() { free(mBuffer); }
+  UniqueBuffer(UniqueBuffer&& rhs) { *this = std::move(rhs); }
 
-  UniqueBuffer(UniqueBuffer&& other) {
-    this->mBuffer = other.mBuffer;
-    other.mBuffer = nullptr;
-  }
-
-  UniqueBuffer& operator=(UniqueBuffer&& other) {
-    free(this->mBuffer);
-    this->mBuffer = other.mBuffer;
-    other.mBuffer = nullptr;
-    return *this;
-  }
-
-  UniqueBuffer& operator=(void* newBuffer) {
-    free(this->mBuffer);
-    this->mBuffer = newBuffer;
+  UniqueBuffer& operator=(UniqueBuffer&& rhs) {
+    reset();
+    this->mBuffer = rhs.mBuffer;
+    rhs.mBuffer = nullptr;
     return *this;
   }
 
@@ -290,10 +293,15 @@ class UniqueBuffer {
 
   void* get() const { return mBuffer; }
 
-  explicit UniqueBuffer(const UniqueBuffer& other) =
-      delete;  // construct using std::move()!
-  UniqueBuffer& operator=(const UniqueBuffer& other) =
-      delete;  // assign using std::move()!
+  void reset() {
+    // Believe it or not, when `free` unconditional, it was showing up
+    // in profiles, nearly 20% of time spent in MethodDispatcther<UniformData>
+    // on Aquarium.
+    if (mBuffer) {
+      free(mBuffer);
+      mBuffer = nullptr;
+    }
+  }
 };
 
 namespace webgl {
@@ -326,7 +334,7 @@ enum class UniformBaseType : uint8_t {
 };
 const char* ToString(UniformBaseType);
 
-typedef uint64_t ObjectId;
+using ObjectId = uint64_t;
 
 enum class BufferKind : uint8_t {
   Undefined,
@@ -340,49 +348,88 @@ enum class BufferKind : uint8_t {
 
 struct FloatOrInt final  // For TexParameter[fi] and friends.
 {
-  const bool isFloat;
-  const GLfloat f;
-  const GLint i;
+  bool isFloat = false;
+  uint8_t padding[3] = {};
+  GLfloat f = 0;
+  GLint i = 0;
 
   explicit FloatOrInt(GLint x = 0) : isFloat(false), f(x), i(x) {}
 
   explicit FloatOrInt(GLfloat x) : isFloat(true), f(x), i(roundf(x)) {}
 
-  FloatOrInt& operator=(const FloatOrInt& x) {
-    memcpy(this, &x, sizeof(x));
-    return *this;
-  }
+  auto MutTiedFields() { return std::tie(isFloat, padding, f, i); }
 };
 
-using WebGLTexUnpackVariant =
-    Variant<UniquePtr<webgl::TexUnpackBytes>,
-            UniquePtr<webgl::TexUnpackSurface>,
-            UniquePtr<webgl::TexUnpackImage>, WebGLTexPboOffset>;
+// -
 
-using MaybeWebGLTexUnpackVariant = Maybe<WebGLTexUnpackVariant>;
-
-struct WebGLContextOptions {
+struct WebGLContextOptions final {
   bool alpha = true;
   bool depth = true;
   bool stencil = false;
   bool premultipliedAlpha = true;
+
   bool antialias = true;
   bool preserveDrawingBuffer = false;
   bool failIfMajorPerformanceCaveat = false;
   bool xrCompatible = false;
+
   dom::WebGLPowerPreference powerPreference =
       dom::WebGLPowerPreference::Default;
+  bool ignoreColorSpace = true;
+  dom::PredefinedColorSpace colorSpace = dom::PredefinedColorSpace::Srgb;
   bool shouldResistFingerprinting = true;
+
   bool enableDebugRendererInfo = false;
+
+  auto MutTiedFields() {
+    // clang-format off
+    return std::tie(
+      alpha,
+      depth,
+      stencil,
+      premultipliedAlpha,
+
+      antialias,
+      preserveDrawingBuffer,
+      failIfMajorPerformanceCaveat,
+      xrCompatible,
+
+      powerPreference,
+      colorSpace,
+      ignoreColorSpace,
+      shouldResistFingerprinting,
+
+      enableDebugRendererInfo);
+    // clang-format on
+  }
+
+  // -
 
   WebGLContextOptions();
   WebGLContextOptions(const WebGLContextOptions&) = default;
 
-  bool operator==(const WebGLContextOptions&) const;
-  bool operator!=(const WebGLContextOptions& rhs) const {
-    return !(*this == rhs);
+  using Self = WebGLContextOptions;
+  friend bool operator==(const Self& a, const Self& b) {
+    return TiedFields(a) == TiedFields(b);
   }
+  friend bool operator!=(const Self& a, const Self& b) { return !(a == b); }
 };
+
+namespace gfx {
+
+inline ColorSpace2 ToColorSpace2(const dom::PredefinedColorSpace cs) {
+  switch (cs) {
+    case dom::PredefinedColorSpace::Srgb:
+      return ColorSpace2::SRGB;
+    case dom::PredefinedColorSpace::Display_p3:
+      return ColorSpace2::DISPLAY_P3;
+    case dom::PredefinedColorSpace::EndGuard_:
+      break;
+  }
+  MOZ_CRASH("Exhaustive switch");
+}
+
+}  // namespace gfx
 
 // -
 
@@ -392,6 +439,8 @@ struct avec2 {
 
   T x = T();
   T y = T();
+
+  auto MutTiedFields() { return std::tie(x, y); }
 
   template <typename U, typename V>
   static Maybe<avec2> From(const U _x, const V _y) {
@@ -468,6 +517,8 @@ struct avec3 {
   T y = T();
   T z = T();
 
+  auto MutTiedFields() { return std::tie(x, y, z); }
+
   template <typename U, typename V>
   static Maybe<avec3> From(const U _x, const V _y, const V _z) {
     const auto x = CheckedInt<T>(_x);
@@ -491,10 +542,10 @@ struct avec3 {
   bool operator!=(const avec3& rhs) const { return !(*this == rhs); }
 };
 
-typedef avec2<int32_t> ivec2;
-typedef avec3<int32_t> ivec3;
-typedef avec2<uint32_t> uvec2;
-typedef avec3<uint32_t> uvec3;
+using ivec2 = avec2<int32_t>;
+using ivec3 = avec3<int32_t>;
+using uvec2 = avec2<uint32_t>;
+using uvec3 = avec3<uint32_t>;
 
 inline ivec2 AsVec(const gfx::IntSize& s) { return {s.width, s.height}; }
 
@@ -506,14 +557,21 @@ struct PackingInfo final {
   GLenum format = 0;
   GLenum type = 0;
 
-  bool operator<(const PackingInfo& x) const {
-    if (format != x.format) return format < x.format;
+  auto MutTiedFields() { return std::tie(format, type); }
 
-    return type < x.type;
+  using Self = PackingInfo;
+  friend bool operator<(const Self& a, const Self& b) {
+    return TiedFields(a) < TiedFields(b);
+  }
+  friend bool operator==(const Self& a, const Self& b) {
+    return TiedFields(a) == TiedFields(b);
   }
 
-  bool operator==(const PackingInfo& x) const {
-    return (format == x.format && type == x.type);
+  template <class T>
+  friend T& operator<<(T& s, const PackingInfo& pi) {
+    s << "PackingInfo{format: " << EnumString(pi.format)
+      << ", type: " << EnumString(pi.type) << "}";
+    return s;
   }
 };
 
@@ -523,20 +581,6 @@ struct DriverUnpackInfo final {
   GLenum unpackType = 0;
 
   PackingInfo ToPacking() const { return {unpackFormat, unpackType}; }
-};
-
-struct PixelPackState final {
-  uint32_t alignment = 4;
-  uint32_t rowLength = 0;
-  uint32_t skipRows = 0;
-  uint32_t skipPixels = 0;
-};
-
-struct ReadPixelsDesc final {
-  ivec2 srcOffset;
-  uvec2 size;
-  PackingInfo pi = {LOCAL_GL_RGBA, LOCAL_GL_UNSIGNED_BYTE};
-  PixelPackState packState;
 };
 
 // -
@@ -634,6 +678,7 @@ struct InitContextResult final {
   WebGLContextOptions options;
   webgl::Limits limits;
   EnumMask<layers::SurfaceDescriptor::Type> uploadableSdTypes;
+  gl::GLVendor vendor;
 };
 
 // -
@@ -675,6 +720,23 @@ struct OpaqueFramebufferOptions final {
   bool antialias = true;
   uint32_t width = 0;
   uint32_t height = 0;
+};
+
+// -
+
+struct SwapChainOptions final {
+  layers::RemoteTextureId remoteTextureId;
+  layers::RemoteTextureOwnerId remoteTextureOwnerId;
+  bool bgra = false;
+  bool forceAsyncPresent = false;
+  // Pad to sizeof(u64):
+  uint16_t padding1 = 0;
+  uint32_t padding2 = 0;
+
+  auto MutTiedFields() {
+    return std::tie(remoteTextureId, remoteTextureOwnerId, bgra,
+                    forceAsyncPresent, padding1, padding2);
+  }
 };
 
 // -
@@ -728,8 +790,11 @@ struct LinkResult final {
 
 /// 4x32-bit primitives, with a type tag.
 struct TypedQuad final {
-  alignas(alignof(float)) uint8_t data[4 * sizeof(float)] = {};
+  alignas(alignof(float)) std::array<uint8_t, 4 * sizeof(float)> data = {};
   webgl::AttribBaseType type = webgl::AttribBaseType::Float;
+  uint8_t padding[3] = {};
+
+  constexpr auto MutTiedFields() { return std::tie(data, type, padding); }
 };
 
 /// [1-16]x32-bit primitives, with a type tag.
@@ -740,7 +805,7 @@ struct GetUniformData final {
 
 struct FrontBufferSnapshotIpc final {
   uvec2 surfSize = {};
-  mozilla::ipc::Shmem shmem = {};
+  Maybe<mozilla::ipc::Shmem> shmem = {};
 };
 
 struct ReadPixelsResult {
@@ -749,7 +814,7 @@ struct ReadPixelsResult {
 };
 
 struct ReadPixelsResultIpc final : public ReadPixelsResult {
-  mozilla::ipc::Shmem shmem = {};
+  Maybe<mozilla::ipc::Shmem> shmem = {};
 };
 
 struct VertAttribPointerDesc final {
@@ -759,6 +824,11 @@ struct VertAttribPointerDesc final {
   uint8_t byteStrideOrZero = 0;
   GLenum type = LOCAL_GL_FLOAT;
   uint64_t byteOffset = 0;
+
+  auto MutTiedFields() {
+    return std::tie(intFunc, channels, normalized, byteStrideOrZero, type,
+                    byteOffset);
+  }
 };
 
 struct VertAttribPointerCalculated final {
@@ -769,40 +839,31 @@ struct VertAttribPointerCalculated final {
 
 }  // namespace webgl
 
-// return value for the InitializeCanvasRenderer message
-struct ICRData {
-  gfx::IntSize size;
-  bool hasAlpha;
-  bool isPremultAlpha;
-};
-
-/**
- * Represents a block of memory that it may or may not own.  The
- * inner data type must be trivially copyable by memcpy.
- */
+// TODO: s/RawBuffer/Span/
 template <typename T = uint8_t>
 class RawBuffer final {
   const T* mBegin = nullptr;
   size_t mLen = 0;
-  UniqueBuffer mOwned;
 
  public:
   using ElementType = T;
 
-  /**
-   * If aTakeData is true, RawBuffer will delete[] the memory when destroyed.
-   */
-  explicit RawBuffer(const Range<const T>& data, UniqueBuffer&& owned = {})
-      : mBegin(data.begin().get()),
-        mLen(data.length()),
-        mOwned(std::move(owned)) {}
-
-  explicit RawBuffer(const size_t len) : mLen(len) {}
+  explicit RawBuffer(const Range<const T>& data)
+      : mBegin(data.begin().get()), mLen(data.length()) {
+    if (mLen) {
+      MOZ_ASSERT(mBegin);
+    }
+  }
 
   ~RawBuffer() = default;
 
-  Range<const T> Data() const { return {mBegin, mLen}; }
-  const auto& begin() const { return mBegin; }
+  Range<const T> Data() const { return {begin(), mLen}; }
+  const auto& begin() const {
+    if (mLen) {
+      MOZ_RELEASE_ASSERT(mBegin);
+    }
+    return mBegin;
+  }
   const auto& size() const { return mLen; }
 
   void Shrink(const size_t newLen) {
@@ -819,68 +880,9 @@ class RawBuffer final {
   RawBuffer& operator=(RawBuffer&&) = default;
 };
 
-// -
-
-struct CopyableRange final : public Range<const uint8_t> {};
-
-// -
-
-// clang-format off
-
-#define FOREACH_ID(X) \
-  X(FuncScopeIdError) \
-  X(compressedTexImage2D) \
-  X(compressedTexImage3D) \
-  X(compressedTexSubImage2D) \
-  X(compressedTexSubImage3D) \
-  X(copyTexSubImage2D) \
-  X(copyTexSubImage3D) \
-  X(drawArrays) \
-  X(drawArraysInstanced) \
-  X(drawElements) \
-  X(drawElementsInstanced) \
-  X(drawRangeElements) \
-  X(renderbufferStorage) \
-  X(renderbufferStorageMultisample) \
-  X(texImage2D) \
-  X(texImage3D) \
-  X(TexStorage2D) \
-  X(TexStorage3D) \
-  X(texSubImage2D) \
-  X(texSubImage3D) \
-  X(vertexAttrib1f) \
-  X(vertexAttrib1fv) \
-  X(vertexAttrib2f) \
-  X(vertexAttrib2fv) \
-  X(vertexAttrib3f) \
-  X(vertexAttrib3fv) \
-  X(vertexAttrib4f) \
-  X(vertexAttrib4fv) \
-  X(vertexAttribI4i) \
-  X(vertexAttribI4iv) \
-  X(vertexAttribI4ui) \
-  X(vertexAttribI4uiv) \
-  X(vertexAttribIPointer) \
-  X(vertexAttribPointer)
-
-// clang-format on
-
-enum class FuncScopeId {
-#define _(X) X,
-  FOREACH_ID(_)
-#undef _
-};
-
-static constexpr const char* const FUNCSCOPE_NAME_BY_ID[] = {
-#define _(X) #X,
-    FOREACH_ID(_)
-#undef _
-};
-
-#undef FOREACH_ID
-
-inline auto GetFuncScopeName(const FuncScopeId id) {
-  return FUNCSCOPE_NAME_BY_ID[static_cast<size_t>(id)];
+template <class T>
+inline Range<T> ShmemRange(const mozilla::ipc::Shmem& shmem) {
+  return {shmem.get<T>(), shmem.Size<T>()};
 }
 
 // -
@@ -913,6 +915,22 @@ inline Maybe<T> MaybeAs(const U val) {
 
 // -
 
+inline GLenum IsTexImageTarget(const GLenum imageTarget) {
+  switch (imageTarget) {
+    case LOCAL_GL_TEXTURE_2D:
+    case LOCAL_GL_TEXTURE_CUBE_MAP_NEGATIVE_X:
+    case LOCAL_GL_TEXTURE_CUBE_MAP_POSITIVE_X:
+    case LOCAL_GL_TEXTURE_CUBE_MAP_NEGATIVE_Y:
+    case LOCAL_GL_TEXTURE_CUBE_MAP_POSITIVE_Y:
+    case LOCAL_GL_TEXTURE_CUBE_MAP_NEGATIVE_Z:
+    case LOCAL_GL_TEXTURE_CUBE_MAP_POSITIVE_Z:
+    case LOCAL_GL_TEXTURE_3D:
+    case LOCAL_GL_TEXTURE_2D_ARRAY:
+      return true;
+  }
+  return false;
+}
+
 inline GLenum ImageToTexTarget(const GLenum imageTarget) {
   switch (imageTarget) {
     case LOCAL_GL_TEXTURE_CUBE_MAP_NEGATIVE_X:
@@ -922,9 +940,11 @@ inline GLenum ImageToTexTarget(const GLenum imageTarget) {
     case LOCAL_GL_TEXTURE_CUBE_MAP_NEGATIVE_Z:
     case LOCAL_GL_TEXTURE_CUBE_MAP_POSITIVE_Z:
       return LOCAL_GL_TEXTURE_CUBE_MAP;
-    default:
-      return imageTarget;
   }
+  if (IsTexImageTarget(imageTarget)) {
+    return imageTarget;
+  }
+  return 0;
 }
 
 inline bool IsTexTarget3D(const GLenum texTarget) {
@@ -944,6 +964,7 @@ namespace dom {
 class Element;
 class ImageBitmap;
 class ImageData;
+class OffscreenCanvas;
 }  // namespace dom
 
 struct TexImageSource {
@@ -956,94 +977,100 @@ struct TexImageSource {
   const dom::ImageBitmap* mImageBitmap = nullptr;
   const dom::ImageData* mImageData = nullptr;
 
+  const dom::OffscreenCanvas* mOffscreenCanvas = nullptr;
+
   const dom::Element* mDomElem = nullptr;
   ErrorResult* mOut_error = nullptr;
 };
 
-struct WebGLPixelStore final {
-  uint32_t mUnpackImageHeight = 0;
-  uint32_t mUnpackSkipImages = 0;
-  uint32_t mUnpackRowLength = 0;
-  uint32_t mUnpackSkipRows = 0;
-  uint32_t mUnpackSkipPixels = 0;
-  uint32_t mUnpackAlignment = 4;
-  GLenum mColorspaceConversion =
+namespace webgl {
+
+template <class DerivedT>
+struct DeriveNotEq {
+  bool operator!=(const DerivedT& rhs) const {
+    const auto self = reinterpret_cast<const DerivedT*>(this);
+    return !(*self == rhs);
+  }
+};
+
+struct PixelPackingState : public DeriveNotEq<PixelPackingState> {
+  uint32_t alignmentInTypeElems = 4;  // ALIGNMENT isn't naive byte alignment!
+  uint32_t rowLength = 0;
+  uint32_t imageHeight = 0;
+  uint32_t skipPixels = 0;
+  uint32_t skipRows = 0;
+  uint32_t skipImages = 0;
+
+  auto MutTiedFields() {
+    return std::tie(alignmentInTypeElems, rowLength, imageHeight, skipPixels,
+                    skipRows, skipImages);
+  }
+
+  using Self = PixelPackingState;
+  friend bool operator==(const Self& a, const Self& b) {
+    return TiedFields(a) == TiedFields(b);
+  }
+
+  static void AssertDefaultUnpack(gl::GLContext& gl, const bool isWebgl2) {
+    PixelPackingState{}.AssertCurrentUnpack(gl, isWebgl2);
+  }
+
+  void ApplyUnpack(gl::GLContext&, bool isWebgl2,
+                   const uvec3& uploadSize) const;
+  bool AssertCurrentUnpack(gl::GLContext&, bool isWebgl2) const;
+};
+
+struct PixelUnpackStateWebgl final : public PixelPackingState {
+  GLenum colorspaceConversion =
       dom::WebGLRenderingContext_Binding::BROWSER_DEFAULT_WEBGL;
-  bool mFlipY = false;
-  bool mPremultiplyAlpha = false;
-  bool mRequireFastPath = false;
+  bool flipY = false;
+  bool premultiplyAlpha = false;
+  bool requireFastPath = false;
+  uint8_t padding = {};
 
-  static void AssertDefault(gl::GLContext& gl, const bool isWebgl2) {
-    WebGLPixelStore expected;
-    MOZ_ASSERT(expected.AssertCurrent(gl, isWebgl2));
-    Unused << expected;
-  }
-
-  void Apply(gl::GLContext&, bool isWebgl2, const uvec3& uploadSize) const;
-  bool AssertCurrent(gl::GLContext&, bool isWebgl2) const;
-
-  WebGLPixelStore ForUseWith(const GLenum target, const uvec3& uploadSize,
-                             const Maybe<uvec2>& structuredSrcSize) const {
-    auto ret = *this;
-
-    if (!IsTexTarget3D(target)) {
-      ret.mUnpackSkipImages = 0;
-      ret.mUnpackImageHeight = 0;
-    }
-
-    if (structuredSrcSize) {
-      ret.mUnpackRowLength = structuredSrcSize->x;
-    }
-
-    if (!ret.mUnpackRowLength) {
-      ret.mUnpackRowLength = uploadSize.x;
-    }
-    if (!ret.mUnpackImageHeight) {
-      ret.mUnpackImageHeight = uploadSize.y;
-
-      if (!IsTexTarget3D(target)) {
-        // 2D targets don't enforce skipRows+height<=imageHeight.
-        ret.mUnpackImageHeight += ret.mUnpackSkipRows;
-      }
-    }
-
-    return ret;
-  }
-
-  CheckedInt<size_t> UsedPixelsPerRow(const uvec3& size) const {
-    if (!size.x || !size.y || !size.z) return 0;
-    return CheckedInt<size_t>(mUnpackSkipPixels) + size.x;
-  }
-
-  CheckedInt<size_t> FullRowsNeeded(const uvec3& size) const {
-    if (!size.x || !size.y || !size.z) return 0;
-
-    // The spec guarantees:
-    // * SKIP_PIXELS + width <= ROW_LENGTH.
-    // * SKIP_ROWS + height <= IMAGE_HEIGHT.
-    MOZ_ASSERT(mUnpackImageHeight);
-    auto skipFullRows =
-        CheckedInt<size_t>(mUnpackSkipImages) * mUnpackImageHeight;
-    skipFullRows += mUnpackSkipRows;
-
-    // Full rows in the final image, excluding the tail.
-    auto usedFullRows = CheckedInt<size_t>(size.z - 1) * mUnpackImageHeight;
-    usedFullRows += size.y - 1;
-
-    return skipFullRows + usedFullRows;
+  auto MutTiedFields() {
+    return std::tuple_cat(PixelPackingState::MutTiedFields(),
+                          std::tie(colorspaceConversion, flipY,
+                                   premultiplyAlpha, requireFastPath, padding));
   }
 };
 
-struct TexImageData final {
-  WebGLPixelStore unpackState;
+struct ExplicitPixelPackingState final {
+  struct Metrics final {
+    uvec3 usedSize = {};
+    size_t bytesPerPixel = 0;
 
-  Maybe<uint64_t> pboOffset;
+    // (srcStrideAndRowOverride.x, otherwise ROW_LENGTH != 0, otherwise size.x)
+    // ...aligned to ALIGNMENT.
+    size_t bytesPerRowStride = 0;
 
-  RawBuffer<> data;
+    // structuredSrcSize.y, otherwise IMAGE_HEIGHT*(SKIP_IMAGES+size.z)
+    size_t totalRows = 0;
 
-  const dom::Element* domElem = nullptr;
-  ErrorResult* out_domElemError = nullptr;
+    // This ensures that no one else needs to do CheckedInt math.
+    size_t totalBytesUsed = 0;
+    size_t totalBytesStrided = 0;
+  };
+
+  // It's so important that these aren't modified once evaluated.
+  const PixelPackingState state;
+  const Metrics metrics;
+
+  static Result<ExplicitPixelPackingState, std::string> ForUseWith(
+      const PixelPackingState&, GLenum target, const uvec3& subrectSize,
+      const webgl::PackingInfo&, const Maybe<size_t> bytesPerRowStrideOverride);
 };
+
+struct ReadPixelsDesc final {
+  ivec2 srcOffset;
+  uvec2 size;
+  PackingInfo pi = {LOCAL_GL_RGBA, LOCAL_GL_UNSIGNED_BYTE};
+  PixelPackingState packState;
+
+  auto MutTiedFields() { return std::tie(srcOffset, size, pi, packState); }
+};
+
+}  // namespace webgl
 
 namespace webgl {
 
@@ -1055,12 +1082,22 @@ struct TexUnpackBlobDesc final {
   Maybe<RawBuffer<>> cpuData;
   Maybe<uint64_t> pboOffset;
 
-  uvec2 imageSize;
+  Maybe<uvec2> structuredSrcSize;
   RefPtr<layers::Image> image;
   Maybe<layers::SurfaceDescriptor> sd;
   RefPtr<gfx::DataSourceSurface> dataSurf;
 
-  WebGLPixelStore unpacking;
+  webgl::PixelUnpackStateWebgl unpacking;
+  bool applyUnpackTransforms = true;
+
+  // -
+
+  auto ExplicitUnpacking(const webgl::PackingInfo& pi,
+                         const Maybe<size_t> bytesPerRowStrideOverride) const {
+    return ExplicitPixelPackingState::ForUseWith(this->unpacking,
+                                                 this->imageTarget, this->size,
+                                                 pi, bytesPerRowStrideOverride);
+  }
 
   void Shrink(const webgl::PackingInfo&);
 };
@@ -1154,7 +1191,62 @@ inline void Memcpy(const RangedPtr<uint8_t>& destBytes,
   memcpy(destBytes.get(), srcBytes.get(), byteSize);
 }
 
+template <class T, class U>
+inline void Memcpy(const Range<T>* const destRange,
+                   const RangedPtr<U>& srcBegin) {
+  Memcpy(destRange->begin(), srcBegin, destRange->length());
+}
+template <class T, class U>
+inline void Memcpy(const RangedPtr<T>* const destBegin,
+                   const Range<U>& srcRange) {
+  Memcpy(destBegin, srcRange->begin(), srcRange->length());
+}
+
 // -
+
+inline bool StartsWith(const std::string_view str,
+                       const std::string_view part) {
+  return str.find(part) == 0;
+}
+
+// -
+
+namespace webgl {
+
+// In theory, this number can be unbounded based on the driver. However, no
+// driver appears to expose more than 8. We might as well stop there too, for
+// now.
+// (http://opengl.gpuinfo.org/gl_stats_caps_single.php?listreportsbycap=GL_MAX_COLOR_ATTACHMENTS)
+inline constexpr size_t kMaxDrawBuffers = 8;
+
+union UniformDataVal {
+  float f32;
+  int32_t i32;
+  uint32_t u32;
+};
+
+enum class ProvokingVertex : GLenum {
+  FirstVertex = LOCAL_GL_FIRST_VERTEX_CONVENTION,
+  LastVertex = LOCAL_GL_LAST_VERTEX_CONVENTION,
+};
+inline constexpr bool IsEnumCase(const ProvokingVertex raw) {
+  switch (raw) {
+    case ProvokingVertex::FirstVertex:
+    case ProvokingVertex::LastVertex:
+      return true;
+  }
+  return false;
+}
+
+template <class E>
+inline constexpr std::optional<E> AsEnumCase(
+    const std::underlying_type_t<E> raw) {
+  const auto ret = static_cast<E>(raw);
+  if (!IsEnumCase(ret)) return {};
+  return ret;
+}
+
+}  // namespace webgl
 
 }  // namespace mozilla
 

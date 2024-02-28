@@ -9,7 +9,7 @@
 
 const TEST_URL = URL_ROOT + "doc_markup_pseudo.html";
 
-add_task(async function() {
+add_task(async function () {
   const { inspector } = await openInspectorForURL(TEST_URL);
 
   await selectNode("div", inspector);
@@ -17,7 +17,7 @@ add_task(async function() {
   info("Check that the markup-view shows the expected nodes before reload");
   await checkMarkupView(inspector);
 
-  await refreshTab();
+  await reloadBrowser();
 
   info("Check that the markup-view shows the expected nodes after reload");
   await checkMarkupView(inspector);

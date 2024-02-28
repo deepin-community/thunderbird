@@ -91,8 +91,8 @@
 .handlerSortHeaderIcon {
   display: inline-block;
   width: 12px;
-  -moz-context-properties: fill;
-  fill: currentColor;
+  -moz-context-properties: stroke;
+  stroke: currentColor;
 }
 
 .handlerSortHeaderIcon[descending] {
@@ -109,14 +109,27 @@
   align-items: center;
 }
 
-.typeIcon {
-  margin-inline: 10px 9px;
+.typeLabel > .typeIcon {
   flex: 0 0 auto;
 }
 
+.typeLabel > .typeDescription {
+  flex: 1 1 auto;
+}
+
+.typeIcon {
+  width: 16px;
+  height: 16px;
+  margin-inline: 10px 9px;
+}
+
+.typeIcon:not([src]) {
+  visibility: hidden;
+}
+
 .actionsMenu {
-  min-height: 36px;
-  display: block;
+  display: flex;
+  justify-content: space-between;
   width: 100%;
   border-radius: 0;
   margin: 0;
@@ -125,6 +138,7 @@
 
 #handlersTable tbody > tr:not(:focus-within) .actionsMenu {
   background-color: transparent;
+  --in-content-button-border-color: transparent;
 }
 
 #handlersTable tbody > tr:not(:is(:hover,:focus-within)) .actionsMenu::part(dropmarker) {
@@ -143,6 +157,11 @@
 
 .actionsMenu > menupopup > menuitem > .menu-iconic-left {
   margin-inline-end: 8px !important;
+  /** Make the icons appear.
+    * Note: we display the icon box for every item whether or not it has an icon
+    * so the labels of all the items align vertically. */
+  display: flex;
+  min-width: 16px;
 }
 
 /**
@@ -177,11 +196,16 @@
 }
 
 #addCloudFileAccountListItems > menuitem > .menu-iconic-left {
-  display: -moz-box;
+  display: flex;
 }
 
 #moreProvidersLink {
   padding: 4px;
+}
+
+#cloudFileView,
+#cloudFileBox {
+  flex: 1 auto;
 }
 
 #cloudFileView > richlistitem {
@@ -190,11 +214,6 @@
 
 .cloudfileAccount {
   padding: 4px;
-}
-
-.cloudfileAccount .typeIcon {
-  height: 16px;
-  width: 16px;
 }
 
 .cloudfileAccount > label {

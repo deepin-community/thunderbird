@@ -2,16 +2,9 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-var {
-  CALENDARNAME,
-  closeAllEventDialogs,
-  controller,
-  createCalendar,
-  deleteCalendars,
-  goToDate,
-  handleOccurrencePrompt,
-  invokeNewEventDialog,
-} = ChromeUtils.import("resource://testing-common/calendar/CalendarUtils.jsm");
+var { handleDeleteOccurrencePrompt } = ChromeUtils.import(
+  "resource://testing-common/calendar/CalendarUtils.jsm"
+);
 
 var { menulistSelect } = ChromeUtils.import(
   "resource://testing-common/calendar/ItemEditingHelpers.jsm"
@@ -25,16 +18,19 @@ var { setCalendarView, dayView, weekView, multiweekView, monthView } = CalendarT
 const HOUR = 8;
 
 add_task(async function testLastDayOfMonthRecurrence() {
-  createCalendar(controller, CALENDARNAME);
-  await setCalendarView(controller.window, "day");
-  goToDate(controller, 2008, 1, 31); // Start with a leap year.
+  let calendar = CalendarTestUtils.createCalendar();
+  registerCleanupFunction(() => {
+    CalendarTestUtils.removeCalendar(calendar);
+  });
+
+  await setCalendarView(window, "day");
+  await CalendarTestUtils.goToDate(window, 2008, 1, 31); // Start with a leap year.
 
   // Create monthly recurring event.
-  let eventBox = dayView.getHourBoxAt(controller.window, HOUR);
-  await invokeNewEventDialog(window, eventBox, async (eventWindow, iframeWindow) => {
-    await setData(eventWindow, iframeWindow, { title: "Event", repeat: setRecurrence });
-    await saveAndCloseItemDialog(eventWindow);
-  });
+  let eventBox = dayView.getHourBoxAt(window, HOUR);
+  let { dialogWindow, iframeWindow } = await CalendarTestUtils.editNewEvent(window, eventBox);
+  await setData(dialogWindow, iframeWindow, { title: "Event", repeat: setRecurrence });
+  await saveAndCloseItemDialog(dialogWindow);
 
   // data tuple: [year, month, day, row in month view]
   // note: Month starts here with 1 for January.
@@ -60,32 +56,37 @@ add_task(async function testLastDayOfMonthRecurrence() {
     let date = new Date(Date.UTC(y, m - 1, d));
     let column = date.getUTCDay() + 1;
 
-    goToDate(controller, y, m, d);
+    await CalendarTestUtils.goToDate(window, y, m, d);
 
     // day view
-    await setCalendarView(controller.window, "day");
-    await dayView.waitForEventBoxAt(controller.window, 1);
+    await setCalendarView(window, "day");
+    await dayView.waitForEventBoxAt(window, 1);
 
     // week view
-    await setCalendarView(controller.window, "week");
-    await weekView.waitForEventBoxAt(controller.window, column, 1);
+    await setCalendarView(window, "week");
+    await weekView.waitForEventBoxAt(window, column, 1);
 
     // multiweek view
-    await setCalendarView(controller.window, "multiweek");
-    await multiweekView.waitForItemAt(controller.window, 1, column, 1);
+    await setCalendarView(window, "multiweek");
+    await multiweekView.waitForItemAt(window, 1, column, 1);
 
     // month view
-    await setCalendarView(controller.window, "month");
-    await monthView.waitForItemAt(controller.window, correctRow, column, 1);
+    await setCalendarView(window, "month");
+    await monthView.waitForItemAt(window, correctRow, column, 1);
   }
 
   // Delete event.
-  goToDate(controller, checkingData[0][0], checkingData[0][1], checkingData[0][2]);
-  await setCalendarView(controller.window, "day");
-  let box = await dayView.waitForEventBoxAt(controller.window, 1);
-  controller.click(box);
-  handleOccurrencePrompt(controller, box, "delete", true);
-  await dayView.waitForNoEventBoxAt(controller.window, 1);
+  await CalendarTestUtils.goToDate(
+    window,
+    checkingData[0][0],
+    checkingData[0][1],
+    checkingData[0][2]
+  );
+  await setCalendarView(window, "day");
+  let box = await dayView.waitForEventBoxAt(window, 1);
+  EventUtils.synthesizeMouseAtCenter(box, {}, window);
+  await handleDeleteOccurrencePrompt(window, box, true);
+  await dayView.waitForNoEventBoxAt(window, 1);
 
   Assert.ok(true, "Test ran to completion");
 });
@@ -104,15 +105,8 @@ async function setRecurrence(recurrenceWindow) {
   await menulistSelect(recurrenceDocument.getElementById("monthly-ordinal"), "-1");
   await menulistSelect(recurrenceDocument.getElementById("monthly-weekday"), "-1");
 
+  let button = recurrenceDocument.querySelector("dialog").getButton("accept");
+  button.scrollIntoView();
   // Close dialog.
-  EventUtils.synthesizeMouseAtCenter(
-    recurrenceDocument.querySelector("dialog").getButton("accept"),
-    {},
-    recurrenceWindow
-  );
+  EventUtils.synthesizeMouseAtCenter(button, {}, recurrenceWindow);
 }
-
-registerCleanupFunction(function teardownModule() {
-  deleteCalendars(controller, CALENDARNAME);
-  closeAllEventDialogs();
-});

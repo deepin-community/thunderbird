@@ -2,10 +2,6 @@
 /* vim: set sts=2 sw=2 et tw=80: */
 "use strict";
 
-var { AppConstants } = ChromeUtils.import(
-  "resource://gre/modules/AppConstants.jsm"
-);
-
 let gAccount;
 
 async function testExecuteComposeActionWithOptions(options = {}) {
@@ -51,7 +47,7 @@ async function testExecuteComposeActionWithOptions(options = {}) {
           </body>
       </html>
       `,
-      "popup.js": function() {
+      "popup.js": function () {
         browser.test.log("sending from-compose-action-popup");
         browser.runtime.sendMessage("from-compose-action-popup");
       },
@@ -64,11 +60,9 @@ async function testExecuteComposeActionWithOptions(options = {}) {
 
     browser.test.onMessage.addListener((message, withPopup) => {
       browser.commands.onCommand.addListener(commandName => {
-        if (commandName == "_execute_compose_action") {
-          browser.test.fail(
-            "The onCommand listener should never fire for _execute_compose_action."
-          );
-        }
+        browser.test.fail(
+          "The onCommand listener should never fire for a valid _execute_* command."
+        );
       });
 
       browser.composeAction.onClicked.addListener(() => {
@@ -124,7 +118,7 @@ async function testExecuteComposeActionWithOptions(options = {}) {
   await extension.unload();
 }
 
-add_task(async function prepare_test() {
+add_setup(async () => {
   gAccount = createAccount();
   addIdentity(gAccount);
 });

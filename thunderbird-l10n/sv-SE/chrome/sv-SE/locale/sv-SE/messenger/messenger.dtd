@@ -24,8 +24,6 @@
 <!ENTITY moveToNewWindow.accesskey "F">
 <!ENTITY newVirtualFolderCmd.label "Ny sparad sökning…">
 <!ENTITY newVirtualFolderCmd.accesskey "s">
-<!ENTITY newOtherAccountsCmd.label "Annat konto…">
-<!ENTITY newOtherAccountsCmd.accesskey "k">
 <!ENTITY newCreateEmailAccountCmd.label "Skapa ett nytt e-postkonto…">
 <!ENTITY newCreateEmailAccountCmd.accesskey "S">
 <!ENTITY newExistingEmailAccountCmd.label "Existerande e-postkonto…">
@@ -48,8 +46,6 @@
 <!ENTITY openMessageFileCmd.accesskey "s">
 <!ENTITY saveAsMenu.label "Spara som">
 <!ENTITY saveAsMenu.accesskey "m">
-<!ENTITY saveAsFileCmd.label "Fil">
-<!ENTITY saveAsFileCmd.accesskey "F">
 <!ENTITY saveAsFileCmd.key "s">
 <!ENTITY saveAsTemplateCmd.label "Mall">
 <!ENTITY saveAsTemplateCmd.accesskey "M">
@@ -320,7 +316,6 @@
 <!ENTITY goBackCmd.commandKey "[">
 <!ENTITY goChatCmd.label "Chatt">
 <!ENTITY goChatCmd.accesskey "c">
-<!ENTITY goChatCmd2.key "H">
 <!ENTITY prevStarredMsgCmd.label "Märkta meddelande">
 <!ENTITY prevStarredMsgCmd.accesskey "ä">
 <!ENTITY folderMenu.label "Mapp">
@@ -459,7 +454,7 @@
 <!ENTITY tasksMenu.accesskey "V">
 <!ENTITY messengerCmd.label "E-post &amp; Diskussionsgrupper">
 <!ENTITY messengerCmd.accesskey "E">
-<!ENTITY addressBookCmd.label "Adressboken">
+<!ENTITY addressBookCmd.label "Adressbok">
 <!ENTITY addressBookCmd.accesskey "A">
 <!ENTITY addressBookCmd.key "B">
 <!ENTITY addonNoPrefs.label "Inga inställningar för tillägg hittades.">
@@ -538,7 +533,7 @@
 <!ENTITY stopButton.label "Stopp">
 <!ENTITY throbberItem.title "Aktivitetsindikator">
 <!ENTITY junkItem.title "Skräppost">
-<!ENTITY addressBookButton.label "Adressboken">
+<!ENTITY addressBookButton.label "Adressbok">
 <!ENTITY chatButton.label "Chatt">
 <!ENTITY glodaSearch.title "Global sökning">
 <!ENTITY searchItem.title "Snabbsökning">

@@ -6,12 +6,9 @@
 
 var {
   assert_folders_selected_and_displayed,
-  assert_no_folders_selected,
   create_folder,
   enter_folder,
   select_click_folder,
-  select_no_folders,
-  show_folder_pane,
 } = ChromeUtils.import(
   "resource://testing-common/mozmill/FolderDisplayHelpers.jsm"
 );
@@ -25,25 +22,9 @@ var {
 );
 
 var folderA, folderB;
-add_task(function setupModule(module) {
-  show_folder_pane();
-  folderA = create_folder("RightClickToOpenSearchWindowA");
-  folderB = create_folder("RightClickToOpenSearchWindowB");
-});
-
-/**
- * Test opening a search window while nothing is selected.
- */
-add_task(async function test_open_search_window_with_nothing_selected() {
-  // Make sure the folders we need are visible
-  enter_folder(folderB);
-  select_no_folders();
-  assert_no_folders_selected();
-
-  let swc = await open_search_window_from_context_menu(folderA);
-  assert_search_window_folder_displayed(swc, folderA);
-
-  close_search_window(swc);
+add_setup(async function () {
+  folderA = await create_folder("RightClickToOpenSearchWindowA");
+  folderB = await create_folder("RightClickToOpenSearchWindowB");
 });
 
 /**

@@ -9,6 +9,8 @@
 #include "mozilla/Assertions.h"
 #include "mozilla/ClearOnShutdown.h"
 #include "mozilla/DebugOnly.h"
+#include "mozilla/mscom/COMWrappers.h"
+#include "mozilla/mscom/ProcessRuntime.h"
 #include "mozilla/mscom/Utils.h"
 #include "mozilla/SchedulerGroup.h"
 #include "mozilla/StaticLocalPtr.h"
@@ -17,14 +19,6 @@
 
 #include "private/pprthred.h"
 
-#include <combaseapi.h>
-
-#if (NTDDI_VERSION < NTDDI_WIN8)
-// Win8+ API that we use very carefully
-DECLARE_HANDLE(CO_MTA_USAGE_COOKIE);
-HRESULT WINAPI CoIncrementMTAUsage(CO_MTA_USAGE_COOKIE* pCookie);
-#endif  // (NTDDI_VERSION < NTDDI_WIN8)
-
 namespace {
 
 class EnterMTARunnable : public mozilla::Runnable {
@@ -32,7 +26,7 @@ class EnterMTARunnable : public mozilla::Runnable {
   EnterMTARunnable() : mozilla::Runnable("EnterMTARunnable") {}
   NS_IMETHOD Run() override {
     mozilla::DebugOnly<HRESULT> hr =
-        ::CoInitializeEx(nullptr, COINIT_MULTITHREADED);
+        mozilla::mscom::wrapped::CoInitializeEx(nullptr, COINIT_MULTITHREADED);
     MOZ_ASSERT(SUCCEEDED(hr));
     return NS_OK;
   }
@@ -52,7 +46,7 @@ class BackgroundMTAData {
     if (mThread) {
       mThread->Dispatch(
           NS_NewRunnableFunction("BackgroundMTAData::~BackgroundMTAData",
-                                 &::CoUninitialize),
+                                 &mozilla::mscom::wrapped::CoUninitialize),
           NS_DISPATCH_NORMAL);
       mThread->Shutdown();
     }
@@ -80,28 +74,19 @@ EnsureMTA::EnsureMTA() {
   // We intentionally don't check rv unless we need it when
   // CoIncremementMTAUsage is unavailable.
 
-  // This API is only available beginning with Windows 8. Even though this
-  // constructor will only be called once, we intentionally use
-  // StaticDynamicallyLinkedFunctionPtr here to hang onto the ole32 module.
-  static const StaticDynamicallyLinkedFunctionPtr<
-      decltype(&::CoIncrementMTAUsage)>
-      pCoIncrementMTAUsage(L"ole32.dll", "CoIncrementMTAUsage");
-  if (pCoIncrementMTAUsage) {
-    // Calling this function initializes the MTA without needing to explicitly
-    // create a thread and call CoInitializeEx to do it.
-    // We don't retain the cookie because once we've incremented the MTA, we
-    // leave it that way for the lifetime of the process.
-    CO_MTA_USAGE_COOKIE mtaCookie = nullptr;
-    HRESULT hr = pCoIncrementMTAUsage(&mtaCookie);
-    MOZ_ASSERT(SUCCEEDED(hr));
-    if (SUCCEEDED(hr)) {
-      if (NS_SUCCEEDED(rv)) {
-        // Start the persistent MTA thread (mostly) asynchronously.
-        Unused << GetPersistentMTAThread();
-      }
-
-      return;
+  // Calling this function initializes the MTA without needing to explicitly
+  // create a thread and call CoInitializeEx to do it.
+  // We don't retain the cookie because once we've incremented the MTA, we
+  // leave it that way for the lifetime of the process.
+  CO_MTA_USAGE_COOKIE mtaCookie = nullptr;
+  HRESULT hr = wrapped::CoIncrementMTAUsage(&mtaCookie);
+  if (SUCCEEDED(hr)) {
+    if (NS_SUCCEEDED(rv)) {
+      // Start the persistent MTA thread (mostly) asynchronously.
+      Unused << GetPersistentMTAThread();
     }
+
+    return;
   }
 
   // In the fallback case, we simply initialize our persistent MTA thread.
@@ -128,8 +113,8 @@ EnsureMTA::CreateInstanceInternal(REFCLSID aClsid, REFIID aIid) {
   MOZ_ASSERT(IsCurrentThreadExplicitMTA());
 
   RefPtr<IUnknown> iface;
-  HRESULT hr = ::CoCreateInstance(aClsid, nullptr, CLSCTX_INPROC_SERVER, aIid,
-                                  getter_AddRefs(iface));
+  HRESULT hr = wrapped::CoCreateInstance(aClsid, nullptr, CLSCTX_INPROC_SERVER,
+                                         aIid, getter_AddRefs(iface));
   if (FAILED(hr)) {
     return CreateInstanceAgileRefPromise::CreateAndReject(hr, __func__);
   }
@@ -179,8 +164,7 @@ RefPtr<EnsureMTA::CreateInstanceAgileRefPromise> EnsureMTA::CreateInstance(
 
   nsCOMPtr<nsIThread> mtaThread(GetPersistentMTAThread());
 
-  return InvokeAsync(mtaThread->SerialEventTarget(), __func__,
-                     std::move(invoker));
+  return InvokeAsync(mtaThread, __func__, std::move(invoker));
 }
 
 /* static */
@@ -244,14 +228,9 @@ void EnsureMTA::SyncDispatchToPersistentThread(nsIRunnable* aRunnable) {
     return;
   }
 
-#if defined(ACCESSIBILITY)
-  const BOOL alertable = XRE_IsContentProcess() && NS_IsMainThread();
-#else
-  const BOOL alertable = FALSE;
-#endif  // defined(ACCESSIBILITY)
-
+  AUTO_PROFILER_THREAD_SLEEP;
   DWORD waitResult;
-  while ((waitResult = ::WaitForSingleObjectEx(event, INFINITE, alertable)) ==
+  while ((waitResult = ::WaitForSingleObjectEx(event, INFINITE, FALSE)) ==
          WAIT_IO_COMPLETION) {
   }
   MOZ_ASSERT(waitResult == WAIT_OBJECT_0);

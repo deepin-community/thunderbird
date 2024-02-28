@@ -2,10 +2,11 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, you can obtain one at http://mozilla.org/MPL/2.0/. */
 
-var { registerTestProtocol, unregisterTestProtocol } = ChromeUtils.import(
-  "resource://testing-common/TestProtocol.jsm"
+var { registerTestProtocol, unregisterTestProtocol } =
+  ChromeUtils.importESModule("resource://testing-common/TestProtocol.sys.mjs");
+var { IMServices } = ChromeUtils.importESModule(
+  "resource:///modules/IMServices.sys.mjs"
 );
-var { Services } = ChromeUtils.import("resource:///modules/imServices.jsm");
 
 async function openChatTab() {
   let tabmail = document.getElementById("tabmail");
@@ -104,7 +105,7 @@ registerCleanupFunction(async () => {
   // Make sure the chat state is clean
   await closeChatTab();
 
-  const conversations = Services.conversations.getConversations();
+  const conversations = IMServices.conversations.getConversations();
   is(conversations.length, 0, "All conversations were closed by their test");
   for (const conversation of conversations) {
     try {
@@ -114,14 +115,14 @@ registerCleanupFunction(async () => {
     }
   }
 
-  const accounts = Services.accounts.getAccounts();
+  const accounts = IMServices.accounts.getAccounts();
   is(accounts.length, 0, "All accounts were removed by their test");
   for (const account of accounts) {
     try {
       if (account.connected || account.connecting) {
         account.disconnect();
       }
-      Services.accounts.deleteAccount(account.id);
+      IMServices.accounts.deleteAccount(account.id);
     } catch (error) {
       ok(false, "Error deleting account " + account.id + ": " + error.message);
     }

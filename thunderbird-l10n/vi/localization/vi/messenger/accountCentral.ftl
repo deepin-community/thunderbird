@@ -42,7 +42,7 @@ newsgroups-label = Nhóm tin
 newsgroups-description = { -brand-short-name } cho phép bạn kết nối với tất cả các nhóm tin bạn muốn.
 
 import-title = Nhập dữ liệu từ chương trình khác…
-import-paragraph = { -brand-short-name } cho phép bạn nhập thư mail, mục nhập sổ địa chỉ, đăng ký nguồn cấp dữ liệu, tùy chọn và/hoặc bộ lọc từ các chương trình thư khác và các định dạng sổ địa chỉ phổ biến.
+import-paragraph2 = { -brand-short-name } cho phép bạn nhập thư, mục nhập sổ địa chỉ, đăng ký nguồn cấp dữ liệu, cài đặt và/hoặc bộ lọc từ các chương trình thư khác và các định dạng sổ địa chỉ phổ biến.
 
 import-label = Nhập
     .aria-label = Nhập dữ liệu từ các chương trình khác

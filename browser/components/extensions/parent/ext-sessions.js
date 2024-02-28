@@ -8,16 +8,10 @@
 
 var { ExtensionError, promiseObserved } = ExtensionUtils;
 
-ChromeUtils.defineModuleGetter(
-  this,
-  "AddonManagerPrivate",
-  "resource://gre/modules/AddonManager.jsm"
-);
-ChromeUtils.defineModuleGetter(
-  this,
-  "SessionStore",
-  "resource:///modules/sessionstore/SessionStore.jsm"
-);
+ChromeUtils.defineESModuleGetters(this, {
+  AddonManagerPrivate: "resource://gre/modules/AddonManager.sys.mjs",
+  SessionStore: "resource:///modules/sessionstore/SessionStore.sys.mjs",
+});
 
 const SS_ON_CLOSED_OBJECTS_CHANGED = "sessionstore-closed-objects-changed";
 
@@ -27,7 +21,7 @@ const getRecentlyClosed = (maxResults, extension) => {
   // Get closed windows
   // Closed private windows are not stored in sessionstore, we do
   // not need to check access for that.
-  let closedWindowData = SessionStore.getClosedWindowData(false);
+  let closedWindowData = SessionStore.getClosedWindowData();
   for (let window of closedWindowData) {
     recentlyClosed.push({
       lastModified: window.closedAt,
@@ -41,7 +35,7 @@ const getRecentlyClosed = (maxResults, extension) => {
     if (!extension.canAccessWindow(window)) {
       continue;
     }
-    let closedTabData = SessionStore.getClosedTabData(window, false);
+    let closedTabData = SessionStore.getClosedTabDataForWindow(window);
     for (let tab of closedTabData) {
       recentlyClosed.push({
         lastModified: tab.closedAt,
@@ -92,7 +86,25 @@ const getEncodedKey = function getEncodedKey(extensionId, key) {
   return `extension:${extensionId}:${key}`;
 };
 
-this.sessions = class extends ExtensionAPI {
+this.sessions = class extends ExtensionAPIPersistent {
+  PERSISTENT_EVENTS = {
+    onChanged({ fire }) {
+      let observer = () => {
+        fire.async();
+      };
+
+      Services.obs.addObserver(observer, SS_ON_CLOSED_OBJECTS_CHANGED);
+      return {
+        unregister() {
+          Services.obs.removeObserver(observer, SS_ON_CLOSED_OBJECTS_CHANGED);
+        },
+        convert(_fire) {
+          fire = _fire;
+        },
+      };
+    },
+  };
+
   getAPI(context) {
     let { extension } = context;
 
@@ -125,7 +137,7 @@ this.sessions = class extends ExtensionAPI {
         async forgetClosedTab(windowId, sessionId) {
           await SessionStore.promiseInitialized;
           let window = windowTracker.getWindow(windowId, context);
-          let closedTabData = SessionStore.getClosedTabData(window, false);
+          let closedTabData = SessionStore.getClosedTabDataForWindow(window);
 
           let closedTabIndex = closedTabData.findIndex(closedTab => {
             return closedTab.closedId === parseInt(sessionId, 10);
@@ -142,7 +154,7 @@ this.sessions = class extends ExtensionAPI {
 
         async forgetClosedWindow(sessionId) {
           await SessionStore.promiseInitialized;
-          let closedWindowData = SessionStore.getClosedWindowData(false);
+          let closedWindowData = SessionStore.getClosedWindowData();
 
           let closedWindowIndex = closedWindowData.findIndex(closedWindow => {
             return closedWindow.closedId === parseInt(sessionId, 10);
@@ -174,7 +186,8 @@ this.sessions = class extends ExtensionAPI {
             // so we must find the tab in which case we can just use its closedId.
             let recentlyClosedTabs = [];
             for (let window of windowTracker.browserWindows()) {
-              let closedTabData = SessionStore.getClosedTabData(window, false);
+              let closedTabData =
+                SessionStore.getClosedTabDataForWindow(window);
               for (let tab of closedTabData) {
                 recentlyClosedTabs.push(tab);
               }
@@ -251,20 +264,9 @@ this.sessions = class extends ExtensionAPI {
 
         onChanged: new EventManager({
           context,
-          name: "sessions.onChanged",
-          register: fire => {
-            let observer = () => {
-              fire.async();
-            };
-
-            Services.obs.addObserver(observer, SS_ON_CLOSED_OBJECTS_CHANGED);
-            return () => {
-              Services.obs.removeObserver(
-                observer,
-                SS_ON_CLOSED_OBJECTS_CHANGED
-              );
-            };
-          },
+          module: "sessions",
+          event: "onChanged",
+          extensionApi: this,
         }).api(),
       },
     };

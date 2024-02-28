@@ -1,4 +1,3 @@
-/* -*- Mode: Java; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
@@ -8,25 +7,25 @@ const EXPORTED_SYMBOLS = ["FetchConfig"];
 const { AccountCreationUtils } = ChromeUtils.import(
   "resource:///modules/accountcreation/AccountCreationUtils.jsm"
 );
+const lazy = {};
 ChromeUtils.defineModuleGetter(
-  this,
+  lazy,
   "FetchHTTP",
   "resource:///modules/accountcreation/FetchHTTP.jsm"
 );
 ChromeUtils.defineModuleGetter(
-  this,
+  lazy,
   "readFromXML",
   "resource:///modules/accountcreation/readFromXML.jsm"
 );
 ChromeUtils.defineModuleGetter(
-  this,
+  lazy,
   "Sanitizer",
   "resource:///modules/accountcreation/Sanitizer.jsm"
 );
 
 const { DNS } = ChromeUtils.import("resource:///modules/DNS.jsm");
 const { JXON } = ChromeUtils.import("resource:///modules/JXON.jsm");
-const { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 
 const {
   Abortable,
@@ -47,12 +46,12 @@ const {
  */
 function fetchConfigFromDisk(domain, successCallback, errorCallback) {
   return new TimeoutAbortable(
-    runAsync(function() {
+    runAsync(function () {
       try {
         // <TB installdir>/isp/example.com.xml
         var configLocation = Services.dirsvc.get("CurProcD", Ci.nsIFile);
         configLocation.append("isp");
-        configLocation.append(Sanitizer.hostname(domain) + ".xml");
+        configLocation.append(lazy.Sanitizer.hostname(domain) + ".xml");
 
         if (!configLocation.exists() || !configLocation.isReadable()) {
           errorCallback(new Exception("local file not found"));
@@ -60,11 +59,8 @@ function fetchConfigFromDisk(domain, successCallback, errorCallback) {
         }
         var contents = readURLasUTF8(Services.io.newFileURI(configLocation));
         let domParser = new DOMParser();
-        successCallback(
-          readFromXML(
-            JXON.build(domParser.parseFromString(contents, "text/xml"), "disk")
-          )
-        );
+        const xml = JXON.build(domParser.parseFromString(contents, "text/xml"));
+        successCallback(lazy.readFromXML(xml, "disk"));
       } catch (e) {
         errorCallback(e);
       }
@@ -80,12 +76,12 @@ function fetchConfigFromDisk(domain, successCallback, errorCallback) {
  *   rely on insecure DNS and http, which means the results may be
  *   forged when under attack. The same is true for guessConfig(), though.
  *
- * @param domain {String}   The domain part of the user's email address
- * @param emailAddress {String}   The user's email address
+ * @param domain {String} - The domain part of the user's email address
+ * @param emailAddress {String} - The user's email address
  * @param successCallback {Function(config {AccountConfig}})}   A callback that
  *         will be called when we could retrieve a configuration.
  *         The AccountConfig object will be passed in as first parameter.
- * @param errorCallback {Function(ex)}   A callback that
+ * @param errorCallback {Function(ex)} - A callback that
  *         will be called when we could not retrieve a configuration,
  *         for whatever reason. This is expected (e.g. when there's no config
  *         for this domain at this location),
@@ -106,10 +102,11 @@ function fetchConfigFromISP(
   }
 
   let conf1 =
-    "autoconfig." + Sanitizer.hostname(domain) + "/mail/config-v1.1.xml";
+    "autoconfig." + lazy.Sanitizer.hostname(domain) + "/mail/config-v1.1.xml";
   // .well-known/ <http://tools.ietf.org/html/draft-nottingham-site-meta-04>
   let conf2 =
-    Sanitizer.hostname(domain) + "/.well-known/autoconfig/mail/config-v1.1.xml";
+    lazy.Sanitizer.hostname(domain) +
+    "/.well-known/autoconfig/mail/config-v1.1.xml";
   // This list is sorted by decreasing priority
   var urls = ["https://" + conf1, "https://" + conf2];
   if (
@@ -133,13 +130,14 @@ function fetchConfigFromISP(
   let fetch;
 
   let priority = new PriorityOrderAbortable(
-    (xml, call) => successCallback(readFromXML(xml, `isp-${call.foundMsg}`)),
+    (xml, call) =>
+      successCallback(lazy.readFromXML(xml, `isp-${call.foundMsg}`)),
     errorCallback
   );
   for (let url of urls) {
     call = priority.addCall();
     call.foundMsg = url.startsWith("https") ? "https" : "http";
-    fetch = new FetchHTTP(
+    fetch = new lazy.FetchHTTP(
       url,
       callArgs,
       call.successCallback(),
@@ -163,7 +161,7 @@ function fetchConfigFromDB(domain, successCallback, errorCallback) {
     errorCallback(new Exception("no URL for ISP DB configured"));
     return new Abortable();
   }
-  domain = Sanitizer.hostname(domain);
+  domain = lazy.Sanitizer.hostname(domain);
 
   // If we don't specify a place to put the domain, put it at the end.
   if (!url.includes("{{domain}}")) {
@@ -172,11 +170,11 @@ function fetchConfigFromDB(domain, successCallback, errorCallback) {
     url = url.replace("{{domain}}", domain);
   }
 
-  let fetch = new FetchHTTP(
+  let fetch = new lazy.FetchHTTP(
     url,
     { timeout: 10000 }, // 10 seconds
-    function(result) {
-      successCallback(readFromXML(result, "db"));
+    function (result) {
+      successCallback(lazy.readFromXML(result, "db"));
     },
     errorCallback
   );
@@ -206,13 +204,13 @@ function fetchConfigFromDB(domain, successCallback, errorCallback) {
  * Params @see fetchConfigFromISP()
  */
 function fetchConfigForMX(domain, successCallback, errorCallback) {
-  const sanitizedDomain = Sanitizer.hostname(domain);
+  const sanitizedDomain = lazy.Sanitizer.hostname(domain);
   const sucAbortable = new SuccessiveAbortable();
   const time = Date.now();
 
   sucAbortable.current = getMX(
     sanitizedDomain,
-    function(mxHostname) {
+    function (mxHostname) {
       // success
       ddump("getmx took " + (Date.now() - time) + "ms");
       let sld = Services.eTLD.getBaseDomainFromHost(mxHostname);
@@ -265,7 +263,7 @@ function fetchConfigForMX(domain, successCallback, errorCallback) {
  * only one of them is used.
  *
  * @param {string}  sanitizedDomain @see fetchConfigFromISP()
- * @param {function(hostname {string})}  successCallback
+ * @param {function(hostname {string})} - successCallback
  *   Called when we found an MX for the domain.
  *   For |hostname|, see description above.
  * @param {function({Exception|string})}  errorCallback @see fetchConfigFromISP()
@@ -273,7 +271,7 @@ function fetchConfigForMX(domain, successCallback, errorCallback) {
 function getMX(sanitizedDomain, successCallback, errorCallback) {
   return new PromiseAbortable(
     DNS.mx(sanitizedDomain),
-    function(records) {
+    function (records) {
       const filteredRecs = records.filter(record => record.host);
 
       if (filteredRecs.length > 0) {

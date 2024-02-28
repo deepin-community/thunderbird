@@ -15,7 +15,6 @@
 #ifdef MOZ_LOGGING
 #  include "mozilla/Logging.h"
 #endif
-#include "mozilla/Tuple.h"
 
 #if defined(MOZ_WIDGET_ANDROID)
 #  include "nsDebug.h"
@@ -196,7 +195,7 @@ struct CriticalLogger {
 // preset capacity we may not get all of them, so the indices help figure out
 // which ones we did save.  The double is expected to be the "TimeDuration",
 // time in seconds since the process creation.
-typedef mozilla::Tuple<int32_t, std::string, double> LoggingRecordEntry;
+typedef std::tuple<int32_t, std::string, double> LoggingRecordEntry;
 
 // Implement this interface and init the Factory with an instance to
 // forward critical logs.
@@ -523,6 +522,9 @@ class Log final {
   Log& operator<<(CompositionOp aOp) {
     if (MOZ_UNLIKELY(LogIt())) {
       switch (aOp) {
+        case CompositionOp::OP_CLEAR:
+          mMessage << "CompositionOp::OP_CLEAR";
+          break;
         case CompositionOp::OP_OVER:
           mMessage << "CompositionOp::OP_OVER";
           break;
@@ -673,20 +675,11 @@ class Log final {
         case SurfaceType::SKIA:
           mMessage << "SurfaceType::SKIA";
           break;
-        case SurfaceType::DUAL_DT:
-          mMessage << "SurfaceType::DUAL_DT";
-          break;
         case SurfaceType::D2D1_1_IMAGE:
           mMessage << "SurfaceType::D2D1_1_IMAGE";
           break;
         case SurfaceType::RECORDING:
           mMessage << "SurfaceType::RECORDING";
-          break;
-        case SurfaceType::WRAP_AND_RECORD:
-          mMessage << "SurfaceType::WRAP_AND_RECORD";
-          break;
-        case SurfaceType::TILED:
-          mMessage << "SurfaceType::TILED";
           break;
         case SurfaceType::DATA_SHARED:
           mMessage << "SurfaceType::DATA_SHARED";
@@ -702,6 +695,9 @@ class Log final {
           break;
         case SurfaceType::DATA_MAPPED:
           mMessage << "SurfaceType::DATA_MAPPED";
+          break;
+        case SurfaceType::WEBGL:
+          mMessage << "SurfaceType::WEBGL";
           break;
         default:
           mMessage << "Invalid SurfaceType (" << (int)aType << ")";

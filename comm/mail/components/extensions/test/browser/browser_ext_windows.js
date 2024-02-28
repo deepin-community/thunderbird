@@ -2,27 +2,26 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, you can obtain one at http://mozilla.org/MPL/2.0/. */
 
-let { BrowserTestUtils } = ChromeUtils.import(
-  "resource://testing-common/BrowserTestUtils.jsm"
-);
-let { MockRegistrar } = ChromeUtils.import(
-  "resource://testing-common/MockRegistrar.jsm"
+let { MockRegistrar } = ChromeUtils.importESModule(
+  "resource://testing-common/MockRegistrar.sys.mjs"
 );
 
 /** @implements {nsIExternalProtocolService} */
 let mockExternalProtocolService = {
   _loadedURLs: [],
-  externalProtocolHandlerExists(aProtocolScheme) {},
-  getApplicationDescription(aScheme) {},
-  getProtocolHandlerInfo(aProtocolScheme) {},
-  getProtocolHandlerInfoFromOS(aProtocolScheme, aFound) {},
-  isExposedProtocol(aProtocolScheme) {},
-  loadURI(aURI, aWindowContext) {
-    this._loadedURLs.push(aURI.spec);
+  externalProtocolHandlerExists(protocolScheme) {},
+  getApplicationDescription(scheme) {},
+  getProtocolHandlerInfo(protocolScheme) {},
+  getProtocolHandlerInfoFromOS(protocolScheme, found) {},
+  isExposedProtocol(protocolScheme) {},
+  loadURI(uri, windowContext) {
+    this._loadedURLs.push(uri.spec);
   },
-  setProtocolHandlerDefaults(aHandlerInfo, aOSHandlerExists) {},
-  urlLoaded(aURL) {
-    return this._loadedURLs.includes(aURL);
+  setProtocolHandlerDefaults(handlerInfo, osHandlerExists) {},
+  urlLoaded(url) {
+    let found = this._loadedURLs.includes(url);
+    this._loadedURLs = this._loadedURLs.filter(e => e != url);
+    return found;
   },
   QueryInterface: ChromeUtils.generateQI(["nsIExternalProtocolService"]),
 };
@@ -36,10 +35,11 @@ registerCleanupFunction(() => {
   MockRegistrar.unregister(mockExternalProtocolServiceCID);
 });
 
-add_task(async () => {
+add_task(async function test_openDefaultBrowser() {
   let extension = ExtensionTestUtils.loadExtension({
     async background() {
       const urls = {
+        // eslint-disable-next-line @microsoft/sdl/no-insecure-url
         "http://www.google.de/": true,
         "https://www.google.de/": true,
         "ftp://www.google.de/": false,
@@ -76,7 +76,7 @@ add_task(async () => {
   await extension.unload();
 });
 
-add_task(async () => {
+add_task(async function test_focusWindows() {
   let extension = ExtensionTestUtils.loadExtension({
     async background() {
       let listener = {
@@ -206,6 +206,11 @@ add_task(async () => {
 });
 
 add_task(async function checkTitlePreface() {
+  let l10n = new Localization([
+    "branding/brand.ftl",
+    "messenger/extensions/popup.ftl",
+  ]);
+
   let extension = ExtensionTestUtils.loadExtension({
     files: {
       "content.html": `
@@ -235,25 +240,53 @@ add_task(async function checkTitlePreface() {
 
         // Test titlePreface during window creation.
         {
-          let windowCreatePromise = window.waitForEvent("windows.onCreated");
           let titlePreface = "PREFACE1";
-          popup = await browser.windows.create({
+          let windowCreatePromise = window.waitForEvent("windows.onCreated");
+          // Do not await the create statement, but instead check if the onCreated
+          // event is delayed correctly to get the correct values.
+          browser.windows.create({
             titlePreface,
             url: "content.html",
             type: "popup",
             allowScriptsToClose: true,
           });
-          await windowCreatePromise;
-          await window.sendMessage("checkTitle", titlePreface);
+          popup = (await windowCreatePromise)[0];
+          let [expectedTitle] = await window.sendMessage(
+            "checkTitle",
+            titlePreface
+          );
+          browser.test.assertEq(
+            expectedTitle,
+            popup.title,
+            `Should find the correct title`
+          );
+          browser.test.assertEq(
+            true,
+            popup.focused,
+            `Should find the correct focus state`
+          );
         }
 
         // Test titlePreface during window update.
         {
           let titlePreface = "PREFACE2";
-          await browser.windows.update(popup.id, {
+          let updated = await browser.windows.update(popup.id, {
             titlePreface,
           });
-          await window.sendMessage("checkTitle", titlePreface);
+          let [expectedTitle] = await window.sendMessage(
+            "checkTitle",
+            titlePreface
+          );
+          browser.test.assertEq(
+            expectedTitle,
+            updated.title,
+            `Should find the correct title`
+          );
+          browser.test.assertEq(
+            true,
+            updated.focused,
+            `Should find the correct focus state`
+          );
         }
 
         // Finish
@@ -264,8 +297,29 @@ add_task(async function checkTitlePreface() {
           );
           await browser.runtime.sendMessage({ command: "close" });
           await windowRemovePromise;
-          browser.test.notifyPass("finished");
         }
+
+        // Test title after create without a preface.
+        {
+          let popup = await browser.windows.create({
+            url: "content.html",
+            type: "popup",
+            allowScriptsToClose: true,
+          });
+          let [expectedTitle] = await window.sendMessage("checkTitle", "");
+          browser.test.assertEq(
+            expectedTitle,
+            popup.title,
+            `Should find the correct title`
+          );
+          browser.test.assertEq(
+            true,
+            popup.focused,
+            `Should find the correct focus state`
+          );
+        }
+
+        browser.test.notifyPass("finished");
       },
     },
     manifest: {
@@ -276,19 +330,13 @@ add_task(async function checkTitlePreface() {
   extension.onMessage("checkTitle", async titlePreface => {
     let win = Services.wm.getMostRecentWindow("mail:extensionPopup");
 
-    let expectedTitle = titlePreface + "A test document";
-    // If we're on Mac, don't display the separator and the modifier.
-    if (AppConstants.platform != "macosx") {
-      expectedTitle +=
-        win.document.documentElement.getAttribute("titlemenuseparator") +
-        win.document.documentElement.getAttribute("titlemodifier");
-    }
+    let defaultTitle = await l10n.formatValue("extension-popup-default-title");
 
-    if (win.document.title != expectedTitle) {
-      await BrowserTestUtils.waitForEvent(
-        win.document,
-        "extension-window-title-changed"
-      );
+    let expectedTitle = titlePreface + "A test document";
+    // If we're on Mac, we don't display the separator and the app name (which
+    // is also used as default title).
+    if (AppConstants.platform != "macosx") {
+      expectedTitle += ` - ${defaultTitle}`;
     }
 
     Assert.equal(
@@ -296,10 +344,96 @@ add_task(async function checkTitlePreface() {
       expectedTitle,
       `Check if title is as expected.`
     );
-    extension.sendMessage();
+    extension.sendMessage(expectedTitle);
   });
 
   await extension.startup();
   await extension.awaitFinish("finished");
+  await extension.unload();
+});
+
+add_task(async function test_popupLayoutProperties() {
+  let extension = ExtensionTestUtils.loadExtension({
+    files: {
+      "test.html": `<!DOCTYPE HTML>
+        <html>
+        <head>
+          <title>TEST</title>
+          <meta http-equiv="content-type" content="text/html; charset=utf-8">
+        </head>
+        <body>
+        <p>Test body</p>
+        </body>
+        </html>`,
+      "background.js": async () => {
+        async function checkWindow(windowId, expected, retries = 0) {
+          let win = await browser.windows.get(windowId);
+
+          if (
+            retries &&
+            Object.keys(expected).some(key => expected[key] != win[key])
+          ) {
+            browser.test.log(
+              `Got mismatched size (${JSON.stringify(
+                expected
+              )} != ${JSON.stringify(win)}). Retrying after a short delay.`
+            );
+            // eslint-disable-next-line mozilla/no-arbitrary-setTimeout
+            await new Promise(resolve => setTimeout(resolve, 200));
+            return checkWindow(windowId, expected, retries - 1);
+          }
+
+          for (let [key, value] of Object.entries(expected)) {
+            browser.test.assertEq(
+              value,
+              win[key],
+              `Should find the correct updated value for ${key}`
+            );
+          }
+
+          return true;
+        }
+
+        let tests = [
+          { retries: 0, properties: { state: "minimized" } },
+          { retries: 0, properties: { state: "maximized" } },
+          { retries: 0, properties: { state: "fullscreen" } },
+          {
+            retries: 5,
+            properties: { width: 210, height: 220, left: 90, top: 80 },
+          },
+        ];
+
+        // Test create.
+        for (let test of tests) {
+          let win = await browser.windows.create({
+            type: "popup",
+            url: "test.html",
+            ...test.properties,
+          });
+          await checkWindow(win.id, test.properties, test.retries);
+          await browser.windows.remove(win.id);
+        }
+
+        // Test update.
+        for (let test of tests) {
+          let win = await browser.windows.create({
+            type: "popup",
+            url: "test.html",
+          });
+          await browser.windows.update(win.id, test.properties);
+          await checkWindow(win.id, test.properties, test.retries);
+          await browser.windows.remove(win.id);
+        }
+
+        browser.test.notifyPass();
+      },
+    },
+    manifest: {
+      background: { scripts: ["background.js"] },
+    },
+  });
+  await extension.startup();
+  await extension.awaitFinish();
   await extension.unload();
 });

@@ -7,35 +7,41 @@
 #ifndef __nsPlacesTables_h__
 #define __nsPlacesTables_h__
 
-#define CREATE_MOZ_PLACES                              \
-  nsLiteralCString(                                    \
-      "CREATE TABLE moz_places ( "                     \
-      "  id INTEGER PRIMARY KEY"                       \
-      ", url LONGVARCHAR"                              \
-      ", title LONGVARCHAR"                            \
-      ", rev_host LONGVARCHAR"                         \
-      ", visit_count INTEGER DEFAULT 0"                \
-      ", hidden INTEGER DEFAULT 0 NOT NULL"            \
-      ", typed INTEGER DEFAULT 0 NOT NULL"             \
-      ", frecency INTEGER DEFAULT -1 NOT NULL"         \
-      ", last_visit_date INTEGER "                     \
-      ", guid TEXT"                                    \
-      ", foreign_count INTEGER DEFAULT 0 NOT NULL"     \
-      ", url_hash INTEGER DEFAULT 0 NOT NULL "         \
-      ", description TEXT"                             \
-      ", preview_image_url TEXT"                       \
-      ", origin_id INTEGER REFERENCES moz_origins(id)" \
+#define CREATE_MOZ_PLACES                                \
+  nsLiteralCString(                                      \
+      "CREATE TABLE moz_places ( "                       \
+      "  id INTEGER PRIMARY KEY"                         \
+      ", url LONGVARCHAR"                                \
+      ", title LONGVARCHAR"                              \
+      ", rev_host LONGVARCHAR"                           \
+      ", visit_count INTEGER DEFAULT 0"                  \
+      ", hidden INTEGER DEFAULT 0 NOT NULL"              \
+      ", typed INTEGER DEFAULT 0 NOT NULL"               \
+      ", frecency INTEGER DEFAULT -1 NOT NULL"           \
+      ", last_visit_date INTEGER "                       \
+      ", guid TEXT"                                      \
+      ", foreign_count INTEGER DEFAULT 0 NOT NULL"       \
+      ", url_hash INTEGER DEFAULT 0 NOT NULL "           \
+      ", description TEXT"                               \
+      ", preview_image_url TEXT"                         \
+      ", site_name TEXT"                                 \
+      ", origin_id INTEGER REFERENCES moz_origins(id)"   \
+      ", recalc_frecency INTEGER NOT NULL DEFAULT 0"     \
+      ", alt_frecency INTEGER"                           \
+      ", recalc_alt_frecency INTEGER NOT NULL DEFAULT 0" \
       ")")
 
-#define CREATE_MOZ_HISTORYVISITS         \
-  nsLiteralCString(                      \
-      "CREATE TABLE moz_historyvisits (" \
-      "  id INTEGER PRIMARY KEY"         \
-      ", from_visit INTEGER"             \
-      ", place_id INTEGER"               \
-      ", visit_date INTEGER"             \
-      ", visit_type INTEGER"             \
-      ", session INTEGER"                \
+#define CREATE_MOZ_HISTORYVISITS            \
+  nsLiteralCString(                         \
+      "CREATE TABLE moz_historyvisits ("    \
+      "  id INTEGER PRIMARY KEY"            \
+      ", from_visit INTEGER"                \
+      ", place_id INTEGER"                  \
+      ", visit_date INTEGER"                \
+      ", visit_type INTEGER"                \
+      ", session INTEGER"                   \
+      ", source INTEGER DEFAULT 0 NOT NULL" \
+      ", triggeringPlaceId INTEGER"         \
       ")")
 
 #define CREATE_MOZ_INPUTHISTORY         \
@@ -147,14 +153,17 @@
       ", post_data TEXT"                       \
       ")")
 
-#define CREATE_MOZ_ORIGINS          \
-  nsLiteralCString(                 \
-      "CREATE TABLE moz_origins ( " \
-      "id INTEGER PRIMARY KEY, "    \
-      "prefix TEXT NOT NULL, "      \
-      "host TEXT NOT NULL, "        \
-      "frecency INTEGER NOT NULL, " \
-      "UNIQUE (prefix, host) "      \
+#define CREATE_MOZ_ORIGINS                               \
+  nsLiteralCString(                                      \
+      "CREATE TABLE moz_origins ( "                      \
+      "id INTEGER PRIMARY KEY, "                         \
+      "prefix TEXT NOT NULL, "                           \
+      "host TEXT NOT NULL, "                             \
+      "frecency INTEGER NOT NULL, "                      \
+      "recalc_frecency INTEGER NOT NULL DEFAULT 0, "     \
+      "alt_frecency INTEGER, "                           \
+      "recalc_alt_frecency INTEGER NOT NULL DEFAULT 0, " \
+      "UNIQUE (prefix, host) "                           \
       ")")
 
 // Note: this should be kept up-to-date with the definition in
@@ -304,5 +313,11 @@
       "id INTEGER PRIMARY KEY, "                                         \
       "terms TEXT NOT NULL UNIQUE "                                      \
       ")")
+
+#define CREATE_MOZ_PREVIEWS_TOMBSTONES                        \
+  nsLiteralCString(                                           \
+      "CREATE TABLE IF NOT EXISTS moz_previews_tombstones ( " \
+      "  hash TEXT PRIMARY KEY "                              \
+      ") WITHOUT ROWID")
 
 #endif  // __nsPlacesTables_h__

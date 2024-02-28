@@ -27,21 +27,11 @@ if CONFIG["CC_TYPE"] == "clang-cl":
         "-Wno-macro-redefined",  # 'WIN32_LEAN_AND_MEAN' macro redefined
     ]
     USE_STATIC_LIBS = True
+    DEFINES["RNP_USE_STD_REGEX"] = True
 
-# MOZ_LIBSTDCXX_TARGET_VERSION should only be set for Taskcluster builds
-# targeting Linux. The below changes those builds to statically link to
-# LLVM's libc++ statically to circumvent the issues with undesired libstdc++
-# symbols that keep popping up
-if CONFIG["MOZ_LIBSTDCXX_TARGET_VERSION"]:
-    static_libdir = {"i686": "-L{}/../lib32", "x86_64": "-L{}"}[
-        CONFIG["TARGET_CPU"]
-    ].format(CONFIG["MOZ_LIBCLANG_PATH"])
-
+if CONFIG["MOZ_STDCXX_COMPAT"]:
+    # Use pre-GCC-5 strings abi
     DEFINES["_GLIBCXX_USE_CXX11_ABI"] = 0
-    CXXFLAGS += ["-stdlib=libc++"]
-    LDFLAGS += ["-nostdlib++"]
-    OS_LIBS += [static_libdir, "-l:libc++.a", "-l:libc++abi.a"]
-
 
 if CONFIG["OS_ARCH"] in ("Linux", "SunOS"):
     CFLAGS += ["-fPIC"]

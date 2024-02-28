@@ -6,12 +6,13 @@ var { MailServices } = ChromeUtils.import(
   "resource:///modules/MailServices.jsm"
 );
 
-add_task(async function setup() {
+add_setup(async function () {
   let gAccount = createAccount();
   addIdentity(gAccount);
   let rootFolder = gAccount.incomingServer.rootFolder;
 
-  window.gFolderTreeView.selectFolder(rootFolder);
+  let about3Pane = document.getElementById("tabmail").currentAbout3Pane;
+  about3Pane.displayFolder(rootFolder.URI);
   await new Promise(resolve => executeSoon(resolve));
 });
 

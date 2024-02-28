@@ -6,6 +6,7 @@
 #include "nsMsgAttachment.h"
 #include "nsIFile.h"
 #include "nsNetUtil.h"
+#include "nsMsgCompUtils.h"
 
 NS_IMPL_ISUPPORTS(nsMsgAttachment, nsIMsgAttachment)
 
@@ -16,7 +17,7 @@ nsMsgAttachment::nsMsgAttachment() {
 }
 
 nsMsgAttachment::~nsMsgAttachment() {
-  if (mTemporary && !mSendViaCloud) (void)DeleteAttachment();
+  MOZ_LOG(Compose, mozilla::LogLevel::Debug, ("~nsMsgAttachment()"));
 }
 
 /* attribute wstring name; */
@@ -38,6 +39,17 @@ NS_IMETHODIMP nsMsgAttachment::GetUrl(nsACString& aUrl) {
 
 NS_IMETHODIMP nsMsgAttachment::SetUrl(const nsACString& aUrl) {
   mUrl = aUrl;
+  return NS_OK;
+}
+
+/* attribute string msgUri; */
+NS_IMETHODIMP nsMsgAttachment::GetMsgUri(nsACString& aMsgUri) {
+  aMsgUri = mMsgUri;
+  return NS_OK;
+}
+
+NS_IMETHODIMP nsMsgAttachment::SetMsgUri(const nsACString& aMsgUri) {
+  mMsgUri = aMsgUri;
   return NS_OK;
 }
 
@@ -74,12 +86,13 @@ NS_IMETHODIMP nsMsgAttachment::SetSendViaCloud(bool aSendViaCloud) {
   return NS_OK;
 }
 
-NS_IMETHODIMP nsMsgAttachment::SetHtmlAnnotation(const nsAString& aAnnotation) {
+NS_IMETHODIMP nsMsgAttachment::SetHtmlAnnotation(
+    const nsACString& aAnnotation) {
   mHtmlAnnotation = aAnnotation;
   return NS_OK;
 }
 
-NS_IMETHODIMP nsMsgAttachment::GetHtmlAnnotation(nsAString& aAnnotation) {
+NS_IMETHODIMP nsMsgAttachment::GetHtmlAnnotation(nsACString& aAnnotation) {
   aAnnotation = mHtmlAnnotation;
   return NS_OK;
 }
@@ -94,6 +107,18 @@ nsMsgAttachment::SetCloudFileAccountKey(
 NS_IMETHODIMP
 nsMsgAttachment::GetCloudFileAccountKey(nsACString& aCloudFileAccountKey) {
   aCloudFileAccountKey = mCloudFileAccountKey;
+  return NS_OK;
+}
+
+NS_IMETHODIMP nsMsgAttachment::GetCloudPartHeaderData(
+    nsACString& aCloudPartHeaderData) {
+  aCloudPartHeaderData = mCloudPartHeaderData;
+  return NS_OK;
+}
+
+NS_IMETHODIMP nsMsgAttachment::SetCloudPartHeaderData(
+    const nsACString& aCloudPartHeaderData) {
+  mCloudPartHeaderData = aCloudPartHeaderData;
   return NS_OK;
 }
 

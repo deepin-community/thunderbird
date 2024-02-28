@@ -4,29 +4,18 @@
 
 "use strict";
 
-ChromeUtils.import("resource://gre/modules/NetUtil.jsm");
-
 let h2Port;
 let trrServer;
 
-const dns = Cc["@mozilla.org/network/dns-service;1"].getService(
-  Ci.nsIDNSService
-);
 const certOverrideService = Cc[
   "@mozilla.org/security/certoverride;1"
 ].getService(Ci.nsICertOverrideService);
-const threadManager = Cc["@mozilla.org/thread-manager;1"].getService(
-  Ci.nsIThreadManager
+const { TestUtils } = ChromeUtils.importESModule(
+  "resource://testing-common/TestUtils.sys.mjs"
 );
-const mainThread = threadManager.currentThread;
 
-const defaultOriginAttributes = {};
-
-function setup() {
-  let env = Cc["@mozilla.org/process/environment;1"].getService(
-    Ci.nsIEnvironment
-  );
-  h2Port = env.get("MOZHTTP2_PORT");
+add_setup(async function setup() {
+  h2Port = Services.env.get("MOZHTTP2_PORT");
   Assert.notEqual(h2Port, null);
   Assert.notEqual(h2Port, "");
 
@@ -34,15 +23,19 @@ function setup() {
 
   Services.prefs.setBoolPref("network.dns.upgrade_with_https_rr", true);
   Services.prefs.setBoolPref("network.dns.use_https_rr_as_altsvc", true);
-}
 
-setup();
-registerCleanupFunction(async () => {
-  trr_clear_prefs();
-  Services.prefs.clearUserPref("network.dns.upgrade_with_https_rr");
-  Services.prefs.clearUserPref("network.dns.use_https_rr_as_altsvc");
-  Services.prefs.clearUserPref("network.dns.disablePrefetch");
-  await trrServer.stop();
+  registerCleanupFunction(async () => {
+    trr_clear_prefs();
+    Services.prefs.clearUserPref("network.dns.upgrade_with_https_rr");
+    Services.prefs.clearUserPref("network.dns.use_https_rr_as_altsvc");
+    Services.prefs.clearUserPref("network.dns.disablePrefetch");
+    await trrServer.stop();
+  });
+
+  if (mozinfo.socketprocess_networking) {
+    Services.dns; // Needed to trigger socket process.
+    await TestUtils.waitForCondition(() => Services.io.socketProcessLaunched);
+  }
 });
 
 // Test if IP hint addresses can be accessed as regular A/AAAA records.
@@ -63,7 +56,7 @@ add_task(async function testStoreIPHint() {
     answers: [
       {
         name: "test.IPHint.com",
-        ttl: 55,
+        ttl: 999,
         type: "HTTPS",
         flush: false,
         data: {
@@ -80,11 +73,12 @@ add_task(async function testStoreIPHint() {
     ],
   });
 
-  let [, inRecord] = await new TRRDNSListener("test.IPHint.com", {
+  let { inRecord } = await new TRRDNSListener("test.IPHint.com", {
     type: Ci.nsIDNSService.RESOLVE_TYPE_HTTPSSVC,
   });
 
   let answer = inRecord.QueryInterface(Ci.nsIDNSHTTPSSVCRecord).records;
+  Assert.equal(inRecord.QueryInterface(Ci.nsIDNSHTTPSSVCRecord).ttl, 999);
   Assert.equal(answer[0].priority, 1);
   Assert.equal(answer[0].name, "test.IPHint.com");
   Assert.equal(answer[0].values.length, 4);
@@ -123,17 +117,20 @@ add_task(async function testStoreIPHint() {
     "got correct answer"
   );
 
-  async function verifyAnswer(flags, answer) {
-    let [, inRecord] = await new TRRDNSListener("test.IPHint.com", {
+  async function verifyAnswer(flags, expectedAddresses) {
+    // eslint-disable-next-line no-shadow
+    let { inRecord } = await new TRRDNSListener("test.IPHint.com", {
       flags,
       expectedSuccess: false,
     });
+    Assert.ok(inRecord);
     inRecord.QueryInterface(Ci.nsIDNSAddrRecord);
     let addresses = [];
     while (inRecord.hasMore()) {
       addresses.push(inRecord.getNextAddrAsString());
     }
-    Assert.deepEqual(addresses, answer);
+    Assert.deepEqual(addresses, expectedAddresses);
+    Assert.equal(inRecord.ttl, 999);
   }
 
   await verifyAnswer(Ci.nsIDNSService.RESOLVE_IP_HINT, [
@@ -178,7 +175,7 @@ function channelOpenPromise(chan, flags) {
 
 // Test if we can connect to the server with the IP hint address.
 add_task(async function testConnectionWithIPHint() {
-  dns.clearCache(true);
+  Services.dns.clearCache(true);
   Services.prefs.setIntPref("network.trr.mode", 3);
   Services.prefs.setCharPref(
     "network.trr.uri",
@@ -186,7 +183,7 @@ add_task(async function testConnectionWithIPHint() {
   );
 
   // Resolving test.iphint.com should be failed.
-  let [, , inStatus] = await new TRRDNSListener("test.iphint.com", {
+  let { inStatus } = await new TRRDNSListener("test.iphint.com", {
     expectedSuccess: false,
   });
   Assert.equal(
@@ -265,8 +262,8 @@ add_task(async function testIPHintWithFreshDNS() {
     ],
   });
 
-  let [, inRecord] = await new TRRDNSListener("test.iphint.org", {
-    type: dns.RESOLVE_TYPE_HTTPSSVC,
+  let { inRecord } = await new TRRDNSListener("test.iphint.org", {
+    type: Ci.nsIDNSService.RESOLVE_TYPE_HTTPSSVC,
   });
 
   let answer = inRecord.QueryInterface(Ci.nsIDNSHTTPSSVCRecord).records;

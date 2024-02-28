@@ -5,22 +5,18 @@
 /* import-globals-from ../../../mail/components/addrbook/content/abCommon.js */
 /* import-globals-from ../../../mail/components/compose/content/addressingWidgetOverlay.js */
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 var { MailServices } = ChromeUtils.import(
   "resource:///modules/MailServices.jsm"
 );
-var { AppConstants } = ChromeUtils.import(
-  "resource://gre/modules/AppConstants.jsm"
+var { AppConstants } = ChromeUtils.importESModule(
+  "resource://gre/modules/AppConstants.sys.mjs"
 );
 
 top.MAX_RECIPIENTS = 1;
-var inputElementType = "";
 
 var gListCard;
 var gEditList;
 var gOldListName = "";
-var gLoadListeners = [];
-var gSaveListeners = [];
 
 var gAWContentHeight = 0;
 var gAWRowHeight = 0;
@@ -50,10 +46,13 @@ function getLoadContext() {
 
 function mailingListExists(listname) {
   if (MailServices.ab.mailListNameExists(listname)) {
+    let bundle = Services.strings.createBundle(
+      "chrome://messenger/locale/addressbook/addressBook.properties"
+    );
     Services.prompt.alert(
       window,
-      gAddressBookBundle.getString("mailListNameExistsTitle"),
-      gAddressBookBundle.getString("mailListNameExistsMessage")
+      bundle.GetStringFromName("mailListNameExistsTitle"),
+      bundle.GetStringFromName("mailListNameExistsMessage")
     );
     return true;
   }
@@ -67,24 +66,27 @@ function mailingListExists(listname) {
  * @param {nsIAbDirectory} mailList - The mailing list object to update. When
  *   creating a new list it will be newly created and empty.
  * @param {boolean} isNewList - Whether we are populating a new list.
- * @return {boolean} - Whether the operation succeeded or not.
+ * @returns {boolean} - Whether the operation succeeded or not.
  */
 function updateMailList(mailList, isNewList) {
+  let bundle = Services.strings.createBundle(
+    "chrome://messenger/locale/addressbook/addressBook.properties"
+  );
   let listname = document.getElementById("ListName").value.trim();
 
   if (listname.length == 0) {
-    alert(gAddressBookBundle.getString("emptyListName"));
+    alert(bundle.GetStringFromName("emptyListName"));
     return false;
   }
 
   if (listname.match("  ")) {
-    alert(gAddressBookBundle.getString("badListNameSpaces"));
+    alert(bundle.GetStringFromName("badListNameSpaces"));
     return false;
   }
 
   for (let char of ',;"<>') {
     if (listname.includes(char)) {
-      alert(gAddressBookBundle.getString("badListNameCharacters"));
+      alert(bundle.GetStringFromName("badListNameCharacters"));
       return false;
     }
   }
@@ -126,9 +128,8 @@ function updateMailListMembers(mailList, parentDirectory) {
     .join();
 
   // Convert the addresses string into address objects.
-  let addressObjects = MailServices.headerParser.makeFromDisplayAddress(
-    addresses
-  );
+  let addressObjects =
+    MailServices.headerParser.makeFromDisplayAddress(addresses);
   let existingCards = mailList.childCards;
 
   // Work out which addresses need to be added...
@@ -174,17 +175,14 @@ function MailListOKButton(event) {
     // -----
 
     // Add mailing list to database
-    var mailList = Cc[
-      "@mozilla.org/addressbook/directoryproperty;1"
-    ].createInstance();
+    var mailList =
+      Cc["@mozilla.org/addressbook/directoryproperty;1"].createInstance();
     mailList = mailList.QueryInterface(Ci.nsIAbDirectory);
 
     if (updateMailList(mailList, true)) {
       var parentDirectory = GetDirectoryFromURI(uri);
       mailList = parentDirectory.addMailList(mailList);
       updateMailListMembers(mailList, parentDirectory);
-      NotifySaveListeners(mailList);
-
       window.arguments[0].newListUID = mailList.UID;
       window.arguments[0].newListURI = mailList.URI;
     } else {
@@ -195,8 +193,6 @@ function MailListOKButton(event) {
 
 function OnLoadNewMailList() {
   var selectedAB = null;
-
-  InitCommonJS();
 
   if ("arguments" in window && window.arguments[0]) {
     var abURI = window.arguments[0].selectedAB;
@@ -212,6 +208,22 @@ function OnLoadNewMailList() {
       } else {
         selectedAB = abURI;
       }
+    }
+
+    let cards = window.arguments[0].cards;
+    if (cards && cards.length > 0) {
+      let listbox = document.getElementById("addressingWidget");
+      let newListBoxNode = listbox.cloneNode(false);
+      let templateNode = listbox.querySelector("richlistitem");
+
+      top.MAX_RECIPIENTS = 0;
+      for (let card of cards) {
+        let address = MailServices.headerParser
+          .makeMailboxObject(card.displayName, card.primaryEmail)
+          .toString();
+        SetInputValue(address, newListBoxNode, templateNode);
+      }
+      listbox.parentNode.replaceChild(newListBoxNode, listbox);
     }
   }
 
@@ -235,15 +247,13 @@ function OnLoadNewMailList() {
   var listName = document.getElementById("ListName");
   if (listName) {
     setTimeout(
-      function(firstTextBox) {
+      function (firstTextBox) {
         firstTextBox.focus();
       },
       0,
       listName
     );
   }
-
-  NotifyLoadListeners(directory);
 
   let input = document.getElementById("addressCol1#1");
   input.popup.addEventListener("click", () => {
@@ -267,7 +277,6 @@ function EditListOKButton(event) {
       gListCard.setProperty("Notes", gEditList.description);
     }
 
-    NotifySaveListeners(gEditList);
     gEditList.editMailListToDatabase(gListCard);
 
     window.arguments[0].refresh = true;
@@ -277,8 +286,6 @@ function EditListOKButton(event) {
 }
 
 function OnLoadEditList() {
-  InitCommonJS();
-
   gListCard = window.arguments[0].abCard;
   var listUri = window.arguments[0].listURI;
 
@@ -289,10 +296,12 @@ function OnLoadEditList() {
   document.getElementById("ListDescription").value = gEditList.description;
   gOldListName = gEditList.dirName;
 
-  document.title = gAddressBookBundle.getFormattedString(
-    "mailingListTitleEdit",
-    [gOldListName]
+  let bundle = Services.strings.createBundle(
+    "chrome://messenger/locale/addressbook/addressBook.properties"
   );
+  document.title = bundle.formatStringFromName("mailingListTitleEdit", [
+    gOldListName,
+  ]);
 
   let cards = gEditList.childCards;
   if (cards.length > 0) {
@@ -339,7 +348,6 @@ function OnLoadEditList() {
   // the first row then appears to be duplicated at the end although it is actually empty.
   // see awAppendNewRow which copies first row and clears it
   setTimeout(AppendLastRow, 0);
-  NotifyLoadListeners(gEditList);
 
   document.querySelectorAll(`input[is="autocomplete-input"]`).forEach(input => {
     input.popup.addEventListener("click", () => {
@@ -375,9 +383,11 @@ function SetInputValue(inputValue, parentNode, templateNode) {
   parentNode.appendChild(newNode); // we need to insert the new node before we set the value of the select element!
 
   var input = newNode.querySelector(`input[is="autocomplete-input"]`);
+  let label = newNode.querySelector(`label.person-icon`);
   if (input) {
     input.value = inputValue;
     input.setAttribute("id", "addressCol1#" + top.MAX_RECIPIENTS);
+    label.setAttribute("for", "addressCol1#" + top.MAX_RECIPIENTS);
     input.popup.addEventListener("click", () => {
       awReturnHit(input);
     });
@@ -428,27 +438,17 @@ function awDeleteRow(rowToDelete) {
   awTestRowSequence();
 }
 
-function awInputChanged(inputElement) {
-  //  AutoCompleteAddress(inputElement);
-
-  // Do we need to add a new row?
-  var lastInput = awGetInputElement(top.MAX_RECIPIENTS);
-  if (lastInput && lastInput.value && !top.doNotCreateANewRow) {
-    awAppendNewRow(false);
-  }
-  top.doNotCreateANewRow = false;
-}
-
 /**
  * Append a new row.
  *
- * @param {boolean} setFocus  Whether to set the focus on the new row.
- * @return {Element?}         The input element from the new row.
+ * @param {boolean} setFocus - Whether to set the focus on the new row.
+ * @returns {Element?} The input element from the new row.
  */
 function awAppendNewRow(setFocus) {
   let body = document.getElementById("addressingWidget");
   let listitem1 = awGetListItem(1);
   let input;
+  let label;
 
   if (body && listitem1) {
     let nextDummy = awGetNextDummyRow();
@@ -462,9 +462,11 @@ function awAppendNewRow(setFocus) {
     top.MAX_RECIPIENTS++;
 
     input = newNode.querySelector(`input[is="autocomplete-input"]`);
+    label = newNode.querySelector(`label.person-icon`);
     if (input) {
       input.value = "";
       input.setAttribute("id", "addressCol1#" + top.MAX_RECIPIENTS);
+      label.setAttribute("for", "addressCol1#" + top.MAX_RECIPIENTS);
       input.popup.addEventListener("click", () => {
         awReturnHit(input);
       });
@@ -480,21 +482,10 @@ function awAppendNewRow(setFocus) {
 // functions for accessing the elements in the addressing widget
 
 /**
- * Returns the recipient type popup for a row.
- *
- * @param {String} row - Index of the recipient row to return. Starts at 1.
- * @return {HTMLElement} This returns the menulist (not its child menupopup),
- *   despite the function name.
- */
-function awGetPopupElement(row) {
-  return document.getElementById("addressCol1#" + row);
-}
-
-/**
  * Returns the recipient inputbox for a row.
  *
- * @param row  Index of the recipient row to return. Starts at 1.
- * @return     This returns the input element.
+ * @param {integer} row - Index of the recipient row to return. Starts at 1.
+ * @returns {Element} This returns the input element.
  */
 function awGetInputElement(row) {
   return document.getElementById("addressCol1#" + row);
@@ -515,9 +506,9 @@ function awGetListItem(row) {
 }
 
 /**
- * @param inputElement  The recipient input element.
- * @return              The row index (starting from 1) where the input element
- *                      is found. 0 if the element is not found.
+ * @param {Element} inputElement - The recipient input element.
+ * @returns {integer} The row index (starting from 1) where the input element
+ *   is found. 0 if the element is not found.
  */
 function awGetRowByInputElement(inputElement) {
   if (!inputElement) {
@@ -592,60 +583,6 @@ function DropListAddress(target, address) {
   }
 }
 
-/* Allows extensions to register a listener function for
- * when a mailing list is loaded.  The listener function
- * should take two parameters - the first being the
- * mailing list being loaded, the second one being the
- * current window document.
- */
-function RegisterLoadListener(aListener) {
-  gLoadListeners.push(aListener);
-}
-
-/* Allows extensions to unload a load listener function.
- */
-function UnregisterLoadListener(aListener) {
-  var fIndex = gLoadListeners.indexOf(aListener);
-  if (fIndex != -1) {
-    gLoadListeners.splice(fIndex, 1);
-  }
-}
-
-/* Allows extensions to register a listener function for
- * when a mailing list is saved.  Like a load listener,
- * the save listener should take two parameters: the first
- * being a copy of the mailing list that is being saved,
- * and the second being the current window document.
- */
-function RegisterSaveListener(aListener) {
-  gSaveListeners.push(aListener);
-}
-
-/* Allows extensions to unload a save listener function.
- */
-function UnregisterSaveListener(aListener) {
-  var fIndex = gSaveListeners.indexOf(aListener);
-  if (fIndex != -1) {
-    gSaveListeners.splice(fIndex, 1);
-  }
-}
-
-/* Notifies all load listeners.
- */
-function NotifyLoadListeners(aMailingList) {
-  for (let i = 0; i < gLoadListeners.length; i++) {
-    gLoadListeners[i](aMailingList, document);
-  }
-}
-
-/* Notifies all save listeners.
- */
-function NotifySaveListeners(aMailingList) {
-  for (let i = 0; i < gSaveListeners.length; i++) {
-    gSaveListeners[i](aMailingList, document);
-  }
-}
-
 /**
  * Handles keypress events for the email address inputs (that auto-fill)
  * in the Address Book Mailing List dialogs. When a comma-separated list of
@@ -653,8 +590,8 @@ function NotifySaveListeners(aMailingList) {
  * add a new blank row on "Enter" key. On "Tab" key focus moves to the "Cancel"
  * button.
  *
- * @param {KeyboardEvent} event  The DOM keypress event.
- * @param {Element} element      The element that triggered the keypress event.
+ * @param {KeyboardEvent} event - The DOM keypress event.
+ * @param {Element} element - The element that triggered the keypress event.
  */
 function awAbRecipientKeyPress(event, element) {
   if (event.key != "Enter" && event.key != "Tab") {
@@ -730,9 +667,9 @@ function awAbRecipientKeyPress(event, element) {
  * Note that the keydown event fires for ALL keys, so this may affect
  * autocomplete as user enters a recipient text.
  *
- * @param {keydown event} event  the keydown event fired on a recipient input
- * @param {<html:input>} inputElement  the recipient input element
- *                                     on which the event fired (textbox-addressingWidget)
+ * @param {KeyboardEvent} event - The keydown event fired on a recipient input.
+ * @param {HTMLInputElement} inputElement - The recipient input element
+ *   on which the event fired (textbox-addressingWidget).
  */
 function awRecipientKeyDown(event, inputElement) {
   switch (event.key) {
@@ -782,11 +719,11 @@ function awRecipientKeyDown(event, inputElement) {
 /**
  * Delete recipient row (addressingWidgetItem) from UI.
  *
- * @param {<html:input>} inputElement  the recipient input element
- *                                     (textbox-addressingWidget) whose parent
- *                                     row (addressingWidgetItem) will be deleted.
- * @param {boolean} deleteForward  true: focus next row after deleting the row
- *                                 false: focus previous row after deleting the row
+ * @param {HTMLInputElement} inputElement - The recipient input element.
+ *   textbox-addressingWidget) whose parent row (addressingWidgetItem) will be
+ *   deleted.
+ * @param {boolean} deleteForward - true: focus next row after deleting the row
+ *   false: focus previous row after deleting the row
  */
 function awDeleteHit(inputElement, deleteForward = false) {
   let row = awGetRowByInputElement(inputElement);
@@ -980,7 +917,7 @@ function awGetNextDummyRow() {
  * We do this asynchronously to allow other processes like adding or removing rows
  * to complete before shifting focus.
  *
- * @param element  the element to receive focus asynchronously
+ * @param {Element} element - The element to receive focus asynchronously.
  */
 function awSetFocusTo(element) {
   // Remember the (input) element to focus for asynchronous focusing, so that we
@@ -992,4 +929,33 @@ function awSetFocusTo(element) {
 
 function _awSetFocusTo() {
   top.awInputToFocus.focus();
+}
+
+// returns null if abURI is not a mailing list URI
+function GetParentDirectoryFromMailingListURI(abURI) {
+  var abURIArr = abURI.split("/");
+  /*
+   Turn "jsaddrbook://abook.sqlite/MailList6"
+   into ["jsaddrbook:","","abook.sqlite","MailList6"],
+   then into "jsaddrbook://abook.sqlite".
+
+   Turn "moz-aboutlookdirectory:///<top dir ID>/<ML dir ID>"
+   into ["moz-aboutlookdirectory:","","","<top dir ID>","<ML dir ID>"],
+   and then into: "moz-aboutlookdirectory:///<top dir ID>".
+  */
+  if (
+    abURIArr.length == 4 &&
+    ["jsaddrbook:", "moz-abmdbdirectory:"].includes(abURIArr[0]) &&
+    abURIArr[3] != ""
+  ) {
+    return abURIArr[0] + "//" + abURIArr[2];
+  } else if (
+    abURIArr.length == 5 &&
+    abURIArr[0] == "moz-aboutlookdirectory:" &&
+    abURIArr[4] != ""
+  ) {
+    return abURIArr[0] + "///" + abURIArr[3];
+  }
+
+  return null;
 }

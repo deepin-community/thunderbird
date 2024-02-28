@@ -19,7 +19,7 @@ const TEST_URI = `
 
 const HIGHLIGHTER_TYPE = "ShapesHighlighter";
 
-add_task(async function() {
+add_task(async function () {
   await addTab("data:text/html;charset=utf-8," + encodeURIComponent(TEST_URI));
   const { inspector, view } = await openRuleView();
   const highlighters = view.highlighters;
@@ -57,7 +57,7 @@ add_task(async function() {
     "Shapes highlighter toggle is active."
   );
   ok(
-    highlighters.highlighters[HIGHLIGHTER_TYPE],
+    inspector.inspectorFront.getKnownHighlighter(HIGHLIGHTER_TYPE).actorID,
     "CSS shapes highlighter created in the rule-view."
   );
   ok(highlighters.shapesHighlighterShown, "CSS shapes highlighter is shown.");

@@ -4,6 +4,7 @@
 
 offline-dialog-window =
     .title = オフライン設定
+offline-dialog-title = オフライン設定
 autodetect-online-label =
     .label = 検出された状態に自動的に従う
     .accesskey = d
@@ -15,10 +16,10 @@ status-radio-ask =
     .label = オンライン状態を確認する
     .accesskey = k
 status-radio-always-online =
-    .label = オンライン
+    .label = 常にオンライン
     .accesskey = l
 status-radio-always-offline =
-    .label = オフライン
+    .label = 常にオフライン
     .accesskey = f
 going-online-label = オンラインになったらすぐに未送信メッセージを送信しますか？
 going-online-auto =

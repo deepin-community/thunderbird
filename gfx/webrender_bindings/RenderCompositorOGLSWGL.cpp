@@ -19,6 +19,7 @@
 
 #ifdef MOZ_WIDGET_ANDROID
 #  include "mozilla/java/GeckoSurfaceTextureWrappers.h"
+#  include "mozilla/webrender/RenderAndroidHardwareBufferTextureHost.h"
 #  include "mozilla/widget/AndroidCompositorWidget.h"
 #  include <android/native_window.h>
 #  include <android/native_window_jni.h>
@@ -27,13 +28,18 @@
 #ifdef MOZ_WIDGET_GTK
 #  include "mozilla/widget/GtkCompositorWidget.h"
 #  include <gdk/gdk.h>
-#  include <gdk/gdkx.h>
+#  ifdef MOZ_X11
+#    include <gdk/gdkx.h>
+#  endif
 #endif
 
 namespace mozilla {
 using namespace layers;
 using namespace gfx;
 namespace wr {
+
+extern LazyLogModule gRenderThreadLog;
+#define LOG(...) MOZ_LOG(gRenderThreadLog, LogLevel::Debug, (__VA_ARGS__))
 
 UniquePtr<RenderCompositor> RenderCompositorOGLSWGL::Create(
     const RefPtr<widget::CompositorWidget>& aWidget, nsACString& aError) {
@@ -57,7 +63,7 @@ UniquePtr<RenderCompositor> RenderCompositorOGLSWGL::Create(
 
   nsCString log;
   RefPtr<CompositorOGL> compositorOGL;
-  compositorOGL = new CompositorOGL(nullptr, aWidget, /* aSurfaceWidth */ -1,
+  compositorOGL = new CompositorOGL(aWidget, /* aSurfaceWidth */ -1,
                                     /* aSurfaceHeight */ -1,
                                     /* aUseExternalSurfaceSize */ true);
   if (!compositorOGL->Initialize(context, programs, &log)) {
@@ -69,7 +75,7 @@ UniquePtr<RenderCompositor> RenderCompositorOGLSWGL::Create(
 #elif defined(MOZ_WIDGET_GTK)
   nsCString log;
   RefPtr<CompositorOGL> compositorOGL;
-  compositorOGL = new CompositorOGL(nullptr, aWidget);
+  compositorOGL = new CompositorOGL(aWidget);
   if (!compositorOGL->Initialize(&log)) {
     gfxCriticalNote << "Failed to initialize CompositorOGL for SWGL: "
                     << log.get();
@@ -94,10 +100,13 @@ UniquePtr<RenderCompositor> RenderCompositorOGLSWGL::Create(
 RenderCompositorOGLSWGL::RenderCompositorOGLSWGL(
     Compositor* aCompositor, const RefPtr<widget::CompositorWidget>& aWidget,
     void* aContext)
-    : RenderCompositorLayersSWGL(aCompositor, aWidget, aContext) {}
+    : RenderCompositorLayersSWGL(aCompositor, aWidget, aContext) {
+  LOG("RenderCompositorOGLSWGL::RenderCompositorOGLSWGL()");
+}
 
 RenderCompositorOGLSWGL::~RenderCompositorOGLSWGL() {
-#ifdef OZ_WIDGET_ANDROID
+  LOG("RRenderCompositorOGLSWGL::~RenderCompositorOGLSWGL()");
+#ifdef MOZ_WIDGET_ANDROID
   java::GeckoSurfaceTexture::DestroyUnused((int64_t)GetGLContext());
   DestroyEGLSurface();
 #endif
@@ -123,9 +132,12 @@ EGLSurface RenderCompositorOGLSWGL::CreateEGLSurface() {
 
   EGLSurface surface = EGL_NO_SURFACE;
   surface = gl::GLContextEGL::CreateEGLSurfaceForCompositorWidget(
-      mWidget, gl::GLContextEGL::Cast(GetGLContext())->mConfig);
+      mWidget, gl::GLContextEGL::Cast(GetGLContext())->mSurfaceConfig);
   if (surface == EGL_NO_SURFACE) {
-    gfxCriticalNote << "Failed to create EGLSurface";
+    const auto* renderThread = RenderThread::Get();
+    gfxCriticalNote << "Failed to create EGLSurface. "
+                    << renderThread->RendererCount() << " renderers, "
+                    << renderThread->ActiveRendererCount() << " active.";
   }
 
   // The subsequent render after creating a new surface must be a full render.
@@ -143,7 +155,14 @@ void RenderCompositorOGLSWGL::DestroyEGLSurface() {
   // Release EGLSurface of back buffer before calling ResizeBuffers().
   if (mEGLSurface) {
     gle->SetEGLSurfaceOverride(EGL_NO_SURFACE);
-    egl->fDestroySurface(mEGLSurface);
+    if (!egl->fMakeCurrent(EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT)) {
+      const EGLint err = egl->mLib->fGetError();
+      gfxCriticalNote << "Error in eglMakeCurrent: " << gfx::hexa(err);
+    }
+    if (!egl->fDestroySurface(mEGLSurface)) {
+      const EGLint err = egl->mLib->fGetError();
+      gfxCriticalNote << "Error in eglDestroySurface: " << gfx::hexa(err);
+    }
     mEGLSurface = EGL_NO_SURFACE;
   }
 }
@@ -177,23 +196,56 @@ void RenderCompositorOGLSWGL::HandleExternalImage(
       LOCAL_GL_TEXTURE_EXTERNAL;  // This is required by SurfaceTexture
   GLenum wrapMode = LOCAL_GL_CLAMP_TO_EDGE;
 
-  auto* host = aExternalImage->AsRenderAndroidSurfaceTextureHost();
-  // We need to hold the texture source separately from the effect,
-  // since the effect doesn't hold a strong reference.
-  RefPtr<SurfaceTextureSource> layer = new SurfaceTextureSource(
-      (TextureSourceProvider*)mCompositor, host->mSurfTex, host->mFormat,
-      target, wrapMode, host->mSize, /* aIgnoreTransform */ true);
-  RefPtr<TexturedEffect> texturedEffect =
-      CreateTexturedEffect(host->mFormat, layer, aFrameSurface.mFilter,
-                           /* isAlphaPremultiplied */ true);
+  if (auto* host = aExternalImage->AsRenderAndroidSurfaceTextureHost()) {
+    host->UpdateTexImageIfNecessary();
 
-  gfx::Rect drawRect(0, 0, host->mSize.width, host->mSize.height);
+    // We need to hold the texture source separately from the effect,
+    // since the effect doesn't hold a strong reference.
+    RefPtr<SurfaceTextureSource> layer = new SurfaceTextureSource(
+        (TextureSourceProvider*)mCompositor, host->mSurfTex, host->mFormat,
+        target, wrapMode, host->mSize, host->mTransformOverride);
+    RefPtr<TexturedEffect> texturedEffect =
+        CreateTexturedEffect(host->mFormat, layer, aFrameSurface.mFilter,
+                             /* isAlphaPremultiplied */ true);
 
-  EffectChain effect;
-  effect.mPrimaryEffect = texturedEffect;
-  mCompositor->DrawQuad(drawRect, aFrameSurface.mClipRect, effect, 1.0,
-                        aFrameSurface.mTransform, drawRect);
+    gfx::Rect drawRect(0, 0, host->mSize.width, host->mSize.height);
+
+    EffectChain effect;
+    effect.mPrimaryEffect = texturedEffect;
+    mCompositor->DrawQuad(drawRect, aFrameSurface.mClipRect, effect, 1.0,
+                          aFrameSurface.mTransform, drawRect);
+  } else if (auto* host =
+                 aExternalImage->AsRenderAndroidHardwareBufferTextureHost()) {
+    // We need to hold the texture source separately from the effect,
+    // since the effect doesn't hold a strong reference.
+    RefPtr<AndroidHardwareBufferTextureSource> layer =
+        new AndroidHardwareBufferTextureSource(
+            (TextureSourceProvider*)mCompositor,
+            host->GetAndroidHardwareBuffer(),
+            host->GetAndroidHardwareBuffer()->mFormat, target, wrapMode,
+            host->GetSize());
+    RefPtr<TexturedEffect> texturedEffect = CreateTexturedEffect(
+        host->GetAndroidHardwareBuffer()->mFormat, layer, aFrameSurface.mFilter,
+        /* isAlphaPremultiplied */ true);
+
+    gfx::Rect drawRect(0, 0, host->GetSize().width, host->GetSize().height);
+
+    EffectChain effect;
+    effect.mPrimaryEffect = texturedEffect;
+    mCompositor->DrawQuad(drawRect, aFrameSurface.mClipRect, effect, 1.0,
+                          aFrameSurface.mTransform, drawRect);
+  } else if (!aExternalImage->IsWrappingAsyncRemoteTexture()) {
+    MOZ_ASSERT_UNREACHABLE("unexpected to be called");
+  }
 #endif
+}
+
+void RenderCompositorOGLSWGL::GetCompositorCapabilities(
+    CompositorCapabilities* aCaps) {
+  RenderCompositor::GetCompositorCapabilities(aCaps);
+
+  // max_update_rects are not yet handled properly
+  aCaps->max_update_rects = 0;
 }
 
 bool RenderCompositorOGLSWGL::RequestFullRender() { return mFullRender; }
@@ -211,38 +263,39 @@ bool RenderCompositorOGLSWGL::Resume() {
   // Destroy EGLSurface if it exists.
   DestroyEGLSurface();
 
-  // Query the new surface size as this may have changed. We cannot use
-  // mWidget->GetClientSize() due to a race condition between
-  // nsWindow::Resize() being called and the frame being rendered after the
-  // surface is resized.
-  EGLNativeWindowType window = mWidget->AsAndroid()->GetEGLNativeWindow();
-  JNIEnv* const env = jni::GetEnvForThread();
-  ANativeWindow* const nativeWindow =
-      ANativeWindow_fromSurface(env, reinterpret_cast<jobject>(window));
-  const int32_t width = ANativeWindow_getWidth(nativeWindow);
-  const int32_t height = ANativeWindow_getHeight(nativeWindow);
-
+  auto size = GetBufferSize();
   GLint maxTextureSize = 0;
   GetGLContext()->fGetIntegerv(LOCAL_GL_MAX_TEXTURE_SIZE,
                                (GLint*)&maxTextureSize);
 
   // When window size is too big, hardware buffer allocation could fail.
-  if (maxTextureSize < width || maxTextureSize < height) {
-    gfxCriticalNote << "Too big ANativeWindow size(" << width << ", " << height
-                    << ") MaxTextureSize " << maxTextureSize;
+  if (maxTextureSize < size.width || maxTextureSize < size.height) {
+    gfxCriticalNote << "Too big ANativeWindow size(" << size.width << ", "
+                    << size.height << ") MaxTextureSize " << maxTextureSize;
     return false;
   }
 
   mEGLSurface = CreateEGLSurface();
   if (mEGLSurface == EGL_NO_SURFACE) {
-    RenderThread::Get()->HandleWebRenderError(WebRenderError::NEW_SURFACE);
+    // Often when we fail to create an EGL surface it is because the
+    // Java Surface we have been provided is invalid. Therefore the on
+    // the first occurence we don't raise a WebRenderError and instead
+    // just return failure. This allows the widget a chance to request
+    // a new Java Surface. On subsequent failures, raising the
+    // WebRenderError will result in the compositor being recreated,
+    // falling back through webrender configurations, and eventually
+    // crashing if we still do not succeed.
+    if (!mHandlingNewSurfaceError) {
+      mHandlingNewSurfaceError = true;
+    } else {
+      RenderThread::Get()->HandleWebRenderError(WebRenderError::NEW_SURFACE);
+    }
     return false;
   }
+  mHandlingNewSurfaceError = false;
 
   gl::GLContextEGL::Cast(GetGLContext())->SetEGLSurfaceOverride(mEGLSurface);
-  mEGLSurfaceSize = Some(LayoutDeviceIntSize(width, height));
-  ANativeWindow_release(nativeWindow);
-  mCompositor->SetDestinationSurfaceSize(gfx::IntSize(width, height));
+  mCompositor->SetDestinationSurfaceSize(size.ToUnknownSize());
 #elif defined(MOZ_WIDGET_GTK)
   bool resumed = mCompositor->Resume();
   if (!resumed) {
@@ -261,9 +314,6 @@ bool RenderCompositorOGLSWGL::IsPaused() {
 }
 
 LayoutDeviceIntSize RenderCompositorOGLSWGL::GetBufferSize() {
-  if (mEGLSurfaceSize) {
-    return *mEGLSurfaceSize;
-  }
   return mWidget->GetClientSize();
 }
 

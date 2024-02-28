@@ -520,17 +520,15 @@ var gTests = [
         } else {
           let expectedMessage = aExpectStream ? "ok" : permissionError;
 
-          let observerPromises = [];
+          let observerPromises = [expectObserverCalled("getUserMedia:request")];
           if (expectedMessage == "ok") {
-            observerPromises.push(expectObserverCalled("getUserMedia:request"));
             observerPromises.push(
-              expectObserverCalled("getUserMedia:response:allow")
-            );
-            observerPromises.push(
+              expectObserverCalled("getUserMedia:response:allow"),
               expectObserverCalled("recording-device-events")
             );
           } else {
             observerPromises.push(
+              expectObserverCalled("getUserMedia:response:deny"),
               expectObserverCalled("recording-window-ended")
             );
           }
@@ -892,6 +890,9 @@ var gTests = [
         set: [
           ["media.devices.insecure.enabled", true],
           ["media.getusermedia.insecure.enabled", true],
+          // explicitly testing an http page, setting
+          // https-first to false.
+          ["dom.security.https_first", false],
         ],
       });
 
@@ -899,8 +900,9 @@ var gTests = [
       await disableObserverVerification();
 
       let browser = gBrowser.selectedBrowser;
-      BrowserTestUtils.loadURI(
+      BrowserTestUtils.loadURIString(
         browser,
+        // eslint-disable-next-line @microsoft/sdl/no-insecure-url
         browser.documentURI.spec.replace("https://", "http://")
       );
       await BrowserTestUtils.browserLoaded(browser);

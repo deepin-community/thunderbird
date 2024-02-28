@@ -34,7 +34,7 @@ nsMsgBodyHandler::nsMsgBodyHandler(nsIMsgSearchScopeTerm* scope,
   // the following are variables used when the body handler is handling stuff
   // from filters....through this constructor, that is not the case so we set
   // them to NULL.
-  m_headers = NULL;
+  m_headers = nullptr;
   m_headersSize = 0;
   m_Filtering = false;  // make sure we set this before we call initialize...
 
@@ -56,16 +56,18 @@ nsMsgBodyHandler::nsMsgBodyHandler(nsIMsgSearchScopeTerm* scope,
   if (!m_lineCountInBodyLines) m_numLocalLines += 3;
   m_msgHdr = msg;
   m_db = db;
-  m_headersSize = headersSize;
+  m_headers = nullptr;
+  m_headersSize = 0;
   m_Filtering = Filtering;
 
   Initialize();
 
-  if (m_Filtering)
+  if (m_Filtering) {
     m_headers = headers;
-  else
-    OpenLocalFolder();  // if nothing else applies, then we must be a POP folder
-                        // file
+    m_headersSize = headersSize;
+  } else {
+    OpenLocalFolder();
+  }
 }
 
 void nsMsgBodyHandler::Initialize()
@@ -94,9 +96,9 @@ int32_t nsMsgBodyHandler::GetNextLine(nsCString& buf, nsCString& charset) {
 
   while (eatThisLine) {
     // first, handle the filtering case...this is easy....
-    if (m_Filtering)
+    if (m_Filtering) {
       length = GetNextFilterLine(nextLine);
-    else {
+    } else {
       // 3 cases: Offline IMAP, POP, or we are dealing with a news message....
       // Offline cases should be same as local mail cases, since we're going
       // to store offline messages in berkeley format folders.
@@ -374,15 +376,13 @@ void nsMsgBodyHandler::SniffPossibleMIMEHeader(const nsCString& line) {
   ToLowerCase(lowerCaseLine);
 
   if (StringBeginsWith(lowerCaseLine, "content-transfer-encoding:"_ns))
-    m_partIsQP =
-        lowerCaseLine.Find("quoted-printable", /* ignoreCase = */ true) != -1;
+    m_partIsQP = lowerCaseLine.Find("quoted-printable") != kNotFound;
 
   if (StringBeginsWith(lowerCaseLine, "content-type:"_ns)) {
-    if (lowerCaseLine.Find("text/html", /* ignoreCase = */ true) != -1) {
+    if (lowerCaseLine.LowerCaseFindASCII("text/html") != kNotFound) {
       m_partIsText = true;
       m_partIsHtml = true;
-    } else if (lowerCaseLine.Find("multipart/", /* ignoreCase = */ true) !=
-               -1) {
+    } else if (lowerCaseLine.Find("multipart/") != kNotFound) {
       if (m_isMultipart) {
         // Nested multipart, get ready for new headers.
         m_base64part = false;
@@ -393,7 +393,7 @@ void nsMsgBodyHandler::SniffPossibleMIMEHeader(const nsCString& line) {
       }
       m_isMultipart = true;
       m_partCharset.Truncate();
-    } else if (lowerCaseLine.Find("message/", /* ignoreCase = */ true) != -1) {
+    } else if (lowerCaseLine.Find("message/") != kNotFound) {
       // Initialise again.
       m_base64part = false;
       m_partIsQP = false;
@@ -402,15 +402,14 @@ void nsMsgBodyHandler::SniffPossibleMIMEHeader(const nsCString& line) {
       m_partIsText =
           true;  // Default is text/plain, maybe proven otherwise later.
       m_inMessageAttachment = true;
-    } else if (lowerCaseLine.Find("text/", /* ignoreCase = */ true) != -1)
+    } else if (lowerCaseLine.Find("text/") != kNotFound)
       m_partIsText = true;
-    else if (lowerCaseLine.Find("text/", /* ignoreCase = */ true) == -1)
+    else if (lowerCaseLine.Find("text/") == kNotFound)
       m_partIsText = false;  // We have disproven our assumption.
   }
 
   int32_t start;
-  if (m_isMultipart && (start = lowerCaseLine.Find(
-                            "boundary=", /* ignoreCase = */ true)) != -1) {
+  if (m_isMultipart && (start = lowerCaseLine.Find("boundary=")) != kNotFound) {
     start += 9;  // strlen("boundary=")
     if (line[start] == '\"') start++;
     int32_t end = line.RFindChar('\"');
@@ -425,8 +424,7 @@ void nsMsgBodyHandler::SniffPossibleMIMEHeader(const nsCString& line) {
     if (!m_boundaries.Contains(boundary)) m_boundaries.AppendElement(boundary);
   }
 
-  if (m_isMultipart &&
-      (start = lowerCaseLine.Find("charset=", /* ignoreCase = */ true)) != -1) {
+  if (m_isMultipart && (start = lowerCaseLine.Find("charset=")) != kNotFound) {
     start += 8;  // strlen("charset=")
     bool foundQuote = false;
     if (line[start] == '\"') {
@@ -440,7 +438,7 @@ void nsMsgBodyHandler::SniffPossibleMIMEHeader(const nsCString& line) {
   }
 
   if (StringBeginsWith(lowerCaseLine, "content-transfer-encoding:"_ns) &&
-      lowerCaseLine.Find(ENCODING_BASE64, /* ignoreCase = */ true) != kNotFound)
+      lowerCaseLine.LowerCaseFindASCII(ENCODING_BASE64) != kNotFound)
     m_base64part = true;
 }
 

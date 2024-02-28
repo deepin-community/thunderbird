@@ -13,14 +13,12 @@
 #include "nsCOMPtr.h"
 #include "nsIDocShell.h"
 #include "nsIURIContentListener.h"
-#include "nsIMimeMiscStatus.h"
 #include "nsWeakReference.h"
 #include "nsIWeakReferenceUtils.h"
 #include "nsIInterfaceRequestor.h"
 
 class nsMsgWindow : public nsIMsgWindow,
                     public nsIURIContentListener,
-                    public nsIMsgWindowTest,
                     public nsSupportsWeakReference {
  public:
   NS_DECL_THREADSAFE_ISUPPORTS
@@ -29,20 +27,15 @@ class nsMsgWindow : public nsIMsgWindow,
   nsresult Init();
   NS_DECL_NSIMSGWINDOW
   NS_DECL_NSIURICONTENTLISTENER
-  NS_DECL_NSIMSGWINDOWTEST
 
  protected:
   virtual ~nsMsgWindow();
-  nsCOMPtr<nsIMsgHeaderSink> mMsgHeaderSink;
   nsCOMPtr<nsIMsgStatusFeedback> mStatusFeedback;
   nsCOMPtr<nsITransactionManager> mTransactionManager;
   nsCOMPtr<nsIMsgFolder> mOpenFolder;
-  nsCOMPtr<nsIMsgWindowCommands> mMsgWindowCommands;
   // These are used by the backend protocol code to attach
   // notification callbacks to channels, e.g., nsIBadCertListner2.
   nsCOMPtr<nsIInterfaceRequestor> mNotificationCallbacks;
-  // prompt dialog used during testing only
-  nsCOMPtr<nsIPrompt> mPromptDialog;
   // authorization prompt used during testing only
   nsCOMPtr<nsIAuthPrompt> mAuthPrompt;
 

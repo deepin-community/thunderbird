@@ -9,6 +9,7 @@
 #include "nsAttrValueInlines.h"
 #include "nsHTMLStyleSheet.h"
 #include "nsMappedAttributes.h"
+#include "nsWrapperCacheInlines.h"
 #include "mozilla/dom/Document.h"
 #include "mozilla/dom/HTMLCollectionBinding.h"
 #include "mozilla/dom/HTMLTableElementBinding.h"
@@ -47,8 +48,8 @@ class TableRowsCollection final : public nsIHTMLCollection,
 
   NS_IMETHOD ParentDestroyed();
 
-  NS_DECL_CYCLE_COLLECTION_SCRIPT_HOLDER_CLASS_AMBIGUOUS(TableRowsCollection,
-                                                         nsIHTMLCollection)
+  NS_DECL_CYCLE_COLLECTION_WRAPPERCACHE_CLASS_AMBIGUOUS(TableRowsCollection,
+                                                        nsIHTMLCollection)
 
   // nsWrapperCache
   using nsWrapperCache::GetWrapperPreserveColor;
@@ -488,7 +489,7 @@ void TableRowsCollection::ContentRemoved(nsIContent* aChild,
   }
 }
 
-void TableRowsCollection::NodeWillBeDestroyed(const nsINode* aNode) {
+void TableRowsCollection::NodeWillBeDestroyed(nsINode* aNode) {
   // Set mInitialized to false so CleanUp doesn't try to remove our mutation
   // observer, as we're going away. CleanUp() will reset mInitialized to true as
   // it returns.
@@ -1003,9 +1004,8 @@ void HTMLTableElement::UnbindFromTree(bool aNullParent) {
   nsGenericHTMLElement::UnbindFromTree(aNullParent);
 }
 
-nsresult HTMLTableElement::BeforeSetAttr(int32_t aNameSpaceID, nsAtom* aName,
-                                         const nsAttrValueOrString* aValue,
-                                         bool aNotify) {
+void HTMLTableElement::BeforeSetAttr(int32_t aNameSpaceID, nsAtom* aName,
+                                     const nsAttrValue* aValue, bool aNotify) {
   if (aName == nsGkAtoms::cellpadding && aNameSpaceID == kNameSpaceID_None) {
     ReleaseInheritedAttributes();
   }
@@ -1013,11 +1013,11 @@ nsresult HTMLTableElement::BeforeSetAttr(int32_t aNameSpaceID, nsAtom* aName,
                                              aNotify);
 }
 
-nsresult HTMLTableElement::AfterSetAttr(int32_t aNameSpaceID, nsAtom* aName,
-                                        const nsAttrValue* aValue,
-                                        const nsAttrValue* aOldValue,
-                                        nsIPrincipal* aSubjectPrincipal,
-                                        bool aNotify) {
+void HTMLTableElement::AfterSetAttr(int32_t aNameSpaceID, nsAtom* aName,
+                                    const nsAttrValue* aValue,
+                                    const nsAttrValue* aOldValue,
+                                    nsIPrincipal* aSubjectPrincipal,
+                                    bool aNotify) {
   if (aName == nsGkAtoms::cellpadding && aNameSpaceID == kNameSpaceID_None) {
     BuildInheritedAttributes();
   }

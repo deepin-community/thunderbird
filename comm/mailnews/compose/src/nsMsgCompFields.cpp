@@ -3,7 +3,6 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-#include <iostream>
 #include "nsMsgCompose.h"
 #include "nsMsgCompFields.h"
 #include "nsMsgI18N.h"
@@ -14,7 +13,6 @@
 #include "nsIMsgAttachment.h"
 #include "nsIMsgMdnGenerator.h"
 #include "nsServiceManagerUtils.h"
-#include "nsMsgMimeCID.h"
 #include "nsMemory.h"
 #include "mozilla/ArrayUtils.h"
 #include "mozilla/mailnews/MimeHeaderParser.h"
@@ -76,10 +74,12 @@ nsMsgCompFields::nsMsgCompFields()
   m_forceMsgEncoding = false;
   m_needToCheckCharset = true;
   m_attachmentReminder = false;
-  m_deliveryFormat = nsIMsgCompSendFormat::AskUser;
+  m_deliveryFormat = nsIMsgCompSendFormat::Unset;
 }
 
-nsMsgCompFields::~nsMsgCompFields() {}
+nsMsgCompFields::~nsMsgCompFields() {
+  MOZ_LOG(Compose, mozilla::LogLevel::Debug, ("~nsMsgCompFields()"));
+}
 
 nsresult nsMsgCompFields::SetAsciiHeader(MsgHeaderID header,
                                          const char* value) {
@@ -285,22 +285,24 @@ NS_IMETHODIMP nsMsgCompFields::GetTemplateName(nsAString& _retval) {
   return GetUnicodeHeader(MSG_X_TEMPLATE_HEADER_ID, _retval);
 }
 
-NS_IMETHODIMP nsMsgCompFields::SetDraftId(const char* value) {
-  return SetAsciiHeader(MSG_DRAFT_ID_HEADER_ID, value);
+NS_IMETHODIMP nsMsgCompFields::SetDraftId(const nsACString& value) {
+  return SetAsciiHeader(MSG_DRAFT_ID_HEADER_ID,
+                        PromiseFlatCString(value).get());
 }
 
-NS_IMETHODIMP nsMsgCompFields::GetDraftId(char** _retval) {
-  *_retval = strdup(GetAsciiHeader(MSG_DRAFT_ID_HEADER_ID));
-  return *_retval ? NS_OK : NS_ERROR_OUT_OF_MEMORY;
+NS_IMETHODIMP nsMsgCompFields::GetDraftId(nsACString& _retval) {
+  _retval.Assign(GetAsciiHeader(MSG_DRAFT_ID_HEADER_ID));
+  return NS_OK;
 }
 
-NS_IMETHODIMP nsMsgCompFields::SetTemplateId(const char* value) {
-  return SetAsciiHeader(MSG_TEMPLATE_ID_HEADER_ID, value);
+NS_IMETHODIMP nsMsgCompFields::SetTemplateId(const nsACString& value) {
+  return SetAsciiHeader(MSG_TEMPLATE_ID_HEADER_ID,
+                        PromiseFlatCString(value).get());
 }
 
-NS_IMETHODIMP nsMsgCompFields::GetTemplateId(char** _retval) {
-  *_retval = strdup(GetAsciiHeader(MSG_TEMPLATE_ID_HEADER_ID));
-  return *_retval ? NS_OK : NS_ERROR_OUT_OF_MEMORY;
+NS_IMETHODIMP nsMsgCompFields::GetTemplateId(nsACString& _retval) {
+  _retval.Assign(GetAsciiHeader(MSG_TEMPLATE_ID_HEADER_ID));
+  return NS_OK;
 }
 
 NS_IMETHODIMP nsMsgCompFields::SetReturnReceipt(bool value) {
@@ -356,14 +358,15 @@ NS_IMETHODIMP nsMsgCompFields::SetAttachmentReminder(bool value) {
 
 NS_IMETHODIMP nsMsgCompFields::SetDeliveryFormat(int32_t value) {
   switch (value) {
-    case nsIMsgCompSendFormat::AskUser:
+    case nsIMsgCompSendFormat::Auto:
     case nsIMsgCompSendFormat::PlainText:
     case nsIMsgCompSendFormat::HTML:
     case nsIMsgCompSendFormat::Both:
       m_deliveryFormat = value;
       break;
+    case nsIMsgCompSendFormat::Unset:
     default:
-      m_deliveryFormat = nsIMsgCompSendFormat::AskUser;
+      m_deliveryFormat = nsIMsgCompSendFormat::Unset;
   }
 
   return NS_OK;
@@ -429,24 +432,14 @@ NS_IMETHODIMP nsMsgCompFields::GetBodyIsAsciiOnly(bool* _retval) {
 }
 
 NS_IMETHODIMP nsMsgCompFields::SetBody(const nsAString& value) {
-  CopyUTF16toUTF8(value, m_body);
+  m_body = value;
   return NS_OK;
 }
 
 NS_IMETHODIMP nsMsgCompFields::GetBody(nsAString& _retval) {
-  CopyUTF8toUTF16(m_body, _retval);
+  _retval = m_body;
   return NS_OK;
 }
-
-nsresult nsMsgCompFields::SetBody(const char* value) {
-  if (value)
-    m_body = value;
-  else
-    m_body.Truncate();
-  return NS_OK;
-}
-
-const char* nsMsgCompFields::GetBody() { return m_body.get(); }
 
 NS_IMETHODIMP nsMsgCompFields::GetAttachments(
     nsTArray<RefPtr<nsIMsgAttachment>>& attachments) {
@@ -479,10 +472,20 @@ NS_IMETHODIMP nsMsgCompFields::RemoveAttachment(nsIMsgAttachment* attachment) {
   return NS_OK;
 }
 
+NS_IMETHODIMP nsMsgCompFields::SetOtherHeaders(
+    const nsTArray<nsString>& headers) {
+  m_otherHeaders = headers.Clone();
+  return NS_OK;
+}
+
+NS_IMETHODIMP nsMsgCompFields::GetOtherHeaders(nsTArray<nsString>& headers) {
+  headers = m_otherHeaders.Clone();
+  return NS_OK;
+}
+
 /* void removeAttachments (); */
 NS_IMETHODIMP nsMsgCompFields::RemoveAttachments() {
   m_attachments.Clear();
-
   return NS_OK;
 }
 
@@ -522,13 +525,10 @@ NS_IMETHODIMP nsMsgCompFields::ConvertBodyToPlainText() {
   nsresult rv = NS_OK;
 
   if (!m_body.IsEmpty()) {
-    nsAutoString body;
-    rv = GetBody(body);
     if (NS_SUCCEEDED(rv)) {
       bool flowed, formatted;
       GetSerialiserFlags(&flowed, &formatted);
-      rv = ConvertBufToPlainText(body, flowed, formatted, true);
-      if (NS_SUCCEEDED(rv)) rv = SetBody(body);
+      rv = ConvertBufToPlainText(m_body, flowed, formatted, true);
     }
   }
   return rv;

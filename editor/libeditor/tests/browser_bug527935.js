@@ -1,4 +1,4 @@
-add_task(async function() {
+add_task(async function () {
   await new Promise(resolve => waitForFocus(resolve, window));
 
   const kPageURL =
@@ -8,7 +8,7 @@ add_task(async function() {
       gBrowser,
       url: kPageURL,
     },
-    async function(aBrowser) {
+    async function (aBrowser) {
       var popupShown = false;
       function listener() {
         popupShown = true;
@@ -19,7 +19,7 @@ add_task(async function() {
         listener
       );
 
-      await SpecialPowers.spawn(aBrowser, [], async function() {
+      await SpecialPowers.spawn(aBrowser, [], async function () {
         var window = content.window.wrappedJSObject;
         var document = window.document;
         var formTarget = document.getElementById("formTarget");
@@ -35,7 +35,7 @@ add_task(async function() {
 
       EventUtils.synthesizeKey("KEY_Enter");
 
-      await SpecialPowers.spawn(aBrowser, [], async function() {
+      await SpecialPowers.spawn(aBrowser, [], async function () {
         var window = content.window.wrappedJSObject;
         var document = window.document;
 
@@ -45,20 +45,13 @@ add_task(async function() {
         newInput.setAttribute("name", "test");
         document.body.appendChild(newInput);
 
-        var event = document.createEvent("KeyboardEvent");
-
-        event.initKeyEvent(
-          "keypress",
-          true,
-          true,
-          null,
-          false,
-          false,
-          false,
-          false,
-          0,
-          "f".charCodeAt(0)
-        );
+        var event = new window.KeyboardEvent("keypress", {
+          bubbles: true,
+          cancelable: true,
+          view: null,
+          keyCode: 0,
+          charCode: "f".charCodeAt(0),
+        });
         newInput.value = "";
         newInput.focus();
         newInput.dispatchEvent(event);

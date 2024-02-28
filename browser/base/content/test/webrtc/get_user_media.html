@@ -19,7 +19,7 @@ try {
 
 function message(m) {
   // eslint-disable-next-line no-unsanitized/property
-  document.getElementById("message").innerHTML = m;
+  document.getElementById("message").innerHTML += `${m}<br>`;
   top.postMessage(m, "*");
 }
 
@@ -31,6 +31,7 @@ async function requestDevice(aAudio, aVideo, aShare, aBadDevice = false) {
   const opts = {video: aVideo, audio: aAudio};
   if (aShare) {
     opts.video = { mediaSource: aShare };
+    SpecialPowers.wrap(document).notifyUserGestureActivation();
   }
   if (useFakeStreams) {
     opts.fake = true;
@@ -73,10 +74,15 @@ async function requestDevice(aAudio, aVideo, aShare, aBadDevice = false) {
   }
 }
 
-async function requestAudioOutput() {
+let selectedAudioOutputId;
+async function requestAudioOutput(options = {}) {
+  const audioOutputOptions = options.requestSameDevice && {
+    deviceId: selectedAudioOutputId,
+  };
   SpecialPowers.wrap(document).notifyUserGestureActivation();
   try {
-    await navigator.mediaDevices.selectAudioOutput();
+    ({ deviceId: selectedAudioOutputId } =
+     await navigator.mediaDevices.selectAudioOutput(audioOutputOptions));
     message("ok");
   } catch (err) {
     message("error: " + err);

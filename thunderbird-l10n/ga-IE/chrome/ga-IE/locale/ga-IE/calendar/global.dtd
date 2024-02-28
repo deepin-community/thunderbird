@@ -50,6 +50,3 @@
 <!ENTITY onedayforward.tooltip "Lá Amháin Ar Aghaidh">
 <!ENTITY onedaybackward.tooltip "Lá Amháin Siar">
 <!ENTITY showselectedday.tooltip "Taispeáin imeachtaí an lae roghnaithe">
-
-<!ENTITY oneyearbackward.tooltip "One Year Back" >
-<!ENTITY oneyearforward.tooltip "One Year Forward" >

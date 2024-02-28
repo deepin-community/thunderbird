@@ -8,27 +8,23 @@
 
 // Wrap in a block to prevent leaking to window scope.
 {
-  const { Services } = ChromeUtils.import(
-    "resource://gre/modules/Services.jsm"
-  );
-  const { XPCOMUtils } = ChromeUtils.import(
-    "resource://gre/modules/XPCOMUtils.jsm"
-  );
-
   const LazyModules = {};
-  XPCOMUtils.defineLazyModuleGetters(LazyModules, {
-    cleanupImMarkup: "resource:///modules/imContentSink.jsm",
-    getCurrentTheme: "resource:///modules/imThemes.jsm",
-    getDocumentFragmentFromHTML: "resource:///modules/imThemes.jsm",
-    getHTMLForMessage: "resource:///modules/imThemes.jsm",
-    initHTMLDocument: "resource:///modules/imThemes.jsm",
-    insertHTMLForMessage: "resource:///modules/imThemes.jsm",
-    isNextMessage: "resource:///modules/imThemes.jsm",
-    serializeSelection: "resource:///modules/imThemes.jsm",
-    smileTextNode: "resource:///modules/imSmileys.jsm",
+  ChromeUtils.defineESModuleGetters(LazyModules, {
+    cleanupImMarkup: "resource:///modules/imContentSink.sys.mjs",
+    getCurrentTheme: "resource:///modules/imThemes.sys.mjs",
+    getDocumentFragmentFromHTML: "resource:///modules/imThemes.sys.mjs",
+    getHTMLForMessage: "resource:///modules/imThemes.sys.mjs",
+    initHTMLDocument: "resource:///modules/imThemes.sys.mjs",
+    insertHTMLForMessage: "resource:///modules/imThemes.sys.mjs",
+    isNextMessage: "resource:///modules/imThemes.sys.mjs",
+    wasNextMessage: "resource:///modules/imThemes.sys.mjs",
+    replaceHTMLForMessage: "resource:///modules/imThemes.sys.mjs",
+    removeMessage: "resource:///modules/imThemes.sys.mjs",
+    serializeSelection: "resource:///modules/imThemes.sys.mjs",
+    smileTextNode: "resource:///modules/imSmileys.sys.mjs",
   });
 
-  (function() {
+  (function () {
     // <browser> is lazily set up through setElementCreationCallback,
     // i.e. put into customElements the first time it's really seen.
     // Create a fake to ensure browser exists in customElements, since otherwise
@@ -40,6 +36,7 @@
 
   /**
    * The chat conversation browser, i.e. the main content on the chat tab.
+   *
    * @augments {MozBrowser}
    */
   class MozConversationBrowser extends customElements.get("browser") {
@@ -61,7 +58,7 @@
         // The event target may be a descendant of the actual link.
         let url;
         for (let elem = event.target; elem; elem = elem.parentNode) {
-          if (elem instanceof HTMLAnchorElement) {
+          if (HTMLAnchorElement.isInstance(elem)) {
             url = elem.href;
             if (url) {
               break;
@@ -282,8 +279,9 @@
           capture: true,
         }
       );
-      this.loadURI("chrome://chat/content/conv.html", {
-        triggeringPrincipal: Services.scriptSecurityManager.getSystemPrincipal(),
+      this.loadURI(Services.io.newURI("chrome://chat/content/conv.html"), {
+        triggeringPrincipal:
+          Services.scriptSecurityManager.getSystemPrincipal(),
       });
     }
 
@@ -306,8 +304,9 @@
     enableMagicCopy() {
       this.contentWindow.controllers.insertControllerAt(0, this.copyController);
       this.autoCopyEnabled =
-        Services.clipboard.supportsSelectionClipboard() &&
-        Services.prefs.getBoolPref("clipboard.autocopy");
+        Services.clipboard.isClipboardTypeSupported(
+          Services.clipboard.kSelectionClipboard
+        ) && Services.prefs.getBoolPref("clipboard.autocopy");
       if (this.autoCopyEnabled) {
         let selection = this.contentWindow.getSelection();
         if (selection) {
@@ -415,6 +414,68 @@
       });
       if (this.browsingContext.isActive) {
         this.startDisplayingPendingMessages(true);
+      }
+    }
+
+    /**
+     * Replace an existing message in the conversation based on the remote ID.
+     *
+     * @param {imIMessage} msg - Message to use as replacement.
+     */
+    replaceMessage(msg) {
+      if (!msg.remoteId) {
+        // No remote id, nothing existing to replace.
+        return;
+      }
+      if (this._messageDisplayPending || this._pendingMessages.length) {
+        let pendingIndex = this._pendingMessages.findIndex(
+          ({ msg: pendingMsg }) => pendingMsg.remoteId === msg.remoteId
+        );
+        if (
+          pendingIndex > -1 &&
+          pendingIndex >= this._nextPendingMessageIndex
+        ) {
+          this._pendingMessages[pendingIndex].msg = msg;
+        }
+      }
+      if (this.browsingContext.isActive) {
+        msg.message = this.prepareMessageContent(msg);
+        const isNext = LazyModules.wasNextMessage(msg, this.contentDocument);
+        const htmlMessage = LazyModules.getHTMLForMessage(
+          msg,
+          this.theme,
+          isNext,
+          false
+        );
+        let ruler = this.contentDocument.getElementById("unread-ruler");
+        if (ruler?._originalMsg?.remoteId === msg.remoteId) {
+          ruler._originalMsg = msg;
+          ruler.nextMsgHtml = htmlMessage;
+        }
+        LazyModules.replaceHTMLForMessage(
+          msg,
+          htmlMessage,
+          this.contentDocument,
+          isNext
+        );
+      }
+      if (this._lastMessage?.remoteId === msg.remoteId) {
+        this._lastMessage = msg;
+      }
+    }
+
+    /**
+     * Remove an existing message in the conversation based on the remote ID.
+     *
+     * @param {string} remoteId - Remote ID of the message to remove.
+     */
+    removeMessage(remoteId) {
+      if (this.browsingContext.isActive) {
+        LazyModules.removeMessage(remoteId, this.contentDocument);
+      }
+      if (this._lastMessage?.remoteId === remoteId) {
+        // Reset last message info if we removed the last message.
+        this._lastMessage = null;
       }
     }
 
@@ -535,50 +596,11 @@
         }
       }
 
-      let cs = Cc["@mozilla.org/txttohtmlconv;1"].getService(
-        Ci.mozITXTToHTMLConv
-      );
-
-      // kStructPhrase creates tags for plaintext-markup like *bold*,
-      // /italics/, etc. We always use this; the content filter will
-      // filter it out if the user does not want styling.
-      let csFlags = cs.kStructPhrase;
-      // Automatically find and link freetext URLs
-      if (!aMsg.noLinkification) {
-        csFlags |= cs.kURLs;
-      }
-
       if (aFirstUnread) {
         this.setUnreadRuler();
       }
 
-      // Right trim before displaying. This removes any OTR related
-      // whitespace when the extension isn't enabled.
-      let msg = aMsg.displayMessage.trimRight();
-
-      // The slash of a leading '/me' should not be used to
-      // format as italic, so we remove the '/me' text before
-      // scanning the HTML, and we add it back later.
-      let meRegExp = /^((<[^>]+>)*)\/me /;
-      let me = false;
-      if (meRegExp.test(msg)) {
-        me = true;
-        msg = msg.replace(meRegExp, "$1");
-      }
-
-      msg = cs
-        .scanHTML(msg.replace(/&/g, "FROM-DTD-amp"), csFlags)
-        .replace(/FROM-DTD-amp/g, "&");
-
-      if (me) {
-        msg = msg.replace(/^((<[^>]+>)*)/, "$1/me ");
-      }
-
-      aMsg.message = LazyModules.cleanupImMarkup(
-        msg.replace(/\r?\n/g, "<br/>"),
-        null,
-        this._textModifiers
-      );
+      aMsg.message = this.prepareMessageContent(aMsg);
 
       let next =
         (aContext == this._lastMessageIsContext || aMsg.system) &&
@@ -647,6 +669,41 @@
       this._lastMessageIsContext = aContext;
     }
 
+    /**
+     * Prepare the message text for display. Transforms plain text formatting
+     * and removes any unwanted formatting.
+     *
+     * @param {imIMessage} message - Raw message.
+     * @returns {string} Message content ready for insertion.
+     */
+    prepareMessageContent(message) {
+      let cs = Cc["@mozilla.org/txttohtmlconv;1"].getService(
+        Ci.mozITXTToHTMLConv
+      );
+
+      // kStructPhrase creates tags for plaintext-markup like *bold*,
+      // /italics/, etc. We always use this; the content filter will
+      // filter it out if the user does not want styling.
+      let csFlags = cs.kStructPhrase;
+      // Automatically find and link freetext URLs
+      if (!message.noLinkification) {
+        csFlags |= cs.kURLs;
+      }
+
+      // Right trim before displaying. This removes any OTR related
+      // whitespace when the extension isn't enabled.
+      let msg = message.displayMessage?.trimRight() ?? "";
+      msg = cs
+        .scanHTML(msg.replace(/&/g, "FROM-DTD-amp"), csFlags)
+        .replace(/FROM-DTD-amp/g, "&");
+
+      return LazyModules.cleanupImMarkup(
+        msg.replace(/\r?\n/g, "<br/>"),
+        null,
+        this._textModifiers
+      );
+    }
+
     setUnreadRuler() {
       // Remove any existing ruler (occurs when the window has lost focus).
       this.removeUnreadRuler();
@@ -692,6 +749,7 @@
           root = root.nextElementSibling
         ) {
           root._originalMsg = ruler._originalMsg;
+          root.dataset.remoteId = ruler._originalMsg.remoteId;
         }
         moveToParent.insertBefore(documentFragment, moveTo);
 

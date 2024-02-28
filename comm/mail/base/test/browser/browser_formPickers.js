@@ -24,7 +24,11 @@ async function checkABrowser(browser) {
     browser.webProgress?.isLoadingDocument ||
     browser.currentURI?.spec == "about:blank"
   ) {
-    await BrowserTestUtils.browserLoaded(browser);
+    await BrowserTestUtils.browserLoaded(
+      browser,
+      undefined,
+      url => url != "about:blank"
+    );
   }
 
   let win = browser.ownerGlobal;
@@ -32,16 +36,15 @@ async function checkABrowser(browser) {
 
   // Date picker
 
-  let picker = doc.getElementById(browser.getAttribute("datetimepicker"));
+  let picker = win.top.document.getElementById("DateTimePickerPanel");
   Assert.ok(picker, "date/time picker exists");
 
-  // Click on the input box to open the popup.
+  // Open the popup.
   let shownPromise = BrowserTestUtils.waitForEvent(picker, "popupshown");
-  await BrowserTestUtils.synthesizeMouseAtCenter(
-    `input[type="date"]`,
-    {},
-    browser
-  );
+  await SpecialPowers.spawn(browser, [], function () {
+    content.document.notifyUserGestureActivation();
+    content.document.querySelector(`input[type="date"]`).showPicker();
+  });
   await shownPromise;
 
   // Allow the picker time to initialise.
@@ -50,7 +53,12 @@ async function checkABrowser(browser) {
   // Click in the middle of the picker. This should always land on a date and
   // close the picker.
   let hiddenPromise = BrowserTestUtils.waitForEvent(picker, "popuphidden");
-  EventUtils.synthesizeMouseAtCenter(picker, {}, win);
+  let frame = picker.querySelector("#dateTimePopupFrame");
+  EventUtils.synthesizeMouseAtCenter(
+    frame.contentDocument.querySelector(".days-view td"),
+    {},
+    frame.contentWindow
+  );
   await hiddenPromise;
 
   // Check the date was assigned to the input.
@@ -60,7 +68,7 @@ async function checkABrowser(browser) {
 
   // Select drop-down
 
-  let menulist = doc.getElementById(browser.getAttribute("selectmenulist"));
+  let menulist = win.top.document.getElementById("ContentSelectDropdown");
   Assert.ok(menulist, "select menulist exists");
   let menupopup = menulist.menupopup;
 
@@ -84,7 +92,7 @@ async function checkABrowser(browser) {
 
   // Click the second option. This sets the value and closes the menulist.
   hiddenPromise = BrowserTestUtils.waitForEvent(menulist, "popuphidden");
-  EventUtils.synthesizeMouseAtCenter(menupopup.children[1], {}, win);
+  menupopup.activateItem(menupopup.children[1]);
   await hiddenPromise;
 
   // Sometimes the next change doesn't happen soon enough.
@@ -140,32 +148,33 @@ async function checkABrowser(browser) {
   });
 }
 
-add_task(async function testMessagePane() {
+add_setup(async function () {
   MailServices.accounts.createLocalMailAccount();
   let account = MailServices.accounts.accounts[0];
   account.addIdentity(MailServices.accounts.createIdentity());
   let rootFolder = account.incomingServer.rootFolder;
-  rootFolder.createSubfolder("test", null);
+  rootFolder.createSubfolder("formPickerFolder", null);
   testFolder = rootFolder
-    .getChildNamed("test")
+    .getChildNamed("formPickerFolder")
     .QueryInterface(Ci.nsIMsgLocalMailFolder);
   let messages = new MessageGenerator().makeMessages({ count: 5 });
   let messageStrings = messages.map(message => message.toMboxString());
   testFolder.addMessageBatch(messageStrings);
 
-  let messagePane = document.getElementById("messagepane");
-
   registerCleanupFunction(async () => {
-    MailServices.accounts.removeAccount(account, true);
+    MailServices.accounts.removeAccount(account, false);
+  });
+});
+
+add_task(async function testMessagePane() {
+  let about3Pane = document.getElementById("tabmail").currentAbout3Pane;
+  about3Pane.restoreState({
+    folderURI: testFolder.URI,
+    messagePaneVisible: true,
   });
 
-  window.gFolderTreeView.selectFolder(testFolder);
-  if (window.IsMessagePaneCollapsed()) {
-    window.MsgToggleMessagePane();
-  }
-
-  MailE10SUtils.loadURI(messagePane, TEST_DOCUMENT_URL);
-  await checkABrowser(messagePane);
+  about3Pane.messagePane.displayWebPage(TEST_DOCUMENT_URL);
+  await checkABrowser(about3Pane.webBrowser);
 });
 
 add_task(async function testContentTab() {
@@ -227,16 +236,10 @@ add_task(async function testExtensionBrowserAction() {
 
   await extension.startup();
 
-  let actionButton = document.getElementById(
-    "formpickers_mochi_test-browserAction-toolbarbutton"
+  let { panel, browser } = await openExtensionPopup(
+    window,
+    "ext-formpickers\\@mochi.test"
   );
-  EventUtils.synthesizeMouseAtCenter(actionButton, {});
-
-  let panel = document.getElementById("webextension-remote-preload-panel");
-  let browser = panel.querySelector("browser");
-  // The panel needs some time to decide how big it's going to be.
-  // eslint-disable-next-line mozilla/no-arbitrary-setTimeout
-  await new Promise(resolve => setTimeout(resolve, 500));
   await checkABrowser(browser);
   panel.hidePopup();
 
@@ -275,21 +278,11 @@ add_task(async function testExtensionComposeAction() {
   MailServices.compose.OpenComposeWindowWithParams(null, params);
   let composeWindow = await composeWindowPromise;
   await BrowserTestUtils.waitForEvent(composeWindow, "load");
-  let composeDocument = composeWindow.document;
 
-  await new Promise(resolve => composeWindow.setTimeout(resolve, 500));
-
-  let actionButton = composeDocument.getElementById(
+  let { panel, browser } = await openExtensionPopup(
+    composeWindow,
     "formpickers_mochi_test-composeAction-toolbarbutton"
   );
-  EventUtils.synthesizeMouseAtCenter(actionButton, {}, composeWindow);
-
-  let panel = composeDocument.getElementById(
-    "webextension-remote-preload-panel"
-  );
-  let browser = panel.querySelector("browser");
-  // The panel needs some time to decide how big it's going to be.
-  await new Promise(resolve => composeWindow.setTimeout(resolve, 500));
   await checkABrowser(browser);
   panel.hidePopup();
 
@@ -321,26 +314,39 @@ add_task(async function testExtensionMessageDisplayAction() {
   let messageWindowPromise = BrowserTestUtils.domWindowOpened();
   window.MsgOpenNewWindowForMessage([...testFolder.messages][0]);
   let messageWindow = await messageWindowPromise;
-  await BrowserTestUtils.waitForEvent(messageWindow, "load");
-  let messageDocument = messageWindow.document;
+  let { target: aboutMessage } = await BrowserTestUtils.waitForEvent(
+    messageWindow,
+    "aboutMessageLoaded"
+  );
 
-  await new Promise(resolve => messageWindow.setTimeout(resolve, 500));
-
-  let actionButton = messageDocument.getElementById(
+  let { panel, browser } = await openExtensionPopup(
+    aboutMessage,
     "formpickers_mochi_test-messageDisplayAction-toolbarbutton"
   );
-  EventUtils.synthesizeMouseAtCenter(actionButton, {}, messageWindow);
-
-  let panel = messageDocument.getElementById(
-    "webextension-remote-preload-panel"
-  );
-  let browser = panel.querySelector("browser");
-  // The panel needs some time to decide how big it's going to be.
-  // eslint-disable-next-line mozilla/no-arbitrary-setTimeout
-  await new Promise(resolve => setTimeout(resolve, 500));
   await checkABrowser(browser);
   panel.hidePopup();
 
   await extension.unload();
   await BrowserTestUtils.closeWindow(messageWindow);
+});
+
+add_task(async function testBrowserRequestWindow() {
+  let requestWindow = await new Promise(resolve => {
+    Services.ww.openWindow(
+      null,
+      "chrome://messenger/content/browserRequest.xhtml",
+      null,
+      "chrome,private,centerscreen,width=980,height=750",
+      {
+        url: TEST_DOCUMENT_URL,
+        cancelled() {},
+        loaded(window, webProgress) {
+          resolve(window);
+        },
+      }
+    );
+  });
+
+  await checkABrowser(requestWindow.document.getElementById("requestFrame"));
+  await BrowserTestUtils.closeWindow(requestWindow);
 });

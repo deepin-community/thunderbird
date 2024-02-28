@@ -11,8 +11,6 @@
 #include "nsIPrefLocalizedString.h"
 #include "nsIPrefService.h"
 #include "nsISupportsPrimitives.h"
-#include "nsMsgBaseCID.h"
-#include "nsMsgCompCID.h"
 #include "nsNetCID.h"
 #include "nsNetUtil.h"
 #include "nsSeamonkeyProfileMigrator.h"
@@ -21,7 +19,6 @@
 #include "mozilla/ArrayUtils.h"
 #include "nsIFile.h"
 
-#include "nsAbBaseCID.h"
 #include "nsIAbManager.h"
 #include "nsIAbDirectory.h"
 #include "../../../../mailnews/import/src/MorkImport.h"
@@ -269,8 +266,6 @@ static nsSeamonkeyProfileMigrator::PrefTransform gTransforms[] = {
     MAKESAMETYPEPREFTRANSFORM("mail.forward_message_mode", Int),
     MAKESAMETYPEPREFTRANSFORM("mail.SpellCheckBeforeSend", Bool),
     MAKESAMETYPEPREFTRANSFORM("mail.warn_on_send_accel_key", Bool),
-    MAKESAMETYPEPREFTRANSFORM("mailnews.html_domains", String),
-    MAKESAMETYPEPREFTRANSFORM("mailnews.plaintext_domains", String),
     MAKESAMETYPEPREFTRANSFORM("mailnews.headers.showUserAgent", Bool),
     MAKESAMETYPEPREFTRANSFORM("mailnews.headers.showOrganization", Bool),
     MAKESAMETYPEPREFTRANSFORM("mail.biff.play_sound", Bool),
@@ -387,7 +382,7 @@ nsresult nsSeamonkeyProfileMigrator::CopySignatureFiles(
     // thunderbird profile root and then set the pref to the new value
     // note, this doesn't work for multiple signatures that live
     // below the seamonkey profile root
-    if (StringEndsWith(prefName, nsDependentCString(".sig_file"))) {
+    if (StringEndsWith(prefName, ".sig_file"_ns)) {
       // turn the pref into a nsIFile
       nsCOMPtr<nsIFile> srcSigFile =
           do_CreateInstance(NS_LOCAL_FILE_CONTRACTID);
@@ -448,7 +443,7 @@ nsresult nsSeamonkeyProfileMigrator::CopyMailFolders(
       // Now decrease i and count to match the removed element
       --i;
       --count;
-    } else if (StringEndsWith(prefName, nsDependentCString(".directory"))) {
+    } else if (StringEndsWith(prefName, ".directory"_ns)) {
       // let's try to get a branch for this particular server to simplify things
       prefName.Cut(prefName.Length() - strlen("directory"),
                    strlen("directory"));
@@ -506,7 +501,7 @@ nsresult nsSeamonkeyProfileMigrator::CopyMailFolders(
         free(pref->stringValue);
         pref->stringValue = ToNewCString(descriptorString);
       }
-    } else if (StringEndsWith(prefName, nsDependentCString(".newsrc.file"))) {
+    } else if (StringEndsWith(prefName, ".newsrc.file"_ns)) {
       // copy the news RC file into \News. this won't work if the user has
       // different newsrc files for each account I don't know what to do in that
       // situation.
@@ -635,7 +630,7 @@ nsresult nsSeamonkeyProfileMigrator::ImportPreferences(uint16_t aItems) {
   NS_ENSURE_SUCCESS(rv, rv);
 
   nsCOMPtr<nsIMsgAccountManager> accountManager(
-      do_GetService(NS_MSGACCOUNTMANAGER_CONTRACTID, &rv));
+      do_GetService("@mozilla.org/messenger/account-manager;1", &rv));
   NS_ENSURE_SUCCESS(rv, rv);
   PrefKeyHashTable smtpServerKeyHashTable;
   PrefKeyHashTable identityKeyHashTable;
@@ -685,7 +680,7 @@ nsresult nsSeamonkeyProfileMigrator::TransformIdentitiesForImport(
     auto key = keys[0];
     if (key == "default") {
       continue;
-    } else if (StringEndsWith(prefName, nsDependentCString(".smtpServer"))) {
+    } else if (StringEndsWith(prefName, ".smtpServer"_ns)) {
       nsDependentCString serverKey(pref->stringValue);
       nsCString newServerKey;
       if (smtpServerKeyHashTable.Get(serverKey, &newServerKey)) {
@@ -734,13 +729,13 @@ nsresult nsSeamonkeyProfileMigrator::TransformMailAccountsForImport(
     auto key = keys[0];
     if (key == "default") {
       continue;
-    } else if (StringEndsWith(prefName, nsDependentCString(".identities"))) {
+    } else if (StringEndsWith(prefName, ".identities"_ns)) {
       nsDependentCString identityKey(pref->stringValue);
       nsCString newIdentityKey;
       if (identityKeyHashTable.Get(identityKey, &newIdentityKey)) {
         pref->stringValue = moz_xstrdup(newIdentityKey.get());
       }
-    } else if (StringEndsWith(prefName, nsDependentCString(".server"))) {
+    } else if (StringEndsWith(prefName, ".server"_ns)) {
       nsDependentCString serverKey(pref->stringValue);
       nsCString newServerKey;
       if (serverKeyHashTable.Get(serverKey, &newServerKey)) {
@@ -835,8 +830,7 @@ nsresult nsSeamonkeyProfileMigrator::TransformMailServersForImport(
       serverTypeKey.AppendLiteral(".type");
       nsresult rv = aPrefService->GetBranch(branchName, getter_AddRefs(branch));
       NS_ENSURE_SUCCESS(rv, rv);
-      (void)branch->SetCharPref(serverTypeKey.get(),
-                                nsDependentCString("placeholder"));
+      (void)branch->SetCharPref(serverTypeKey.get(), "placeholder"_ns);
     }
   }
   return NS_OK;
@@ -850,7 +844,7 @@ nsresult nsSeamonkeyProfileMigrator::TransformSmtpServersForImport(
     PBStructArray& aServers, PrefKeyHashTable& keyHashTable) {
   nsresult rv;
   nsCOMPtr<nsISmtpService> smtpService(
-      do_GetService(NS_SMTPSERVICE_CONTRACTID, &rv));
+      do_GetService("@mozilla.org/messengercompose/smtp;1", &rv));
   NS_ENSURE_SUCCESS(rv, rv);
 
   nsTArray<nsCString> newKeys;
@@ -931,8 +925,7 @@ nsresult nsSeamonkeyProfileMigrator::TransformAddressbooksForImport(
           if (NS_FAILED(rv)) {
             newKey.Assign(key);
             newKey.AppendInt(uniqueCount);
-            (void)branch->SetCharPref(filenameKey.get(),
-                                      nsDependentCString("placeholder"));
+            (void)branch->SetCharPref(filenameKey.get(), "placeholder"_ns);
             break;
           }
         }
@@ -1050,7 +1043,8 @@ nsresult nsSeamonkeyProfileMigrator::MigrateMABFile(
 
   nsresult rv;
 
-  nsCOMPtr<nsIAbManager> abManager(do_GetService(NS_ABMANAGER_CONTRACTID, &rv));
+  nsCOMPtr<nsIAbManager> abManager(
+      do_GetService("@mozilla.org/abmanager;1", &rv));
   NS_ENSURE_SUCCESS(rv, rv);
 
   nsCOMPtr<nsIAbDirectory> directory;

@@ -23,8 +23,6 @@ account-setup-password-label = Գաղտնաբառ
     .title = Լրացուցիչ, կօգտագործվի վավերացնելու օգտվողի ձեր անունը
 account-provisioner-button = Ստացեք նոր էլ. փոստի հասցե
     .accesskey = G
-account-setup-password-toggle =
-    .title = Ցուցադրել/թաքցնել գաղտնաբառը
 account-setup-password-toggle-show =
     .title = Ցուցադրել գաղտնաբառը մաքուր տեքստով
 account-setup-password-toggle-hide =
@@ -36,8 +34,14 @@ account-setup-remember-password = Հիշել գաղտնաբառը
 
 account-setup-button-cancel = Չեղարկել
     .accesskey = a
+account-setup-button-stop = Կանգնեցնել
+    .accesskey = S
 account-setup-button-retest = Կրկին փորձարկել
     .accesskey = t
+account-setup-button-continue = Շարունակել
+    .accesskey = C
+account-setup-button-done = Պատրաստ է
+    .accesskey = D
 
 ## Notifications
 
@@ -48,6 +52,8 @@ account-setup-success-password = Գաղտնաբառը ճիշտ է
 
 account-setup-step1-image =
     .title = Սկզբնական տեղակայում
+account-setup-step2-image =
+    .title = Բեռնում...
 account-setup-privacy-footnote2 = Ձեր տվյալները կպահվեն միայն ձեր համակարգչում:
 account-setup-selection-error = Օգնության կարիք ունե՞ք
 account-setup-documentation-help = Տեղակայման փաստաթղթեր
@@ -66,7 +72,6 @@ account-setup-find-settings-failed = { -brand-short-name }-ին չհաջողվե
 account-setup-manual-config-title = Ձեռքով կազմաձևում
 account-setup-incoming-server-legend = Մուտքային սպասարկիչ
 account-setup-protocol-label = Հաղորդակարգ
-protocol-imap-option = { account-setup-result-imap }
 account-setup-hostname-label = Հոսթի անունը.
 account-setup-port-label = Պորտը.
     .title = Ինքնահայտնաբերելու համար կայեք պորտի համարը 0

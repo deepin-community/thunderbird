@@ -10,7 +10,8 @@ async function subtest() {
   );
   CardDAVServer.putCardInternal(
     "change-me.vcf",
-    "BEGIN:VCARD\r\nUID:change-me\r\nFN:I'm going to be changed.\r\nEND:VCARD\r\n"
+    // This one includes a character encoded with UTF-8.
+    "BEGIN:VCARD\r\nUID:change-me\r\nFN:I'm going to be changed. \xCF\x9E\r\nEND:VCARD\r\n"
   );
   CardDAVServer.putCardInternal(
     "delete-me.vcf",
@@ -20,7 +21,7 @@ async function subtest() {
   let directory = initDirectory();
 
   // We'll only use this for the initial sync, so I think it's okay to use
-  // _bulkAddCards and not get a notification for every contact.
+  // bulkAddCards and not get a notification for every contact.
   info("Initial sync with server.");
   await directory.fetchAllFromServer();
 
@@ -44,7 +45,7 @@ async function subtest() {
   ]);
   Assert.equal(
     cardMap.get("change-me").displayName,
-    "I'm going to be changed."
+    "I'm going to be changed. Ϟ"
   );
 
   // Make some changes on the server.
@@ -174,6 +175,11 @@ async function subtest() {
       await observer.waitFor("addrbook-contact-updated"),
       "change-me"
     );
+    observer.checkAndClearNotifications({
+      "addrbook-contact-created": [],
+      "addrbook-contact-updated": ["change-me"],
+      "addrbook-contact-deleted": [],
+    });
 
     changeMeCard = directory.childCards.find(c => c.UID == "change-me");
     cardMap.set("change-me", changeMeCard);
@@ -202,7 +208,7 @@ async function subtest() {
     let newCard = Cc["@mozilla.org/addressbook/cardproperty;1"].createInstance(
       Ci.nsIAbCard
     );
-    newCard.displayName = "I'm another new contact.";
+    newCard.displayName = "I'm another new contact. ϔ";
     newCard.UID = "another-new";
     newCard = directory.addCard(newCard);
     Assert.ok(!directory.readOnly, "read-only directory should throw");
@@ -218,6 +224,11 @@ async function subtest() {
     );
 
     newCard = directory.childCards.find(c => c.UID == "another-new");
+    Assert.equal(
+      newCard.displayName,
+      "I'm another new contact. ϔ",
+      "non-ascii character survived the trip to the server"
+    );
 
     await checkCardsOnServer({
       "another-new": {

@@ -4,24 +4,16 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 /* import-globals-from ../../../components/compose/content/addressingWidgetOverlay.js */
+/* import-globals-from ../../../components/compose/content/MsgComposeCommands.js */
 
 /* global MozElements */
 /* global MozXULElement */
-/* global openUILink */
-/* global MessageIdClick */
-/* global EditContact */
-/* global AddContact */
 /* global gFolderDisplay */
-/* global UpdateEmailNodeDetails */
 /* global PluralForm */
-/* global UpdateExtraAddressProcessing */
 /* global onRecipientsChanged */
 
 // Wrap in a block to prevent leaking to window scope.
 {
-  const { Services } = ChromeUtils.import(
-    "resource://gre/modules/Services.jsm"
-  );
   const { MailServices } = ChromeUtils.import(
     "resource:///modules/MailServices.jsm"
   );
@@ -31,11 +23,6 @@
     LazyModules,
     "DBViewWrapper",
     "resource:///modules/DBViewWrapper.jsm"
-  );
-  ChromeUtils.defineModuleGetter(
-    LazyModules,
-    "DisplayNameUtils",
-    "resource:///modules/DisplayNameUtils.jsm"
   );
   ChromeUtils.defineModuleGetter(
     LazyModules,
@@ -52,505 +39,6 @@
     "TagUtils",
     "resource:///modules/TagUtils.jsm"
   );
-
-  class MozMailHeaderfield extends MozXULElement {
-    connectedCallback() {
-      this.setAttribute("context", "copyPopup");
-      this.classList.add("headerValue");
-
-      this._ariaBaseLabel = null;
-      if (this.getAttribute("aria-labelledby")) {
-        this._ariaBaseLabel = document.getElementById(
-          this.getAttribute("aria-labelledby")
-        );
-        this.removeAttribute("aria-labelledby");
-      }
-    }
-
-    set headerValue(val) {
-      // Solve the accessibility problem by manually fetching the translated
-      // string from the label and updating the attribute. Bug 1493608
-      if (this._ariaBaseLabel) {
-        this.setAttribute("aria-label", `${this._ariaBaseLabel.value}: ${val}`);
-      }
-
-      this.textContent = val;
-    }
-  }
-  customElements.define("mail-headerfield", MozMailHeaderfield);
-
-  class MozMailUrlfield extends MozMailHeaderfield {
-    constructor() {
-      super();
-      this.addEventListener("click", event => {
-        if (event.button != 2) {
-          openUILink(encodeURI(event.target.textContent), event);
-        }
-      });
-      this.addEventListener("keypress", event => {
-        if (event.key == "Enter") {
-          openUILink(encodeURI(event.target.textContent), event);
-        }
-      });
-    }
-
-    connectedCallback() {
-      super.connectedCallback();
-      this.setAttribute("context", "copyUrlPopup");
-      this.setAttribute("tabindex", "0");
-      this.classList.add("text-link", "headerValueUrl");
-    }
-  }
-  customElements.define("mail-urlfield", MozMailUrlfield);
-
-  class MozMailHeaderfieldTags extends MozXULElement {
-    connectedCallback() {
-      this.classList.add("headerValue");
-    }
-
-    set headerValue(val) {
-      this.buildTags(val);
-    }
-
-    buildTags(tags) {
-      // tags contains a list of actual tag names (not the keys), delimited by spaces
-      // each tag name is encoded.
-
-      // remove any existing tag items we've appended to the list
-      while (this.hasChildNodes()) {
-        this.lastChild.remove();
-      }
-
-      // tokenize the keywords based on ' '
-      const tagsArray = tags.split(" ");
-      for (let i = 0; i < tagsArray.length; i++) {
-        // for each tag, create a label, give it the font color that corresponds to the
-        // color of the tag and append it.
-        let tagName;
-        try {
-          // if we got a bad tag name, getTagForKey will throw an exception, skip it
-          // and go to the next one.
-          tagName = MailServices.tags.getTagForKey(tagsArray[i]);
-        } catch (ex) {
-          continue;
-        }
-
-        let color = MailServices.tags.getColorForKey(tagsArray[i]);
-        let textColor = "black";
-        if (!LazyModules.TagUtils.isColorContrastEnough(color)) {
-          textColor = "white";
-        }
-
-        // now create a label for the tag name, and set the color
-        const label = document.createXULElement("label");
-        label.setAttribute("value", tagName);
-        label.className = "tagvalue";
-        label.setAttribute(
-          "style",
-          "color: " + textColor + "; background-color: " + color + ";"
-        );
-
-        // Solve the accessibility problem by manually fetching the translated
-        // string from the label and updating the attribute. Bug 1493608
-        let ariaLabel = document.getElementById(
-          this.getAttribute("aria-labelledby")
-        );
-        label.setAttribute("aria-label", `${ariaLabel.value}: ${tagName}`);
-        label.removeAttribute("aria-labelledby");
-
-        this.appendChild(label);
-      }
-    }
-  }
-  customElements.define("mail-tagfield", MozMailHeaderfieldTags);
-
-  class MozMailNewsgroup extends MozXULElement {
-    connectedCallback() {
-      this.classList.add("emailDisplayButton");
-      this.setAttribute("context", "newsgroupPopup");
-      this.setAttribute("popup", "newsgroupPopup");
-
-      // Solve the accessibility problem by manually fetching the translated
-      // string from the label and updating the attribute. Bug 1493608
-      let ariaLabel = document.getElementById(
-        this.getAttribute("aria-labelledby")
-      );
-      this.setAttribute(
-        "aria-label",
-        `${ariaLabel.value}: ${this.getAttribute("newsgroup")}`
-      );
-      this.removeAttribute("aria-labelledby");
-    }
-  }
-  customElements.define("mail-newsgroup", MozMailNewsgroup);
-
-  class MozMailNewsgroupsHeaderfield extends MozXULElement {
-    connectedCallback() {
-      this.classList.add("headerValueBox");
-      this.mNewsgroups = [];
-    }
-
-    addNewsgroupView(aNewsgroup) {
-      this.mNewsgroups.push(aNewsgroup);
-    }
-
-    buildViews() {
-      for (let i = 0; i < this.mNewsgroups.length; i++) {
-        const newNode = document.createXULElement("mail-newsgroup");
-        if (i > 0) {
-          const textNode = document.createXULElement("label");
-          textNode.setAttribute("value", ",");
-          textNode.setAttribute("class", "newsgroupSeparator");
-          this.appendChild(textNode);
-        }
-
-        newNode.textContent = this.mNewsgroups[i];
-        newNode.setAttribute("newsgroup", this.mNewsgroups[i]);
-        newNode.setAttribute(
-          "aria-labelledby",
-          this.getAttribute("aria-labelledby")
-        );
-        this.appendChild(newNode);
-      }
-    }
-
-    clearHeaderValues() {
-      this.mNewsgroups = [];
-      while (this.hasChildNodes()) {
-        this.lastChild.remove();
-      }
-    }
-  }
-  customElements.define(
-    "mail-newsgroups-headerfield",
-    MozMailNewsgroupsHeaderfield
-  );
-
-  class MozMailMessageid extends MozXULElement {
-    static get observedAttributes() {
-      return ["label"];
-    }
-
-    constructor() {
-      super();
-      this.addEventListener("click", event => {
-        MessageIdClick(this, event);
-      });
-    }
-
-    connectedCallback() {
-      this.classList.add("messageIdDisplayButton");
-      this.setAttribute("context", "messageIdContext");
-      this._updateAttributes();
-    }
-
-    attributeChangedCallback() {
-      this._updateAttributes();
-    }
-
-    _updateAttributes() {
-      this.textContent = this.label || "";
-    }
-
-    set label(val) {
-      if (val == null) {
-        this.removeAttribute("label");
-      } else {
-        this.setAttribute("label", val);
-      }
-    }
-
-    get label() {
-      return this.getAttribute("label");
-    }
-  }
-  customElements.define("mail-messageid", MozMailMessageid);
-
-  /**
-   * MozMailMessageidsHeaderfield is a widget used to show/link messages in the message header.
-   * Shown by default for nntp messages, not for regular emails.
-   * @extends {MozXULElement}
-   */
-  class MozMailMessageidsHeaderfield extends MozXULElement {
-    connectedCallback() {
-      if (this.hasChildNodes() || this.delayConnectedCallback()) {
-        return;
-      }
-
-      this.setAttribute("context", "messageIdsHeaderfieldContext");
-
-      this.mMessageIds = [];
-      this.showFullMessageIds = false;
-
-      this.toggleButton = document.createElement("button");
-      this.toggleButton.classList.add("icon-button", "email-action-button");
-      // FIXME: Is the twisty icon the best representation since toggling the
-      // twisty icon does not expand hidden content vertically?
-      // A list of <details> elements may be more appropriate to capture this,
-      // and would be more accessible.
-      // NOTE: We currently style the toggle button as a twisty icon, which
-      // relies on the CSS -moz-locale-dir(rtl) selector to choose the image.
-      // Therefore, we use a <div> rather than an <img> for convenience.
-      // However, this means we cannot set alt text that describes the behaviour
-      // of the button to screen readers. We use aria-expanded to hint that the
-      // behaviour is _similar_ to tree expansion.
-      this.toggleButton.setAttribute("aria-expanded", this.showFullMessageIds);
-      this.toggleIcon = document.createElement("div");
-      this.toggleIcon.classList.add("emailToggleHeaderfield");
-      this.toggleButton.appendChild(this.toggleIcon);
-
-      this.toggleButton.addEventListener("click", () => {
-        this._toggleWrap();
-      });
-      this.appendChild(this.toggleButton);
-
-      this.headerValue = document.createXULElement("hbox");
-      this.headerValue.classList.add("headerValue");
-      this.headerValue.setAttribute("flex", "1");
-      this.appendChild(this.headerValue);
-    }
-
-    _toggleWrap() {
-      this.showFullMessageIds = !this.showFullMessageIds;
-      this.toggleButton.setAttribute("aria-expanded", this.showFullMessageIds);
-      this.toggleIcon.classList.toggle("open", this.showFullMessageIds);
-      for (let i = 0; i < this.headerValue.children.length; i += 2) {
-        if (this.showFullMessageIds) {
-          this.headerValue.children[i].setAttribute(
-            "label",
-            this.mMessageIds[i / 2]
-          );
-          this.headerValue.children[i].removeAttribute("tooltiptext");
-        } else {
-          this.headerValue.children[i].setAttribute("label", i / 2 + 1);
-          this.headerValue.children[i].setAttribute(
-            "tooltiptext",
-            this.mMessageIds[i / 2]
-          );
-        }
-      }
-    }
-
-    fillMessageIdNodes() {
-      while (
-        this.headerValue.children.length >
-        this.mMessageIds.length * 2 - 1
-      ) {
-        this.headerValue.lastElementChild.remove();
-      }
-
-      this.toggleButton.hidden = this.mMessageIds.length <= 1;
-
-      for (let i = 0; i < this.mMessageIds.length; i++) {
-        if (i * 2 <= this.headerValue.children.length - 1) {
-          this._updateMessageIdNode(
-            this.headerValue.children[i * 2],
-            i + 1,
-            this.mMessageIds[i],
-            this.mMessageIds.length
-          );
-        } else {
-          let newMessageIdNode = document.createXULElement("mail-messageid");
-
-          if (i > 0) {
-            let textNode = document.createXULElement("label");
-            textNode.setAttribute("value", ", ");
-            textNode.setAttribute("class", "messageIdSeparator");
-            this.headerValue.appendChild(textNode);
-          }
-          let itemInDocument = this.headerValue.appendChild(newMessageIdNode);
-          this._updateMessageIdNode(
-            itemInDocument,
-            i + 1,
-            this.mMessageIds[i],
-            this.mMessageIds.length
-          );
-        }
-      }
-    }
-
-    _updateMessageIdNode(messageIdNode, index, messageId, lastId) {
-      if (this.showFullMessageIds || index == lastId) {
-        messageIdNode.setAttribute("label", messageId);
-        messageIdNode.removeAttribute("tooltiptext");
-      } else {
-        messageIdNode.setAttribute("label", index);
-        messageIdNode.setAttribute("tooltiptext", messageId);
-      }
-
-      messageIdNode.setAttribute("index", index);
-      messageIdNode.setAttribute("messageid", messageId);
-    }
-
-    addMessageIdView(messageId) {
-      this.mMessageIds.push(messageId);
-    }
-
-    clearHeaderValues() {
-      this.mMessageIds = [];
-      if (this.showFullMessageIds) {
-        this.showFullMessageIds = false;
-        this.toggleIcon.classList.remove("open");
-      }
-    }
-  }
-  customElements.define(
-    "mail-messageids-headerfield",
-    MozMailMessageidsHeaderfield
-  );
-
-  class MozMailEmailaddress extends MozXULElement {
-    static get observedAttributes() {
-      return ["label", "crop"];
-    }
-
-    connectedCallback() {
-      if (this.hasChildNodes() || this.delayConnectedCallback()) {
-        return;
-      }
-      this.classList.add("emailDisplayButton");
-      this.setAttribute("context", "emailAddressPopup");
-      // FIXME: popup is not accessible to keyboard users.
-      this.setAttribute("popup", "emailAddressPopup");
-      this.setAttribute("align", "center");
-
-      const label = document.createXULElement("label");
-      label.classList.add("emaillabel");
-
-      // FIXME: The star button uses "title" to describe its action, but the
-      // tooltip is not currently accessible to keyboard users and doesn't
-      // appear as a node in the accessibility tree.
-      this.starButton = document.createElement("button");
-      this.starButton.classList.add("icon-button", "email-action-button");
-      this.starButton.setAttribute("contextmenu", "emailAddressPopup");
-      this.starIcon = document.createElement("img");
-      this.starIcon.classList.add("emailStar");
-      this.starButton.appendChild(this.starIcon);
-
-      this.starButton.addEventListener("mousedown", event => {
-        // Don't trigger popup.
-        event.preventDefault();
-      });
-      this.starButton.addEventListener("click", this.onClickStar.bind(this));
-
-      this.appendChild(label);
-      this.appendChild(this.starButton);
-
-      this.createdStarButton = true;
-
-      this._updateStarButton();
-      this._update();
-    }
-
-    onClickStar(event) {
-      // Only care about left-click events
-      if (event.button != 0) {
-        return;
-      }
-
-      // FIXME: both methods use properties set outside of this class in
-      // msgHdrView.js. Would be cleaner if the logic could be brought within
-      // this class since they are currently quite interdependent.
-      if (this.hasCard) {
-        EditContact(this);
-      } else {
-        AddContact(this);
-      }
-    }
-
-    _updateStarButton() {
-      let src;
-      let title;
-      if (this.hasCard) {
-        src = "chrome://messenger/skin/icons/starred.svg";
-        // Set the alt text.
-        document.l10n.setAttributes(
-          this.starIcon,
-          "message-header-address-in-address-book-icon"
-        );
-        title = document.getElementById("editContactItem").label;
-      } else {
-        src = "chrome://messenger/skin/icons/star.svg";
-        // Set the alt text.
-        document.l10n.setAttributes(
-          this.starIcon,
-          "message-header-address-not-in-address-book-icon"
-        );
-        title = document.getElementById("addToAddressBookItem").label;
-      }
-      this.starIcon.setAttribute("src", src);
-      this.starIcon.classList.toggle("starredFill", this.hasCard);
-      this.starButton.setAttribute("title", title);
-    }
-
-    /**
-     * Set the address book action for the star button depending on whether the
-     * shown address exists in the address book.
-     *
-     * @param {boolean} hasCard - Whether the shown address is already in the
-     *   address book.
-     */
-    setAddressBookState(hasCard) {
-      if (hasCard === this.hasCard) {
-        return;
-      }
-      this.hasCard = hasCard;
-      if (this.createdStarButton) {
-        this._updateStarButton();
-      }
-    }
-
-    attributeChangedCallback() {
-      if (!this.isConnectedAndReady) {
-        return;
-      }
-      this._update();
-    }
-
-    _update() {
-      const emailLabel = this.querySelector(".emaillabel");
-
-      this._updateNodeAttributes(emailLabel, "crop");
-      this._updateNodeAttributes(emailLabel, "value", "label");
-    }
-
-    _updateNodeAttributes(attrNode, attr, mappedAttr) {
-      mappedAttr = mappedAttr || attr;
-
-      if (
-        this.hasAttribute(mappedAttr) &&
-        this.getAttribute(mappedAttr) != null
-      ) {
-        attrNode.setAttribute(attr, this.getAttribute(mappedAttr));
-      } else {
-        attrNode.removeAttribute(attr);
-      }
-    }
-  }
-  customElements.define("mail-emailaddress", MozMailEmailaddress);
-
-  class MozMailEmailheaderfield extends MozXULElement {
-    connectedCallback() {
-      if (this.hasChildNodes() || this.delayConnectedCallback()) {
-        return;
-      }
-      this._mailEmailAddress = document.createXULElement("mail-emailaddress");
-      this._mailEmailAddress.classList.add("headerValue");
-      this._mailEmailAddress.setAttribute("containsEmail", "true");
-      this._mailEmailAddress.setAttribute(
-        "aria-labelledby",
-        this.getAttribute("aria-labelledby")
-      );
-      this._mailEmailAddress.removeAttribute("aria-labelledby");
-
-      this.appendChild(this._mailEmailAddress);
-    }
-
-    get emailAddressNode() {
-      return this._mailEmailAddress;
-    }
-  }
-  customElements.define("mail-emailheaderfield", MozMailEmailheaderfield);
 
   // NOTE: Icon column headers should have their "label" attribute set to
   // describe the icon for the accessibility tree.
@@ -599,6 +87,7 @@
   /**
    * Class extending treecols. This features a customized treecolpicker that
    * features a menupopup with more items than the standard one.
+   *
    * @augments {MozTreecols}
    */
   class MozThreadPaneTreecols extends customElements.get("treecols") {
@@ -641,6 +130,7 @@
   /**
    * Class extending treecolpicker. This implements UI to apply column settings
    * of the current thread pane to other mail folders too.
+   *
    * @augments {MozTreecolPicker}
    */
   class MozThreadPaneTreeColpicker extends customElements.get("treecolpicker") {
@@ -649,6 +139,7 @@
       if (this.delayConnectedCallback()) {
         return;
       }
+      MozXULElement.insertFTLIfNeeded("messenger/mailWidgets.ftl");
       let popup = this.querySelector(`menupopup[anonid="popup"]`);
 
       // We'll add an "Apply columns to..." menu
@@ -674,12 +165,31 @@
               </menu>
             </menupopup>
           </menu>
+          <menu class="applyViewTo-menu" data-l10n-id="apply-current-view-to-menu">
+            <menupopup>
+              <menu class="applyViewToFolder-menu"
+                    label="&columnPicker.applyToFolder.label;">
+                <menupopup is="folder-menupopup"
+                           class="applyViewToFolder"
+                           showFileHereLabel="true"
+                           position="start_before"></menupopup>
+              </menu>
+              <menu class="applyViewToFolderAndChildren-menu"
+                    label="&columnPicker.applyToFolderAndChildren.label;">
+                <menupopup is="folder-menupopup"
+                           class="applyViewToFolderAndChildren"
+                           showFileHereLabel="true"
+                           showAccountsFileHere="true"
+                           position="start_before"></menupopup>
+              </menu>
+            </menupopup>
+          </menu>
           `,
           ["chrome://messenger/locale/messenger.dtd"]
         )
       );
 
-      let confirmApply = (destFolder, useChildren) => {
+      let confirmApplyCols = (destFolder, useChildren) => {
         // Confirm the action with the user.
         let bundle = document.getElementById("bundle_messenger");
         let title = useChildren
@@ -698,17 +208,46 @@
         }
       };
 
-      let applyToFolderMenu = this.querySelector(".applyToFolder-menu");
-      applyToFolderMenu.addEventListener("command", event => {
-        confirmApply(event.target._folder, false);
-      });
-
-      let applyToFolderAndChildrenMenu = this.querySelector(
-        ".applyToFolderAndChildren-menu"
+      this.querySelector(".applyToFolder-menu").addEventListener(
+        "command",
+        event => {
+          confirmApplyCols(event.target._folder, false);
+        }
       );
-      applyToFolderAndChildrenMenu.addEventListener("command", event => {
-        confirmApply(event.target._folder, true);
-      });
+
+      this.querySelector(".applyToFolderAndChildren-menu").addEventListener(
+        "command",
+        event => {
+          confirmApplyCols(event.target._folder, true);
+        }
+      );
+
+      let confirmApplyView = async (destFolder, useChildren) => {
+        let msgId = useChildren
+          ? "threadpane-apply-changes-prompt-with-children-text"
+          : "threadpane-apply-changes-prompt-no-children-text";
+        let [title, message] = await document.l10n.formatValues([
+          { id: "threadpane-apply-changes-prompt-title" },
+          { id: msgId, args: { name: destFolder.prettyName } },
+        ]);
+        if (Services.prompt.confirm(null, title, message)) {
+          this._applyView(destFolder, useChildren);
+        }
+      };
+
+      this.querySelector(".applyViewToFolder-menu").addEventListener(
+        "command",
+        event => {
+          confirmApplyView(event.target._folder, false);
+        }
+      );
+
+      this.querySelector(".applyViewToFolderAndChildren-menu").addEventListener(
+        "command",
+        event => {
+          confirmApplyView(event.target._folder, true);
+        }
+      );
     }
 
     _applyColumns(destFolder, useChildren) {
@@ -729,7 +268,7 @@
         swappedColStateString = myColStateString;
       }
 
-      let isOutgoing = function(folder) {
+      let isOutgoing = function (folder) {
         return folder.isSpecialFolder(
           LazyModules.DBViewWrapper.prototype.OUTGOING_FOLDER_FLAGS,
           true
@@ -738,7 +277,7 @@
 
       let amIOutgoing = isOutgoing(gFolderDisplay.displayedFolder);
 
-      let colStateString = function(folder) {
+      let colStateString = function (folder) {
         return isOutgoing(folder) == amIOutgoing
           ? myColStateString
           : swappedColStateString;
@@ -747,23 +286,52 @@
       // Now propagate appropriately...
       const propName = gFolderDisplay.PERSISTED_COLUMN_PROPERTY_NAME;
       if (useChildren) {
-        // Generate an observer notification when we have finished
-        // configuring all folders.  This is currently done for the benefit
-        // of our tests.
-        let observerCallback = function() {
+        LazyModules.MailUtils.takeActionOnFolderAndDescendents(
+          destFolder,
+          folder => {
+            folder.setStringProperty(propName, colStateString(folder));
+            // Force the reference to be forgotten.
+            folder.msgDatabase = null;
+          }
+        ).then(() => {
           Services.obs.notifyObservers(
             gFolderDisplay.displayedFolder,
             "msg-folder-columns-propagated"
           );
-        };
-        LazyModules.MailUtils.setStringPropertyOnFolderAndDescendents(
-          propName,
-          colStateString,
-          destFolder,
-          observerCallback
-        );
+        });
       } else {
         destFolder.setStringProperty(propName, colStateString(destFolder));
+        // null out to avoid memory bloat.
+        destFolder.msgDatabase = null;
+      }
+    }
+
+    _applyView(destFolder, useChildren) {
+      let viewFlags =
+        gFolderDisplay.displayedFolder.msgDatabase.dBFolderInfo.viewFlags;
+      let sortType =
+        gFolderDisplay.displayedFolder.msgDatabase.dBFolderInfo.sortType;
+      let sortOrder =
+        gFolderDisplay.displayedFolder.msgDatabase.dBFolderInfo.sortOrder;
+      if (useChildren) {
+        LazyModules.MailUtils.takeActionOnFolderAndDescendents(
+          destFolder,
+          folder => {
+            folder.msgDatabase.dBFolderInfo.viewFlags = viewFlags;
+            folder.msgDatabase.dBFolderInfo.sortType = sortType;
+            folder.msgDatabase.dBFolderInfo.sortOrder = sortOrder;
+            folder.msgDatabase = null;
+          }
+        ).then(() => {
+          Services.obs.notifyObservers(
+            gFolderDisplay.displayedFolder,
+            "msg-folder-views-propagated"
+          );
+        });
+      } else {
+        destFolder.msgDatabase.dBFolderInfo.viewFlags = viewFlags;
+        destFolder.msgDatabase.dBFolderInfo.sortType = sortType;
+        destFolder.msgDatabase.dBFolderInfo.sortOrder = sortOrder;
         // null out to avoid memory bloat
         destFolder.msgDatabase = null;
       }
@@ -787,7 +355,8 @@
      * for instance, a description of a menu item.
      * It is typically used e.g. for the "Custom From Address..." feature to let the user chose and
      * edit the address to send from.
-     * @extends {MozMenuList}
+     *
+     * @augments {MozMenuList}
      */
     class MozMenulistEditable extends customElements.get("menulist") {
       static get markup() {
@@ -798,8 +367,8 @@
         <html:link rel="stylesheet" href="chrome://global/skin/menulist.css"/>
         <html:input part="text-input" type="text" allowevents="true"/>
         <hbox id="label-box" part="label-box" flex="1" role="none">
-          <label id="label" part="label" crop="right" flex="1" role="none"/>
-          <label id="highlightable-label" part="label" crop="right" flex="1" role="none"/>
+          <label id="label" part="label" crop="end" flex="1" role="none"/>
+          <label id="highlightable-label" part="label" crop="end" flex="1" role="none"/>
         </hbox>
         <dropmarker part="dropmarker" exportparts="icon: dropmarker-icon" type="menu" role="none"/>
         <html:slot/>
@@ -819,8 +388,7 @@
         if (this.getAttribute("type") == "description") {
           this._description = document.createXULElement("label");
           this._description.id = this._description.part = "description";
-          this._description.setAttribute("crop", "right");
-          this._description.setAttribute("flex", "10000");
+          this._description.setAttribute("crop", "end");
           this._description.setAttribute("role", "none");
           this.shadowRoot.getElementById("label").after(this._description);
         }
@@ -982,365 +550,10 @@
   }
 
   /**
-   * The MozMailMultiEmailheaderfield widget shows multiple emails. It collapses
-   * long rows and allows toggling the full view open. This widget is typically
-   * used in the message header pane to show addresses for To, Cc, Bcc, and any
-   * other addressing type header that can contain more than one mailbox.
-   *
-   * extends {MozXULElement}
-   */
-  class MozMailMultiEmailheaderfield extends MozXULElement {
-    constructor() {
-      super();
-
-      // This field is used to buffer the width of the comma node so that it
-      // only has to be determined once during the lifetime of this widget.
-      // Otherwise it would cause an expensive reflow every time.
-      this.commaNodeWidth = 0;
-
-      // The number of lines of addresses we will display before adding a (more)
-      // indicator to the widget. This can be increased using the preference
-      // mailnews.headers.show_n_lines_before_more.
-      this.maxLinesBeforeMore = 1;
-
-      // The maximum number of addresses in the more button tooltip text.
-      this.tooltipLength = 20;
-
-      this.addresses = [];
-    }
-
-    connectedCallback() {
-      if (this.delayConnectedCallback() || this.hasChildNodes()) {
-        return;
-      }
-
-      this.longEmailAddresses = document.createXULElement("hbox");
-      this.longEmailAddresses.classList.add("headerValueBox");
-      this.longEmailAddresses.setAttribute("flex", "1");
-      this.longEmailAddresses.setAttribute("singleline", "true");
-      this.longEmailAddresses.setAttribute("align", "baseline");
-
-      this.emailAddresses = document.createXULElement("description");
-      this.emailAddresses.classList.add("headerValue");
-      this.emailAddresses.setAttribute("containsEmail", "true");
-      this.emailAddresses.setAttribute("flex", "1");
-      this.emailAddresses.setAttribute("orient", "vertical");
-      this.emailAddresses.setAttribute("pack", "start");
-
-      this.more = document.createXULElement("label");
-      this.more.classList.add("moreIndicator");
-      this.more.addEventListener("click", this.toggleWrap.bind(this));
-      this.more.setAttribute("collapsed", "true");
-
-      this.longEmailAddresses.appendChild(this.emailAddresses);
-      this.appendChild(this.longEmailAddresses);
-      this.appendChild(this.more);
-    }
-
-    set maxAddressesInMoreTooltipValue(val) {
-      this.tooltipLength = val;
-    }
-
-    get maxAddressesInMoreTooltipValue() {
-      return this.tooltipLength;
-    }
-
-    /**
-     * Add an address to be shown in this widget.
-     *
-     * @param {Object} address                address to be added
-     * @param {String} address.displayName    display name of the address
-     * @param {String} address.emailAddress   email address of the address
-     * @param {String} address.fullAddress    full address of the address
-     */
-    addAddressView(address) {
-      this.addresses.push(address);
-    }
-
-    /**
-     * Method used to reset addresses shown by this widget.
-     */
-    resetAddressView() {
-      this.addresses.length = 0;
-    }
-
-    /**
-     * Private method used to set properties on an address node.
-     */
-    _updateEmailAddressNode(emailNode, address) {
-      emailNode.setAttribute(
-        "label",
-        address.fullAddress || address.displayName || ""
-      );
-      emailNode.removeAttribute("tooltiptext");
-      emailNode.setAttribute("emailAddress", address.emailAddress || "");
-      emailNode.setAttribute("fullAddress", address.fullAddress || "");
-      emailNode.setAttribute("displayName", address.displayName || "");
-
-      if ("UpdateEmailNodeDetails" in top && address.emailAddress) {
-        UpdateEmailNodeDetails(address.emailAddress, emailNode);
-      }
-    }
-
-    /**
-     * Private method used to create email address nodes for either our short or
-     * long view.
-     *
-     * @param {boolean} all - If false, show only a few addresses + "more".
-     * @return {integer} The number of addresses we have put into the list.
-     */
-    _fillAddressesNode(all) {
-      while (this.emailAddresses.lastChild) {
-        this.emailAddresses.lastChild.remove();
-      }
-
-      // This ensures that the worst-case "n more" width is considered.
-      this.setNMore(this.addresses.length);
-      this.more.collapsed = false;
-      let availableWidth =
-        this.emailAddresses.clientWidth - this.more.clientWidth;
-
-      // Add addresses until we're done, or we overflow the allowed lines.
-      let addrCount = 0;
-      for (let i = 0, line = 0, lineWidth = 0; i < this.addresses.length; i++) {
-        if (i > 0) {
-          this.appendComma();
-          // Calculate comma node width only the first time.
-          if (this.commaNodeWidth == 0) {
-            this.commaNodeWidth = this.emailAddresses.lastElementChild.clientWidth;
-          }
-        }
-
-        let newAddressNode = document.createXULElement("mail-emailaddress");
-        // Stash the headerName somewhere that UpdateEmailNodeDetails will be
-        // able to find it.
-        newAddressNode.setAttribute("headerName", this.headerName);
-
-        // Solve the accessibility problem by manually fetching the translated
-        // string from the label and updating the attribute. Bug 1493608
-        let ariaLabel = document.getElementById(
-          this.getAttribute("aria-labelledby")
-        );
-        newAddressNode.setAttribute(
-          "aria-label",
-          `${ariaLabel.value}: ${this.addresses[i].fullAddress ||
-            this.addresses[i].displayName ||
-            ""}`
-        );
-        newAddressNode.removeAttribute("aria-labelledby");
-
-        this._updateEmailAddressNode(newAddressNode, this.addresses[i]);
-        newAddressNode = this.emailAddresses.appendChild(newAddressNode);
-        addrCount++;
-
-        if (all) {
-          continue;
-        }
-
-        // Reading .clientWidth triggers an expensive reflow, so only do it
-        // when necessary for possible early loop exit to display (X more).
-        // Calculate width and lines, consider the i+1 comma node if we have to
-        // <http://www.w3.org/TR/cssom-view/#client-attributes>
-        // <https://developer.mozilla.org/en/Determining_the_dimensions_of_elements>
-        let newLineWidth =
-          i + 1 < this.addresses.length
-            ? newAddressNode.clientWidth + this.commaNodeWidth
-            : newAddressNode.clientWidth;
-        lineWidth += newLineWidth;
-
-        let overLineWidth = lineWidth - availableWidth;
-        if (overLineWidth > 0 && i > 0) {
-          line++;
-          lineWidth = newLineWidth;
-        }
-
-        if (line >= this.maxLinesBeforeMore) {
-          // Hide the last node spanning into the additional line (n>1)
-          // also hide it if <50px left after sliding the address (n=1)
-          // or if the last address would be truncated without "more"
-          if (
-            this.maxLinesBeforeMore > 1 ||
-            (i + 1 == this.addresses.length && overLineWidth > 50) ||
-            newLineWidth - overLineWidth < 50
-          ) {
-            this.emailAddresses.lastElementChild.remove(); // last addr
-            this.emailAddresses.lastElementChild.remove(); // last comma
-            addrCount--;
-          }
-          break;
-        }
-      }
-
-      this.more.collapsed = all || addrCount == this.addresses.length;
-
-      // If there are addresses we're not showing, set up the (N more) widget.
-      if (!this.more.collapsed) {
-        let remainingAddresses = this.addresses.length - addrCount;
-        this.setNMore(remainingAddresses);
-        this.setNMoreTooltiptext(this.addresses.slice(-remainingAddresses));
-      }
-
-      return addrCount; // number of addresses shown
-    }
-
-    /**
-     * Public method to build the DOM nodes for display, to be called after all the addresses have
-     * been added to the widget. It uses _fillAddressesNode to display at most maxLinesBeforeMore lines
-     * of ddresses plus the (more) widget which can be clicked to reveal the rest. The "singleline"
-     * attribute is set for one line only.
-     */
-    buildViews() {
-      this.maxLinesBeforeMore = Services.prefs.getIntPref(
-        "mailnews.headers.show_n_lines_before_more"
-      );
-      let headerchoice = Services.prefs.getIntPref("mail.show_headers");
-      if (
-        this.maxLinesBeforeMore < 1 ||
-        headerchoice == Ci.nsMimeHeaderDisplayTypes.AllHeaders
-      ) {
-        this._fillAddressesNode(true);
-        this.longEmailAddresses.removeAttribute("singleline");
-      } else {
-        this._fillAddressesNode(false);
-        // force a single line only in the default n=1 case
-        if (this.maxLinesBeforeMore > 1) {
-          this.longEmailAddresses.removeAttribute("singleline");
-        }
-      }
-    }
-
-    /**
-     * Append a comma after the (currently) final (email address, we hope!) node of
-     * this.emailAddresses.
-     */
-    appendComma() {
-      // Create and append a comma.
-      let commaNode = document.createXULElement("label");
-      commaNode.setAttribute("value", ",");
-      commaNode.setAttribute("class", "emailSeparator");
-      this.emailAddresses.appendChild(commaNode);
-    }
-
-    /**
-     * Set up a (N more) widget which can be clicked to reveal the rest.
-     * @param {integer} number - the number of addresses "more" will reveal
-     */
-    setNMore(number) {
-      // Figure out the right plural for the language we're using
-      let words = document
-        .getElementById("bundle_messenger")
-        .getString("headerMoreAddrs");
-      let moreForm = PluralForm.get(number, words).replace("#1", number);
-
-      // Set the "n more" text node.
-      this.more.setAttribute("value", moreForm);
-      // Remove the tooltip text of the more widget.
-      this.more.removeAttribute("tooltiptext");
-    }
-
-    /**
-     * Populate the tooltiptext of the (N more) widget with hidden email addresses.
-     */
-    setNMoreTooltiptext(addresses) {
-      if (addresses.length == 0) {
-        return;
-      }
-
-      let tttArray = [];
-      for (let i = 0; i < addresses.length && i < this.tooltipLength; i++) {
-        tttArray.push(addresses[i].fullAddress);
-      }
-      let ttText = tttArray.join(", ");
-
-      let remainingAddresses = addresses.length - tttArray.length;
-      // Not all missing addresses fit in the tooltip.
-      if (remainingAddresses > 0) {
-        // Figure out the right plural for the language we're using,
-        let words = document
-          .getElementById("bundle_messenger")
-          .getString("headerMoreAddrsTooltip");
-        let moreForm = PluralForm.get(remainingAddresses, words).replace(
-          "#1",
-          remainingAddresses
-        );
-        ttText += moreForm;
-      }
-      this.more.setAttribute("tooltiptext", ttText);
-    }
-
-    /**
-     * Updates the nodes of this field with a call to UpdateExtraAddressProcessing. The parameters are
-     * optional fields that can contain extra information to be passed to
-     * UpdateExtraAddressProcessing, the implementation of that function should be checked to
-     * determine what it requires
-     */
-    updateExtraAddressProcessing(param1, param2, param3) {
-      customElements.upgrade(this);
-      if (UpdateExtraAddressProcessing) {
-        const children = this.emailAddresses.children;
-        for (let i = 0; i < this.addresses.length; i++) {
-          UpdateExtraAddressProcessing(
-            this.addresses[i],
-            children[i * 2],
-            param1,
-            param2,
-            param3
-          );
-        }
-      }
-    }
-
-    /**
-     * Called when the (more) indicator has been clicked on; re-renders the
-     * widget with all the addresses.
-     */
-    toggleWrap() {
-      // Workaround the fact that XUL line-wrapping and "overflow: auto" don't interact properly
-      // (bug 492645), without which we would be inadvertently occluding too much of the message
-      // header text and forcing the user to scroll unnecessarily (bug 525225).
-      //
-      // Fake the "All Headers" mode, so that we get a scroll bar.
-      // Will be reset when a new message loads.
-      document
-        .getElementById("expandedHeaderView")
-        .setAttribute("show_header_mode", "all");
-
-      // Causes different CSS selectors to be used, which allows all of the addresses to be properly
-      // displayed and wrapped.
-      this.longEmailAddresses.removeAttribute("singleline");
-
-      // Re-render the node, this time with all the addresses.
-      this._fillAddressesNode(true);
-      document
-        .getElementById("expandedHeaderView")
-        .setAttribute(
-          "height",
-          document.getElementById("expandedHeadersTopBox").clientHeight +
-            document.getElementById("expandedHeaders2").clientHeight
-        );
-      // This attribute will be reinit in the 'UpdateExpandedMessageHeaders()' method.
-    }
-
-    clearHeaderValues() {
-      // Clear out our local state.
-      this.addresses = [];
-      this.longEmailAddresses.setAttribute("singleline", "true");
-      while (this.emailAddresses.lastChild) {
-        this.emailAddresses.lastChild.remove();
-      }
-    }
-  }
-  customElements.define(
-    "mail-multi-emailheaderfield",
-    MozMailMultiEmailheaderfield
-  );
-
-  /**
    * The MozAttachmentlist widget lists attachments for a mail. This is typically used to show
    * attachments while writing a new mail as well as when reading mails.
-   * It has two layouts, which you can set by orient="horizontal" and orient="vertical" respectively.
    *
-   * @extends {MozElements.RichListBox}
+   * @augments {MozElements.RichListBox}
    */
   class MozAttachmentlist extends MozElements.RichListBox {
     constructor() {
@@ -1383,22 +596,6 @@
         }
       });
 
-      this.addEventListener("click", event => {
-        if (
-          event.button != 0 ||
-          event.target.classList.contains("attachmentItem")
-        ) {
-          return;
-        }
-
-        if (
-          this.selType != "multiple" ||
-          (!event.ctrlKey && !event.shiftKey && !event.metaKey)
-        ) {
-          this.clearSelection();
-        }
-      });
-
       // Make sure we keep the focus.
       this.addEventListener("mousedown", event => {
         if (event.button != 0) {
@@ -1409,43 +606,6 @@
           this.focus();
         }
       });
-
-      if (this.getAttribute("orient") === "horizontal") {
-        this.addEventListener("keypress", event => {
-          switch (event.keyCode) {
-            case KeyEvent.DOM_VK_LEFT:
-              this.moveByOffset(-1, !event.ctrlKey, event.shiftKey);
-              event.preventDefault();
-              break;
-
-            case KeyEvent.DOM_VK_RIGHT:
-              this.moveByOffset(1, !event.ctrlKey, event.shiftKey);
-              event.preventDefault();
-              break;
-
-            case KeyEvent.DOM_VK_DOWN:
-              this.moveByOffset(
-                this._itemsPerRow(),
-                !event.ctrlKey,
-                event.shiftKey
-              );
-              event.preventDefault();
-              break;
-
-            case KeyEvent.DOM_VK_UP:
-              this.moveByOffset(
-                -this._itemsPerRow(),
-                !event.ctrlKey,
-                event.shiftKey
-              );
-              event.preventDefault();
-              break;
-
-            default:
-              break;
-          }
-        });
-      }
     }
 
     connectedCallback() {
@@ -1465,27 +625,6 @@
         .forEach(child =>
           child.setAttribute("context", this.getAttribute("itemcontext"))
         );
-    }
-
-    set view(val) {
-      this.setAttribute("view", val);
-    }
-
-    get view() {
-      return this.getAttribute("view");
-    }
-
-    set orient(val) {
-      // The current item can get messed up when changing orientation.
-      let curr = this.currentItem;
-      this.currentItem = null;
-
-      this.setAttribute("orient", val);
-      this.currentItem = curr;
-    }
-
-    get orient() {
-      return this.getAttribute("orient");
     }
 
     get itemCount() {
@@ -1607,10 +746,6 @@
       item.classList.add("attachmentItem");
       item.setAttribute("role", "option");
 
-      let itemContainer = this.ownerDocument.createXULElement("hbox");
-      itemContainer.setAttribute("flex", "1");
-      itemContainer.classList.add("attachmentcell-content");
-
       item.addEventListener("dblclick", event => {
         let evt = document.createEvent("XULCommandEvent");
         evt.initCommandEvent(
@@ -1625,58 +760,43 @@
           event.metaKey,
           null
         );
-        event.target.dispatchEvent(evt);
+        item.dispatchEvent(evt);
       });
 
-      let iconContainer = this.ownerDocument.createXULElement("hbox");
-      iconContainer.setAttribute("align", "center");
+      let makeDropIndicator = placementClass => {
+        let img = document.createElement("img");
+        img.setAttribute(
+          "src",
+          "chrome://messenger/skin/icons/tab-drag-indicator.svg"
+        );
+        img.setAttribute("alt", "");
+        img.classList.add("attach-drop-indicator", placementClass);
+        return img;
+      };
+
+      item.appendChild(makeDropIndicator("before"));
+
       let icon = this.ownerDocument.createElement("img");
       icon.setAttribute("alt", "");
-      icon.classList.add("attachmentcell-icon");
-      // Hide if invalid.
-      icon.addEventListener("error", () => icon.classList.add("invalid-src"));
-      iconContainer.appendChild(icon);
+      icon.setAttribute("draggable", "false");
+      // Allow the src to be invalid.
+      icon.classList.add("attachmentcell-icon", "invisible-on-broken");
+      item.appendChild(icon);
 
-      let textContainer = this.ownerDocument.createXULElement("hbox");
-      textContainer.setAttribute("flex", "1");
-      textContainer.classList.add("attachmentcell-text");
-      let textName = this.ownerDocument.createXULElement("hbox");
-      textName.setAttribute("flex", "1");
-      textName.classList.add("attachmentcell-nameselection");
-      let textLabel = this.ownerDocument.createXULElement("label");
-      textLabel.setAttribute("flex", "1");
-      textLabel.setAttribute("crop", "center");
+      let textLabel = this.ownerDocument.createElement("span");
       textLabel.classList.add("attachmentcell-name");
-      textName.appendChild(textLabel);
+      item.appendChild(textLabel);
 
-      let spacer = this.ownerDocument.createXULElement("spacer");
-      spacer.setAttribute("flex", "99999");
+      let extensionLabel = this.ownerDocument.createElement("span");
+      extensionLabel.classList.add("attachmentcell-extension");
+      item.appendChild(extensionLabel);
 
-      let sizeLabel = this.ownerDocument.createXULElement("label");
+      let sizeLabel = this.ownerDocument.createElement("span");
+      sizeLabel.setAttribute("role", "note");
       sizeLabel.classList.add("attachmentcell-size");
+      item.appendChild(sizeLabel);
 
-      textContainer.appendChild(textName);
-      textContainer.appendChild(spacer);
-      textContainer.appendChild(sizeLabel);
-
-      let dropIndicatorBefore = document.createElement("img");
-      dropIndicatorBefore.setAttribute(
-        "src",
-        "chrome://messenger/skin/icons/tab-drag-indicator.svg"
-      );
-      dropIndicatorBefore.classList.add("attach-drop-indicator", "before");
-      let dropIndicatorAfter = document.createElement("img");
-      dropIndicatorAfter.setAttribute(
-        "src",
-        "chrome://messenger/skin/icons/tab-drag-indicator.svg"
-      );
-      dropIndicatorAfter.classList.add("attach-drop-indicator", "after");
-
-      itemContainer.appendChild(dropIndicatorBefore);
-      itemContainer.appendChild(iconContainer);
-      itemContainer.appendChild(textContainer);
-      itemContainer.appendChild(dropIndicatorAfter);
-      item.appendChild(itemContainer);
+      item.appendChild(makeDropIndicator("after"));
 
       item.setAttribute("context", this.getAttribute("itemcontext"));
 
@@ -1694,15 +814,6 @@
      */
     setAttachmentIconSrc(item, src) {
       let icon = item.querySelector(".attachmentcell-icon");
-      if (!src) {
-        icon.classList.add("invalid-src");
-        icon.removeAttribute("src");
-        return;
-      }
-      icon.classList.remove("invalid-src");
-      // NOTE: Setting the same value for "src" should still trigger the
-      // reloading of the image, and re-add the invalid-src class if the same
-      // error occurs.
       icon.setAttribute("src", src);
     }
 
@@ -1718,6 +829,10 @@
       let type = attachment.contentType;
       if (type == "text/x-moz-deleted") {
         src = "chrome://messenger/skin/icons/attachment-deleted.svg";
+      } else if (!item.loaded || item.uploading) {
+        src = "chrome://global/skin/icons/loading.png";
+      } else if (item.cloudIcon) {
+        src = item.cloudIcon;
       } else {
         let iconName = attachment.name;
         if (iconName.toLowerCase().endsWith(".eml")) {
@@ -1764,45 +879,75 @@
     }
 
     /**
-     * Set the attachment's loaded state.
+     * Set the attachment item's loaded state.
      *
      * @param {MozRichlistitem} item - The attachment item.
      * @param {boolean} loaded - Whether the attachment is fully loaded.
-     * @param {string} [cloudIcon] - The icon for the cloud provider where the
-     *   attachment was loaded, if any.
      */
-    setAttachmentLoaded(item, loaded, cloudIcon) {
+    setAttachmentLoaded(item, loaded) {
       item.loaded = loaded;
-      if (loaded) {
-        if (cloudIcon !== undefined) {
-          this.setAttachmentIconSrc(item, cloudIcon);
-        } else {
-          this.refreshAttachmentIcon(item);
-        }
-      } else {
-        this.setAttachmentIconSrc(
-          item,
-          "chrome://global/skin/icons/loading.png"
-        );
-      }
+      this.refreshAttachmentIcon(item);
+    }
+
+    /**
+     * Set the attachment item's cloud icon, if any.
+     *
+     * @param {MozRichlistitem} item - The attachment item.
+     * @param {?string} cloudIcon - The icon of the cloud provider where the
+     *   attachment was uploaded. Will be used as file type icon in the list of
+     *   attachments, if specified.
+     */
+    setCloudIcon(item, cloudIcon) {
+      item.cloudIcon = cloudIcon;
+      this.refreshAttachmentIcon(item);
+    }
+
+    /**
+     * Set the attachment item's displayed name.
+     *
+     * @param {MozRichlistitem} item - The attachment item.
+     * @param {string} name - The name to display for the attachment.
+     */
+    setAttachmentName(item, name) {
+      item.setAttribute("name", name);
+      // Extract what looks like the file extension so we can always show it,
+      // even if the full name would overflow.
+      // NOTE: This is a convenience feature rather than a security feature
+      // since the content type of an attachment need not match the extension.
+      let found = name.match(/^(.+)(\.[a-zA-Z0-9_#$!~+-]{1,16})$/);
+      item.querySelector(".attachmentcell-name").textContent =
+        found?.[1] || name;
+      item.querySelector(".attachmentcell-extension").textContent =
+        found?.[2] || "";
+    }
+
+    /**
+     * Set the attachment item's displayed size.
+     *
+     * @param {MozRichlistitem} item - The attachment item.
+     * @param {string} size - The size to display for the attachment.
+     */
+    setAttachmentSize(item, size) {
+      item.setAttribute("size", size);
+      let sizeEl = item.querySelector(".attachmentcell-size");
+      sizeEl.textContent = size;
+      sizeEl.hidden = !size;
     }
 
     invalidateItem(item, name) {
       let attachment = item.attachment;
-      item.setAttribute("name", name || attachment.name);
-      item
-        .querySelector(".attachmentcell-name")
-        .setAttribute("value", name || attachment.name);
 
-      let size;
-      if (attachment.size != null && attachment.size != -1) {
-        size = this.messenger.formatFileSize(attachment.size);
-      } else {
-        // Use a zero-width space so the size label has the right height.
-        size = "\u200b";
+      this.setAttachmentName(item, name || attachment.name);
+      let size =
+        attachment.size == null || attachment.size == -1
+          ? ""
+          : this.messenger.formatFileSize(attachment.size);
+      if (size && item.cloudHtmlFileSize > 0) {
+        size = `${this.messenger.formatFileSize(
+          item.cloudHtmlFileSize
+        )} (${size})`;
       }
-      item.setAttribute("size", size);
-      item.querySelector(".attachmentcell-size").setAttribute("value", size);
+      this.setAttachmentSize(item, size);
 
       // By default, items are considered loaded.
       item.loaded = true;
@@ -1832,11 +977,6 @@
     }
 
     _itemsPerRow() {
-      if (this.getAttribute("orient") === "vertical") {
-        // Vertical attachment lists have one item per row by definition.
-        return 1;
-      }
-
       // For 0 or 1 children, we can assume that they all fit in one row.
       if (this._childNodes.length < 2) {
         return this._childNodes.length;
@@ -1872,7 +1012,8 @@
     }
 
     /**
-     * Only used by attachmentlist with horizontal orient.
+     * Set the width of each child to the largest width child to create a
+     * grid-like effect for the flex-wrapped attachment list.
      */
     setOptimumWidth() {
       if (this._childNodes.length == 0) {
@@ -1880,18 +1021,15 @@
       }
 
       let width = 0;
-
-      // If widths have changed after the initial calculation (updated
-      // size string), clear each item's prior hardcoded width so
-      // getBoundingClientRect is natural, then get the width for
-      // the widest item and set it on all the items again.
-      // Use Math.ceil to always round to the next higher integer.
       for (let child of this._childNodes) {
-        child.width = "";
-        width = Math.max(width, Math.ceil(child.getBoundingClientRect().width));
+        // Unset the width, then the child will expand or shrink to its
+        // "natural" size in the flex-wrapped container. I.e. its preferred
+        // width bounded by the width of the container's content space.
+        child.style.width = null;
+        width = Math.max(width, child.getBoundingClientRect().width);
       }
       for (let child of this._childNodes) {
-        child.width = width;
+        child.style.width = `${width}px`;
       }
     }
   }
@@ -1904,7 +1042,7 @@
    * The MailAddressPill widget is used to display the email addresses in the
    * messengercompose.xhtml window.
    *
-   * @extends {MozXULElement}
+   * @augments {MozXULElement}
    */
   class MailAddressPill extends MozXULElement {
     static get inheritedAttributes() {
@@ -1915,19 +1053,22 @@
 
     /**
      * Indicates whether the address of this pill is for a mail list.
+     *
      * @type {boolean}
      */
     isMailList = false;
 
     /**
      * If this pill is for a mail list, this provides the URI.
+     *
      * @type {?string}
      */
     listURI = null;
 
     /**
      * If this pill is for a mail list, this provides the total count of
-     * its addreses.
+     * its addresses.
+     *
      * @type {number}
      */
     listAddressCount = 0;
@@ -2033,7 +1174,7 @@
      */
     get rowInput() {
       return this.closest(".address-container").querySelector(
-        `input[is="autocomplete-input"][recipienttype]`
+        ".address-row-input"
       );
     }
 
@@ -2041,7 +1182,7 @@
      * Check if the pill is currently in "Edit Mode", meaning the label is
      * hidden and the html:input field is visible.
      *
-     * @return {boolean} true if the pill is currently being edited.
+     * @returns {boolean} true if the pill is currently being edited.
      */
     get isEditing() {
       return !this.emailInput.hasAttribute("hidden");
@@ -2087,7 +1228,7 @@
           return;
         }
 
-        this.removeAttribute("selected");
+        this.closest("mail-recipients-area").deselectAllPills();
       });
 
       this.emailInput.addEventListener("keypress", event => {
@@ -2126,10 +1267,10 @@
     /**
      * Simple email address validation.
      *
-     * @param {String} address - An email address.
+     * @param {string} address - An email address.
      */
     isValidAddress(address) {
-      return address.includes("@", 1) && !address.endsWith("@");
+      return /^[^\s@]+@[^\s@]+$/.test(address);
     }
 
     /**
@@ -2137,6 +1278,11 @@
      * html:input element.
      */
     startEditing() {
+      // Record the intention of editing a pill as a change in the recipient
+      // even if the text is not actually changed in order to prevent accidental
+      // data loss.
+      onRecipientsChanged();
+
       // We need to set the min and max width before hiding and showing the
       // child nodes in order to prevent unwanted jumps in the resizing of the
       // edited pill. Both properties are necessary to handle flexbox.
@@ -2230,6 +1376,8 @@
       this.classList.remove("editing");
       this.labelView.removeAttribute("hidden");
       this.emailInput.setAttribute("hidden", "hidden");
+      let textLength = this.emailInput.value.length;
+      this.emailInput.setSelectionRange(textLength, textLength);
       this.rowInput.focus();
     }
 
@@ -2278,10 +1426,11 @@
       this.pillIndicator.hidden = true;
 
       // Check if the address is not in the Address Book only if it's not a
-      // mail list.
+      // mail list or a newsgroup.
       if (
+        !isNewsgroup &&
         !this.isMailList &&
-        !LazyModules.DisplayNameUtils.getCardForEmail(this.emailAddress)?.card
+        !MailServices.ab.cardForEmailAddress(this.emailAddress)
       ) {
         this.setAttribute(
           "tooltiptext",
@@ -2298,7 +1447,7 @@
      *
      * @param {("next"|"previous")} [siblingsType="next"] - Iterate next or
      *   previous siblings.
-     * @return {HTMLElement} - The nearest unselected sibling element, or null.
+     * @returns {HTMLElement} - The nearest unselected sibling element, or null.
      */
     getUnselectedSiblingPill(siblingsType = "next") {
       if (siblingsType == "next") {
@@ -2340,7 +1489,7 @@
    * The MailRecipientsArea widget is used to display the recipient rows in the
    * header area of the messengercompose.xul window.
    *
-   * @extends {MozXULElement}
+   * @augments {MozXULElement}
    */
   class MailRecipientsArea extends MozXULElement {
     connectedCallback() {
@@ -2356,7 +1505,8 @@
         setupAutocompleteInput(input);
 
         input.addEventListener("keypress", event => {
-          if (event.key != "Tab" || !event.shiftKey) {
+          // Ctrl+Shift+Tab is handled by moveFocusToNeighbouringArea.
+          if (event.key != "Tab" || !event.shiftKey || event.ctrlKey) {
             return;
           }
           event.preventDefault();
@@ -2369,22 +1519,21 @@
       }
 
       // Force the focus on the first available input field if Tab is
-      // pressed on the extraRecipientsLabel label.
+      // pressed on the extraAddressRowsMenuButton label.
       document
-        .getElementById("extraRecipientsLabel")
+        .getElementById("extraAddressRowsMenuButton")
         .addEventListener("keypress", event => {
           if (event.key == "Tab" && !event.shiftKey) {
             event.preventDefault();
             let row = this.querySelector(".address-row:not(.hidden)");
-            // If the close label is collapsed, focus on the input field.
-            if (row.querySelector(".remove-field-button").hidden) {
-              row
-                .querySelector(`input[is="autocomplete-input"][recipienttype]`)
-                .focus();
+            let removeFieldButton = row.querySelector(".remove-field-button");
+            // If the close button is hidden, focus on the input field.
+            if (removeFieldButton.hidden) {
+              row.querySelector(".address-row-input").focus();
               return;
             }
-            // Focus on the close label.
-            row.querySelector(".remove-field-button").focus();
+            // Focus on the close button.
+            removeFieldButton.focus();
           }
         });
 
@@ -2433,16 +1582,16 @@
           .classList.add("drag-address-container");
       });
 
-      this.addEventListener("dragexit", event => {
+      this.addEventListener("dragleave", event => {
         if (!event.dataTransfer.getData("text/pills")) {
           return;
         }
-        // If dragexit from pill, remove its drop indicator style.
+        // If dragleave from pill, remove its drop indicator style.
         event.target
           .closest("mail-address-pill")
           ?.classList.remove("drop-indicator");
 
-        // If dragexit from address row, remove the indicator style of its
+        // If dragleave from address row, remove the indicator style of its
         // address container.
         event.target
           .closest(".address-row")
@@ -2469,8 +1618,11 @@
 
         // Pills have been dropped ("text/pills").
         let targetAddressRow = event.target.closest(".address-row");
-        // Return if pills have been dropped outside an address row (edge cases).
-        if (!targetAddressRow) {
+        // Return if pills have been dropped outside an address row.
+        if (
+          !targetAddressRow ||
+          targetAddressRow.classList.contains("address-row-raw")
+        ) {
           return;
         }
 
@@ -2535,9 +1687,8 @@
      *   selected addresses should be appended.
      */
     createDNDPills(addressContainer, appendStart, targetAddress) {
-      let existingPills = addressContainer.querySelectorAll(
-        "mail-address-pill"
-      );
+      let existingPills =
+        addressContainer.querySelectorAll("mail-address-pill");
       let existingAddresses = [...existingPills].map(pill => pill.fullAddress);
       let selectedAddresses = [...this.getAllSelectedPills()].map(
         pill => pill.fullAddress
@@ -2583,12 +1734,10 @@
       }
 
       // Create pills for all the combined addresses.
-      let recipientType = addressContainer
-        .querySelector(".address-input[recipienttype]")
-        .getAttribute("recipienttype");
+      let row = addressContainer.closest(".address-row");
       for (let address of combinedAddresses) {
-        awAddRecipientsArray(
-          recipientType,
+        addressRowAddRecipientsArray(
+          row,
           [address],
           selectedAddresses.includes(address)
         );
@@ -2599,18 +1748,21 @@
     }
 
     /**
-     * Create a new recipient row container with a row input.
+     * Create a new address row and a menuitem for revealing it.
      *
-     * @param {Object} recipient - An object for various element attributes.
+     * @param {object} recipient - An object for various element attributes.
      * @param {boolean} rawInput - A flag to disable pills and autocompletion.
-     * @return {Element} - The newly created recipient row.
+     * @returns {object} - The newly created elements.
+     * @property {Element} row - The address row.
+     * @property {Element} showRowMenuItem - The menu item that shows the row.
      */
+    // NOTE: This is currently never called with rawInput = false, so it may be
+    // out of date if used.
     buildRecipientRow(recipient, rawInput = false) {
       let row = document.createXULElement("hbox");
-      row.setAttribute("id", recipient.row);
-      row.classList.add("addressingWidgetItem", "address-row");
-      row.setAttribute("data-labelid", recipient.labelId);
-      row.setAttribute("data-labeltype", recipient.type);
+      row.setAttribute("id", recipient.rowId);
+      row.classList.add("address-row");
+      row.dataset.recipienttype = recipient.type;
 
       let firstCol = document.createXULElement("hbox");
       firstCol.classList.add("aw-firstColBox");
@@ -2618,9 +1770,9 @@
       row.classList.add("hidden");
 
       let closeButton = document.createElement("button");
-      closeButton.classList.add("remove-field-button", "icon-button");
+      closeButton.classList.add("remove-field-button", "plain-button");
       document.l10n.setAttributes(closeButton, "remove-address-row-button", {
-        type: recipient.labelId,
+        type: recipient.type,
       });
       let closeIcon = document.createElement("img");
       closeIcon.setAttribute("src", "chrome://global/skin/icons/close.svg");
@@ -2645,16 +1797,16 @@
       );
 
       let label = document.createXULElement("label");
-      label.setAttribute("id", recipient.label);
-      label.setAttribute("value", recipient.labelId);
-      label.setAttribute("control", recipient.id);
+      label.setAttribute("id", recipient.labelId);
+      label.setAttribute("value", recipient.type);
+      label.setAttribute("control", recipient.inputId);
       label.setAttribute("flex", 1);
       label.setAttribute("crop", "end");
       labelContainer.appendChild(label);
       row.appendChild(labelContainer);
 
       let inputContainer = document.createXULElement("hbox");
-      inputContainer.setAttribute("id", recipient.container);
+      inputContainer.setAttribute("id", recipient.containerId);
       inputContainer.setAttribute("flex", 1);
       inputContainer.setAttribute("align", "center");
       inputContainer.classList.add(
@@ -2662,7 +1814,7 @@
         "wrap-container",
         "address-container"
       );
-      inputContainer.addEventListener("click", focusAddressInput);
+      inputContainer.addEventListener("click", focusAddressInputOnClick);
 
       // Set up the row input for the row.
       let input = document.createElement(
@@ -2673,15 +1825,11 @@
               is: "autocomplete-input",
             }
       );
-      input.setAttribute("id", recipient.id);
-      input.setAttribute("recipienttype", recipient.type);
+      input.setAttribute("id", recipient.inputId);
       input.setAttribute("size", 1);
       input.setAttribute("type", "text");
       input.setAttribute("disableonsend", true);
-      input.classList.add("plain", "address-input");
-      if (recipient.class) {
-        input.classList.add(recipient.class);
-      }
+      input.classList.add("plain", "address-input", "address-row-input");
 
       if (!rawInput) {
         // Regular autocomplete address input, not other header with raw input.
@@ -2709,6 +1857,7 @@
       } else {
         // Handle keydown event in other header input (rawInput), which does not
         // have autocomplete and its associated keydown handling.
+        row.classList.add("address-row-raw");
         input.addEventListener("keydown", otherHeaderInputOnKeyDown);
         input.addEventListener("input", event => {
           addressInputOnInput(event, true);
@@ -2725,7 +1874,20 @@
       inputContainer.appendChild(input);
       row.appendChild(inputContainer);
 
-      return row;
+      // Create the menuitem that shows the row on selection.
+      let showRowMenuItem = document.createXULElement("menuitem");
+      showRowMenuItem.classList.add("subviewbutton", "menuitem-iconic");
+      showRowMenuItem.setAttribute("id", recipient.showRowMenuItemId);
+      showRowMenuItem.setAttribute("disableonsend", true);
+      showRowMenuItem.setAttribute("label", recipient.type);
+
+      showRowMenuItem.addEventListener("command", () =>
+        showAndFocusAddressRow(row.id)
+      );
+
+      row.dataset.showSelfMenuitem = showRowMenuItem.id;
+
+      return { row, showRowMenuItem };
     }
 
     /**
@@ -2734,7 +1896,7 @@
      * @param {HTMLElement} element - The original autocomplete input that
      *   generated the pill.
      * @param {Array} address - The array containing the recipient's info.
-     * @return {Element} The newly created pill.
+     * @returns {Element} The newly created pill.
      */
     createRecipientPill(element, address) {
       let pill = document.createXULElement("mail-address-pill");
@@ -2743,7 +1905,6 @@
       pill.emailAddress = address.email || "";
       pill.fullAddress = address.toString();
       pill.displayName = address.name || "";
-      pill.setAttribute("recipienttype", element.getAttribute("recipienttype"));
 
       pill.addEventListener("click", event => {
         if (pill.hasAttribute("disabled")) {
@@ -2802,12 +1963,16 @@
 
       // The emailInput attribute is accessible only after the pill has been
       // appended to the DOM.
-      let classes = element.getAttribute("class").split(" ");
-      var fixedClassed = classes.filter(value => {
-        return value != "mail-primary-input" && value != "news-primary-input";
-      });
-      for (let css of fixedClassed) {
-        pill.emailInput.classList.add(css);
+      let excludedClasses = [
+        "mail-primary-input",
+        "news-primary-input",
+        "address-row-input",
+      ];
+      for (let cssClass of element.classList) {
+        if (excludedClasses.includes(cssClass)) {
+          continue;
+        }
+        pill.emailInput.classList.add(cssClass);
       }
       pill.emailInput.setAttribute(
         "aria-labelledby",
@@ -2818,7 +1983,7 @@
       let params = JSON.parse(
         pill.emailInput.getAttribute("autocompletesearchparam")
       );
-      params.type = element.getAttribute("recipienttype");
+      params.type = element.closest(".address-row").dataset.recipienttype;
       pill.emailInput.setAttribute(
         "autocompletesearchparam",
         JSON.stringify(params)
@@ -2931,11 +2096,15 @@
           break;
 
         case "Tab":
-          event.preventDefault();
           for (let item of this.getSiblingPills(pill)) {
             item.removeAttribute("selected");
           }
-          if (event.shiftKey && !event.ctrlKey) {
+          // Ctrl+Tab is handled by moveFocusToNeighbouringArea.
+          if (event.ctrlKey) {
+            return;
+          }
+          event.preventDefault();
+          if (event.shiftKey) {
             this.moveFocusToPreviousElement(pill);
             return;
           }
@@ -3091,10 +2260,9 @@
     /**
      * Move the selected email address pills to another address row.
      *
-     * @param {string} targetFieldType - The target recipient type,
-     *   e.g. "addr_to".
+     * @param {Element} row - The address row to move the pills to.
      */
-    moveSelectedPills(targetFieldType) {
+    moveSelectedPills(row) {
       // Store all the selected addresses inside an array.
       let selectedAddresses = [...this.getAllSelectedPills()].map(
         pill => pill.fullAddress
@@ -3110,7 +2278,7 @@
 
       // Create new address pills inside the target address row and
       // maintain the current selection.
-      awAddRecipientsArray(targetFieldType, selectedAddresses, true);
+      addressRowAddRecipientsArray(row, selectedAddresses, true);
 
       // Move focus to the last selected pill.
       let selectedPills = this.getAllSelectedPills();
@@ -3194,7 +2362,6 @@
       // Don't trigger some methods if the pills were removed automatically
       // during the move to another addressing widget.
       if (!moved) {
-        calculateHeaderHeight();
         onRecipientsChanged();
       }
     }
@@ -3234,7 +2401,7 @@
      *
      * @param {Element} pill - A <mail-address-pill> element. All pills in the
      *   same .address-container will be returned.
-     * @return {NodeList} NodeList of <mail-address-pill> elements in same field.
+     * @returns {NodeList} NodeList of <mail-address-pill> elements in same field.
      */
     getSiblingPills(pill) {
       return pill
@@ -3245,7 +2412,7 @@
     /**
      * Return all pills of the <mail-recipients-area> element.
      *
-     * @return {NodeList} NodeList of all <mail-address-pill> elements.
+     * @returns {NodeList} NodeList of all <mail-address-pill> elements.
      */
     getAllPills() {
       return this.querySelectorAll("mail-address-pill");
@@ -3254,7 +2421,7 @@
     /**
      * Return all currently selected pills in the <mail-recipients-area>.
      *
-     * @return {NodeList} NodeList of all selected <mail-address-pill> elements.
+     * @returns {NodeList} NodeList of all selected <mail-address-pill> elements.
      */
     getAllSelectedPills() {
       return this.querySelectorAll("mail-address-pill[selected]");
@@ -3263,7 +2430,7 @@
     /**
      * Check if any pill in the <mail-recipients-area> is selected.
      *
-     * @return {boolean} true if any pill is selected.
+     * @returns {boolean} true if any pill is selected.
      */
     hasSelectedPills() {
       return Boolean(this.querySelector("mail-address-pill[selected]"));
@@ -3286,28 +2453,23 @@
       let previousRow = row.previousElementSibling;
       while (previousRow) {
         if (!previousRow.classList.contains("hidden")) {
-          previousRow
-            .querySelector(`input[is="autocomplete-input"][recipienttype]`)
-            .focus();
+          previousRow.querySelector(".address-row-input").focus();
           return;
         }
         previousRow = previousRow.previousElementSibling;
       }
-      // Move the focus on the extra recipients label if not collapsed
-      if (!document.querySelector(".extra-recipients-label").collapsed) {
-        document.querySelector(".extra-recipients-label").focus();
+      // Move the focus on the previous button: either the
+      // extraAddressRowsMenuButton, or one of "<type>ShowAddressRowButton".
+      let buttons = document.querySelectorAll(
+        "#extraAddressRowsArea button:not([hidden])"
+      );
+      if (buttons.length) {
+        // Select the last available label.
+        buttons[buttons.length - 1].focus();
         return;
       }
       // Move the focus on the msgIdentity if no extra recipients are available.
-      let labels = document
-        .querySelector(".address-extra-recipients")
-        .querySelectorAll(`label:not([collapsed="true"])`);
-      if (labels.length == 0) {
-        document.getElementById("msgIdentity").focus();
-        return;
-      }
-      // Select the last available label.
-      labels[labels.length - 1].focus();
+      document.getElementById("msgIdentity").focus();
     }
   }
 

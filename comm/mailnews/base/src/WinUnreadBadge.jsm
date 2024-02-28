@@ -9,22 +9,24 @@
 
 const EXPORTED_SYMBOLS = ["WinUnreadBadge"];
 
-const { XPCOMUtils } = ChromeUtils.import(
-  "resource://gre/modules/XPCOMUtils.jsm"
+const { XPCOMUtils } = ChromeUtils.importESModule(
+  "resource://gre/modules/XPCOMUtils.sys.mjs"
 );
 
-XPCOMUtils.defineLazyModuleGetters(this, {
-  Services: "resource://gre/modules/Services.jsm",
+const lazy = {};
+
+XPCOMUtils.defineLazyModuleGetters(lazy, {
   NetUtil: "resource://gre/modules/NetUtil.jsm",
 });
 
-XPCOMUtils.defineLazyServiceGetters(this, {
+XPCOMUtils.defineLazyServiceGetters(lazy, {
   imgTools: ["@mozilla.org/image/tools;1", "imgITools"],
   taskbar: ["@mozilla.org/windows-taskbar;1", "nsIWinTaskbar"],
 });
 
 /**
  * Get an imgIContainer instance from a canvas element.
+ *
  * @param {HTMLCanvasElement} canvas - The canvas element.
  * @param {number} width - The width of the canvas to use.
  * @param {number} height - The height of the canvas to use.
@@ -48,11 +50,11 @@ function getCanvasAsImgContainer(canvas, width, height) {
   );
 
   // Now turn the PNG stream into an imgIContainer.
-  let imgBuffer = NetUtil.readInputStreamToString(
+  let imgBuffer = lazy.NetUtil.readInputStreamToString(
     imgEncoder,
     imgEncoder.available()
   );
-  let iconImage = imgTools.decodeImageFromBuffer(
+  let iconImage = lazy.imgTools.decodeImageFromBuffer(
     imgBuffer,
     imgBuffer.length,
     "image/png"
@@ -65,7 +67,8 @@ function getCanvasAsImgContainer(canvas, width, height) {
 
 /**
  * Draw text centered in the middle of a CanvasRenderingContext2D.
- * @param {CanvasRenderingContext2D} ctx - The canvas context to operate on.
+ *
+ * @param {CanvasRenderingContext2D} cxt - The canvas context to operate on.
  * @param {string} text - The text to draw.
  */
 function drawUnreadCountText(cxt, text) {
@@ -99,6 +102,7 @@ function drawUnreadCountText(cxt, text) {
 
 /**
  * Create a flat badge, as is the Windows 8/10 style.
+ *
  * @param {HTMLCanvasElement} canvas - The canvas element to draw the badge.
  * @param {string} text - The text to draw in the badge.
  */
@@ -192,6 +196,7 @@ var WinUnreadBadge = {
 
   /**
    * Update the unread badge.
+   *
    * @param {number} unreadCount - Unread message count.
    * @param {number} unreadTooltip - Unread message count tooltip.
    */
@@ -201,7 +206,7 @@ var WinUnreadBadge = {
       return;
     }
     if (!this._controller) {
-      this._controller = taskbar.getOverlayIconController(window.docShell);
+      this._controller = lazy.taskbar.getOverlayIconController(window.docShell);
     }
     if (unreadCount == 0) {
       // Remove the badge if no unread.
@@ -231,7 +236,7 @@ var WinUnreadBadge = {
     // Purge image from cache to force encodeImage() to not be lazy
     icon.requestDiscard();
     // Side effect of encodeImage() is that it decodes original image
-    imgTools.encodeImage(icon, "image/png");
+    lazy.imgTools.encodeImage(icon, "image/png");
     // Somehow this is needed to prevent NS_ERROR_NOT_AVAILABLE error in
     // setOverlayIcon.
     await new Promise(resolve => window.setTimeout(resolve));

@@ -14,7 +14,18 @@ accounts-conn-security = Seguranza da conexión
 accounts-auth-method = Método de autenticación
 accounts-default = Predeterminado?
 identity-name = Identidade
-
 send-via-email = Enviar por correo electrónico
-
 app-basics-telemetry = Datos de telemetría
+app-basics-cache-use = Uso da memoria tobo
+mail-libs-title = Bibliotecas
+libs-table-heading-library = Biblioteca
+libs-table-heading-expected-version = Versión mínima esperada
+libs-table-heading-loaded-version = Versión en uso
+libs-table-heading-path = Ruta
+libs-table-heading-status = Estado
+libs-rnp-status-ok = Vale
+libs-rnp-status-load-failed = Produciuse un fallo ao cargar. OpenPGP non funcionará.
+libs-rnp-status-incompatible = A versión é incompatíbel. OpenPGP non funcionará.
+libs-rnp-status-unofficial = A versión non é a oficial. É posíbel que OpenPGP non funcione como se espera.
+libs-otr-status-ok = Aceptar
+libs-otr-status-error = Produciuse un erro ao cargar. A cifraxe de chat OTR non funcionará.

@@ -10,6 +10,7 @@
 #include "mozilla/Attributes.h"
 #include "mozilla/CORSMode.h"
 #include "mozilla/Mutex.h"
+#include "mozilla/EnumSet.h"
 #include "mozilla/UniquePtr.h"
 
 #include "imgILoader.h"
@@ -83,8 +84,8 @@ class imgCacheEntry {
 
   void UpdateLoadTime();
 
-  int32_t GetExpiryTime() const { return mExpiryTime; }
-  void SetExpiryTime(int32_t aExpiryTime) {
+  uint32_t GetExpiryTime() const { return mExpiryTime; }
+  void SetExpiryTime(uint32_t aExpiryTime) {
     mExpiryTime = aExpiryTime;
     Touch();
   }
@@ -108,6 +109,12 @@ class imgCacheEntry {
 
   bool ForcePrincipalCheck() const { return mForcePrincipalCheck; }
 
+  bool HasNotified() const { return mHasNotified; }
+  void SetHasNotified() {
+    MOZ_ASSERT(!mHasNotified);
+    mHasNotified = true;
+  }
+
   imgLoader* Loader() const { return mLoader; }
 
  private:  // methods
@@ -130,12 +137,13 @@ class imgCacheEntry {
   uint32_t mDataSize;
   int32_t mTouchedTime;
   uint32_t mLoadTime;
-  int32_t mExpiryTime;
+  uint32_t mExpiryTime;
   nsExpirationState mExpirationState;
   bool mMustValidate : 1;
   bool mEvicted : 1;
   bool mHasNoProxies : 1;
   bool mForcePrincipalCheck : 1;
+  bool mHasNotified : 1;
 };
 
 #include <vector>
@@ -188,11 +196,11 @@ class imgLoader final : public imgILoader,
   virtual ~imgLoader();
 
  public:
-  typedef mozilla::image::ImageCacheKey ImageCacheKey;
-  typedef nsRefPtrHashtable<nsGenericHashKey<ImageCacheKey>, imgCacheEntry>
-      imgCacheTable;
-  typedef nsTHashSet<imgRequest*> imgSet;
-  typedef mozilla::Mutex Mutex;
+  using ImageCacheKey = mozilla::image::ImageCacheKey;
+  using imgCacheTable =
+      nsRefPtrHashtable<nsGenericHashKey<ImageCacheKey>, imgCacheEntry>;
+  using imgSet = nsTHashSet<imgRequest*>;
+  using Mutex = mozilla::Mutex;
 
   NS_DECL_ISUPPORTS
   NS_DECL_IMGILOADER
@@ -252,7 +260,7 @@ class imgLoader final : public imgILoader,
       nsLoadFlags aLoadFlags, nsISupports* aCacheKey,
       nsContentPolicyType aContentPolicyType, const nsAString& initiatorType,
       bool aUseUrgentStartForChannel, bool aLinkPreload,
-      imgRequestProxy** _retval);
+      uint64_t aEarlyHintPreloaderId, imgRequestProxy** _retval);
 
   [[nodiscard]] nsresult LoadImageWithChannel(
       nsIChannel* channel, imgINotificationObserver* aObserver,
@@ -282,9 +290,13 @@ class imgLoader final : public imgILoader,
   static void Shutdown();    // for use by the factory
   static void ShutdownMemoryReporter();
 
-  nsresult ClearChromeImageCache();
-  nsresult ClearImageCache();
-  void MinimizeCaches();
+  enum class ClearOption {
+    ChromeOnly,
+    UnusedOnly,
+  };
+  using ClearOptions = mozilla::EnumSet<ClearOption>;
+  nsresult ClearImageCache(ClearOptions = {});
+  void MinimizeCache() { ClearImageCache({ClearOption::UnusedOnly}); }
 
   nsresult InitCache();
 
@@ -349,16 +361,17 @@ class imgLoader final : public imgILoader,
  private:  // methods
   static already_AddRefed<imgLoader> CreateImageLoader();
 
-  bool PreferLoadFromCache(nsIURI* aURI) const;
-
-  bool ValidateEntry(
-      imgCacheEntry* aEntry, nsIURI* aURI, nsIURI* aInitialDocumentURI,
-      nsIReferrerInfo* aReferrerInfo, nsILoadGroup* aLoadGroup,
-      imgINotificationObserver* aObserver,
-      mozilla::dom::Document* aLoadingDocument, nsLoadFlags aLoadFlags,
-      nsContentPolicyType aLoadPolicyType, bool aCanMakeNewChannel,
-      bool* aNewChannelCreated, imgRequestProxy** aProxyRequest,
-      nsIPrincipal* aTriggeringPrincipal, mozilla::CORSMode, bool aLinkPreload);
+  bool ValidateEntry(imgCacheEntry* aEntry, nsIURI* aURI,
+                     nsIURI* aInitialDocumentURI,
+                     nsIReferrerInfo* aReferrerInfo, nsILoadGroup* aLoadGroup,
+                     imgINotificationObserver* aObserver,
+                     mozilla::dom::Document* aLoadingDocument,
+                     nsLoadFlags aLoadFlags,
+                     nsContentPolicyType aLoadPolicyType,
+                     bool aCanMakeNewChannel, bool* aNewChannelCreated,
+                     imgRequestProxy** aProxyRequest,
+                     nsIPrincipal* aTriggeringPrincipal, mozilla::CORSMode,
+                     bool aLinkPreload, uint64_t aEarlyHintPreloaderId);
 
   bool ValidateRequestWithNewChannel(
       imgRequest* request, nsIURI* aURI, nsIURI* aInitialDocumentURI,
@@ -367,8 +380,16 @@ class imgLoader final : public imgILoader,
       mozilla::dom::Document* aLoadingDocument, uint64_t aInnerWindowId,
       nsLoadFlags aLoadFlags, nsContentPolicyType aContentPolicyType,
       imgRequestProxy** aProxyRequest, nsIPrincipal* aLoadingPrincipal,
-      mozilla::CORSMode, bool aLinkPreload, bool* aNewChannelCreated);
+      mozilla::CORSMode, bool aLinkPreload, uint64_t aEarlyHintPreloaderId,
+      bool* aNewChannelCreated);
 
+  void NotifyObserversForCachedImage(imgCacheEntry* aEntry, imgRequest* request,
+                                     nsIURI* aURI,
+                                     nsIReferrerInfo* aReferrerInfo,
+                                     mozilla::dom::Document* aLoadingDocument,
+                                     nsIPrincipal* aLoadingPrincipal,
+                                     mozilla::CORSMode,
+                                     uint64_t aEarlyHintPreloaderId);
   // aURI may be different from imgRequest's URI in the case of blob URIs, as we
   // can share requests with different URIs.
   nsresult CreateNewProxyForRequest(imgRequest* aRequest, nsIURI* aURI,
@@ -378,15 +399,10 @@ class imgLoader final : public imgILoader,
                                     nsLoadFlags aLoadFlags,
                                     imgRequestProxy** _retval);
 
-  nsresult EvictEntries(imgCacheTable& aCacheToClear);
-  nsresult EvictEntries(imgCacheQueue& aQueueToClear);
+  nsresult EvictEntries(bool aChromeOnly);
 
-  imgCacheTable& GetCache(bool aForChrome);
-  imgCacheTable& GetCache(const ImageCacheKey& aKey);
-  imgCacheQueue& GetCacheQueue(bool aForChrome);
-  imgCacheQueue& GetCacheQueue(const ImageCacheKey& aKey);
-  void CacheEntriesChanged(bool aForChrome, int32_t aSizeDiff = 0);
-  void CheckCacheLimits(imgCacheTable& cache, imgCacheQueue& queue);
+  void CacheEntriesChanged(int32_t aSizeDiff);
+  void CheckCacheLimits();
 
  private:  // data
   friend class imgCacheEntry;
@@ -395,14 +411,11 @@ class imgLoader final : public imgILoader,
   imgCacheTable mCache;
   imgCacheQueue mCacheQueue;
 
-  imgCacheTable mChromeCache;
-  imgCacheQueue mChromeCacheQueue;
-
   // Hash set of every imgRequest for this loader that isn't in mCache or
   // mChromeCache. The union over all imgLoader's of mCache, mChromeCache, and
   // mUncachedImages should be every imgRequest that is alive. These are weak
   // pointers so we rely on the imgRequest destructor to remove itself.
-  imgSet mUncachedImages;
+  imgSet mUncachedImages MOZ_GUARDED_BY(mUncachedImagesMutex);
   // The imgRequest can have refs to them held on non-main thread, so we need
   // a mutex because we modify the uncached images set from the imgRequest
   // destructor.

@@ -6,12 +6,9 @@
 
 /* This must occur *after* TestShellParent.h to avoid typedefs conflicts. */
 #include "jsfriendapi.h"
-#include "mozilla/ArrayUtils.h"
+#include "js/CallAndConstruct.h"  // JS_CallFunctionValue
 
 #include "mozilla/dom/AutoEntryScript.h"
-#include "mozilla/dom/ScriptSettings.h"
-
-#include "xpcpublic.h"
 
 using namespace mozilla;
 using mozilla::ipc::PTestShellCommandParent;
@@ -23,7 +20,7 @@ void TestShellParent::ActorDestroy(ActorDestroyReason aWhy) {
 }
 
 PTestShellCommandParent* TestShellParent::AllocPTestShellCommandParent(
-    const nsString& aCommand) {
+    const nsAString& aCommand) {
   return new TestShellCommandParent();
 }
 
@@ -34,7 +31,7 @@ bool TestShellParent::DeallocPTestShellCommandParent(
 }
 
 bool TestShellParent::CommandDone(TestShellCommandParent* command,
-                                  const nsString& aResponse) {
+                                  const nsAString& aResponse) {
   // XXX what should happen if the callback fails?
   /*bool ok = */ command->RunCallback(aResponse);
   command->ReleaseCallback();
@@ -54,7 +51,7 @@ bool TestShellCommandParent::SetCallback(JSContext* aCx,
   return true;
 }
 
-bool TestShellCommandParent::RunCallback(const nsString& aResponse) {
+bool TestShellCommandParent::RunCallback(const nsAString& aResponse) {
   NS_ENSURE_TRUE(mCallback.isObject(), false);
 
   MOZ_RELEASE_ASSERT(js::IsFunctionObject(&mCallback.toObject()));
@@ -65,7 +62,8 @@ bool TestShellCommandParent::RunCallback(const nsString& aResponse) {
   JSContext* cx = aes.cx();
   JS::Rooted<JSObject*> global(cx, JS::CurrentGlobalOrNull(cx));
 
-  JSString* str = JS_NewUCStringCopyN(cx, aResponse.get(), aResponse.Length());
+  JSString* str =
+      JS_NewUCStringCopyN(cx, aResponse.BeginReading(), aResponse.Length());
   NS_ENSURE_TRUE(str, false);
 
   JS::Rooted<JS::Value> strVal(cx, JS::StringValue(str));
@@ -81,7 +79,7 @@ bool TestShellCommandParent::RunCallback(const nsString& aResponse) {
 
 void TestShellCommandParent::ReleaseCallback() { mCallback.reset(); }
 
-bool TestShellCommandParent::ExecuteCallback(const nsString& aResponse) {
+bool TestShellCommandParent::ExecuteCallback(const nsAString& aResponse) {
   return static_cast<TestShellParent*>(Manager())->CommandDone(this, aResponse);
 }
 

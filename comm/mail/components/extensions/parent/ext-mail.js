@@ -2,23 +2,25 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-var { XPCOMUtils } = ChromeUtils.import(
-  "resource://gre/modules/XPCOMUtils.jsm"
+var { AppConstants } = ChromeUtils.importESModule(
+  "resource://gre/modules/AppConstants.sys.mjs"
 );
-XPCOMUtils.defineLazyServiceGetter(
-  this,
-  "uuidGenerator",
-  "@mozilla.org/uuid-generator;1",
-  "nsIUUIDGenerator"
+var { XPCOMUtils } = ChromeUtils.importESModule(
+  "resource://gre/modules/XPCOMUtils.sys.mjs"
 );
 
 var { ExtensionError, getInnerWindowID } = ExtensionUtils;
+var { defineLazyGetter, makeWidgetId } = ExtensionCommon;
 
-var { defineLazyGetter } = ExtensionCommon;
+var { ExtensionSupport } = ChromeUtils.import(
+  "resource:///modules/ExtensionSupport.jsm"
+);
+
+ChromeUtils.defineESModuleGetters(this, {
+  ExtensionContent: "resource://gre/modules/ExtensionContent.sys.mjs",
+});
 
 XPCOMUtils.defineLazyModuleGetters(this, {
-  AppConstants: "resource://gre/modules/AppConstants.jsm",
-  ExtensionContent: "resource://gre/modules/ExtensionContent.jsm",
   MailServices: "resource:///modules/MailServices.jsm",
 });
 
@@ -34,9 +36,14 @@ XPCOMUtils.defineLazyPreferenceGetter(
   "extensions.webextensions.messagesPerPage",
   100
 );
+XPCOMUtils.defineLazyGlobalGetters(this, [
+  "IOUtils",
+  "PathUtils",
+  "FileReader",
+]);
 
-const ADDRESS_BOOK_WINDOW_URI =
-  "chrome://messenger/content/addressbook/addressbook.xhtml";
+const MAIN_WINDOW_URI = "chrome://messenger/content/messenger.xhtml";
+const POPUP_WINDOW_URI = "chrome://messenger/content/extensionPopup.xhtml";
 const COMPOSE_WINDOW_URI =
   "chrome://messenger/content/messengercompose/messengercompose.xhtml";
 const MESSAGE_WINDOW_URI = "chrome://messenger/content/messageWindow.xhtml";
@@ -44,7 +51,7 @@ const MESSAGE_PROTOCOLS = ["imap", "mailbox", "news", "nntp", "snews"];
 
 const NOTIFICATION_COLLAPSE_TIME = 200;
 
-(function() {
+(function () {
   // Monkey-patch all processes to add the "messenger" alias in all contexts.
   Services.ppmm.loadProcessScript(
     "chrome://messenger/content/processScript.js",
@@ -54,11 +61,11 @@ const NOTIFICATION_COLLAPSE_TIME = 200;
   // This allows scripts to run in the compose document or message display
   // document if and only if the extension has permission.
   let { defaultConstructor } = ExtensionContent.contentScripts;
-  ExtensionContent.contentScripts.defaultConstructor = function(matcher) {
+  ExtensionContent.contentScripts.defaultConstructor = function (matcher) {
     let script = defaultConstructor.call(this, matcher);
 
     let { matchesWindowGlobal } = script;
-    script.matchesWindowGlobal = function(windowGlobal) {
+    script.matchesWindowGlobal = function (windowGlobal) {
       let { browsingContext, windowContext } = windowGlobal;
 
       if (
@@ -81,6 +88,7 @@ const NOTIFICATION_COLLAPSE_TIME = 200;
 })();
 
 let tabTracker;
+let spaceTracker;
 let windowTracker;
 
 // This function is pretty tightly tied to Extension.jsm.
@@ -130,9 +138,9 @@ global.clickModifiersFromEvent = event => {
 };
 
 global.openOptionsPage = extension => {
-  let window = windowTracker.topWindow;
+  let window = windowTracker.topNormalWindow;
   if (!window) {
-    return Promise.reject({ message: "No browser window available" });
+    return Promise.reject({ message: "No mail window available" });
   }
 
   if (extension.manifest.options_ui.open_in_tab) {
@@ -149,69 +157,49 @@ global.openOptionsPage = extension => {
   return window.openAddonsMgr(viewId);
 };
 
-global.makeWidgetId = id => {
-  id = id.toLowerCase();
-  // FIXME: This allows for collisions.
-  return id.replace(/[^a-z0-9_-]/g, "_");
-};
-
-/*
- * Get raw message for a given msgHdr. This is not using aConvertData
- * and therefore also works for nntp/news.
+/**
+ * Returns a real file for the given DOM File.
  *
- * @param aMsgHdr The message header to retrieve the raw message for.
- * @return {string} - A Promise for the raw message.
+ * @param {File} file - the DOM File
+ * @returns {nsIFile}
  */
-function MsgHdrToRawMessage(msgHdr) {
-  let messenger = Cc["@mozilla.org/messenger;1"].createInstance(
-    Ci.nsIMessenger
-  );
-  let msgUri = msgHdr.folder.generateMessageURI(msgHdr.messageKey);
-  let service = messenger.messageServiceFromURI(msgUri);
-  return new Promise((resolve, reject) => {
-    let streamlistener = {
-      _data: [],
-      _stream: null,
-      onDataAvailable(aRequest, aInputStream, aOffset, aCount) {
-        if (!this._stream) {
-          this._stream = Cc[
-            "@mozilla.org/scriptableinputstream;1"
-          ].createInstance(Ci.nsIScriptableInputStream);
-          this._stream.init(aInputStream);
-        }
-        this._data.push(this._stream.read(aCount));
-      },
-      onStartRequest() {},
-      onStopRequest(aRequest, aStatus) {
-        if (aStatus == Cr.NS_OK) {
-          resolve(this._data.join(""));
-        } else {
-          Cu.reportError(aStatus);
-          reject();
-        }
-      },
-      QueryInterface: ChromeUtils.generateQI([
-        "nsIStreamListener",
-        "nsIRequestObserver",
-      ]),
-    };
+async function getRealFileForFile(file) {
+  if (file.mozFullPath) {
+    let realFile = Cc["@mozilla.org/file/local;1"].createInstance(Ci.nsIFile);
+    realFile.initWithPath(file.mozFullPath);
+    return realFile;
+  }
 
-    service.streamMessage(
-      msgUri,
-      streamlistener,
-      null, // aMsgWindow
-      null, // aUrlListener
-      false, // aConvertData
-      "" //aAdditionalHeader
-    );
+  let pathTempFile = await IOUtils.createUniqueFile(
+    PathUtils.tempDir,
+    file.name.replaceAll(/[/:*?\"<>|]/g, "_"),
+    0o600
+  );
+
+  let tempFile = Cc["@mozilla.org/file/local;1"].createInstance(Ci.nsIFile);
+  tempFile.initWithPath(pathTempFile);
+  let extAppLauncher = Cc[
+    "@mozilla.org/uriloader/external-helper-app-service;1"
+  ].getService(Ci.nsPIExternalAppLauncher);
+  extAppLauncher.deleteTemporaryFileOnExit(tempFile);
+
+  let bytes = await new Promise(function (resolve) {
+    let reader = new FileReader();
+    reader.onloadend = function () {
+      resolve(new Uint8Array(reader.result));
+    };
+    reader.readAsArrayBuffer(file);
   });
+
+  await IOUtils.write(pathTempFile, bytes);
+  return tempFile;
 }
 
 /**
  * Gets the window for a tabmail tabInfo.
  *
  * @param {NativeTabInfo} nativeTabInfo - The tabInfo object to get the browser for
- * @return {Window} - The browser element for the tab
+ * @returns {Window} - The browser element for the tab
  */
 function getTabWindow(nativeTabInfo) {
   return Cu.getGlobalForObject(nativeTabInfo);
@@ -222,7 +210,7 @@ global.getTabWindow = getTabWindow;
  * Gets the tabmail for a tabmail tabInfo.
  *
  * @param {NativeTabInfo} nativeTabInfo - The tabInfo object to get the browser for
- * @return {?XULElement} - The browser element for the tab
+ * @returns {?XULElement} - The browser element for the tab
  */
 function getTabTabmail(nativeTabInfo) {
   return getTabWindow(nativeTabInfo).document.getElementById("tabmail");
@@ -232,8 +220,8 @@ global.getTabTabmail = getTabTabmail;
 /**
  * Gets the tab browser for the tabmail tabInfo.
  *
- * @param {NativeTabInfo} nativeTabInfo     The tabInfo object to get the browser for
- * @return {?XULElement}                    The browser element for the tab
+ * @param {NativeTabInfo} nativeTabInfo - The tabInfo object to get the browser for
+ * @returns {?XULElement} The browser element for the tab
  */
 function getTabBrowser(nativeTabInfo) {
   if (!nativeTabInfo) {
@@ -280,7 +268,7 @@ global.TabContext = class extends EventEmitter {
    *
    * @param {XULElement|ChromeWindow} keyObject
    *        Browser tab or browser chrome window.
-   * @returns {Object}
+   * @returns {object}
    */
   get(keyObject) {
     if (!this.tabData.has(keyObject)) {
@@ -318,6 +306,117 @@ XPCOMUtils.defineLazyGetter(global, "searchInitialized", () => {
 });
 
 /**
+ * Class for dummy message Headers.
+ */
+class nsDummyMsgHeader {
+  constructor(msgHdr) {
+    this.mProperties = [];
+    this.messageSize = 0;
+    this.author = null;
+    this.subject = "";
+    this.recipients = null;
+    this.ccList = null;
+    this.listPost = null;
+    this.messageId = null;
+    this.date = 0;
+    this.accountKey = "";
+    this.flags = 0;
+    // If you change us to return a fake folder, please update
+    // folderDisplay.js's FolderDisplayWidget's selectedMessageIsExternal getter.
+    this.folder = null;
+
+    if (msgHdr) {
+      for (let member of [
+        "accountKey",
+        "ccList",
+        "date",
+        "flags",
+        "listPost",
+        "messageId",
+        "messageSize",
+      ]) {
+        // Members are either (associative) arrays or primitives.
+        if (typeof msgHdr[member] == "object") {
+          this[member] = [];
+          for (let property in msgHdr[member]) {
+            this[member][property] = msgHdr[member][property];
+          }
+        } else {
+          this[member] = msgHdr[member];
+        }
+      }
+      this.author = msgHdr.mime2DecodedAuthor;
+      this.recipients = msgHdr.mime2DecodedRecipients;
+      this.subject = msgHdr.mime2DecodedSubject;
+      this.mProperties.dummyMsgUrl = msgHdr.getStringProperty("dummyMsgUrl");
+      this.mProperties.dummyMsgLastModifiedTime = msgHdr.getUint32Property(
+        "dummyMsgLastModifiedTime"
+      );
+    }
+  }
+  getProperty(aProperty) {
+    return this.getStringProperty(aProperty);
+  }
+  setProperty(aProperty, aVal) {
+    return this.setStringProperty(aProperty, aVal);
+  }
+  getStringProperty(aProperty) {
+    if (aProperty in this.mProperties) {
+      return this.mProperties[aProperty];
+    }
+    return "";
+  }
+  setStringProperty(aProperty, aVal) {
+    this.mProperties[aProperty] = aVal;
+  }
+  getUint32Property(aProperty) {
+    if (aProperty in this.mProperties) {
+      return parseInt(this.mProperties[aProperty]);
+    }
+    return 0;
+  }
+  setUint32Property(aProperty, aVal) {
+    this.mProperties[aProperty] = aVal.toString();
+  }
+  markHasAttachments(hasAttachments) {}
+  get mime2DecodedAuthor() {
+    return this.author;
+  }
+  get mime2DecodedSubject() {
+    return this.subject;
+  }
+  get mime2DecodedRecipients() {
+    return this.recipients;
+  }
+}
+
+/**
+ * Returns the WebExtension window type for the given window, or null, if it is
+ * not supported.
+ *
+ * @param {DOMWindow} window - The window to check
+ * @returns {[string]} - The WebExtension type of the window
+ */
+function getWebExtensionWindowType(window) {
+  let { documentElement } = window.document;
+  if (!documentElement) {
+    return null;
+  }
+  switch (documentElement.getAttribute("windowtype")) {
+    case "msgcompose":
+      return "messageCompose";
+    case "mail:messageWindow":
+      return "messageDisplay";
+    case "mail:extensionPopup":
+      return "popup";
+    case "mail:3pane":
+      return "normal";
+    default:
+      return "unknown";
+  }
+}
+
+/**
  * The window tracker tracks opening and closing Thunderbird windows. Each window has an id, which
  * is mapped to native window objects.
  */
@@ -325,66 +424,91 @@ class WindowTracker extends WindowTrackerBase {
   /**
    * Adds a tab progress listener to the given mail window.
    *
-   * @param {DOMWindow} window      The mail window to which to add the listener.
-   * @param {Object} listener       The listener to add
+   * @param {DOMWindow} window - The mail window to which to add the listener.
+   * @param {object} listener - The listener to add
    */
   addProgressListener(window, listener) {
-    let tabmail = window.document.getElementById("tabmail");
-    if (tabmail) {
-      tabmail.addTabsProgressListener(listener);
+    if (window.contentProgress) {
+      window.contentProgress.addListener(listener);
     }
   }
 
   /**
    * Removes a tab progress listener from the given mail window.
    *
-   * @param {DOMWindow} window      The mail window from which to remove the listener.
-   * @param {Object} listener       The listener to remove
+   * @param {DOMWindow} window - The mail window from which to remove the listener.
+   * @param {object} listener - The listener to remove
    */
   removeProgressListener(window, listener) {
-    let tabmail = window.document.getElementById("tabmail");
-    if (tabmail) {
-      tabmail.removeTabsProgressListener(listener);
+    if (window.contentProgress) {
+      window.contentProgress.removeListener(listener);
     }
   }
 
   /**
-   * Determines if the passed window object is a mail window. The function name is for base class
-   * compatibility with gecko.
+   * Determines if the passed window object is supported by the windows API. The
+   * function name is for base class compatibility with toolkit.
    *
-   * @param {DOMWindow} window      The window to check
-   * @return {Boolean}              True, if the window is a mail window
+   * @param {DOMWindow} window - The window to check
+   * @returns {boolean} True, if the window is supported by the windows API
    */
   isBrowserWindow(window) {
-    let { documentElement } = window.document;
-
-    return [
-      "mail:3pane",
-      "mail:addressbook",
-      "msgcompose",
-      "mail:messageWindow",
-      "mail:extensionPopup",
-    ].includes(documentElement.getAttribute("windowtype"));
+    let type = getWebExtensionWindowType(window);
+    return !!type && type != "unknown";
   }
 
   /**
-   * The currently active, or topmost, mail window, or null if no mail window is currently open.
+   * Determines if the passed window object is a mail window but not the main
+   * window. This is useful to find windows where the window itself is the
+   * "nativeTab" object in API terms.
+   *
+   * @param {DOMWindow} window - The window to check
+   * @returns {boolean} True, if the window is a mail window but not the main window
+   */
+  isSecondaryWindow(window) {
+    let { documentElement } = window.document;
+    if (!documentElement) {
+      return false;
+    }
+
+    return ["msgcompose", "mail:messageWindow", "mail:extensionPopup"].includes(
+      documentElement.getAttribute("windowtype")
+    );
+  }
+
+  /**
+   * The currently active, or topmost window supported by the API, or null if no
+   * supported window is currently open.
    *
    * @property {?DOMWindow} topWindow
    * @readonly
    */
   get topWindow() {
-    return Services.wm.getMostRecentWindow("mail:3pane");
+    let win = Services.wm.getMostRecentWindow(null);
+    // If we're lucky, this is a window supported by the API and we can return it
+    // directly.
+    if (win && !this.isBrowserWindow(win)) {
+      win = null;
+      // This is oldest to newest, so this gets a bit ugly.
+      for (let nextWin of Services.wm.getEnumerator(null)) {
+        if (this.isBrowserWindow(nextWin)) {
+          win = nextWin;
+        }
+      }
+    }
+    return win;
   }
 
   /**
-   * The currently active, or topmost, mail window, or null if no mail window is currently open.
+   * The currently active, or topmost window, or null if no window is currently open, that
+   * is not private browsing.
    *
    * @property {DOMWindow|null} topWindow
    * @readonly
    */
   get topNonPBWindow() {
-    return Services.wm.getMostRecentWindow("mail:3pane");
+    // Thunderbird does not support private browsing, return topWindow.
+    return this.topWindow;
   }
 
   /**
@@ -395,22 +519,228 @@ class WindowTracker extends WindowTrackerBase {
    * @readonly
    */
   get topNormalWindow() {
-    let win = null;
+    return Services.wm.getMostRecentWindow("mail:3pane");
+  }
+}
 
-    win = Services.wm.getMostRecentWindow("mail:3pane", true);
+/**
+ * Convenience class to keep track of and manage spaces.
+ */
+class SpaceTracker {
+  /**
+   * @typedef SpaceData
+   * @property {string} name - name of the space as used by the extension
+   * @property {integer} spaceId - id of the space as used by the tabs API
+   * @property {string} spaceButtonId - id of the button of this space in the
+   *   spaces toolbar
+   * @property {string} defaultUrl - the url for the default space tab
+   * @property {ButtonProperties} buttonProperties
+   *   @see mail/components/extensions/schemas/spaces.json
+   * @property {ExtensionData} extension - the extension the space belongs to
+   */
 
-    // If we're lucky, this isn't a popup, and we can just return this.
-    if (win && win.document.documentElement.getAttribute("chromehidden")) {
-      win = null;
-      // This is oldest to newest, so this gets a bit ugly.
-      for (let nextWin of Services.wm.getEnumerator("mail:3pane", true)) {
-        if (!nextWin.document.documentElement.getAttribute("chromehidden")) {
-          win = nextWin;
-        }
+  constructor() {
+    this._nextId = 1;
+    this._spaceData = new Map();
+    this._spaceIds = new Map();
+
+    // Keep this in sync with the default spaces in gSpacesToolbar.
+    let builtInSpaces = [
+      {
+        name: "mail",
+        spaceButtonId: "mailButton",
+        tabInSpace: tabInfo =>
+          ["folder", "mail3PaneTab", "mailMessageTab"].includes(
+            tabInfo.mode.name
+          )
+            ? 1
+            : 0,
+      },
+      {
+        name: "addressbook",
+        spaceButtonId: "addressBookButton",
+        tabInSpace: tabInfo => (tabInfo.mode.name == "addressBookTab" ? 1 : 0),
+      },
+      {
+        name: "calendar",
+        spaceButtonId: "calendarButton",
+        tabInSpace: tabInfo => (tabInfo.mode.name == "calendar" ? 1 : 0),
+      },
+      {
+        name: "tasks",
+        spaceButtonId: "tasksButton",
+        tabInSpace: tabInfo => (tabInfo.mode.name == "tasks" ? 1 : 0),
+      },
+      {
+        name: "chat",
+        spaceButtonId: "chatButton",
+        tabInSpace: tabInfo => (tabInfo.mode.name == "chat" ? 1 : 0),
+      },
+      {
+        name: "settings",
+        spaceButtonId: "settingsButton",
+        tabInSpace: tabInfo => {
+          switch (tabInfo.mode.name) {
+            case "preferencesTab":
+              // A primary tab that the open method creates.
+              return 1;
+            case "contentTab":
+              let url = tabInfo.urlbar?.value;
+              if (url == "about:accountsettings" || url == "about:addons") {
+                // A secondary tab, that is related to this space.
+                return 2;
+              }
+          }
+          return 0;
+        },
+      },
+    ];
+    for (let builtInSpace of builtInSpaces) {
+      this._add(builtInSpace);
+    }
+  }
+
+  findSpaceForTab(tabInfo) {
+    for (let spaceData of this._spaceData.values()) {
+      if (spaceData.tabInSpace(tabInfo)) {
+        return spaceData;
       }
     }
+    return undefined;
+  }
 
-    return win;
+  _add(spaceData) {
+    let spaceId = this._nextId++;
+    let { spaceButtonId } = spaceData;
+    this._spaceData.set(spaceButtonId, { ...spaceData, spaceId });
+    this._spaceIds.set(spaceId, spaceButtonId);
+    return { ...spaceData, spaceId };
+  }
+
+  /**
+   * Generate an id of the form <add-on-id>-spacesButton-<spaceId>.
+   *
+   * @param {string} name - name of the space as used by the extension
+   * @param {ExtensionData} extension
+   * @returns {string} id of the html element of the spaces toolbar button of
+   *   this space
+   */
+  _getSpaceButtonId(name, extension) {
+    return `${makeWidgetId(extension.id)}-spacesButton-${name}`;
+  }
+
+  /**
+   * Get the SpaceData for the space with the given name for the given extension.
+   *
+   * @param {string} name - name of the space as used by the extension
+   * @param {ExtensionData} extension
+   * @returns {SpaceData}
+   */
+  fromSpaceName(name, extension) {
+    let spaceButtonId = this._getSpaceButtonId(name, extension);
+    return this.fromSpaceButtonId(spaceButtonId);
+  }
+
+  /**
+   * Get the SpaceData for the space with the given spaceId.
+   *
+   * @param {integer} spaceId - id of the space as used by the tabs API
+   * @returns {SpaceData}
+   */
+  fromSpaceId(spaceId) {
+    let spaceButtonId = this._spaceIds.get(spaceId);
+    return this.fromSpaceButtonId(spaceButtonId);
+  }
+
+  /**
+   * Get the SpaceData for the space with the given spaceButtonId.
+   *
+   * @param {string} spaceButtonId - id of the html element of a spaces toolbar
+   *   button
+   * @returns {SpaceData}
+   */
+  fromSpaceButtonId(spaceButtonId) {
+    if (!spaceButtonId || !this._spaceData.has(spaceButtonId)) {
+      return null;
+    }
+    return this._spaceData.get(spaceButtonId);
+  }
+
+  /**
+   * Create a new space and return its SpaceData.
+   *
+   * @param {string} name - name of the space as used by the extension
+   * @param {string} defaultUrl - the url for the default space tab
+   * @param {ButtonProperties} buttonProperties
+   *   @see mail/components/extensions/schemas/spaces.json
+   * @param {ExtensionData} extension - the extension the space belongs to
+   * @returns {SpaceData}
+   */
+  async create(name, defaultUrl, buttonProperties, extension) {
+    let spaceButtonId = this._getSpaceButtonId(name, extension);
+    if (this._spaceData.has(spaceButtonId)) {
+      return false;
+    }
+    return this._add({
+      name,
+      spaceButtonId,
+      tabInSpace: tabInfo => (tabInfo.spaceButtonId == spaceButtonId ? 1 : 0),
+      defaultUrl,
+      buttonProperties,
+      extension,
+    });
+  }
+
+  /**
+   * Return a WebExtension Space object, representing the given spaceData.
+   *
+   * @param {SpaceData} spaceData
+   * @returns {Space} - @see mail/components/extensions/schemas/spaces.json
+   */
+  convert(spaceData, extension) {
+    let space = {
+      id: spaceData.spaceId,
+      name: spaceData.name,
+      isBuiltIn: !spaceData.extension,
+      isSelfOwned: spaceData.extension?.id == extension.id,
+    };
+    if (spaceData.extension && extension.hasPermission("management")) {
+      space.extensionId = spaceData.extension.id;
+    }
+    return space;
+  }
+
+  /**
+   * Remove a space and its SpaceData from the tracker.
+   *
+   * @param {SpaceData} spaceData
+   */
+  remove(spaceData) {
+    if (!this._spaceData.has(spaceData.spaceButtonId)) {
+      return;
+    }
+    this._spaceData.delete(spaceData.spaceButtonId);
+  }
+
+  /**
+   * Update spaceData for a space in the tracker.
+   *
+   * @param {SpaceData} spaceData
+   */
+  update(spaceData) {
+    if (!this._spaceData.has(spaceData.spaceButtonId)) {
+      return;
+    }
+    this._spaceData.set(spaceData.spaceButtonId, spaceData);
+  }
+
+  /**
+   * Return the SpaceData of all spaces known to the tracker.
+   *
+   * @returns {SpaceData[]}
+   */
+  getAll() {
+    return this._spaceData.values();
   }
 }
 
@@ -429,6 +759,25 @@ class TabTracker extends TabTrackerBase {
     this._movingTabs = new Map();
 
     this._handleTabDestroyed = this._handleTabDestroyed.bind(this);
+
+    ExtensionSupport.registerWindowListener("ext-sessions", {
+      chromeURLs: [MAIN_WINDOW_URI],
+      onLoadWindow(window) {
+        window.gTabmail.registerTabMonitor({
+          monitorName: "extensionSession",
+          onTabTitleChanged(aTab) {},
+          onTabClosing(aTab) {},
+          onTabPersist(aTab) {
+            return aTab._ext.extensionSession;
+          },
+          onTabRestored(aTab, aState) {
+            aTab._ext.extensionSession = aState;
+          },
+          onTabSwitched(aNewTab, aOldTab) {},
+          onTabOpened(aTab) {},
+        });
+      },
+    });
   }
 
   /**
@@ -458,8 +807,8 @@ class TabTracker extends TabTrackerBase {
   /**
    * Returns the numeric ID for the given native tab.
    *
-   * @param {NativeTabInfo} nativeTabInfo       The tabmail tabInfo for which to return an ID
-   * @return {Integer}                          The tab's numeric ID
+   * @param {NativeTabInfo} nativeTabInfo - The tabmail tabInfo for which to return an ID
+   * @returns {Integer} The tab's numeric ID
    */
   getId(nativeTabInfo) {
     let id = this._tabs.get(nativeTabInfo);
@@ -477,24 +826,26 @@ class TabTracker extends TabTrackerBase {
   /**
    * Returns the tab id corresponding to the given browser element.
    *
-   * @param {XULElement} browser        The <browser> element to retrieve for
-   * @return {Integer}                  The tab's numeric ID
+   * @param {XULElement} browser - The <browser> element to retrieve for
+   * @returns {Integer} The tab's numeric ID
    */
   getBrowserTabId(browser) {
-    let id = this._browsers.get(`${browser.browserId}#${browser._activeTabId}`);
+    let id = this._browsers.get(browser.browserId);
     if (id) {
       return id;
     }
 
-    let tabmail = browser.ownerDocument.getElementById("tabmail");
-    let tab =
-      tabmail &&
-      tabmail.tabInfo.find(info => info.tabId == browser._activeTabId);
+    let window = browser.browsingContext.topChromeWindow;
+    let tabmail = window.document.getElementById("tabmail");
+    let tab = tabmail && tabmail.getTabForBrowser(browser);
 
     if (tab) {
       id = this.getId(tab);
-      this._browsers.set(`${browser.browserId}#${tab.tabId}`, id);
+      this._browsers.set(browser.browserId, id);
       return id;
+    }
+    if (windowTracker.isSecondaryWindow(window)) {
+      return this.getId(window);
     }
     return -1;
   }
@@ -502,14 +853,14 @@ class TabTracker extends TabTrackerBase {
   /**
    * Records the tab information for the given tabInfo object.
    *
-   * @param {NativeTabInfo} nativeTabInfo       The tab info to record for
-   * @param {Integer} id                        The tab id to record
+   * @param {NativeTabInfo} nativeTabInfo - The tab info to record for
+   * @param {Integer} id - The tab id to record
    */
   setId(nativeTabInfo, id) {
     this._tabs.set(nativeTabInfo, id);
     let browser = getTabBrowser(nativeTabInfo);
     if (browser) {
-      this._browsers.set(`${browser.browserId}#${nativeTabInfo.tabId}`, id);
+      this._browsers.set(browser.browserId, id);
     }
     this._tabIds.set(id, nativeTabInfo);
   }
@@ -517,17 +868,15 @@ class TabTracker extends TabTrackerBase {
   /**
    * Function to call when a tab was close, deletes tab information for the tab.
    *
-   * @param {Event} event                  The event triggering the detroyal
-   * @param {{ nativeTabInfo:NativeTabInfo}}  The object containing tab info
+   * @param {Event} event - The event triggering the detroyal
+   * @param {{ nativeTabInfo:NativeTabInfo}} - The object containing tab info
    */
   _handleTabDestroyed(event, { nativeTabInfo }) {
     let id = this._tabs.get(nativeTabInfo);
     if (id) {
       this._tabs.delete(nativeTabInfo);
       if (nativeTabInfo.browser) {
-        this._browsers.delete(
-          `${nativeTabInfo.browser.browserId}#${nativeTabInfo.tabId}`
-        );
+        this._browsers.delete(nativeTabInfo.browser.browserId);
       }
       if (this._tabIds.get(id) === nativeTabInfo) {
         this._tabIds.delete(id);
@@ -538,9 +887,9 @@ class TabTracker extends TabTrackerBase {
   /**
    * Returns the native tab with the given numeric ID.
    *
-   * @param {Integer} tabId     The numeric ID of the tab to return.
-   * @param {*} default_        The value to return if no tab exists with the given ID.
-   * @return {NativeTabInfo}    The tab information for the given id.
+   * @param {Integer} tabId - The numeric ID of the tab to return.
+   * @param {*} default_ - The value to return if no tab exists with the given ID.
+   * @returns {NativeTabInfo} The tab information for the given id.
    */
   getTab(tabId, default_ = undefined) {
     let nativeTabInfo = this._tabIds.get(tabId);
@@ -557,7 +906,7 @@ class TabTracker extends TabTrackerBase {
    * Handles load events for recently-opened windows, and adds additional
    * listeners which may only be safely added when the window is fully loaded.
    *
-   * @param {Event} event       A DOM event to handle.
+   * @param {Event} event - A DOM event to handle.
    */
   handleEvent(event) {
     let nativeTabInfo = event.detail.tabInfo;
@@ -599,7 +948,7 @@ class TabTracker extends TabTrackerBase {
         // Because we are delaying calling emitCreated above, we also need to
         // delay sending this event because it shouldn't fire before onCreated.
         Promise.resolve().then(() => {
-          this.emitActivated(nativeTabInfo);
+          this.emitActivated(nativeTabInfo, event.detail.previousTabInfo);
         });
         break;
     }
@@ -609,17 +958,10 @@ class TabTracker extends TabTrackerBase {
    * A private method which is called whenever a new mail window is opened, and dispatches the
    * necessary events for it.
    *
-   * @param {DOMWindow} window      The window being opened.
+   * @param {DOMWindow} window - The window being opened.
    */
   _handleWindowOpen(window) {
-    if (
-      [
-        "mail:addressbook",
-        "msgcompose",
-        "mail:messageWindow",
-        "mail:extensionPopup",
-      ].includes(window.document.documentElement.getAttribute("windowtype"))
-    ) {
+    if (windowTracker.isSecondaryWindow(window)) {
       this.emit("tab-created", {
         nativeTabInfo: window,
         currentTab: window,
@@ -633,9 +975,6 @@ class TabTracker extends TabTrackerBase {
     }
 
     for (let nativeTabInfo of tabmail.tabInfo) {
-      if (!getTabBrowser(nativeTabInfo)) {
-        continue;
-      }
       this.emitCreated(nativeTabInfo);
     }
   }
@@ -644,17 +983,10 @@ class TabTracker extends TabTrackerBase {
    * A private method which is called whenever a mail window is closed, and dispatches the necessary
    * events for it.
    *
-   * @param {DOMWindow} window      The window being closed.
+   * @param {DOMWindow} window - The window being closed.
    */
   _handleWindowClose(window) {
-    if (
-      [
-        "mail:addressbook",
-        "msgcompose",
-        "mail:messageWindow",
-        "mail:extensionPopup",
-      ].includes(window.document.documentElement.getAttribute("windowtype"))
-    ) {
+    if (windowTracker.isSecondaryWindow(window)) {
       this.emit("tab-removed", {
         nativeTabInfo: window,
         tabId: this.getId(window),
@@ -670,9 +1002,6 @@ class TabTracker extends TabTrackerBase {
     }
 
     for (let nativeTabInfo of tabmail.tabInfo) {
-      if (!getTabBrowser(nativeTabInfo)) {
-        continue;
-      }
       this.emitRemoved(nativeTabInfo, true);
     }
   }
@@ -680,11 +1009,17 @@ class TabTracker extends TabTrackerBase {
   /**
    * Emits a "tab-activated" event for the given tab info.
    *
-   * @param {NativeTabInfo} nativeTabInfo   The tab info which has been activated.
+   * @param {NativeTabInfo} nativeTabInfo - The tab info which has been activated.
+   * @param {NativeTab} previousTabInfo - The previously active tab element.
    */
-  emitActivated(nativeTabInfo) {
+  emitActivated(nativeTabInfo, previousTabInfo) {
+    let previousTabId;
+    if (previousTabInfo && !previousTabInfo.closed) {
+      previousTabId = this.getId(previousTabInfo);
+    }
     this.emit("tab-activated", {
       tabId: this.getId(nativeTabInfo),
+      previousTabId,
       windowId: windowTracker.getId(getTabWindow(nativeTabInfo)),
     });
   }
@@ -692,7 +1027,7 @@ class TabTracker extends TabTrackerBase {
   /**
    * Emits a "tab-attached" event for the given tab info.
    *
-   * @param {NativeTabInfo} nativeTabInfo   The tab info which is being attached.
+   * @param {NativeTabInfo} nativeTabInfo - The tab info which is being attached.
    */
   emitAttached(nativeTabInfo) {
     let tabId = this.getId(nativeTabInfo);
@@ -712,7 +1047,7 @@ class TabTracker extends TabTrackerBase {
   /**
    * Emits a "tab-detached" event for the given tab info.
    *
-   * @param {NativeTabInfo} nativeTabInfo   The tab info which is being detached.
+   * @param {NativeTabInfo} nativeTabInfo - The tab info which is being detached.
    */
   emitDetached(nativeTabInfo) {
     let tabId = this.getId(nativeTabInfo);
@@ -732,8 +1067,8 @@ class TabTracker extends TabTrackerBase {
   /**
    * Emits a "tab-created" event for the given tab info.
    *
-   * @param {NativeTabInfo} nativeTabInfo   The tab info which is being created.
-   * @param {?NativeTab} currentTab         The tab info for the currently active tab.
+   * @param {NativeTabInfo} nativeTabInfo - The tab info which is being created.
+   * @param {?NativeTab} currentTab - The tab info for the currently active tab.
    */
   emitCreated(nativeTabInfo, currentTab) {
     this.emit("tab-created", { nativeTabInfo, currentTab });
@@ -742,9 +1077,9 @@ class TabTracker extends TabTrackerBase {
   /**
    * Emits a "tab-removed" event for the given tab info.
    *
-   * @param {NativeTabInfo} nativeTabInfo   The tab info in the window to which the tab is being
+   * @param {NativeTabInfo} nativeTabInfo - The tab info in the window to which the tab is being
    *                                          removed
-   * @param {Boolean} isWindowClosing       If true, the window with these tabs is closing
+   * @param {boolean} isWindowClosing - If true, the window with these tabs is closing
    */
   emitRemoved(nativeTabInfo, isWindowClosing) {
     this.emit("tab-removed", {
@@ -758,8 +1093,8 @@ class TabTracker extends TabTrackerBase {
   /**
    * Returns tab id and window id for the given browser element.
    *
-   * @param {Element} browser                       The browser element to check
-   * @return {{ tabId:Integer, windowId:Integer }}  The browsing data for the element
+   * @param {Element} browser - The browser element to check
+   * @returns {{ tabId:Integer, windowId:Integer }} The browsing data for the element
    */
   getBrowserData(browser) {
     return {
@@ -777,13 +1112,14 @@ class TabTracker extends TabTrackerBase {
   get activeTab() {
     let window = windowTracker.topWindow;
     let tabmail = window && window.document.getElementById("tabmail");
-    return tabmail ? tabmail.selectedTab : null;
+    return tabmail ? tabmail.selectedTab : window;
   }
 }
 
 tabTracker = new TabTracker();
+spaceTracker = new SpaceTracker();
 windowTracker = new WindowTracker();
-Object.assign(global, { tabTracker, windowTracker });
+Object.assign(global, { tabTracker, spaceTracker, windowTracker });
 
 /**
  * Extension-specific wrapper around a Thunderbird tab. Note that for actual
@@ -791,15 +1127,25 @@ Object.assign(global, { tabTracker, windowTracker });
  * TabmailTab subclass.
  */
 class Tab extends TabBase {
+  get spaceId() {
+    let tabWindow = getTabWindow(this.nativeTab);
+    if (getWebExtensionWindowType(tabWindow) != "normal") {
+      return undefined;
+    }
+
+    let spaceData = spaceTracker.findSpaceForTab(this.nativeTab);
+    return spaceData?.spaceId ?? undefined;
+  }
+
   /** What sort of tab is this? */
   get type() {
     switch (this.nativeTab.location?.href) {
-      case ADDRESS_BOOK_WINDOW_URI:
-        return "addressBook";
       case COMPOSE_WINDOW_URI:
         return "messageCompose";
       case MESSAGE_WINDOW_URI:
         return "messageDisplay";
+      case POPUP_WINDOW_URI:
+        return "content";
       default:
         return null;
     }
@@ -813,13 +1159,23 @@ class Tab extends TabBase {
       return false;
     }
     let result = super.matches(queryInfo, context);
+
     let type = queryInfo.mailTab ? "mail" : queryInfo.type;
-    return result && (!type || this.type == type);
+    if (result && type && this.type != type) {
+      return false;
+    }
+
+    if (result && queryInfo.spaceId && this.spaceId != queryInfo.spaceId) {
+      return false;
+    }
+
+    return result;
   }
 
   /** Adds the mailTab property and removes some useless properties from a tab object. */
   convert(fallback) {
     let result = super.convert(fallback);
+    result.spaceId = this.spaceId;
     result.type = this.type;
     result.mailTab = result.type == "mail";
 
@@ -827,7 +1183,6 @@ class Tab extends TabBase {
     for (let key of [
       "attention",
       "audible",
-      "cookieStoreId",
       "discarded",
       "hidden",
       "incognito",
@@ -862,6 +1217,9 @@ class Tab extends TabBase {
   }
 
   get innerWindowID() {
+    if (!this.browser) {
+      return null;
+    }
     if (this.type == "messageCompose") {
       return this.browser.contentWindow.windowUtils.currentInnerWindowID;
     }
@@ -916,7 +1274,13 @@ class Tab extends TabBase {
 
   /** Returns the cookie store id. */
   get cookieStoreId() {
-    return 0;
+    if (this.browser && this.browser.contentPrincipal) {
+      return getCookieStoreIdForOriginAttributes(
+        this.browser.contentPrincipal.originAttributes
+      );
+    }
+
+    return DEFAULT_STORE;
   }
 
   /** Returns the discarded state. */
@@ -971,9 +1335,35 @@ class Tab extends TabBase {
 
   /** Returns the loading status of the tab. */
   get status() {
-    return this.browser?.webProgress?.isLoadingDocument
-      ? "loading"
-      : "complete";
+    let isComplete;
+    switch (this.type) {
+      case "messageDisplay":
+      case "addressBook":
+        isComplete = this.browser?.contentDocument?.readyState == "complete";
+        break;
+      case "mail":
+        {
+          // If the messagePane is hidden or all browsers are hidden, there is
+          // nothing to be loaded and we should return complete.
+          let about3Pane = this.nativeTab.chromeBrowser.contentWindow;
+          isComplete =
+            !about3Pane.paneLayout?.messagePaneVisible ||
+            this.browser?.webProgress?.isLoadingDocument === false ||
+            (about3Pane.webBrowser?.hidden &&
+              about3Pane.messageBrowser?.hidden &&
+              about3Pane.multiMessageBrowser?.hidden);
+        }
+        break;
+      case "content":
+      case "special":
+        isComplete = this.browser?.webProgress?.isLoadingDocument === false;
+        break;
+      default:
+        // All other tabs (chat, task, calendar, messageCompose) do not fire the
+        // tabs.onUpdated event (Bug 1827929). Let them always be complete.
+        isComplete = true;
+    }
+    return isComplete ? "complete" : "loading";
   }
 
   /** Returns the width of the tab. */
@@ -1024,17 +1414,18 @@ class TabmailTab extends Tab {
   /** What sort of tab is this? */
   get type() {
     switch (this.nativeTab.mode.name) {
-      case "folder":
-      case "glodaList":
+      case "mail3PaneTab":
         return "mail";
-      case "message":
+      case "addressBookTab":
+        return "addressBook";
+      case "mailMessageTab":
         return "messageDisplay";
       case "contentTab": {
         let currentURI = this.nativeTab.browser.currentURI;
         if (currentURI?.schemeIs("about")) {
           switch (currentURI.filePath) {
-            case "addressbook":
-              return "addressBook";
+            case "accountprovisioner":
+              return "accountProvisioner";
             case "blank":
               return "content";
             default:
@@ -1052,7 +1443,7 @@ class TabmailTab extends Tab {
       case "tasks":
       case "chat":
         return this.nativeTab.mode.name;
-      case "accountProvisionerTab":
+      case "provisionerCheckoutTab":
       case "glodaFacet":
       case "preferencesTab":
         return "special";
@@ -1069,7 +1460,7 @@ class TabmailTab extends Tab {
 
   /** Returns the favIcon, without permission checks. */
   get _favIconUrl() {
-    return this.browser?.mIconURL;
+    return this.nativeTab.favIconUrl;
   }
 
   /** Returns the tabmail element for the tab. */
@@ -1089,10 +1480,13 @@ class TabmailTab extends Tab {
 
   /** Returns the title of the tab, without permission checks. */
   get _title() {
-    let [, , tabNode] = this.tabmail._getTabContextForTabbyThing(
-      this.nativeTab
-    );
-    return tabNode.getAttribute("label");
+    if (this.browser && this.browser.contentTitle) {
+      return this.browser.contentTitle;
+    }
+    // Do we want to be using this.nativeTab.title instead? The difference is
+    // that the tabNode label may use defaultTabTitle instead, but do we want to
+    // send this out?
+    return this.nativeTab.tabNode.getAttribute("label");
   }
 
   /** Returns the native window object of the tab. */
@@ -1106,55 +1500,19 @@ class TabmailTab extends Tab {
  */
 class Window extends WindowBase {
   /**
-   * @property {string} type
-   *        The type of the window, as defined by the WebExtension API. May be
-   *        either "normal" or "popup".
-   *        @readonly
+   * @property {string} type - The type of the window, as defined by the
+   *   WebExtension API.
+   * @see mail/components/extensions/schemas/windows.json
+   * @readonly
    */
   get type() {
-    switch (this.window.document.documentElement.getAttribute("windowtype")) {
-      case "mail:addressbook":
-        return "addressBook";
-      case "msgcompose":
-        return "messageCompose";
-      case "mail:messageWindow":
-        return "messageDisplay";
-      default:
-        return super.type;
+    let type = getWebExtensionWindowType(this.window);
+    if (!type) {
+      throw new ExtensionError(
+        "Windows API encountered an invalid window type."
+      );
     }
-  }
-
-  /**
-   * Update the geometry of the mail window.
-   *
-   * @param {Object} options
-   *        An object containing new values for the window's geometry.
-   * @param {integer} [options.left]
-   *        The new pixel distance of the left side of the mail window from
-   *        the left of the screen.
-   * @param {integer} [options.top]
-   *        The new pixel distance of the top side of the mail window from
-   *        the top of the screen.
-   * @param {integer} [options.width]
-   *        The new pixel width of the window.
-   * @param {integer} [options.height]
-   *        The new pixel height of the window.
-   */
-  updateGeometry(options) {
-    let { window } = this;
-
-    if (options.left !== null || options.top !== null) {
-      let left = options.left === null ? window.screenX : options.left;
-      let top = options.top === null ? window.screenY : options.top;
-      window.moveTo(left, top);
-    }
-
-    if (options.width !== null || options.height !== null) {
-      let width = options.width === null ? window.outerWidth : options.width;
-      let height =
-        options.height === null ? window.outerHeight : options.height;
-      window.resizeTo(width, height);
-    }
+    return type;
   }
 
   /** Returns the title of the tab, without permission checks. */
@@ -1174,7 +1532,7 @@ class Window extends WindowBase {
   /**
    * Sets the title preface of the window.
    *
-   * @param {String} titlePreface       The title preface to set
+   * @param {string} titlePreface - The title preface to set
    */
   setTitlePreface(titlePreface) {
     this.window.document.documentElement.setAttribute(
@@ -1226,8 +1584,8 @@ class Window extends WindowBase {
   /**
    * Returns the window state for the given window.
    *
-   * @param {DOMWindow} window      The window to check
-   * @return {String}               "maximized", "minimized", "normal" or "fullscreen"
+   * @param {DOMWindow} window - The window to check
+   * @returns {string} "maximized", "minimized", "normal" or "fullscreen"
    */
   static getState(window) {
     const STATES = {
@@ -1248,27 +1606,48 @@ class Window extends WindowBase {
   }
 
   /**
-   * Sets the window state for this speific window.
+   * Sets the window state for this specific window.
    *
-   * @param {String} state          "maximized", "minimized", "normal" or "fullscreen"
+   * @param {string} state - "maximized", "minimized", "normal" or "fullscreen"
    */
-  set state(state) {
+  async setState(state) {
     let { window } = this;
-    if (state !== "fullscreen" && window.fullScreen) {
+    const expectedState = (function () {
+      switch (state) {
+        case "maximized":
+          return window.STATE_MAXIMIZED;
+        case "minimized":
+        case "docked":
+          return window.STATE_MINIMIZED;
+        case "normal":
+          return window.STATE_NORMAL;
+        case "fullscreen":
+          return window.STATE_FULLSCREEN;
+      }
+      throw new ExtensionError(`Unexpected window state: ${state}`);
+    })();
+
+    const initialState = window.windowState;
+    if (expectedState == initialState) {
+      return;
+    }
+
+    // We check for window.fullScreen here to make sure to exit fullscreen even
+    // if DOM and widget disagree on what the state is. This is a speculative
+    // fix for bug 1780876, ideally it should not be needed.
+    if (initialState == window.STATE_FULLSCREEN || window.fullScreen) {
       window.fullScreen = false;
     }
 
-    switch (state) {
-      case "maximized":
+    switch (expectedState) {
+      case window.STATE_MAXIMIZED:
         window.maximize();
         break;
-
-      case "minimized":
-      case "docked":
+      case window.STATE_MINIMIZED:
         window.minimize();
         break;
 
-      case "normal":
+      case window.STATE_NORMAL:
         // Restore sometimes returns the window to its previous state, rather
         // than to the "normal" state, so it may need to be called anywhere from
         // zero to two times.
@@ -1283,12 +1662,43 @@ class Window extends WindowBase {
         }
         break;
 
-      case "fullscreen":
+      case window.STATE_FULLSCREEN:
         window.fullScreen = true;
         break;
 
       default:
-        throw new Error(`Unexpected window state: ${state}`);
+        throw new ExtensionError(`Unexpected window state: ${state}`);
+    }
+
+    if (window.windowState != expectedState) {
+      // On Linux, sizemode changes are asynchronous. Some of them might not
+      // even happen if the window manager doesn't want to, so wait for a bit
+      // instead of forever for a sizemode change that might not ever happen.
+      const noWindowManagerTimeout = 2000;
+
+      let onSizeModeChange;
+      const promiseExpectedSizeMode = new Promise(resolve => {
+        onSizeModeChange = function () {
+          if (window.windowState == expectedState) {
+            resolve();
+          }
+        };
+        window.addEventListener("sizemodechange", onSizeModeChange);
+      });
+
+      await Promise.any([
+        promiseExpectedSizeMode,
+        new Promise(resolve =>
+          window.setTimeout(resolve, noWindowManagerTimeout)
+        ),
+      ]);
+      window.removeEventListener("sizemodechange", onSizeModeChange);
+    }
+
+    if (window.windowState != expectedState) {
+      console.warn(
+        `Window manager refused to set window to state ${expectedState}.`
+      );
     }
   }
 
@@ -1302,6 +1712,16 @@ class Window extends WindowBase {
     yield tabManager.getWrapper(this.window);
   }
 
+  /**
+   * Returns an iterator of TabBase objects for the highlighted tab in this
+   * window. This is an alias for the active tab.
+   *
+   * @returns {Iterator<TabBase>}
+   */
+  *getHighlightedTabs() {
+    yield this.activeTab;
+  }
+
   /** Retrieves the active tab in this window */
   get activeTab() {
     let { tabManager } = this.extension;
@@ -1311,8 +1731,8 @@ class Window extends WindowBase {
   /**
    * Retrieves the tab at the given index.
    *
-   * @param {Number} index      The index to look at
-   * @return {Tab}              The wrapped tab at the index
+   * @param {number} index - The index to look at
+   * @returns {Tab} The wrapped tab at the index
    */
   getTabAtIndex(index) {
     let { tabManager } = this.extension;
@@ -1356,14 +1776,12 @@ class TabmailWindow extends Window {
   /**
    * Retrieves the tab at the given index.
    *
-   * @param {Number} index      The index to look at
-   * @return {Tab}              The wrapped tab at the index
+   * @param {number} index - The index to look at
+   * @returns {Tab} The wrapped tab at the index
    */
   getTabAtIndex(index) {
     let { tabManager } = this.extension;
-    let nativeTabInfo = this.tabmail.tabInfo.filter(info =>
-      getTabBrowser(info)
-    )[index];
+    let nativeTabInfo = this.tabmail.tabInfo[index];
     if (nativeTabInfo) {
       return tabManager.getWrapper(nativeTabInfo);
     }
@@ -1380,9 +1798,9 @@ class TabManager extends TabManagerBase {
   /**
    * Returns a Tab wrapper for the tab with the given ID.
    *
-   * @param {integer} tabId     The ID of the tab for which to return a wrapper.
-   * @param {*} default_        The value to return if no tab exists with the given ID.
-   * @return {Tab|*}            The wrapped tab, or the default value
+   * @param {integer} tabId - The ID of the tab for which to return a wrapper.
+   * @param {*} default_ - The value to return if no tab exists with the given ID.
+   * @returns {Tab|*} The wrapped tab, or the default value
    */
   get(tabId, default_ = undefined) {
     let nativeTabInfo = tabTracker.getTab(tabId, default_);
@@ -1397,17 +1815,19 @@ class TabManager extends TabManagerBase {
    * If the extension has requested activeTab permission, grant it those permissions for the current
    * inner window in the given native tab.
    *
-   * @param {NativeTabInfo} nativeTabInfo       The native tab for which to grant permissions.
+   * @param {NativeTabInfo} nativeTabInfo - The native tab for which to grant permissions.
    */
   addActiveTabPermission(nativeTabInfo = tabTracker.activeTab) {
-    super.addActiveTabPermission(nativeTabInfo);
+    if (nativeTabInfo.browser) {
+      super.addActiveTabPermission(nativeTabInfo);
+    }
   }
 
   /**
    * Revoke the extension's activeTab permissions for the current inner window of the given native
    * tab.
    *
-   * @param {NativeTabInfo} nativeTabInfo       The native tab for which to revoke permissions.
+   * @param {NativeTabInfo} nativeTabInfo - The native tab for which to revoke permissions.
    */
   revokeActiveTabPermission(nativeTabInfo = tabTracker.activeTab) {
     super.revokeActiveTabPermission(nativeTabInfo);
@@ -1428,8 +1848,8 @@ class TabManager extends TabManagerBase {
   /**
    * Returns a new Tab instance wrapping the given native tab info.
    *
-   * @param {NativeTabInfo} nativeTabInfo       The native tab for which to return a wrapper.
-   * @return {Tab}                              The wrapped native tab
+   * @param {NativeTabInfo} nativeTabInfo - The native tab for which to return a wrapper.
+   * @returns {Tab} The wrapped native tab
    */
   wrapTab(nativeTabInfo) {
     let tabClass = TabmailTab;
@@ -1451,10 +1871,10 @@ class WindowManager extends WindowManagerBase {
   /**
    * Returns a Window wrapper for the mail window with the given ID.
    *
-   * @param {Integer} windowId      The ID of the browser window for which to return a wrapper.
-   * @param {BaseContext} context   The extension context for which the matching is being performed.
+   * @param {Integer} windowId - The ID of the browser window for which to return a wrapper.
+   * @param {BaseContext} context - The extension context for which the matching is being performed.
    *                                  Used to determine the current window for relevant properties.
-   * @return {Window}               The wrapped window
+   * @returns {Window} The wrapped window
    */
   get(windowId, context) {
     let window = windowTracker.getWindow(windowId, context);
@@ -1475,8 +1895,8 @@ class WindowManager extends WindowManagerBase {
   /**
    * Returns a new Window instance wrapping the given mail window.
    *
-   * @param {DOMWindow} window      The mail window for which to return a wrapper.
-   * @returns {Window}              The wrapped window
+   * @param {DOMWindow} window - The mail window for which to return a wrapper.
+   * @returns {Window} The wrapped window
    */
   wrapWindow(window) {
     let windowClass = Window;
@@ -1490,9 +1910,75 @@ class WindowManager extends WindowManagerBase {
 }
 
 /**
+ * Wait until the normal window identified by the given windowId has finished its
+ * delayed startup. Returns its DOMWindow when done. Waits for the top normal
+ * window, if no window is specified.
+ *
+ * @param {*} [context] - a WebExtension context
+ * @param {*} [windowId] - a WebExtension window id
+ * @returns {DOMWindow}
+ */
+async function getNormalWindowReady(context, windowId) {
+  let window;
+  if (windowId) {
+    let win = context.extension.windowManager.get(windowId, context);
+    if (win.type != "normal") {
+      throw new ExtensionError(
+        `Window with ID ${windowId} is not a normal window`
+      );
+    }
+    window = win.window;
+  } else {
+    window = windowTracker.topNormalWindow;
+  }
+
+  // Wait for session restore.
+  await new Promise(resolve => {
+    if (!window.SessionStoreManager._restored) {
+      let obs = (observedWindow, topic, data) => {
+        if (observedWindow != window) {
+          return;
+        }
+        Services.obs.removeObserver(obs, "mail-tabs-session-restored");
+        resolve();
+      };
+      Services.obs.addObserver(obs, "mail-tabs-session-restored");
+    } else {
+      resolve();
+    }
+  });
+
+  // Wait for all mail3PaneTab's to have been fully restored and loaded.
+  for (let tabInfo of window.gTabmail.tabInfo) {
+    let { chromeBrowser, mode, closed } = tabInfo;
+    if (!closed && mode.name == "mail3PaneTab") {
+      await new Promise(resolve => {
+        if (
+          chromeBrowser.contentDocument.readyState == "complete" &&
+          chromeBrowser.currentURI.spec == "about:3pane"
+        ) {
+          resolve();
+        } else {
+          chromeBrowser.contentWindow.addEventListener(
+            "load",
+            () => resolve(),
+            {
+              once: true,
+            }
+          );
+        }
+      });
+    }
+  }
+
+  return window;
+}
+
+/**
  * Converts an nsIMsgAccount to a simple object
+ *
  * @param {nsIMsgAccount} account
- * @return {Object}
+ * @returns {object}
  */
 function convertAccount(account, includeFolders = true) {
   if (!account) {
@@ -1507,8 +1993,10 @@ function convertAccount(account, includeFolders = true) {
 
   let folders = null;
   if (includeFolders) {
-    folders = traverseSubfolders(account.incomingServer.rootFolder, account.key)
-      .subFolders;
+    folders = traverseSubfolders(
+      account.incomingServer.rootFolder,
+      account.key
+    ).subFolders;
   }
 
   return {
@@ -1524,9 +2012,10 @@ function convertAccount(account, includeFolders = true) {
 
 /**
  * Converts an nsIMsgIdentity to a simple object for use in messages.
+ *
  * @param {nsIMsgAccount} account
  * @param {nsIMsgIdentity} identity
- * @return {Object}
+ * @returns {object}
  */
 function convertMailIdentity(account, identity) {
   if (!account || !identity) {
@@ -1554,7 +2043,8 @@ function convertMailIdentity(account, identity) {
 
 /**
  * Convert a folder URI to a human-friendly path.
- * @return {String}
+ *
+ * @returns {string}
  */
 function folderURIToPath(accountId, uri) {
   let server = MailServices.accounts.getAccount(accountId).incomingServer;
@@ -1570,16 +2060,14 @@ function folderURIToPath(accountId, uri) {
     return uri.substring(rootURI.length);
   }
   let path = Services.io.newURI(uri).filePath;
-  return path
-    .split("/")
-    .map(decodeURIComponent)
-    .join("/");
+  return path.split("/").map(decodeURIComponent).join("/");
 }
 
 /**
- * Convert a human-friendly path to a folder URI. This function does not assume that the
- * folder referenced exists.
- * @return {String}
+ * Convert a human-friendly path to a folder URI. This function does not assume
+ * that the folder referenced exists.
+ *
+ * @returns {string}
  */
 function folderPathToURI(accountId, path) {
   let server = MailServices.accounts.getAccount(accountId).incomingServer;
@@ -1597,10 +2085,11 @@ function folderPathToURI(accountId, path) {
     path
       .split("/")
       .map(p =>
-        encodeURIComponent(p).replace(
-          /[!'()*]/g,
-          c => "%" + c.charCodeAt(0).toString(16)
-        )
+        encodeURIComponent(p)
+          .replace(/[~!'()*]/g, c => "%" + c.charCodeAt(0).toString(16))
+          // We do not encode "+" chars in folder URIs. Manually convert them
+          // back to literal + chars, otherwise folder lookup will fail.
+          .replaceAll("%2B", "+")
       )
       .join("/")
   );
@@ -1623,7 +2112,8 @@ const folderTypeMap = new Map([
  * @param {nsIMsgFolder} folder - The folder to convert.
  * @param {string} [accountId] - An optimization to avoid looking up the
  *     account. The value from nsIMsgHdr.accountKey must not be used here.
- * @return {Object}
+ * @returns {MailFolder}
+ * @see mail/components/extensions/schemas/folders.json
  */
 function convertFolder(folder, accountId) {
   if (!folder) {
@@ -1651,19 +2141,26 @@ function convertFolder(folder, accountId) {
 }
 
 /**
- * Converts an nsIMsgFolder and all subfolders to a simple object for use in
+ * Converts an nsIMsgFolder and all its subfolders to a simple object for use in
  * API messages.
  *
  * @param {nsIMsgFolder} folder - The folder to convert.
  * @param {string} [accountId] - An optimization to avoid looking up the
  *     account. The value from nsIMsgHdr.accountKey must not be used here.
- * @return {Array}
+ * @returns {MailFolder}
+ * @see mail/components/extensions/schemas/folders.json
  */
 function traverseSubfolders(folder, accountId) {
   let f = convertFolder(folder, accountId);
   f.subFolders = [];
   if (folder.hasSubFolders) {
-    for (let subFolder of folder.subFolders) {
+    // Use the same order as used by Thunderbird.
+    let subFolders = [...folder.subFolders].sort((a, b) =>
+      a.sortOrder == b.sortOrder
+        ? a.name.localeCompare(b.name)
+        : a.sortOrder - b.sortOrder
+    );
+    for (let subFolder of subFolders) {
       f.subFolders.push(
         traverseSubfolders(subFolder, accountId || f.accountId)
       );
@@ -1689,9 +2186,28 @@ class FolderManager {
 }
 
 /**
- * Converts an nsIMsgHdr to a simle object for use in messages.
+ * Checks if the provided nsIMsgHdr is a dummy message header of an attached message.
+ */
+function isAttachedMessage(msgHdr) {
+  try {
+    return (
+      !msgHdr.folder &&
+      new URL(msgHdr.getStringProperty("dummyMsgUrl")).searchParams.has("part")
+    );
+  } catch (ex) {
+    return false;
+  }
+}
+
+/**
+ * Converts an nsIMsgHdr to a simple object for use in messages.
  * This function WILL change as the API develops.
- * @return {Object}
+ *
+ * @param {nsIMsgHdr} msgHdr
+ * @param {ExtensionData} extension
+ * @returns {MessageHeader} MessageHeader object
+ *
+ * @see /mail/components/extensions/schemas/messages.json
  */
 function convertMessage(msgHdr, extension) {
   if (!msgHdr) {
@@ -1701,11 +2217,24 @@ function convertMessage(msgHdr, extension) {
   let composeFields = Cc[
     "@mozilla.org/messengercompose/composefields;1"
   ].createInstance(Ci.nsIMsgCompFields);
-  let junkScore = parseInt(msgHdr.getProperty("junkscore"), 10) || 0;
+
+  let junkScore = parseInt(msgHdr.getStringProperty("junkscore"), 10) || 0;
+  let tags = (msgHdr.getStringProperty("keywords") || "")
+    .split(" ")
+    .filter(MailServices.tags.isValidKey);
+
+  let external = !msgHdr.folder;
+
+  // Getting the size of attached messages does not work consistently. For imap://
+  // and mailbox:// messages the returned size in msgHdr.messageSize is 0, and for
+  // file:// messages the returned size is always the total file size
+  // Be consistent here and always return 0. The user can obtain the message size
+  // from the size of the associated attachment file.
+  let size = isAttachedMessage(msgHdr) ? 0 : msgHdr.messageSize;
 
   let messageObject = {
     id: messageTracker.getId(msgHdr),
-    date: new Date(msgHdr.dateInSeconds * 1000),
+    date: new Date(Math.round(msgHdr.date / 1000)),
     author: msgHdr.mime2DecodedAuthor,
     recipients: composeFields.splitRecipients(
       msgHdr.mime2DecodedRecipients,
@@ -1715,18 +2244,25 @@ function convertMessage(msgHdr, extension) {
     bccList: composeFields.splitRecipients(msgHdr.bccList, false),
     subject: msgHdr.mime2DecodedSubject,
     read: msgHdr.isRead,
-    flagged: msgHdr.isFlagged,
+    new: !!(msgHdr.flags & Ci.nsMsgMessageFlags.New),
+    headersOnly: !!(msgHdr.flags & Ci.nsMsgMessageFlags.Partial),
+    flagged: !!msgHdr.isFlagged,
     junk: junkScore >= gJunkThreshold,
     junkScore,
     headerMessageId: msgHdr.messageId,
-    size: msgHdr.messageSize,
+    size,
+    tags,
+    external,
   };
-  if (extension.hasPermission("accountsRead")) {
+  // convertMessage can be called without providing an extension, if the info is
+  // needed for multiple extensions. The caller has to ensure that the folder info
+  // is not forwarded to extensions, which do not have the required permission.
+  if (
+    msgHdr.folder &&
+    (!extension || extension.hasPermission("accountsRead"))
+  ) {
     messageObject.folder = convertFolder(msgHdr.folder);
   }
-  let tags = msgHdr.getProperty("keywords");
-  tags = tags ? tags.split(" ") : [];
-  messageObject.tags = tags.filter(MailServices.tags.isValidKey);
   return messageObject;
 }
 
@@ -1745,9 +2281,10 @@ var messageTracker = new (class extends EventEmitter {
     this._messageIds = new Map();
     this._listenerCount = 0;
     this._pendingKeyChanges = new Map();
+    this._dummyMessageHeaders = new Map();
 
     // nsIObserver
-    Services.obs.addObserver(this, "xpcom-shutdown");
+    Services.obs.addObserver(this, "quit-application-granted");
     Services.obs.addObserver(this, "attachment-delete-msgkey-changed");
     // nsIFolderListener
     MailServices.mailSession.AddFolderListener(
@@ -1763,36 +2300,65 @@ var messageTracker = new (class extends EventEmitter {
         MailServices.mfn.msgsMoveCopyCompleted |
         MailServices.mfn.msgKeyChanged
     );
+
+    this._messageOpenListener = {
+      registered: false,
+      async handleEvent(event) {
+        let msgHdr = event.detail;
+        // It is not possible to retrieve the dummyMsgHdr of messages opened
+        // from file at a later time, track them manually.
+        if (
+          msgHdr &&
+          !msgHdr.folder &&
+          msgHdr.getStringProperty("dummyMsgUrl").startsWith("file://")
+        ) {
+          messageTracker.getId(msgHdr);
+        }
+      },
+    };
+    try {
+      windowTracker.addListener("MsgLoaded", this._messageOpenListener);
+      this._messageOpenListener.registered = true;
+    } catch (ex) {
+      // Fails during XPCSHELL tests, which mock the WindowWatcher but do not
+      // implement registerNotification.
+    }
   }
 
   cleanup() {
     // nsIObserver
-    Services.obs.removeObserver(this, "xpcom-shutdown");
+    Services.obs.removeObserver(this, "quit-application-granted");
     Services.obs.removeObserver(this, "attachment-delete-msgkey-changed");
     // nsIFolderListener
     MailServices.mailSession.RemoveFolderListener(this);
     // nsIMsgFolderListener
     MailServices.mfn.removeListener(this);
+    if (this._messageOpenListener.registered) {
+      windowTracker.removeListener("MsgLoaded", this._messageOpenListener);
+      this._messageOpenListener.registered = false;
+    }
   }
 
   /**
-   * Maps the provided message identifiers to the given messageTracker id.
+   * Maps the provided message identifier to the given messageTracker id.
    */
-  _set(id, folderURI, messageKey) {
-    let hash = JSON.stringify([folderURI, messageKey]);
+  _set(id, msgIdentifier, msgHdr) {
+    let hash = JSON.stringify(msgIdentifier);
     this._messageIds.set(hash, id);
-    this._messages.set(id, {
-      folderURI,
-      messageKey,
-    });
+    this._messages.set(id, msgIdentifier);
+    // Keep track of dummy message headers, which do not have a folderURI property
+    // and cannot be retrieved later.
+    if (msgHdr && !msgHdr.folder) {
+      this._dummyMessageHeaders.set(msgIdentifier.dummyMsgUrl, msgHdr);
+    }
   }
 
   /**
-   * Lookup the messageTracker id for the given message identifiers, return null
+   * Lookup the messageTracker id for the given message identifier, return null
    * if not known.
    */
-  _get(folderURI, messageKey) {
-    let hash = JSON.stringify([folderURI, messageKey]);
+  _get(msgIdentifier) {
+    let hash = JSON.stringify(msgIdentifier);
     if (this._messageIds.has(hash)) {
       return this._messageIds.get(hash);
     }
@@ -1800,78 +2366,155 @@ var messageTracker = new (class extends EventEmitter {
   }
 
   /**
-   * Removes the provided message identifiers from the messageTracker.
+   * Removes the provided message identifier from the messageTracker.
    */
-  _remove(folderURI, messageKey) {
-    let hash = JSON.stringify([folderURI, messageKey]);
-    let id = this._get(folderURI, messageKey);
+  _remove(msgIdentifier) {
+    let hash = JSON.stringify(msgIdentifier);
+    let id = this._get(msgIdentifier);
     this._messages.delete(id);
     this._messageIds.delete(hash);
+    this._dummyMessageHeaders.delete(msgIdentifier.dummyMsgUrl);
   }
 
   /**
    * Finds a message in the messageTracker or adds it.
-   * @return {int} The messageTracker id of the message
+   *
+   * @returns {int} The messageTracker id of the message
    */
   getId(msgHdr) {
-    let id = this._get(msgHdr.folder.URI, msgHdr.messageKey);
+    let msgIdentifier;
+    if (msgHdr.folder) {
+      msgIdentifier = {
+        folderURI: msgHdr.folder.URI,
+        messageKey: msgHdr.messageKey,
+      };
+    } else {
+      // Normalize the dummyMsgUrl by sorting its parameters and striping them
+      // to a minimum.
+      let url = new URL(msgHdr.getStringProperty("dummyMsgUrl"));
+      let parameters = Array.from(url.searchParams, p => p[0]).filter(
+        p => !["group", "number", "key", "part"].includes(p)
+      );
+      for (let parameter of parameters) {
+        url.searchParams.delete(parameter);
+      }
+      url.searchParams.sort();
+
+      msgIdentifier = {
+        dummyMsgUrl: url.href,
+        dummyMsgLastModifiedTime: msgHdr.getUint32Property(
+          "dummyMsgLastModifiedTime"
+        ),
+      };
+    }
+
+    let id = this._get(msgIdentifier);
     if (id) {
       return id;
     }
     id = this._nextId++;
 
-    this._set(id, msgHdr.folder.URI, msgHdr.messageKey);
+    this._set(id, msgIdentifier, new nsDummyMsgHeader(msgHdr));
     return id;
+  }
+
+  /**
+   * Check if the provided msgIdentifier belongs to a modified file message.
+   *
+   * @param {*} msgIdentifier - the msgIdentifier object of the message
+   * @returns {boolean}
+   */
+  isModifiedFileMsg(msgIdentifier) {
+    if (!msgIdentifier.dummyMsgUrl?.startsWith("file://")) {
+      return false;
+    }
+
+    try {
+      let file = Services.io
+        .newURI(msgIdentifier.dummyMsgUrl)
+        .QueryInterface(Ci.nsIFileURL).file;
+      if (!file?.exists()) {
+        throw new ExtensionError("File does not exist");
+      }
+      if (
+        msgIdentifier.dummyMsgLastModifiedTime &&
+        Math.floor(file.lastModifiedTime / 1000000) !=
+          msgIdentifier.dummyMsgLastModifiedTime
+      ) {
+        throw new ExtensionError("File has been modified");
+      }
+    } catch (ex) {
+      console.error(ex);
+      return true;
+    }
+    return false;
   }
 
   /**
    * Retrieves a message from the messageTracker. If the message no longer,
    * exists it is removed from the messageTracker.
-   * @return {nsIMsgHdr} The identifier of the message
+   *
+   * @returns {nsIMsgHdr} The identifier of the message
    */
   getMessage(id) {
-    let value = this._messages.get(id);
-    if (!value) {
+    let msgIdentifier = this._messages.get(id);
+    if (!msgIdentifier) {
       return null;
     }
 
-    let folder = MailServices.folderLookup.getFolderForURL(value.folderURI);
-    if (folder) {
-      let msgHdr = folder.msgDatabase.GetMsgHdrForKey(value.messageKey);
-      if (msgHdr) {
+    if (msgIdentifier.folderURI) {
+      let folder = MailServices.folderLookup.getFolderForURL(
+        msgIdentifier.folderURI
+      );
+      if (folder) {
+        let msgHdr = folder.msgDatabase.getMsgHdrForKey(
+          msgIdentifier.messageKey
+        );
+        if (msgHdr) {
+          return msgHdr;
+        }
+      }
+    } else {
+      let msgHdr = this._dummyMessageHeaders.get(msgIdentifier.dummyMsgUrl);
+      if (msgHdr && !this.isModifiedFileMsg(msgIdentifier)) {
         return msgHdr;
       }
     }
 
-    this._remove(value.folderURI, value.messageKey);
+    this._remove(msgIdentifier);
     return null;
   }
 
   // nsIFolderListener
 
-  OnItemPropertyFlagChanged(item, property, oldFlag, newFlag) {
+  onFolderPropertyFlagChanged(item, property, oldFlag, newFlag) {
+    let changes = {};
     switch (property) {
       case "Status":
         if ((oldFlag ^ newFlag) & Ci.nsMsgMessageFlags.Read) {
-          this.emit("message-updated", item, { read: item.isRead });
+          changes.read = item.isRead;
+        }
+        if ((oldFlag ^ newFlag) & Ci.nsMsgMessageFlags.New) {
+          changes.new = !!(newFlag & Ci.nsMsgMessageFlags.New);
         }
         break;
       case "Flagged":
-        this.emit("message-updated", item, { flagged: item.isFlagged });
+        changes.flagged = item.isFlagged;
         break;
       case "Keywords":
         {
-          let tags = item.getProperty("keywords");
+          let tags = item.getStringProperty("keywords");
           tags = tags ? tags.split(" ") : [];
-          this.emit("message-updated", item, {
-            tags: tags.filter(MailServices.tags.isValidKey),
-          });
+          changes.tags = tags.filter(MailServices.tags.isValidKey);
         }
         break;
     }
+    if (Object.keys(changes).length) {
+      this.emit("message-updated", item, changes);
+    }
   }
 
-  OnItemIntPropertyChanged(folder, property, oldValue, newValue) {
+  onFolderIntPropertyChanged(folder, property, oldValue, newValue) {
     switch (property) {
       case "BiffState":
         if (newValue == Ci.nsIMsgFolder.nsMsgBiffState_NewMail) {
@@ -1887,7 +2530,7 @@ var messageTracker = new (class extends EventEmitter {
   }
 
   /**
-   * Finds the first folder with new messages in the specified changedFolder and
+   * Finds all folders with new messages in the specified changedFolder and
    * returns those.
    *
    * @see MailNotificationManager._getFirstRealFolderWithNewMail()
@@ -1895,41 +2538,38 @@ var messageTracker = new (class extends EventEmitter {
   findNewMessages(changedFolder) {
     let folders = changedFolder.descendants;
     folders.unshift(changedFolder);
-    let folder = folders.find(f => {
-      let flags = f.flags;
+    for (let folder of folders) {
+      let flags = folder.flags;
       if (
         !(flags & Ci.nsMsgFolderFlags.Inbox) &&
         flags & (Ci.nsMsgFolderFlags.SpecialUse | Ci.nsMsgFolderFlags.Virtual)
       ) {
         // Do not notify if the folder is not Inbox but one of
         // Drafts|Trash|SentMail|Templates|Junk|Archive|Queue or Virtual.
-        return false;
+        continue;
       }
-      return f.getNumNewMessages(false) > 0;
-    });
-
-    if (!folder) {
-      return;
+      let numNewMessages = folder.getNumNewMessages(false);
+      if (!numNewMessages) {
+        continue;
+      }
+      let msgDb = folder.msgDatabase;
+      let newMsgKeys = msgDb.getNewList().slice(-numNewMessages);
+      if (newMsgKeys.length == 0) {
+        continue;
+      }
+      this.emit(
+        "messages-received",
+        folder,
+        newMsgKeys.map(key => msgDb.getMsgHdrForKey(key))
+      );
     }
-
-    let numNewMessages = folder.getNumNewMessages(false);
-    let msgDb = folder.msgDatabase;
-    let newMsgKeys = msgDb.getNewList().slice(-numNewMessages);
-    if (newMsgKeys.length == 0) {
-      return;
-    }
-    this.emit(
-      "messages-received",
-      folder,
-      newMsgKeys.map(key => msgDb.GetMsgHdrForKey(key))
-    );
   }
 
   // nsIMsgFolderListener
 
   msgsJunkStatusChanged(messages) {
     for (let msgHdr of messages) {
-      let junkScore = parseInt(msgHdr.getProperty("junkscore"), 10) || 0;
+      let junkScore = parseInt(msgHdr.getStringProperty("junkscore"), 10) || 0;
       this.emit("message-updated", msgHdr, {
         junk: junkScore >= gJunkThreshold,
       });
@@ -1973,10 +2613,16 @@ var messageTracker = new (class extends EventEmitter {
       this._pendingKeyChanges.set(newKey, oldKey);
 
       // Swap tracker entries.
-      let oldId = this._get(newMsgHdr.folder.URI, oldKey);
-      let newId = this._get(newMsgHdr.folder.URI, newKey);
-      this._set(oldId, newMsgHdr.folder.URI, newKey);
-      this._set(newId, newMsgHdr.folder.URI, oldKey);
+      let oldId = this._get({
+        folderURI: newMsgHdr.folder.URI,
+        messageKey: oldKey,
+      });
+      let newId = this._get({
+        folderURI: newMsgHdr.folder.URI,
+        messageKey: newKey,
+      });
+      this._set(oldId, { folderURI: newMsgHdr.folder.URI, messageKey: newKey });
+      this._set(newId, { folderURI: newMsgHdr.folder.URI, messageKey: oldKey });
     }
   }
 
@@ -1991,13 +2637,19 @@ var messageTracker = new (class extends EventEmitter {
       data = JSON.parse(data);
 
       if (data && data.folderURI && data.oldMessageKey && data.newMessageKey) {
-        let id = this._get(data.folderURI, data.oldMessageKey);
+        let id = this._get({
+          folderURI: data.folderURI,
+          messageKey: data.oldMessageKey,
+        });
         if (id) {
           // Replace tracker entries.
-          this._set(id, data.folderURI, data.newMessageKey);
+          this._set(id, {
+            folderURI: data.folderURI,
+            messageKey: data.newMessageKey,
+          });
         }
       }
-    } else if (topic == "xpcom-shutdown") {
+    } else if (topic == "quit-application-granted") {
       this.cleanup();
     }
   }
@@ -2015,7 +2667,8 @@ var messageListTracker = {
 
   /**
    * Takes an array or enumerator of messages and returns the first chunk.
-   * @returns {Object}
+   *
+   * @returns {object}
    */
   startList(messages, extension) {
     let messageList = this.createList(extension);
@@ -2044,10 +2697,11 @@ var messageListTracker = {
 
   /**
    * Creates and returns a new messageList object.
-   * @returns {Object}
+   *
+   * @returns {object}
    */
   createList(extension) {
-    let messageListId = uuidGenerator.generateUUID().number.substring(1, 37);
+    let messageListId = Services.uuid.generateUUID().number.substring(1, 37);
     let messageList = this._createListObject(messageListId, extension);
     let lists = this._contextLists.get(extension);
     if (!lists) {
@@ -2060,7 +2714,8 @@ var messageListTracker = {
 
   /**
    * Returns the messageList object for a given id.
-   * @returns {Object}
+   *
+   * @returns {object}
    */
   getList(messageListId, extension) {
     let lists = this._contextLists.get(extension);
@@ -2075,7 +2730,8 @@ var messageListTracker = {
 
   /**
    * Returns the first/next message page of the given messageList.
-   * @returns {Object}
+   *
+   * @returns {object}
    */
   async getNextPage(messageList) {
     let messageListId = messageList.id;

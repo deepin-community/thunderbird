@@ -1,15 +1,11 @@
 // This file tests async handling of a channel suspended in http-on-modify-request.
 "use strict";
 
-var CC = Components.Constructor;
-
 const { HttpServer } = ChromeUtils.import("resource://testing-common/httpd.js");
 
-var obs = Cc["@mozilla.org/observer-service;1"].getService(
-  Ci.nsIObserverService
-);
+var obs = Services.obs;
 
-var ios = Cc["@mozilla.org/network/io-service;1"].getService(Ci.nsIIOService);
+var ios = Services.io;
 
 // baseUrl is always the initial connection attempt and is handled by
 // failResponseHandler since every test expects that request will either be
@@ -175,7 +171,7 @@ function run_test() {
 
   run_next_test();
 
-  registerCleanupFunction(function() {
+  registerCleanupFunction(function () {
     httpServer.stop(() => {});
   });
 }

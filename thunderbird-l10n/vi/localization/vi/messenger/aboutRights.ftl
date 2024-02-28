@@ -6,9 +6,9 @@ rights-title = Về quyền lợi của bạn
 rights-intro = { -brand-full-name } là phần mềm tự do mã nguồn mở, được xây dựng bởi một cộng đồng gồm hàng nghìn người trên khắp thế giới. Có vài điều mà bạn nên biết:
 rights-intro-point-1 = { -brand-short-name } cung cấp cho bạn theo điều khoản của <a data-l10n-name="mozilla-public-license-link">giấy phép công cộng Mozilla</a>. Điều này có nghĩa là bạn có thể sử dụng, sao chép và phân phối { -brand-short-name } đến người khác. Bạn cũng được hoan nghênh trong việc chỉnh sửa mã nguồn của { -brand-short-name } cho phù hợp với nhu cầu của mình. Giấy phép công cộng Mozilla cũng cho bạn quyền phân phối phiên bản được chỉnh sửa đó.
 rights-intro-point-2 =
-    Bạn không được cấp bất kỳ quyền hoặc giấy phép nhãn hiệu nào cho các
-    nhãn hiệu của tổ chức Mozilla hoặc bất kỳ bên nào, bao gồm nhưng không
-    giới hạn tên hoặc logo Thunderbird. Thông tin bổ sung về nhãn hiệu có thể
+    Bạn không được cấp bất kỳ quyền hoặc giấy phép thương hiệu nào cho các
+    thương hiệu của Mozilla Foundation hoặc bất kỳ bên nào, bao gồm nhưng không
+    giới hạn tên hoặc logo Thunderbird. Thông tin bổ sung về thương hiệu có thể
     được tìm thấy <a data-l10n-name="mozilla-trademarks-link">tại đây</a>.
 rights-intro-point-3 = Một số tính năng trong { -brand-short-name }, như Trình Báo Cáo Lỗi, cho bạn tùy chọn cung cấp phản hồi tới { -vendor-short-name }. Bằng việc chọn gửi phản hồi, bạn cho { -vendor-short-name } quyền sử dụng phản hồi đó để cải tiến sản phẩm, công bố phản hồi trên trang web, và phân phối phản hồi.
 rights-intro-point-4 = Cách chúng tôi dùng thông tin cá nhân của bạn và phản hồi được gửi tới { -vendor-short-name } thông qua { -brand-short-name } được mô tả trong <a data-l10n-name="mozilla-privacy-policy-link">chính sách riêng tư { -brand-short-name }</a>.
@@ -17,7 +17,15 @@ rights-intro-point-5 = Một số tính năng { -brand-short-name } sử dụng 
 rights-intro-point-5-unbranded = Nếu sản phẩm này kết hợp các dịch vụ web, bất kì điều khoản dịch vụ thích hợp nào cho (các) dịch vụ cần phải được liên kết với <a data-l10n-name="mozilla-website-services-link">Các Dịch Vụ Đối Với Trang Web</a>.
 rights-intro-point-6 = Để có thể phát một số loại nội dung video, { -brand-short-name } cần tải xuống một số mô đun giải mã nội dung từ một bên thứ ba.
 rights-webservices-header = Dịch vụ Thông tin Dựa trên Web { -brand-full-name }
-rights-webservices = { -brand-full-name } dùng dịch vụ thông tin dựa trên web ("Dịch Vụ") để cung cấp một số tính năng mà bạn dùng trong phiên bản { -brand-short-name } theo điều khoản được mô tả bên dưới. Nếu bạn không muốn dùng một hoặc nhiều Dịch Vụ hoặc điều khoản bên dưới không chấp nhận được, bạn có thể vô hiệu hóa tính năng hoặc Dịch Vụ. Chỉ dẫn cho cách vô hiệu hóa một tính năng hay Dịch Vụ đặc thù có thể được tìm <a data-l10n-name="mozilla-disable-service-link">tại đây</a>. Các tính năng và dịch vụ khác có thể bị tắt trong phần tùy chỉnh ứng dụng.
+rights-webservices2 =
+    { -brand-full-name } sử dụng các dịch vụ thông tin dựa trên web (“dịch vụ”) để
+    cung cấp một số tính năng được cung cấp cho bạn sử dụng với phiên bản
+    nhị phân này của { -brand-short-name } theo các điều khoản được mô tả bên
+    dưới. Nếu bạn không muốn sử dụng một hoặc nhiều Dịch vụ hoặc các điều
+    khoản dưới đây không được chấp nhận, bạn có thể vô hiệu hóa tính năng
+    hoặc (các) dịch vụ. Bạn có thể tìm thấy hướng dẫn về cách tắt một tính năng
+    hoặc dịch vụ cụ thể <a data-l10n-name="mozilla-disable-service-link">tại đây</a>.
+    Các tính năng và dịch vụ khác có thể tắt trong cài đặt ứng dụng.
 rights-locationawarebrowsing = <strong>Duyệt web Nhận diện Vị trí: </strong>luôn có sẵn. Không có thông tin địa điểm nào được gửi đi mà không có sự cho phép của bạn. Nếu bạn muốn vô hiệu hóa hoàn toàn tính năng này, làm theo các bước sau:
 rights-locationawarebrowsing-term-1 = Trong thanh URL, gõ <code>about:config</code>
 rights-locationawarebrowsing-term-2 = Gõ geo.enabled

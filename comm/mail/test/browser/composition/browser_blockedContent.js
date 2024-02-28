@@ -8,19 +8,13 @@
 
 "use strict";
 
-var {
-  get_msg_source,
-  open_compose_new_mail,
-  setup_msg_contents,
-} = ChromeUtils.import("resource://testing-common/mozmill/ComposeHelpers.jsm");
-var {
-  be_in_folder,
-  get_special_folder,
-  press_delete,
-  select_click_row,
-} = ChromeUtils.import(
-  "resource://testing-common/mozmill/FolderDisplayHelpers.jsm"
-);
+var utils = ChromeUtils.import("resource://testing-common/mozmill/utils.jsm");
+var { get_msg_source, open_compose_new_mail, setup_msg_contents } =
+  ChromeUtils.import("resource://testing-common/mozmill/ComposeHelpers.jsm");
+var { be_in_folder, get_special_folder, press_delete, select_click_row } =
+  ChromeUtils.import(
+    "resource://testing-common/mozmill/FolderDisplayHelpers.jsm"
+  );
 var { wait_for_notification_to_show } = ChromeUtils.import(
   "resource://testing-common/mozmill/NotificationBoxHelpers.jsm"
 );
@@ -28,7 +22,6 @@ var { plan_for_window_close, wait_for_window_close } = ChromeUtils.import(
   "resource://testing-common/mozmill/WindowHelpers.jsm"
 );
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 var { MailServices } = ChromeUtils.import(
   "resource:///modules/MailServices.jsm"
 );
@@ -38,8 +31,8 @@ var gOutboxFolder;
 var kBoxId = "compose-notification-bottom";
 var kNotificationId = "blockedContent";
 
-add_task(function setupModule(module) {
-  gOutboxFolder = get_special_folder(Ci.nsMsgFolderFlags.Queue);
+add_setup(async function () {
+  gOutboxFolder = await get_special_folder(Ci.nsMsgFolderFlags.Queue);
 });
 
 function putHTMLOnClipboard(html) {
@@ -86,18 +79,18 @@ add_task(async function test_paste_file_urls() {
   let tmpFile;
   let tmpFileURL;
   IOUtils.remove(dest, { ignoreAbsent: true })
-    .then(function() {
+    .then(function () {
       return IOUtils.copy(file.path, dest);
     })
-    .then(function() {
-      return IOUtils.touch(dest);
+    .then(function () {
+      return IOUtils.setModificationTime(dest);
     })
-    .then(function() {
+    .then(function () {
       tmpFile = Cc["@mozilla.org/file/local;1"].createInstance(Ci.nsIFile);
       tmpFile.initWithPath(dest);
       Assert.ok(tmpFile.exists(), "tmpFile's not there at " + dest);
 
-      tmpFileURL = fileHandler.getURLSpecFromFile(tmpFile);
+      tmpFileURL = fileHandler.getURLSpecFromActualFile(tmpFile);
       putHTMLOnClipboard(
         "<img id='bad-img' src='file://foo/non-existent' alt='bad' /> and " +
           "<img id='tmp-img' src='" +
@@ -105,7 +98,7 @@ add_task(async function test_paste_file_urls() {
           "' alt='tmp' />"
       );
 
-      cwc.e("content-frame").focus();
+      cwc.window.document.getElementById("messageEditor").focus();
       // Ctrl+V = Paste
       EventUtils.synthesizeKey(
         "v",
@@ -113,27 +106,29 @@ add_task(async function test_paste_file_urls() {
         cwc.window
       );
     })
-    .catch(function(err) {
+    .catch(function (err) {
       throw new Error("Setting up img file FAILED: " + err);
     });
 
   // Now wait for the paste, and for the file: based image to get converted
   // to data:.
-  cwc.waitFor(function() {
-    let img = cwc.e("content-frame").contentDocument.getElementById("tmp-img");
+  utils.waitFor(function () {
+    let img = cwc.window.document
+      .getElementById("messageEditor")
+      .contentDocument.getElementById("tmp-img");
     return img && img.naturalHeight == 84 && img.src.startsWith("data:");
   }, "Timeout waiting for pasted tmp image to be loaded ok");
 
   // For the non-existent (non-accessible!) image we should get a notification.
-  wait_for_notification_to_show(cwc, kBoxId, kNotificationId);
+  wait_for_notification_to_show(cwc.window, kBoxId, kNotificationId);
 
   plan_for_window_close(cwc);
   cwc.window.goDoCommand("cmd_sendLater");
   wait_for_window_close();
 
-  be_in_folder(gOutboxFolder);
+  await be_in_folder(gOutboxFolder);
   let outMsg = select_click_row(0);
-  let outMsgContent = get_msg_source(outMsg);
+  let outMsgContent = await get_msg_source(outMsg);
 
   Assert.ok(
     outMsgContent.includes("file://foo/non-existent"),

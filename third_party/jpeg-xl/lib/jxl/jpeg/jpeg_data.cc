@@ -5,10 +5,13 @@
 
 #include "lib/jxl/jpeg/jpeg_data.h"
 
+#include "lib/jxl/base/printf_macros.h"
 #include "lib/jxl/base/status.h"
 
 namespace jxl {
 namespace jpeg {
+
+#if JPEGXL_ENABLE_TRANSCODE_JPEG
 
 namespace {
 enum JPEGComponentType : uint32_t {
@@ -64,12 +67,13 @@ Status JPEGData::VisitFields(Visitor* visitor) {
       JXL_RETURN_IF_ERROR(VisitMarker(&marker, visitor, &info));
       marker_order.push_back(marker);
       if (marker_order.size() > 16384) {
-        return JXL_FAILURE("Too many markers: %zu\n", marker_order.size());
+        return JXL_FAILURE("Too many markers: %" PRIuS "\n",
+                           marker_order.size());
       }
     } while (marker != 0xd9);
   } else {
     if (marker_order.size() > 16384) {
-      return JXL_FAILURE("Too many markers: %zu\n", marker_order.size());
+      return JXL_FAILURE("Too many markers: %" PRIuS "\n", marker_order.size());
     }
     for (size_t i = 0; i < marker_order.size(); i++) {
       JXL_RETURN_IF_ERROR(VisitMarker(&marker_order[i], visitor, &info));
@@ -108,7 +112,7 @@ Status JPEGData::VisitFields(Visitor* visitor) {
     JXL_RETURN_IF_ERROR(visitor->Bits(16, 0, &len));
     if (visitor->IsReading()) app.resize(len + 1);
     if (app.size() < 3) {
-      return JXL_FAILURE("Invalid marker size: %zu\n", app.size());
+      return JXL_FAILURE("Invalid marker size: %" PRIuS "\n", app.size());
     }
   }
   for (auto& com : com_data) {
@@ -116,7 +120,7 @@ Status JPEGData::VisitFields(Visitor* visitor) {
     JXL_RETURN_IF_ERROR(visitor->Bits(16, 0, &len));
     if (visitor->IsReading()) com.resize(len + 1);
     if (com.size() < 3) {
-      return JXL_FAILURE("Invalid marker size: %zu\n", com.size());
+      return JXL_FAILURE("Invalid marker size: %" PRIuS "\n", com.size());
     }
   }
 
@@ -140,15 +144,14 @@ Status JPEGData::VisitFields(Visitor* visitor) {
   }
 
   JPEGComponentType component_type =
-      components.size() == 1 && components[0].id == 1
-          ? JPEGComponentType::kGray
-          : components.size() == 3 && components[0].id == 1 &&
-                    components[1].id == 2 && components[2].id == 3
-                ? JPEGComponentType::kYCbCr
-                : components.size() == 3 && components[0].id == 'R' &&
-                          components[1].id == 'G' && components[2].id == 'B'
-                      ? JPEGComponentType::kRGB
-                      : JPEGComponentType::kCustom;
+      components.size() == 1 && components[0].id == 1 ? JPEGComponentType::kGray
+      : components.size() == 3 && components[0].id == 1 &&
+              components[1].id == 2 && components[2].id == 3
+          ? JPEGComponentType::kYCbCr
+      : components.size() == 3 && components[0].id == 'R' &&
+              components[1].id == 'G' && components[2].id == 'B'
+          ? JPEGComponentType::kRGB
+          : JPEGComponentType::kCustom;
   JXL_RETURN_IF_ERROR(
       visitor->Bits(2, JPEGComponentType::kYCbCr,
                     reinterpret_cast<uint32_t*>(&component_type)));
@@ -187,15 +190,20 @@ Status JPEGData::VisitFields(Visitor* visitor) {
   for (size_t i = 0; i < components.size(); i++) {
     JXL_RETURN_IF_ERROR(visitor->Bits(2, 0, &components[i].quant_idx));
     if (components[i].quant_idx >= quant.size()) {
-      return JXL_FAILURE("Invalid quant table for component %zu: %u\n", i,
-                         components[i].quant_idx);
+      return JXL_FAILURE("Invalid quant table for component %" PRIuS ": %u\n",
+                         i, components[i].quant_idx);
     }
     used_tables |= 1U << components[i].quant_idx;
   }
-  if (used_tables + 1 != 1U << quant.size()) {
-    return JXL_FAILURE(
-        "Not all quant tables are used (%zu tables, %zx used table mask)",
-        quant.size(), used_tables);
+  for (size_t i = 0; i < quant.size(); i++) {
+    if (used_tables & (1 << i)) continue;
+    if (i == 0) return JXL_FAILURE("First quant table unused.");
+    // Unused quant table has to be set to copy of previous quant table
+    for (size_t j = 0; j < 64; j++) {
+      if (quant[i].values[j] != quant[i - 1].values[j]) {
+        return JXL_FAILURE("Non-trivial unused quant table");
+      }
+    }
   }
 
   uint32_t num_huff = huffman_code.size();
@@ -222,7 +230,7 @@ Status JPEGData::VisitFields(Visitor* visitor) {
       return JXL_FAILURE("Empty Huffman table");
     }
     if (num_symbols > hc.values.size()) {
-      return JXL_FAILURE("Huffman code too large (%zu)", num_symbols);
+      return JXL_FAILURE("Huffman code too large (%" PRIuS ")", num_symbols);
     }
     // Presence flags for 4 * 64 + 1 values.
     uint64_t value_slots[5] = {};
@@ -279,8 +287,6 @@ Status JPEGData::VisitFields(Visitor* visitor) {
   if (info.has_dri) {
     JXL_RETURN_IF_ERROR(visitor->Bits(16, 0, &restart_interval));
   }
-
-  uint64_t padding_spot_limit = scan_info.size();
 
   for (auto& scan : scan_info) {
     uint32_t num_reset_points = scan.reset_points.size();
@@ -341,13 +347,6 @@ Status JPEGData::VisitFields(Visitor* visitor) {
       }
       last_block_idx = block_idx;
     }
-
-    if (restart_interval > 0) {
-      int MCUs_per_row = 0;
-      int MCU_rows = 0;
-      CalculateMcuSize(scan, &MCUs_per_row, &MCU_rows);
-      padding_spot_limit += DivCeil(MCU_rows * MCUs_per_row, restart_interval);
-    }
   }
   std::vector<uint32_t> inter_marker_data_sizes;
   inter_marker_data_sizes.reserve(info.num_intermarker);
@@ -357,6 +356,10 @@ Status JPEGData::VisitFields(Visitor* visitor) {
     if (visitor->IsReading()) inter_marker_data_sizes.emplace_back(len);
   }
   uint32_t tail_data_len = tail_data.size();
+  if (!visitor->IsReading() && tail_data_len > 4260096) {
+    return JXL_FAILURE("Tail data too large (max size = 4260096, size = %u).",
+                       tail_data_len);
+  }
   JXL_RETURN_IF_ERROR(visitor->U32(Val(0), BitsOffset(8, 1),
                                    BitsOffset(16, 257), BitsOffset(22, 65793),
                                    0, &tail_data_len));
@@ -365,18 +368,19 @@ Status JPEGData::VisitFields(Visitor* visitor) {
   if (has_zero_padding_bit) {
     uint32_t nbit = padding_bits.size();
     JXL_RETURN_IF_ERROR(visitor->Bits(24, 0, &nbit));
-    if (nbit > 7 * padding_spot_limit) {
-      return JXL_FAILURE("Number of padding bits does not correspond to image");
-    }
-    // TODO(eustas): check that that much bits of input are available.
     if (visitor->IsReading()) {
-      padding_bits.resize(nbit);
-    }
-    // TODO(eustas): read in (8-64?) bit groups to reduce overhead.
-    for (uint8_t& bit : padding_bits) {
-      bool bbit = bit;
-      JXL_RETURN_IF_ERROR(visitor->Bool(false, &bbit));
-      bit = bbit;
+      padding_bits.reserve(std::min<uint32_t>(1024u, nbit));
+      for (uint32_t i = 0; i < nbit; i++) {
+        bool bbit = false;
+        JXL_RETURN_IF_ERROR(visitor->Bool(false, &bbit));
+        padding_bits.push_back(bbit);
+      }
+    } else {
+      for (uint8_t& bit : padding_bits) {
+        bool bbit = bit;
+        JXL_RETURN_IF_ERROR(visitor->Bool(false, &bbit));
+        bit = bbit;
+      }
     }
   }
 
@@ -392,6 +396,8 @@ Status JPEGData::VisitFields(Visitor* visitor) {
 
   return true;
 }
+
+#endif  // JPEGXL_ENABLE_TRANSCODE_JPEG
 
 void JPEGData::CalculateMcuSize(const JPEGScanInfo& scan, int* MCUs_per_row,
                                 int* MCU_rows) const {
@@ -414,6 +420,8 @@ void JPEGData::CalculateMcuSize(const JPEGScanInfo& scan, int* MCUs_per_row,
   *MCU_rows = DivCeil(height * v_group, 8 * max_v_samp_factor);
 }
 
+#if JPEGXL_ENABLE_TRANSCODE_JPEG
+
 Status SetJPEGDataFromICC(const PaddedBytes& icc, jpeg::JPEGData* jpeg_data) {
   size_t icc_pos = 0;
   for (size_t i = 0; i < jpeg_data->app_data.size(); i++) {
@@ -423,8 +431,9 @@ Status SetJPEGDataFromICC(const PaddedBytes& icc, jpeg::JPEGData* jpeg_data) {
     size_t len = jpeg_data->app_data[i].size() - 17;
     if (icc_pos + len > icc.size()) {
       return JXL_FAILURE(
-          "ICC length is less than APP markers: requested %zu more bytes, "
-          "%zu available",
+          "ICC length is less than APP markers: requested %" PRIuS
+          " more bytes, "
+          "%" PRIuS " available",
           len, icc.size() - icc_pos);
     }
     memcpy(&jpeg_data->app_data[i][17], icc.data() + icc_pos, len);
@@ -435,6 +444,8 @@ Status SetJPEGDataFromICC(const PaddedBytes& icc, jpeg::JPEGData* jpeg_data) {
   }
   return true;
 }
+
+#endif  // JPEGXL_ENABLE_TRANSCODE_JPEG
 
 }  // namespace jpeg
 }  // namespace jxl

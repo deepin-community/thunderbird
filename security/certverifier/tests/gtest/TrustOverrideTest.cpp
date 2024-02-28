@@ -6,7 +6,6 @@
 #include "gtest/gtest.h"
 #include "nsCOMPtr.h"
 #include "nsIPrefService.h"
-#include "nsIX509Cert.h"
 #include "nsIX509CertDB.h"
 #include "nsServiceManagerUtils.h"
 #include "TrustOverrideUtils.h"
@@ -215,12 +214,18 @@ TEST_F(psm_TrustOverrideTest, CheckCertDNIsInList) {
 }
 
 TEST_F(psm_TrustOverrideTest, CheckCertSPKIIsInList) {
-  nsTArray<uint8_t> caArray(kOverrideCaDer, sizeof(kOverrideCaDer));
-  nsTArray<uint8_t> intermediateArray(kOverrideCaIntermediateDer,
-                                      sizeof(kOverrideCaIntermediateDer));
+  mozilla::pkix::Input caInput;
+  mozilla::pkix::Result rv =
+      caInput.Init(kOverrideCaDer, sizeof(kOverrideCaDer));
+  ASSERT_TRUE(rv == Success);
 
-  EXPECT_TRUE(CertSPKIIsInList(caArray, OverrideCaSPKIs))
+  mozilla::pkix::Input intermediateInput;
+  rv = intermediateInput.Init(kOverrideCaIntermediateDer,
+                              sizeof(kOverrideCaIntermediateDer));
+  ASSERT_TRUE(rv == Success);
+
+  EXPECT_TRUE(CertSPKIIsInList(caInput, OverrideCaSPKIs))
       << "CA should be in the SPKI list";
-  EXPECT_FALSE(CertSPKIIsInList(intermediateArray, OverrideCaSPKIs))
+  EXPECT_FALSE(CertSPKIIsInList(intermediateInput, OverrideCaSPKIs))
       << "Int should not be in the SPKI list";
 }

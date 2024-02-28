@@ -24,32 +24,24 @@ add_task(async function test_updates_post_policy() {
     "devtools dedicated disabled pref can not be updated"
   );
 
-  await expectErrorPage("about:devtools");
   await expectErrorPage("about:devtools-toolbox");
   await expectErrorPage("about:debugging");
 
   info("Check that devtools menu items are hidden");
   let devtoolsMenu = window.document.getElementById("devtoolsMenu");
   ok(devtoolsMenu.hidden, "The Web Developer item of the tools menu is hidden");
-  let appmenu_devtoolsMenu = window.document.getElementById(
-    "appmenu_devtoolsMenu"
-  );
-  ok(
-    appmenu_devtoolsMenu.hidden,
-    "The Web Developer item of the hamburger menu is hidden"
-  );
 });
 
-const expectErrorPage = async function(url) {
+const expectErrorPage = async function (url) {
   let tabmail = document.getElementById("tabmail");
   let index = tabmail.tabInfo.length;
   window.openContentTab("about:blank");
   let tab = tabmail.tabInfo[index];
   let browser = tab.browser;
 
-  BrowserTestUtils.loadURI(browser, url);
+  BrowserTestUtils.loadURIString(browser, url);
   await BrowserTestUtils.browserLoaded(browser, false, url, true);
-  await SpecialPowers.spawn(browser, [url], async function() {
+  await SpecialPowers.spawn(browser, [url], async function () {
     ok(
       content.document.documentURI.startsWith(
         "about:neterror?e=blockedByPolicy"

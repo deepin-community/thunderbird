@@ -7,9 +7,14 @@
 description: |
     Test if a given function is a constructor function.
 defines: [isConstructor]
+features: [Reflect.construct]
 ---*/
 
 function isConstructor(f) {
+    if (typeof f !== "function") {
+      throw new Test262Error("isConstructor invoked with a non-function value");
+    }
+
     try {
         Reflect.construct(function(){}, [], f);
     } catch (e) {
@@ -33,7 +38,7 @@ defines: [checkSequence, checkSettledPromises]
 function checkSequence(arr, message) {
   arr.forEach(function(e, i) {
     if (e !== (i+1)) {
-      $ERROR((message ? message : "Steps in unexpected sequence:") +
+      throw new Test262Error((message ? message : "Steps in unexpected sequence:") +
              " '" + arr.join(',') + "'");
     }
   });

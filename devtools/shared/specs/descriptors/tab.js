@@ -7,7 +7,7 @@ const {
   generateActorSpec,
   Option,
   RetVal,
-} = require("devtools/shared/protocol");
+} = require("resource://devtools/shared/protocol.js");
 
 const tabDescriptorSpec = generateActorSpec({
   typeName: "tabDescriptor",
@@ -26,7 +26,10 @@ const tabDescriptorSpec = generateActorSpec({
       },
     },
     getWatcher: {
-      request: {},
+      request: {
+        isServerTargetSwitchingEnabled: Option(0, "boolean"),
+        isPopupDebuggingEnabled: Option(0, "boolean"),
+      },
       response: RetVal("watcher"),
     },
     reloadDescriptor: {

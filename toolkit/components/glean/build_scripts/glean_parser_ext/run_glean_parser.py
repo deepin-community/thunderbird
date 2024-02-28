@@ -4,19 +4,25 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-import cpp
-import js
 import os
-import re
-import rust
 import sys
-
-import jinja2
-
-from util import generate_metric_ids
-from glean_parser import lint, parser, util
-from mozbuild.util import FileAvoidWrite
 from pathlib import Path
+
+import cpp
+import jinja2
+import jog
+import rust
+from glean_parser import lint, parser, translate, util
+from mozbuild.util import FileAvoidWrite
+from util import generate_metric_ids
+
+import js
+
+
+class ParserError(Exception):
+    """Thrown from parse if something goes wrong"""
+
+    pass
 
 
 GIFFT_TYPES = {
@@ -33,6 +39,8 @@ GIFFT_TYPES = {
         "uuid",
         "datetime",
         "quantity",
+        "rate",
+        "url",
     ],
 }
 
@@ -41,11 +49,7 @@ def get_parser_options(moz_app_version):
     app_version_major = moz_app_version.split(".", 1)[0]
     return {
         "allow_reserved": False,
-        "custom_is_expired": lambda expires: expires == "expired"
-        or expires != "never"
-        and int(expires) <= int(app_version_major),
-        "custom_validate_expires": lambda expires: expires in ("expired", "never")
-        or re.fullmatch(r"\d\d+", expires, flags=re.ASCII),
+        "expire_by_version": int(app_version_major),
     }
 
 
@@ -62,49 +66,68 @@ def parse(args):
 
     input_files = [Path(x) for x in yaml_array]
 
+    options = get_parser_options(moz_app_version)
+
+    return parse_with_options(input_files, options)
+
+
+def parse_with_options(input_files, options):
     # Derived heavily from glean_parser.translate.translate.
     # Adapted to how mozbuild sends us a fd, and to expire on versions not dates.
 
-    options = get_parser_options(moz_app_version)
-
-    # Lint the yaml first, then lint the metrics.
-    if lint.lint_yaml_files(input_files, parser_config=options):
-        # Warnings are Errors
-        sys.exit(1)
-
     all_objs = parser.parse_objects(input_files, options)
     if util.report_validation_errors(all_objs):
-        sys.exit(1)
+        raise ParserError("found validation errors during parse")
 
     nits = lint.lint_metrics(all_objs.value, options)
     if nits is not None and any(nit.check_name != "EXPIRED" for nit in nits):
         # Treat Warnings as Errors in FOG.
         # But don't fail the whole build on expired metrics (it blocks testing).
-        sys.exit(1)
+        raise ParserError("glinter nits found during parse")
 
-    return all_objs.value, options
+    objects = all_objs.value
+
+    translate.transform_metrics(objects)
+
+    return objects, options
 
 
 # Must be kept in sync with the length of `deps` in moz.build.
-DEPS_LEN = 15
+DEPS_LEN = 19
 
 
-def main(output_fd, *args):
-    args = args[DEPS_LEN:]
+def main(cpp_fd, *args):
+    def open_output(filename):
+        return FileAvoidWrite(os.path.join(os.path.dirname(cpp_fd.name), filename))
+
+    [js_h_path, js_cpp_path, rust_path] = args[-3:]
+    args = args[DEPS_LEN:-3]
     all_objs, options = parse(args)
-    rust.output_rust(all_objs, output_fd, options)
 
+    cpp.output_cpp(all_objs, cpp_fd, options)
 
-def cpp_metrics(output_fd, *args):
-    args = args[DEPS_LEN:]
-    all_objs, options = parse(args)
-    cpp.output_cpp(all_objs, output_fd, options)
+    with open_output(js_h_path) as js_fd:
+        with open_output(js_cpp_path) as js_cpp_fd:
+            js.output_js(all_objs, js_fd, js_cpp_fd, options)
 
+    # We only need this info if we're dealing with pings.
+    ping_names_by_app_id = {}
+    if "pings" in all_objs:
+        import sys
+        from os import path
 
-def js_metrics(output_fd, *args):
-    args = args[DEPS_LEN:]
-    all_objs, options = parse(args)
-    js.output_js(all_objs, output_fd, options)
+        from buildconfig import topsrcdir
+
+        sys.path.append(path.join(path.dirname(__file__), path.pardir, path.pardir))
+        from metrics_index import pings_by_app_id
+
+        for app_id, ping_yamls in pings_by_app_id.items():
+            input_files = [Path(path.join(topsrcdir, x)) for x in ping_yamls]
+            ping_objs, _ = parse_with_options(input_files, options)
+            ping_names_by_app_id[app_id] = ping_objs["pings"].keys()
+
+    with open_output(rust_path) as rust_fd:
+        rust.output_rust(all_objs, rust_fd, ping_names_by_app_id, options)
 
 
 def gifft_map(output_fd, *args):
@@ -134,7 +157,10 @@ def output_gifft_map(output_fd, probe_type, all_objs, cpp_fd):
             ):
                 info = (metric.telemetry_mirror, f"{category_name}.{metric.name}")
                 if metric.type in GIFFT_TYPES[probe_type]:
-                    if info in ids_to_probes.values():
+                    if any(
+                        metric.telemetry_mirror == value[0]
+                        for value in ids_to_probes.values()
+                    ):
                         print(
                             f"Telemetry mirror {metric.telemetry_mirror} already registered",
                             file=sys.stderr,
@@ -167,6 +193,9 @@ def output_gifft_map(output_fd, probe_type, all_objs, cpp_fd):
         template.render(
             ids_to_probes=ids_to_probes,
             probe_type=probe_type,
+            id_bits=js.ID_BITS,
+            id_signal_bits=js.ID_SIGNAL_BITS,
+            runtime_metric_bit=jog.RUNTIME_METRIC_BIT,
         )
     )
     output_fd.write("\n")
@@ -178,6 +207,18 @@ def output_gifft_map(output_fd, probe_type, all_objs, cpp_fd):
         template = env.get_template("gifft_events.jinja2")
         cpp_fd.write(template.render(all_objs=all_objs))
         cpp_fd.write("\n")
+
+
+def jog_factory(output_fd, *args):
+    args = args[DEPS_LEN:]
+    all_objs, options = parse(args)
+    jog.output_factory(all_objs, output_fd, options)
+
+
+def jog_file(output_fd, *args):
+    args = args[DEPS_LEN:]
+    all_objs, options = parse(args)
+    jog.output_file(all_objs, output_fd, options)
 
 
 if __name__ == "__main__":

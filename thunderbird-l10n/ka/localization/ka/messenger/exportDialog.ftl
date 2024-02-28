@@ -4,8 +4,7 @@
 
 export-dialog-brand-name = { -brand-product-name }
 
-export-dialog-window =
-    .title = გატანა
+export-dialog-title = გატანა
 
 export-dialog =
     .buttonlabelaccept = შემდეგი
@@ -14,7 +13,7 @@ export-dialog-button-finish = დასრულება
 
 export-dialog-file-picker = გატანა zip-ფაილად
 
-export-dialog-desc1 = შეინახეთ ფოსტის ანგარიშების, წერილების, მისამართების წიგნაკების, პარამეტრების zip-ფაილში.
+export-dialog-description1 = შეინახეთ ფოსტის ანგარიშები, წერილები, მისამართების წიგნაკები, პარამეტრები zip-ფაილში.
 
 export-dialog-desc2 = საჭიროების შემთხვევაში, შეგეძლებათ ყველაფერი უკან გადმოიტანოთ zip-ფაილიდან, პროფილის აღსადგენად.
 

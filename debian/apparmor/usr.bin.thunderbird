@@ -5,6 +5,7 @@
 
 # Declare an apparmor variable to help with overrides
 @{MOZ_LIBDIR}=/usr/lib/thunderbird
+@{THUNDERBIRD_USER_DIR} = @{HOME}/.{icedove,thunderbird,mozilla-thunderbird}
 
 #include <tunables/global>
 
@@ -17,8 +18,10 @@ profile thunderbird /usr/lib/thunderbird/thunderbird{,-bin} {
   #include <abstractions/dbus-accessibility>
   #include <abstractions/dbus-session>
   #include <abstractions/dconf>
+  #include <abstractions/dri-enumerate>
   #include <abstractions/gnome>
   #include <abstractions/ibus>
+  #include <abstractions/mesa>
   #include <abstractions/nameservice>
   #include <abstractions/nvidia>
   #include <abstractions/p11-kit>
@@ -42,6 +45,10 @@ profile thunderbird /usr/lib/thunderbird/thunderbird{,-bin} {
 
   # Backported from the dri-enumerate abstraction, available in AppArmor 2.13
   /sys/devices/pci[0-9]*/**/{device,subsystem_device,subsystem_vendor,uevent,vendor} r,
+
+  # Imported from the opencl abstraction, which we cannot include
+  # due to conflicting "x"
+  @{sys}/devices/pci[0-9]*/**/{class,config,resource,revision} r,
 
   # Allow opening attachments
   # TODO: create and use abstractions for opening various file formats
@@ -293,12 +300,12 @@ profile thunderbird /usr/lib/thunderbird/thunderbird{,-bin} {
   /**/ r,
 
   # per-user thunderbird configuration
-  owner @{HOME}/.{icedove,thunderbird}/ rw,
-  owner @{HOME}/.{icedove,thunderbird}/** rw,
-  owner @{HOME}/.{icedove,thunderbird}/**/storage.sdb k,
-  owner @{HOME}/.{icedove,thunderbird}/**/*.{db,parentlock,sqlite}* k,
-  owner @{HOME}/.{icedove,thunderbird}/plugins/** rm,
-  owner @{HOME}/.{icedove,thunderbird}/**/plugins/** rm,
+  owner @{THUNDERBIRD_USER_DIR}/ rw,
+  owner @{THUNDERBIRD_USER_DIR}/** rw,
+  owner @{THUNDERBIRD_USER_DIR}/**/storage.sdb k,
+  owner @{THUNDERBIRD_USER_DIR}/**/*.{db,parentlock,sqlite}* k,
+  owner @{THUNDERBIRD_USER_DIR}/plugins/** rm,
+  owner @{THUNDERBIRD_USER_DIR}/**/plugins/** rm,
   owner @{HOME}/.cache/thunderbird/ rw,
   owner @{HOME}/.cache/thunderbird/** rw,
 
@@ -309,7 +316,7 @@ profile thunderbird /usr/lib/thunderbird/thunderbird{,-bin} {
   # Extensions
   # /usr/share/.../extensions/... is already covered by '/usr/** r', above.
   # Allow 'x' for downloaded extensions, but inherit policy for safety
-  owner @{HOME}/.{icedove,thunderbird}/**/extensions/** mixrw,
+  owner @{THUNDERBIRD_USER_DIR}/**/extensions/** mixrw,
   owner @{HOME}/.mozilla/ rw,
   owner @{HOME}/.mozilla/extensions/          rw,
   owner @{HOME}/.mozilla/extensions/**        mixr,
@@ -334,6 +341,9 @@ profile thunderbird /usr/lib/thunderbird/thunderbird{,-bin} {
   # TB tries to create this file but has no business doing so
   deny @{HOME}/.gnupg/gpg-agent.conf w,
 
+  # Required for Wayland display protocol support
+  owner /dev/shm/wayland.mozilla.ipc.[0-9]* rw,
+
   profile gpg {
     #include <abstractions/base>
 
@@ -344,14 +354,14 @@ profile thunderbird /usr/lib/thunderbird/thunderbird{,-bin} {
     /usr/share/xul-ext/enigmail/chrome/** r,
 
     # silence noise from enigmail 1.9+
-    deny owner @{HOME}/.{icedove,thunderbird}/*/.parentlock w,
-    deny owner @{HOME}/.{icedove,thunderbird}/*/panacea.dat w,
-    deny owner @{HOME}/.{icedove,thunderbird}/*/*.mab w,
-    deny owner @{HOME}/.{icedove,thunderbird}/**/*.msf w,
+    deny owner @{THUNDERBIRD_USER_DIR}/*/.parentlock w,
+    deny owner @{THUNDERBIRD_USER_DIR}/*/panacea.dat w,
+    deny owner @{THUNDERBIRD_USER_DIR}/*/*.mab w,
+    deny owner @{THUNDERBIRD_USER_DIR}/**/*.msf w,
     deny owner @{HOME}/.cache/thunderbird/**/_CACHE_* w,
 
     # noise from inherited files
-    deny @{HOME}/.{icedove,thunderbird}/*/ImapMail/*/INBOX w,
+    deny @{THUNDERBIRD_USER_DIR}/*/ImapMail/*/INBOX w,
     deny /usr/{lib,share}/thunderbird/omni.ja r,
     deny /usr/share/thunderbird/extensions/** r,
 
@@ -410,7 +420,7 @@ profile thunderbird /usr/lib/thunderbird/thunderbird{,-bin} {
     owner @{PROC}/@{pids}/task/@{tid}/comm rw,
 
     # for revocation certificate generation in the Enigmail setup wizard
-    owner @{HOME}/.{icedove,thunderbird}/*/0x[A-F0-9]*_rev.asc rw,
+    owner @{THUNDERBIRD_USER_DIR}/*/0x[A-F0-9]*_rev.asc rw,
     # for revocation certificate generation in the Enigmail key manager
     owner @{HOME}/*0x[A-F0-9]**.asc rw,
 
@@ -425,9 +435,10 @@ profile thunderbird /usr/lib/thunderbird/thunderbird{,-bin} {
     owner /tmp/gpg-[a-zA-Z0-9]*/S.gpg-agent rw,
 
     /usr/share/sounds/** r,
+
+    deny /dev/shm/org.chromium.* rw, # file_inherit only
   }
 
   # Site-specific additions and overrides. See local/README for details.
   #include <local/usr.bin.thunderbird>
 }
-

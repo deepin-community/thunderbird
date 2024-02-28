@@ -6,7 +6,6 @@
 #include "nsIAbCard.h"
 #include "nsAbDirectoryQuery.h"
 #include "nsAbDirectoryQueryProxy.h"
-#include "nsAbUtils.h"
 #include "nsAbBooleanExpression.h"
 #include "nsComponentManagerUtils.h"
 #include "nsString.h"
@@ -220,7 +219,7 @@ nsresult nsAbDirectoryQuery::query(nsIAbDirectory* directory,
   nsresult rv = queryCards(directory, expression, listener, resultLimit);
   NS_ENSURE_SUCCESS(rv, rv);
 
-  if (doSubDirectories && resultLimit != 0) {
+  if (*resultLimit != 0 && doSubDirectories) {
     rv = queryChildren(directory, expression, listener, doSubDirectories,
                        resultLimit);
     NS_ENSURE_SUCCESS(rv, rv);

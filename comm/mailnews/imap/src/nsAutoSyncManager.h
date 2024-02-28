@@ -77,6 +77,8 @@
  * for any messages it previously determined it should download). Then it sets
  * a timer, and in the timer callback, it processes the update q, by calling
  * InitiateAutoSync on the first folder in the update q.
+ *
+ * See additional info near the bottom of this file.
  */
 // clang-format on
 
@@ -128,7 +130,6 @@ class nsAutoSyncManager final : public nsIObserver,
   static const uint32_t kGroupRetryCount = 3;
 
   enum IdleState { systemIdle, appIdle, notIdle };
-  enum UpdateState { initiated, completed };
 
  public:
   NS_DECL_ISUPPORTS
@@ -175,9 +176,6 @@ class nsAutoSyncManager final : public nsIObserver,
   void StopTimer();
   void StartTimerIfNeeded();
 
-  /// pref helpers
-  uint32_t GetUpdateIntervalFor(nsIAutoSyncState* aAutoSyncStateObj);
-
  protected:
   nsCOMPtr<nsIAutoSyncMsgStrategy> mMsgStrategyImpl;
   nsCOMPtr<nsIAutoSyncFolderStrategy> mFolderStrategyImpl;
@@ -190,8 +188,10 @@ class nsAutoSyncManager final : public nsIObserver,
   // contains the folders that will be checked for new messages with STATUS,
   // and if there are any, we'll call UpdateFolder on them.
   nsCOMArray<nsIAutoSyncState> mUpdateQ;
-  // this is the update state for the current folder.
-  UpdateState mUpdateState;
+  // this is set true when autosync is initiated for a single folder. Its
+  // purpose is ensure that update for a folder finishes before the next one
+  // starts.
+  bool mUpdateInProgress;
 
   // This is set if auto sync has been completely paused.
   bool mPaused;
@@ -245,6 +245,8 @@ different imap servers are simultaneous.
 
 ii) Parallel: All folders at the same time, using all cached-connections -
 a.k.a 'Folders gone wild' mode.
+
+Note: The "Chained" mode is currently in use: mDownloadModel = dmChained;
 
 The order the folders are added into the mPriorityQ doesn't matter since every
 time a batch completed for an imap server, nsAutoSyncManager adjusts the order.

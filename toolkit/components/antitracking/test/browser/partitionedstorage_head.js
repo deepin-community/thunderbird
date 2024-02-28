@@ -7,25 +7,22 @@
 
 "use strict";
 
-/* import-globals-from dynamicfpi_head.js */
 Services.scriptloader.loadSubScript(
   "chrome://mochitests/content/browser/toolkit/components/antitracking/test/browser/dynamicfpi_head.js",
-  this
-);
-
-/* import-globals-from storageprincipal_head.js */
-Services.scriptloader.loadSubScript(
-  "chrome://mochitests/content/browser/toolkit/components/antitracking/test/browser/storageprincipal_head.js",
   this
 );
 
 this.PartitionedStorageHelper = {
   runTestInNormalAndPrivateMode(name, callback, cleanupFunction, extraPrefs) {
     // Normal mode
-    this.runTest(name, callback, cleanupFunction, extraPrefs, false);
+    this.runTest(name, callback, cleanupFunction, extraPrefs, {
+      runInPrivateWindow: false,
+    });
 
     // Private mode
-    this.runTest(name, callback, cleanupFunction, extraPrefs, true);
+    this.runTest(name, callback, cleanupFunction, extraPrefs, {
+      runInPrivateWindow: true,
+    });
   },
 
   runTest(
@@ -33,21 +30,15 @@ this.PartitionedStorageHelper = {
     callback,
     cleanupFunction,
     extraPrefs,
-    runInPrivateWindow = false
+    { runInPrivateWindow = false, runInSecureContext = false } = {}
   ) {
     DynamicFPIHelper.runTest(
       name,
       callback,
       cleanupFunction,
       extraPrefs,
-      runInPrivateWindow
-    );
-    StoragePrincipalHelper.runTest(
-      name,
-      callback,
-      cleanupFunction,
-      extraPrefs,
-      runInPrivateWindow
+      runInPrivateWindow,
+      { runInSecureContext }
     );
   },
 
@@ -56,7 +47,8 @@ this.PartitionedStorageHelper = {
     testCategory,
     getDataCallback,
     addDataCallback,
-    cleanupFunction
+    cleanupFunction,
+    expectUnpartition = false
   ) {
     // Normal mode
     this.runPartitioningTest(
@@ -65,6 +57,7 @@ this.PartitionedStorageHelper = {
       getDataCallback,
       addDataCallback,
       cleanupFunction,
+      expectUnpartition,
       false
     );
 
@@ -75,6 +68,7 @@ this.PartitionedStorageHelper = {
       getDataCallback,
       addDataCallback,
       cleanupFunction,
+      expectUnpartition,
       true
     );
   },
@@ -85,6 +79,7 @@ this.PartitionedStorageHelper = {
     getDataCallback,
     addDataCallback,
     cleanupFunction,
+    expectUnpartition,
     runInPrivateWindow = false
   ) {
     for (let variant of ["normal", "initial-aboutblank"]) {
@@ -97,7 +92,8 @@ this.PartitionedStorageHelper = {
           cleanupFunction,
           variant,
           runInPrivateWindow,
-          limitForeignContexts
+          limitForeignContexts,
+          expectUnpartition
         );
       }
     }
@@ -111,7 +107,8 @@ this.PartitionedStorageHelper = {
     cleanupFunction,
     variant,
     runInPrivateWindow,
-    limitForeignContexts
+    limitForeignContexts,
+    expectUnpartition
   ) {
     add_task(async _ => {
       info(
@@ -136,11 +133,14 @@ this.PartitionedStorageHelper = {
       await SpecialPowers.pushPrefEnv({
         set: [
           ["dom.storage_access.enabled", true],
+          [
+            "privacy.partition.always_partition_third_party_non_cookie_storage",
+            true,
+          ],
           ["privacy.dynamic_firstparty.limitForeign", limitForeignContexts],
           ["privacy.trackingprotection.enabled", false],
           ["privacy.trackingprotection.pbmode.enabled", false],
           ["privacy.trackingprotection.annotate_channels", true],
-          ["privacy.storagePrincipal.enabledForTrackers", false],
           ["dom.security.https_first_pbm", false],
           [
             "privacy.restrict3rdpartystorage.userInteractionRequiredForHosts",
@@ -371,6 +371,63 @@ this.PartitionedStorageHelper = {
 
       info("Forth tab should still have just 'D'");
       await getDataFromThirdParty(browser4, "D");
+
+      async function setStorageAccessForThirdParty(browser) {
+        info(`Setting permission for ${browser.currentURI.spec}`);
+        let type = "3rdPartyStorage^http://not-tracking.example.com";
+        let permission = Services.perms.ALLOW_ACTION;
+        let expireType = Services.perms.EXPIRE_SESSION;
+        Services.perms.addFromPrincipal(
+          browser.contentPrincipal,
+          type,
+          permission,
+          expireType,
+          0
+        );
+        // Wait for permission to be set successfully
+        let originAttributes = runInPrivateWindow
+          ? { privateBrowsingId: 1 }
+          : {};
+        await new Promise(resolve => {
+          let id = setInterval(async _ => {
+            if (
+              await SpecialPowers.testPermission(type, permission, {
+                url: browser.currentURI.spec,
+                originAttributes,
+              })
+            ) {
+              clearInterval(id);
+              resolve();
+            }
+          }, 0);
+        });
+      }
+
+      if (!expectUnpartition) {
+        info("Setting Storage access for third parties");
+
+        await setStorageAccessForThirdParty(browser1);
+        await setStorageAccessForThirdParty(browser2);
+        await setStorageAccessForThirdParty(browser3);
+        await setStorageAccessForThirdParty(browser4);
+
+        info("Done setting Storage access for third parties");
+
+        // read all tabs
+        info("First tab should still have just 'D'");
+        await getDataFromThirdParty(browser1, "D");
+
+        info("Second tab should still have just 'B'");
+        await getDataFromThirdParty(browser2, "B");
+
+        info("Third tab should still have just 'C'");
+        await getDataFromFirstParty(browser3, "C");
+
+        info("Forth tab should still have just 'D'");
+        await getDataFromThirdParty(browser4, "D");
+      }
+
+      info("Done checking departitioned state");
 
       info("Removing the tabs");
       BrowserTestUtils.removeTab(tab1);

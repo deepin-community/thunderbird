@@ -4,8 +4,9 @@
 
 const EXPORTED_SYMBOLS = ["SessionStoreManager"];
 
-const { JSONFile } = ChromeUtils.import("resource://gre/modules/JSONFile.jsm");
-const { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
+const { JSONFile } = ChromeUtils.importESModule(
+  "resource://gre/modules/JSONFile.sys.mjs"
+);
 
 /**
  * asuth arbitrarily chose this value to trade-off powersaving,
@@ -125,7 +126,7 @@ var SessionStoreManager = {
    */
   _saveStateObject(aStateObj) {
     if (!this.store) {
-      Cu.reportError(
+      console.error(
         "SessionStoreManager: could not create data store from file"
       );
       return;
@@ -148,7 +149,7 @@ var SessionStoreManager = {
   },
 
   /**
-   * @return an empty state object that can be populated with window states.
+   * @returns an empty state object that can be populated with window states.
    */
   _createStateObject() {
     return {
@@ -207,7 +208,7 @@ var SessionStoreManager = {
   /**
    * Called by each 3pane window instance when it loads.
    *
-   * @return a window state object if aWindow was opened as a result of a
+   * @returns a window state object if aWindow was opened as a result of a
    *         session restoration, null otherwise.
    */
   async loadingWindow(aWindow) {

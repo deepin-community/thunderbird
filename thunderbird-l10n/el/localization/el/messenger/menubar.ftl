@@ -2,29 +2,74 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
+toolbar-context-menu-menu-bar =
+    .toolbarname = Γραμμή μενού
+    .accesskey = μ
 
 ## Tools Menu
 
-# Since v89 we dropped the platforms distinction between Options or Preferences
-# and consolidated everything with Preferences.
-menu-tools-preferences =
-    .label = Προτιμήσεις
-    .accesskey = Π
+menu-tools-settings =
+    .label = Ρυθμίσεις
+    .accesskey = θ
 menu-addons-and-themes =
     .label = Πρόσθετα και θέματα
     .accesskey = ρ
 
 ## Help Menu
 
+menu-help-help-title =
+    .label = Βοήθεια
+    .accesskey = Β
+menu-help-get-help =
+    .label = Λήψη βοήθειας
+    .accesskey = ψ
+menu-help-explore-features =
+    .label = Εξερεύνηση λειτουργιών
+    .accesskey = ν
+menu-help-shortcuts =
+    .label = Συντομεύσεις πληκτρολογίου
+    .accesskey = υ
+menu-help-get-involved =
+    .label = Συμμετοχή
+    .accesskey = Σ
+menu-help-donation =
+    .label = Πραγματοποίηση δωρεάς
+    .accesskey = γ
+menu-help-share-feedback =
+    .label = Κοινοποίηση ιδεών και σχολίων
+    .accesskey = Κ
 menu-help-enter-troubleshoot-mode =
     .label = Λειτουργία επίλυσης προβλημάτων…
     .accesskey = Λ
 menu-help-exit-troubleshoot-mode =
     .label = Απενεργοποίηση λειτουργίας επίλυσης προβλημάτων
     .accesskey = Α
-menu-help-more-troubleshooting-info =
+menu-help-troubleshooting-info =
     .label = Πληροφορίες επίλυσης προβλημάτων
-    .accesskey = Π
+    .accesskey = ο
+menu-help-about-product =
+    .label = Σχετικά με το { -brand-short-name }
+    .accesskey = χ
+# These menu-quit strings are only used on Windows and Linux.
+menu-quit =
+    .label =
+        { PLATFORM() ->
+            [windows] Έξοδος
+           *[other] Τερματισμός
+        }
+    .accesskey =
+        { PLATFORM() ->
+            [windows] ξ
+           *[other] Τ
+        }
+# This menu-quit-mac string is only used on macOS.
+menu-quit-mac =
+    .label = Έξοδος από το { -brand-shorter-name }{ -brand-shorter-name }
+# Localization note: Do not translate unless your locale's keyboard layout
+# does not include this key, as it determines the keyboard shortcut for
+# shutting down the application.
+quit-app-shortcut =
+    .key = Q
 
 ## Mail Toolbar
 
@@ -47,20 +92,44 @@ menu-view-repair-text-encoding =
     .label = Επιδιόρθωση κωδικοποίησης κειμένου
     .accesskey = π
 
+## View / Folders
+
+menu-view-folders-toggle-header =
+    .label = Κεφαλίδα προβολής φακέλων
+    .accesskey = Κ
+
 ## View / Layout
 
+menu-view-toggle-thread-pane-header =
+    .label = Κεφαλίδα λίστας μηνυμάτων
+    .accesskey = Κ
+menu-font-size-label =
+    .label = Μέγεθος γραμματοσειράς
+    .accesskey = θ
+menuitem-font-size-enlarge =
+    .label = Αύξηση μεγέθους γραμματοσειράς
+    .accesskey = ξ
+menuitem-font-size-reduce =
+    .label = Μείωση μεγέθους γραμματοσειράς
+    .accesskey = ω
+menuitem-font-size-reset =
+    .label = Επαναφορά μεγέθους γραμματοσειράς
+    .accesskey = π
 mail-uidensity-label =
     .label = Πυκνότητα
     .accesskey = Π
 mail-uidensity-compact =
-    .label = Πολύ πυκνό
-    .accesskey = ο
-mail-uidensity-normal =
-    .label = Κανονικό
-    .accesskey = Κ
-mail-uidensity-touch =
-    .label = Αφή
-    .accesskey = Α
+    .label = Συμπαγής
+    .accesskey = Σ
+mail-uidensity-default =
+    .label = Προεπιλογή
+    .accesskey = Π
+mail-uidensity-relaxed =
+    .label = Άνετη
+    .accesskey = Ά
+menu-spaces-toolbar-button =
+    .label = Γραμμή χώρων
+    .accesskey = χ
 
 ## File
 

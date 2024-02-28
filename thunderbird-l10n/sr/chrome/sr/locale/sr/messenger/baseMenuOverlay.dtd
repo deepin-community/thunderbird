@@ -13,6 +13,7 @@
 <!ENTITY aboutProduct2.accesskey "О">
 <!ENTITY productHelp.label "&brandShortName; помоћ">
 <!ENTITY productHelp.accesskey "П">
+
 <!ENTITY productHelp.commandkey "VK_F1">
 <!ENTITY productHelpMac.commandkey "?">
 <!ENTITY productHelpMac.modifiers "accel">
@@ -23,7 +24,7 @@
 <!ENTITY helpFeedbackPage.label "Поднесите извештај…">
 <!ENTITY helpFeedbackPage.accesskey "П">
 
-<!ENTITY helpShowTour2.label "&brandShorterName; тура">
+<!ENTITY helpShowTour2.label "&brandShorterName; обилазак">
 <!ENTITY helpShowTour2.accesskey "о">
 
 <!ENTITY helpGetInvolvedPage.label "Придруживање пројекту">

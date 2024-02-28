@@ -4,8 +4,6 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-from __future__ import absolute_import
-
 import os
 import posixpath
 import shutil
@@ -19,10 +17,10 @@ from mozdevice import ADBDeviceFactory, ADBProcessError
 from performance_tuning import tune_performance
 from perftest import PerftestAndroid
 from power import (
-    init_android_power_test,
-    finish_android_power_test,
-    enable_charging,
     disable_charging,
+    enable_charging,
+    finish_android_power_test,
+    init_android_power_test,
 )
 from signal_handler import SignalHandlerException
 from utils import write_yml_file
@@ -86,7 +84,6 @@ class WebExtensionAndroid(PerftestAndroid, WebExtension):
             env=dict(
                 LOG_VERBOSE=1,
                 R_LOG_LEVEL=6,
-                MOZ_WEBRENDER=int(self.config["enable_webrender"]),
             ),
         )
 

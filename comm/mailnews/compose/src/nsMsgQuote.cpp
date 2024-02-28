@@ -19,11 +19,9 @@
 #include "nsIMsgMessageService.h"
 #include "nsMsgUtils.h"
 #include "nsNetUtil.h"
-#include "nsMsgMimeCID.h"
-#include "nsMsgCompCID.h"
 #include "nsMsgCompose.h"
 #include "nsMsgMailNewsUrl.h"
-#include "mozilla/Services.h"
+#include "mozilla/Components.h"
 #include "nsContentUtils.h"
 
 NS_IMPL_ISUPPORTS(nsMsgQuoteListener, nsIMsgQuoteListener,
@@ -88,35 +86,29 @@ NS_IMETHODIMP nsMsgQuote::GetStreamListener(
 }
 
 nsresult nsMsgQuote::QuoteMessage(
-    const char* msgURI, bool quoteHeaders,
+    const nsACString& msgURI, bool quoteHeaders,
     nsIMsgQuotingOutputStreamListener* aQuoteMsgStreamListener,
-    const char* aMsgCharSet, bool headersOnly, nsIMsgDBHdr* aMsgHdr) {
+    bool aAutodetectCharset, bool headersOnly, nsIMsgDBHdr* aMsgHdr) {
   nsresult rv;
-  if (!msgURI) return NS_ERROR_INVALID_ARG;
 
   mQuoteHeaders = quoteHeaders;
   mStreamListener = do_GetWeakReference(aQuoteMsgStreamListener);
 
   nsAutoCString msgUri(msgURI);
-  bool fileUrl = !strncmp(msgURI, "file:", 5);
-  bool forwardedMessage =
-      PL_strstr(msgURI, "&realtype=message/rfc822") != nullptr;
+  bool fileUrl = StringBeginsWith(msgUri, "file:"_ns);
+  bool forwardedMessage = msgUri.Find("&realtype=message/rfc822") >= 0;
   nsCOMPtr<nsIURI> newURI;
   if (fileUrl) {
     msgUri.Replace(0, 5, "mailbox:"_ns);
     msgUri.AppendLiteral("?number=0");
     rv = NS_NewURI(getter_AddRefs(newURI), msgUri);
-    nsCOMPtr<nsIMsgMessageUrl> mailUrl(do_QueryInterface(newURI));
-    if (mailUrl) mailUrl->SetMessageHeader(aMsgHdr);
   } else if (forwardedMessage)
     rv = NS_NewURI(getter_AddRefs(newURI), msgURI);
   else {
     nsCOMPtr<nsIMsgMessageService> msgService;
-    rv = GetMessageServiceFromURI(nsDependentCString(msgURI),
-                                  getter_AddRefs(msgService));
+    rv = GetMessageServiceFromURI(msgURI, getter_AddRefs(msgService));
     if (NS_FAILED(rv)) return rv;
-    rv = msgService->GetUrlForUri(nsDependentCString(msgURI), nullptr,
-                                  getter_AddRefs(newURI));
+    rv = msgService->GetUrlForUri(msgURI, nullptr, getter_AddRefs(newURI));
   }
   if (NS_FAILED(rv)) return rv;
 
@@ -134,13 +126,14 @@ nsresult nsMsgQuote::QuoteMessage(
   rv = NS_MutateURI(newURI).SetQuery(queryPart).Finalize(newURI);
   NS_ENSURE_SUCCESS(rv, rv);
 
-  // if we were given a non empty charset, then use it
-  if (aMsgCharSet && *aMsgCharSet) {
+  // if we were told to auto-detect the charset, pass that on.
+  if (aAutodetectCharset) {
     nsCOMPtr<nsIMsgI18NUrl> i18nUrl(do_QueryInterface(newURI));
-    if (i18nUrl) i18nUrl->SetCharsetOverRide(aMsgCharSet);
+    if (i18nUrl) i18nUrl->SetAutodetectCharset(true);
   }
 
-  mQuoteListener = do_CreateInstance(NS_MSGQUOTELISTENER_CONTRACTID, &rv);
+  mQuoteListener =
+      do_CreateInstance("@mozilla.org/messengercompose/quotinglistener;1", &rv);
   if (NS_FAILED(rv)) return rv;
   mQuoteListener->SetMsgQuote(this);
 
@@ -153,7 +146,7 @@ nsresult nsMsgQuote::QuoteMessage(
 
   // now we want to create a necko channel for this url and we want to open it
   mQuoteChannel = nullptr;
-  nsCOMPtr<nsIIOService> netService = mozilla::services::GetIOService();
+  nsCOMPtr<nsIIOService> netService = mozilla::components::IO::Service();
   NS_ENSURE_TRUE(netService, NS_ERROR_UNEXPECTED);
   rv = netService->NewChannelFromURI(
       newURI, nullptr, nsContentUtils::GetSystemPrincipal(), nullptr,

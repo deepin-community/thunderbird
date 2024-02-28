@@ -11,21 +11,25 @@
 Test autofill on username-form
 
 <script>
-let readyPromise = registerRunTests();
-let DEFAULT_ORIGIN = window.location.origin;
-
-addLoginsInParent(
-  [DEFAULT_ORIGIN, "https://autofill", null, "user1", "pass1"]);
-
-add_task(async function setup() {
-  ok(readyPromise, "check promise is available");
-  await readyPromise;
+add_setup(async () => {
+  await setStoredLoginsAsync(
+    [window.location.origin, "https://autofill", null, "user1", "pass1"]
+  );
 });
 
 add_task(async function test_autofill_username_only_form() {
+  await loadRecipes({
+    siteRecipes: [{
+      hosts: ["mochi.test:8888"],
+      notUsernameSelector: "input[name='shouldnotfill']",
+    }],
+  });
+
   let win = window.open("about:blank");
   SimpleTest.registerCleanupFunction(() => win.close());
-  await loadFormIntoWindow(DEFAULT_ORIGIN, `
+
+  // 5 out of the 7 forms should be autofilled
+  await loadFormIntoWindow(window.location.origin, `
     <!-- no password field, 1 username field -->
     <form id='form1' action='https://autofill'> 1
         <input type='text' name='uname' autocomplete='username' value=''>
@@ -73,7 +77,15 @@ add_task(async function test_autofill_username_only_form() {
 
         <button type='submit'>Submit</button>
         <button type='reset'> Reset </button>
-    </form>`, win);
+    </form>
+
+    <!-- no password field, 1 username field that matches notUsernameSelector recipe -->
+    <form id='form7' action='https://autofill'> 7
+        <input type='text' name='shouldnotfill' autocomplete='username' value=''>
+
+        <button type='submit'>Submit</button>
+        <button type='reset'> Reset </button>
+    </form>`, win, 5);
 
   await checkLoginFormInFrameWithElementValues(win, 1, "user1");
   await checkLoginFormInFrameWithElementValues(win, 2, "someuser");
@@ -81,6 +93,9 @@ add_task(async function test_autofill_username_only_form() {
   await checkUnmodifiedFormInFrame(win, 4);
   await checkUnmodifiedFormInFrame(win, 5);
   await checkUnmodifiedFormInFrame(win, 6);
+  await checkUnmodifiedFormInFrame(win, 7);
+
+  await resetRecipes();
 });
 </script>
 

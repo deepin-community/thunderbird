@@ -4,17 +4,11 @@
 
 /* globals createCalendarUsingDialog */
 
-var { controller, deleteCalendars, invokeNewEventDialog } = ChromeUtils.import(
-  "resource://testing-common/calendar/CalendarUtils.jsm"
-);
 var { saveAndCloseItemDialog, setData } = ChromeUtils.import(
   "resource://testing-common/calendar/ItemEditingHelpers.jsm"
 );
-var { plan_for_modal_dialog, wait_for_modal_dialog } = ChromeUtils.import(
-  "resource://testing-common/mozmill/WindowHelpers.jsm"
-);
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
+var { cal } = ChromeUtils.import("resource:///modules/calendar/calUtils.jsm");
 
 const HOUR = 8;
 
@@ -26,18 +20,17 @@ var calendarFile = Services.dirsvc.get("TmpD", Ci.nsIFile);
 calendarFile.append(calendarName + ".ics");
 
 add_task(async function testLocalICS() {
-  await CalendarTestUtils.setCalendarView(controller.window, "day");
+  await CalendarTestUtils.setCalendarView(window, "day");
   await createCalendarUsingDialog(calendarName, { network: {} });
 
   // Create new event.
-  let box = CalendarTestUtils.dayView.getHourBoxAt(controller.window, HOUR);
-  await invokeNewEventDialog(window, box, async (eventWindow, iframeWindow) => {
-    await setData(eventWindow, iframeWindow, { title: calendarName, calendar: calendarName });
-    await saveAndCloseItemDialog(eventWindow);
-  });
+  let box = CalendarTestUtils.dayView.getHourBoxAt(window, HOUR);
+  let { dialogWindow, iframeWindow } = await CalendarTestUtils.editNewEvent(window, box);
+  await setData(dialogWindow, iframeWindow, { title: calendarName, calendar: calendarName });
+  await saveAndCloseItemDialog(dialogWindow);
 
   // Assert presence in view.
-  await CalendarTestUtils.dayView.waitForEventBoxAt(controller.window, 1);
+  await CalendarTestUtils.dayView.waitForEventBoxAt(window, 1);
 
   // Verify in file.
   let fstream = Cc["@mozilla.org/network/file-input-stream;1"].createInstance(
@@ -48,7 +41,7 @@ add_task(async function testLocalICS() {
   );
 
   // Wait a moment until file is written.
-  controller.waitFor(() => calendarFile.exists());
+  await TestUtils.waitForCondition(() => calendarFile.exists());
 
   // Read the calendar file and check for the summary.
   fstream.init(calendarFile, -1, 0, 0);
@@ -61,6 +54,10 @@ add_task(async function testLocalICS() {
   Assert.ok(str.value.includes("SUMMARY:" + calendarName));
 });
 
-registerCleanupFunction(function teardownModule(module) {
-  deleteCalendars(controller, calendarName);
+registerCleanupFunction(() => {
+  for (let calendar of cal.manager.getCalendars()) {
+    if (calendar.name == calendarName) {
+      cal.manager.removeCalendar(calendar);
+    }
+  }
 });

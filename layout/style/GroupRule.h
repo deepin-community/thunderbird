@@ -33,7 +33,7 @@ namespace css {
 // MediaRule and DocumentRule
 class GroupRule : public Rule {
  protected:
-  GroupRule(already_AddRefed<ServoCssRules> aRules, StyleSheet* aSheet,
+  GroupRule(already_AddRefed<StyleLockedCssRules> aRules, StyleSheet* aSheet,
             Rule* aParentRule, uint32_t aLineNumber, uint32_t aColumnNumber);
   GroupRule(const GroupRule& aCopy) = delete;
   virtual ~GroupRule();
@@ -49,10 +49,18 @@ class GroupRule : public Rule {
   void DropSheetReference() override;
 
  public:
-  int32_t StyleRuleCount() const { return mRuleList->Length(); }
+  int32_t StyleRuleCount() const { return mRuleList ? mRuleList->Length() : 0; }
 
   Rule* GetStyleRuleAt(int32_t aIndex) const {
-    return mRuleList->GetRule(aIndex);
+    return mRuleList ? mRuleList->GetRule(aIndex) : nullptr;
+  }
+
+  void SetRawAfterClone(RefPtr<StyleLockedCssRules> aRules) {
+    if (mRuleList) {
+      mRuleList->SetRawAfterClone(std::move(aRules));
+    } else {
+      MOZ_ASSERT(!aRules, "Can't move from having no rules to having rules");
+    }
   }
 
   /*
@@ -60,6 +68,9 @@ class GroupRule : public Rule {
    * WillDirty() on the parent stylesheet.
    */
   nsresult DeleteStyleRuleAt(uint32_t aIndex) {
+    if (!mRuleList) {
+      return NS_OK;
+    }
     return mRuleList->DeleteRule(aIndex);
   }
 
@@ -68,7 +79,7 @@ class GroupRule : public Rule {
   size_t SizeOfIncludingThis(MallocSizeOf) const override = 0;
 
   // WebIDL API
-  dom::CSSRuleList* CssRules() { return mRuleList; }
+  ServoCSSRuleList* GetCssRules() { return mRuleList; }
   uint32_t InsertRule(const nsACString& aRule, uint32_t aIndex,
                       ErrorResult& aRv);
   void DeleteRule(uint32_t aIndex, ErrorResult& aRv);
@@ -84,8 +95,6 @@ class ConditionRule : public GroupRule {
 
  public:
   virtual void GetConditionText(nsACString& aConditionText) = 0;
-  virtual void SetConditionText(const nsACString& aConditionText,
-                                ErrorResult& aRv) = 0;
 };
 
 }  // namespace css

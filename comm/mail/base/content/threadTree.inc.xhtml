@@ -7,14 +7,12 @@
                     <tree id="threadTree"
                           class="plain"
                           persist="lastfoldersent width"
-                          flex="2"
                           treelines="true"
                           enableColumnDrag="true"
                           _selectDelay="250"
                           lastfoldersent="false"
                           keepcurrentinview="true"
                           disableKeyNavigation="true"
-                          context="mailContext"
                           onkeydown="ThreadPaneKeyDown(event);"
                           onselect="ThreadPaneSelectionChanged();">
 #ifdef MAIN_WINDOW
@@ -41,7 +39,7 @@
                                  currentView="unthreaded"
                                  hidden="true"
                                  closemenu="none"
-                                 src="chrome://messenger/skin/icons/checkbox.svg"
+                                 src="chrome://messenger/skin/icons/new/compact/checkbox.svg"
                                  label="&selectColumn.label;"
                                  tooltiptext="&selectColumn.tooltip;"/>
                         <splitter class="tree-splitter"/>
@@ -56,7 +54,7 @@
                                  hidden="true"
 #endif
                                  closemenu="none"
-                                 src="chrome://messenger/skin/icons/thread-col.svg"
+                                 src="chrome://messenger/skin/icons/new/thread-sm.svg"
                                  label="&threadColumn.label;"
                                  tooltiptext="&threadColumn2.tooltip;"/>
                         <splitter class="tree-splitter"/>
@@ -66,7 +64,7 @@
                                  fixed="true"
                                  cycler="true"
                                  closemenu="none"
-                                 src="chrome://messenger/skin/icons/flag-col.svg"
+                                 src="chrome://messenger/skin/icons/new/star-sm.svg"
                                  label="&starredColumn.label;"
                                  tooltiptext="&starredColumn2.tooltip;"/>
                         <splitter class="tree-splitter"/>
@@ -75,13 +73,12 @@
                                  persist="hidden ordinal sortDirection"
                                  fixed="true"
                                  closemenu="none"
-                                 src="chrome://messenger/skin/icons/attachment-col.svg"
+                                 src="chrome://messenger/skin/icons/new/attachment-sm.svg"
                                  label="&attachmentColumn.label;"
                                  tooltiptext="&attachmentColumn2.tooltip;"/>
                         <splitter class="tree-splitter"/>
                         <treecol id="subjectCol"
                                  persist="ordinal width sortDirection"
-                                 flex="7"
                                  ignoreincolumnpicker="true"
                                  closemenu="none"
                                  label="&subjectColumn.label;"
@@ -93,13 +90,12 @@
                                  fixed="true"
                                  cycler="true"
                                  closemenu="none"
-                                 src="chrome://messenger/skin/icons/readcol.svg"
+                                 src="chrome://messenger/skin/icons/new/unread-sm.svg"
                                  label="&readColumn.label;"
                                  tooltiptext="&readColumn2.tooltip;"/>
                         <splitter class="tree-splitter"/>
                         <treecol id="senderCol"
                                  persist="hidden ordinal sortDirection width"
-                                 flex="4"
                                  hidden="true"
                                  closemenu="none"
                                  label="&fromColumn.label;"
@@ -107,7 +103,6 @@
                         <splitter class="tree-splitter"/>
                         <treecol id="recipientCol"
                                  persist="hidden ordinal sortDirection width"
-                                 flex="4"
                                  hidden="true"
                                  closemenu="none"
                                  label="&recipientColumn.label;"
@@ -115,7 +110,6 @@
                         <splitter class="tree-splitter"/>
                         <treecol id="correspondentCol"
                                  persist="hidden ordinal sortDirection width"
-                                 flex="4"
                                  closemenu="none"
                                  label="&correspondentColumn.label;"
                                  tooltiptext="&correspondentColumn2.tooltip;"/>
@@ -126,13 +120,12 @@
                                  fixed="true"
                                  cycler="true"
                                  closemenu="none"
-                                 src="chrome://messenger/skin/icons/junk-col.svg"
+                                 src="chrome://messenger/skin/icons/new/spam-sm.svg"
                                  label="&junkStatusColumn.label;"
                                  tooltiptext="&junkStatusColumn2.tooltip;"/>
                         <splitter class="tree-splitter"/>
                         <treecol id="receivedCol"
                                  persist="hidden ordinal sortDirection width"
-                                 flex="2"
                                  hidden="true"
                                  closemenu="none"
                                  label="&receivedColumn.label;"
@@ -140,14 +133,13 @@
                         <splitter class="tree-splitter"/>
                         <treecol id="dateCol"
                                  persist="hidden ordinal sortDirection width"
-                                 flex="2"
                                  closemenu="none"
                                  label="&dateColumn.label;"
                                  tooltiptext="&dateColumn2.tooltip;"/>
                         <splitter class="tree-splitter"/>
                         <treecol id="statusCol"
                                  persist="hidden ordinal sortDirection width"
-                                 flex="1"
+                                 style="flex: 1 auto"
                                  hidden="true"
                                  closemenu="none"
                                  label="&statusColumn.label;"
@@ -155,7 +147,7 @@
                         <splitter class="tree-splitter"/>
                         <treecol id="sizeCol"
                                  persist="hidden ordinal sortDirection width"
-                                 flex="1"
+                                 style="flex: 1 auto"
                                  hidden="true"
                                  closemenu="none"
                                  label="&sizeColumn.label;"
@@ -163,7 +155,7 @@
                         <splitter class="tree-splitter"/>
                         <treecol id="tagsCol"
                                  persist="hidden ordinal sortDirection width"
-                                 flex="1"
+                                 style="flex: 1 auto"
                                  hidden="true"
                                  closemenu="none"
                                  label="&tagsColumn.label;"
@@ -171,7 +163,7 @@
                         <splitter class="tree-splitter"/>
                         <treecol id="accountCol"
                                  persist="hidden ordinal sortDirection width"
-                                 flex="1"
+                                 style="flex: 1 auto"
                                  hidden="true"
                                  closemenu="none"
                                  label="&accountColumn.label;"
@@ -179,7 +171,7 @@
                         <splitter class="tree-splitter"/>
                         <treecol id="priorityCol"
                                  persist="hidden ordinal sortDirection width"
-                                 flex="1"
+                                 style="flex: 1 auto"
                                  hidden="true"
                                  closemenu="none"
                                  label="&priorityColumn.label;"
@@ -187,7 +179,7 @@
                         <splitter class="tree-splitter"/>
                         <treecol id="unreadCol"
                                  persist="hidden ordinal sortDirection width"
-                                 flex="1"
+                                 style="flex: 1 auto"
                                  hidden="true"
                                  closemenu="none"
                                  label="&unreadColumn.label;"
@@ -195,7 +187,7 @@
                         <splitter class="tree-splitter"/>
                         <treecol id="totalCol"
                                  persist="hidden ordinal sortDirection width"
-                                 flex="1"
+                                 style="flex: 1 auto"
                                  hidden="true"
                                  closemenu="none"
                                  label="&totalColumn.label;"
@@ -203,14 +195,14 @@
                         <splitter class="tree-splitter"/>
                         <treecol id="locationCol"
                                  persist="hidden ordinal sortDirection width"
-                                 flex="1"
+                                 style="flex: 1 auto"
                                  closemenu="none"
                                  label="&locationColumn.label;"
                                  tooltiptext="&locationColumn2.tooltip;"/>
                         <splitter class="tree-splitter"/>
                         <treecol id="idCol"
                                  persist="hidden ordinal sortDirection width"
-                                 flex="1"
+                                 style="flex: 1 auto"
                                  hidden="true"
                                  closemenu="none"
                                  label="&idColumn.label;"
@@ -224,7 +216,7 @@
                                  currentView="unthreaded"
                                  hidden="true"
                                  closemenu="none"
-                                 src="chrome://messenger/skin/icons/delete-col.svg"
+                                 src="chrome://messenger/skin/icons/new/trash-sm.svg"
                                  label="&deleteColumn.label;"
                                  tooltiptext="&deleteColumn.tooltip;"/>
                       </treecols>

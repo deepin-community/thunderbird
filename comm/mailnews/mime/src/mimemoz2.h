@@ -92,7 +92,6 @@ class mime_stream_data { /* This object is the state we pass around
   MimeHeaders* headers;        /* Copy of outer most mime header */
 
   nsIMimeEmitter* output_emitter; /* Output emitter engine for libmime */
-  bool firstCheck; /* Is this the first look at the stream data */
 };
 
 //
@@ -122,9 +121,11 @@ class mime_draft_data {
   bool overrideComposeFormat;  // Override compose format (for forward inline).
   nsString forwardToAddress;
   nsCOMPtr<nsIMsgIdentity> identity;
-  char* originalMsgURI;  // the original URI of the message we are currently
-                         // processing
+  nsCString originalMsgURI;  // the original URI of the message we are currently
+                             // processing
   nsCOMPtr<nsIMsgDBHdr> origMsgHdr;
+  bool autodetectCharset;  // Used to indicate pending autodetection while
+                           // streaming contents.
 };
 
 ////////////////////////////////////////////////////////////////

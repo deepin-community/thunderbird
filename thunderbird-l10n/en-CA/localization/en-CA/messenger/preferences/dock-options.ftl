@@ -2,9 +2,9 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-dock-options-window-dialog =
+dock-options-window-dialog2 =
     .title = App icon options
-    .style = width: 35em;
+dock-options-dialog-title = App icon options
 dock-options-show-badge =
     .label = Show badge icon
     .accesskey = b
@@ -20,4 +20,4 @@ count-unread-messages-radio =
 count-new-messages-radio =
     .label = Count of new messages
     .accesskey = n
-notification-settings-info = You can disable the badge on the Notification pane of System Preferences.
+notification-settings-info2 = You can disable the badge on the Notification pane of System Settings.

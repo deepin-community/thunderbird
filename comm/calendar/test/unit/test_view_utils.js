@@ -2,7 +2,7 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-var { XPCOMUtils } = ChromeUtils.import("resource://gre/modules/XPCOMUtils.jsm");
+var { XPCOMUtils } = ChromeUtils.importESModule("resource://gre/modules/XPCOMUtils.sys.mjs");
 
 XPCOMUtils.defineLazyModuleGetters(this, {
   CalEvent: "resource:///modules/CalEvent.jsm",
@@ -10,6 +10,10 @@ XPCOMUtils.defineLazyModuleGetters(this, {
 });
 
 function run_test() {
+  do_calendar_startup(really_run_test);
+}
+
+function really_run_test() {
   test_not_a_date();
   test_compare_event_and_todo();
   test_compare_startdate();

@@ -35,6 +35,28 @@ static const char RNP_LOG_CONSOLE[] = "RNP_LOG_CONSOLE";
 
 bool rnp_log_switch();
 void set_rnp_log_switch(int8_t);
+void rnp_log_stop();
+void rnp_log_continue();
+
+namespace rnp {
+class LogStop {
+    bool stop_;
+
+  public:
+    LogStop(bool stop = true) : stop_(stop)
+    {
+        if (stop_) {
+            rnp_log_stop();
+        }
+    }
+    ~LogStop()
+    {
+        if (stop_) {
+            rnp_log_continue();
+        }
+    }
+};
+} // namespace rnp
 
 #define RNP_LOG_FD(fd, ...)                                                  \
     do {                                                                     \

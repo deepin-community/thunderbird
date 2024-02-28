@@ -4,12 +4,6 @@
 
 @namespace html url("http://www.w3.org/1999/xhtml");
 
-:root {
-  --in-content-button-border-radius: 3px;
-  --in-content-button-vertical-padding: 0;
-  --in-content-button-horizontal-padding: 12px;
-}
-
 @media not (prefers-contrast) {
   :root {
     --in-content-button-background: var(--grey-90-a10);
@@ -36,7 +30,6 @@ body {
 
 #downloadTopBox {
   background-color: var(--toolbar-bgcolor);
-  background-image: var(--toolbar-bgimage);
   padding: 10px 18px;
   border-bottom: 1px solid var(--chrome-content-separator-color);
 }
@@ -56,7 +49,7 @@ body {
 #msgDownloadsRichListBox > .download {
   min-height: 5em;
   border-bottom: 1px solid hsla(0, 0%, 50%, .3);
-  border-radius: var(--in-content-button-border-radius);
+  border-radius: 3px;
 }
 
 #msgDownloadsRichListBox > .download > vbox {
@@ -66,6 +59,8 @@ body {
 
 #clearDownloads {
   margin-inline-start: 0;
+  padding: 0 12px;
+  border-radius: 3px;
   font-weight: 400;
 }
 
@@ -75,10 +70,9 @@ body {
 }
 
 .fileTypeIcon {
-  margin-inline-start: 8px;
-  margin-inline-end: 8px;
+  margin-inline: 8px;
   /* explicitly size the icon, so size doesn't vary on hidpi systems */
-  max-height: 32px;
+  height: 32px;
   width: 32px;
 }
 
@@ -99,7 +93,7 @@ body {
 }
 
 .downloadButton {
-  -moz-box-align: center;
+  align-items: center;
   background: transparent !important;
   min-width: 0;
   height: unset;
@@ -135,4 +129,3 @@ body {
 .downloadButton:hover:active > .button-box {
   background-color: var(--in-content-button-background-active);
 }
-

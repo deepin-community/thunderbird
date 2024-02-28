@@ -194,6 +194,7 @@ function onMessageViewClick(e)
 
     var cx = getMessagesContext(null, e.target);
     cx.source = "mouse";
+    cx.shiftKey = e.shiftKey;
     var command = getEventCommand(e);
     if (!client.commandManager.isCommandSatisfied(cx, command))
         return false;
@@ -243,14 +244,16 @@ function onMessageViewContextMenu(e)
 
 function getEventCommand(e)
 {
-    if (e.which == 2)
-        return client.prefs["messages.middleClick"];
-    if (e.metaKey || e.altKey)
-        return client.prefs["messages.metaClick"];
-    if (e.ctrlKey)
-        return client.prefs["messages.ctrlClick"];
+    let where = Services.prefs.getIntPref("browser.link.open_newwindow");
+    if ((where != 3) && ((e.which == 2) || e.ctrlKey) &&
+        Services.prefs.getBoolPref("browser.tabs.opentabfor.middleclick", true))
+        where = 3;
 
-    return client.prefs["messages.click"];
+    if (where == 2)
+        return "goto-url-newwin";
+    if (where == 3)
+        return "goto-url-newtab";
+    return "goto-url";
 }
 
 function onMouseOver (e)
@@ -504,7 +507,7 @@ function onTabCompleteRequest (e)
                 /* then list possible completions, */
                 display(getMsg(MSG_FMT_MATCHLIST,
                                [matches.length, word,
-                                matches.sort().join(MSG_COMMASP)]));
+                                matches.sort().join(", ")]));
             }
             else
             {
@@ -700,6 +703,11 @@ function onWindowFocus(e)
 function onWindowBlue(e)
 {
     window.isFocused = false;
+
+    // If we're tracking last read lines, set a mark on the current view
+    // when losing focus.
+    if (client.currentObject && client.currentObject.prefs["autoMarker"])
+        client.currentObject.dispatch("marker-set");
 }
 
 function onInputCompleteLine(e)
@@ -738,12 +746,12 @@ function onNotifyTimeout()
     {
         var net = client.networks[n];
         if (net.isConnected()) {
-            if (net.prefs["notifyList"].length > 0) {
-                var isonList = client.networks[n].prefs["notifyList"];
+            if ((net.prefs["notifyList"].length > 0) &&
+                (!net.primServ.supports["monitor"])) {
+                let isonList = net.prefs["notifyList"];
                 net.primServ.sendData ("ISON " + isonList.join(" ") + "\n");
             } else {
-                /* if the notify list is empty, just send a ping to see if we're
-                 * alive. */
+                /* Just send a ping to see if we're alive. */
                 net.primServ.sendData ("PING :ALIVECHECK\n");
             }
         }
@@ -763,7 +771,7 @@ function onWhoTimeout()
                 chan.getUsersLength() < client.prefs["autoAwayCap"])
             {
                 net.primServ.LIGHTWEIGHT_WHO = true;
-                net.primServ.sendData("WHO " + chan.encodedName + "\n");
+                net.primServ.who(chan.unicodeName);
                 net.lastWhoCheckChannel = chan;
                 net.lastWhoCheckTime = Number(new Date());
                 return;
@@ -981,7 +989,7 @@ function net_oninit ()
 CIRCNetwork.prototype.onInfo =
 function my_netinfo (e)
 {
-    this.display (e.msg, "INFO");
+    this.display(e.msg, "INFO", undefined, undefined, e.tags);
 }
 
 CIRCNetwork.prototype.onUnknown =
@@ -1022,12 +1030,14 @@ function my_unknown (e)
                         "knock " + e.channel.unicodeName];
             msg = getMsg("msg.irc." + e.code + ".knock", args, "");
             client.munger.getRule(".inline-buttons").enabled = true;
-            targetDisplayObj.display(msg);
+            targetDisplayObj.display(msg, undefined, undefined, undefined,
+                                     e.tags);
             client.munger.getRule(".inline-buttons").enabled = false;
         }
         else
         {
-            targetDisplayObj.display(msg);
+            targetDisplayObj.display(msg, undefined, undefined, undefined,
+                                     e.tags);
         }
 
         if (e.channel)
@@ -1059,7 +1069,8 @@ function my_unknown (e)
         client.responseCodeMap[e.code] = "---";
     }
 
-    this.display(toUnicode(e.params.join(" "), this), e.code.toUpperCase());
+    this.display(toUnicode(e.params.join(" "), this), e.code.toUpperCase(),
+                 undefined, undefined, e.tags);
 }
 
 CIRCNetwork.prototype.lastWhoCheckChannel = null;
@@ -1080,6 +1091,15 @@ CIRCNetwork.prototype.on375 = /* start of MOTD */
 CIRCNetwork.prototype.on372 = /* MOTD line */
 CIRCNetwork.prototype.on376 = /* end of MOTD */
 CIRCNetwork.prototype.on422 = /* no MOTD */
+CIRCNetwork.prototype.on670 = /* STARTTLS Success */
+CIRCNetwork.prototype.on691 = /* STARTTLS Failure */
+CIRCNetwork.prototype.on902 = /* SASL Nick locked */
+CIRCNetwork.prototype.on903 = /* SASL Auth success */
+CIRCNetwork.prototype.on904 = /* SASL Auth failed */
+CIRCNetwork.prototype.on905 = /* SASL Command too long */
+CIRCNetwork.prototype.on906 = /* SASL Aborted */
+CIRCNetwork.prototype.on907 = /* SASL Already authenticated */
+CIRCNetwork.prototype.on908 = /* SASL Mechanisms */
 function my_showtonet (e)
 {
     var p = (3 in e.params) ? e.params[2] + " " : "";
@@ -1138,6 +1158,13 @@ function my_showtonet (e)
 
         case "251": /* users */
             this.doAutoPerform();
+
+            // Set our initial monitor list
+            if ((this.primServ.supports["monitor"]) &&
+                (this.prefs["notifyList"].length > 0))
+            {
+                this.primServ.sendMonitorList(this.prefs["notifyList"], true);
+            }
 
             this.isIdleAway = client.isIdleAway;
             if (this.prefs["away"])
@@ -1217,7 +1244,8 @@ function my_showtonet (e)
             break;
     }
 
-    this.displayHere(p + str, e.code.toUpperCase());
+    this.displayHere(p + str, e.code.toUpperCase(), undefined, undefined,
+                     e.tags);
 }
 
 CIRCNetwork.prototype.onUnknownCTCPReply =
@@ -1226,14 +1254,14 @@ function my_ctcprunk (e)
     this.display(getMsg(MSG_FMT_CTCPREPLY,
                         [toUnicode(e.CTCPCode, this),
                          toUnicode(e.CTCPData, this), e.user.unicodeName]),
-                 "CTCP_REPLY", e.user, e.server.me, this);
+                 "CTCP_REPLY", e.user, e.server.me, e.tags);
 }
 
 CIRCNetwork.prototype.onNotice =
 function my_notice(e)
 {
     client.munger.getRule(".mailto").enabled = client.prefs["munger.mailto"];
-    this.display(e.decodeParam(2), "NOTICE", this, e.server.me);
+    this.display(e.decodeParam(2), "NOTICE", this, e.server.me, e.tags);
     client.munger.getRule(".mailto").enabled = false;
 }
 
@@ -1241,7 +1269,7 @@ CIRCNetwork.prototype.onPrivmsg =
 function my_privmsg(e)
 {
     client.munger.getRule(".mailto").enabled = client.prefs["munger.mailto"];
-    this.display(e.decodeParam(2), "PRIVMSG", this, e.server.me);
+    this.display(e.decodeParam(2), "PRIVMSG", this, e.server.me, e.tags);
     client.munger.getRule(".mailto").enabled = false;
 }
 
@@ -1319,19 +1347,23 @@ function my_303 (e)
     if (newArrivals.length > 0)
     {
         this.displayHere (arraySpeak (newArrivals, "is", "are") +
-                          " online.", "NOTIFY-ON");
+                          " online.", "NOTIFY-ON", undefined, undefined,
+                          e.tags);
         if (displayTab)
             displayTab.displayHere (arraySpeak (newArrivals, "is", "are") +
-                                    " online.", "NOTIFY-ON");
+                                    " online.", "NOTIFY-ON", undefined,
+                                    undefined, e.tags);
     }
 
     if (newDepartures.length > 0)
     {
         this.displayHere (arraySpeak (newDepartures, "is", "are") +
-                          " offline.", "NOTIFY-OFF");
+                          " offline.", "NOTIFY-OFF", undefined, undefined,
+                          e.tags);
         if (displayTab)
             displayTab.displayHere (arraySpeak (newDepartures, "is", "are") +
-                                    " offline.", "NOTIFY-OFF");
+                                    " offline.", "NOTIFY-OFF", undefined,
+                                    undefined, e.tags);
     }
 
     this.onList = onList;
@@ -1339,11 +1371,101 @@ function my_303 (e)
 
 }
 
+CIRCNetwork.prototype.on730 = /* RPL_MONONLINE  */
+CIRCNetwork.prototype.on731 = /* RPL_MONOFFLINE */
+function my_monnotice(e)
+{
+    var userList = e.params[2].split(",");
+    var nickList = [];
+    var o = getObjectDetails(client.currentObject);
+    var displayTab;
+    var i;
+    var msg;
+
+    if ("network" in o && o.network == this && client.currentObject != this)
+        displayTab = client.currentObject;
+
+    for (i = 0; i < userList.length; i++)
+    {
+        var nick = e.server.toLowerCase(userList[i].split("!")[0]);
+
+        // Make sure this nick is in the notify list.
+        if (this.prefs["notifyList"].indexOf(nick) < 0)
+        {
+            this.prefs["notifyList"].push(nick);
+            this.prefs["notifyList"].update();
+        }
+        nickList.push(nick);
+    }
+
+    if (e.code == "730") // RPL_MONONLINE
+        msg = arraySpeak (nickList, "is", "are") + " online.";
+    else // RPL_MONOFFLINE
+        msg = arraySpeak (nickList, "is", "are") + " offline.";
+    this.displayHere(msg, e.code, undefined, undefined, e.tags);
+    if (displayTab)
+        displayTab.displayHere(msg, e.code, undefined, undefined, e.tags);
+}
+
+CIRCNetwork.prototype.on732 = /* RPL_MONLIST */
+function my_732(e)
+{
+    if (!this.pendingNotifyList)
+        this.pendingNotifyList = [];
+    var nickList = e.server.toLowerCase(e.params[2]).split(",")
+    this.pendingNotifyList = this.pendingNotifyList.concat(nickList);
+}
+
+CIRCNetwork.prototype.on733 = /* RPL_ENDOFMONLIST */
+function my_733(e)
+{
+    if (this.pendingNotifyList)
+    {
+        this.prefs["notifyList"] = this.pendingNotifyList;
+        this.prefs["notifyList"].update();
+        this.display(getMsg(MSG_NOTIFY_LIST, arraySpeak(this.pendingNotifyList)));
+        delete this.pendingNotifyList;
+        if (e.params[2])
+            this.display(e.params[2], e.code, undefined, undefined, e.tags);
+    }
+    else
+    {
+        this.prefs["notifyList"] = [];
+        this.prefs["notifyList"].update();
+        display(MSG_NO_NOTIFY_LIST, e.code, undefined, undefined, e.tags);
+    }
+}
+
+CIRCNetwork.prototype.on734 = /* ERR_MONLISTFULL */
+function my_734(e)
+{
+    var nickList = e.server.toLowerCase(e.params[3]).split(",")
+    var i;
+    var msgname;
+
+    for (i = 0; i < nickList.length; i++)
+    {
+        var j = this.prefs["notifyList"].indexOf(nickList[i]);
+        if (j >= 0)
+            arrayRemoveAt(this.prefs["notifyList"], j);
+    }
+    this.prefs["notifyList"].update();
+
+    if (e.params[4])
+        this.display(e.params[4], e.code, undefined, undefined, e.tags)
+    else
+        this.display(MSG_NOTIFY_FULL);
+
+    msgname = (nickList.length == 1) ? MSG_NOTIFY_DELONE :
+                                   MSG_NOTIFY_DELSOME;
+    this.display(getMsg(msgname, arraySpeak(nickList)));
+}
+
 /* away off reply */
 CIRCNetwork.prototype.on305 =
 function my_305(e)
 {
-    this.display(MSG_AWAY_OFF);
+    this.display(MSG_AWAY_OFF, e.code, undefined, undefined, e.tags);
 
     return true;
 }
@@ -1354,9 +1476,11 @@ function my_306(e)
 {
     var idleMsgParams = [this.prefs["away"], client.prefs["awayIdleTime"]];
     if (!this.isIdleAway)
-        this.display(getMsg(MSG_AWAY_ON, this.prefs["away"]));
+        this.display(getMsg(MSG_AWAY_ON, this.prefs["away"]), e.code,
+                     undefined, undefined, e.tags);
     else
-        this.display(getMsg(MSG_IDLE_AWAY_ON, idleMsgParams));
+        this.display(getMsg(MSG_IDLE_AWAY_ON, idleMsgParams), e.code,
+                     undefined, undefined, e.tags);
 
     return true;
 }
@@ -1487,7 +1611,8 @@ function my_list_init ()
             if (end - start > CHUNK_SIZE)
                 end = start + CHUNK_SIZE;
             for (var i = start; i < end; ++i)
-                network.displayHere (getMsg(MSG_FMT_CHANLIST, list[i]), "322");
+                network.displayHere(getMsg(MSG_FMT_CHANLIST, list[i]), "322",
+                                    undefined, undefined, list[i][3]);
             list.displayed = end;
         }
         if (list.done && (list.displayed == list.length))
@@ -1495,7 +1620,8 @@ function my_list_init ()
             if (list.event323)
             {
                 var length = list.event323.params.length;
-                network.displayHere (list.event323.params[length - 1], "323");
+                network.displayHere(list.event323.params[length - 1], "323",
+                                    undefined, undefined, list.event323.tags);
             }
             network.displayHere(getMsg(MSG_LIST_END,
                                        [list.displayed, list.count]));
@@ -1578,7 +1704,7 @@ function my_listrply (e)
     {
         if (!("file" in this._list))
         {
-            this._list.push([chanName, e.params[3], topic]);
+            this._list.push([chanName, e.params[3], topic, e.tags]);
         }
         else
         {
@@ -1606,20 +1732,23 @@ function my_401(e)
     else
         user = new CIRCUser(e.server, null, e.params[2]);
 
-    if (user && this.whoisList && (user.canonicalName in this.whoisList))
+    if (user && this.whoisList && (user.collectionKey in this.whoisList))
     {
         // If this is from a /whois, send a /whowas and don't display anything.
         this.primServ.whowas(user.unicodeName, 1);
-        this.whoisList[user.canonicalName] = false;
+        this.whoisList[user.collectionKey] = false;
         return;
     }
 
     if (user)
-        user.display(getMsg(MSG_IRC_401, [user.unicodeName]), e.code);
+        user.display(getMsg(MSG_IRC_401, [user.unicodeName]), e.code,
+                     undefined, undefined, e.tags);
     else if (server)
-        this.display(getMsg(MSG_IRC_402, [server]), e.code);
+        this.display(getMsg(MSG_IRC_402, [server]), e.code,
+                     undefined, undefined, e.tags);
     else if (channel)
-        channel.display(getMsg(MSG_IRC_403, [channel.unicodeName]), e.code);
+        channel.display(getMsg(MSG_IRC_403, [channel.unicodeName]), e.code,
+                        undefined, undefined, e.tags);
     else
         dd("on401: unreachable code.");
 }
@@ -1633,7 +1762,7 @@ function my_464(e)
     {
         // If we are in the process of connecting we are needing a login
         // password, subtly different from after user registration.
-        this.display(MSG_IRC_464_LOGIN);
+        this.display(MSG_IRC_464_LOGIN, e.code, undefined, undefined, e.tags);
     }
     else
     {
@@ -1653,7 +1782,8 @@ function my_315 (e)
         matches = 0;
 
     if ("pendingWhoReply" in this)
-        this.display(getMsg(MSG_WHO_END, [e.params[2], matches]), e.code);
+        this.display(getMsg(MSG_WHO_END, [e.params[2], matches]), e.code,
+                     undefined, undefined, e.tags);
 
     if ("whoUpdates" in this)
     {
@@ -1677,8 +1807,8 @@ function my_315 (e)
 CIRCNetwork.prototype.on352 =
 function my_352 (e)
 {
-    //0-352 1-rginda_ 2-#chatzilla 3-chatzilla 4-h-64-236-139-254.aoltw.net
-    //5-irc.mozilla.org 6-rginda 7-H
+    //0-352 1-sender 2-channel 3-ident 4-host
+    //5-server 6-nick 7-H/G 8-hops and realname
     if ("pendingWhoReply" in this)
     {
         var status;
@@ -1690,7 +1820,8 @@ function my_352 (e)
         this.display(getMsg(MSG_WHO_MATCH,
                             [e.params[6], e.params[3], e.params[4],
                              e.user.desc, status, e.decodeParam(2),
-                             e.params[5], e.user.hops]), e.code, e.user);
+                             e.params[5], e.user.hops]), e.code, e.user,
+                     undefined, e.tags);
     }
 
     updateTitle(e.user);
@@ -1707,11 +1838,55 @@ function my_352 (e)
         for (var c in e.server.channels)
         {
             var chan = e.server.channels[c];
-            if (chan.active && (e.user.canonicalName in chan.users))
+            if (chan.active && (e.user.collectionKey in chan.users))
             {
                 if (!(c in this.whoUpdates))
                     this.whoUpdates[c] = new Array();
-                this.whoUpdates[c].push(chan.users[e.user.canonicalName]);
+                this.whoUpdates[c].push(chan.users[e.user.collectionKey]);
+            }
+        }
+    }
+}
+
+CIRCNetwork.prototype.on354 =
+function my_354(e)
+{
+    //0-352 1-sender 2-type 3-channel 4-ident 5-host
+    //6-server 7-nick 8-H/G 9-hops 10-account 11-realname
+    if ("pendingWhoReply" in this)
+    {
+        var status;
+        if (e.user.isAway)
+            status = MSG_GONE;
+        else
+            status = MSG_HERE;
+
+        this.display(getMsg(MSG_WHO_MATCH,
+                            [e.params[7], e.params[4], e.params[5],
+                             e.user.desc, status, e.decodeParam(3),
+                             e.params[6], e.user.hops]), e.code, e.user,
+                     undefined, e.tags);
+    }
+
+    updateTitle(e.user);
+    if ("whoMatches" in this)
+        ++this.whoMatches;
+    else
+        this.whoMatches = 1;
+
+    if (!("whoUpdates" in this))
+        this.whoUpdates = new Object();
+
+    if (e.userHasChanges)
+    {
+        for (var c in e.server.channels)
+        {
+            var chan = e.server.channels[c];
+            if (chan.active && (e.user.collectionKey in chan.users))
+            {
+                if (!(c in this.whoUpdates))
+                    this.whoUpdates[c] = new Array();
+                this.whoUpdates[c].push(chan.users[e.user.collectionKey]);
             }
         }
     }
@@ -1723,7 +1898,8 @@ function my_301(e)
     if (e.user.awayMessage != e.user.lastShownAwayMessage)
     {
         var params = [e.user.unicodeName, e.user.awayMessage];
-        e.user.display(getMsg(MSG_WHOIS_AWAY, params), e.code);
+        e.user.display(getMsg(MSG_WHOIS_AWAY, params), e.code,
+                       undefined, undefined, e.tags);
         e.user.lastShownAwayMessage = e.user.awayMessage;
     }
 }
@@ -1806,32 +1982,43 @@ function my_whoisreply (e)
     }
 
     if (e.user)
-        e.user.display(text, e.code);
+        e.user.display(text, e.code, undefined, undefined, e.tags);
     else
-        this.display(text, e.code);
+        this.display(text, e.code, undefined, undefined, e.tags);
 }
 
 CIRCNetwork.prototype.on341 = /* invite reply */
 function my_341 (e)
 {
     this.display (getMsg(MSG_YOU_INVITE, [e.decodeParam(2), e.decodeParam(3)]),
-                  "341");
+                  "341", undefined, undefined, e.tags);
 }
 
 CIRCNetwork.prototype.onInvite = /* invite message */
 function my_invite (e)
 {
-    client.munger.getRule(".inline-buttons").enabled = true;
-    this.display(getMsg(MSG_INVITE_YOU, [e.user.unicodeName, e.user.name,
-                                         e.user.host,
-                                         e.channel.unicodeName,
-                                         e.channel.unicodeName,
-                                         e.channel.getURL()]),
-                 "INVITE");
-    client.munger.getRule(".inline-buttons").enabled = false;
+    var invitee = e.params[1];
+    if (invitee == e.server.me.unicodeName)
+    {
+        client.munger.getRule(".inline-buttons").enabled = true;
+        this.display(getMsg(MSG_INVITE_YOU, [e.user.unicodeName, e.user.name,
+                                             e.user.host,
+                                             e.channel.unicodeName,
+                                             e.channel.unicodeName,
+                                             e.channel.getURL()]),
+                     "INVITE", undefined, undefined, e.tags);
+        client.munger.getRule(".inline-buttons").enabled = false;
 
-    if ("messages" in e.channel)
-        e.channel.join();
+        if ("messages" in e.channel)
+            e.channel.join();
+    }
+    else
+    {
+        this.display(getMsg(MSG_INVITE_SOMEONE, [e.user.unicodeName,
+                                                 invitee,
+                                                 e.channel.unicodeName]),
+                     "INVITE", undefined, undefined, e.tags);
+    }
 }
 
 CIRCNetwork.prototype.on433 = /* nickname in use */
@@ -1893,17 +2080,20 @@ function my_433 (e)
         if (newnick)
         {
             this.INITIAL_NICK = newnick;
-            this.display(getMsg(MSG_RETRY_NICK, [nick, newnick]), "433");
+            this.display(getMsg(MSG_RETRY_NICK, [nick, newnick]), "433",
+                         undefined, undefined, e.tags);
             this.primServ.changeNick(newnick);
         }
         else
         {
-            this.display(getMsg(MSG_NICK_IN_USE, nick), "433");
+            this.display(getMsg(MSG_NICK_IN_USE, nick), "433",
+                         undefined, undefined, e.tags);
         }
     }
     else
     {
-        this.display(getMsg(MSG_NICK_IN_USE, nick), "433");
+        this.display(getMsg(MSG_NICK_IN_USE, nick), "433",
+                     undefined, undefined, e.tags);
     }
 }
 
@@ -2036,6 +2226,11 @@ function my_netdisconnect (e)
                              [this.getURL(), e.server.getURL()]);
                 break;
 
+            case NS_ERROR_NET_INTERRUPT:
+                msg = getMsg(MSG_CONNECTION_INTERRUPT,
+                             [this.getURL(), e.server.getURL()]);
+                break;
+
             case NS_ERROR_UNKNOWN_HOST:
                 msg = getMsg(MSG_UNKNOWN_HOST,
                              [e.server.hostname, this.getURL(),
@@ -2071,27 +2266,34 @@ function my_netdisconnect (e)
                 retrying = false;
                 break;
 
-            // Group all certificate errors together.
-            // The exception adding dialog will explain the reasons.
-            case SEC_ERROR_EXPIRED_CERTIFICATE:
-            case SEC_ERROR_UNKNOWN_ISSUER:
-            case SEC_ERROR_UNTRUSTED_ISSUER:
-            case SEC_ERROR_UNTRUSTED_CERT:
-            case SEC_ERROR_EXPIRED_ISSUER_CERTIFICATE:
-            case SEC_ERROR_CA_CERT_INVALID:
-            case SEC_ERROR_INADEQUATE_KEY_USAGE:
-            case SSL_ERROR_BAD_CERT_DOMAIN:
-                var cmd = "ssl-exception";
-                cmd += " " + e.server.hostname + " " + e.server.port;
-                cmd += " true";
-                msg = getMsg(MSG_INVALID_CERT, [this.getURL(), cmd]);
-                retrying = false;
-                break;
-
             default:
+                var errClass = getNSSErrorClass(e.disconnectStatus);
+                // Check here if it's a cert error.
+                // The exception adding dialog will explain the reasons.
+                if (errClass == ERROR_CLASS_BAD_CERT)
+                {
+                    var cmd = "ssl-exception";
+                    cmd += " " + e.server.hostname + " " + e.server.port;
+                    cmd += " true";
+                    msg = getMsg(MSG_INVALID_CERT, [this.getURL(), cmd]);
+                    retrying = false;
+                    break;
+                }
+
+                // If it's a protocol error, we can still display a useful message.
+                var statusMsg = e.disconnectStatus;
+                if (errClass == ERROR_CLASS_SSL_PROTOCOL)
+                {
+                    var nssErrSvc = getService("@mozilla.org/nss_errors_service;1",
+                                               "nsINSSErrorsService");
+                    var errMsg = nssErrSvc.getErrorMessage(e.disconnectStatus);
+                    errMsg = errMsg.replace(/\.$/, "");
+                    statusMsg += " (" + errMsg + ")";
+                }
+
                 msg = getMsg(MSG_CLOSE_STATUS,
                              [this.getURL(), e.server.getURL(),
-                              e.disconnectStatus]);
+                              statusMsg]);
                 break;
         }
     }
@@ -2197,8 +2399,21 @@ function my_netdisconnect (e)
         client.getConnectionCount() == 0)
         window.close();
 
+    // Renew the STS policy.
+    if (e.server.isSecure && ("sts" in e.server.caps) && client.sts.ENABLED)
+    {
+        var policy = client.sts.parseParameters(e.server.capvals["sts"]);
+        client.sts.setPolicy(e.server.hostname, e.server.port, policy.duration);
+    }
+
     if (("reconnect" in this) && this.reconnect)
     {
+        if ("stsUpgradePort" in this)
+        {
+            e.server.port = this.stsUpgradePort;
+            e.server.isSecure = true;
+            delete this.stsUpgradePort;
+        }
         this.connect(this.requireSecurity);
         delete this.reconnect;
     }
@@ -2211,14 +2426,14 @@ function my_replyping (e)
     if (stringTrim(e.CTCPData).length != 13)
     {
         this.display(getMsg(MSG_PING_REPLY_INVALID, e.user.unicodeName),
-                     "INFO", e.user, "ME!");
+                     "INFO", e.user, "ME!", e.tags);
         return;
     }
 
     var delay = formatDateOffset((new Date() - new Date(Number(e.CTCPData))) /
                                  1000);
     this.display(getMsg(MSG_PING_REPLY, [e.user.unicodeName, delay]), "INFO",
-                 e.user, "ME!");
+                 e.user, "ME!", e.tags);
 }
 
 CIRCNetwork.prototype.on221 =
@@ -2229,12 +2444,12 @@ function my_umode (e)
     {
         e.user.updateHeader();
         this.display(getMsg(MSG_USER_MODE, [e.user.unicodeName, e.params[2]]),
-                     MT_MODE);
+                     MT_MODE, undefined, undefined, e.tags);
     }
     else
     {
         this.display(getMsg(MSG_USER_MODE, [e.params[1], e.params[2]]),
-                     MT_MODE);
+                     MT_MODE, undefined, undefined, e.tags);
     }
 }
 
@@ -2255,7 +2470,7 @@ function my_cnick (e)
     if (getTabForObject(this))
     {
         this.displayHere(getMsg(MSG_NEWNICK_YOU, e.user.unicodeName),
-                         "NICK", "ME!", e.user, this);
+                         "NICK", "ME!", e.user, e.tags);
     }
 
     this.updateHeader();
@@ -2279,9 +2494,9 @@ function my_netwallops(e)
 {
     client.munger.getRule(".mailto").enabled = client.prefs["munger.mailto"];
     if (e.user)
-        this.display(e.msg, "WALLOPS/WALLOPS", e.user, this);
+        this.display(e.msg, "WALLOPS/WALLOPS", e.user, this, e.tags);
     else
-        this.display(e.msg, "WALLOPS/WALLOPS", undefined, this);
+        this.display(e.msg, "WALLOPS/WALLOPS", undefined, this, e.tags);
     client.munger.getRule(".mailto").enabled = false;
 }
 
@@ -2289,7 +2504,8 @@ function my_netwallops(e)
 CIRCNetwork.prototype.on421 =
 function my_421(e)
 {
-    this.display(getMsg(MSG_IRC_421, e.decodeParam(2)), MT_ERROR);
+    this.display(getMsg(MSG_IRC_421, e.decodeParam(2)), MT_ERROR, undefined,
+                 undefined, e.tags);
     return true;
 }
 
@@ -2299,6 +2515,16 @@ function my_cap(e)
 {
     if (e.params[2] == "LS")
     {
+        // Handle the STS upgrade policy if we have one.
+        if (e.server.pendingCapNegotiation && e.stsUpgradePort)
+        {
+            this.display(getMsg(MSG_STS_UPGRADE, e.stsUpgradePort));
+            this.reconnect = true;
+            this.stsUpgradePort = e.stsUpgradePort;
+            this.quit(MSG_RECONNECTING);
+            return true;
+        }
+
         // Don't show the raw message until we've registered.
         if (this.state == NET_ONLINE)
         {
@@ -2314,8 +2540,15 @@ function my_cap(e)
             if (listCaps.length > 0)
             {
                 listCaps.sort();
-                this.display(getMsg(MSG_SUPPORTS_CAPS, listCaps.join(MSG_COMMASP)));
+                this.display(getMsg(MSG_SUPPORTS_CAPS, listCaps.join(", ")));
             }
+        }
+
+        // Update the STS duration policy.
+        if (e.server.isSecure && ("sts" in e.server.caps) && client.sts.ENABLED)
+        {
+            var policy = client.sts.parseParameters(e.server.capvals["sts"]);
+            client.sts.setPolicy(e.server.hostname, e.server.port, policy.duration);
         }
     }
     else if (e.params[2] == "LIST")
@@ -2331,7 +2564,8 @@ function my_cap(e)
         if (listCapsEnabled.length > 0)
         {
             listCapsEnabled.sort();
-            this.display(getMsg(MSG_SUPPORTS_CAPSON, listCapsEnabled.join(MSG_COMMASP)));
+            this.display(getMsg(MSG_SUPPORTS_CAPSON,
+                                listCapsEnabled.join(", ")));
         }
     }
     else if (e.params[2] == "ACK")
@@ -2345,7 +2579,151 @@ function my_cap(e)
     {
         this.display(getMsg(MSG_CAPS_ERROR, e.caps.join(", ")));
     }
+    else if (e.params[2] == "NEW")
+    {
+        // Handle a new STS policy
+        if (client.sts.ENABLED && (arrayContains(e.newcaps, "sts")))
+        {
+            var policy = client.sts.parseParameters(e.server.capvals["sts"]);
+            if (!e.server.isSecure && policy.port)
+            {
+                // Inform the user of the new upgrade policy and
+                // offer an option to reconnect.
+                client.munger.getRule(".inline-buttons").enabled = true;
+                this.display(getMsg(MSG_STS_UPGRADE_NEW, [this.unicodeName, "reconnect"]));
+                client.munger.getRule(".inline-buttons").enabled = false;
+            }
+            else if (e.server.isSecure && policy.duration)
+            {
+                // Renew the policy's duration.
+                client.sts.setPolicy(e.server.hostname, e.server.port, policy.duration);
+            }
+        }
+    }
     return true;
+}
+
+// Notify the user of received CTCP requests.
+CIRCNetwork.prototype.onReceiveCTCP =
+function my_ccrecv(e)
+{
+    // Do nothing if we receive these.
+    if ((e.type == "ctcp-action") ||
+        (e.type == "ctcp-dcc") ||
+        (e.type == "unk-ctcp"))
+        return true;
+
+    this.display(getMsg(MSG_FMT_CTCPRECV,
+                        [toUnicode(e.CTCPCode, this),
+                         toUnicode(e.CTCPData, this), e.user.unicodeName]),
+                 "CTCP_REQUEST", e.user, e.server.me, e.tags);
+
+    return true;
+}
+
+/* SASL authentication start */
+CIRCNetwork.prototype.onSASLStart =
+function my_saslstart(e)
+{
+    if (!e.mechs || e.mechs.indexOf("plain") !== -1)
+        e.server.sendData("AUTHENTICATE PLAIN\n");
+}
+
+/* SASL authentication response */
+CIRCNetwork.prototype.onAuthenticate =
+function my_auth(e)
+{
+    if (e.params[1] !== "+")
+        return;
+
+    var username = e.server.me.encodedName;
+    var password = client.tryToGetLogin(e.server.parent.getURL(), "sasl",
+                                        e.server.me.name, null, true,
+                                        getMsg(MSG_SASL_PASSWORD, username));
+    if (!password)
+    {
+        // Abort authentication.
+        e.server.sendAuthAbort();
+        return;
+    }
+
+    var auth = username + '\0' + username + '\0' + password;
+    e.server.sendAuthResponse(auth);
+}
+
+CIRCNetwork.prototype.onNetsplitBatch =
+function my_netsplit_batch(e)
+{
+    for (var c in this.primServ.channels)
+    {
+        if (e.starting)
+        {
+           this.startMsgGroup(e.reftag, getMsg(MSG_BATCH_NETSPLIT_START,
+                                               [e.params[3],
+                                                e.params[4]]),
+                              e.batchtype);
+        }
+        else
+        {
+            this.display(MSG_BATCH_NETSPLIT_END, e.batchtype);
+            this.endMsgGroup();
+        }
+    }
+}
+
+CIRCNetwork.prototype.onNetjoinBatch =
+function my_netjoin_batch(e)
+{
+    for (var c in this.primServ.channels)
+    {
+        if (e.starting)
+        {
+            this.startMsgGroup(e.reftag, getMsg(MSG_BATCH_NETJOIN_START,
+                                                [e.params[3],
+                                                 e.params[4]]),
+                               e.batchtype);
+        }
+        else
+        {
+            this.display(MSG_BATCH_NETJOIN_END, e.batchtype);
+            this.endMsgGroup();
+        }
+    }
+}
+
+CIRCChannel.prototype.onChathistoryBatch =
+function my_chathistory_batch(e)
+{
+    if (e.starting)
+    {
+        this.startMsgGroup(e.reftag, getMsg(MSG_BATCH_CHATHISTORY_START,
+                                            [e.params[3]]),
+                           e.batchtype);
+    }
+    else
+    {
+        this.display(MSG_BATCH_CHATHISTORY_END, e.batchtype);
+        this.endMsgGroup();
+    }
+}
+
+CIRCNetwork.prototype.onUnknownBatch =
+CIRCChannel.prototype.onUnknownBatch =
+CIRCUser.prototype.onUnknownBatch =
+function my_unknown_batch(e)
+{
+    if (e.starting)
+    {
+        this.startMsgGroup(e.reftag, getMsg(MSG_BATCH_UNKNOWN,
+                                            [e.batchtype,
+                                             e.params.slice(3)]),
+                           "BATCH");
+    }
+    else
+    {
+        this.display(MSG_BATCH_UNKNOWN_END, e.batchtype);
+        this.endMsgGroup();
+    }
 }
 
 /* user away status */
@@ -2356,11 +2734,11 @@ function my_away(e)
     for (var c in e.server.channels)
     {
         var chan = e.server.channels[c];
-        if (chan.active && (e.user.canonicalName in chan.users))
+        if (chan.active && (e.user.collectionKey in chan.users))
         {
-            var index = chan.users[e.user.canonicalName].chanListEntry.childIndex;
+            let index = chan.users[e.user.collectionKey].chanListEntry.childIndex;
             userlist.treeBoxObject.invalidateRow(index);
-            e.server.channels[c].updateUsers([e.user.canonicalName]);
+            e.server.channels[c].updateUsers([e.user.collectionKey]);
         }
     }
 }
@@ -2460,6 +2838,44 @@ function chan_part(reason)
     this._part(reason);
 }
 
+client.setActivityMarker =
+CIRCNetwork.prototype.setActivityMarker =
+CIRCChannel.prototype.setActivityMarker =
+CIRCUser.prototype.setActivityMarker =
+CIRCDCCChat.prototype.setActivityMarker =
+CIRCDCCFileTransfer.prototype.setActivityMarker =
+function view_setactivitymarker(state)
+{
+    if (!client.initialized)
+        return;
+
+    // Always clear the activity marker first.
+    var markedRow = this.getActivityMarker();
+    if (markedRow)
+    {
+        markedRow.classList.remove("chatzilla-line-marker");
+    }
+
+    if (state)
+    {
+        // Mark the last row.
+        var target = this.messages.firstChild.lastChild;
+        if (!target)
+            return;
+        target.classList.add("chatzilla-line-marker");
+    }
+}
+
+client.getActivityMarker =
+CIRCNetwork.prototype.getActivityMarker =
+CIRCChannel.prototype.getActivityMarker =
+CIRCUser.prototype.getActivityMarker =
+CIRCDCCChat.prototype.getActivityMarker =
+CIRCDCCFileTransfer.prototype.getActivityMarker =
+function view_getactivitymarker()
+{
+    return this.messages.querySelector(".chatzilla-line-marker");
+}
 CIRCChannel.prototype.onInit =
 function chan_oninit ()
 {
@@ -2477,7 +2893,7 @@ function my_cprivmsg (e)
         msgtype += "/" + e.msgPrefix.symbol;
 
     client.munger.getRule(".mailto").enabled = client.prefs["munger.mailto"];
-    this.display (msg, msgtype, e.user, this);
+    this.display(msg, msgtype, e.user, this, e.tags);
     client.munger.getRule(".mailto").enabled = false;
 }
 
@@ -2508,7 +2924,8 @@ function my_366 (e)
     if (this.pendingNamesReply)
     {
         this.parent.parent.display (e.channel.unicodeName + ": " +
-                                    e.params[3], "366");
+                                    e.params[3], "366", undefined, undefined,
+                                    e.tags);
     }
     this.pendingNamesReply = false;
 
@@ -2523,7 +2940,7 @@ function my_topic (e)
     client.munger.getRule(".mailto").enabled = client.prefs["munger.mailto"];
     if (e.code == "TOPIC")
         this.display (getMsg(MSG_TOPIC_CHANGED, [this.topicBy, this.topic]),
-                      "TOPIC");
+                      "TOPIC", undefined, undefined, e.tags);
 
     if (e.code == "332")
     {
@@ -2531,11 +2948,12 @@ function my_topic (e)
         {
             this.display (getMsg(MSG_TOPIC,
                                  [this.unicodeName, this.topic]),
-                          "TOPIC");
+                          "TOPIC", undefined, undefined, e.tags);
         }
         else
         {
-            this.display (getMsg(MSG_NO_TOPIC, this.unicodeName), "TOPIC");
+            this.display(getMsg(MSG_NO_TOPIC, this.unicodeName), "TOPIC",
+                         undefined, undefined, e.tags);
         }
     }
 
@@ -2548,7 +2966,8 @@ CIRCChannel.prototype.on333 = /* Topic setter information */
 function my_topicinfo (e)
 {
     this.display (getMsg(MSG_TOPIC_DATE, [this.unicodeName, this.topicBy,
-                                          this.topicDate]), "TOPIC");
+                                          this.topicDate]), "TOPIC",
+                  undefined, undefined, e.tags);
 }
 
 CIRCChannel.prototype.on353 = /* names reply */
@@ -2557,7 +2976,8 @@ function my_topic (e)
     if (this.pendingNamesReply)
     {
         this.parent.parent.display (e.channel.unicodeName + ": " +
-                                    e.params[4], "NAMES");
+                                    e.params[4], "NAMES", undefined, undefined,
+                                    e.tags);
     }
 }
 
@@ -2573,7 +2993,7 @@ function my_bans(e)
         msg += " " + getMsg(MSG_BANLIST_BUTTON, "mode -b " + e.ban);
 
     client.munger.getRule(".inline-buttons").enabled = true;
-    this.display(msg, "BAN");
+    this.display(msg, "BAN", undefined, undefined, e.tags);
     client.munger.getRule(".inline-buttons").enabled = false;
 }
 
@@ -2583,7 +3003,8 @@ function my_endofbans(e)
     if ("pendingBanList" in this)
         return;
 
-    this.display(getMsg(MSG_BANLIST_END, this.unicodeName), "BAN");
+    this.display(getMsg(MSG_BANLIST_END, this.unicodeName), "BAN", undefined,
+                 undefined, e.tags);
 }
 
 CIRCChannel.prototype.on348 = /* channel except stuff */
@@ -2598,7 +3019,7 @@ function my_excepts(e)
         msg += " " + getMsg(MSG_EXCEPTLIST_BUTTON, "mode -e " + e.except);
 
     client.munger.getRule(".inline-buttons").enabled = true;
-    this.display(msg, "EXCEPT");
+    this.display(msg, "EXCEPT", undefined, undefined, e.tags);
     client.munger.getRule(".inline-buttons").enabled = false;
 }
 
@@ -2608,7 +3029,8 @@ function my_endofexcepts(e)
     if ("pendingExceptList" in this)
         return;
 
-    this.display(getMsg(MSG_EXCEPTLIST_END, this.unicodeName), "EXCEPT");
+    this.display(getMsg(MSG_EXCEPTLIST_END, this.unicodeName), "EXCEPT",
+                 undefined, undefined, e.tags);
 }
 
 CIRCChannel.prototype.on482 =
@@ -2617,7 +3039,8 @@ function my_needops(e)
     if ("pendingExceptList" in this)
         return;
 
-    this.display(getMsg(MSG_CHANNEL_NEEDOPS, this.unicodeName), MT_ERROR);
+    this.display(getMsg(MSG_CHANNEL_NEEDOPS, this.unicodeName), MT_ERROR,
+                 undefined, undefined, e.tags);
 }
 
 CIRCChannel.prototype.onNotice =
@@ -2628,7 +3051,7 @@ function my_notice (e)
         msgtype += "/" + e.msgPrefix.symbol;
 
     client.munger.getRule(".mailto").enabled = client.prefs["munger.mailto"];
-    this.display(e.decodeParam(2), msgtype, e.user, this);
+    this.display(e.decodeParam(2), msgtype, e.user, this, e.tags);
     client.munger.getRule(".mailto").enabled = false;
 }
 
@@ -2636,7 +3059,7 @@ CIRCChannel.prototype.onCTCPAction =
 function my_caction (e)
 {
     client.munger.getRule(".mailto").enabled = client.prefs["munger.mailto"];
-    this.display (e.CTCPData, "ACTION", e.user, this);
+    this.display(e.CTCPData, "ACTION", e.user, this, e.tags);
     client.munger.getRule(".mailto").enabled = false;
 }
 
@@ -2645,7 +3068,7 @@ function my_unkctcp (e)
 {
     this.display (getMsg(MSG_UNKNOWN_CTCP, [e.CTCPCode, e.CTCPData,
                                             e.user.unicodeName]),
-                  "BAD-CTCP", e.user, this);
+                  "BAD-CTCP", e.user, this, e.tags);
 }
 
 CIRCChannel.prototype.onJoin =
@@ -2657,7 +3080,7 @@ function my_cjoin (e)
     {
         var params = [e.user.unicodeName, e.channel.unicodeName];
         this.display(getMsg(MSG_YOU_JOINED, params), "JOIN",
-                     e.server.me, this);
+                     e.server.me, this, e.tags);
         /* Tell the user that conference mode is on, lest they forget (if it
          * subsequently turns itself off, they'll get a message anyway).
          */
@@ -2688,7 +3111,7 @@ function my_cjoin (e)
             this.display(getMsg(MSG_SOMEONE_JOINED,
                                 [e.user.unicodeName, e.user.name, e.user.host,
                                  e.channel.unicodeName]),
-                         "JOIN", e.user, this);
+                         "JOIN", e.user, this, e.tags);
         }
 
         /* Only do this for non-me joins so us joining doesn't reset it (when
@@ -2722,7 +3145,7 @@ function my_cpart(e)
     {
         var msg = e.reason ? MSG_YOU_LEFT_REASON : MSG_YOU_LEFT;
         var params = [e.user.unicodeName, e.channel.unicodeName, e.reason];
-        this.display(getMsg(msg, params), "PART", e.user, this);
+        this.display(getMsg(msg, params), "PART", e.user, this, e.tags);
         this._clearUserList();
 
         if ("partTimer" in this)
@@ -2749,7 +3172,7 @@ function my_cpart(e)
         {
             var msg = e.reason ? MSG_SOMEONE_LEFT_REASON : MSG_SOMEONE_LEFT;
             var params = [e.user.unicodeName, e.channel.unicodeName, e.reason];
-            this.display(getMsg(msg, params), "PART", e.user, this);
+            this.display(getMsg(msg, params), "PART", e.user, this, e.tags);
         }
 
         this.removeFromList(e.user);
@@ -2766,14 +3189,14 @@ function my_ckick (e)
             this.display (getMsg(MSG_YOURE_GONE,
                                  [e.lamer.unicodeName, e.channel.unicodeName,
                                   e.user.unicodeName, e.reason]),
-                          "KICK", e.user, this);
+                          "KICK", e.user, this, e.tags);
         }
         else
         {
             this.display (getMsg(MSG_YOURE_GONE,
                                  [e.lamer.unicodeName, e.channel.unicodeName,
                                   MSG_SERVER, e.reason]),
-                          "KICK", (void 0), this);
+                          "KICK", (void 0), this, e.tags);
         }
 
         this._clearUserList();
@@ -2803,7 +3226,7 @@ function my_ckick (e)
         this.display(getMsg(MSG_SOMEONE_GONE,
                             [e.lamer.unicodeName, e.channel.unicodeName,
                              enforcerProper, e.reason]),
-                     "KICK", e.user, this);
+                     "KICK", e.user, this, e.tags);
 
         this.removeFromList(e.lamer);
     }
@@ -2834,7 +3257,7 @@ function my_cmode (e)
 
         var source = e.user ? e.user.unicodeName : e.source;
         this.display(getMsg(MSG_MODE_CHANGED, [msg, source]),
-                     "MODE", (e.user || null), this);
+                     "MODE", (e.user || null), this, e.tags);
     }
     else if ("pendingModeReply" in this)
     {
@@ -2843,7 +3266,8 @@ function my_cmode (e)
             msg += " " + e.decodeParam(i);
 
         var view = ("messages" in this && this.messages) ? this : e.network;
-        view.display(getMsg(MSG_MODE_ALL, [this.unicodeName, msg]), "MODE");
+        view.display(getMsg(MSG_MODE_ALL, [this.unicodeName, msg]), "MODE",
+                     undefined, undefined, e.tags);
         delete this.pendingModeReply;
     }
     var updates = new Array();
@@ -2865,7 +3289,7 @@ function my_cnick (e)
         if (getTabForObject(this))
         {
             this.displayHere(getMsg(MSG_NEWNICK_YOU, e.user.unicodeName),
-                             "NICK", "ME!", e.user, this);
+                             "NICK", "ME!", e.user, e.tags);
         }
         this.parent.parent.updateHeader();
     }
@@ -2873,7 +3297,7 @@ function my_cnick (e)
     {
         this.display(getMsg(MSG_NEWNICK_NOTYOU, [e.oldNick,
                                                  e.user.unicodeName]),
-                     "NICK", e.user, this);
+                     "NICK", e.user, this, e.tags);
     }
 
     this.updateUsers([e.user]);
@@ -2888,7 +3312,7 @@ function my_cquit (e)
     {
         /* I dont think this can happen */
         var pms = [e.user.unicodeName, e.server.parent.unicodeName, e.reason];
-        this.display (getMsg(MSG_YOU_QUIT, pms),"QUIT", e.user, this);
+        this.display(getMsg(MSG_YOU_QUIT, pms),"QUIT", e.user, this, e.tags);
         this._clearUserList();
     }
     else
@@ -2901,7 +3325,7 @@ function my_cquit (e)
             this.display(getMsg(MSG_SOMEONE_QUIT,
                                 [e.user.unicodeName,
                                  e.server.parent.unicodeName, e.reason]),
-                         "QUIT", e.user, this);
+                         "QUIT", e.user, this, e.tags);
         }
     }
 
@@ -2953,15 +3377,32 @@ function user_oninit ()
 CIRCUser.prototype.onPrivmsg =
 function my_cprivmsg(e)
 {
+    var sourceObj = e.user;
+    var destObj = e.server.me;
+    var displayObj = this;
+
     if (!("messages" in this))
     {
         var limit = client.prefs["newTabLimit"];
         if (limit == 0 || client.viewsArray.length < limit)
-            openQueryTab(e.server, e.user.unicodeName);
+        {
+            if (e.user != e.server.me)
+            {
+                openQueryTab(e.server, e.user.unicodeName);
+            }
+            else
+            {
+                // This is a self-message, i.e. we received a message that
+                // looks like it came from us. Display it accordingly.
+                sourceObj = e.server.me;
+                destObj = openQueryTab(e.server, e.params[1]);
+                displayObj = destObj;
+            }
+        }
     }
 
     client.munger.getRule(".mailto").enabled = client.prefs["munger.mailto"];
-    this.display(e.decodeParam(2), "PRIVMSG", e.user, e.server.me);
+    displayObj.display(e.decodeParam(2), "PRIVMSG", sourceObj, destObj, e.tags);
     client.munger.getRule(".mailto").enabled = false;
 }
 
@@ -2976,7 +3417,7 @@ function my_unick (e)
     else if ("messages" in this && this.messages)
     {
         this.display(getMsg(MSG_NEWNICK_NOTYOU, [e.oldNick, e.user.unicodeName]),
-                     "NICK", e.user, this);
+                     "NICK", e.user, this, e.tags);
     }
 
     this.updateHeader();
@@ -2998,14 +3439,27 @@ function my_notice (e)
         if (channel)
         {
             client.munger.getRule(".mailto").enabled = displayMailto;
-            channel.display(msg, "NOTICE", this, e.server.me);
+            channel.display(msg, "NOTICE", this, e.server.me, e.tags);
             client.munger.getRule(".mailto").enabled = false;
             return;
         }
     }
 
+    var sourceObj = this;
+    var destObj = e.server.me;
+    var displayObj = this;
+
+    if (e.user == e.server.me)
+    {
+        // This is a self-message, i.e. we received a message that
+        // looks like it came from us. Display it accordingly.
+        var sourceObj = e.server.me;
+        var destObj = e.server.addTarget(e.params[1]);
+        var displayObj = e.server.parent;
+    }
+
     client.munger.getRule(".mailto").enabled = displayMailto;
-    this.display(msg, "NOTICE", this, e.server.me);
+    displayObj.display(msg, "NOTICE", sourceObj, destObj, e.tags);
     client.munger.getRule(".mailto").enabled = false;
 }
 
@@ -3020,7 +3474,7 @@ function my_uaction(e)
     }
 
     client.munger.getRule(".mailto").enabled = client.prefs["munger.mailto"];
-    this.display(e.CTCPData, "ACTION", this, e.server.me);
+    this.display(e.CTCPData, "ACTION", this, e.server.me, e.tags);
     client.munger.getRule(".mailto").enabled = false;
 }
 
@@ -3030,7 +3484,7 @@ function my_unkctcp (e)
     this.parent.parent.display (getMsg(MSG_UNKNOWN_CTCP,
                                        [e.CTCPCode, e.CTCPData,
                                         e.user.unicodeName]),
-                                "BAD-CTCP", this, e.server.me);
+                                "BAD-CTCP", this, e.server.me, e.tags);
 }
 
 function onDCCAutoAcceptTimeout(o, folder)
@@ -3109,7 +3563,7 @@ function my_dccchat(e)
 
     client.munger.getRule(".inline-buttons").enabled = true;
     this.parent.parent.display(getMsg(str, c._getParams().concat(cmds)),
-                               "DCC-CHAT");
+                               "DCC-CHAT", undefined, undefined, e.tags);
     client.munger.getRule(".inline-buttons").enabled = false;
 
     // Pass the event over to the DCC Chat object.
@@ -3157,7 +3611,7 @@ function my_dccsend(e)
     this.parent.parent.display(getMsg(str,[e.user.unicodeName,
                                            e.host, e.port, e.file,
                                            getSISize(e.size)].concat(cmds)),
-                               "DCC-FILE");
+                               "DCC-FILE", undefined, undefined, e.tags);
     client.munger.getRule(".inline-buttons").enabled = false;
 
     // Pass the event over to the DCC File object.

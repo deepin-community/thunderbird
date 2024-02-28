@@ -1,29 +1,28 @@
 {
   "langpack_id": "sq",
   "manifest_version": 2,
-  "applications": {
+  "browser_specific_settings": {
     "gecko": {
       "id": "langpack-sq@thunderbird.mozilla.org",
-      "strict_min_version": "91.0",
-      "strict_max_version": "91.*"
+      "strict_min_version": "115.0",
+      "strict_max_version": "115.*"
     }
   },
-  "name": "Shqip Language Pack",
-  "description": "Language pack for Thunderbird for sq",
-  "version": "91.0buildid20211101223011",
+  "name": "Language: Shqip (Albanian)",
+  "description": "Thunderbird Language Pack for Shqip (sq) – Albanian",
+  "version": "115.8.20240216.174500",
   "languages": {
     "sq": {
-      "version": "20211011132515",
+      "version": "20240216183527",
       "chrome_resources": {
         "alerts": "chrome/sq/locale/sq/alerts/",
         "autoconfig": "chrome/sq/locale/sq/autoconfig/",
-        "branding": "chrome/sq/locale/sq/branding/",
+        "branding": "chrome/sq/locale/branding/",
         "calendar": "chrome/sq/locale/sq/calendar/",
         "chat": "chrome/sq/locale/sq/chat/",
         "communicator": "chrome/sq/locale/sq/communicator/",
         "devtools": "chrome/sq/locale/sq/devtools/client/",
         "devtools-shared": "chrome/sq/locale/sq/devtools/shared/",
-        "devtools-startup": "chrome/sq/locale/sq/devtools/startup/",
         "global": "chrome/sq/locale/sq/global/",
         "global-platform": {
           "macosx": "chrome/sq/locale/sq/global-platform/mac/",

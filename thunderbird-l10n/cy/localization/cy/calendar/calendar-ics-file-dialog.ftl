@@ -2,8 +2,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-calendar-ics-file-window-2 =
-    .title = Mewnforio Digwyddiadau a Thasgau Calendr
+calendar-ics-file-window-title = Mewnforio Digwyddiadau a Thasgau Calendr
 calendar-ics-file-dialog-import-event-button-label = Mewnforio Digwyddiadau
 calendar-ics-file-dialog-import-task-button-label = Mewnforio Tasg
 calendar-ics-file-dialog-2 =
@@ -13,7 +12,7 @@ calendar-ics-file-cancel-button-close-label = Cau
 calendar-ics-file-dialog-message-2 = Mewnforio o'r ffeil:
 calendar-ics-file-dialog-calendar-menu-label = Mewnforio i'r calendr:
 calendar-ics-file-dialog-items-loading-message =
-    .value = Llwytho eitemau...
+    .value = Wrthi'n llwytho eitemau…
 calendar-ics-file-dialog-search-input =
     .placeholder = Hidlo eitemau…
 calendar-ics-file-dialog-sort-start-ascending =
@@ -32,6 +31,8 @@ calendar-ics-file-dialog-progress-message = Mewnforio…
 calendar-ics-file-import-success = Wedi’i mewnforio’n llwyddiannus
 calendar-ics-file-import-error = Digwyddodd gwall a methodd y mewnforio.
 calendar-ics-file-import-complete = Mewnforio wedi'i gwblhau.
+# Variables:
+# $duplicatesCount (Number) - Number of items already existing in the target calendar.
 calendar-ics-file-import-duplicates =
     { $duplicatesCount ->
         [zero] Anwybyddwyd dim eitemau.
@@ -41,13 +42,15 @@ calendar-ics-file-import-duplicates =
         [many] Anwybyddwyd { $duplicatesCount } eitem gan eu bod eisoes yn bodoli yn y calendr cyrchfan.
        *[other] Anwybyddwyd { $duplicatesCount } eitem gan eu bod eisoes yn bodoli yn y calendr cyrchfan.
     }
+# Variables:
+# $errorsCount (Number) - Number of errors while importing ics file.
 calendar-ics-file-import-errors =
     { $errorsCount ->
         [zero] Methodd mewnforio dim eitemau.
         [one] Methodd mewnforio un eitem. Gwiriwch y Consol Gwall am fanylion.
-        [two] Methodd mewnforio { $errorCount } eitem. Gwiriwch y Consol Gwall am fanylion.
-        [few] Methodd mewnforio { $errorCount } eitem. Gwiriwch y Consol Gwall am fanylion.
-        [many] Methodd mewnforio { $errorCount } eitem. Gwiriwch y Consol Gwall am fanylion.
-       *[other] Methodd mewnforio { $errorCount } eitem. Gwiriwch y Consol Gwall am fanylion.
+        [two] Methodd mewnforio { $errorsCount } eitem. Gwiriwch y Consol Gwall am fanylion.
+        [few] Methodd mewnforio { $errorsCount } eitem. Gwiriwch y Consol Gwall am fanylion.
+        [many] Methodd mewnforio { $errorsCount } eitem. Gwiriwch y Consol Gwall am fanylion.
+       *[other] Methodd mewnforio { $errorsCount } eitem. Gwiriwch y Consol Gwall am fanylion.
     }
 calendar-ics-file-dialog-no-calendars = Nid oes unrhyw galendrau sy'n gallu mewnforio digwyddiadau neu dasgau.

@@ -1,4 +1,4 @@
-import { INITIAL_STATE, insertPinned, reducers } from "common/Reducers.jsm";
+import { INITIAL_STATE, insertPinned, reducers } from "common/Reducers.sys.mjs";
 const {
   TopSites,
   App,
@@ -12,7 +12,7 @@ const {
   Search,
   ASRouter,
 } = reducers;
-import { actionTypes as at } from "common/Actions.jsm";
+import { actionTypes as at } from "common/Actions.sys.mjs";
 
 describe("Reducers", () => {
   describe("App", () => {
@@ -905,25 +905,6 @@ describe("Reducers", () => {
         INITIAL_STATE.Personalization
       );
     });
-    it("should set version to 2 with DISCOVERY_STREAM_PERSONALIZATION_VERSION", () => {
-      const state = Personalization(undefined, {
-        type: at.DISCOVERY_STREAM_PERSONALIZATION_VERSION,
-        data: {
-          version: 2,
-        },
-      });
-      assert.equal(state.version, 2);
-    });
-    it("should set version to 2 with PREF_CHANGED", () => {
-      const state = Personalization(undefined, {
-        type: at.PREF_CHANGED,
-        data: {
-          name: "discoverystream.personalization.version",
-          value: 2,
-        },
-      });
-      assert.equal(state.version, 2);
-    });
     it("should set lastUpdated with DISCOVERY_STREAM_PERSONALIZATION_LAST_UPDATED", () => {
       const state = Personalization(undefined, {
         type: at.DISCOVERY_STREAM_PERSONALIZATION_LAST_UPDATED,
@@ -1000,6 +981,27 @@ describe("Reducers", () => {
         data: { enabled: true },
       });
       assert.deepEqual(state.config, { enabled: true });
+    });
+    it("should set recentSavesEnabled with DISCOVERY_STREAM_PREFS_SETUP", () => {
+      const state = DiscoveryStream(undefined, {
+        type: at.DISCOVERY_STREAM_PREFS_SETUP,
+        data: { recentSavesEnabled: true },
+      });
+      assert.isTrue(state.recentSavesEnabled);
+    });
+    it("should set recentSavesData with DISCOVERY_STREAM_RECENT_SAVES", () => {
+      const state = DiscoveryStream(undefined, {
+        type: at.DISCOVERY_STREAM_RECENT_SAVES,
+        data: { recentSaves: [1, 2, 3] },
+      });
+      assert.deepEqual(state.recentSavesData, [1, 2, 3]);
+    });
+    it("should set isUserLoggedIn with DISCOVERY_STREAM_POCKET_STATE_SET", () => {
+      const state = DiscoveryStream(undefined, {
+        type: at.DISCOVERY_STREAM_POCKET_STATE_SET,
+        data: { isUserLoggedIn: true },
+      });
+      assert.isTrue(state.isUserLoggedIn);
     });
     it("should set feeds as loaded with DISCOVERY_STREAM_FEEDS_UPDATE", () => {
       const state = DiscoveryStream(undefined, {

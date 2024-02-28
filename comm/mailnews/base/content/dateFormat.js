@@ -1,4 +1,3 @@
-/* -*- Mode: Java; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- */
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
@@ -15,8 +14,6 @@ const formatDMY = 5;
 const formatDYM = 6;
 const formatMIN = 1;
 const formatMAX = 6;
-
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 
 var gSearchDateFormat = 0;
 var gSearchDateSeparator;
@@ -53,7 +50,7 @@ function initLocaleShortDateFormat() {
     // check the format option
     if (arrayOfStrings.length != 3) {
       // no successful split
-      Cu.reportError(
+      console.error(
         `initLocaleShortDateFormat: could not analyze date format of ${dateString}, defaulting to yyyy/mm/dd`
       );
     } else {
@@ -75,7 +72,7 @@ function initLocaleShortDateFormat() {
       }
     }
   } catch (e) {
-    Cu.reportError("initLocaleShortDateFormat: caught an exception: " + e);
+    console.error("initLocaleShortDateFormat: caught an exception: " + e);
     gSearchDateFormat = 0;
   }
 }
@@ -115,7 +112,7 @@ function initializeSearchDateFormat() {
         ).data == "true";
     }
   } catch (e) {
-    Cu.reportError("initializeSearchDateFormat: caught an exception: " + e);
+    console.error("initializeSearchDateFormat: caught an exception: " + e);
     gSearchDateFormat = 0;
   }
 

@@ -4,12 +4,14 @@
 
 var EXPORTED_SYMBOLS = ["CalWeekInfoService"];
 
-var { XPCOMUtils } = ChromeUtils.import("resource://gre/modules/XPCOMUtils.jsm");
+var { XPCOMUtils } = ChromeUtils.importESModule("resource://gre/modules/XPCOMUtils.sys.mjs");
 
 const SUNDAY = 0;
 const THURSDAY = 4;
 
-XPCOMUtils.defineLazyPreferenceGetter(this, "startWeekday", "calendar.week.start", SUNDAY);
+const lazy = {};
+
+XPCOMUtils.defineLazyPreferenceGetter(lazy, "startWeekday", "calendar.week.start", SUNDAY);
 
 function CalWeekInfoService() {
   this.wrappedJSObject = this;
@@ -55,11 +57,11 @@ CalWeekInfoService.prototype = {
     // The number of days since the start of the week.
     // Notice that the result of the subtraction might be negative.
     // We correct for that by adding 7, and then using the remainder operator.
-    let sinceStartOfWeek = (aDateTime.weekday - startWeekday + 7) % 7;
+    let sinceStartOfWeek = (aDateTime.weekday - lazy.startWeekday + 7) % 7;
 
     // The number of days to Thursday is the difference between Thursday
     // and the start-day of the week (again corrected for negative values).
-    let startToThursday = (THURSDAY - startWeekday + 7) % 7;
+    let startToThursday = (THURSDAY - lazy.startWeekday + 7) % 7;
 
     // The yearday number of the Thursday this week.
     let thisWeeksThursday = aDateTime.yearday - sinceStartOfWeek + startToThursday;
@@ -83,12 +85,12 @@ CalWeekInfoService.prototype = {
    * of the preference setting "calendar.week.start"
    *
    * @param aDate     a date time object
-   * @return          a dateTime-object denoting the first day of the week
+   * @returns a dateTime-object denoting the first day of the week
    */
   getStartOfWeek(aDate) {
     let date = aDate.clone();
     date.isDate = true;
-    let offset = startWeekday - aDate.weekday;
+    let offset = lazy.startWeekday - aDate.weekday;
     date.day += offset;
     if (offset > 0) {
       date.day -= 7;
@@ -101,7 +103,7 @@ CalWeekInfoService.prototype = {
    * of the preference setting "calendar.week.start"
    *
    * @param aDate     a date time object
-   * @return          a dateTime-object denoting the last day of the week
+   * @returns a dateTime-object denoting the last day of the week
    */
   getEndOfWeek(aDate) {
     let date = this.getStartOfWeek(aDate);

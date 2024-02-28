@@ -17,7 +17,7 @@ load("../../../resources/passwordStorage.js");
 // The basic daemon to use for testing Nntpd.jsm implementations
 var daemon = setupNNTPDaemon();
 
-add_task(async function() {
+add_task(async function () {
   let server = makeServer(NNTP_RFC4643_extension, daemon);
   server.start();
 
@@ -68,7 +68,7 @@ add_task(async function() {
     test = "news:*";
 
     // Get the existing incoming server
-    MailServices.accounts.LoadAccounts();
+    MailServices.accounts.loadAccounts();
 
     // Create the incoming server with "original" details.
     var incomingServer = MailServices.accounts.getIncomingServer("server2");

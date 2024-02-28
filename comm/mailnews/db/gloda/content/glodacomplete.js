@@ -14,7 +14,7 @@
    * The MozGlodacompleteRichResultPopup class creates the panel
    * to append all the results for the gloda search autocomplete.
    *
-   * @extends {MozPopupElement}
+   * @augments {MozPopupElement}
    */
   class MozGlodacompleteRichResultPopup extends MozPopupElement {
     constructor() {
@@ -66,6 +66,12 @@
           this.mInput.mIgnoreFocus = false;
         }
       });
+
+      this.attachShadow({ mode: "open" });
+
+      let slot = document.createElement("slot");
+      slot.part = "content";
+      this.shadowRoot.appendChild(slot);
     }
 
     connectedCallback() {
@@ -231,7 +237,7 @@
     closePopup() {
       if (this.mPopupOpen) {
         this.hidePopup();
-        this.removeAttribute("width");
+        this.style.removeProperty("--panel-width");
       }
     }
 
@@ -292,7 +298,10 @@
         this.selectedIndex = -1;
 
         let width = aElement.getBoundingClientRect().width;
-        this.setAttribute("width", width > 100 ? width : 100);
+        this.style.setProperty(
+          "--panel-width",
+          (width > 100 ? width : 100) + "px"
+        );
         // invalidate() depends on the width attribute
         this._invalidate();
 
@@ -377,6 +386,9 @@
 
     _appendCurrentResult() {
       let controller = this.mInput.controller;
+      let glodaCompleter = Cc[
+        "@mozilla.org/autocomplete/search;1?name=gloda"
+      ].getService(Ci.nsIAutoCompleteSearch).wrappedJSObject;
 
       // Process maxRows per chunk to improve performance and user experience
       for (let i = 0; i < this.maxRows; i++) {
@@ -388,10 +400,6 @@
 
         // trim the leading/trailing whitespace
         let trimmedSearchString = controller.searchString.trim();
-
-        let glodaCompleter = Cc[
-          "@mozilla.org/autocomplete/search;1?name=gloda"
-        ].getService(Ci.nsIAutoCompleteSearch).wrappedJSObject;
         let result = glodaCompleter.curResult;
 
         item = document.createXULElement("richlistitem", {

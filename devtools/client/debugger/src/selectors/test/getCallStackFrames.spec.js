@@ -3,26 +3,21 @@
  * file, You can obtain one at <http://mozilla.org/MPL/2.0/>. */
 
 import { getCallStackFrames } from "../getCallStackFrames";
-import { pullAt } from "lodash";
-import { insertResources, createInitial } from "../../utils/resource";
 
 describe("getCallStackFrames selector", () => {
   describe("library annotation", () => {
     it("annotates React frames", () => {
+      const source1 = { id: "source1", url: "webpack:///src/App.js" };
+      const source2 = {
+        id: "source2",
+        url: "webpack:///foo/node_modules/react-dom/lib/ReactCompositeComponent.js",
+      };
       const state = {
         frames: [
-          { location: { sourceId: "source1" } },
-          { location: { sourceId: "source2" } },
-          { location: { sourceId: "source2" } },
+          { location: { sourceId: "source1", source: source1 } },
+          { location: { sourceId: "source2", source: source2 } },
+          { location: { sourceId: "source2", source: source2 } },
         ],
-        sources: insertResources(createInitial(), [
-          { id: "source1", url: "webpack:///src/App.js" },
-          {
-            id: "source2",
-            url:
-              "webpack:///foo/node_modules/react-dom/lib/ReactCompositeComponent.js",
-          },
-        ]),
         selectedSource: {
           id: "sourceId-originalSource",
           isOriginal: true,
@@ -31,9 +26,8 @@ describe("getCallStackFrames selector", () => {
 
       const frames = getCallStackFrames.resultFunc(
         state.frames,
-        state.sources,
         state.selectedSource,
-        true
+        {}
       );
 
       expect(frames[0]).not.toHaveProperty("library");
@@ -47,102 +41,100 @@ describe("getCallStackFrames selector", () => {
     // There are two possible frame groups that can occur depending on whether
     // one sets a breakpoint before or after an await
     it("annotates frames related to Babel async transforms", () => {
+      const appSource = { id: "app", url: "webpack///app.js" };
+      const bundleSource = { id: "bundle", url: "https://foo.com/bundle.js" };
+      const regeneratorSource = {
+        id: "regenerator",
+        url: "webpack:///foo/node_modules/regenerator-runtime/runtime.js",
+      };
+      const microtaskSource = {
+        id: "microtask",
+        url: "webpack:///foo/node_modules/core-js/modules/_microtask.js",
+      };
+      const promiseSource = {
+        id: "promise",
+        url: "webpack///foo/node_modules/core-js/modules/es6.promise.js",
+      };
       const preAwaitGroup = [
         {
           displayName: "asyncAppFunction",
-          location: { sourceId: "bundle" },
+          location: { source: bundleSource },
         },
         {
           displayName: "tryCatch",
-          location: { sourceId: "regenerator" },
+          location: { source: regeneratorSource },
         },
         {
           displayName: "invoke",
-          location: { sourceId: "regenerator" },
+          location: { source: regeneratorSource },
         },
         {
           displayName: "defineIteratorMethods/</prototype[method]",
-          location: { sourceId: "regenerator" },
+          location: { source: regeneratorSource },
         },
         {
           displayName: "step",
-          location: { sourceId: "bundle" },
+          location: { source: bundleSource },
         },
         {
           displayName: "_asyncToGenerator/</<",
-          location: { sourceId: "bundle" },
+          location: { source: bundleSource },
         },
         {
           displayName: "Promise",
-          location: { sourceId: "promise" },
+          location: { source: promiseSource },
         },
         {
           displayName: "_asyncToGenerator/<",
-          location: { sourceId: "bundle" },
+          location: { source: bundleSource },
         },
         {
           displayName: "asyncAppFunction",
-          location: { sourceId: "app" },
+          location: { source: appSource },
         },
       ];
 
       const postAwaitGroup = [
         {
           displayName: "asyncAppFunction",
-          location: { sourceId: "bundle" },
+          location: { source: bundleSource },
         },
         {
           displayName: "tryCatch",
-          location: { sourceId: "regenerator" },
+          location: { source: regeneratorSource },
         },
         {
           displayName: "invoke",
-          location: { sourceId: "regenerator" },
+          location: { source: regeneratorSource },
         },
         {
           displayName: "defineIteratorMethods/</prototype[method]",
-          location: { sourceId: "regenerator" },
+          location: { source: regeneratorSource },
         },
         {
           displayName: "step",
-          location: { sourceId: "bundle" },
+          location: { source: bundleSource },
         },
         {
           displayName: "step/<",
-          location: { sourceId: "bundle" },
+          location: { source: bundleSource },
         },
         {
           displayName: "run",
-          location: { sourceId: "bundle" },
+          location: { source: bundleSource },
         },
         {
           displayName: "notify/<",
-          location: { sourceId: "bundle" },
+          location: { source: bundleSource },
         },
         {
           displayName: "flush",
-          location: { sourceId: "microtask" },
+          location: { source: microtaskSource },
         },
       ];
 
       const state = {
         frames: [...preAwaitGroup, ...postAwaitGroup],
-        sources: insertResources(createInitial(), [
-          { id: "app", url: "webpack///app.js" },
-          { id: "bundle", url: "https://foo.com/bundle.js" },
-          {
-            id: "regenerator",
-            url: "webpack:///foo/node_modules/regenerator-runtime/runtime.js",
-          },
-          {
-            id: "microtask",
-            url: "webpack:///foo/node_modules/core-js/modules/_microtask.js",
-          },
-          {
-            id: "promise",
-            url: "webpack///foo/node_modules/core-js/modules/es6.promise.js",
-          },
-        ]),
         selectedSource: {
           id: "sourceId-originalSource",
           isOriginal: true,
@@ -151,29 +143,13 @@ describe("getCallStackFrames selector", () => {
 
       const frames = getCallStackFrames.resultFunc(
         state.frames,
-        state.sources,
-        state.selectedSource
+        state.selectedSource,
+        {}
       );
 
-      const babelFrames = pullAt(frames, [
-        1,
-        2,
-        3,
-        4,
-        5,
-        6,
-        7,
-        8,
-        10,
-        11,
-        12,
-        13,
-        14,
-        15,
-        16,
-        17,
-      ]);
-      const otherFrames = frames;
+      // frames from 1-8 and 10-17 are babel frames.
+      const babelFrames = [...frames.slice(1, 7), ...frames.slice(10, 7)];
+      const otherFrames = frames.filter(frame => !babelFrames.includes(frame));
 
       expect(babelFrames).toEqual(
         Array(babelFrames.length).fill(

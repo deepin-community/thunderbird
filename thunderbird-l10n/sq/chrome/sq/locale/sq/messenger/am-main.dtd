@@ -2,20 +2,18 @@
    - License, v. 2.0. If a copy of the MPL was not distributed with this
    - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
 
-<!-- extracted from am-main.xul -->
-
 <!-- extracted from am-main.xhtml -->
 
 <!ENTITY accountTitle.label "Rregullime Llogarie">
 <!ENTITY accountName.label "Emër Llogarie:">
 <!ENTITY accountName.accesskey "L">
 <!ENTITY identityTitle.label "Identitet Parazgjedhje">
-<!ENTITY identityDesc.label "Çdo llogari ka identitetin e vet, i cili përbëhet nga të dhënat që shohin persona të tjerë kur lexojnë mesazhet tuaj.">
+<!ENTITY identityDesc.label "Çdo llogari ka identitetin e vet, i cili përbëhet nga hollësitë që shohin persona të tjerë, kur lexojnë mesazhet tuaj.">
 <!ENTITY name.label "Emri Juaj:">
 <!ENTITY name.accesskey "J">
 <!ENTITY email.label "Adresë Email:">
 <!ENTITY email.accesskey "E">
-<!ENTITY catchAll.label "Përgjigju prej këtij identiti, kur kryet e dërgimit kanë përputhje me:">
+<!ENTITY catchAll.label "Përgjigju prej këtij identiteti, kur kryet e dërgimit kanë përputhje me:">
 <!ENTITY catchAll.accesskey "d">
 <!ENTITY replyTo.label "Adresë për Përgjigju:">
 <!ENTITY replyTo.accesskey "u">

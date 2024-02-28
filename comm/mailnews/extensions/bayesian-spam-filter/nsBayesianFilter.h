@@ -15,6 +15,7 @@
 #include "nsString.h"
 #include "nsWeakReference.h"
 #include "nsIObserver.h"
+#include "nsHashPropertyBag.h"
 #include "mozilla/intl/WordBreaker.h"
 
 #include "mozilla/ArenaAllocator.h"
@@ -120,10 +121,10 @@ class Tokenizer : public TokenHash {
    *  Creates specific tokens based on the mime headers for the message being
    * tokenized
    */
-  void tokenizeHeaders(nsIUTF8StringEnumerator* aHeaderNames,
-                       nsIUTF8StringEnumerator* aHeaderValues);
+  void tokenizeHeaders(nsTArray<nsCString>& aHeaderNames,
+                       nsTArray<nsCString>& aHeaderValues);
 
-  void tokenizeAttachment(const char* aContentType, const char* aFileName);
+  void tokenizeAttachments(nsTArray<RefPtr<nsIPropertyBag2>>& attachments);
 
   nsCString mBodyDelimiters;    // delimiters for body tokenization
   nsCString mHeaderDelimiters;  // delimiters for header tokenization
@@ -152,7 +153,6 @@ class Tokenizer : public TokenHash {
   nsresult ScannerNext(const char16_t* text, int32_t length, int32_t pos,
                        bool isLastBuffer, int32_t* begin, int32_t* end,
                        bool* _retval);
-  RefPtr<mozilla::intl::WordBreaker> mWordBreaker;
 };
 
 /**
@@ -346,19 +346,19 @@ class nsBayesianFilter : public nsIJunkMailPlugin,
 
   nsresult Init();
 
-  nsresult tokenizeMessage(const char* messageURI, nsIMsgWindow* aMsgWindow,
-                           TokenAnalyzer* analyzer);
-  void classifyMessage(Tokenizer& tokens, const char* messageURI,
+  nsresult tokenizeMessage(const nsACString& messageURI,
+                           nsIMsgWindow* aMsgWindow, TokenAnalyzer* analyzer);
+  void classifyMessage(Tokenizer& tokens, const nsACString& messageURI,
                        nsIJunkMailClassificationListener* listener);
 
-  void classifyMessage(Tokenizer& tokenizer, const char* messageURI,
+  void classifyMessage(Tokenizer& tokenizer, const nsACString& messageURI,
                        nsTArray<uint32_t>& aProTraits,
                        nsTArray<uint32_t>& aAntiTraits,
                        nsIJunkMailClassificationListener* listener,
                        nsIMsgTraitClassificationListener* aTraitListener,
                        nsIMsgTraitDetailListener* aDetailListener);
 
-  void observeMessage(Tokenizer& tokens, const char* messageURI,
+  void observeMessage(Tokenizer& tokens, const nsACString& messageURI,
                       nsTArray<uint32_t>& oldClassifications,
                       nsTArray<uint32_t>& newClassifications,
                       nsIJunkMailClassificationListener* listener,

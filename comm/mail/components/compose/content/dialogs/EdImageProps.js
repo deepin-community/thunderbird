@@ -156,7 +156,7 @@ function ValidateData() {
 function onAccept(event) {
   // Use this now (default = false) so Advanced Edit button dialog doesn't trigger error message
   gDoAltTextError = true;
-
+  window.opener.gMsgCompose.allowRemoteContent = true;
   if (ValidateData()) {
     if ("arguments" in window && window.arguments[0]) {
       SaveWindowLocation();
@@ -243,7 +243,7 @@ function onAccept(event) {
         if (anchorNode) {
           anchorNode.name = href.substr(1);
           // Remember to use editor method so it is undoable!
-          editor.insertNode(anchorNode, gHNodeArray[href], 0, false);
+          editor.insertNode(anchorNode, gHNodeArray[href], 0);
         }
       }
       // All values are valid - copy to actual element in doc or

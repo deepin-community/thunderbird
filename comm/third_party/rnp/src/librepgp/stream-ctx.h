@@ -35,13 +35,7 @@
 #include <list>
 #include "pgp-key.h"
 #include "crypto/mem.h"
-
-typedef enum rnp_operation_t {
-    RNP_OP_UNKNOWN = 0,
-    RNP_OP_DECRYPT_VERIFY = 1,
-    RNP_OP_ENCRYPT_SIGN = 2,
-    RNP_OP_ARMOR = 3
-} rnp_operation_t;
+#include "sec_profile.hpp"
 
 /* signature info structure */
 typedef struct rnp_signer_info_t {
@@ -107,12 +101,11 @@ typedef struct rnp_ctx_t {
     int            abits{};     /* AEAD chunk bits */
     bool           overwrite{}; /* allow to overwrite output file if exists */
     bool           armor{};     /* whether to use ASCII armor on output */
+    bool           no_wrap{};   /* do not wrap source in literal data packet */
     std::list<pgp_key_t *> recipients{};              /* recipients of the encrypted message */
     std::list<rnp_symmetric_pass_info_t> passwords{}; /* passwords to encrypt message */
     std::list<rnp_signer_info_t>         signers{};   /* keys to which sign message */
-    bool                                 discard{};   /* discard the output */
-    rng_t *                              rng{};       /* pointer to rng_t */
-    rnp_operation_t                      operation{}; /* current operation type */
+    rnp::SecurityContext *               ctx{};       /* pointer to rnp::RNG */
 
     rnp_ctx_t() = default;
     rnp_ctx_t(const rnp_ctx_t &) = delete;
@@ -120,14 +113,11 @@ typedef struct rnp_ctx_t {
 
     rnp_ctx_t &operator=(const rnp_ctx_t &) = delete;
     rnp_ctx_t &operator=(rnp_ctx_t &&) = delete;
+
+    rnp_result_t add_encryption_password(const std::string &password,
+                                         pgp_hash_alg_t     halg,
+                                         pgp_symm_alg_t     ealg,
+                                         size_t             iterations = 0);
 } rnp_ctx_t;
-
-struct rng_st_t *rnp_ctx_rng_handle(const rnp_ctx_t *ctx);
-
-rnp_result_t rnp_ctx_add_encryption_password(rnp_ctx_t &    ctx,
-                                             const char *   password,
-                                             pgp_hash_alg_t halg,
-                                             pgp_symm_alg_t ealg,
-                                             int            iterations);
 
 #endif

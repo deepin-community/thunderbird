@@ -4,12 +4,13 @@
 
 saved-logins =
     .title = Mewngofnodion wedi eu Cadw
+saved-logins-title = Mewngofnodion wedi eu Cadw
 window-close =
-    .key = c
+    .key = w
 focus-search-primary-shortcut =
-    .key = c
+    .key = f
 focus-search-alt-shortcut =
-    .key = c
+    .key = k
 copy-provider-url-cmd =
     .label = Copïo'r URL
     .accesskey = U
@@ -48,11 +49,9 @@ remove =
 import =
     .label = Mewnforio…
     .accesskey = M
-
 password-close-button =
     .label = Cau
     .accesskey = C
-
 show-passwords =
     .label = Dangos Cyfrineiriau
     .accesskey = D
@@ -62,10 +61,10 @@ hide-passwords =
 logins-description-all = Mae mewngofnodion ar gyfer y darparwyr canlynol yn cael eu storio ar eich cyfrifiadur
 logins-description-filtered = Mae'r mewngofnodi canlynol yn cyd-fynd â'ch chwilio:
 remove-all =
-    .label = Tynnu Popeth
-    .accesskey = P
+    .label = Tynnu'r Cyfan
+    .accesskey = T
 remove-all-shown =
-    .label = Tynnu Popeth Dangoswyd
+    .label = Tynnu'r Cyfan Dangoswyd
     .accesskey = D
 remove-all-passwords-prompt = Ydych chi'n siŵr eich bod am dynnu pob cyfrinair?
 remove-all-passwords-title = Tynnu pob cyfrinair
@@ -75,12 +74,10 @@ no-master-password-prompt = Ydych chi'n siŵr eich bod am ddangos eich cyfrineir
 
 # This message can be seen by trying to show or copy the passwords.
 password-os-auth-dialog-message = Gwiriwch eich hunaniaeth i ddatgelu'r cyfrineiriau sydd wedi'u cadw.
-
 # This message can be seen by trying to show or copy the passwords.
 # The macOS strings are preceded by the operating system with "Thunderbird is trying to "
 # and includes subtitle of "Enter password for the user "xxx" to allow this." These
 # notes are only valid for English. Please test in your locale.
 password-os-auth-dialog-message-macosx = datgelu'r cyfrineiriau sydd wedi'u cadw
-
 # Don't change this label.
 password-os-auth-dialog-caption = { -brand-full-name }

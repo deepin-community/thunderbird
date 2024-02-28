@@ -6,25 +6,15 @@
   "author": "Mozilla <screenshots-feedback@mozilla.com>",
   "homepage_url": "https://github.com/mozilla-services/screenshots",
   "incognito": "spanning",
-  "applications": {
+  "browser_specific_settings": {
     "gecko": {
       "id": "screenshots@mozilla.org",
       "strict_min_version": "57.0a1"
     }
   },
-  "l10n_resources": [ "browser/screenshots.ftl" ],
+  "l10n_resources": ["browser/screenshots.ftl"],
   "background": {
-    "scripts": [
-      "background/startBackground.js"
-    ]
-  },
-  "commands": {
-    "take-screenshot": {
-      "suggested_key": {
-        "default": "Ctrl+Shift+S"
-      },
-      "description": "Open the Firefox Screenshots UI"
-    }
+    "scripts": ["background/startBackground.js"]
   },
   "content_scripts": [
     {
@@ -37,16 +27,7 @@
       ]
     }
   ],
-  "web_accessible_resources": [
-    "blank.html",
-    "icons/cancel.svg",
-    "icons/download.svg",
-    "icons/copy.svg",
-    "icons/icon-256.png",
-    "icons/menu-fullpage.svg",
-    "icons/menu-visible.svg",
-    "icons/icon-welcome-face-without-eyes.svg"
-  ],
+  "web_accessible_resources": ["blank.html"],
   "permissions": [
     "activeTab",
     "downloads",

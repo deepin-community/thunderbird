@@ -2,7 +2,7 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-var { XPCOMUtils } = ChromeUtils.import("resource://gre/modules/XPCOMUtils.jsm");
+var { XPCOMUtils } = ChromeUtils.importESModule("resource://gre/modules/XPCOMUtils.sys.mjs");
 
 XPCOMUtils.defineLazyModuleGetters(this, {
   CalAttachment: "resource:///modules/CalAttachment.jsm",
@@ -124,8 +124,6 @@ function test_roundtrip() {
     }
   }
 
-  let icssrv = cal.getIcsService();
-
   for (let data of test_data) {
     // First round, use the icalString setter which uses synchronous parsing
     dump("Checking" + data.ics + "\n");
@@ -137,7 +135,7 @@ function test_roundtrip() {
     // foreach loop iterations.
     do_test_pending();
     let thisdata = data;
-    icssrv.parseICSAsync(data.ics, null, {
+    cal.icsService.parseICSAsync(data.ics, {
       onParsingComplete(rc, rootComp) {
         try {
           ok(Components.isSuccessCode(rc));
@@ -177,9 +175,8 @@ function test_icalProps() {
  */
 
 function checkIcalProp(aPropName, aObj) {
-  let icssvc = cal.getIcsService();
-  let prop1 = icssvc.createIcalProperty(aPropName);
-  let prop2 = icssvc.createIcalProperty(aPropName);
+  let prop1 = cal.icsService.createIcalProperty(aPropName);
+  let prop2 = cal.icsService.createIcalProperty(aPropName);
   prop1.value = "foo";
   prop2.value = "bar";
   prop1.setParameter("X-FOO", "BAR");
@@ -230,7 +227,7 @@ function test_duration() {
 
 function test_serialize() {
   let e = new CalEvent();
-  let prop = cal.getIcsService().createIcalComponent("VTODO");
+  let prop = cal.icsService.createIcalComponent("VTODO");
 
   throws(() => {
     e.icalComponent = prop;

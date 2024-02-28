@@ -1,9 +1,8 @@
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 var { MailServices } = ChromeUtils.import(
   "resource:///modules/MailServices.jsm"
 );
-var { XPCOMUtils } = ChromeUtils.import(
-  "resource://gre/modules/XPCOMUtils.jsm"
+var { XPCOMUtils } = ChromeUtils.importESModule(
+  "resource://gre/modules/XPCOMUtils.sys.mjs"
 );
 var { mailTestUtils } = ChromeUtils.import(
   "resource://testing-common/mailnews/MailTestUtils.jsm"
@@ -15,8 +14,8 @@ var { localAccountUtils } = ChromeUtils.import(
 var test = null;
 
 // WebApps.jsm called by ProxyAutoConfig (PAC) requires a valid nsIXULAppInfo.
-var { getAppInfo, newAppInfo, updateAppInfo } = ChromeUtils.import(
-  "resource://testing-common/AppInfo.jsm"
+var { getAppInfo, newAppInfo, updateAppInfo } = ChromeUtils.importESModule(
+  "resource://testing-common/AppInfo.sys.mjs"
 );
 updateAppInfo();
 
@@ -41,7 +40,7 @@ var { AuthPLAIN, AuthLOGIN, AuthCRAM } = ChromeUtils.import(
   "resource://testing-common/mailnews/Auth.jsm"
 );
 var {
-  pop3Daemon,
+  Pop3Daemon,
   POP3_RFC1939_handler,
   POP3_RFC2449_handler,
   POP3_RFC5034_handler,
@@ -50,7 +49,7 @@ var {
 // Setup the daemon and server
 // If the debugOption is set, then it will be applied to the server.
 function setupServerDaemon(debugOption) {
-  var daemon = new pop3Daemon();
+  var daemon = new Pop3Daemon();
   var extraProps = {};
   function createHandler(d) {
     var handler = new POP3_RFC5034_handler(d);
@@ -142,7 +141,7 @@ function copyFileMessageInLocalFolder(
 function do_check_transaction(real, expected) {
   // If we don't spin the event loop before starting the next test, the readers
   // aren't expired. In this case, the "real" real transaction is the last one.
-  if (real instanceof Array) {
+  if (Array.isArray(real)) {
     real = real[real.length - 1];
   }
 
@@ -151,6 +150,11 @@ function do_check_transaction(real, expected) {
   // excise this from the list
   if (real.them[real.them.length - 1] == "QUIT") {
     real.them.pop();
+  }
+
+  if (expected[0] == "AUTH") {
+    // We don't send initial AUTH command now.
+    expected = expected.slice(1);
   }
 
   Assert.equal(real.them.join(","), expected.join(","));
@@ -194,10 +198,7 @@ function create_mail_directory(subFolders) {
 }
 
 function setup_mailbox(type, mailboxPath) {
-  let user = Cc["@mozilla.org/uuid-generator;1"]
-    .getService(Ci.nsIUUIDGenerator)
-    .generateUUID()
-    .toString();
+  let user = Services.uuid.generateUUID().toString();
   let incomingServer = MailServices.accounts.createIncomingServer(
     user,
     "Local Folder",
@@ -208,6 +209,6 @@ function setup_mailbox(type, mailboxPath) {
   return incomingServer.rootFolder;
 }
 
-registerCleanupFunction(function() {
+registerCleanupFunction(function () {
   load(gDEPTH + "mailnews/resources/mailShutdown.js");
 });

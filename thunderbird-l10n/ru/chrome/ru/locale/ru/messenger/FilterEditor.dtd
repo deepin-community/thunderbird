@@ -3,7 +3,6 @@
    - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
 
 <!ENTITY window.title "Правила фильтрации">
-<!ENTITY filterEditorDialog.dimensions "width: 100ch;">
 <!ENTITY filterName.label "Имя фильтра:">
 <!ENTITY filterName.accesskey "м">
 
@@ -27,7 +26,6 @@
 <!ENTITY contextOutgoing.accesskey "е">
 <!ENTITY contextArchive.label "Архивации">
 <!ENTITY contextArchive.accesskey "х">
-
 <!ENTITY contextPeriodic.accesskey "е">
 
 <!ENTITY filterActionDesc.label "Производить следующие действия:">

@@ -1,5 +1,4 @@
-/* -*- Mode: Java; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*-
- * This Source Code Form is subject to the terms of the Mozilla Public
+/* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, you can obtain one at http://mozilla.org/MPL/2.0/. */
 
@@ -20,8 +19,9 @@ function onInit(aPageId, aServerId) {
 
   let deferredToURI = null;
   if (gDeferredToAccount) {
-    deferredToURI = MailServices.accounts.getAccount(gDeferredToAccount)
-      .incomingServer.serverURI;
+    deferredToURI =
+      MailServices.accounts.getAccount(gDeferredToAccount).incomingServer
+        .serverURI;
   }
 
   let spamActionTargetAccountElement = document.getElementById(
@@ -38,18 +38,15 @@ function onInit(aPageId, aServerId) {
   let moveOnSpamValue = moveOnSpamCheckbox.checked;
 
   // Check if there are any invalid junk targets and fix them.
-  [
-    spamActionTargetAccount,
-    spamActionTargetFolder,
-    moveOnSpamValue,
-  ] = sanitizeJunkTargets(
-    spamActionTargetAccount,
-    spamActionTargetFolder,
-    deferredToURI || aServerId,
-    document.getElementById("server.moveTargetMode").value,
-    MailUtils.getOrCreateFolder(aServerId).server.spamSettings,
-    moveOnSpamValue
-  );
+  [spamActionTargetAccount, spamActionTargetFolder, moveOnSpamValue] =
+    sanitizeJunkTargets(
+      spamActionTargetAccount,
+      spamActionTargetFolder,
+      deferredToURI || aServerId,
+      document.getElementById("server.moveTargetMode").value,
+      MailUtils.getOrCreateFolder(aServerId).server.spamSettings,
+      moveOnSpamValue
+    );
 
   spamActionTargetAccountElement.value = spamActionTargetAccount;
   spamActionTargetFolderElement.value = spamActionTargetFolder;
@@ -158,7 +155,7 @@ function onPreInit(account, accountValues) {
  * Called when someone checks or unchecks the adaptive junk mail checkbox.
  * set the value of the hidden element accordingly
  *
- * @param aValue  the boolean value of the checkbox
+ * @param {boolean} aValue - The boolean value of the checkbox.
  */
 function updateSpamLevel(aValue) {
   document.getElementById("server.spamLevel").value = aValue ? 100 : 0;
@@ -170,9 +167,8 @@ function updateSpamLevel(aValue) {
  * our hidden wsm element.
  */
 function onServerFilterListChange() {
-  document.getElementById(
-    "server.serverFilterName"
-  ).value = document.getElementById("useServerFilterList").value;
+  document.getElementById("server.serverFilterName").value =
+    document.getElementById("useServerFilterList").value;
 }
 
 /**
@@ -203,9 +199,8 @@ function updateJunkTargetsAndRetention() {
   onCheckItem("server.moveTargetMode", ["server.moveOnSpam"]);
   updateJunkTargets();
   onCheckItem("server.purgeSpam", ["server.moveOnSpam"]);
-  document.getElementById("purgeLabel").disabled = document.getElementById(
-    "server.purgeSpam"
-  ).disabled;
+  document.getElementById("purgeLabel").disabled =
+    document.getElementById("server.purgeSpam").disabled;
   updateJunkRetention();
 }
 
@@ -306,8 +301,8 @@ function buildServerFilterMenuList() {
  * passed in directory looking for .sfd files. For each entry found, it gets
  * appended to the menu list.
  *
- * @param aDir              directory to look for .sfd files
- * @param aExistingEntries  Filter names already found.
+ * @param {nsIFile} aDir - Directory to look for .sfd files
+ * @param {string[]} aExistingEntries - Filter names already found.
  */
 function buildServerFilterListFromDir(aDir, aExistingEntries) {
   let newEntries = [];

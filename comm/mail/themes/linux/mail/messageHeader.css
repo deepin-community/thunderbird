@@ -8,30 +8,9 @@
 
 @import url("chrome://messenger/skin/shared/messageHeader.css");
 
-/* ::::: for the entire area ::::: */
-#singleMessage,
-#calendar-task-details-container {
-  color: WindowText;
-  background-color: AppWorkspace;
-}
-
 /* ::::: expanded header pane ::::: */
 
 .inline-toolbox {
   appearance: none;
   padding-inline-end: 2px;
-}
-
-/* ::::: msg header captions ::::: */
-
-.dateLabel {
-  line-height: 1.5em;
-  margin: 0;
-  padding-block: .1em;
-  margin-inline: 0 9px;
-}
-
-.headerName,
-#attachmentSize {
-  color: #888a85; /* lower contrast */
 }

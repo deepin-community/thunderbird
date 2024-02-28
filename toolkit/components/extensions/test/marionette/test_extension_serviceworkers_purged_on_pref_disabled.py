@@ -2,28 +2,36 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
+import os
+import sys
+
 from marionette_driver import Wait
 from marionette_driver.addons import Addons
-from marionette_harness import MarionetteTestCase
 
-import os
+# Add this directory to the import path.
+sys.path.append(os.path.dirname(__file__))
 
-EXT_ID = "extension-with-bg-sw@test"
-EXT_DIR_PATH = "extension-with-bg-sw"
-PREF_BG_SW_ENABLED = "extensions.backgroundServiceWorker.enabled"
+from service_worker_testutils import (
+    EXT_DIR_PATH,
+    EXT_ID,
+    PREF_BG_SW_ENABLED,
+    PREF_PERSIST_TEMP_ADDONS,
+    MarionetteServiceWorkerTestCase,
+)
 
 
-class PurgeExtensionServiceWorkersOnPrefDisabled(MarionetteTestCase):
+class PurgeExtensionServiceWorkersOnPrefDisabled(MarionetteServiceWorkerTestCase):
     def setUp(self):
         super(PurgeExtensionServiceWorkersOnPrefDisabled, self).setUp()
         self.test_extension_id = EXT_ID
         # Flip the "mirror: once" pref and restart Firefox to be able
         # to run the extension successfully.
         self.marionette.set_pref(PREF_BG_SW_ENABLED, True)
+        self.marionette.set_pref(PREF_PERSIST_TEMP_ADDONS, True)
         self.marionette.restart(in_app=True)
 
     def tearDown(self):
-        self.marionette.restart(clean=True)
+        self.marionette.restart(in_app=False, clean=True)
         super(PurgeExtensionServiceWorkersOnPrefDisabled, self).tearDown()
 
     def test_unregistering_service_worker_when_clearing_data(self):
@@ -46,37 +54,3 @@ class PurgeExtensionServiceWorkersOnPrefDisabled(MarionetteTestCase):
             lambda _: self.is_extension_service_worker_registered,
             message="Wait the extension service worker to be registered",
         )
-
-    def get_extension_url(self, path="/"):
-        with self.marionette.using_context("chrome"):
-            return self.marionette.execute_script(
-                """
-              let policy = WebExtensionPolicy.getByID(arguments[0]);
-              return policy.getURL(arguments[1])
-            """,
-                script_args=(self.test_extension_id, path),
-            )
-
-    @property
-    def is_extension_service_worker_registered(self):
-        with self.marionette.using_context("chrome"):
-            return self.marionette.execute_script(
-                """
-                let serviceWorkerManager = Cc["@mozilla.org/serviceworkers/manager;1"].getService(
-                    Ci.nsIServiceWorkerManager
-                );
-
-                let serviceWorkers = serviceWorkerManager.getAllRegistrations();
-                for (let i = 0; i < serviceWorkers.length; i++) {
-                    let sw = serviceWorkers.queryElementAt(
-                        i,
-                        Ci.nsIServiceWorkerRegistrationInfo
-                    );
-                    if (sw.scope == arguments[0]) {
-                        return true;
-                    }
-                }
-                return false;
-            """,
-                script_args=(self.test_extension_base_url,),
-            )

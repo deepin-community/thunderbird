@@ -43,19 +43,22 @@ class CSSStyleRuleDeclaration final : public nsDOMCSSDeclaration {
   friend class CSSStyleRule;
 
   explicit CSSStyleRuleDeclaration(
-      already_AddRefed<RawServoDeclarationBlock> aDecls);
+      already_AddRefed<StyleLockedDeclarationBlock> aDecls);
   ~CSSStyleRuleDeclaration();
 
   inline CSSStyleRule* Rule();
   inline const CSSStyleRule* Rule() const;
+
+  void SetRawAfterClone(RefPtr<StyleLockedDeclarationBlock>);
 
   RefPtr<DeclarationBlock> mDecls;
 };
 
 class CSSStyleRule final : public BindingStyleRule, public SupportsWeakPtr {
  public:
-  CSSStyleRule(already_AddRefed<RawServoStyleRule> aRawRule, StyleSheet* aSheet,
-               css::Rule* aParentRule, uint32_t aLine, uint32_t aColumn);
+  CSSStyleRule(already_AddRefed<StyleLockedStyleRule> aRawRule,
+               StyleSheet* aSheet, css::Rule* aParentRule, uint32_t aLine,
+               uint32_t aColumn);
 
   NS_DECL_ISUPPORTS_INHERITED
   NS_DECL_CYCLE_COLLECTION_SCRIPT_HOLDER_CLASS_INHERITED(CSSStyleRule,
@@ -74,13 +77,14 @@ class CSSStyleRule final : public BindingStyleRule, public SupportsWeakPtr {
   NotNull<DeclarationBlock*> GetDeclarationBlock() const override;
 
   // WebIDL interface
-  uint16_t Type() const final { return dom::CSSRule_Binding::STYLE_RULE; }
+  StyleCssRuleType Type() const final;
   void GetCssText(nsACString& aCssText) const final;
   void GetSelectorText(nsACString& aSelectorText) final;
   void SetSelectorText(const nsACString& aSelectorText) final;
   nsICSSDeclaration* Style() final;
 
-  RawServoStyleRule* Raw() const { return mRawRule; }
+  StyleLockedStyleRule* Raw() const { return mRawRule; }
+  void SetRawAfterClone(RefPtr<StyleLockedStyleRule>);
 
   // Methods of mozilla::css::Rule
   size_t SizeOfIncludingThis(MallocSizeOf aMallocSizeOf) const final;
@@ -94,7 +98,7 @@ class CSSStyleRule final : public BindingStyleRule, public SupportsWeakPtr {
   // For computing the offset of mDecls.
   friend class CSSStyleRuleDeclaration;
 
-  RefPtr<RawServoStyleRule> mRawRule;
+  RefPtr<StyleLockedStyleRule> mRawRule;
   CSSStyleRuleDeclaration mDecls;
 };
 

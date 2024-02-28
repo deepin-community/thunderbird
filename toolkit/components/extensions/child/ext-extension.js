@@ -21,7 +21,7 @@ this.extension = class extends ExtensionAPI {
     };
 
     if (context.envType === "addon_child") {
-      api.getViews = function(fetchProperties) {
+      api.getViews = function (fetchProperties) {
         let result = Cu.cloneInto([], context.cloneScope);
 
         for (let view of context.extension.views) {
@@ -40,11 +40,15 @@ this.extension = class extends ExtensionAPI {
               continue;
             }
 
-            if (
-              fetchProperties.windowId !== null &&
-              view.windowId != fetchProperties.windowId
-            ) {
-              continue;
+            if (fetchProperties.windowId !== null) {
+              let bc = view.contentWindow?.docShell?.browserChild;
+              let windowId =
+                view.viewType !== "background"
+                  ? bc?.chromeOuterWindowID ?? -1
+                  : -1;
+              if (windowId !== fetchProperties.windowId) {
+                continue;
+              }
             }
 
             if (
@@ -53,6 +57,13 @@ this.extension = class extends ExtensionAPI {
             ) {
               continue;
             }
+          }
+
+          // Do not include extension popups contexts while their document
+          // is blocked on parsing during its preloading state
+          // (See Bug 1748808).
+          if (context.extension.hasContextBlockedParsingDocument(view)) {
+            continue;
           }
 
           result.push(view.contentWindow);

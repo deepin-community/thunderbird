@@ -29,13 +29,7 @@ ALL_AXES = [(axis, False) for axis in PHYSICAL_AXES] + [
 ]
 
 SYSTEM_FONT_LONGHANDS = """font_family font_size font_style
-                           font_variant_caps font_stretch font_kerning
-                           font_variant_position font_weight
-                           font_size_adjust font_variant_alternates
-                           font_variant_ligatures font_variant_east_asian
-                           font_variant_numeric font_language_override
-                           font_feature_settings font_variation_settings
-                           font_optical_sizing""".split()
+                           font_stretch font_weight""".split()
 
 # Bitfield values for all rule types which can have property declarations.
 STYLE_RULE = 1 << 0
@@ -453,6 +447,7 @@ class Longhand(Property):
                 "AlignSelf",
                 "Appearance",
                 "AspectRatio",
+                "BaselineSource",
                 "BreakBetween",
                 "BreakWithin",
                 "BackgroundRepeat",
@@ -462,13 +457,15 @@ class Longhand(Property):
                 "Clear",
                 "ColumnCount",
                 "Contain",
+                "ContentVisibility",
+                "ContainerType",
                 "Display",
                 "FillRule",
                 "Float",
+                "FontLanguageOverride",
                 "FontSizeAdjust",
                 "FontStretch",
                 "FontStyle",
-                "FontStyleAdjust",
                 "FontSynthesis",
                 "FontVariantEastAsian",
                 "FontVariantLigatures",
@@ -476,16 +473,17 @@ class Longhand(Property):
                 "FontWeight",
                 "GreaterThanOrEqualToOneNumber",
                 "GridAutoFlow",
+                "ImageRendering",
                 "InitialLetter",
                 "Integer",
                 "JustifyContent",
                 "JustifyItems",
                 "JustifySelf",
                 "LineBreak",
+                "LineClamp",
                 "MasonryAutoFlow",
-                "MozForceBrokenImageIcon",
+                "BoolInteger",
                 "text::MozControlCharacterVisibility",
-                "MozListReversed",
                 "MathDepth",
                 "MozScriptMinSize",
                 "MozScriptSizeMultiplier",
@@ -499,14 +497,18 @@ class Longhand(Property):
                 "OverflowClipBox",
                 "OverflowWrap",
                 "OverscrollBehavior",
+                "PageOrientation",
                 "Percentage",
-                "PositiveIntegerOrNone",
+                "PrintColorAdjust",
+                "ForcedColorAdjust",
                 "Resize",
                 "RubyPosition",
                 "SVGOpacity",
                 "SVGPaintOrder",
+                "ScrollbarGutter",
                 "ScrollSnapAlign",
                 "ScrollSnapAxis",
+                "ScrollSnapStop",
                 "ScrollSnapStrictness",
                 "ScrollSnapType",
                 "TextAlign",
@@ -521,7 +523,7 @@ class Longhand(Property):
                 "UserSelect",
                 "WordBreak",
                 "XSpan",
-                "XTextZoom",
+                "XTextScale",
                 "ZIndex",
             }
         if self.name == "overflow-y":
@@ -601,6 +603,7 @@ class Alias(object):
         self.gecko_pref = gecko_pref
         self.transitionable = original.transitionable
         self.rule_types_allowed = original.rule_types_allowed
+        self.flags = original.flags
 
     @staticmethod
     def type():
@@ -807,6 +810,8 @@ class PropertyRestrictions:
                 "-webkit-text-fill-color",
                 "-webkit-text-stroke-color",
                 "vertical-align",
+                # Will become shorthand of vertical-align (Bug 1830771)
+                "baseline-source",
                 "line-height",
                 # Kinda like css-backgrounds?
                 "background-blend-mode",
@@ -840,6 +845,8 @@ class PropertyRestrictions:
                 "-webkit-text-fill-color",
                 "-webkit-text-stroke-color",
                 "vertical-align",
+                # Will become shorthand of vertical-align (Bug 1830771)
+                "baseline-source",
                 "line-height",
                 # Kinda like css-backgrounds?
                 "background-blend-mode",
@@ -887,6 +894,7 @@ class PropertyRestrictions:
                 "unicode-bidi",
                 "direction",
                 "content",
+                "line-height",
                 "-moz-osx-font-smoothing",
             ]
             + PropertyRestrictions.spec(data, "css-fonts")
@@ -907,7 +915,6 @@ class PropertyRestrictions:
                 "text-combine-upright",
                 "ruby-position",
                 # XXX Should these really apply to cue?
-                "font-synthesis",
                 "-moz-osx-font-smoothing",
                 # FIXME(emilio): background-blend-mode should be part of the
                 # background shorthand, and get reset, per
@@ -918,6 +925,7 @@ class PropertyRestrictions:
             + PropertyRestrictions.shorthand(data, "background")
             + PropertyRestrictions.shorthand(data, "outline")
             + PropertyRestrictions.shorthand(data, "font")
+            + PropertyRestrictions.shorthand(data, "font-synthesis")
         )
 
 

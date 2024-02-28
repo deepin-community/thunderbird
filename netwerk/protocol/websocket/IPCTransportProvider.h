@@ -58,7 +58,7 @@ class TransportProviderParent final : public PTransportProviderParent,
   NS_DECL_NSITRANSPORTPROVIDER
   NS_DECL_NSIHTTPUPGRADELISTENER
 
-  void ActorDestroy(ActorDestroyReason aWhy) override{};
+  void ActorDestroy(ActorDestroyReason aWhy) override {}
 
  private:
   ~TransportProviderParent() = default;

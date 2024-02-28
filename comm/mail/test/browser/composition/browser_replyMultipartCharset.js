@@ -31,6 +31,7 @@ var {
   assert_selected_and_displayed,
   be_in_folder,
   create_folder,
+  get_about_message,
   mc,
   open_message_from_file,
   press_delete,
@@ -38,16 +39,15 @@ var {
 } = ChromeUtils.import(
   "resource://testing-common/mozmill/FolderDisplayHelpers.jsm"
 );
-var { close_window } = ChromeUtils.import(
+var { click_menus_in_sequence, close_window } = ChromeUtils.import(
   "resource://testing-common/mozmill/WindowHelpers.jsm"
 );
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
+var folder;
 
-var folder = create_folder("FolderWithMessages");
-
-add_task(function setup() {
-  requestLongerTimeout(5);
+add_setup(async function () {
+  requestLongerTimeout(2);
+  folder = await create_folder("FolderWithMessages");
 });
 
 async function subtest_replyEditAsNewForward_charset(
@@ -55,7 +55,7 @@ async function subtest_replyEditAsNewForward_charset(
   aFile,
   aViewed = true
 ) {
-  be_in_folder(folder);
+  await be_in_folder(folder);
 
   let file = new FileUtils.File(getTestFilePath(`data/${aFile}`));
   let msgc = await open_message_from_file(file);
@@ -64,13 +64,21 @@ async function subtest_replyEditAsNewForward_charset(
   // since replying/editing as new/forwarding directly to the message
   // opened from a file gives different results on different platforms.
   // All platforms behave the same when using a folder-stored message.
-  let documentChild = msgc.e("messagepane").contentDocument.firstChild;
-  msgc.rightClick(documentChild);
-  await msgc.click_menus_in_sequence(msgc.e("mailContext"), [
-    { id: "mailContext-copyMenu" },
-    { label: "Local Folders" },
-    { label: "FolderWithMessages" },
-  ]);
+  let documentChild = msgc.window.content.document.documentElement;
+  EventUtils.synthesizeMouseAtCenter(
+    documentChild,
+    { type: "contextmenu", button: 2 },
+    documentChild.ownerGlobal
+  );
+  let aboutMessage = get_about_message(msgc.window);
+  await click_menus_in_sequence(
+    aboutMessage.document.getElementById("mailContext"),
+    [
+      { id: "mailContext-copyMenu" },
+      { label: "Local Folders" },
+      { label: "FolderWithMessages" },
+    ]
+  );
   close_window(msgc);
 
   let msg = select_click_row(0);
@@ -96,7 +104,9 @@ async function subtest_replyEditAsNewForward_charset(
   }
 
   // Check the charset in the compose window.
-  let charset = fwdWin.e("content-frame").contentDocument.charset;
+  let charset =
+    fwdWin.window.document.getElementById("messageEditor").contentDocument
+      .charset;
   Assert.equal(charset, "UTF-8", "Compose window has the wrong charset");
   close_compose_window(fwdWin);
 
@@ -120,7 +130,7 @@ add_task(async function test_reply_noUTF16() {
 add_task(async function test_replyEditAsNewForward_noPreview() {
   // Check that it works even if the message wasn't viewed before, so
   // switch off the preview pane (bug 1323377).
-  be_in_folder(folder);
+  await be_in_folder(folder);
   mc.window.goDoCommand("cmd_toggleMessagePane");
 
   await subtest_replyEditAsNewForward_charset(1, "./format-flowed.eml", false);

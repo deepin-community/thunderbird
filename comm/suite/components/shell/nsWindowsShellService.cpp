@@ -362,10 +362,10 @@ nsWindowsShellService::TestForDefault(SETTING aSettings[], int32_t aSize)
     NS_ConvertUTF8toUTF16 key(settings->keyName);
     NS_ConvertUTF8toUTF16 value(settings->valueName);
     if (settings->flags & APP_PATH_SUBSTITUTION) {
-      int32_t offset = dataLongPath.Find("%APPPATH%");
+      int32_t offset = dataLongPath.Find(u"%APPPATH%");
       dataLongPath.Replace(offset, 9, mAppLongPath);
       // Remove the quotes around %APPPATH% in VAL_OPEN for short paths
-      int32_t offsetQuoted = dataShortPath.Find("\"%APPPATH%\"");
+      int32_t offsetQuoted = dataShortPath.Find(u"\"%APPPATH%\"");
       if (offsetQuoted != -1)
         dataShortPath.Replace(offsetQuoted, 11, mAppShortPath);
       else
@@ -618,9 +618,9 @@ nsWindowsShellService::SetDesktopBackground(dom::Element* aElement,
     return NS_ERROR_FAILURE;
 
   // get the file name from localized strings
-  nsCOMPtr<nsIStringBundleService> bundleService =
-    mozilla::services::GetStringBundleService();
-  NS_ENSURE_TRUE(bundleService, NS_ERROR_UNEXPECTED);
+  nsCOMPtr<nsIStringBundleService> bundleService(
+    do_GetService(NS_STRINGBUNDLE_CONTRACTID, &rv));
+  NS_ENSURE_SUCCESS(rv, rv);
 
   nsCOMPtr<nsIStringBundle> shellBundle;
   rv = bundleService->CreateBundle(SHELLSERVICE_PROPERTIES,

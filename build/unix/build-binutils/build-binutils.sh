@@ -62,11 +62,14 @@ EOF
 
 cd ..
 
-TARGETS="aarch64-linux-gnu"
+TARGETS="aarch64-linux-gnu arm-linux-gnueabi i686-w64-mingw32"
 
+gcc_major=8
 if [ -d $MOZ_FETCHES_DIR/sysroot ]; then
+  # Don't silently use a non-existing directory for C++ headers.
+  [ -d $MOZ_FETCHES_DIR/sysroot/usr/include/c++/$gcc_major ] || exit 1
   export CFLAGS="-g -O2 --sysroot=$MOZ_FETCHES_DIR/sysroot"
-  export CXXFLAGS="-g -O2 --sysroot=$MOZ_FETCHES_DIR/sysroot"
+  export CXXFLAGS="$CFLAGS -isystem $MOZ_FETCHES_DIR/sysroot/usr/include/c++/$gcc_major -isystem $MOZ_FETCHES_DIR/sysroot/usr/include/x86_64-linux-gnu/c++/$gcc_major"
 fi
 
 # Build target-specific GNU as ; build them first so that the few documentation
@@ -98,4 +101,4 @@ cd ..
 
 # Make a package of the built binutils
 cd $root_dir/tools
-tar caf $root_dir/binutils.tar.xz binutils/
+tar caf $root_dir/binutils.tar.zst binutils/

@@ -6,7 +6,7 @@
 /**
  * Tests resizing of columns in NetMonitor.
  */
-add_task(async function() {
+add_task(async function () {
   await testForGivenDir("ltr");
 
   await testForGivenDir("rtl");
@@ -30,7 +30,7 @@ async function testForGivenDir(dir) {
   );
 
   // Init network monitor
-  const { tab, monitor } = await initNetMonitor(SIMPLE_URL, {
+  const { monitor } = await initNetMonitor(SIMPLE_URL, {
     requestCount: 1,
   });
   info("Starting test... ");
@@ -41,7 +41,7 @@ async function testForGivenDir(dir) {
 
   // Wait for network events (to have some requests in the table)
   const wait = waitForNetworkEvents(monitor, 1);
-  tab.linkedBrowser.reload();
+  await reloadBrowser();
   await wait;
 
   const headers = document.querySelector(".requests-list-headers");
@@ -243,7 +243,7 @@ function checkSumOfVisibleColumns(columnsData, visibleColumns) {
 }
 
 function getWidthFromPref(columnsData, column) {
-  const widthInPref = columnsData.find(function(element) {
+  const widthInPref = columnsData.find(function (element) {
     return element.name === column;
   }).width;
   return widthInPref;

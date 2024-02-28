@@ -17,33 +17,26 @@ extern crate objc;
 #[macro_use]
 extern crate foreign_types;
 
-use std::borrow::{Borrow, ToOwned};
-use std::marker::PhantomData;
-use std::mem;
-use std::ops::Deref;
-use std::os::raw::c_void;
+use std::{
+    borrow::{Borrow, ToOwned},
+    marker::PhantomData,
+    mem,
+    ops::Deref,
+    os::raw::c_void,
+};
 
-use cocoa_foundation::foundation::NSUInteger;
+use core_graphics_types::{base::CGFloat, geometry::CGSize};
 use foreign_types::ForeignType;
 use objc::runtime::{Object, NO, YES};
 
 #[cfg(target_pointer_width = "64")]
-pub type CGFloat = f64;
+pub type NSInteger = i64;
 #[cfg(not(target_pointer_width = "64"))]
-pub type CGFloat = f32;
-
-#[repr(C)]
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
-pub struct CGSize {
-    pub width: CGFloat,
-    pub height: CGFloat,
-}
-
-impl CGSize {
-    pub fn new(width: f64, height: f64) -> Self {
-        CGSize { width, height }
-    }
-}
+pub type NSInteger = i32;
+#[cfg(target_pointer_width = "64")]
+pub type NSUInteger = u64;
+#[cfg(target_pointer_width = "32")]
+pub type NSUInteger = u32;
 
 #[repr(C)]
 #[derive(Copy, Clone)]
@@ -104,6 +97,7 @@ macro_rules! foreign_obj_type {
         impl ::std::ops::Deref for $ref_ident {
             type Target = $parent_ref;
 
+            #[inline]
             fn deref(&self) -> &$parent_ref {
                 unsafe { &*(self as *const $ref_ident as *const $parent_ref)  }
             }
@@ -262,6 +256,7 @@ where
 {
     type Target = ArrayRef<T>;
 
+    #[inline]
     fn deref(&self) -> &ArrayRef<T> {
         unsafe { mem::transmute(self.as_ptr()) }
     }
@@ -396,6 +391,10 @@ impl MetalLayerRef {
 
     pub fn next_drawable(&self) -> Option<&MetalDrawableRef> {
         unsafe { msg_send![self, nextDrawable] }
+    }
+
+    pub fn contents_scale(&self) -> CGFloat {
+        unsafe { msg_send![self, contentsScale] }
     }
 
     pub fn set_contents_scale(&self, scale: CGFloat) {

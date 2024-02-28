@@ -8,7 +8,9 @@
 #include "mozilla/MozPromise.h"
 #include "mozilla/PRemoteDecoderManagerChild.h"
 #include "mozilla/RDDProcessHost.h"
+#include "mozilla/dom/ipc/IdType.h"
 #include "mozilla/ipc/TaskFactory.h"
+#include "mozilla/PRDDChild.h"
 #include "nsIObserver.h"
 
 namespace mozilla {
@@ -24,6 +26,7 @@ class RDDProcessManager final : public RDDProcessHost::Listener {
 
  public:
   static void Initialize();
+  static void RDDProcessShutdown();
   static void Shutdown();
   static RDDProcessManager* Get();
 
@@ -36,7 +39,7 @@ class RDDProcessManager final : public RDDProcessHost::Listener {
   // If not using a RDD process, launch a new RDD process asynchronously and
   // create a RemoteDecoderManager bridge
   RefPtr<EnsureRDDPromise> EnsureRDDProcessAndCreateBridge(
-      base::ProcessId aOtherProcess);
+      base::ProcessId aOtherProcess, dom::ContentParentId aParentId);
 
   void OnProcessUnexpectedShutdown(RDDProcessHost* aHost) override;
 
@@ -60,6 +63,13 @@ class RDDProcessManager final : public RDDProcessHost::Listener {
   // Returns the RDD Process
   RDDProcessHost* Process() { return mProcess; }
 
+  /*
+   * ** Test-only Method **
+   *
+   * Trigger RDD-process test metric instrumentation.
+   */
+  RefPtr<PRDDChild::TestTriggerMetricsPromise> TestTriggerMetrics();
+
  private:
   bool IsRDDProcessLaunching();
   bool IsRDDProcessDestroyed() const;
@@ -72,7 +82,6 @@ class RDDProcessManager final : public RDDProcessHost::Listener {
   RDDProcessManager();
 
   // Shutdown the RDD process.
-  void CleanShutdown();
   void DestroyProcess();
 
   bool IsShutdown() const;
@@ -93,7 +102,7 @@ class RDDProcessManager final : public RDDProcessHost::Listener {
   friend class Observer;
 
   bool CreateContentBridge(
-      base::ProcessId aOtherProcess,
+      base::ProcessId aOtherProcess, dom::ContentParentId aParentId,
       ipc::Endpoint<PRemoteDecoderManagerChild>* aOutRemoteDecoderManager);
 
   const RefPtr<Observer> mObserver;

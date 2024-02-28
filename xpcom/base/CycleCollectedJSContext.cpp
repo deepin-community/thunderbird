@@ -284,10 +284,49 @@ class CycleCollectedJSContext::SavedMicroTaskQueue
   }
 
   ~SavedMicroTaskQueue() {
-    MOZ_RELEASE_ASSERT(ccjs->mPendingMicroTaskRunnables.empty());
+    // The JS Debugger attempts to maintain the invariant that microtasks which
+    // occur durring debugger operation are completely flushed from the task
+    // queue before returning control to the debuggee, in order to avoid
+    // micro-tasks generated during debugging from interfering with regular
+    // operation.
+    //
+    // While the vast majority of microtasks can be reliably flushed,
+    // synchronous operations (see nsAutoSyncOperation) such as printing and
+    // alert diaglogs suppress the execution of some microtasks.
+    //
+    // When PerformMicroTaskCheckpoint is run while microtasks are suppressed,
+    // any suppressed microtasks are gathered into a new SuppressedMicroTasks
+    // runnable, which is enqueued on exit from PerformMicroTaskCheckpoint. As a
+    // result, AutoDebuggerJobQueueInterruption::runJobs is not able to
+    // correctly guarantee that the microtask queue is totally empty in the
+    // presence of sync operations.
+    //
+    // Previous versions of this code release-asserted that the queue was empty,
+    // causing user observable crashes (Bug 1849675). To avoid this, we instead
+    // choose to move suspended microtasks from the SavedMicroTaskQueue to the
+    // main microtask queue in this destructor. This means that jobs enqueued
+    // during synchnronous events under debugger control may produce events
+    // which run outside the debugger, but this is viewed as strictly
+    // preferrable to crashing.
+    MOZ_RELEASE_ASSERT(ccjs->mPendingMicroTaskRunnables.size() <= 1);
     MOZ_RELEASE_ASSERT(ccjs->mDebuggerRecursionDepth);
+    RefPtr<MicroTaskRunnable> maybeSuppressedTasks;
+
+    // Handle the case where there is a SuppressedMicroTask still in the queue.
+    if (!ccjs->mPendingMicroTaskRunnables.empty()) {
+      maybeSuppressedTasks = ccjs->mPendingMicroTaskRunnables.front();
+      ccjs->mPendingMicroTaskRunnables.pop_front();
+    }
+
+    MOZ_RELEASE_ASSERT(ccjs->mPendingMicroTaskRunnables.empty());
     ccjs->mDebuggerRecursionDepth--;
     ccjs->mPendingMicroTaskRunnables.swap(mQueue);
+
+    // Re-enqueue the suppressed task now that we've put the original microtask
+    // queue back.
+    if (maybeSuppressedTasks) {
+      ccjs->mPendingMicroTaskRunnables.push_back(maybeSuppressedTasks);
+    }
   }
 
  private:
@@ -467,7 +506,7 @@ void CycleCollectedJSContext::AfterProcessTask(uint32_t aRecursionDepth) {
 
   // This should be a fast test so that it won't affect the next task
   // processing.
-  IsIdleGCTaskNeeded();
+  MaybePokeGC();
 }
 
 void CycleCollectedJSContext::AfterProcessMicrotasks() {
@@ -476,7 +515,7 @@ void CycleCollectedJSContext::AfterProcessMicrotasks() {
   // https://html.spec.whatwg.org/multipage/webappapis.html#notify-about-rejected-promises
   if (mAboutToBeNotifiedRejectedPromises.Length()) {
     RefPtr<NotifyUnhandledRejections> runnable = new NotifyUnhandledRejections(
-        this, std::move(mAboutToBeNotifiedRejectedPromises));
+        std::move(mAboutToBeNotifiedRejectedPromises));
     NS_DispatchToCurrentThread(runnable);
   }
   // Cleanup Indexed Database transactions:
@@ -493,12 +532,16 @@ void CycleCollectedJSContext::AfterProcessMicrotasks() {
   JS::ClearKeptObjects(mJSContext);
 }
 
-void CycleCollectedJSContext::IsIdleGCTaskNeeded() const {
+void CycleCollectedJSContext::MaybePokeGC() {
+  // Worker-compatible check to see if we want to do an idle-time minor
+  // GC.
   class IdleTimeGCTaskRunnable : public mozilla::IdleRunnable {
    public:
     using mozilla::IdleRunnable::IdleRunnable;
 
    public:
+    IdleTimeGCTaskRunnable() : IdleRunnable("IdleTimeGCTask") {}
+
     NS_IMETHOD Run() override {
       CycleCollectedJSRuntime* ccrt = CycleCollectedJSRuntime::Get();
       if (ccrt) {
@@ -722,12 +765,15 @@ void CycleCollectedJSContext::PerformDebuggerMicroTaskCheckpoint() {
 
 NS_IMETHODIMP CycleCollectedJSContext::NotifyUnhandledRejections::Run() {
   for (size_t i = 0; i < mUnhandledRejections.Length(); ++i) {
+    CycleCollectedJSContext* cccx = CycleCollectedJSContext::Get();
+    NS_ENSURE_STATE(cccx);
+
     RefPtr<Promise>& promise = mUnhandledRejections[i];
     if (!promise) {
       continue;
     }
 
-    JS::RootingContext* cx = mCx->RootingCx();
+    JS::RootingContext* cx = cccx->RootingCx();
     JS::RootedObject promiseObj(cx, promise->PromiseObj());
     MOZ_ASSERT(JS::IsPromiseObject(promiseObj));
 
@@ -750,29 +796,34 @@ NS_IMETHODIMP CycleCollectedJSContext::NotifyUnhandledRejections::Run() {
       }
     }
 
+    cccx = CycleCollectedJSContext::Get();
+    NS_ENSURE_STATE(cccx);
     if (!JS::GetPromiseIsHandled(promiseObj)) {
       DebugOnly<bool> isFound =
-          mCx->mPendingUnhandledRejections.Remove(promiseID);
+          cccx->mPendingUnhandledRejections.Remove(promiseID);
       MOZ_ASSERT(isFound);
     }
 
     // If a rejected promise is being handled in "unhandledrejection" event
     // handler, it should be removed from the table in
     // PromiseRejectionTrackerCallback.
-    MOZ_ASSERT(!mCx->mPendingUnhandledRejections.Lookup(promiseID));
+    MOZ_ASSERT(!cccx->mPendingUnhandledRejections.Lookup(promiseID));
   }
   return NS_OK;
 }
 
 nsresult CycleCollectedJSContext::NotifyUnhandledRejections::Cancel() {
+  CycleCollectedJSContext* cccx = CycleCollectedJSContext::Get();
+  NS_ENSURE_STATE(cccx);
+
   for (size_t i = 0; i < mUnhandledRejections.Length(); ++i) {
     RefPtr<Promise>& promise = mUnhandledRejections[i];
     if (!promise) {
       continue;
     }
 
-    JS::RootedObject promiseObj(mCx->RootingCx(), promise->PromiseObj());
-    mCx->mPendingUnhandledRejections.Remove(JS::GetPromiseID(promiseObj));
+    JS::RootedObject promiseObj(cccx->RootingCx(), promise->PromiseObj());
+    cccx->mPendingUnhandledRejections.Remove(JS::GetPromiseID(promiseObj));
   }
   return NS_OK;
 }
@@ -843,6 +894,10 @@ void FinalizationRegistryCleanup::DoCleanup() {
   std::swap(callbacks.get(), mCallbacks.get());
 
   for (const Callback& callback : callbacks) {
+    JS::ExposeObjectToActiveJS(
+        JS_GetFunctionObject(callback.mCallbackFunction));
+    JS::ExposeObjectToActiveJS(callback.mIncumbentGlobal);
+
     JS::RootedObject functionObj(
         cx, JS_GetFunctionObject(callback.mCallbackFunction));
     JS::RootedObject globalObj(cx, JS::GetNonCCWObjectGlobal(functionObj));
@@ -866,8 +921,8 @@ void FinalizationRegistryCleanup::DoCleanup() {
 }
 
 void FinalizationRegistryCleanup::Callback::trace(JSTracer* trc) {
-  JS::UnsafeTraceRoot(trc, &mCallbackFunction, "mCallbackFunction");
-  JS::UnsafeTraceRoot(trc, &mIncumbentGlobal, "mIncumbentGlobal");
+  JS::TraceRoot(trc, &mCallbackFunction, "mCallbackFunction");
+  JS::TraceRoot(trc, &mIncumbentGlobal, "mIncumbentGlobal");
 }
 
 }  // namespace mozilla

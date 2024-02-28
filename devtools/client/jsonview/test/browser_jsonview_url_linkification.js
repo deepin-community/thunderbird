@@ -3,12 +3,12 @@
 
 "use strict";
 
-const { ELLIPSIS } = require("devtools/shared/l10n");
+const { ELLIPSIS } = require("resource://devtools/shared/l10n.js");
 
-add_task(async function() {
+add_task(async function () {
   info("Test short URL linkification JSON started");
 
-  const url = "http://example.com/";
+  const url = "https://example.com/";
   const tab = await addJsonViewTab(
     "data:application/json," + JSON.stringify([url])
   );
@@ -24,10 +24,10 @@ add_task(async function() {
   });
 });
 
-add_task(async function() {
+add_task(async function () {
   info("Test long URL linkification JSON started");
 
-  const url = "http://example.com/" + "a".repeat(100);
+  const url = "https://example.com/" + "a".repeat(100);
   const tab = await addJsonViewTab(
     "data:application/json," + JSON.stringify([url])
   );

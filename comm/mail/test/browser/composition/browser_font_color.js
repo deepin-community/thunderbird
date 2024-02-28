@@ -6,18 +6,15 @@
  * Test font color in messages.
  */
 
-var {
-  close_compose_window,
-  open_compose_new_mail,
-  FormatHelper,
-} = ChromeUtils.import("resource://testing-common/mozmill/ComposeHelpers.jsm");
+var { close_compose_window, open_compose_new_mail, FormatHelper } =
+  ChromeUtils.import("resource://testing-common/mozmill/ComposeHelpers.jsm");
 
 add_task(async function test_font_color() {
   let controller = open_compose_new_mail();
   let formatHelper = new FormatHelper(controller.window);
 
   let colorSet = [
-    { value: "blue", rgb: [0, 0, 255] },
+    { value: "#0000ff", rgb: [0, 0, 255] },
     { value: "#fb3e83", rgb: [251, 62, 131] },
   ];
 

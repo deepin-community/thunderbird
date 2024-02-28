@@ -12,9 +12,9 @@ const TEST_URI = `http://example.org/document-builder.sjs?html=<meta charset=utf
   cache.unknown.access
 </script>`;
 
-const { Toolbox } = require("devtools/client/framework/toolbox");
+const { Toolbox } = require("resource://devtools/client/framework/toolbox.js");
 
-add_task(async function() {
+add_task(async function () {
   // Disable bfcache for Fission for now.
   // If Fission is disabled, the pref is no-op.
   await SpecialPowers.pushPrefEnv({
@@ -49,7 +49,7 @@ add_task(async function() {
   );
 
   info("Add another error so we have a different count");
-  ContentTask.spawn(tab.linkedBrowser, null, function() {
+  ContentTask.spawn(tab.linkedBrowser, null, function () {
     content.console.error("Live Error1");
   });
 
@@ -59,7 +59,7 @@ add_task(async function() {
   info(
     "Reload the page and check that the error icon has the expected content"
   );
-  tab.linkedBrowser.reload();
+  await reloadBrowser();
 
   await waitFor(
     () => getErrorIconCount(toolbox) === expectedErrorCount,
@@ -70,7 +70,7 @@ add_task(async function() {
   info(
     "Navigate to an error-less page and check that the error icon is hidden"
   );
-  navigateTo(`data:text/html;charset=utf8,No errors`);
+  await navigateTo(`data:text/html;charset=utf8,No errors`);
   await waitFor(
     () => !getErrorIcon(toolbox),
     "Error count is cleared on navigation"

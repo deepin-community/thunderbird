@@ -5,54 +5,82 @@
  * This test ensures that we produce good labels for a11y purposes.
  */
 
+const { CommonUtils } = ChromeUtils.importESModule(
+  "chrome://mochitests/content/browser/accessible/tests/browser/Common.sys.mjs"
+);
+
 const SUGGEST_ALL_PREF = "browser.search.suggest.enabled";
 const SUGGEST_URLBAR_PREF = "browser.urlbar.suggest.searches";
 const TEST_ENGINE_BASENAME = "searchSuggestionEngine.xml";
 
-async function getResultText(element) {
-  await initAccessibilityService();
+let accService;
 
-  // Text localized with Fluent will only be available after the next refresh.
-  // requestAnimationFrame resolves at the beginning of the refresh driver tick
-  // at a time when accessible events haven't been processed yet.
-  // waitForTick puts us at the end of the event queue.
-  await new Promise(requestAnimationFrame);
-  await TestUtils.waitForTick();
-
-  let accessible = accService.getAccessibleFor(element);
-  return accessible.name;
+async function getResultText(element, expectedValue, description = "") {
+  await BrowserTestUtils.waitForCondition(
+    () => {
+      let accessible = accService.getAccessibleFor(element);
+      return accessible !== null && accessible.name === expectedValue;
+    },
+    description,
+    200
+  );
 }
 
-let accService;
+/**
+ * Initializes the accessibility service and registers a cleanup function to
+ * shut it down. If it's not shut down properly, it can crash the current tab
+ * and cause the test to fail, especially in verify mode.
+ *
+ * This function is adapted from from tests in accessible/tests/browser and its
+ * helper functions are adapted or copied from functions of the same names in
+ * the same directory.
+ */
 async function initAccessibilityService() {
-  if (accService) {
-    return;
-  }
+  const [a11yInitObserver, a11yInit] = initAccService();
+  await a11yInitObserver;
   accService = Cc["@mozilla.org/accessibilityService;1"].getService(
     Ci.nsIAccessibilityService
   );
-  if (Services.appinfo.accessibilityEnabled) {
-    return;
-  }
+  await a11yInit;
 
-  async function promiseInitOrShutdown(init = true) {
-    await new Promise(resolve => {
-      let observe = (subject, topic, data) => {
-        Services.obs.removeObserver(observe, "a11y-init-or-shutdown");
-        // "1" indicates that the accessibility service is initialized.
-        if (data === (init ? "1" : "0")) {
-          resolve();
-        }
-      };
-      Services.obs.addObserver(observe, "a11y-init-or-shutdown");
-    });
-  }
-  await promiseInitOrShutdown(true);
   registerCleanupFunction(async () => {
+    const [a11yShutdownObserver, a11yShutdownPromise] = shutdownAccService();
+    await a11yShutdownObserver;
     accService = null;
-    await promiseInitOrShutdown(false);
+    forceGC();
+    await a11yShutdownPromise;
   });
 }
+
+// Adapted from `initAccService()` in accessible/tests/browser/head.js
+function initAccService() {
+  return [
+    CommonUtils.addAccServiceInitializedObserver(),
+    CommonUtils.observeAccServiceInitialized(),
+  ];
+}
+
+// Adapted from `shutdownAccService()` in accessible/tests/browser/head.js
+function shutdownAccService() {
+  return [
+    CommonUtils.addAccServiceShutdownObserver(),
+    CommonUtils.observeAccServiceShutdown(),
+  ];
+}
+
+// Copied from accessible/tests/browser/shared-head.js
+function forceGC() {
+  SpecialPowers.gc();
+  SpecialPowers.forceShrinkingGC();
+  SpecialPowers.forceCC();
+  SpecialPowers.gc();
+  SpecialPowers.forceShrinkingGC();
+  SpecialPowers.forceCC();
+}
+
+add_setup(async function () {
+  await initAccessibilityService();
+});
 
 add_task(async function switchToTab() {
   let tab = BrowserTestUtils.addTab(gBrowser, "about:robots");
@@ -75,10 +103,12 @@ add_task(async function switchToTab() {
     window,
     index
   );
-  is(
-    await getResultText(element),
-    "about: robots— Switch to Tab",
-    "Result a11y label should be: <title>— Switch to Tab"
+  // The a11y text will include the "Firefox Suggest" pseudo-element label shown
+  // before the result.
+  await getResultText(
+    element._content,
+    "Firefox Suggest about:robots — Switch to Tab",
+    "Result a11y text is correct"
   );
 
   await UrlbarTestUtils.promisePopupClose(window);
@@ -87,16 +117,14 @@ add_task(async function switchToTab() {
 });
 
 add_task(async function searchSuggestions() {
-  let engine = await SearchTestUtils.promiseNewSearchEngine(
-    getRootDirectory(gTestPath) + TEST_ENGINE_BASENAME
-  );
-  let oldDefaultEngine = await Services.search.getDefault();
-  await Services.search.setDefault(engine);
+  await SearchTestUtils.promiseNewSearchEngine({
+    url: getRootDirectory(gTestPath) + TEST_ENGINE_BASENAME,
+    setAsDefault: true,
+  });
   Services.prefs.setBoolPref(SUGGEST_ALL_PREF, true);
   let suggestionsEnabled = Services.prefs.getBoolPref(SUGGEST_URLBAR_PREF);
   Services.prefs.setBoolPref(SUGGEST_URLBAR_PREF, true);
-  registerCleanupFunction(async function() {
-    await Services.search.setDefault(oldDefaultEngine);
+  registerCleanupFunction(async function () {
     Services.prefs.clearUserPref(SUGGEST_ALL_PREF);
     Services.prefs.setBoolPref(SUGGEST_URLBAR_PREF, suggestionsEnabled);
   });
@@ -115,9 +143,8 @@ add_task(async function searchSuggestions() {
   );
   // The first expected search is the search term itself since the heuristic
   // result will come before the search suggestions.
-  // The extra spaces are here due to bug 1550644.
-  let searchTerm = "foo ";
-  let expectedSearches = [searchTerm, "foo foo", "foo bar"];
+  let searchTerm = "foo";
+  let expectedSearches = [searchTerm, "foofoo", "foobar"];
   for (let i = 0; i < length; i++) {
     let result = await UrlbarTestUtils.getDetailsOfResultAt(window, i);
     if (result.type === UrlbarUtils.RESULT_TYPE.SEARCH) {
@@ -131,30 +158,28 @@ add_task(async function searchSuggestions() {
         window,
         i
       );
-      let selected = element.hasAttribute("selected");
-      if (!selected) {
-        // Simulate the result being selected so we see the expanded text.
-        element.toggleAttribute("selected", true);
-      }
+
+      // Select the row so we see the expanded text.
+      gURLBar.view.selectedRowIndex = i;
+
       if (result.searchParams.inPrivateWindow) {
-        Assert.equal(
-          await getResultText(element),
-          searchTerm + "— Search in a Private Window",
-          "Check result label"
+        await getResultText(
+          element._content,
+          searchTerm + " — Search in a Private Window",
+          "Check result label for search in private window"
         );
       } else {
         let suggestion = expectedSearches.shift();
-        Assert.equal(
-          await getResultText(element),
+        await getResultText(
+          element._content,
           suggestion +
-            "— Search with browser_searchSuggestionEngine searchSuggestionEngine.xml",
-          "Check result label"
+            " — Search with browser_searchSuggestionEngine searchSuggestionEngine.xml",
+          "Check result label for non-private search"
         );
-      }
-      if (!selected) {
-        element.toggleAttribute("selected", false);
       }
     }
   }
   Assert.ok(!expectedSearches.length);
+
+  await UrlbarTestUtils.promisePopupClose(window);
 });

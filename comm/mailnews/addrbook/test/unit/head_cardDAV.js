@@ -8,12 +8,14 @@ const { CardDAVDirectory } = ChromeUtils.import(
 const { CardDAVServer } = ChromeUtils.import(
   "resource://testing-common/CardDAVServer.jsm"
 );
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
+const { TestUtils } = ChromeUtils.importESModule(
+  "resource://testing-common/TestUtils.sys.mjs"
+);
 Cu.importGlobalProperties(["fetch"]);
 
 do_get_profile();
 
-registerCleanupFunction(function() {
+registerCleanupFunction(function () {
   load("../../../resources/mailShutdown.js");
 });
 
@@ -82,7 +84,11 @@ async function checkCardsOnServer(expectedCards) {
     info(baseName);
     Assert.equal(etag, expectedCards[baseName].etag);
     Assert.equal(href, expectedCards[baseName].href);
-    Assert.equal(vCard, expectedCards[baseName].vCard);
+    // Decode the vCard which is stored as UTF-8 on the server.
+    vCard = new TextDecoder().decode(
+      Uint8Array.from(vCard, c => c.charCodeAt(0))
+    );
+    vCardEqual(vCard, expectedCards[baseName].vCard);
   }
 }
 
@@ -111,6 +117,7 @@ let observer = {
   },
   observe(subject, topic) {
     let uid = subject.QueryInterface(Ci.nsIAbCard).UID;
+    info(`${topic}: ${uid}`);
     if (this.pendingPromise && this.pendingPromise.topic == topic) {
       let promise = this.pendingPromise;
       this.pendingPromise = null;
@@ -132,3 +139,11 @@ add_task(async () => {
     await CardDAVServer.close();
   });
 });
+
+// Checks two vCard strings have the same lines, in any order.
+// Not very smart but smart enough.
+function vCardEqual(lhs, rhs, message) {
+  let lhsLines = lhs.split("\r\n").sort();
+  let rhsLines = rhs.split("\r\n").sort();
+  Assert.deepEqual(lhsLines, rhsLines, message);
+}

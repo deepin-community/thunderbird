@@ -13,9 +13,11 @@
 #include "base/message_pump_default.h"
 #include "base/string_util.h"
 #include "base/thread_local.h"
-#include "GeckoProfiler.h"
 #include "mozilla/Atomics.h"
 #include "mozilla/Mutex.h"
+#include "mozilla/ProfilerRunnable.h"
+#include "nsIEventTarget.h"
+#include "nsITargetShutdownTask.h"
 #include "nsThreadUtils.h"
 
 #if defined(OS_MACOSX)
@@ -50,18 +52,6 @@ static base::ThreadLocalPointer<MessageLoop>& get_tls_ptr() {
 
 //------------------------------------------------------------------------------
 
-// Logical events for Histogram profiling. Run with -message-loop-histogrammer
-// to get an accounting of messages and actions taken on each thread.
-static const int kTaskRunEvent = 0x1;
-static const int kTimerEvent = 0x2;
-
-// Provide range of message IDs for use in histogramming and debug display.
-static const int kLeastNonZeroMessageId = 1;
-static const int kMaxMessageId = 1099;
-static const int kNumberOfDistinctMessagesDisplayed = 1100;
-
-//------------------------------------------------------------------------------
-
 #if defined(OS_WIN)
 
 // Upon a SEH exception in this thread, it restores the original unhandled
@@ -85,10 +75,28 @@ static LPTOP_LEVEL_EXCEPTION_FILTER GetTopSEHFilter() {
 //------------------------------------------------------------------------------
 
 class MessageLoop::EventTarget : public nsISerialEventTarget,
+                                 public nsITargetShutdownTask,
                                  public MessageLoop::DestructionObserver {
  public:
   NS_DECL_THREADSAFE_ISUPPORTS
   NS_DECL_NSIEVENTTARGET_FULL
+
+  void TargetShutdown() override {
+    nsTArray<nsCOMPtr<nsITargetShutdownTask>> shutdownTasks;
+    {
+      mozilla::MutexAutoLock lock(mMutex);
+      if (mShutdownTasksRun) {
+        return;
+      }
+      mShutdownTasksRun = true;
+      shutdownTasks = std::move(mShutdownTasks);
+      mShutdownTasks.Clear();
+    }
+
+    for (auto& task : shutdownTasks) {
+      task->TargetShutdown();
+    }
+  }
 
   explicit EventTarget(MessageLoop* aLoop)
       : mMutex("MessageLoop::EventTarget"), mLoop(aLoop) {
@@ -100,19 +108,27 @@ class MessageLoop::EventTarget : public nsISerialEventTarget,
     if (mLoop) {
       mLoop->RemoveDestructionObserver(this);
     }
+    MOZ_ASSERT(mShutdownTasks.IsEmpty());
   }
 
   void WillDestroyCurrentMessageLoop() override {
-    mozilla::MutexAutoLock lock(mMutex);
-    // The MessageLoop is being destroyed and we are called from its destructor
-    // There's no real need to remove ourselves from the destruction observer
-    // list. But it makes things look tidier.
-    mLoop->RemoveDestructionObserver(this);
-    mLoop = nullptr;
+    {
+      mozilla::MutexAutoLock lock(mMutex);
+      // The MessageLoop is being destroyed and we are called from its
+      // destructor There's no real need to remove ourselves from the
+      // destruction observer list. But it makes things look tidier.
+      mLoop->RemoveDestructionObserver(this);
+      mLoop = nullptr;
+    }
+
+    TargetShutdown();
   }
 
   mozilla::Mutex mMutex;
-  MessageLoop* mLoop;
+  bool mShutdownTasksRun MOZ_GUARDED_BY(mMutex) = false;
+  nsTArray<nsCOMPtr<nsITargetShutdownTask>> mShutdownTasks
+      MOZ_GUARDED_BY(mMutex);
+  MessageLoop* mLoop MOZ_GUARDED_BY(mMutex);
 };
 
 NS_IMPL_ISUPPORTS(MessageLoop::EventTarget, nsIEventTarget,
@@ -165,6 +181,26 @@ MessageLoop::EventTarget::DelayedDispatch(already_AddRefed<nsIRunnable> aEvent,
   return NS_OK;
 }
 
+NS_IMETHODIMP
+MessageLoop::EventTarget::RegisterShutdownTask(nsITargetShutdownTask* aTask) {
+  mozilla::MutexAutoLock lock(mMutex);
+  if (!mLoop || mShutdownTasksRun) {
+    return NS_ERROR_UNEXPECTED;
+  }
+  MOZ_ASSERT(!mShutdownTasks.Contains(aTask));
+  mShutdownTasks.AppendElement(aTask);
+  return NS_OK;
+}
+
+NS_IMETHODIMP
+MessageLoop::EventTarget::UnregisterShutdownTask(nsITargetShutdownTask* aTask) {
+  mozilla::MutexAutoLock lock(mMutex);
+  if (!mLoop || mShutdownTasksRun) {
+    return NS_ERROR_UNEXPECTED;
+  }
+  return mShutdownTasks.RemoveElement(aTask) ? NS_OK : NS_ERROR_UNEXPECTED;
+}
+
 //------------------------------------------------------------------------------
 
 // static
@@ -175,7 +211,7 @@ void MessageLoop::set_current(MessageLoop* loop) { get_tls_ptr().Set(loop); }
 
 static mozilla::Atomic<int32_t> message_loop_id_seq(0);
 
-MessageLoop::MessageLoop(Type type, nsIEventTarget* aEventTarget)
+MessageLoop::MessageLoop(Type type, nsISerialEventTarget* aEventTarget)
     : type_(type),
       id_(++message_loop_id_seq),
       nestable_tasks_allowed_(true),
@@ -214,12 +250,11 @@ MessageLoop::MessageLoop(Type type, nsIEventTarget* aEventTarget)
     case TYPE_MOZILLA_NONMAINTHREAD:
       pump_ = new mozilla::ipc::MessagePumpForNonMainThreads(aEventTarget);
       return;
-#if defined(OS_WIN)
+#if defined(OS_WIN) || defined(OS_MACOSX)
     case TYPE_MOZILLA_NONMAINUITHREAD:
       pump_ = new mozilla::ipc::MessagePumpForNonMainUIThreads(aEventTarget);
       return;
-#endif
-#if defined(MOZ_WIDGET_ANDROID)
+#elif defined(MOZ_WIDGET_ANDROID)
     case TYPE_MOZILLA_ANDROID_UI:
       MOZ_RELEASE_ASSERT(aEventTarget);
       pump_ = new mozilla::ipc::MessagePumpForAndroidUI(aEventTarget);
@@ -257,7 +292,9 @@ MessageLoop::MessageLoop(Type type, nsIEventTarget* aEventTarget)
   // We want GetCurrentSerialEventTarget() to return the real nsThread if it
   // will be used to dispatch tasks. However, under all other cases; we'll want
   // it to return this MessageLoop's EventTarget.
-  if (!pump_->GetXPCOMThread()) {
+  if (nsISerialEventTarget* thread = pump_->GetXPCOMThread()) {
+    MOZ_ALWAYS_SUCCEEDS(thread->RegisterShutdownTask(mEventTarget));
+  } else {
     mozilla::SerialEventTargetGuard::Set(mEventTarget);
   }
 }
@@ -379,7 +416,7 @@ void MessageLoop::PostIdleTask(already_AddRefed<nsIRunnable> task) {
 // Possibly called on a background thread!
 void MessageLoop::PostTask_Helper(already_AddRefed<nsIRunnable> task,
                                   int delay_ms) {
-  if (nsIEventTarget* target = pump_->GetXPCOMThread()) {
+  if (nsISerialEventTarget* target = pump_->GetXPCOMThread()) {
     nsresult rv;
     if (delay_ms) {
       rv = target->DelayedDispatch(std::move(task), delay_ms);

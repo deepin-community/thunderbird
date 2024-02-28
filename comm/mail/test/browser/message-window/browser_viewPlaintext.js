@@ -15,8 +15,6 @@ var { close_window } = ChromeUtils.import(
   "resource://testing-common/mozmill/WindowHelpers.jsm"
 );
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-
 /**
  * Retrieve the textual content of the message and compare it.
  *
@@ -25,8 +23,7 @@ var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
  * @param aDontWantToSee  Content of other MIME parts we don't want to see.
  */
 function check_content(aWindow, aExpected, aDontWantToSee) {
-  let messagePane = aWindow.document.getElementById("messagepane");
-  let messageContent = messagePane.contentDocument.firstChild.textContent;
+  let messageContent = aWindow.content.document.documentElement.textContent;
 
   if (aExpected != aDontWantToSee) {
     Assert.ok(
@@ -135,7 +132,7 @@ add_task(async function test_view() {
   await checkSingleMessage("./test-alt-rogue2.eml", "Plain Text", "HTML Body");
 });
 
-registerCleanupFunction(function teardownModule() {
+registerCleanupFunction(function () {
   Services.prefs.clearUserPref("mailnews.display.prefer_plaintext");
   Services.prefs.clearUserPref("mailnews.display.html_as");
 });

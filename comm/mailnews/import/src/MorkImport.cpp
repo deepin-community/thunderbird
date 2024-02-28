@@ -16,9 +16,8 @@
 #include "nsIImportAddressBooks.h"
 #include "nsIImportABDescriptor.h"
 #include "nsIImportFieldMap.h"
-#include "nsAbBaseCID.h"
 #include "nsImportStringBundle.h"
-
+#include "nsIComponentManager.h"
 #include "nsIAbDirectory.h"
 #include "nsAddrDatabase.h"
 #include "nsInterfaceHashtable.h"
@@ -265,7 +264,8 @@ nsresult ReadMABToDirectory(nsIFile* oldFile, nsIAbDirectory* newDirectory) {
       continue;
     }
 
-    nsCOMPtr<nsIAbDirectory> mailList = do_CreateInstance(NS_ABDIRPROPERTY_CID);
+    nsCOMPtr<nsIAbDirectory> mailList =
+        do_CreateInstance("@mozilla.org/addressbook/directoryproperty;1");
     mailList->SetIsMailList(true);
 
     nsAutoString listName;
@@ -330,4 +330,14 @@ NS_IMETHODIMP MorkImportAddressImpl::SetSampleLocation(nsIFile* pLocation) {
 NS_IMETHODIMP MorkImportAddressImpl::GetSampleData(int32_t index, bool* pFound,
                                                    char16_t** pStr) {
   return NS_OK;
+}
+
+NS_IMPL_ISUPPORTS(nsImportABFromMab, nsIImportABFile)
+
+nsImportABFromMab::nsImportABFromMab() {}
+
+NS_IMETHODIMP
+nsImportABFromMab::ReadFileToDirectory(nsIFile* sourceFile,
+                                       nsIAbDirectory* targetDirectory) {
+  return ReadMABToDirectory(sourceFile, targetDirectory);
 }

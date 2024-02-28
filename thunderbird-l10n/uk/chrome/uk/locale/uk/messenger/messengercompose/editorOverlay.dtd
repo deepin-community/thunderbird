@@ -17,7 +17,7 @@
 <!ENTITY insertLinkCmd2.label "Посилання…">
 <!ENTITY insertLinkCmd2.accesskey "П">
 <!ENTITY insertLinkCmd2.key "K">
-<!ENTITY insertAnchorCmd.label "Якір з ім’ям…">
+<!ENTITY insertAnchorCmd.label "Якір з іменем…">
 <!ENTITY insertAnchorCmd.accesskey "Я">
 <!ENTITY insertImageCmd.label "Зображення…">
 <!ENTITY insertImageCmd.accesskey "З">
@@ -37,7 +37,7 @@
 <!-- Used just in context popup. -->
 <!ENTITY createLinkCmd.label "Створити посилання…">
 <!ENTITY createLinkCmd.accesskey "С">
-<!ENTITY editLinkCmd.label "Редагувати об’єкт в новому вікні Компонувальника">
+<!ENTITY editLinkCmd.label "Редагувати посилання в новому редакторі">
 <!ENTITY editLinkCmd.accesskey "Р">
 
 <!-- Font Face SubMenu -->
@@ -156,7 +156,7 @@
 <!ENTITY formatlistMenu.accesskey "п">
 <!ENTITY noneCmd.label "Нічого">
 <!ENTITY noneCmd.accesskey "і">
-<!ENTITY listBulletCmd.label "Маркірований">
+<!ENTITY listBulletCmd.label "Маркований">
 <!ENTITY listBulletCmd.accesskey "М">
 <!ENTITY listNumberedCmd.label "Нумерований">
 <!ENTITY listNumberedCmd.accesskey "Н">
@@ -282,7 +282,7 @@
 <!ENTITY boldToolbarCmd.tooltip "Жирний">
 <!ENTITY italicToolbarCmd.tooltip "Курсив">
 <!ENTITY underlineToolbarCmd.tooltip "Підкреслений">
-<!ENTITY bulletListToolbarCmd.tooltip "Додати або вилучити маркірований список">
+<!ENTITY bulletListToolbarCmd.tooltip "Додати чи вилучити маркований список">
 <!ENTITY numberListToolbarCmd.tooltip "Додати або вилучити нумерований список">
 <!ENTITY outdentToolbarCmd.tooltip "Прибрати відступ (вліво)">
 <!ENTITY indentToolbarCmd.tooltip "Зробити відступ (вправо)">

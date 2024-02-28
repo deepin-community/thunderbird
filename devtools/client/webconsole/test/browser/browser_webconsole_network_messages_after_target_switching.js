@@ -8,14 +8,14 @@
 
 const TEST_FILE = "test-network-request.html";
 const TEST_PATH =
-  "http://example.com/browser/devtools/client/webconsole/test/browser/";
+  "https://example.com/browser/devtools/client/webconsole/test/browser/";
 
 const TEST_URI = TEST_PATH + TEST_FILE;
 
 pushPref("devtools.webconsole.filter.net", true);
 pushPref("devtools.webconsole.filter.netxhr", true);
 
-registerCleanupFunction(async function() {
+registerCleanupFunction(async function () {
   await new Promise(resolve => {
     Services.clearData.deleteData(Ci.nsIClearDataService.CLEAR_ALL, value =>
       resolve()
@@ -24,16 +24,10 @@ registerCleanupFunction(async function() {
 });
 
 add_task(async function task() {
-  // Disable bfcache for Fission for now.
-  // If Fission is disabled, the pref is no-op.
-  await SpecialPowers.pushPrefEnv({
-    set: [["fission.bfcacheInParent", false]],
-  });
-
   info("Add an empty tab and open the console");
   const hud = await openNewTabAndConsole("");
 
-  const onMessageAvailable = waitForMessage(hud, TEST_URI, ".network");
+  const onMessageAvailable = waitForMessageByType(hud, TEST_URI, ".network");
   info(`Navigate to ${TEST_URI}`);
   await navigateTo(TEST_URI);
   const { node } = await onMessageAvailable;

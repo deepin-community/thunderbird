@@ -7,24 +7,22 @@
 var {
   be_in_folder,
   create_folder,
-  make_new_sets_in_folder,
+  make_message_sets_in_folders,
   select_click_row,
   select_none,
   select_shift_click_row,
 } = ChromeUtils.import(
   "resource://testing-common/mozmill/FolderDisplayHelpers.jsm"
 );
-var {
-  delete_mail_marked_as_junk,
-  mark_selected_messages_as_junk,
-} = ChromeUtils.import("resource://testing-common/mozmill/JunkHelpers.jsm");
+var { delete_mail_marked_as_junk, mark_selected_messages_as_junk } =
+  ChromeUtils.import("resource://testing-common/mozmill/JunkHelpers.jsm");
 
 // One folder's enough
 var folder = null;
 
-add_task(function setupModule(module) {
-  folder = create_folder("JunkCommandsA");
-  make_new_sets_in_folder(folder, [{ count: 30 }]);
+add_setup(async function () {
+  folder = await create_folder("JunkCommandsA");
+  await make_message_sets_in_folders([folder], [{ count: 30 }]);
 });
 
 /**
@@ -56,11 +54,11 @@ function _assert_folder_total_messages(aFolder, aNumMessages) {
 /**
  * Test deleting junk messages with no messages marked as junk.
  */
-add_task(function test_delete_no_junk_messages() {
+add_task(async function test_delete_no_junk_messages() {
   let initialNumMessages = folder.getTotalMessages(false);
-  be_in_folder(folder);
+  await be_in_folder(folder);
   select_none();
-  delete_mail_marked_as_junk(0);
+  await delete_mail_marked_as_junk(0);
   // Check if we still have the same number of messages
   _assert_folder_total_messages(folder, initialNumMessages);
 });
@@ -68,15 +66,20 @@ add_task(function test_delete_no_junk_messages() {
 /**
  * Test deleting junk messages with some messages marked as junk.
  */
-add_task(function test_delete_junk_messages() {
+add_task(async function test_delete_junk_messages() {
   let initialNumMessages = folder.getTotalMessages(false);
-  be_in_folder(folder);
+  await be_in_folder(folder);
   select_click_row(1);
   let selectedMessages = select_shift_click_row(NUM_MESSAGES_TO_JUNK);
+  Assert.equal(
+    selectedMessages.length,
+    NUM_MESSAGES_TO_JUNK,
+    `should have selected correct number of msgs`
+  );
   // Mark these messages as junk
   mark_selected_messages_as_junk();
   // Now delete junk mail
-  delete_mail_marked_as_junk(NUM_MESSAGES_TO_JUNK);
+  await delete_mail_marked_as_junk(NUM_MESSAGES_TO_JUNK);
   // Check that we have the right number of messages left
   _assert_folder_total_messages(
     folder,
@@ -86,7 +89,7 @@ add_task(function test_delete_junk_messages() {
   let db = folder.getDBFolderInfoAndDB({});
   for (let msgHdr of selectedMessages) {
     let key = msgHdr.messageKey;
-    if (db.ContainsKey(key)) {
+    if (db.containsKey(key)) {
       throw new Error(
         "The database shouldn't contain key " + key + ", but does."
       );

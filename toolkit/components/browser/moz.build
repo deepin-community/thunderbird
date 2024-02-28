@@ -10,7 +10,6 @@ with Files("**"):
 DIRS += ["build"]
 
 XPIDL_SOURCES += [
-    "nsIEmbeddingSiteWindow.idl",
     "nsIWebBrowser.idl",
     "nsIWebBrowserChrome.idl",
     "nsIWebBrowserChromeFocus.idl",
@@ -19,11 +18,6 @@ XPIDL_SOURCES += [
 XPIDL_SOURCES += [
     "nsIWebBrowserPrint.idl",
 ]
-
-if CONFIG["NS_PRINTING"]:
-    XPIDL_SOURCES += [
-        "nsIPrintingPromptService.idl",
-    ]
 
 XPIDL_MODULE = "webBrowser_core"
 
@@ -40,9 +34,6 @@ LOCAL_INCLUDES += [
     "/dom/base",
     "/layout/style",
 ]
-
-if CONFIG["CC_TYPE"] in ("clang", "gcc"):
-    CXXFLAGS += ["-Wno-error=shadow"]
 
 EXPORTS += [
     "nsEmbedCID.h",

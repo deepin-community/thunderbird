@@ -12,6 +12,7 @@
 #include "mozilla/dom/HTMLFormSubmission.h"
 #include "mozilla/dom/File.h"
 #include "mozilla/dom/FormDataBinding.h"
+#include "nsGenericHTMLElement.h"
 #include "nsTArray.h"
 #include "nsWrapperCache.h"
 
@@ -57,7 +58,7 @@ class FormData final : public nsISupports,
   already_AddRefed<FormData> Clone();
 
   NS_DECL_CYCLE_COLLECTING_ISUPPORTS
-  NS_DECL_CYCLE_COLLECTION_SCRIPT_HOLDER_CLASS(FormData)
+  NS_DECL_CYCLE_COLLECTION_WRAPPERCACHE_CLASS(FormData)
 
   // nsWrapperCache
   virtual JSObject* WrapObject(JSContext* aCx,
@@ -69,7 +70,7 @@ class FormData final : public nsISupports,
   static already_AddRefed<FormData> Constructor(
       const GlobalObject& aGlobal,
       const Optional<NonNull<HTMLFormElement> >& aFormElement,
-      ErrorResult& aRv);
+      nsGenericHTMLElement* aSubmitter, ErrorResult& aRv);
 
   void Append(const nsAString& aName, const nsAString& aValue,
               ErrorResult& aRv);
@@ -78,6 +79,8 @@ class FormData final : public nsISupports,
               const Optional<nsAString>& aFilename, ErrorResult& aRv);
 
   void Append(const nsAString& aName, Directory* aDirectory);
+
+  void Append(const FormData& aFormData);
 
   void Delete(const nsAString& aName);
 
@@ -124,9 +127,9 @@ class FormData final : public nsISupports,
   virtual nsresult AddNameDirectoryPair(const nsAString& aName,
                                         Directory* aDirectory) override;
 
-  typedef bool (*FormDataEntryCallback)(
-      const nsString& aName, const OwningBlobOrDirectoryOrUSVString& aValue,
-      void* aClosure);
+  using FormDataEntryCallback =
+      bool (*)(const nsString& aName,
+               const OwningBlobOrDirectoryOrUSVString& aValue, void* aClosure);
 
   uint32_t Length() const { return mFormData.Length(); }
 
@@ -149,8 +152,13 @@ class FormData final : public nsISupports,
 
   nsresult CopySubmissionDataTo(HTMLFormSubmission* aFormSubmission) const;
 
+  Element* GetSubmitterElement() const { return mSubmitter.get(); }
+
  private:
   nsCOMPtr<nsISupports> mOwner;
+
+  // Submitter element.
+  RefPtr<Element> mSubmitter;
 
   nsTArray<FormDataTuple> mFormData;
 };

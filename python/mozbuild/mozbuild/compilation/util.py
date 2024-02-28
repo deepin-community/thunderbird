@@ -2,8 +2,6 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http://mozilla.org/MPL/2.0/.
 
-from __future__ import absolute_import, print_function
-
 import os
 
 
@@ -36,7 +34,7 @@ def get_build_vars(directory, cmd):
             target="showbuild",
             log=False,
             print_directory=False,
-            allow_parallel=False,
+            num_jobs=1,
             silent=True,
             line_handler=on_line,
         )

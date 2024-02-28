@@ -13,7 +13,6 @@
 
 var EXPORTED_SYMBOLS = ["IMAPPump", "setupIMAPPump", "teardownIMAPPump"];
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 var { MailServices } = ChromeUtils.import(
   "resource:///modules/MailServices.jsm"
 );
@@ -24,8 +23,8 @@ var { gThreadManager, nsMailServer } = ChromeUtils.import(
   "resource://testing-common/mailnews/Maild.jsm"
 );
 var Imapd = ChromeUtils.import("resource://testing-common/mailnews/Imapd.jsm");
-var { updateAppInfo } = ChromeUtils.import(
-  "resource://testing-common/AppInfo.jsm"
+var { updateAppInfo } = ChromeUtils.importESModule(
+  "resource://testing-common/AppInfo.sys.mjs"
 );
 
 // define globals
@@ -78,7 +77,7 @@ function setupIMAPPump(extensions) {
 
   // end copy from head_server.js
 
-  IMAPPump.daemon = new Imapd.imapDaemon();
+  IMAPPump.daemon = new Imapd.ImapDaemon();
   IMAPPump.server = makeServer(IMAPPump.daemon, extensions);
 
   IMAPPump.incomingServer = createLocalIMAPServer();

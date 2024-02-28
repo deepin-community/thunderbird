@@ -4,28 +4,17 @@
 
 "use strict";
 
-/* globals MozElements MozXULElement */
+/* globals MozElements MozXULElement chatHandler */
 
 // Wrap in a block to prevent leaking to window scope.
 {
-  const { Services } = ChromeUtils.import("resource:///modules/imServices.jsm");
-  const { XPCOMUtils } = ChromeUtils.import(
-    "resource://gre/modules/XPCOMUtils.jsm"
-  );
-  const { ChatIcons } = ChromeUtils.import("resource:///modules/chatIcons.jsm");
-
-  ChromeUtils.defineModuleGetter(this, "OTR", "resource:///modules/OTR.jsm");
-  ChromeUtils.defineModuleGetter(
-    this,
-    "OTRUI",
-    "resource:///modules/OTRUI.jsm"
+  const { ChatIcons } = ChromeUtils.importESModule(
+    "resource:///modules/chatIcons.sys.mjs"
   );
 
-  XPCOMUtils.defineLazyGetter(this, "gOtrNotification", () => {
-    return new MozElements.NotificationBox(element => {
-      element.setAttribute("flex", "1");
-      document.getElementById("otr-notification-box").append(element);
-    });
+  ChromeUtils.defineESModuleGetters(this, {
+    OTR: "resource:///modules/OTR.sys.mjs",
+    OTRUI: "resource:///modules/OTRUI.sys.mjs",
   });
 
   /**
@@ -33,11 +22,62 @@
    * e.g. the channel name and topic of an IRC channel, or nick, user image and
    * status of a conversation partner.
    * It is typically shown at the top right of the chat UI.
-   * @extends {MozXULElement}
+   *
+   * @augments {MozXULElement}
    */
   class MozChatConversationInfo extends MozXULElement {
     static get inheritedAttributes() {
       return { ".displayName": "value=displayName" };
+    }
+
+    static get markup() {
+      return `
+      <linkset>
+        <html:link rel="localization" href="messenger/otr/chat.ftl"/>
+      </linkset>
+
+      <html:div class="displayUserAccount">
+        <stack>
+          <html:img class="userIcon" alt="" />
+          <html:img class="statusTypeIcon" alt="" />
+        </stack>
+        <html:div class="nameAndStatusGrid">
+          <description class="displayName" crop="end"></description>
+          <html:img class="protoIcon" alt="" />
+          <html:hr />
+          <description class="statusMessage" crop="end"></description>
+          <!-- FIXME: A keyboard user cannot focus the hidden input, nor
+             - click the above description box in order to reveal it. -->
+          <html:input class="statusMessageInput input-inline"
+                      hidden="hidden"/>
+        </html:div>
+      </html:div>
+      <hbox class="encryption-container themeable-brighttext"
+            align="center"
+            hidden="true">
+        <label class="encryption-label"
+               crop="end"
+               data-l10n-id="state-label"
+               flex="1"/>
+        <toolbarbutton id="chatEncryptionButton"
+                       mode="dialog"
+                       class="encryption-button"
+                       type="menu"
+                       wantdropmarker="true"
+                       label="Insecure"
+                       data-l10n-id="start-tooltip">
+          <menupopup class="encryption-menu-popup">
+            <menuitem class="otr-start" data-l10n-id="start-label"
+                      oncommand='this.closest("chat-conversation-info").onOtrStartClicked();'/>
+            <menuitem class="otr-end" data-l10n-id="end-label"
+                      oncommand='this.closest("chat-conversation-info").onOtrEndClicked();'/>
+            <menuitem class="otr-auth" data-l10n-id="auth-label"
+                      oncommand='this.closest("chat-conversation-info").onOtrAuthClicked();'/>
+            <menuitem class="protocol-encrypt" data-l10n-id="start-label"/>
+          </menupopup>
+        </toolbarbutton>
+      </hbox>
+      `;
     }
 
     connectedCallback() {
@@ -46,55 +86,7 @@
       }
       this.setAttribute("orient", "vertical");
 
-      this.appendChild(
-        MozXULElement.parseXULToFragment(`
-          <linkset>
-            <html:link rel="localization" href="messenger/otr/chat.ftl"/>
-          </linkset>
-
-          <html:div class="displayUserAccount">
-            <stack>
-              <html:img class="userIcon" alt="" />
-              <html:img class="statusTypeIcon" alt="" />
-            </stack>
-            <html:div class="nameAndStatusGrid">
-              <description class="displayName" crop="end"></description>
-              <html:img class="protoIcon" alt="" />
-              <html:hr />
-              <description class="statusMessage" crop="end"></description>
-              <!-- FIXME: A keyboard user cannot focus the hidden input, nor
-                 - click the above description box in order to reveal it. -->
-              <html:input class="statusMessageInput input-inline"
-                          hidden="hidden"/>
-            </html:div>
-          </html:div>
-          <hbox class="otr-container themeable-brighttext"
-                align="middle"
-                hidden="true">
-            <label class="otr-label"
-                   crop="end"
-                   data-l10n-id="state-label"
-                   flex="1"/>
-            <toolbarbutton id="otrButton"
-                           mode="dialog"
-                           class="otr-button"
-                           type="menu"
-                           wantdropmarker="true"
-                           label="Insecure"
-                           data-l10n-id="start-tooltip">
-              <menupopup class="otr-menu-popup">
-                <menuitem class="otr-start" data-l10n-id="start-label"
-                          oncommand='this.closest("chat-conversation-info").onOtrStartClicked();'/>
-                <menuitem class="otr-end" data-l10n-id="end-label"
-                          oncommand='this.closest("chat-conversation-info").onOtrEndClicked();'/>
-                <menuitem class="otr-auth" data-l10n-id="auth-label"
-                          oncommand='this.closest("chat-conversation-info").onOtrAuthClicked();'/>
-              </menupopup>
-            </toolbarbutton>
-          </hbox>
-          <hbox id="otr-notification-box"></hbox>
-        `)
-      );
+      this.appendChild(this.constructor.fragment);
 
       this.topicEditable = false;
       this.editingTopic = false;
@@ -102,10 +94,17 @@
 
       this.topic.addEventListener("click", this.startEditTopic.bind(this));
 
+      this.querySelector(".protocol-encrypt").addEventListener("click", () =>
+        this.initializeEncryption()
+      );
+
+      let encryptionButton = this.querySelector(".encryption-button");
+      encryptionButton.addEventListener(
+        "command",
+        this.encryptionButtonClicked
+      );
       if (Services.prefs.getBoolPref("chat.otr.enable")) {
-        let otrButton = this.querySelector(".otr-button");
-        otrButton.addEventListener("command", this.otrButtonClicked);
-        OTRUI.setNotificationBox(gOtrNotification);
+        OTRUI.setNotificationBox(chatHandler.msgNotificationBar);
       }
       this.initializeAttributeInheritance();
     }
@@ -192,10 +191,10 @@
       topicInput.select();
     }
 
-    otrButtonClicked(aEvent) {
+    encryptionButtonClicked(aEvent) {
       aEvent.preventDefault();
-      let otrMenu = this.querySelector(".otr-menu-popup");
-      otrMenu.openPopup(otrMenu.parentNode, "after_start");
+      let encryptionMenu = this.querySelector(".encryption-menu-popup");
+      encryptionMenu.openPopup(encryptionMenu.parentNode, "after_start");
     }
 
     onOtrStartClicked() {
@@ -227,6 +226,12 @@
       let uiConv = convBinding._conv;
       let conv = uiConv.target;
       OTRUI.openAuth(window, conv.normalizedName, "start", uiConv);
+    }
+
+    initializeEncryption() {
+      const convBinding = this.getSelectedPanel();
+      const uiConv = convBinding._conv;
+      uiConv.initializeEncryption();
     }
 
     getSelectedPanel() {

@@ -1,29 +1,28 @@
 {
   "langpack_id": "pt-PT",
   "manifest_version": 2,
-  "applications": {
+  "browser_specific_settings": {
     "gecko": {
       "id": "langpack-pt-PT@thunderbird.mozilla.org",
-      "strict_min_version": "91.0",
-      "strict_max_version": "91.*"
+      "strict_min_version": "115.0",
+      "strict_max_version": "115.*"
     }
   },
-  "name": "Português (Europeu) Language Pack",
-  "description": "Language pack for Thunderbird for pt-PT",
-  "version": "91.0buildid20211101223011",
+  "name": "Language: Português (PT) (Portuguese)",
+  "description": "Thunderbird Language Pack for Português (PT) (pt-PT) – Portuguese",
+  "version": "115.8.20240216.174500",
   "languages": {
     "pt-PT": {
-      "version": "20211017215446",
+      "version": "20240216184024",
       "chrome_resources": {
         "alerts": "chrome/pt-PT/locale/pt-PT/alerts/",
         "autoconfig": "chrome/pt-PT/locale/pt-PT/autoconfig/",
-        "branding": "chrome/pt-PT/locale/pt-PT/branding/",
+        "branding": "chrome/pt-PT/locale/branding/",
         "calendar": "chrome/pt-PT/locale/pt-PT/calendar/",
         "chat": "chrome/pt-PT/locale/pt-PT/chat/",
         "communicator": "chrome/pt-PT/locale/pt-PT/communicator/",
         "devtools": "chrome/pt-PT/locale/pt-PT/devtools/client/",
         "devtools-shared": "chrome/pt-PT/locale/pt-PT/devtools/shared/",
-        "devtools-startup": "chrome/pt-PT/locale/pt-PT/devtools/startup/",
         "global": "chrome/pt-PT/locale/pt-PT/global/",
         "global-platform": {
           "macosx": "chrome/pt-PT/locale/pt-PT/global-platform/mac/",

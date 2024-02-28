@@ -15,6 +15,10 @@ dateformat-long =
 #   $date (String) - the formatted example date
 dateformat-short =
     .label = Қысқа: { $date }
+use-system-timezone-radio-button =
+    .label = Жүйенің уақыт белдеуін пайдалану
+set-timezone-manually-radio-button =
+    .label = Уақыт белдеуін қолмен орнату
 timezone-label =
     .value = Уақыт белдеуі:
 weekstart-label =
@@ -101,12 +105,9 @@ previous-weeks-label =
     .value = Көрсетілетін өткен апталар саны:
     .accesskey = к
 todaypane-legend = Бүгінгі панелі
-# Note: "Upcoming" is the name of a section and the translation must match the
-# translation of that section name (calendar.upcoming.button.label). Also,
-# it should be upper case (as a proper name) if the target language permits.
-soon-label =
-    .value = Болашақ таңдауы көрсетеді:
-    .accesskey = б
+agenda-days =
+    .value = Күн тәртібінде:
+    .accesskey = р
 event-task-legend = Оқиғалар және тапсырмалар
 default-length-label =
     .value = Оқиға және тапсырманың үнсіз келісім ұзақтығы:
@@ -161,7 +162,7 @@ reminder-dialog-label =
     .label = Еске салу сұхбатын көрсету
     .accesskey = с
 missed-reminder-label =
-    .label = Жазу үшін қолжетерлік күнтізбелер үшін қалып қойған хабарламаларды көрсету
+    .label = Жазу үшін қолжетімді күнтізбелер үшін қалып қойған хабарламаларды көрсету
     .accesskey = з
 reminder-default-legend = Еске салудың бастапқы баптаулары
 default-snooze-label =

@@ -12,6 +12,7 @@
 #include "CompositableTransactionParent.h"
 #include "mozilla/Assertions.h"  // for MOZ_ASSERT_HELPER2
 #include "mozilla/Attributes.h"  // for override
+#include "mozilla/dom/ipc/IdType.h"
 #include "mozilla/ipc/ProtocolUtils.h"
 #include "mozilla/ipc/SharedMemory.h"  // for SharedMemory, etc
 #include "mozilla/layers/CompositorThread.h"
@@ -39,10 +40,16 @@ class ImageBridgeParent final : public PImageBridgeParent,
   typedef nsTArray<OpDestroy> OpDestroyArray;
 
  protected:
-  ImageBridgeParent(nsISerialEventTarget* aThread, ProcessId aChildProcessId);
+  ImageBridgeParent(nsISerialEventTarget* aThread, ProcessId aChildProcessId,
+                    dom::ContentParentId aContentId);
 
  public:
-  virtual ~ImageBridgeParent();
+  NS_IMETHOD_(MozExternalRefCountType) AddRef() override {
+    return ISurfaceAllocator::AddRef();
+  }
+  NS_IMETHOD_(MozExternalRefCountType) Release() override {
+    return ISurfaceAllocator::Release();
+  }
 
   /**
    * Creates the globals of ImageBridgeParent.
@@ -51,7 +58,8 @@ class ImageBridgeParent final : public PImageBridgeParent,
 
   static ImageBridgeParent* CreateSameProcess();
   static bool CreateForGPUProcess(Endpoint<PImageBridgeParent>&& aEndpoint);
-  static bool CreateForContent(Endpoint<PImageBridgeParent>&& aEndpoint);
+  static bool CreateForContent(Endpoint<PImageBridgeParent>&& aEndpoint,
+                               dom::ContentParentId aContentId);
   static void Shutdown();
 
   IShmemAllocator* AsShmemAllocator() override { return this; }
@@ -65,14 +73,8 @@ class ImageBridgeParent final : public PImageBridgeParent,
   void NotifyNotUsed(PTextureParent* aTexture,
                      uint64_t aTransactionId) override;
 
-  static void NotifyBufferNotUsedOfCompositorBridge(
-      base::ProcessId aChildProcessId, TextureHost* aTexture,
-      uint64_t aTransactionId);
-
-  void NotifyBufferNotUsedOfCompositorBridge(TextureHost* aTexture,
-                                             uint64_t aTransactionId);
-
   base::ProcessId GetChildProcessId() override { return OtherPid(); }
+  dom::ContentParentId GetContentId() override { return mContentId; }
 
   // PImageBridge
   mozilla::ipc::IPCResult RecvUpdate(EditArray&& aEdits,
@@ -80,15 +82,14 @@ class ImageBridgeParent final : public PImageBridgeParent,
                                      const uint64_t& aFwdTransactionId);
 
   PTextureParent* AllocPTextureParent(
-      const SurfaceDescriptor& aSharedData, const ReadLockDescriptor& aReadLock,
+      const SurfaceDescriptor& aSharedData, ReadLockDescriptor& aReadLock,
       const LayersBackend& aLayersBackend, const TextureFlags& aFlags,
       const uint64_t& aSerial,
       const wr::MaybeExternalImageId& aExternalImageId);
   bool DeallocPTextureParent(PTextureParent* actor);
 
-  mozilla::ipc::IPCResult RecvNewCompositable(
-      const CompositableHandle& aHandle, const TextureInfo& aInfo,
-      const LayersBackend& aLayersBackend);
+  mozilla::ipc::IPCResult RecvNewCompositable(const CompositableHandle& aHandle,
+                                              const TextureInfo& aInfo);
   mozilla::ipc::IPCResult RecvReleaseCompositable(
       const CompositableHandle& aHandle);
 
@@ -103,11 +104,9 @@ class ImageBridgeParent final : public PImageBridgeParent,
 
   // IShmemAllocator
 
-  bool AllocShmem(size_t aSize, ipc::SharedMemory::SharedMemoryType aType,
-                  ipc::Shmem* aShmem) override;
+  bool AllocShmem(size_t aSize, ipc::Shmem* aShmem) override;
 
-  bool AllocUnsafeShmem(size_t aSize, ipc::SharedMemory::SharedMemoryType aType,
-                        ipc::Shmem* aShmem) override;
+  bool AllocUnsafeShmem(size_t aSize, ipc::Shmem* aShmem) override;
 
   bool DeallocShmem(ipc::Shmem& aShmem) override;
 
@@ -126,13 +125,14 @@ class ImageBridgeParent final : public PImageBridgeParent,
   void Bind(Endpoint<PImageBridgeParent>&& aEndpoint);
 
  private:
+  virtual ~ImageBridgeParent();
+
   static void ShutdownInternal();
 
   void DeferredDestroy();
   nsCOMPtr<nsISerialEventTarget> mThread;
-  // This keeps us alive until ActorDestroy(), at which point we do a
-  // deferred destruction of ourselves.
-  RefPtr<ImageBridgeParent> mSelfRef;
+
+  dom::ContentParentId mContentId;
 
   bool mClosed;
 

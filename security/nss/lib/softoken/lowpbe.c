@@ -29,24 +29,22 @@ SEC_ASN1_MKSUB(SECOID_AlgorithmIDTemplate)
  * based upon the additions in PKCS 12.  This should eventually be moved
  * if RSA updates PKCS 5.
  */
-static const SEC_ASN1Template NSSPKCS5PBEParameterTemplate[] =
-    {
-      { SEC_ASN1_SEQUENCE,
-        0, NULL, sizeof(NSSPKCS5PBEParameter) },
-      { SEC_ASN1_OCTET_STRING,
-        offsetof(NSSPKCS5PBEParameter, salt) },
-      { SEC_ASN1_INTEGER,
-        offsetof(NSSPKCS5PBEParameter, iteration) },
-      { 0 }
-    };
+static const SEC_ASN1Template NSSPKCS5PBEParameterTemplate[] = {
+    { SEC_ASN1_SEQUENCE,
+      0, NULL, sizeof(NSSPKCS5PBEParameter) },
+    { SEC_ASN1_OCTET_STRING,
+      offsetof(NSSPKCS5PBEParameter, salt) },
+    { SEC_ASN1_INTEGER,
+      offsetof(NSSPKCS5PBEParameter, iteration) },
+    { 0 }
+};
 
-static const SEC_ASN1Template NSSPKCS5PKCS12V2PBEParameterTemplate[] =
-    {
-      { SEC_ASN1_SEQUENCE, 0, NULL, sizeof(NSSPKCS5PBEParameter) },
-      { SEC_ASN1_OCTET_STRING, offsetof(NSSPKCS5PBEParameter, salt) },
-      { SEC_ASN1_INTEGER, offsetof(NSSPKCS5PBEParameter, iteration) },
-      { 0 }
-    };
+static const SEC_ASN1Template NSSPKCS5PKCS12V2PBEParameterTemplate[] = {
+    { SEC_ASN1_SEQUENCE, 0, NULL, sizeof(NSSPKCS5PBEParameter) },
+    { SEC_ASN1_OCTET_STRING, offsetof(NSSPKCS5PBEParameter, salt) },
+    { SEC_ASN1_INTEGER, offsetof(NSSPKCS5PBEParameter, iteration) },
+    { 0 }
+};
 
 /* PKCS5 v2 */
 
@@ -57,31 +55,29 @@ struct nsspkcs5V2PBEParameterStr {
 
 typedef struct nsspkcs5V2PBEParameterStr nsspkcs5V2PBEParameter;
 
-static const SEC_ASN1Template NSSPKCS5V2PBES2ParameterTemplate[] =
-    {
-      { SEC_ASN1_SEQUENCE, 0, NULL, sizeof(nsspkcs5V2PBEParameter) },
-      { SEC_ASN1_INLINE | SEC_ASN1_XTRN,
-        offsetof(nsspkcs5V2PBEParameter, keyParams),
-        SEC_ASN1_SUB(SECOID_AlgorithmIDTemplate) },
-      { SEC_ASN1_INLINE | SEC_ASN1_XTRN,
-        offsetof(nsspkcs5V2PBEParameter, algParams),
-        SEC_ASN1_SUB(SECOID_AlgorithmIDTemplate) },
-      { 0 }
-    };
+static const SEC_ASN1Template NSSPKCS5V2PBES2ParameterTemplate[] = {
+    { SEC_ASN1_SEQUENCE, 0, NULL, sizeof(nsspkcs5V2PBEParameter) },
+    { SEC_ASN1_INLINE | SEC_ASN1_XTRN,
+      offsetof(nsspkcs5V2PBEParameter, keyParams),
+      SEC_ASN1_SUB(SECOID_AlgorithmIDTemplate) },
+    { SEC_ASN1_INLINE | SEC_ASN1_XTRN,
+      offsetof(nsspkcs5V2PBEParameter, algParams),
+      SEC_ASN1_SUB(SECOID_AlgorithmIDTemplate) },
+    { 0 }
+};
 
-static const SEC_ASN1Template NSSPKCS5V2PBEParameterTemplate[] =
-    {
-      { SEC_ASN1_SEQUENCE, 0, NULL, sizeof(NSSPKCS5PBEParameter) },
-      /* this is really a choice, but since we don't understand any other
+static const SEC_ASN1Template NSSPKCS5V2PBEParameterTemplate[] = {
+    { SEC_ASN1_SEQUENCE, 0, NULL, sizeof(NSSPKCS5PBEParameter) },
+    /* this is really a choice, but since we don't understand any other
        * choice, just inline it. */
-      { SEC_ASN1_OCTET_STRING, offsetof(NSSPKCS5PBEParameter, salt) },
-      { SEC_ASN1_INTEGER, offsetof(NSSPKCS5PBEParameter, iteration) },
-      { SEC_ASN1_INTEGER, offsetof(NSSPKCS5PBEParameter, keyLength) },
-      { SEC_ASN1_INLINE | SEC_ASN1_XTRN,
-        offsetof(NSSPKCS5PBEParameter, prfAlg),
-        SEC_ASN1_SUB(SECOID_AlgorithmIDTemplate) },
-      { 0 }
-    };
+    { SEC_ASN1_OCTET_STRING, offsetof(NSSPKCS5PBEParameter, salt) },
+    { SEC_ASN1_INTEGER, offsetof(NSSPKCS5PBEParameter, iteration) },
+    { SEC_ASN1_INTEGER, offsetof(NSSPKCS5PBEParameter, keyLength) },
+    { SEC_ASN1_INLINE | SEC_ASN1_XTRN,
+      offsetof(NSSPKCS5PBEParameter, prfAlg),
+      SEC_ASN1_SUB(SECOID_AlgorithmIDTemplate) },
+    { 0 }
+};
 
 SECStatus
 nsspkcs5_HashBuf(const SECHashObject *hashObj, unsigned char *dest,
@@ -570,6 +566,7 @@ typedef struct KDFCacheItemStr KDFCacheItem;
 /* Bug 1606992 - Cache the hash result for the common case that we're
  * asked to repeatedly compute the key for the same password item,
  * hash, iterations and salt. */
+#define KDF2_CACHE_COUNT 150
 static struct {
     PZLock *lock;
     struct {
@@ -578,7 +575,8 @@ static struct {
         PRBool faulty3DES;
     } cacheKDF1;
     struct {
-        KDFCacheItem common;
+        KDFCacheItem common[KDF2_CACHE_COUNT];
+        int next;
     } cacheKDF2;
 } PBECache;
 
@@ -627,11 +625,15 @@ sftk_setPBECacheKDF2(const SECItem *hash,
                      const SECItem *pwItem)
 {
     PZ_Lock(PBECache.lock);
+    KDFCacheItem *next = &PBECache.cacheKDF2.common[PBECache.cacheKDF2.next];
 
-    sftk_clearPBECommonCacheItemsLocked(&PBECache.cacheKDF2.common);
+    sftk_clearPBECommonCacheItemsLocked(next);
 
-    sftk_setPBECommonCacheItemsKDFLocked(&PBECache.cacheKDF2.common,
-                                         hash, pbe_param, pwItem);
+    sftk_setPBECommonCacheItemsKDFLocked(next, hash, pbe_param, pwItem);
+    PBECache.cacheKDF2.next++;
+    if (PBECache.cacheKDF2.next >= KDF2_CACHE_COUNT) {
+        PBECache.cacheKDF2.next = 0;
+    }
 
     PZ_Unlock(PBECache.lock);
 }
@@ -674,11 +676,16 @@ sftk_getPBECacheKDF2(const NSSPKCS5PBEParameter *pbe_param,
                      const SECItem *pwItem)
 {
     SECItem *result = NULL;
-    const KDFCacheItem *cacheItem = &PBECache.cacheKDF2.common;
+    int i;
 
     PZ_Lock(PBECache.lock);
-    if (sftk_comparePBECommonCacheItemLocked(cacheItem, pbe_param, pwItem)) {
-        result = SECITEM_DupItem(cacheItem->hash);
+    for (i = 0; i < KDF2_CACHE_COUNT; i++) {
+        const KDFCacheItem *cacheItem = &PBECache.cacheKDF2.common[i];
+        if (sftk_comparePBECommonCacheItemLocked(cacheItem,
+                                                 pbe_param, pwItem)) {
+            result = SECITEM_DupItem(cacheItem->hash);
+            break;
+        }
     }
     PZ_Unlock(PBECache.lock);
 
@@ -707,12 +714,16 @@ sftk_getPBECacheKDF1(const NSSPKCS5PBEParameter *pbe_param,
 void
 sftk_PBELockShutdown(void)
 {
+    int i;
     if (PBECache.lock) {
         PZ_DestroyLock(PBECache.lock);
         PBECache.lock = 0;
     }
     sftk_clearPBECommonCacheItemsLocked(&PBECache.cacheKDF1.common);
-    sftk_clearPBECommonCacheItemsLocked(&PBECache.cacheKDF2.common);
+    for (i = 0; i < KDF2_CACHE_COUNT; i++) {
+        sftk_clearPBECommonCacheItemsLocked(&PBECache.cacheKDF2.common[i]);
+    }
+    PBECache.cacheKDF2.next = 0;
 }
 
 /*
@@ -1755,8 +1766,7 @@ sftk_fips_pbkdf_PowerUpSelfTests(void)
     unsigned char iteration_count = 5;
     unsigned char keyLen = 64;
     char *inKeyData = TEST_KEY;
-    static const unsigned char saltData[] =
-        { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07 };
+    static const unsigned char saltData[] = { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07 };
     static const unsigned char pbkdf_known_answer[] = {
         0x31, 0xf0, 0xe5, 0x39, 0x9f, 0x39, 0xb9, 0x29,
         0x68, 0xac, 0xf2, 0xe9, 0x53, 0x9b, 0xb4, 0x9c,

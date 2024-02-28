@@ -4,7 +4,6 @@
 
 // This tests that we use IMAP move if the IMAP server supports it.
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 var { MailServices } = ChromeUtils.import(
   "resource:///modules/MailServices.jsm"
 );
@@ -46,7 +45,7 @@ async function doMove() {
   gFolder1 = rootFolder
     .getChildNamed("folder 1")
     .QueryInterface(Ci.nsIMsgImapMailFolder);
-  let msg = IMAPPump.inbox.msgDatabase.GetMsgHdrForKey(
+  let msg = IMAPPump.inbox.msgDatabase.getMsgHdrForKey(
     IMAPPump.mailbox.uidnext - 1
   );
   IMAPPump.server._test = true;

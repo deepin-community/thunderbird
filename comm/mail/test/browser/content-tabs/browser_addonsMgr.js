@@ -11,17 +11,18 @@ var { mc } = ChromeUtils.import(
   "resource://testing-common/mozmill/FolderDisplayHelpers.jsm"
 );
 var {
+  click_through_appmenu,
   plan_for_modal_dialog,
   wait_for_browser_load,
   wait_for_modal_dialog,
   wait_for_window_close,
 } = ChromeUtils.import("resource://testing-common/mozmill/WindowHelpers.jsm");
 
-add_task(function test_open_addons_with_url() {
+add_task(async function test_open_addons_with_url() {
   mc.window.openAddonsMgr("addons://list/theme");
-  mc.sleep(0);
+  await new Promise(resolve => setTimeout(resolve));
 
-  let tab = mc.tabmail.currentTabInfo;
+  let tab = mc.window.document.getElementById("tabmail").currentTabInfo;
   wait_for_content_tab_load(tab, "about:addons", 10000);
   let categoriesBox = tab.browser.contentDocument.getElementById("categories");
   Assert.equal(
@@ -30,8 +31,8 @@ add_task(function test_open_addons_with_url() {
     "Themes category should be selected!"
   );
 
-  mc.tabmail.switchToTab(0); // switch to 3pane
-  mc.tabmail.closeTab(tab);
+  mc.window.document.getElementById("tabmail").switchToTab(0); // switch to 3pane
+  mc.window.document.getElementById("tabmail").closeTab(tab);
 });
 
 /**
@@ -42,10 +43,15 @@ add_task(function test_open_addons_with_url() {
  */
 add_task(function test_addon_prefs() {
   // Open Add-on Options.
-  const subview = mc.click_through_appmenu([{ id: "appmenu_addons" }]);
+  const subview = click_through_appmenu(
+    [{ id: "appmenu_addons" }],
+    null,
+    mc.window
+  );
 
-  plan_for_modal_dialog("mozmill-prefs", function(controller) {
-    // Add |mc.sleep(1000);| here to see the popup dialog.
+  plan_for_modal_dialog("mozmill-prefs", function (controller) {
+    // Add | await new Promise(resolve => setTimeout(resolve, 1000));|
+    // here to see the popup dialog.
     controller.window.close();
   });
 
@@ -58,7 +64,7 @@ add_task(function test_addon_prefs() {
       item.label == "MozMill"
     ) {
       foundAddon = true;
-      mc.click(item);
+      EventUtils.synthesizeMouseAtCenter(item, { clickCount: 1 }, mc.window);
       break;
     }
   }

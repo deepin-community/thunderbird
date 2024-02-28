@@ -23,6 +23,8 @@ var {
   be_in_folder,
   close_message_window,
   create_folder,
+  get_about_3pane,
+  get_about_message,
   mc,
   open_selected_message_in_new_window,
   select_click_row,
@@ -47,15 +49,12 @@ var msgBody =
   "dns prefetch test message\n" +
   "</body>\n</html>\n";
 
-add_task(function setupModule(module) {
-  folder = create_folder("dnsPrefetch");
+add_setup(async function () {
+  folder = await create_folder("dnsPrefetch");
 });
 
 function addToFolder(aSubject, aBody, aFolder) {
-  let msgId =
-    Cc["@mozilla.org/uuid-generator;1"]
-      .getService(Ci.nsIUUIDGenerator)
-      .generateUUID() + "@mozillamessaging.invalid";
+  let msgId = Services.uuid.generateUUID() + "@mozillamessaging.invalid";
 
   let source =
     "From - Sat Nov  1 12:39:54 2008\n" +
@@ -132,25 +131,30 @@ function checkComposeWindow(replyType) {
 
   // Check the prefetch in the compose window.
   Assert.ok(
-    !replyWindow.e("content-frame").docShell.allowDNSPrefetch,
+    !replyWindow.window.document.getElementById("messageEditor").docShell
+      .allowDNSPrefetch,
     `Should have disabled DNS prefetch in the compose window (${errMsg})`
   );
 
   composeHelper.close_compose_window(replyWindow);
 }
 
-add_task(function test_dnsPrefetch_message() {
+add_task(async function test_dnsPrefetch_message() {
   // Now we have started up, simply check that DNS prefetch is disabled
+  let aboutMessage = get_about_message();
   Assert.ok(
-    !mc.e("messagepane").docShell.allowDNSPrefetch,
-    "Should disable DNS Prefetch on messagepane at startup"
+    !aboutMessage.document.getElementById("messagepane").docShell
+      .allowDNSPrefetch,
+    "messagepane should have disabled DNS prefetch at startup"
   );
+  let about3Pane = get_about_3pane();
   Assert.ok(
-    !mc.e("multimessage").docShell.allowDNSPrefetch,
-    "Should disable DNS Prefetch on multimessage at startup"
+    !about3Pane.document.getElementById("multiMessageBrowser").docShell
+      .allowDNSPrefetch.allowDNSPrefetch,
+    "multimessagepane should have disabled DNS prefetch at startup"
   );
 
-  be_in_folder(folder);
+  await be_in_folder(folder);
 
   assert_nothing_selected();
 
@@ -158,18 +162,18 @@ add_task(function test_dnsPrefetch_message() {
 
   // Now we've got a message selected, check again.
   Assert.ok(
-    !mc.e("messagepane").docShell.allowDNSPrefetch,
+    !aboutMessage.document.getElementById("messagepane").docShell
+      .allowDNSPrefetch,
     "Should keep DNS Prefetch disabled on messagepane after selecting message"
   );
 
   let secondMsg = addMsgToFolder(folder);
   select_shift_click_row(firstMsg);
-
-  console.log(firstMsg, secondMsg);
   assert_selected_and_displayed(firstMsg, secondMsg);
 
   Assert.ok(
-    !mc.e("multimessage").docShell.allowDNSPrefetch,
+    !about3Pane.document.getElementById("multiMessageBrowser").docShell
+      .allowDNSPrefetch,
     "Should keep DNS Prefetch disabled on multimessage after selecting message"
   );
 
@@ -181,8 +185,10 @@ add_task(async function test_dnsPrefetch_standaloneMessage() {
   assert_selected_and_displayed(msgc, gMsgHdr);
 
   // Check the docshell.
+  let aboutMessage = get_about_message(msgc.window);
   Assert.ok(
-    !mc.e("messagepane").docShell.allowDNSPrefetch,
+    !aboutMessage.document.getElementById("messagepane").docShell
+      .allowDNSPrefetch,
     "Should disable DNS Prefetch on messagepane in standalone message window."
   );
 
@@ -198,7 +204,8 @@ add_task(function test_dnsPrefetch_compose() {
 add_task(async function test_dnsPrefetch_contentTab() {
   // To open a tab we're going to have to cheat and use tabmail so we can load
   // in the data of what we want.
-  let preCount = mc.tabmail.tabContainer.allTabs.length;
+  let tabmail = mc.window.document.getElementById("tabmail");
+  let preCount = tabmail.tabContainer.allTabs.length;
 
   let dataurl =
     "data:text/html,<html><head><title>test dns prefetch</title>" +
@@ -206,14 +213,14 @@ add_task(async function test_dnsPrefetch_contentTab() {
 
   let newTab = open_content_tab_with_url(dataurl);
 
-  await SpecialPowers.spawn(mc.tabmail.getBrowserForSelectedTab(), [], () => {
+  await SpecialPowers.spawn(tabmail.getBrowserForSelectedTab(), [], () => {
     Assert.ok(docShell, "docShell should be available");
     Assert.ok(docShell.allowDNSPrefetch, "allowDNSPrefetch should be enabled");
   });
 
-  mc.tabmail.closeTab(newTab);
+  tabmail.closeTab(newTab);
 
-  if (mc.tabmail.tabContainer.allTabs.length != preCount) {
+  if (tabmail.tabContainer.allTabs.length != preCount) {
     throw new Error("The content tab didn't close");
   }
 

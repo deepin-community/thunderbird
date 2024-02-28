@@ -53,7 +53,7 @@ const tests = [
   },
   {
     contentType: "application/something",
-    expectedContentType: "application/something",
+    expectedContentType: "application/ogg",
     flags: Ci.nsIChannel.LOAD_CALL_CONTENT_SNIFFERS,
   },
 ];
@@ -103,7 +103,7 @@ function runNext() {
     return;
   }
   var channel = setupChannel(PATH, tests[testRan].flags);
-  httpserver.registerPathHandler(PATH, function(request, response) {
+  httpserver.registerPathHandler(PATH, function (request, response) {
     response.setHeader("Content-Type", tests[testRan].contentType, false);
     response.bodyOutputStream.write(data, data.length);
   });

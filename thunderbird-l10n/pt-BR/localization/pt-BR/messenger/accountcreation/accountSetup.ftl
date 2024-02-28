@@ -6,8 +6,8 @@ account-setup-tab-title = Configuração de conta
 
 ## Header
 
-account-setup-title = Configure com seu endereço de email existente
-account-setup-description = Para usar seu endereço de email atual, preencha suas credenciais.
+account-setup-title = Configuração com endereço de email existente
+account-setup-description = Para usar um endereço de email seu, preencha suas credenciais.
 account-setup-secondary-description = O { -brand-product-name } procura automaticamente uma configuração de servidor recomendada que esteja funcionando.
 account-setup-success-title = Conta criada com sucesso
 account-setup-success-description = Agora você pode usar esta conta no { -brand-short-name }.
@@ -23,7 +23,7 @@ account-setup-name-input =
 account-setup-name-info-icon =
     .title = Seu nome, como será mostrado aos outros
 account-setup-name-warning-icon =
-    .title = { account-setup-name-warning }
+    .title = Digite seu nome
 account-setup-email-label = Endereço de email
     .accesskey = E
 account-setup-email-input =
@@ -31,14 +31,12 @@ account-setup-email-input =
 account-setup-email-info-icon =
     .title = Seu endereço de email existente
 account-setup-email-warning-icon =
-    .title = { account-setup-email-warning }
+    .title = Endereço de email inválido
 account-setup-password-label = Senha
     .accesskey = S
     .title = Opcional, será usada apenas para validar o nome de usuário
 account-provisioner-button = Obter um novo endereço de email
     .accesskey = O
-account-setup-password-toggle =
-    .title = Exibir/ocultar senha
 account-setup-password-toggle-show =
     .title = Exibir senha
 account-setup-password-toggle-hide =
@@ -106,7 +104,7 @@ account-setup-step4-image =
     .title = Erro de conexão
 account-setup-step5-image =
     .title = Conta criada
-account-setup-privacy-footnote2 = Suas credenciais só são armazenadas localmente em seu computador.
+account-setup-privacy-footnote2 = Suas credenciais são armazenadas apenas localmente neste computador.
 account-setup-selection-help = Não tem certeza do que selecionar?
 account-setup-selection-error = Precisa de ajuda?
 account-setup-success-help = Não tem certeza do que fazer a seguir?
@@ -124,21 +122,14 @@ account-setup-results-area-title =
         [one] Configuração disponível
        *[other] Configurações disponíveis
     }
-# Note: IMAP is the name of a protocol.
-account-setup-result-imap = IMAP
 account-setup-result-imap-description = Mantém suas pastas e emails sincronizados em seu servidor
-# Note: POP3 is the name of a protocol.
-account-setup-result-pop = POP3
-account-setup-result-pop-description = Mantém suas pastas e emails em seu computador
-# Note: Exchange is the name of a product.
-account-setup-result-exchange = Exchange
+account-setup-result-pop-description = Mantém suas pastas e emails neste computador
 # Note: Exchange, Office365 are the name of products.
 account-setup-result-exchange2-description = Usar servidor Microsoft Exchange ou serviços na nuvem do Office365
 account-setup-incoming-title = Recebimento
 account-setup-outgoing-title = Envio
 account-setup-username-title = Nome de usuário
 account-setup-exchange-title = Servidor
-account-setup-result-smtp = SMTP
 account-setup-result-no-encryption = Sem criptografia
 account-setup-result-ssl = SSL/TLS
 account-setup-result-starttls = STARTTLS
@@ -162,9 +153,6 @@ account-setup-provisioner-error = Ocorreu um erro ao configurar sua nova conta n
 account-setup-manual-config-title = Configurações do servidor
 account-setup-incoming-server-legend = Servidor de recebimento
 account-setup-protocol-label = Protocolo:
-protocol-imap-option = { account-setup-result-imap }
-protocol-pop-option = { account-setup-result-pop }
-protocol-exchange-option = { account-setup-result-exchange }
 account-setup-hostname-label = Servidor:
 account-setup-port-label = Porta:
     .title = Defina o número da porta como 0 para detecção automática
@@ -289,6 +277,8 @@ account-setup-calendar-name-input =
 account-setup-calendar-color-label = Cor
 account-setup-calendar-refresh-label = Atualizar
 account-setup-calendar-refresh-manual = Manualmente
+# Variables:
+# $count (Number) - Number of minutes in the calendar refresh interval.
 account-setup-calendar-refresh-interval =
     { $count ->
         [one] A cada minuto

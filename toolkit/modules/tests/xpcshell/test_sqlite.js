@@ -1,16 +1,26 @@
 "use strict";
 
-do_get_profile();
+const PROFILE_DIR = do_get_profile().path;
 
-const { Promise } = ChromeUtils.import("resource://gre/modules/Promise.jsm");
-const { PromiseUtils } = ChromeUtils.import(
-  "resource://gre/modules/PromiseUtils.jsm"
+const { PromiseUtils } = ChromeUtils.importESModule(
+  "resource://gre/modules/PromiseUtils.sys.mjs"
 );
-const { OS } = ChromeUtils.import("resource://gre/modules/osfile.jsm");
-const { FileUtils } = ChromeUtils.import(
-  "resource://gre/modules/FileUtils.jsm"
+const { FileUtils } = ChromeUtils.importESModule(
+  "resource://gre/modules/FileUtils.sys.mjs"
 );
-const { Sqlite } = ChromeUtils.import("resource://gre/modules/Sqlite.jsm");
+const { Sqlite } = ChromeUtils.importESModule(
+  "resource://gre/modules/Sqlite.sys.mjs"
+);
+const { TelemetryTestUtils } = ChromeUtils.importESModule(
+  "resource://testing-common/TelemetryTestUtils.sys.mjs"
+);
+
+// Enable the collection (during test) for all products so even products
+// that don't collect the data will be able to run the test without failure.
+Services.prefs.setBoolPref(
+  "toolkit.telemetry.testing.overrideProductsCheck",
+  true
+);
 
 function sleep(ms) {
   return new Promise(resolve => {
@@ -28,7 +38,7 @@ function sleep(ms) {
   });
 }
 
-// When testing finalization, use this to tell Sqlite.jsm to not throw
+// When testing finalization, use this to tell Sqlite.sys.mjs to not throw
 // an uncatchable `Promise.reject`
 function failTestsOnAutoClose(enabled) {
   Sqlite.failTestsOnAutoClose(enabled);
@@ -83,8 +93,8 @@ async function getDummyTempDatabase(name, extraOptions = {}) {
 }
 
 add_task(async function test_setup() {
-  const { initTestLogging } = ChromeUtils.import(
-    "resource://testing-common/services/common/logging.js"
+  const { initTestLogging } = ChromeUtils.importESModule(
+    "resource://testing-common/services/common/logging.sys.mjs"
   );
   initTestLogging("Trace");
 });
@@ -104,19 +114,20 @@ add_task(async function test_open_with_defaultTransactionType() {
 });
 
 add_task(async function test_open_normal_error() {
-  let currentDir = await OS.File.getCurrentDirectory();
+  let currentDir = do_get_cwd().path;
 
-  let src = OS.Path.join(currentDir, "corrupt.sqlite");
-  Assert.ok(await OS.File.exists(src), "Database file found");
+  let src = PathUtils.join(currentDir, "corrupt.sqlite");
+  Assert.ok(await IOUtils.exists(src), "Database file found");
 
   // Ensure that our database doesn't already exist.
-  let path = OS.Path.join(OS.Constants.Path.profileDir, "corrupt.sqlite");
-  Assert.ok(
-    !(await OS.File.exists(path)),
+  let path = PathUtils.join(PROFILE_DIR, "corrupt.sqlite");
+  await Assert.rejects(
+    IOUtils.stat(path),
+    /Could not stat file\(.*\) because it does not exist/,
     "Database file should not exist yet"
   );
 
-  await OS.File.copy(src, path);
+  await IOUtils.copy(src, path);
 
   let openPromise = Sqlite.openConnection({ path });
   await Assert.rejects(
@@ -129,10 +140,7 @@ add_task(async function test_open_normal_error() {
 });
 
 add_task(async function test_open_unshared() {
-  let path = OS.Path.join(
-    OS.Constants.Path.profileDir,
-    "test_open_unshared.sqlite"
-  );
+  let path = PathUtils.join(PROFILE_DIR, "test_open_unshared.sqlite");
 
   let c = await Sqlite.openConnection({ path, sharedMemoryCache: false });
   await c.close();
@@ -330,11 +338,12 @@ add_task(async function test_execute_invalid_statement() {
   await new Promise(resolve => {
     Assert.equal(c._connectionData._anonymousStatements.size, 0);
 
-    c.execute("SELECT invalid FROM unknown").then(do_throw, function onError(
-      error
-    ) {
-      resolve();
-    });
+    c.execute("SELECT invalid FROM unknown").then(
+      do_throw,
+      function onError(error) {
+        resolve();
+      }
+    );
   });
 
   // Ensure we don't leak the statement instance.
@@ -361,13 +370,15 @@ add_task(async function test_on_row_exception_ignored() {
   }
 
   let i = 0;
-  let hasResult = await c.execute("SELECT * FROM DIRS", null, function onRow(
-    row
-  ) {
-    i++;
+  let hasResult = await c.execute(
+    "SELECT * FROM DIRS",
+    null,
+    function onRow(row) {
+      i++;
 
-    throw new Error("Some silly error.");
-  });
+      throw new Error("Some silly error.");
+    }
+  );
 
   Assert.equal(hasResult, true);
   Assert.equal(i, 10);
@@ -385,16 +396,17 @@ add_task(async function test_on_row_stop_iteration() {
   }
 
   let i = 0;
-  let hasResult = await c.execute("SELECT * FROM dirs", null, function onRow(
-    row,
-    cancel
-  ) {
-    i++;
+  let hasResult = await c.execute(
+    "SELECT * FROM dirs",
+    null,
+    function onRow(row, cancel) {
+      i++;
 
-    if (i == 5) {
-      cancel();
+      if (i == 5) {
+        cancel();
+      }
     }
-  });
+  );
 
   Assert.equal(hasResult, true);
   Assert.equal(i, 5);
@@ -425,7 +437,7 @@ add_task(async function test_invalid_transaction_type() {
   let c = await getDummyDatabase("invalid_transaction_type");
 
   Assert.throws(
-    () => c.executeTransaction(function() {}, "foobar"),
+    () => c.executeTransaction(function () {}, "foobar"),
     /Unknown transaction type/,
     "Unknown transaction type should throw"
   );
@@ -456,7 +468,7 @@ add_task(async function test_execute_transaction_success() {
 add_task(async function test_execute_transaction_rollback() {
   let c = await getDummyDatabase("execute_transaction_rollback");
 
-  let deferred = Promise.defer();
+  let deferred = PromiseUtils.defer();
 
   c.executeTransaction(async function transaction(conn) {
     await conn.execute("INSERT INTO dirs (path) VALUES ('foo')");
@@ -506,7 +518,7 @@ add_task(async function test_multiple_transactions() {
 
   for (let i = 0; i < 10; ++i) {
     // We don't wait for these transactions.
-    c.executeTransaction(async function() {
+    c.executeTransaction(async function () {
       await c.execute("INSERT INTO dirs (path) VALUES (:path)", {
         path: `foo${i}`,
       });
@@ -514,7 +526,7 @@ add_task(async function test_multiple_transactions() {
     });
   }
   for (let i = 0; i < 10; ++i) {
-    await c.executeTransaction(async function() {
+    await c.executeTransaction(async function () {
       await c.execute("INSERT INTO dirs (path) VALUES (:path)", {
         path: `bar${i}`,
       });
@@ -532,26 +544,28 @@ add_task(async function test_multiple_transactions() {
 // an externally opened transaction exists.
 add_task(async function test_wrapped_connection_transaction() {
   let file = new FileUtils.File(
-    OS.Path.join(
-      OS.Constants.Path.profileDir,
-      "test_wrapStorageConnection.sqlite"
-    )
+    PathUtils.join(PROFILE_DIR, "test_wrapStorageConnection.sqlite")
   );
   let c = await new Promise((resolve, reject) => {
-    Services.storage.openAsyncDatabase(file, null, (status, db) => {
-      if (Components.isSuccessCode(status)) {
-        resolve(db.QueryInterface(Ci.mozIStorageAsyncConnection));
-      } else {
-        reject(new Error(status));
+    Services.storage.openAsyncDatabase(
+      file,
+      /* openFlags */ Ci.mozIStorageService.OPEN_DEFAULT,
+      /* connectionFlags */ Ci.mozIStorageService.CONNECTION_DEFAULT,
+      (status, db) => {
+        if (Components.isSuccessCode(status)) {
+          resolve(db.QueryInterface(Ci.mozIStorageAsyncConnection));
+        } else {
+          reject(new Error(status));
+        }
       }
-    });
+    );
   });
 
   let wrapper = await Sqlite.wrapStorageConnection({ connection: c });
   // Start a transaction on the raw connection.
   await c.executeSimpleSQLAsync("BEGIN");
   // Now use executeTransaction, it will be executed, but not in a transaction.
-  await wrapper.executeTransaction(async function() {
+  await wrapper.executeTransaction(async function () {
     await wrapper.execute(
       "CREATE TABLE test (id INTEGER PRIMARY KEY AUTOINCREMENT)"
     );
@@ -565,6 +579,51 @@ add_task(async function test_wrapped_connection_transaction() {
   // database.
   await wrapper.close();
   await c.asyncClose();
+});
+
+add_task(async function test_transaction_timeout() {
+  // Lower the transactions timeout for the test.
+  let defaultTimeout = Sqlite.TRANSACTIONS_TIMEOUT_MS;
+  Sqlite.TRANSACTIONS_TIMEOUT_MS = 500;
+  Services.telemetry.clearScalars();
+  let myResolve = () => {};
+  try {
+    let c = await getDummyDatabase("transaction_timeout");
+    Assert.ok(!c.transactionInProgress, "Should not be in a transaction");
+    let promise = c.executeTransaction(async function transaction(conn) {
+      // Make a change, we'll later check it is undone by ROLLBACK.
+      await conn.execute(
+        "CREATE TABLE test (id INTEGER PRIMARY KEY AUTOINCREMENT)"
+      );
+      Assert.ok(c.transactionInProgress, "Should be in a transaction");
+      // Return a never fulfilled promise.
+      await new Promise(resolve => {
+        // Keep this alive regardless GC, and clean it up in finally.
+        myResolve = resolve;
+      });
+    });
+
+    await Assert.rejects(
+      promise,
+      /Transaction timeout, most likely caused by unresolved pending work./,
+      "A transaction timeout should reject it"
+    );
+
+    let rows = await c.execute("SELECT * FROM dirs");
+    Assert.equal(rows.length, 0, "Changes should have been rolled back");
+    await c.close();
+
+    let scalars = TelemetryTestUtils.getProcessScalars("parent", true, true);
+    TelemetryTestUtils.assertKeyedScalar(
+      scalars,
+      "mozstorage.sqlitejsm_transaction_timeout",
+      "test_transaction_timeout@test_sqlite.js",
+      1
+    );
+  } finally {
+    Sqlite.TRANSACTIONS_TIMEOUT_MS = defaultTimeout;
+    myResolve();
+  }
 });
 
 add_task(async function test_shrink_memory() {
@@ -868,7 +927,11 @@ add_task(
       });
     } catch (ex) {
       print("Caught expected exception: " + ex);
-      Assert.ok(ex.result, "The ex.result value should be forwarded.");
+      Assert.greater(
+        ex.result,
+        0x80000000,
+        "The ex.result value should be forwarded."
+      );
     }
 
     // We did not get to the end of our in-transaction block.
@@ -901,7 +964,11 @@ add_task(async function test_programmatic_binding_implicit_transaction() {
     secondSucceeded = true;
   } catch (ex) {
     print("Caught expected exception: " + ex);
-    Assert.ok(ex.result, "The ex.result value should be forwarded.");
+    Assert.greater(
+      ex.result,
+      0x80000000,
+      "The ex.result value should be forwarded."
+    );
   }
 
   Assert.ok(!secondSucceeded);
@@ -943,7 +1010,7 @@ add_task(async function test_direct() {
   let begin = db.createAsyncStatement("BEGIN DEFERRED TRANSACTION");
   let end = db.createAsyncStatement("COMMIT TRANSACTION");
 
-  let deferred = Promise.defer();
+  let deferred = PromiseUtils.defer();
   begin.executeAsync({
     handleCompletion(reason) {
       deferred.resolve();
@@ -953,7 +1020,7 @@ add_task(async function test_direct() {
 
   statement.bindParameters(params);
 
-  deferred = Promise.defer();
+  deferred = PromiseUtils.defer();
   print("Executing async.");
   statement.executeAsync({
     handleResult(resultSet) {},
@@ -974,7 +1041,7 @@ add_task(async function test_direct() {
 
   await deferred.promise;
 
-  deferred = Promise.defer();
+  deferred = PromiseUtils.defer();
   end.executeAsync({
     handleCompletion(reason) {
       deferred.resolve();
@@ -986,8 +1053,8 @@ add_task(async function test_direct() {
   begin.finalize();
   end.finalize();
 
-  deferred = Promise.defer();
-  db.asyncClose(function() {
+  deferred = PromiseUtils.defer();
+  db.asyncClose(function () {
     deferred.resolve();
   });
   await deferred.promise;
@@ -996,19 +1063,21 @@ add_task(async function test_direct() {
 // Test Sqlite.cloneStorageConnection.
 add_task(async function test_cloneStorageConnection() {
   let file = new FileUtils.File(
-    OS.Path.join(
-      OS.Constants.Path.profileDir,
-      "test_cloneStorageConnection.sqlite"
-    )
+    PathUtils.join(PROFILE_DIR, "test_cloneStorageConnection.sqlite")
   );
   let c = await new Promise((resolve, reject) => {
-    Services.storage.openAsyncDatabase(file, null, (status, db) => {
-      if (Components.isSuccessCode(status)) {
-        resolve(db.QueryInterface(Ci.mozIStorageAsyncConnection));
-      } else {
-        reject(new Error(status));
+    Services.storage.openAsyncDatabase(
+      file,
+      /* openFlags */ Ci.mozIStorageService.OPEN_DEFAULT,
+      /* connectionFlags */ Ci.mozIStorageService.CONNECTION_DEFAULT,
+      (status, db) => {
+        if (Components.isSuccessCode(status)) {
+          resolve(db.QueryInterface(Ci.mozIStorageAsyncConnection));
+        } else {
+          reject(new Error(status));
+        }
       }
-    });
+    );
   });
 
   let clone = await Sqlite.cloneStorageConnection({
@@ -1062,10 +1131,7 @@ add_task(async function test_clone() {
 
 // Test clone(readOnly) method.
 add_task(async function test_readOnly_clone() {
-  let path = OS.Path.join(
-    OS.Constants.Path.profileDir,
-    "test_readOnly_clone.sqlite"
-  );
+  let path = PathUtils.join(PROFILE_DIR, "test_readOnly_clone.sqlite");
   let c = await Sqlite.openConnection({ path, sharedMemoryCache: false });
 
   let clone = await c.clone(true);
@@ -1085,19 +1151,21 @@ add_task(async function test_readOnly_clone() {
 // Test Sqlite.wrapStorageConnection.
 add_task(async function test_wrapStorageConnection() {
   let file = new FileUtils.File(
-    OS.Path.join(
-      OS.Constants.Path.profileDir,
-      "test_wrapStorageConnection.sqlite"
-    )
+    PathUtils.join(PROFILE_DIR, "test_wrapStorageConnection.sqlite")
   );
   let c = await new Promise((resolve, reject) => {
-    Services.storage.openAsyncDatabase(file, null, (status, db) => {
-      if (Components.isSuccessCode(status)) {
-        resolve(db.QueryInterface(Ci.mozIStorageAsyncConnection));
-      } else {
-        reject(new Error(status));
+    Services.storage.openAsyncDatabase(
+      file,
+      /* openFlags */ Ci.mozIStorageService.OPEN_DEFAULT,
+      /* connectionFlags */ Ci.mozIStorageService.CONNECTION_DEFAULT,
+      (status, db) => {
+        if (Components.isSuccessCode(status)) {
+          resolve(db.QueryInterface(Ci.mozIStorageAsyncConnection));
+        } else {
+          reject(new Error(status));
+        }
       }
-    });
+    );
   });
 
   let wrapper = await Sqlite.wrapStorageConnection({ connection: c });
@@ -1145,7 +1213,7 @@ add_task(async function test_warning_message_on_finalization() {
   failTestsOnAutoClose(false);
   let c = await getDummyDatabase("warning_message_on_finalization");
   let identifier = c._connectionData._identifier;
-  let deferred = Promise.defer();
+  let deferred = PromiseUtils.defer();
 
   let listener = {
     observe(msg) {
@@ -1173,7 +1241,7 @@ add_task(async function test_warning_message_on_finalization() {
 
 add_task(async function test_error_message_on_unknown_finalization() {
   failTestsOnAutoClose(false);
-  let deferred = Promise.defer();
+  let deferred = PromiseUtils.defer();
 
   let listener = {
     observe(msg) {
@@ -1308,15 +1376,28 @@ add_task(async function test_interrupt() {
   // Testing the interrupt functionality is left to mozStorage unit tests, here
   // we'll just test error conditions.
   let c = await getDummyDatabase("interrupt");
-  Assert.throws(
-    () => c.interrupt(),
-    /NS_ERROR_ILLEGAL_VALUE/,
-    "Sqlite.interrupt() should throw on a writable connection"
-  );
+  await c.interrupt();
+  ok(true, "Sqlite.interrupt() should not throw on a writable connection");
   await c.close();
   Assert.throws(
     () => c.interrupt(),
     /Connection is not open/,
     "Sqlite.interrupt() should throw on a closed connection"
   );
+});
+
+add_task(async function test_pageSize() {
+  // Testing the possibility to set the page size on database creation.
+  await Assert.rejects(
+    getDummyDatabase("pagesize", { pageSize: 1234 }),
+    /Invalid pageSize/,
+    "Check invalid pageSize value"
+  );
+  let c = await getDummyDatabase("pagesize", { pageSize: 8192 });
+  Assert.equal(
+    (await c.execute("PRAGMA page_size"))[0].getResultByIndex(0),
+    8192,
+    "Check page size was set"
+  );
+  await c.close();
 });

@@ -2,11 +2,9 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-/* import-globals-from agenda-listbox-utils.js */
 /* import-globals-from calendar-modes.js */
+/* import-globals-from calendar-tabs.js */
 /* import-globals-from calendar-views-utils.js */
-
-/* globals switchCalendarView */
 
 var { cal } = ChromeUtils.import("resource:///modules/calendar/calUtils.jsm");
 
@@ -33,13 +31,14 @@ var TodayPane = {
    */
   async onLoad() {
     this.isLoaded = true;
-    await agendaListbox.init();
 
     TodayPane.paneViews = [
       cal.l10n.getCalString("eventsandtasks"),
       cal.l10n.getCalString("tasksonly"),
       cal.l10n.getCalString("eventsonly"),
     ];
+
+    this.agenda = document.getElementById("agenda");
 
     TodayPane.updateDisplay();
     TodayPane.updateSplitterState();
@@ -137,10 +136,14 @@ var TodayPane = {
   /**
    * Updates the applied filter and show completed view of the unifinder todo.
    *
-   * @param {String} [filter] - The filter name to set.
+   * @param {string} [filter] - The filter name to set.
    */
   updateCalendarToDoUnifinder(filter) {
     let tree = document.getElementById("unifinder-todo-tree");
+    if (!tree.hasBeenVisible) {
+      tree.hasBeenVisible = true;
+      tree.refresh();
+    }
 
     // Set up hiding completed tasks for the unifinder-todo tree
     filter = filter || tree.getAttribute("filterValue") || "throughcurrent";
@@ -188,9 +191,7 @@ var TodayPane = {
       } else {
         return;
       }
-      let title = document.getElementById("calendar-tab-button").getAttribute("tooltiptext");
-      document.getElementById("tabmail").openTab("calendar", { title });
-      currentView().goToDay(agendaListbox.today.start);
+      document.getElementById("tabmail").openTab("calendar");
     }
   },
 
@@ -366,6 +367,7 @@ var TodayPane = {
   setDaywithjsDate(aNewDate) {
     let newdatetime = cal.dtz.jsDateToDateTime(aNewDate, cal.dtz.floating);
     newdatetime = newdatetime.getInTimezone(cal.dtz.defaultTimezone);
+    newdatetime.hour = newdatetime.minute = newdatetime.second = 0;
     this.setDay(newdatetime, true);
   },
 
@@ -403,7 +405,7 @@ var TodayPane = {
     currentweeklabel.value =
       cal.l10n.getCalString("shortcalendarweek") +
       " " +
-      cal.getWeekInfoService().getWeekTitle(this.start);
+      cal.weekInfoService.getWeekTitle(this.start);
 
     if (!aDontUpdateMinimonth) {
       try {
@@ -411,7 +413,7 @@ var TodayPane = {
         // As there's no known plausible explanation, just catch the exception and carry on.
         document.getElementById("today-minimonth").value = cal.dtz.dateTimeToJsDate(this.start);
       } catch (ex) {
-        Cu.reportError(ex);
+        console.error(ex);
       }
     }
     this.updatePeriod();
@@ -443,7 +445,7 @@ var TodayPane = {
    * start date.
    */
   updatePeriod() {
-    agendaListbox.refreshPeriodDates(this.start.clone());
+    this.agenda.update(this.start);
     if (document.getElementById("todo-tab-panel").isVisible()) {
       this.updateCalendarToDoUnifinder();
     }
@@ -465,13 +467,13 @@ var TodayPane = {
    * Handler function to update the today-pane when the current mode changes.
    */
   onModeModified() {
-    let todayPanePanel = document.getElementById("today-pane-panel");
-    // Store the previous mode panel's width.
-    todayPanePanel.setModeAttribute("modewidths", todayPanePanel.width, TodayPane.previousMode);
-
     TodayPane.updateDisplay();
     TodayPane.updateSplitterState();
-    todayPanePanel.width = todayPanePanel.getModeAttribute("modewidths");
+    let todayPanePanel = document.getElementById("today-pane-panel");
+    const currentWidth = todayPanePanel.getModeAttribute("modewidths");
+    if (currentWidth != 0) {
+      todayPanePanel.style.width = `${currentWidth}px`;
+    }
     TodayPane.previousMode = gCurrentMode;
   },
 

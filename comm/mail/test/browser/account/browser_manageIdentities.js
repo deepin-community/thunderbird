@@ -29,7 +29,6 @@ var { plan_for_modal_dialog, wait_for_modal_dialog } = ChromeUtils.import(
 var { MailServices } = ChromeUtils.import(
   "resource:///modules/MailServices.jsm"
 );
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 
 var { mc } = ChromeUtils.import(
   "resource://testing-common/mozmill/FolderDisplayHelpers.jsm"
@@ -44,7 +43,7 @@ var gPopAccount, gOriginalAccountCount, gIdentitiesWin;
 /**
  * Load the identities dialog.
  *
- * @return {Window} The loaded window of the identities dialog.
+ * @returns {Window} The loaded window of the identities dialog.
  */
 async function identitiesListDialogLoaded(win) {
   let manageButton = win.document.getElementById(
@@ -60,8 +59,8 @@ async function identitiesListDialogLoaded(win) {
 /**
  * Load an identity listed in the identities dialog.
  *
- * @param {Number} identityIdx - The index of the identity, in the list.
- * @return {Window} The loaded window of the identities dialog.
+ * @param {number} identityIdx - The index of the identity, in the list.
+ * @returns {Window} The loaded window of the identities dialog.
  */
 async function identityDialogLoaded(identityIdx) {
   let identitiesList = gIdentitiesWin.document.getElementById("identitiesList");
@@ -89,7 +88,7 @@ async function dialogClosed(win) {
   return dialogClosing;
 }
 
-add_task(async function setup() {
+add_setup(async function () {
   // There may be pre-existing accounts from other tests.
   gOriginalAccountCount = MailServices.accounts.allServers.length;
 
@@ -111,6 +110,26 @@ add_task(async function setup() {
     gOriginalAccountCount + 1
   );
 
+  let firstIdentity = gPopAccount.identities[0];
+
+  Assert.equal(
+    firstIdentity.autoEncryptDrafts,
+    true,
+    "encrypted drafts should be enabled by default"
+  );
+  Assert.equal(
+    firstIdentity.protectSubject,
+    true,
+    "protected subject should be enabled by default"
+  );
+  Assert.equal(
+    firstIdentity.signMail,
+    false,
+    "signing should be disabled by default"
+  );
+
+  firstIdentity.autoEncryptDrafts = false;
+
   registerCleanupFunction(function rmAccount() {
     // Remove our test account to leave the profile clean.
     MailServices.accounts.removeAccount(gPopAccount);
@@ -124,7 +143,7 @@ add_task(async function setup() {
   // Go to the account settings.
   let tab = await openAccountSettings();
   registerCleanupFunction(function closeTab() {
-    mc.tabmail.closeTab(tab);
+    mc.window.document.getElementById("tabmail").closeTab(tab);
   });
 
   // To the account main page.
@@ -136,9 +155,8 @@ add_task(async function setup() {
   click_account_tree_row(tab, accountRow);
 
   // Click "Manage Identities" to show the list of identities.
-  let iframe = tab.browser.contentWindow.document.getElementById(
-    "contentFrame"
-  );
+  let iframe =
+    tab.browser.contentWindow.document.getElementById("contentFrame");
   gIdentitiesWin = await identitiesListDialogLoaded(iframe.contentWindow);
 });
 
@@ -223,16 +241,15 @@ async function test_identity_idx(idx) {
       "chrome://openpgp/content/ui/keyDetailsDlg.xhtml"
     );
     info(`Will open key details dialog for key 0x${keyId}`);
-    EventUtils.synthesizeMouseAtCenter(
-      identityWin.document.querySelector(
-        `#openPgpOption${keyId} button.arrowhead`
-      ),
-      {},
-      identityWin
+    let arrowHead = identityWin.document.querySelector(
+      `#openPgpOption${keyId} button.arrowhead`
     );
+    arrowHead.scrollIntoView(); // Test window is small on CI...
+    EventUtils.synthesizeMouseAtCenter(arrowHead, {}, identityWin);
     let propsButton = identityWin.document.querySelector(
       `#openPgpOption${keyId} button.openpgp-props-btn`
     );
+    Assert.ok(BrowserTestUtils.is_visible(propsButton));
     propsButton.scrollIntoView(); // Test window is small on CI...
     EventUtils.synthesizeMouseAtCenter(propsButton, {}, identityWin);
     let keyDetailsDialog = await keyDetailsDialogLoaded;
@@ -242,14 +259,14 @@ async function test_identity_idx(idx) {
 
   Assert.equal(
     identityWin.document.getElementById("encryptionChoices").value,
-    identity.getIntAttribute("encryptionpolicy"),
+    identity.encryptionPolicy,
     "Encrypt setting should be correct"
   );
 
   // Signing checked based on the pref.
   Assert.equal(
     identityWin.document.getElementById("identity_sign_mail").checked,
-    identity.getBoolAttribute("sign_mail")
+    identity.signMail
   );
   // Disabled if the identity don't have a key configured.
   Assert.equal(
@@ -265,8 +282,26 @@ add_task(async function test_identity_idx_1() {
 });
 
 add_task(async function test_identity_changes() {
-  // Let's poke identity 1 and check the changes got applied
   let identity = gPopAccount.identities[1];
+
+  // Check that prefs were copied from identity 0 to identity 1
+  Assert.equal(
+    identity.autoEncryptDrafts,
+    false,
+    "encrypted drafts should be disabled in [1] because we disabled it in [0]"
+  );
+  Assert.equal(
+    identity.protectSubject,
+    true,
+    "protected subject should be enabled in [1] because it is enabled in [0]"
+  );
+  Assert.equal(
+    identity.signMail,
+    false,
+    "signing should be disabled in [1] because it is disabled in [0]"
+  );
+
+  // Let's poke identity 1 and check the changes got applied
   // Note: can't set the prefs to encrypt/sign unless there's also a key.
 
   let [id] = await OpenPGPTestUtils.importPrivateKey(
@@ -280,8 +315,8 @@ add_task(async function test_identity_changes() {
   info(`Set up openpgp key; id=${id}`);
 
   identity.setUnicharAttribute("openpgp_key_id", id.split("0x").join(""));
-  identity.setBoolAttribute("sign_mail", "true"); // Sign by default.
-  identity.setIntAttribute("encryptionpolicy", 2); // Require encryption.
+  identity.signMail = "true"; // Sign by default.
+  identity.encryptionPolicy = 2; // Require encryption.
   info("Modified identity 1 - will check it now");
   await test_identity_idx(1);
 

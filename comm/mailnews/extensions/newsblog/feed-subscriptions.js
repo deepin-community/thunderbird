@@ -13,13 +13,14 @@ var { FeedUtils } = ChromeUtils.import("resource:///modules/FeedUtils.jsm");
 var { MailServices } = ChromeUtils.import(
   "resource:///modules/MailServices.jsm"
 );
-var { AppConstants } = ChromeUtils.import(
-  "resource://gre/modules/AppConstants.jsm"
+var { AppConstants } = ChromeUtils.importESModule(
+  "resource://gre/modules/AppConstants.sys.mjs"
 );
-var { FileUtils } = ChromeUtils.import("resource://gre/modules/FileUtils.jsm");
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-var { PluralForm } = ChromeUtils.import(
-  "resource://gre/modules/PluralForm.jsm"
+var { FileUtils } = ChromeUtils.importESModule(
+  "resource://gre/modules/FileUtils.sys.mjs"
+);
+var { PluralForm } = ChromeUtils.importESModule(
+  "resource://gre/modules/PluralForm.sys.mjs"
 );
 
 var FeedSubscriptions = {
@@ -67,15 +68,11 @@ var FeedSubscriptions = {
     FeedUtils.CANCEL_REQUESTED = false;
 
     if (this.mMainWin) {
-      this.mMainWin.FeedFolderNotificationService = MailServices.mfn;
-      this.mMainWin.FeedFolderNotificationService.addListener(
-        this.FolderListener,
-        this.FOLDER_ACTIONS
-      );
+      MailServices.mfn.addListener(this.FolderListener, this.FOLDER_ACTIONS);
     }
   },
 
-  onClose() {
+  onDialogAccept() {
     let dismissDialog = true;
 
     // If we are in the middle of subscribing to a feed, inform the user that
@@ -103,11 +100,10 @@ var FeedSubscriptions = {
     if (dismissDialog) {
       FeedUtils.CANCEL_REQUESTED = this.mActionMode == this.kSubscribeMode;
       if (this.mMainWin) {
-        this.mMainWin.FeedFolderNotificationService.removeListener(
+        MailServices.mfn.removeListener(
           this.FolderListener,
           this.FOLDER_ACTIONS
         );
-        delete this.mMainWin.FeedFolderNotificationService;
       }
     }
 
@@ -235,7 +231,7 @@ var FeedSubscriptions = {
       } else {
         let url = folder ? null : item.url;
         folder = folder || item.parentFolder;
-        properties = mainWin.getFolderProperties(folder, item.open);
+        properties = mainWin.FolderUtils.getFolderProperties(folder, item.open);
         properties += mainWin.FeedUtils.getFolderProperties(folder, url);
         if (
           this.selection.currentIndex == aRow &&
@@ -365,20 +361,6 @@ var FeedSubscriptions = {
         return item.favicon;
       }
 
-      if (
-        item.folder &&
-        FeedSubscriptions.mMainWin &&
-        "gFolderTreeView" in FeedSubscriptions.mMainWin
-      ) {
-        let favicon = FeedSubscriptions.mMainWin.gFolderTreeView.getFolderCacheProperty(
-          item.folder,
-          "favicon"
-        );
-        if (favicon != null) {
-          return (item.favicon = favicon);
-        }
-      }
-
       let callback = iconUrl => {
         item.favicon = iconUrl;
         if (item.folder) {
@@ -401,28 +383,25 @@ var FeedSubscriptions = {
               return child.favicon;
             }
 
-            setTimeout(() => {
-              FeedUtils.getFavicon(
+            setTimeout(async () => {
+              let iconUrl = await FeedUtils.getFavicon(
                 child.parentFolder,
-                child.url,
-                null,
-                window,
-                callback
+                child.url
               );
+              if (iconUrl) {
+                callback(iconUrl);
+              }
             }, 0);
             break;
           }
         }
       } else {
         // A feed.
-        setTimeout(() => {
-          FeedUtils.getFavicon(
-            item.parentFolder,
-            item.url,
-            null,
-            window,
-            callback
-          );
+        setTimeout(async () => {
+          let iconUrl = await FeedUtils.getFavicon(item.parentFolder, item.url);
+          if (iconUrl) {
+            callback(iconUrl);
+          }
         }, 0);
       }
 
@@ -720,10 +699,10 @@ var FeedSubscriptions = {
 
   folderItemSorter(aArray) {
     return aArray
-      .sort(function(a, b) {
+      .sort(function (a, b) {
         return a.name.toLowerCase() > b.name.toLowerCase();
       })
-      .sort(function(a, b) {
+      .sort(function (a, b) {
         return a.container < b.container;
       });
   },
@@ -769,7 +748,7 @@ var FeedSubscriptions = {
     // Get all the feed account folders.
     let feedRootFolders = FeedUtils.getAllRssServerRootFolders();
 
-    feedRootFolders.forEach(function(rootFolder) {
+    feedRootFolders.forEach(function (rootFolder) {
       feedContainers.push(this.makeFolderObject(rootFolder, 0));
       numFolders++;
     }, this);
@@ -787,15 +766,15 @@ var FeedSubscriptions = {
    * (to avoid position/toggle state loss).
    *
    * @param {nsIMsgFolder} aFolder - The folder to find.
-   * @param {Object} aParms        - The params object, containing:
+   * @param {object} aParms - The params object, containing:
    *
    * {Integer} parentIndex    - index of folder to start the search; if
    *                            null (default), the index of the folder's
    *                            rootFolder will be used.
-   * {Boolean} select         - if true (default) the folder's ancestors
+   * {boolean} select         - if true (default) the folder's ancestors
    *                            will be opened and the folder selected.
-   * {Boolean} open           - if true (default) the folder is opened.
-   * {Boolean} remove         - delete the item from tree row cache if true,
+   * {boolean} open           - if true (default) the folder is opened.
+   * {boolean} remove         - delete the item from tree row cache if true,
    *                            false (default) otherwise.
    * {nsIMsgFolder} newFolder - if not null (default) the new folder,
    *                            for add or rename.
@@ -1005,7 +984,7 @@ var FeedSubscriptions = {
    * Find the feed in the tree.  The search first gets the feed's folder,
    * then selects the child feed.
    *
-   * @param {Feed} aFeed           - The feed to find.
+   * @param {Feed} aFeed - The feed to find.
    * @param {Integer} aParentIndex - Index to start the folder search.
    *
    * @returns {Boolean} found - true if found, false if not.
@@ -1250,11 +1229,11 @@ var FeedSubscriptions = {
     } else {
       let feedsInFolder = this.getFeedsInFolder(item.folder);
       // Update the feeds database, for each feed in the folder.
-      feedsInFolder.forEach(function(feed) {
+      feedsInFolder.forEach(function (feed) {
         feed.quickMode = aChecked;
       });
       // Update the folder's feeds properties in the tree map.
-      item.children.forEach(function(feed) {
+      item.children.forEach(function (feed) {
         feed.quickMode = aChecked;
       });
     }
@@ -1484,7 +1463,10 @@ var FeedSubscriptions = {
     let isFolder = item.folder && !item.folder.isServer;
 
     // Enabled by default.
-    updateEnabled.disabled = quickMode.disabled = autotagEnable.disabled = false;
+    updateEnabled.disabled =
+      quickMode.disabled =
+      autotagEnable.disabled =
+        false;
 
     updateEnabled.parentNode
       .querySelectorAll("input,radio,label")
@@ -1602,14 +1584,14 @@ var FeedSubscriptions = {
    * though the url were entered manually.  This allows a user to see the dnd
    * url better in case of errors.
    *
-   * @param {String} aFeedLocation     - the feed url; get the url from the
+   * @param {String} aFeedLocation - the feed url; get the url from the
    *                                     input field if null.
-   * @param {nsIMsgFolder} aFolder     - folder to subscribe, current selected
+   * @param {nsIMsgFolder} aFolder - folder to subscribe, current selected
    *                                     folder if null.
-   * @param {Boolean} aParse           - if true (default) parse and download
+   * @param {Boolean} aParse - if true (default) parse and download
    *                                     the feed's articles.
-   * @param {Object} aParams           - additional params.
-   * @param {Integer} aMode            - action mode (default is kSubscribeMode)
+   * @param {Object} aParams - additional params.
+   * @param {Integer} aMode - action mode (default is kSubscribeMode)
    *                                     of the add.
    *
    * @returns {Boolean} success        - true if edit checks passed and an
@@ -1683,21 +1665,18 @@ var FeedSubscriptions = {
     if (!options) {
       // Not passed a param, get values from the ui.
       options = FeedUtils.optionsTemplate;
-      options.updates.enabled = document.getElementById(
-        "updateEnabled"
-      ).checked;
+      options.updates.enabled =
+        document.getElementById("updateEnabled").checked;
       let biffUnits = document.getElementById("biffUnits").value;
       let units = document.getElementById("updateValue").value;
       let minutes =
         biffUnits == FeedUtils.kBiffUnitsMinutes ? units : units * 24 * 60;
       options.updates.updateUnits = biffUnits;
       options.updates.updateMinutes = Number(minutes);
-      options.category.enabled = document.getElementById(
-        "autotagEnable"
-      ).checked;
-      options.category.prefixEnabled = document.getElementById(
-        "autotagUsePrefix"
-      ).checked;
+      options.category.enabled =
+        document.getElementById("autotagEnable").checked;
+      options.category.prefixEnabled =
+        document.getElementById("autotagUsePrefix").checked;
       options.category.prefix = document.getElementById("autotagPrefix").value;
     }
 
@@ -1778,9 +1757,9 @@ var FeedSubscriptions = {
   /**
    * Moves or copies a feed to another folder or account.
    *
-   * @param {Integer} aOldFeedIndex   - Index in tree of target feed item.
+   * @param {Integer} aOldFeedIndex - Index in tree of target feed item.
    * @param {Integer} aNewParentIndex - Index in tree of target parent folder item.
-   * @param {String} aMoveCopy        - Either "move" or "copy".
+   * @param {String} aMoveCopy - Either "move" or "copy".
    *
    * @returns {void}
    */
@@ -1820,8 +1799,8 @@ var FeedSubscriptions = {
       );
 
       // Update folderpane favicons.
-      FeedUtils.setFolderPaneProperty(currentFolder, "favicon", null, "row");
-      FeedUtils.setFolderPaneProperty(newFolder, "favicon", null, "row");
+      Services.obs.notifyObservers(currentFolder, "folder-properties-changed");
+      Services.obs.notifyObservers(newFolder, "folder-properties-changed");
     } else {
       // Moving/copying to a new account.  If dropping on the account folder,
       // a new subfolder is created if necessary.
@@ -1933,7 +1912,7 @@ var FeedSubscriptions = {
 
   mFeedDownloadCallback: {
     mSubscribeMode: true,
-    downloaded(feed, aErrorCode) {
+    async downloaded(feed, aErrorCode) {
       // Offline check is done in the context of 3pane, return to the subscribe
       // window once the modal prompt is dispatched.
       window.focus();
@@ -1969,6 +1948,17 @@ var FeedSubscriptions = {
 
         // Add the feed to the databases.
         FeedUtils.addFeed(feed);
+
+        // Set isBusy status, and clear it after getting favicon. This makes
+        // sure the folder icon is redrawn to reflect what we got.
+        FeedUtils.setStatus(
+          feed.folder,
+          feed.url,
+          "code",
+          FeedUtils.kNewsBlogFeedIsBusy
+        );
+        await FeedUtils.getFavicon(feed.folder, feed.url);
+        FeedUtils.setStatus(feed.folder, feed.url, "code", aErrorCode);
 
         // Now add the feed to our view.  If adding, the current selection will
         // be a folder; if updating it will be a feed.  No need to rebuild the
@@ -2798,12 +2788,12 @@ var FeedSubscriptions = {
    * Import opml file into a feed account.  Used by the Subscribe dialog and
    * the Import wizard.
    *
-   * @param {nsIFile} aFile                - The opml file.
-   * @param {String} aFileUrl              - The opml file url.
+   * @param {nsIFile} aFile - The opml file.
+   * @param {string} aFileUrl - The opml file url.
    * @param {nsIMsgIncomingServer} aServer - The account server.
-   * @param {Function} aCallback           - Callback function.
+   * @param {Function} aCallback - Callback function.
    *
-   * @returns {Boolean}                    - false if error.
+   * @returns {Boolean} - false if error.
    */
   async importOPMLFile(aFile, aFileUrl, aServer, aCallback) {
     if (aServer && aServer instanceof Ci.nsIMsgIncomingServer) {
@@ -2820,7 +2810,7 @@ var FeedSubscriptions = {
     );
     let request = new Request(aFileUrl);
     await fetch(request)
-      .then(function(response) {
+      .then(function (response) {
         if (!response.ok) {
           // If the OPML file is not readable/accessible.
           statusReport = FeedUtils.strings.GetStringFromName(
@@ -2831,14 +2821,14 @@ var FeedSubscriptions = {
 
         return response.text();
       })
-      .then(function(responseText) {
+      .then(function (responseText) {
         if (responseText != null) {
           opmlDom = new DOMParser().parseFromString(
             responseText,
             "application/xml"
           );
           if (
-            !(opmlDom instanceof XMLDocument) ||
+            !XMLDocument.isInstance(opmlDom) ||
             opmlDom.documentElement.namespaceURI ==
               FeedUtils.MOZ_PARSERERROR_NS ||
             opmlDom.documentElement.tagName != "opml" ||
@@ -2855,7 +2845,7 @@ var FeedSubscriptions = {
           }
         }
       })
-      .catch(function(error) {
+      .catch(function (error) {
         statusReport = FeedUtils.strings.GetStringFromName(
           "subscribe-errorOpeningFile"
         );
@@ -3055,7 +3045,7 @@ var FeedSubscriptions = {
                   aParentFolder.filePath.path
               );
               let xfolder = aParentFolder.getChildNamed(folderName);
-              aParentFolder.propagateDelete(xfolder, true, null);
+              aParentFolder.propagateDelete(xfolder, true);
               badTag = true;
               break;
             }

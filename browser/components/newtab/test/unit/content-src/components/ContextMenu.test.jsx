@@ -6,7 +6,7 @@ import {
 import { ContextMenuButton } from "content-src/components/ContextMenu/ContextMenuButton";
 import { mount, shallow } from "enzyme";
 import React from "react";
-import { INITIAL_STATE, reducers } from "common/Reducers.jsm";
+import { INITIAL_STATE, reducers } from "common/Reducers.sys.mjs";
 import { Provider } from "react-redux";
 import { combineReducers, createStore } from "redux";
 
@@ -19,9 +19,6 @@ const DEFAULT_PROPS = {
 const DEFAULT_MENU_OPTIONS = [
   "MoveUp",
   "MoveDown",
-  "Separator",
-  "RemoveSection",
-  "CheckCollapsed",
   "Separator",
   "ManageSection",
 ];
@@ -137,12 +134,12 @@ describe("<ContextMenu>", () => {
     );
     assert.lengthOf(wrapper.find(ContextMenuItem), 1);
   });
-  it("should add an icon to items that need icons", () => {
+  it("should not add an icon to any items", () => {
     const props = Object.assign({}, DEFAULT_PROPS, {
       options: [{ label: "item1", icon: "icon1" }, { type: "separator" }],
     });
     const wrapper = mountWithProps(props);
-    assert.lengthOf(wrapper.find(".icon-icon1"), 1);
+    assert.lengthOf(wrapper.find(".icon-icon1"), 0);
   });
   it("should be tabbable", () => {
     const props = {

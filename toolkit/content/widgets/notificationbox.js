@@ -7,10 +7,6 @@
 // This is loaded into chrome windows with the subscript loader. If you need to
 // define globals, wrap in a block to prevent leaking onto `window`.
 {
-  const { Services } = ChromeUtils.import(
-    "resource://gre/modules/Services.jsm"
-  );
-
   MozElements.NotificationBox = class NotificationBox {
     /**
      * Creates a new class to handle a notification box, but does not add any
@@ -79,19 +75,38 @@
      * Creates a <notification> element and shows it. The calling code can modify
      * the element synchronously to add features to the notification.
      *
-     * @param aLabel
-     *        The main message text, or a DocumentFragment containing elements to
-     *        add as children of the notification's main <description> element.
-     * @param aValue
-     *        String identifier of the notification.
-     * @param aImage
-     *        URL of the icon image to display. If not specified, a default icon
-     *        based on the priority will be shown.
-     * @param aPriority
+     * aType
+     *        String identifier that can uniquely identify the type of the notification.
+     * aNotification
+     *        Object that contains any of the following properties, where only the
+     *        priority must be specified:
+     *    priority
      *        One of the PRIORITY_ constants. These determine the appearance of
      *        the notification based on severity (using the "type" attribute), and
      *        only the notification with the highest priority is displayed.
-     * @param aButtons
+     *    label
+     *        The main message text (as string), or object (with l10n-id, l10n-args),
+     *        or a DocumentFragment containing elements to
+     *        add as children of the notification's main <description> element.
+     *    eventCallback
+     *        This may be called with the "removed", "dismissed" or "disconnected"
+     *        parameter:
+     *          removed - notification has been removed
+     *          dismissed - user dismissed notification
+     *          disconnected - notification removed in any way
+     *    notificationIs
+     *        Defines a Custom Element name to use as the "is" value on creation.
+     *        This allows subclassing the created element.
+     *    telemetry
+     *        Specifies the telemetry key to use that triggers when the notification
+     *        is shown, dismissed and an action taken. This telemetry is a keyed scalar with keys for:
+     *          'shown', 'dismissed' and 'action'. If a button specifies a separate key,
+     *        then 'action' is replaced by values specific to each button. The value telemetryFilter
+     *        can be used to filter out each type.
+     *    telemetryFilter
+     *        If assigned, then an array of the telemetry types to send telemetry for. If not set,
+     *        then all telemetry is sent.
+     * aButtons
      *        Array of objects defining action buttons:
      *        {
      *          label:
@@ -117,43 +132,33 @@
      *          popup:
      *            If specified, the button will open the popup element with this
      *            ID, anchored to the button. This is alternative to "callback".
+     *          telemetry:
+     *            Specifies the key to add for the telemetry to trigger when the
+     *            button is pressed. If not specified, then 'action' is used for
+     *            a press on any button. Specify this only if you want to distinguish
+     *            which button has been pressed in telemetry data.
      *          is:
      *            Defines a Custom Element name to use as the "is" value on
      *            button creation.
      *        }
-     * @param aEventCallback
-     *        This may be called with the "removed", "dismissed" or "disconnected"
-     *        parameter:
-     *          removed - notification has been removed
-     *          dismissed - user dismissed notification
-     *          disconnected - notification removed in any way
-     * @param aNotificationIs
-     *        Defines a Custom Element name to use as the "is" value on creation.
-     *        This allows subclassing the created element.
      *
      * @return The <notification> element that is shown.
      */
-    appendNotification(
-      aLabel,
-      aValue,
-      aImage,
-      aPriority,
-      aButtons,
-      aEventCallback,
-      aNotificationIs
-    ) {
+    appendNotification(aType, aNotification, aButtons) {
       if (
-        aPriority < this.PRIORITY_SYSTEM ||
-        aPriority > this.PRIORITY_CRITICAL_HIGH
+        aNotification.priority < this.PRIORITY_SYSTEM ||
+        aNotification.priority > this.PRIORITY_CRITICAL_HIGH
       ) {
-        throw new Error("Invalid notification priority " + aPriority);
+        throw new Error(
+          "Invalid notification priority " + aNotification.priority
+        );
       }
 
       MozXULElement.insertFTLIfNeeded("toolkit/global/notification.ftl");
 
       // Create the Custom Element and connect it to the document immediately.
       var newitem;
-      if (!aNotificationIs) {
+      if (!aNotification.notificationIs) {
         if (!customElements.get("notification-message")) {
           // There's some weird timing stuff when this element is created at
           // script load time, we don't need it until now anyway so be lazy.
@@ -164,7 +169,9 @@
       } else {
         newitem = document.createXULElement(
           "notification",
-          aNotificationIs ? { is: aNotificationIs } : {}
+          aNotification.notificationIs
+            ? { is: aNotification.notificationIs }
+            : {}
         );
       }
 
@@ -179,30 +186,50 @@
       if (newitem.messageText) {
         // Can't use instanceof in case this was created from a different document:
         if (
-          aLabel &&
-          typeof aLabel == "object" &&
-          aLabel.nodeType &&
-          aLabel.nodeType == aLabel.DOCUMENT_FRAGMENT_NODE
+          aNotification.label &&
+          typeof aNotification.label == "object" &&
+          aNotification.label.nodeType &&
+          aNotification.label.nodeType ==
+            aNotification.label.DOCUMENT_FRAGMENT_NODE
         ) {
-          newitem.messageText.appendChild(aLabel);
+          newitem.messageText.appendChild(aNotification.label);
+        } else if (
+          aNotification.label &&
+          typeof aNotification.label == "object" &&
+          "l10n-id" in aNotification.label
+        ) {
+          let message = document.createElement("span");
+          document.l10n.setAttributes(
+            message,
+            aNotification.label["l10n-id"],
+            aNotification.label["l10n-args"]
+          );
+          newitem.messageText.appendChild(message);
         } else {
-          newitem.messageText.textContent = aLabel;
+          newitem.messageText.textContent = aNotification.label;
         }
       }
-      newitem.setAttribute("value", aValue);
+      newitem.setAttribute("value", aType);
 
-      newitem.eventCallback = aEventCallback;
+      newitem.eventCallback = aNotification.eventCallback;
 
       if (aButtons) {
         newitem.setButtons(aButtons);
       }
 
-      newitem.priority = aPriority;
-      if (aPriority == this.PRIORITY_SYSTEM) {
+      if (aNotification.telemetry) {
+        newitem.telemetry = aNotification.telemetry;
+        if (aNotification.telemetryFilter) {
+          newitem.telemetryFilter = aNotification.telemetryFilter;
+        }
+      }
+
+      newitem.priority = aNotification.priority;
+      if (aNotification.priority == this.PRIORITY_SYSTEM) {
         newitem.setAttribute("type", "system");
-      } else if (aPriority >= this.PRIORITY_CRITICAL_LOW) {
+      } else if (aNotification.priority >= this.PRIORITY_CRITICAL_LOW) {
         newitem.setAttribute("type", "critical");
-      } else if (aPriority <= this.PRIORITY_INFO_HIGH) {
+      } else if (aNotification.priority <= this.PRIORITY_INFO_HIGH) {
         newitem.setAttribute("type", "info");
       } else {
         newitem.setAttribute("type", "warning");
@@ -221,6 +248,13 @@
       event.initEvent("AlertActive", true, true);
       newitem.dispatchEvent(event);
 
+      // If the notification is not visible, don't call shown() on the
+      // new notification until it is visible. This will typically be
+      // a tabbrowser that does this when a tab is selected.
+      if (this.isShown) {
+        newitem.shown();
+      }
+
       return newitem;
     }
 
@@ -233,13 +267,15 @@
     }
 
     _removeNotificationElement(aChild) {
+      let hadFocus = aChild.matches(":focus-within");
+
       if (aChild.eventCallback) {
         aChild.eventCallback("removed");
       }
       aChild.remove();
 
-      // make sure focus doesn't get lost (workaround for bug 570835)
-      if (!Services.focus.getFocusedElementForWindow(window, false, {})) {
+      // Make sure focus doesn't get lost (workaround for bug 570835).
+      if (hadFocus) {
         Services.focus.moveFocus(
           window,
           this.stack,
@@ -285,6 +321,22 @@
           this.removeNotification(notification, true);
         }
       }
+    }
+
+    shown() {
+      for (let notification of this.allNotifications) {
+        notification.shown();
+      }
+    }
+
+    get isShown() {
+      let stack = this.stack;
+      let parent = this.stack.parentNode;
+      if (parent.localName == "named-deck") {
+        return parent.selectedViewName == stack.getAttribute("name");
+      }
+
+      return true;
     }
 
     _showNotification(aNotification, aSlideIn, aSkipAnimation) {
@@ -364,13 +416,9 @@
       </hbox>
       <toolbarbutton ondblclick="event.stopPropagation();"
                      class="messageCloseButton close-icon tabbable"
-                     tooltiptext="&closeNotification.tooltip;"
+                     data-l10n-id="close-notification-message"
                      oncommand="this.parentNode.dismiss();"/>
       `;
-    }
-
-    static get entities() {
-      return ["chrome://global/locale/notification.dtd"];
     }
 
     constructor() {
@@ -378,9 +426,12 @@
       this.persistence = 0;
       this.priority = 0;
       this.timeout = 0;
+      this.telemetry = null;
+      this._shown = false;
     }
 
     connectedCallback() {
+      MozXULElement.insertFTLIfNeeded("toolkit/global/notification.ftl");
       this.appendChild(this.constructor.fragment);
 
       for (let [propertyName, selector] of [
@@ -459,10 +510,26 @@
 
     /**
      * Changes the text of an existing notification. If the notification was
-     * created with a custom fragment, it will be overwritten with plain text.
+     * created with a custom fragment, it will be overwritten with plain text
+     * or a localized message.
+     *
+     * @param {string | { "l10n-id": string, "l10n-args"?: string }} value
      */
     set label(value) {
-      this.messageText.textContent = value;
+      if (value && typeof value == "object" && "l10n-id" in value) {
+        const message = document.createElement("span");
+        document.l10n.setAttributes(
+          message,
+          value["l10n-id"],
+          value["l10n-args"]
+        );
+        while (this.messageText.firstChild) {
+          this.messageText.firstChild.remove();
+        }
+        this.messageText.appendChild(message);
+      } else {
+        this.messageText.textContent = value;
+      }
     }
 
     /**
@@ -471,6 +538,8 @@
      * should call close() instead.
      */
     dismiss() {
+      this._doTelemetry("dismissed");
+
       if (this.eventCallback) {
         this.eventCallback("dismissed");
       }
@@ -484,12 +553,32 @@
       this.control.removeNotification(this);
     }
 
+    // This will be called when the host (such as a tabbrowser) determines that
+    // the notification is made visible to the user.
+    shown() {
+      if (!this._shown) {
+        this._shown = true;
+        this._doTelemetry("shown");
+      }
+    }
+
+    _doTelemetry(type) {
+      if (
+        this.telemetry &&
+        (!this.telemetryFilter || this.telemetryFilter.includes(type))
+      ) {
+        Services.telemetry.keyedScalarAdd(this.telemetry, type, 1);
+      }
+    }
+
     _doButtonCommand(event) {
       if (!("buttonInfo" in event.target)) {
         return;
       }
 
       var button = event.target.buttonInfo;
+      this._doTelemetry(button.telemetry || "action");
+
       if (button.popup) {
         document
           .getElementById(button.popup)
@@ -528,6 +617,8 @@
         this.persistence = 0;
         this.priority = 0;
         this.timeout = 0;
+        this.telemetry = null;
+        this._shown = false;
       }
 
       connectedCallback() {
@@ -563,6 +654,15 @@
         }
       }
 
+      _doTelemetry(type) {
+        if (
+          this.telemetry &&
+          (!this.telemetryFilter || this.telemetryFilter.includes(type))
+        ) {
+          Services.telemetry.keyedScalarAdd(this.telemetry, type, 1);
+        }
+      }
+
       get control() {
         return this.closest(".notificationbox-stack")._notificationBox;
       }
@@ -572,6 +672,15 @@
           return;
         }
         this.control.removeNotification(this);
+      }
+
+      // This will be called when the host (such as a tabbrowser) determines that
+      // the notification is made visible to the user.
+      shown() {
+        if (!this._shown) {
+          this._shown = true;
+          this._doTelemetry("shown");
+        }
       }
 
       setAlertRole() {
@@ -593,6 +702,9 @@
         if ("buttonInfo" in e.target) {
           let { buttonInfo } = e.target;
           let { callback, popup } = buttonInfo;
+
+          this._doTelemetry(buttonInfo.telemetry || "action");
+
           if (popup) {
             document
               .getElementById(popup)
@@ -615,38 +727,57 @@
         }
       }
 
+      /**
+       * Changes the text of an existing notification. If the notification was
+       * created with a custom fragment, it will be overwritten with plain text
+       * or a localized message.
+       *
+       * @param {string | { "l10n-id": string, "l10n-args"?: string }} value
+       */
       set label(value) {
-        this.messageText.textContent = value;
+        if (value && typeof value == "object" && "l10n-id" in value) {
+          const message = document.createElement("span");
+          document.l10n.setAttributes(
+            message,
+            value["l10n-id"],
+            value["l10n-args"]
+          );
+          while (this.messageText.firstChild) {
+            this.messageText.firstChild.remove();
+          }
+          this.messageText.appendChild(message);
+        } else {
+          this.messageText.textContent = value;
+        }
         this.setAlertRole();
       }
 
       setButtons(buttons) {
         this._buttons = buttons;
         for (let button of buttons) {
-          let link = button.link;
+          let link = button.link || button.supportPage;
           let localeId = button["l10n-id"];
-          if (!link && button.supportPage) {
-            link =
-              Services.urlFormatter.formatURLPref("app.support.baseURL") +
-              button.supportPage;
-            if (!button.label && !localeId) {
-              localeId = "notification-learnmore-default-label";
-            }
-          }
 
           let buttonElem;
-          if (link) {
+          if (button.hasOwnProperty("supportPage")) {
+            window.ensureCustomElements("moz-support-link");
+            buttonElem = document.createElement("a", {
+              is: "moz-support-link",
+            });
+            buttonElem.classList.add("notification-link");
+            buttonElem.setAttribute("support-page", button.supportPage);
+          } else if (link) {
             buttonElem = document.createXULElement("label", {
               is: "text-link",
             });
             buttonElem.setAttribute("href", link);
-            buttonElem.classList.add("notification-link");
+            buttonElem.classList.add("notification-link", "text-link");
           } else {
             buttonElem = document.createXULElement(
               "button",
               button.is ? { is: button.is } : {}
             );
-            buttonElem.classList.add("notification-button", "small");
+            buttonElem.classList.add("notification-button", "small-button");
 
             if (button.primary) {
               buttonElem.classList.add("primary");
@@ -672,6 +803,8 @@
       }
 
       dismiss() {
+        this._doTelemetry("dismissed");
+
         if (this.eventCallback) {
           this.eventCallback("dismissed");
         }

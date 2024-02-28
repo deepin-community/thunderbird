@@ -1,4 +1,4 @@
-/* -*- Mode: Java; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
+/* -*- indent-tabs-mode: nil; js-indent-level: 2 -*- */
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
@@ -54,8 +54,6 @@ const kVcardFields =
           // Other > Notes
          ["Notes", "Notes"],
           // Chat
-         ["Gtalk", "_GoogleTalk"],
-         ["AIM", "_AimScreenName"],
          ["Yahoo", "_Yahoo"],
          ["Skype", "_Skype"],
          ["QQ", "_QQ"],
@@ -122,10 +120,6 @@ function OnLoadNewCard()
       if (gEditCard.card.displayName)
         gEditCard.generateDisplayName = false;
     }
-    if ("aimScreenName" in window.arguments[0])
-      gEditCard.card.setProperty("_AimScreenName",
-                                 window.arguments[0].aimScreenName);
-
     if ("okCallback" in window.arguments[0])
       gOkCallback = window.arguments[0].okCallback;
 
@@ -603,6 +597,16 @@ function CheckAndSetCardValues(cardproperty, doc, check)
   cardproperty.setProperty("PhotoType", photoType);
   purgeOldPhotos(true);
 
+  // Remove obsolete chat names.
+  try {
+    cardproperty.setProperty("_GoogleTalk", "");
+  }
+  catch (ex) {}
+  try {
+    cardproperty.setProperty("_AimScreenName", "");
+  }
+  catch (ex) {}
+
   return true;
 }
 
@@ -897,7 +901,7 @@ function modifyDatepicker(aDatepicker) {
 }
 
 var chatNameFieldIds =
-  ["Gtalk", "AIM", "Yahoo", "Skype", "QQ", "MSN", "ICQ", "XMPP", "IRC"];
+  ["Yahoo", "Skype", "QQ", "MSN", "ICQ", "XMPP", "IRC"];
 
 /**
  * Show the 'Chat' tab and focus the first field that has a value, or

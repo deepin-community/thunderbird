@@ -2,7 +2,6 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 var { cal } = ChromeUtils.import("resource:///modules/calendar/calUtils.jsm");
 
 var { CalDavLegacySAXRequest } = ChromeUtils.import("resource:///modules/caldav/CalDavRequest.jsm");
@@ -42,6 +41,17 @@ class XMLResponseHandler {
   }
 
   /**
+   * Log the response code and body.
+   *
+   * @param {number} responseStatus
+   */
+  logResponse(responseStatus) {
+    if (this.calendar.verboseLogging()) {
+      cal.LOG(`CalDAV: recv (${responseStatus}): ${this._xmlString}`);
+    }
+  }
+
+  /**
    * Parse this._xmlString with DOMParser, then create a TreeWalker and start
    * walking the node tree.
    */
@@ -70,6 +80,7 @@ class XMLResponseHandler {
 
   /**
    * Converts a binary string into a Uint8Array.
+   *
    * @param {BinaryString} str - The string to convert.
    * @returns {Uint8Array}.
    */
@@ -176,9 +187,25 @@ class CalDavEtagsHandler extends XMLResponseHandler {
   }
 
   async onStopRequest(request, statusCode) {
-    if (this.calendar.verboseLogging()) {
-      cal.LOG("CalDAV: recv: " + this.logXML);
+    let httpchannel = request.QueryInterface(Ci.nsIHttpChannel);
+
+    let responseStatus;
+    try {
+      responseStatus = httpchannel.responseStatus;
+    } catch (ex) {
+      cal.WARN("CalDAV: No response status getting etags for calendar " + this.calendar.name);
     }
+
+    this.logResponse(responseStatus);
+
+    if (responseStatus != 207) {
+      // Not a successful response, do nothing.
+      if (this.calendar.isCached && this.changeLogListener) {
+        this.changeLogListener.onResult({ status: Cr.NS_ERROR_FAILURE }, Cr.NS_ERROR_FAILURE);
+      }
+      return;
+    }
+
     await this.handleResponse();
 
     // Now that we are done, check which items need fetching.
@@ -194,8 +221,7 @@ class CalDavEtagsHandler extends XMLResponseHandler {
         // If an item has been deleted from the server, delete it here too.
         // Since the target calendar's operations are synchronous, we can
         // safely set variables from this function.
-        let pcal = cal.async.promisifyCalendar(this.calendar.mOfflineStorage);
-        let foundItem = (await pcal.getItem(this.calendar.mHrefIndex[path]))[0];
+        let foundItem = await this.calendar.mOfflineStorage.getItem(this.calendar.mHrefIndex[path]);
 
         if (foundItem) {
           let wasInboxItem = this.calendar.mItemInfoCache[foundItem.id].isInboxItem;
@@ -205,7 +231,7 @@ class CalDavEtagsHandler extends XMLResponseHandler {
           ) {
             cal.LOG("Deleting local href: " + path);
             delete this.calendar.mHrefIndex[path];
-            await pcal.deleteItem(foundItem);
+            await this.calendar.mOfflineStorage.deleteItem(foundItem);
             needsRefresh = true;
           }
         }
@@ -411,7 +437,7 @@ class CalDavWebDavSyncHandler extends XMLResponseHandler {
     let requestUri = this.calendar.makeUri(null, this.baseUri);
 
     if (this.calendar.verboseLogging()) {
-      cal.LOG("CalDAV: send(" + requestUri.spec + "): " + queryXml);
+      cal.LOG(`CalDAV: send (REPORT ${requestUri.spec}): ${queryXml}`);
     }
     cal.LOG("CalDAV: webdav-sync Token: " + this.calendar.mWebdavSyncToken);
 
@@ -461,13 +487,40 @@ class CalDavWebDavSyncHandler extends XMLResponseHandler {
       // We only need to parse 207's, anything else is probably a
       // server error (i.e 50x).
       httpchannel.contentType = "application/xml";
+    }
+  }
+
+  async onStopRequest(request, statusCode) {
+    let httpchannel = request.QueryInterface(Ci.nsIHttpChannel);
+
+    let responseStatus;
+    try {
+      responseStatus = httpchannel.responseStatus;
+    } catch (ex) {
+      cal.WARN("CalDAV: No response status doing webdav sync for calendar " + this.calendar.name);
+    }
+
+    this.logResponse(responseStatus);
+
+    if (responseStatus == 207) {
+      await this.handleResponse();
+    } else if (
+      (responseStatus == 403 && this._xmlString.includes(`<D:error xmlns:D="DAV:"/>`)) ||
+      responseStatus == 429
+    ) {
+      // We're hitting the rate limit. Don't attempt to refresh now.
+      cal.WARN("CalDAV: rate limit reached, server returned status code: " + responseStatus);
+      if (this.calendar.isCached && this.changeLogListener) {
+        // Not really okay, but we have to return something and an error code puts us in a bad state.
+        this.changeLogListener.onResult({ status: Cr.NS_ERROR_FAILURE }, Cr.NS_ERROR_FAILURE);
+      }
     } else if (
       this.calendar.mWebdavSyncToken != null &&
       responseStatus >= 400 &&
       responseStatus <= 499
     ) {
       // Invalidate sync token with 4xx errors that could indicate the
-      // sync token has become invalid and do a refresh
+      // sync token has become invalid and do a refresh.
       cal.LOG(
         "CalDAV: Resetting sync token because server returned status code: " + responseStatus
       );
@@ -481,14 +534,6 @@ class CalDavWebDavSyncHandler extends XMLResponseHandler {
         this.changeLogListener.onResult({ status: Cr.NS_ERROR_FAILURE }, Cr.NS_ERROR_FAILURE);
       }
     }
-  }
-
-  async onStopRequest(request, statusCode) {
-    if (this.calendar.verboseLogging()) {
-      cal.LOG("CalDAV: recv: " + this.logXML);
-    }
-
-    await this.handleResponse();
   }
 
   /**
@@ -525,7 +570,7 @@ class CalDavWebDavSyncHandler extends XMLResponseHandler {
       return;
     }
 
-    if (this.calendar.mWebdavSyncToken == null) {
+    if (this.calendar.mWebdavSyncToken == null && !this.additionalSyncNeeded) {
       // null token means reset or first refresh indicating we did
       // a full sync; remove local items that were not returned in this full
       // sync
@@ -553,6 +598,16 @@ class CalDavWebDavSyncHandler extends XMLResponseHandler {
         this.calendar.mWebdavSyncToken = this.newSyncToken;
         this.calendar.saveCalendarProperties();
         cal.LOG("CalDAV: New webdav-sync Token: " + this.calendar.mWebdavSyncToken);
+
+        if (this.additionalSyncNeeded) {
+          let wds = new CalDavWebDavSyncHandler(
+            this.calendar,
+            this.baseUri,
+            this.changeLogListener
+          );
+          wds.doWebDAVSync();
+          return;
+        }
       }
       this.calendar.finalizeUpdatedItems(this.changeLogListener, this.baseUri);
     }
@@ -634,9 +689,9 @@ class CalDavWebDavSyncHandler extends XMLResponseHandler {
           resp.href &&
           resp.href.length &&
           (!resp.status || // Draft 3 does not require
-          resp.status.length == 0 || // a status for created or updated items but
-          resp.status.indexOf(" 204") || // draft 0, 1 and 2 needed it so treat no status
-          resp.status.indexOf(" 200") || // Apple iCloud returns 200 status for each item
+            resp.status.length == 0 || // a status for created or updated items but
+            resp.status.indexOf(" 204") || // draft 0, 1 and 2 needed it so treat no status
+            resp.status.indexOf(" 200") || // Apple iCloud returns 200 status for each item
             resp.status.indexOf(" 201"))
         ) {
           // and status 201 and 204 the same
@@ -716,12 +771,12 @@ class CalDavWebDavSyncHandler extends XMLResponseHandler {
  */
 class CalDavMultigetSyncHandler extends XMLResponseHandler {
   /**
-   * @param {String[]} aItemsNeedFetching - Array of items to fetch, an array of
+   * @param {string[]} aItemsNeedFetching - Array of items to fetch, an array of
    *                                        un-encoded paths.
    * @param {calDavCalendar} aCalendar - The (unwrapped) calendar this request belongs to.
    * @param {nsIURI} aBaseUri - The URI requested (i.e inbox or collection).
    * @param {*=} aNewSyncToken - (optional) New Sync token to set if operation successful.
-   * @param {Boolean=} aAdditionalSyncNeeded - (optional) If true, the passed sync token is not the
+   * @param {boolean=} aAdditionalSyncNeeded - (optional) If true, the passed sync token is not the
    *                                           latest, another webdav sync run should be
    *                                           done after completion.
    * @param {*=} aListener - (optional) The listener to notify.
@@ -791,7 +846,7 @@ class CalDavMultigetSyncHandler extends XMLResponseHandler {
 
     let requestUri = this.calendar.makeUri(null, this.baseUri);
     if (this.calendar.verboseLogging()) {
-      cal.LOG("CalDAV: send(" + requestUri.spec + "): " + queryXml);
+      cal.LOG(`CalDAV: send (REPORT ${requestUri.spec}): ${queryXml}`);
     }
 
     let onSetupChannel = channel => {
@@ -849,9 +904,25 @@ class CalDavMultigetSyncHandler extends XMLResponseHandler {
   }
 
   async onStopRequest(request, statusCode) {
-    if (this.calendar.verboseLogging()) {
-      cal.LOG("CalDAV: recv: " + this.logXML);
+    let httpchannel = request.QueryInterface(Ci.nsIHttpChannel);
+
+    let responseStatus;
+    try {
+      responseStatus = httpchannel.responseStatus;
+    } catch (ex) {
+      cal.WARN("CalDAV: No response status doing multiget for calendar " + this.calendar.name);
     }
+
+    this.logResponse(responseStatus);
+
+    if (responseStatus != 207) {
+      // Not a successful response, do nothing.
+      if (this.calendar.isCached && this.changeLogListener) {
+        this.changeLogListener.onResult({ status: Cr.NS_ERROR_FAILURE }, Cr.NS_ERROR_FAILURE);
+      }
+      return;
+    }
+
     if (this.unhandledErrors) {
       this.calendar.superCalendar.endBatch();
       this.calendar.notifyGetFailed("multiget error", this.listener, this.changeLogListener);
@@ -981,7 +1052,7 @@ class CalDavMultigetSyncHandler extends XMLResponseHandler {
           } else {
             oldEtag = null;
           }
-          if (!oldEtag || oldEtag != resp.getetag) {
+          if (!oldEtag || oldEtag != resp.getetag || this.listener) {
             await this.calendar.addTargetCalendarItem(
               resp.href,
               resp.calendardata,

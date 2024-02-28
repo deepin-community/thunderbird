@@ -12,11 +12,8 @@ var { MailServices } = ChromeUtils.import(
   "resource:///modules/MailServices.jsm"
 );
 
-var {
-  close_compose_window,
-  open_compose_new_mail,
-  setup_msg_contents,
-} = ChromeUtils.import("resource://testing-common/mozmill/ComposeHelpers.jsm");
+var { close_compose_window, open_compose_new_mail, setup_msg_contents } =
+  ChromeUtils.import("resource://testing-common/mozmill/ComposeHelpers.jsm");
 var { close_window } = ChromeUtils.import(
   "resource://testing-common/mozmill/WindowHelpers.jsm"
 );
@@ -73,7 +70,7 @@ async function testListExpansion(win, target, addresses) {
 /**
  * Creates the mailing list used during the tests.
  */
-add_task(async function setUp() {
+add_setup(async function () {
   let book = MailServices.ab.directories[0];
   let list = Cc["@mozilla.org/addressbook/directoryproperty;1"].createInstance(
     Ci.nsIAbDirectory
@@ -105,7 +102,8 @@ add_task(async function testExpandListsOnTo() {
   close_compose_window(cwc);
 });
 
-/* Tests the "Expand List" menu option works with the "To" list,
+/**
+ * Tests the "Expand List" menu option works with the "To" list,
  * with invalid pills involved.
  */
 add_task(async function testExpandListsInvalidPill() {
@@ -125,10 +123,12 @@ add_task(async function testExpandListsInvalidPill() {
  */
 add_task(async function testExpandListsOnCc() {
   let cwc = open_compose_new_mail();
-  let label = cwc.window.document.getElementById("addr_cc");
+  let button = cwc.window.document.getElementById(
+    "addr_ccShowAddressRowButton"
+  );
   let addresses = "start@example,Test List,end@example";
 
-  cwc.window.showAddressRow(label, "addressRowCc");
+  button.click();
   setup_msg_contents(cwc, addresses, "Expand Cc Test", "", "ccAddrInput");
   await testListExpansion(cwc.window, "ccAddrContainer", addresses);
   close_compose_window(cwc);
@@ -139,10 +139,12 @@ add_task(async function testExpandListsOnCc() {
  */
 add_task(async function testExpandListsOnBcc() {
   let cwc = open_compose_new_mail();
-  let label = cwc.window.document.getElementById("addr_bcc");
+  let button = cwc.window.document.getElementById(
+    "addr_bccShowAddressRowButton"
+  );
   let addresses = "start@example,Test List,end@example";
 
-  cwc.window.showAddressRow(label, "addressRowBcc");
+  button.click();
   setup_msg_contents(cwc, addresses, "Expand Bcc Test", "", "bccAddrInput");
   await testListExpansion(cwc.window, "bccAddrContainer", addresses);
   close_compose_window(cwc);

@@ -2,14 +2,14 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this file,
  * You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-/*
+/**
  * Helper functions for parsing and serializing XML
  */
 
 // NOTE: This module should not be loaded directly, it is available when
 // including calUtils.jsm under the cal.xml namespace.
 
-const EXPORTED_SYMBOLS = ["calxml"]; /* exported calxml */
+const EXPORTED_SYMBOLS = ["calxml"];
 
 var calxml = {
   /**
@@ -24,7 +24,7 @@ var calxml = {
    * @param aExpr     The XPath expression to search for
    * @param aResolver (optional) The namespace resolver to use for the expression
    * @param aType     (optional) Force a result type, must be an XPathResult constant
-   * @return          The result, see above for details.
+   * @returns The result, see above for details.
    */
   evalXPath(aNode, aExpr, aResolver, aType) {
     const XPR = {
@@ -111,7 +111,7 @@ var calxml = {
    * @param aExpr     The XPath expression to search for
    * @param aResolver (optional) The namespace resolver to use for the expression
    * @param aType     (optional) Force a result type, must be an XPathResult constant
-   * @return          The result, see above for details.
+   * @returns The result, see above for details.
    */
   evalXPathFirst(aNode, aExpr, aResolver, aType) {
     let result = calxml.evalXPath(aNode, aExpr, aResolver, aType);
@@ -126,7 +126,7 @@ var calxml = {
    * Parse the given string into a DOM tree
    *
    * @param str       The string to parse
-   * @return          The parsed DOM Document
+   * @returns The parsed DOM Document
    */
   parseString(str) {
     let parser = new DOMParser();
@@ -139,7 +139,7 @@ var calxml = {
    * rewriting the caller to be asynchronous.
    *
    * @param uri       The URI to read.
-   * @return          The DOM Document resulting from the file.
+   * @returns The DOM Document resulting from the file.
    */
   parseFile(uri) {
     let req = new XMLHttpRequest();
@@ -153,7 +153,7 @@ var calxml = {
    * Serialize the DOM tree into a string.
    *
    * @param doc       The DOM document to serialize
-   * @return          The DOM document as a string.
+   * @returns The DOM document as a string.
    */
   serializeDOM(doc) {
     let serializer = new XMLSerializer();
@@ -165,7 +165,7 @@ var calxml = {
    *
    * @param str           The string to escape
    * @param isAttribute   If true, " and ' are also escaped
-   * @return              The escaped string
+   * @returns The escaped string
    */
   escapeString(str, isAttribute) {
     return str.replace(/[&<>'"]/g, chr => {

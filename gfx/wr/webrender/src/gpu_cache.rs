@@ -29,9 +29,8 @@ use api::{DebugFlags, DocumentId, PremultipliedColorF};
 use api::IdNamespace;
 use api::units::*;
 use euclid::{HomogeneousVector, Box2D};
-use crate::internal_types::{FastHashMap, FastHashSet};
+use crate::internal_types::{FastHashMap, FastHashSet, FrameStamp, FrameId};
 use crate::profiler::{self, TransactionProfile};
-use crate::render_backend::{FrameStamp, FrameId};
 use crate::prim_store::VECS_PER_SEGMENT;
 use crate::renderer::MAX_VERTEX_TEXTURE_WIDTH;
 use crate::util::VecHelper;
@@ -48,7 +47,7 @@ pub const GPU_CACHE_INITIAL_HEIGHT: i32 = 20;
 const NEW_ROWS_PER_RESIZE: i32 = 10;
 
 /// The number of frames an entry can go unused before being evicted.
-const FRAMES_BEFORE_EVICTION: usize = 10;
+const FRAMES_BEFORE_EVICTION: u64 = 10;
 
 /// The ratio of utilized blocks to total blocks for which we start the clock
 /// on reclaiming memory.

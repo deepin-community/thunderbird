@@ -25,8 +25,8 @@ namespace mozilla {
 // block for a given element.
 class MappedDeclarations final {
  public:
-  explicit MappedDeclarations(dom::Document* aDoc,
-                              already_AddRefed<RawServoDeclarationBlock> aDecls)
+  explicit MappedDeclarations(
+      dom::Document* aDoc, already_AddRefed<StyleLockedDeclarationBlock> aDecls)
       : mDocument(aDoc), mDecl(aDecls) {
     MOZ_ASSERT(mDecl);
   }
@@ -35,7 +35,7 @@ class MappedDeclarations final {
 
   dom::Document* Document() { return mDocument; }
 
-  already_AddRefed<RawServoDeclarationBlock> TakeDeclarationBlock() {
+  already_AddRefed<StyleLockedDeclarationBlock> TakeDeclarationBlock() {
     MOZ_ASSERT(mDecl);
     return mDecl.forget();
   }
@@ -101,9 +101,10 @@ class MappedDeclarations final {
     Servo_DeclarationBlock_SetMathDepthValue(mDecl, aValue, aIsRelative);
   }
 
-  // Set "counter-reset: list-item <integer>".
-  void SetCounterResetListItem(int32_t aValue) {
-    Servo_DeclarationBlock_SetCounterResetListItem(mDecl, aValue);
+  // Set "counter-reset: list-item <integer>".  If aIsReversed is true then
+  // "list-item" instead becomes "reversed(list-item)".
+  void SetCounterResetListItem(int32_t aValue, bool aIsReversed) {
+    Servo_DeclarationBlock_SetCounterResetListItem(mDecl, aValue, aIsReversed);
   }
 
   // Set "counter-set: list-item <integer>".
@@ -196,7 +197,7 @@ class MappedDeclarations final {
 
  private:
   dom::Document* const mDocument;
-  RefPtr<RawServoDeclarationBlock> mDecl;
+  RefPtr<StyleLockedDeclarationBlock> mDecl;
 };
 
 }  // namespace mozilla

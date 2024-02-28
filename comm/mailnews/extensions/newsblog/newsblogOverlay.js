@@ -3,20 +3,23 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-/* globals ReloadMessage, getBrowser, openContentTab, gDBView,
+/* globals ReloadMessage, getMessagePaneBrowser, openContentTab,
            GetNumSelectedMessages, gMessageNotificationBar */
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-var { FeedUtils } = ChromeUtils.import("resource:///modules/FeedUtils.jsm");
-var { MsgHdrToMimeMessage } = ChromeUtils.import(
-  "resource:///modules/gloda/MimeMessage.jsm"
-);
-var { MailE10SUtils } = ChromeUtils.import(
-  "resource:///modules/MailE10SUtils.jsm"
+var { XPCOMUtils } = ChromeUtils.importESModule(
+  "resource://gre/modules/XPCOMUtils.sys.mjs"
 );
 var { MailServices } = ChromeUtils.import(
   "resource:///modules/MailServices.jsm"
 );
+var { FeedUtils } = ChromeUtils.import("resource:///modules/FeedUtils.jsm");
+var { MailE10SUtils } = ChromeUtils.import(
+  "resource:///modules/MailE10SUtils.jsm"
+);
+
+XPCOMUtils.defineLazyModuleGetters(this, {
+  MsgHdrToMimeMessage: "resource:///modules/gloda/MimeMessage.jsm",
+});
 
 // This global is for SeaMonkey compatibility.
 var gShowFeedSummary;
@@ -69,7 +72,7 @@ var FeedMessageHandler = {
    * message pane.
    *
    * @param {nsIMsgDBHdr} aMsgHdr - The message.
-   * @param {Boolean} aToggle     - true if in toggle mode, false otherwise.
+   * @param {boolean} aToggle - true if in toggle mode, false otherwise.
    *
    * @returns {Boolean} - true if summary is to be displayed, false if web page.
    */
@@ -90,7 +93,7 @@ var FeedMessageHandler = {
     // Thunderbird 2 rss messages with 'Show article summary' not selected,
     // ie message body constructed to show web page in an iframe, can't show
     // a summary - notify user.
-    let browser = getBrowser();
+    let browser = getMessagePaneBrowser();
     let contentDoc = browser ? browser.contentDocument : null;
     let rssIframe = contentDoc
       ? contentDoc.getElementById("_mailrssiframe")
@@ -178,12 +181,12 @@ var FeedMessageHandler = {
    * is not streamed.
    *
    * @param {nsIMsgDBHdr} aMessageHdr - The message.
-   * @param {Object} aWhere           - name value=true pair, where name is in:
+   * @param {Object} aWhere - name value=true pair, where name is in:
    *                                    'messagepane', 'browser', 'tab', 'window'.
    * @returns {void}
    */
   loadWebPage(aMessageHdr, aWhere) {
-    MsgHdrToMimeMessage(aMessageHdr, null, function(aMsgHdr, aMimeMsg) {
+    MsgHdrToMimeMessage(aMessageHdr, null, function (aMsgHdr, aMimeMsg) {
       if (
         aMimeMsg &&
         aMimeMsg.headers["content-base"] &&
@@ -210,7 +213,12 @@ var FeedMessageHandler = {
             .getService(Ci.nsIExternalProtocolService)
             .loadURI(uri);
         } else if (aWhere.messagepane) {
-          MailE10SUtils.loadURI(getBrowser(), url);
+          let browser = getMessagePaneBrowser();
+          // Load about:blank in the browser before (potentially) switching
+          // to a remote process. This prevents sandbox flags being carried
+          // over to the web document.
+          MailE10SUtils.loadAboutBlank(browser);
+          MailE10SUtils.loadURI(browser, url);
         } else if (aWhere.tab) {
           openContentTab(url, "tab", null);
         } else if (aWhere.window) {
@@ -229,7 +237,7 @@ var FeedMessageHandler = {
    * Display summary or load web page for feed messages. Caller should already
    * know if the message is a feed message.
    *
-   * @param {nsIMsgDBHdr} aMsgHdr  - The message.
+   * @param {nsIMsgDBHdr} aMsgHdr - The message.
    * @param {Boolean} aShowSummary - true if summary is to be displayed,
    *                                 false if web page.
    * @returns {void}
@@ -237,11 +245,11 @@ var FeedMessageHandler = {
   setContent(aMsgHdr, aShowSummary) {
     if (aShowSummary) {
       // Only here if toggling to summary in 3pane.
-      if (this.gToggle && gDBView && GetNumSelectedMessages() == 1) {
+      if (this.gToggle && window.gDBView && GetNumSelectedMessages() == 1) {
         ReloadMessage();
       }
     } else {
-      let browser = getBrowser();
+      let browser = getMessagePaneBrowser();
       if (browser && browser.contentDocument && browser.contentDocument.body) {
         browser.contentDocument.body.hidden = true;
       }
@@ -362,7 +370,7 @@ function openComposeWindowForRSSArticle(
       MsgHdrToMimeMessage(
         msgHdr,
         null,
-        function(aMsgHdr, aMimeMsg) {
+        function (aMsgHdr, aMimeMsg) {
           if (
             aMimeMsg &&
             aMimeMsg.headers["content-base"] &&

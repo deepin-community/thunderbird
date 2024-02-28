@@ -5,7 +5,6 @@ const { HttpServer } = ChromeUtils.import("resource://testing-common/httpd.js");
 
 var httpserver = null;
 const noRedirectURI = "/content";
-const pageValue = "Final page";
 const acceptType = "application/json";
 
 function redirectHandler(metadata, response) {
@@ -26,10 +25,7 @@ function run_test() {
   httpserver.registerPathHandler("/content", contentHandler);
   httpserver.start(-1);
 
-  var prefs = Cc["@mozilla.org/preferences-service;1"].getService(
-    Ci.nsIPrefBranch
-  );
-  prefs.setBoolPref("network.http.prompt-temp-redirect", false);
+  Services.prefs.setBoolPref("network.http.prompt-temp-redirect", false);
 
   var chan = NetUtil.newChannel({
     uri: "http://localhost:" + httpserver.identity.primaryPort + "/redirect",

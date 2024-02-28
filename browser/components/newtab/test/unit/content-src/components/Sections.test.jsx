@@ -1,17 +1,16 @@
 import { combineReducers, createStore } from "redux";
-import { INITIAL_STATE, reducers } from "common/Reducers.jsm";
+import { INITIAL_STATE, reducers } from "common/Reducers.sys.mjs";
 import {
   Section,
   SectionIntl,
   _Sections as Sections,
 } from "content-src/components/Sections/Sections";
-import { actionTypes as at } from "common/Actions.jsm";
+import { actionTypes as at } from "common/Actions.sys.mjs";
 import { mount, shallow } from "enzyme";
 import { PlaceholderCard } from "content-src/components/Card/Card";
 import { PocketLoggedInCta } from "content-src/components/PocketLoggedInCta/PocketLoggedInCta";
 import { Provider } from "react-redux";
 import React from "react";
-import { SectionMenu } from "content-src/components/SectionMenu/SectionMenu";
 import { Topics } from "content-src/components/Topics/Topics";
 import { TopSites } from "content-src/components/TopSites/TopSites";
 
@@ -136,29 +135,6 @@ describe("<Section>", () => {
     wrapper = mountSectionIntlWithProps(FAKE_SECTION);
   });
 
-  describe("context menu", () => {
-    it("should render a context menu button", () => {
-      wrapper = mountSectionIntlWithProps(FAKE_SECTION);
-
-      assert.equal(
-        wrapper.find(".section-top-bar .context-menu-button").length,
-        1
-      );
-    });
-    it("should render a section menu when button is clicked", () => {
-      wrapper = mountSectionIntlWithProps(FAKE_SECTION);
-
-      const button = wrapper.find(".section-top-bar .context-menu-button");
-      assert.equal(wrapper.find(SectionMenu).length, 0);
-      button.simulate("click", { preventDefault: () => {} });
-      assert.equal(wrapper.find(SectionMenu).length, 1);
-    });
-    it("should not render a section menu by default", () => {
-      wrapper = shallow(<Section {...FAKE_SECTION} />);
-      assert.equal(wrapper.find(SectionMenu).length, 0);
-    });
-  });
-
   describe("placeholders", () => {
     const CARDS_PER_ROW = 3;
     const fakeSite = { link: "http://localhost" };
@@ -208,7 +184,6 @@ describe("<Section>", () => {
         rows: [],
         emptyState: {
           message: "Some message",
-          icon: "moz-extension://some/extension/path",
         },
       });
       wrapper = shallow(<Section {...FAKE_SECTION} />);
@@ -222,21 +197,13 @@ describe("<Section>", () => {
         rows: [],
         emptyState: {
           message: "Some message",
-          icon: "moz-extension://some/extension/path",
         },
       });
       wrapper = shallow(<Section {...FAKE_SECTION} />);
       assert.isFalse(wrapper.find(".empty-state").exists());
     });
-    it("should use the icon prop as the icon url if it starts with `moz-extension://`", () => {
-      const props = wrapper
-        .find(".empty-state-icon")
-        .first()
-        .props();
-      assert.equal(
-        props.style["background-image"],
-        `url('${FAKE_SECTION.emptyState.icon}')`
-      );
+    it("no icon should be shown", () => {
+      assert.lengthOf(wrapper.find(".icon"), 0);
     });
   });
 

@@ -20,9 +20,13 @@ if CONFIG["MAKENSISU"]:
     DIRS += ["installer/windows"]
 
 if CONFIG["MOZ_BUNDLED_FONTS"]:
-    DIRS += ["/%s/browser/fonts" % CONFIG["mozreltopsrcdir"]]
+    DIRS += ["/browser/fonts"]
+
+if CONFIG["NIGHTLY_BUILD"]:
+    DIRS += ["services/sync"]
 
 DIRS += [
+    "../python",
     "../taskcluster",
     "../third_party",
 ]

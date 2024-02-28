@@ -6,21 +6,15 @@
 
 // We attach Preferences to the window object so other contexts (tests, JSMs)
 // have access to it.
-const Preferences = (window.Preferences = (function() {
-  const { EventEmitter } = ChromeUtils.import(
-    "resource://gre/modules/EventEmitter.jsm"
+const Preferences = (window.Preferences = (function () {
+  const { EventEmitter } = ChromeUtils.importESModule(
+    "resource://gre/modules/EventEmitter.sys.mjs"
   );
-  const { Services } = ChromeUtils.import(
-    "resource://gre/modules/Services.jsm"
-  );
-  ChromeUtils.import("resource://gre/modules/XPCOMUtils.jsm");
 
   const lazy = {};
-  ChromeUtils.defineModuleGetter(
-    lazy,
-    "DeferredTask",
-    "resource://gre/modules/DeferredTask.jsm"
-  );
+  ChromeUtils.defineESModuleGetters(lazy, {
+    DeferredTask: "resource://gre/modules/DeferredTask.sys.mjs",
+  });
 
   function getElementsByAttribute(name, value) {
     // If we needed to defend against arbitrary values, we would escape
@@ -48,7 +42,9 @@ const Preferences = (window.Preferences = (function() {
       const pref = new Preference(prefInfo);
       this._all[pref.id] = pref;
       domContentLoadedPromise.then(() => {
-        pref.updateElements();
+        if (!this.updateQueued) {
+          pref.updateElements();
+        }
       });
       return pref;
     },
@@ -78,21 +74,14 @@ const Preferences = (window.Preferences = (function() {
 
     get instantApply() {
       // The about:preferences page forces instantApply.
+      // TODO: Remove forceEnableInstantApply in favor of always applying in a
+      // parent and never applying in a child (bug 1775386).
       if (this._instantApplyForceEnabled) {
         return true;
       }
 
       // Dialogs of type="child" are never instantApply.
-      if (this.type === "child") {
-        return false;
-      }
-
-      // All other pref windows observe the value of the instantApply
-      // preference.  Note that, as of this writing, the only such windows
-      // are in tests, so it should be possible to remove the pref
-      // (and forceEnableInstantApply) in favor of always applying in a parent
-      // and never applying in a child.
-      return Services.prefs.getBoolPref("browser.preferences.instantApply");
+      return this.type !== "child";
     },
 
     _instantApplyForceEnabled: false,
@@ -109,39 +98,36 @@ const Preferences = (window.Preferences = (function() {
       }
     },
 
-    onDOMContentLoaded() {
-      // Iterate elements with a "preference" attribute and log an error
-      // if there isn't a corresponding Preference object in order to catch
-      // any cases of elements referencing preferences that haven't (yet?)
-      // been registered.
-      //
-      // TODO: remove this code once we determine that there are no such
-      // elements (or resolve any bugs that cause this behavior).
-      //
-      const elements = getElementsByAttribute("preference");
-      for (const element of elements) {
-        const id = element.getAttribute("preference");
-        const pref = this.get(id);
-        if (!pref) {
-          console.error(`Missing preference for ID ${id}`);
-        }
-      }
-    },
-
     updateQueued: false,
 
-    updateAllElements() {
+    queueUpdateOfAllElements() {
       if (this.updateQueued) {
         return;
       }
 
       this.updateQueued = true;
 
-      Promise.resolve().then(() => {
-        const preferences = Preferences.getAll();
-        for (const preference of preferences) {
-          preference.updateElements();
+      Services.tm.dispatchToMainThread(() => {
+        let startTime = performance.now();
+
+        const elements = getElementsByAttribute("preference");
+        for (const element of elements) {
+          const id = element.getAttribute("preference");
+          let preference = this.get(id);
+          if (!preference) {
+            console.error(`Missing preference for ID ${id}`);
+            continue;
+          }
+
+          preference.setElementValue(element);
         }
+
+        ChromeUtils.addProfilerMarker(
+          "Preferences",
+          { startTime },
+          `updateAllElements: ${elements.length} preferences updated`
+        );
+
         this.updateQueued = false;
       });
     },
@@ -254,7 +240,7 @@ const Preferences = (window.Preferences = (function() {
         });
         return aTarget.dispatchEvent(event);
       } catch (e) {
-        Cu.reportError(e);
+        console.error(e);
       }
       return false;
     },
@@ -279,6 +265,7 @@ const Preferences = (window.Preferences = (function() {
 
     handleEvent(event) {
       switch (event.type) {
+        case "toggle":
         case "change":
           return this.onChange(event);
         case "command":
@@ -299,6 +286,9 @@ const Preferences = (window.Preferences = (function() {
 
     addSyncFromPrefListener(aElement, callback) {
       this._syncFromPrefListeners.set(aElement, callback);
+      if (this.updateQueued) {
+        return;
+      }
       // Make sure elements are updated correctly with the listener attached.
       let elementPref = aElement.getAttribute("preference");
       if (elementPref) {
@@ -311,6 +301,9 @@ const Preferences = (window.Preferences = (function() {
 
     addSyncToPrefListener(aElement, callback) {
       this._syncToPrefListeners.set(aElement, callback);
+      if (this.updateQueued) {
+        return;
+      }
       // Make sure elements are updated correctly with the listener attached.
       let elementPref = aElement.getAttribute("preference");
       if (elementPref) {
@@ -331,9 +324,7 @@ const Preferences = (window.Preferences = (function() {
   };
 
   Services.prefs.addObserver("", Preferences);
-  domContentLoadedPromise.then(result =>
-    Preferences.onDOMContentLoaded(result)
-  );
+  window.addEventListener("toggle", Preferences);
   window.addEventListener("change", Preferences);
   window.addEventListener("command", Preferences);
   window.addEventListener("dialogaccept", Preferences);
@@ -419,7 +410,7 @@ const Preferences = (window.Preferences = (function() {
       function setValue(element, attribute, value) {
         if (attribute in element) {
           element[attribute] = value;
-        } else if (attribute === "checked") {
+        } else if (attribute === "checked" || attribute === "pressed") {
           // The "checked" attribute can't simply be set to the specified value;
           // it has to be set if the value is true and removed if the value
           // is false in order to be interpreted correctly by the element.
@@ -439,6 +430,8 @@ const Preferences = (window.Preferences = (function() {
         (aElement.localName == "input" && aElement.type == "checkbox")
       ) {
         setValue(aElement, "checked", val);
+      } else if (aElement.localName == "moz-toggle") {
+        setValue(aElement, "pressed", val);
       } else {
         setValue(aElement, "value", val);
       }
@@ -452,7 +445,7 @@ const Preferences = (window.Preferences = (function() {
             return rv;
           }
         } catch (e) {
-          Cu.reportError(e);
+          console.error(e);
         }
       }
 
@@ -474,6 +467,8 @@ const Preferences = (window.Preferences = (function() {
         (aElement.localName == "input" && aElement.type == "checkbox")
       ) {
         value = getValue(aElement, "checked");
+      } else if (aElement.localName == "moz-toggle") {
+        value = getValue(aElement, "pressed");
       } else {
         value = getValue(aElement, "value");
       }
@@ -494,22 +489,29 @@ const Preferences = (window.Preferences = (function() {
         case "radiogroup":
         case "textarea":
         case "menulist":
+        case "moz-toggle":
           return true;
       }
       return false;
     }
 
     updateElements() {
+      let startTime = performance.now();
+
       if (!this.id) {
         return;
       }
 
-      // This "change" event handler tracks changes made to preferences by
-      // sources other than the user in this window.
       const elements = getElementsByAttribute("preference", this.id);
       for (const element of elements) {
         this.setElementValue(element);
       }
+
+      ChromeUtils.addProfilerMarker(
+        "Preferences",
+        { startTime, captureStack: true },
+        `updateElements for ${this.id}`
+      );
     }
 
     onChange() {

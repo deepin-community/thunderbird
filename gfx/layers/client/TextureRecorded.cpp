@@ -6,7 +6,6 @@
 
 #include "TextureRecorded.h"
 
-#include "mozilla/gfx/gfxVars.h"
 #include "RecordedCanvasEventImpl.h"
 
 namespace mozilla {
@@ -38,7 +37,6 @@ void RecordedTextureData::FillInfo(TextureData::Info& aInfo) const {
   aInfo.size = mSize;
   aInfo.format = mFormat;
   aInfo.supportsMoz2D = true;
-  aInfo.hasIntermediateBuffer = false;
   aInfo.hasSynchronization = true;
 }
 
@@ -61,17 +59,17 @@ bool RecordedTextureData::Lock(OpenMode aMode) {
   mCanvasChild->RecordEvent(RecordedTextureLock(mTextureId, aMode));
   if (aMode & OpenMode::OPEN_WRITE) {
     mCanvasChild->OnTextureWriteLock();
-    mSnapshot = nullptr;
   }
   mLockedMode = aMode;
   return true;
 }
 
 void RecordedTextureData::Unlock() {
-  if ((mLockedMode & OpenMode::OPEN_WRITE) &&
+  if ((mLockedMode == OpenMode::OPEN_READ_WRITE) &&
       mCanvasChild->ShouldCacheDataSurface()) {
     mSnapshot = mDT->Snapshot();
     mDT->DetachAllSnapshots();
+    mCanvasChild->RecordEvent(RecordedCacheDataSurface(mSnapshot.get()));
   }
 
   mCanvasChild->RecordEvent(RecordedTextureUnlock(mTextureId));
@@ -79,7 +77,18 @@ void RecordedTextureData::Unlock() {
 }
 
 already_AddRefed<gfx::DrawTarget> RecordedTextureData::BorrowDrawTarget() {
+  mSnapshot = nullptr;
   return do_AddRef(mDT);
+}
+
+void RecordedTextureData::EndDraw() {
+  MOZ_ASSERT(mDT->hasOneRef());
+  MOZ_ASSERT(mLockedMode == OpenMode::OPEN_READ_WRITE);
+
+  if (mCanvasChild->ShouldCacheDataSurface()) {
+    mSnapshot = mDT->Snapshot();
+    mCanvasChild->RecordEvent(RecordedCacheDataSurface(mSnapshot.get()));
+  }
 }
 
 already_AddRefed<gfx::SourceSurface> RecordedTextureData::BorrowSnapshot() {
@@ -101,19 +110,12 @@ bool RecordedTextureData::Serialize(SurfaceDescriptor& aDescriptor) {
 
 void RecordedTextureData::OnForwardedToHost() {
   mCanvasChild->OnTextureForwarded();
-  if (mSnapshot && mCanvasChild->ShouldCacheDataSurface()) {
-    mCanvasChild->RecordEvent(RecordedCacheDataSurface(mSnapshot.get()));
-  }
 }
 
 TextureFlags RecordedTextureData::GetTextureFlags() const {
-  TextureFlags flags = TextureFlags::NO_FLAGS;
   // With WebRender, resource open happens asynchronously on RenderThread.
   // Use WAIT_HOST_USAGE_END to keep TextureClient alive during host side usage.
-  if (gfx::gfxVars::UseWebRender()) {
-    flags |= TextureFlags::WAIT_HOST_USAGE_END;
-  }
-  return flags;
+  return TextureFlags::WAIT_HOST_USAGE_END;
 }
 
 }  // namespace layers

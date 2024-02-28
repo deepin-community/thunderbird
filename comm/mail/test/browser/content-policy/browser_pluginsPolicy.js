@@ -19,6 +19,7 @@ var {
   be_in_folder,
   close_message_window,
   create_folder,
+  get_about_message,
   mc,
   open_selected_message,
   select_click_row,
@@ -35,7 +36,6 @@ var { async_plan_for_new_window } = ChromeUtils.import(
 var { MailE10SUtils } = ChromeUtils.import(
   "resource:///modules/MailE10SUtils.jsm"
 );
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 
 var folder = null;
 var gMsgNo = 0;
@@ -55,15 +55,12 @@ var msgBody =
   '<embed id="testelement" type="application/x-test" width="400" height="400" border="1"></embed>\n' +
   "</body>\n</html>\n";
 
-add_task(function setupModule(module) {
-  folder = create_folder("pluginPolicy");
+add_setup(async function () {
+  folder = await create_folder("pluginPolicy");
 });
 
 function addToFolder(aSubject, aBody, aFolder) {
-  let msgId =
-    Cc["@mozilla.org/uuid-generator;1"]
-      .getService(Ci.nsIUUIDGenerator)
-      .generateUUID() + "@mozillamessaging.invalid";
+  let msgId = Services.uuid.generateUUID() + "@mozillamessaging.invalid";
 
   let source =
     "From - Sat Nov  1 12:39:54 2008\n" +
@@ -129,11 +126,14 @@ async function addMsgToFolderAndCheckContent(loadAllowed) {
   // XXX It appears the assert_selected_and_displayed doesn't actually wait
   // long enough for plugin load. However, I also can't find a way to wait for
   // long enough in all situations, so this will have to do for now.
-  mc.sleep(1000);
+  // eslint-disable-next-line mozilla/no-arbitrary-setTimeout
+  await new Promise(resolve => setTimeout(resolve, 1000));
 
   // Now check that the content hasn't been loaded
   if (
-    (await isPluginLoaded(mc.window.getMessagePaneBrowser())) != loadAllowed
+    (await isPluginLoaded(
+      get_about_message().document.getElementById("messagepane")
+    )) != loadAllowed
   ) {
     throw new Error(
       loadAllowed
@@ -155,10 +155,14 @@ async function checkStandaloneMessageWindow(loadAllowed) {
   // XXX It appears the wait_for_message_display_completion doesn't actually
   // wait long enough for plugin load. However, I also can't find a way to wait
   // for long enough in all situations, so this will have to do for now.
-  mc.sleep(1000);
+  // eslint-disable-next-line mozilla/no-arbitrary-setTimeout
+  await new Promise(resolve => setTimeout(resolve, 1000));
 
+  let aboutMessage = get_about_message(msgc.window);
   if (
-    (await isPluginLoaded(msgc.window.getMessagePaneBrowser())) != loadAllowed
+    (await isPluginLoaded(
+      aboutMessage.document.getElementById("messagepane")
+    )) != loadAllowed
   ) {
     throw new Error(
       loadAllowed
@@ -172,7 +176,7 @@ async function checkStandaloneMessageWindow(loadAllowed) {
 }
 
 add_task(async function test_3paneWindowDenied() {
-  be_in_folder(folder);
+  await be_in_folder(folder);
 
   assert_nothing_selected();
 
@@ -184,7 +188,7 @@ add_task(async function test_checkPluginsInNonMessageContent() {
   select_none();
 
   // load something non-message-like in the message pane
-  let browser = mc.window.getMessagePaneBrowser();
+  let browser = get_about_message().document.getElementById("messagepane");
   MailE10SUtils.loadURI(browser, url + "plugin.html");
   await BrowserTestUtils.browserLoaded(browser);
 
@@ -200,7 +204,7 @@ add_task(async function test_3paneWindowDeniedAgain() {
 
   assert_selected_and_displayed(0);
 
-  let browser = mc.window.getMessagePaneBrowser();
+  let browser = get_about_message().document.getElementById("messagepane");
   // Now check that the content hasn't been loaded
   if (await isPluginLoaded(browser)) {
     throw new Error("Plugin has not been blocked in message as expected");
@@ -214,7 +218,8 @@ add_task(async function test_checkStandaloneMessageWindowDenied() {
 add_task(async function test_checkContentTab() {
   // To open a tab we're going to have to cheat and use tabmail so we can load
   // in the data of what we want.
-  let preCount = mc.tabmail.tabContainer.allTabs.length;
+  let preCount =
+    mc.window.document.getElementById("tabmail").tabContainer.allTabs.length;
 
   let newTab = open_content_tab_with_url(url + "plugin.html");
 
@@ -222,9 +227,12 @@ add_task(async function test_checkContentTab() {
     throw new Error("Plugin has been unexpectedly not blocked in content tab");
   }
 
-  mc.tabmail.closeTab(newTab);
+  mc.window.document.getElementById("tabmail").closeTab(newTab);
 
-  if (mc.tabmail.tabContainer.allTabs.length != preCount) {
+  if (
+    mc.window.document.getElementById("tabmail").tabContainer.allTabs.length !=
+    preCount
+  ) {
     throw new Error("The content tab didn't close");
   }
 

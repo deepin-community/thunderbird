@@ -24,8 +24,6 @@
 <!ENTITY moveToNewWindow.accesskey "G">
 <!ENTITY newVirtualFolderCmd.label "Lorg a chaidh a shàbhaladh…">
 <!ENTITY newVirtualFolderCmd.accesskey "s">
-<!ENTITY newOtherAccountsCmd.label "Cunntasan eile…">
-<!ENTITY newOtherAccountsCmd.accesskey "C">
 <!ENTITY newCreateEmailAccountCmd.label "Faigh cunntas puist ùr…">
 <!ENTITY newCreateEmailAccountCmd.accesskey "a">
 <!ENTITY newExistingEmailAccountCmd.label "Cunntas puist a tha agad mu thràth…">
@@ -48,8 +46,6 @@
 <!ENTITY openMessageFileCmd.accesskey "o">
 <!ENTITY saveAsMenu.label "Sàbhail mar">
 <!ENTITY saveAsMenu.accesskey "S">
-<!ENTITY saveAsFileCmd.label "Fhaidhle">
-<!ENTITY saveAsFileCmd.accesskey "F">
 <!ENTITY saveAsFileCmd.key "s">
 <!ENTITY saveAsTemplateCmd.label "Theamplaid">
 <!ENTITY saveAsTemplateCmd.accesskey "T">
@@ -320,7 +316,6 @@
 <!ENTITY goBackCmd.commandKey "[">
 <!ENTITY goChatCmd.label "Cabadaich">
 <!ENTITY goChatCmd.accesskey "C">
-<!ENTITY goChatCmd2.key "h">
 <!ENTITY prevStarredMsgCmd.label "Teachdaireachd le rionnag">
 <!ENTITY prevStarredMsgCmd.accesskey "T">
 <!ENTITY folderMenu.label "Pasgan">
@@ -490,6 +485,8 @@
 <!ENTITY deleteJunk.accesskey "d">
 <!ENTITY importCmd.label "Ion-phortaich…">
 <!ENTITY importCmd.accesskey "I">
+<!ENTITY exportCmd.label "Às-phortaich…">
+<!ENTITY exportCmd.accesskey "x">
 <!ENTITY clearRecentHistory.label "Falamhaich an eachdraidh faisg ort…">
 <!ENTITY clearRecentHistory.accesskey "h">
 <!ENTITY accountManagerCmd2.label "Roghainnean nan cunntasan">

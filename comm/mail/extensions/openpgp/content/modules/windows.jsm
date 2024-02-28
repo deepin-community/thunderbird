@@ -8,19 +8,20 @@
 
 const EXPORTED_SYMBOLS = ["EnigmailWindows"];
 
-const { XPCOMUtils } = ChromeUtils.import(
-  "resource://gre/modules/XPCOMUtils.jsm"
+const { XPCOMUtils } = ChromeUtils.importESModule(
+  "resource://gre/modules/XPCOMUtils.sys.mjs"
 );
 
-XPCOMUtils.defineLazyModuleGetters(this, {
+const lazy = {};
+
+XPCOMUtils.defineLazyModuleGetters(lazy, {
   EnigmailCore: "chrome://openpgp/content/modules/core.jsm",
+  EnigmailDialog: "chrome://openpgp/content/modules/dialog.jsm",
   EnigmailKeyRing: "chrome://openpgp/content/modules/keyRing.jsm",
   EnigmailLog: "chrome://openpgp/content/modules/log.jsm",
-  EnigmailStdlib: "chrome://openpgp/content/modules/stdlib.jsm",
-  Services: "resource://gre/modules/Services.jsm",
 });
 
-XPCOMUtils.defineLazyGetter(this, "l10n", () => {
+XPCOMUtils.defineLazyGetter(lazy, "l10n", () => {
   return new Localization(["messenger/openpgp/openpgp.ftl"], true);
 });
 
@@ -98,12 +99,12 @@ var EnigmailWindows = {
    * matching name.
    *
    * @win:       nsIWindow - XUL window to search
-   * @frameName: String    - name of the frame to seach
+   * @frameName: String    - name of the frame to search
    *
    * @return:    the frame object or null if not found
    */
   getFrame(win, frameName) {
-    EnigmailLog.DEBUG("windows.jsm: getFrame: name=" + frameName + "\n");
+    lazy.EnigmailLog.DEBUG("windows.jsm: getFrame: name=" + frameName + "\n");
     for (var j = 0; j < win.frames.length; j++) {
       if (win.frames[j].name == frameName) {
         return win.frames[j];
@@ -156,7 +157,7 @@ var EnigmailWindows = {
    * no return value
    */
   openKeyManager(win) {
-    EnigmailCore.getService(win);
+    lazy.EnigmailCore.getService(win);
 
     EnigmailWindows.openWin(
       "enigmail:KeyManager",
@@ -171,7 +172,7 @@ var EnigmailWindows = {
    * no return value
    */
   openImportSettings(win) {
-    EnigmailCore.getService(win);
+    lazy.EnigmailCore.getService(win);
 
     EnigmailWindows.openWin(
       "",
@@ -236,7 +237,7 @@ var EnigmailWindows = {
     EnigmailWindows.openWin(
       "enigmail:logFile",
       "chrome://openpgp/content/ui/enigmailViewFile.xhtml?viewLog=1&title=" +
-        escape(l10n.formatValueSync("debug-log-title")),
+        escape(lazy.l10n.formatValueSync("debug-log-title")),
       "centerscreen"
     );
   },
@@ -248,7 +249,7 @@ var EnigmailWindows = {
    * @userIdArr  - |array| of |strings| containing the User IDs
    * @keyIdArr   - |array| of |strings| containing the key IDs (eg. "0x12345678") to change
    *
-   * @return  Boolean - true if expiry date was changed; false otherwise
+   * @returns Boolean - true if expiry date was changed; false otherwise
    */
   editKeyExpiry(win, userIdArr, keyIdArr) {
     const inputObj = {
@@ -275,7 +276,7 @@ var EnigmailWindows = {
    * @userIdArr  - |array| of |strings| containing the User IDs
    * @keyIdArr   - |array| of |strings| containing the key IDs (eg. "0x12345678") to change
    *
-   * @return  Boolean - true if key trust was changed; false otherwise
+   * @returns Boolean - true if key trust was changed; false otherwise
    */
   editKeyTrust(win, userIdArr, keyIdArr) {
     const inputObj = {
@@ -302,7 +303,7 @@ var EnigmailWindows = {
    * @userId     - |string| containing the User ID (for displaing in the dialog only)
    * @keyId      - |string| containing the key ID (eg. "0x12345678")
    *
-   * @return  Boolean - true if key was signed; false otherwise
+   * @returns Boolean - true if key was signed; false otherwise
    */
   signKey(win, userId, keyId) {
     const inputObj = {
@@ -323,68 +324,13 @@ var EnigmailWindows = {
   },
 
   /**
-   * Display the photo ID associated with a key
-   *
-   * @win        - |object| holding the parent window for the dialog
-   * @keyId      - |string| containing the key ID (eg. "0x12345678")
-   * @userId     - |string| containing the User ID (for displaing in the dialog only)
-   * @photoNumber - |number| UAT entry in the squence of appearance in the key listing, starting with 0
-   * no return value
-   */
-  showPhoto(win, keyId, userId, photoNumber) {
-    const enigmailSvc = EnigmailCore.getService(win);
-    if (enigmailSvc) {
-      if (!photoNumber) {
-        photoNumber = 0;
-      }
-      let keyObj = EnigmailKeyRing.getKeyById(keyId);
-      if (!keyObj) {
-        EnigmailWindows.alert(win, l10n.formatValueSync("no-photo-available"));
-      }
-
-      let photoFile = keyObj.getPhotoFile(photoNumber);
-
-      if (photoFile) {
-        if (!(photoFile.isFile() && photoFile.isReadable())) {
-          EnigmailWindows.alert(
-            win,
-            l10n.formatValueSync("error-photo-path-not-readable", {
-              photo: photoFile.path,
-            })
-          );
-        } else {
-          const photoUri = Services.io.newFileURI(photoFile).spec;
-          const argsObj = {
-            photoUri,
-            userId,
-            keyId,
-          };
-
-          win.openDialog(
-            "chrome://openpgp/content/ui/enigmailDispPhoto.xhtml",
-            photoUri,
-            "chrome,modal,resizable,dialog,centerscreen",
-            argsObj
-          );
-          try {
-            // delete the photo file
-            photoFile.remove(false);
-          } catch (ex) {}
-        }
-      } else {
-        EnigmailWindows.alert(win, l10n.formatValueSync("no-photo-available"));
-      }
-    }
-  },
-
-  /**
    * Display the OpenPGP Key Details window
    *
    * @win        - |object| holding the parent window for the dialog
    * @keyId      - |string| containing the key ID (eg. "0x12345678")
    * @refresh    - |boolean| if true, cache is cleared and the key data is loaded from GnuPG
    *
-   * @return  Boolean - true:  keylist needs to be refreshed
+   * @returns Boolean - true:  keylist needs to be refreshed
    *                  - false: no need to refresh keylist
    */
   async openKeyDetails(win, keyId, refresh) {
@@ -395,7 +341,7 @@ var EnigmailWindows = {
     keyId = keyId.replace(/^0x/, "");
 
     if (refresh) {
-      EnigmailKeyRing.clearCache();
+      lazy.EnigmailKeyRing.clearCache();
     }
 
     const resultObj = {
@@ -405,7 +351,7 @@ var EnigmailWindows = {
       "chrome://openpgp/content/ui/keyDetailsDlg.xhtml",
       "KeyDetailsDialog",
       "dialog,modal,centerscreen,resizable",
-      { keyId, modified: EnigmailKeyRing.clearCache },
+      { keyId, modified: lazy.EnigmailKeyRing.clearCache },
       resultObj
     );
 
@@ -422,7 +368,7 @@ var EnigmailWindows = {
    * no return value
    */
   downloadKeys(win, inputObj, resultObj) {
-    EnigmailLog.DEBUG(
+    lazy.EnigmailLog.DEBUG(
       "windows.jsm: downloadKeys: searchList=" + inputObj.searchList + "\n"
     );
 
@@ -430,8 +376,8 @@ var EnigmailWindows = {
 
     const ioService = Services.io;
     if (ioService && ioService.offline) {
-      l10n.formatValue("need-online").then(value => {
-        EnigmailWindows.alert(win, value);
+      lazy.l10n.formatValue("need-online").then(value => {
+        lazy.EnigmailDialog.alert(win, value);
       });
       return;
     }
@@ -510,7 +456,7 @@ var EnigmailWindows = {
    * @param passwdType:    String - type of password ("numeric9x4" / "generic")
    * @param password:      String - password or initial two digits of password
    *
-   * @return String entered password (in input mode) or NULL
+   * @returns String entered password (in input mode) or NULL
    */
   autocryptSetupPasswd(window, dlgMode, passwdType = "numeric9x4", password) {
     if (!window) {
@@ -554,9 +500,11 @@ var EnigmailWindows = {
   },
 
   shutdown(reason) {
-    EnigmailLog.DEBUG("windows.jsm: shutdown()\n");
+    lazy.EnigmailLog.DEBUG("windows.jsm: shutdown()\n");
 
-    let tabs = EnigmailStdlib.getMail3Pane().document.getElementById("tabmail");
+    let tabs = Services.wm
+      .getMostRecentWindow("mail:3pane")
+      .document.getElementById("tabmail");
 
     for (let i = tabs.tabInfo.length - 1; i >= 0; i--) {
       if (

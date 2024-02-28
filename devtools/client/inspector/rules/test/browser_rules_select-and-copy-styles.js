@@ -35,7 +35,7 @@ const TEST_URI = `
   </div>
 `;
 
-add_task(async function() {
+add_task(async function () {
   await addTab("data:text/html;charset=utf-8," + encodeURIComponent(TEST_URI));
   const { inspector, view } = await openRuleView();
   await selectNode("div", inspector);
@@ -61,13 +61,13 @@ async function checkCopySelection(view) {
   info("Checking that _Copy() returns the correct clipboard value");
 
   const expectedPattern =
-    "    margin: 10em;[\\r\\n]+" +
-    "    font-size: 14pt;[\\r\\n]+" +
-    "    font-family: helvetica, sans-serif;[\\r\\n]+" +
-    "    color: #AAA;[\\r\\n]+" +
+    "  margin: 10em;[\\r\\n]+" +
+    "  font-size: 14pt;[\\r\\n]+" +
+    "  font-family: helvetica, sans-serif;[\\r\\n]+" +
+    "  color: #AAA;[\\r\\n]+" +
     "}[\\r\\n]+" +
     "html {[\\r\\n]+" +
-    "    color: #000000;[\\r\\n]*";
+    "  color: #000000;[\\r\\n]*";
 
   const allMenuItems = openStyleContextMenuAndGetAllItems(view, prop);
   const menuitemCopy = allMenuItems.find(
@@ -119,13 +119,13 @@ async function checkSelectAll(view) {
   view.contextMenu._onSelectAll();
   const expectedPattern =
     "element {[\\r\\n]+" +
-    "    margin: 10em;[\\r\\n]+" +
-    "    font-size: 14pt;[\\r\\n]+" +
-    "    font-family: helvetica, sans-serif;[\\r\\n]+" +
-    "    color: #AAA;[\\r\\n]+" +
+    "  margin: 10em;[\\r\\n]+" +
+    "  font-size: 14pt;[\\r\\n]+" +
+    "  font-family: helvetica, sans-serif;[\\r\\n]+" +
+    "  color: #AAA;[\\r\\n]+" +
     "}[\\r\\n]+" +
     "html {[\\r\\n]+" +
-    "    color: #000000;[\\r\\n]+" +
+    "  color: #000000;[\\r\\n]+" +
     "}[\\r\\n]*";
 
   const allMenuItems = openStyleContextMenuAndGetAllItems(view, prop);
@@ -182,7 +182,7 @@ async function checkCopyEditorValue(view) {
 }
 
 function checkClipboardData(expectedPattern) {
-  const actual = SpecialPowers.getClipboardData("text/unicode");
+  const actual = SpecialPowers.getClipboardData("text/plain");
   const expectedRegExp = new RegExp(expectedPattern, "g");
   return expectedRegExp.test(actual);
 }
@@ -194,7 +194,7 @@ function failedClipboard(expectedPattern) {
   expectedPattern = expectedPattern.replace(/\\\(/g, "(");
   expectedPattern = expectedPattern.replace(/\\\)/g, ")");
 
-  let actual = SpecialPowers.getClipboardData("text/unicode");
+  let actual = SpecialPowers.getClipboardData("text/plain");
 
   // Trim the right hand side of our strings. This is because expectedPattern
   // accounts for windows sometimes adding a newline to our copied data.

@@ -20,6 +20,8 @@ openpgp-ctx-verify-att =
     .accesskey = V
 
 openpgp-has-sender-key = This message claims to contain the sender’s OpenPGP public key.
+# Variables:
+# $email (String) - Email address with the problematic public key.
 openpgp-be-careful-new-key =
     Warning: The new OpenPGP public key in this message differs from the public keys that you previously accepted for { $email }.
 
@@ -40,6 +42,9 @@ openpgp-broken-exchange-info = This is an OpenPGP message that was apparently co
 openpgp-broken-exchange-repair =
     .label = Repair message
 openpgp-broken-exchange-wait = Please wait…
+
+openpgp-has-nested-encrypted-parts = This message includes additional encrypted parts.
+openpgp-show-encrypted-parts = Decrypt and Show
 
 openpgp-cannot-decrypt-because-mdc =
     This is an encrypted message that uses an old and vulnerable mechanism.
@@ -63,3 +68,4 @@ openpgp-reminder-partial-display = Reminder: The message shown below is only a s
 openpgp-partial-verify-button = Verify
 openpgp-partial-decrypt-button = Decrypt
 
+openpgp-unexpected-key-for-you = Warning: This message contains an unknown OpenPGP key that refers to one of your own email addresses. If this isn’t one of your own keys, it could be an attempt to trick other correspondents.

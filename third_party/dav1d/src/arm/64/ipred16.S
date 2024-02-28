@@ -46,6 +46,7 @@ function ipred_dc_128_16bpc_neon, export=1
         urshr           v0.8h,   v0.8h,  #1
         br              x5
 4:
+        AARCH64_VALID_JUMP_TARGET
         st1             {v0.4h},  [x0], x1
         st1             {v0.4h},  [x6], x1
         subs            w4,  w4,  #4
@@ -54,6 +55,7 @@ function ipred_dc_128_16bpc_neon, export=1
         b.gt            4b
         ret
 8:
+        AARCH64_VALID_JUMP_TARGET
         st1             {v0.8h},  [x0], x1
         st1             {v0.8h},  [x6], x1
         subs            w4,  w4,  #4
@@ -62,6 +64,7 @@ function ipred_dc_128_16bpc_neon, export=1
         b.gt            8b
         ret
 160:
+        AARCH64_VALID_JUMP_TARGET
         mov             v1.16b,  v0.16b
 16:
         st1             {v0.8h, v1.8h}, [x0], x1
@@ -72,6 +75,7 @@ function ipred_dc_128_16bpc_neon, export=1
         b.gt            16b
         ret
 320:
+        AARCH64_VALID_JUMP_TARGET
         mov             v1.16b,  v0.16b
         mov             v2.16b,  v0.16b
         mov             v3.16b,  v0.16b
@@ -84,6 +88,7 @@ function ipred_dc_128_16bpc_neon, export=1
         b.gt            32b
         ret
 640:
+        AARCH64_VALID_JUMP_TARGET
         mov             v1.16b,  v0.16b
         mov             v2.16b,  v0.16b
         mov             v3.16b,  v0.16b
@@ -124,6 +129,7 @@ function ipred_v_16bpc_neon, export=1
         lsl             x1,  x1,  #1
         br              x5
 40:
+        AARCH64_VALID_JUMP_TARGET
         ld1             {v0.4h},  [x2]
 4:
         st1             {v0.4h},  [x0], x1
@@ -134,6 +140,7 @@ function ipred_v_16bpc_neon, export=1
         b.gt            4b
         ret
 80:
+        AARCH64_VALID_JUMP_TARGET
         ld1             {v0.8h},  [x2]
 8:
         st1             {v0.8h},  [x0], x1
@@ -144,6 +151,7 @@ function ipred_v_16bpc_neon, export=1
         b.gt            8b
         ret
 160:
+        AARCH64_VALID_JUMP_TARGET
         ld1             {v0.8h, v1.8h}, [x2]
 16:
         st1             {v0.8h, v1.8h}, [x0], x1
@@ -154,6 +162,7 @@ function ipred_v_16bpc_neon, export=1
         b.gt            16b
         ret
 320:
+        AARCH64_VALID_JUMP_TARGET
         ld1             {v0.8h, v1.8h, v2.8h, v3.8h}, [x2]
 32:
         st1             {v0.8h, v1.8h, v2.8h, v3.8h}, [x0], x1
@@ -164,6 +173,7 @@ function ipred_v_16bpc_neon, export=1
         b.gt            32b
         ret
 640:
+        AARCH64_VALID_JUMP_TARGET
         ld1             {v0.8h, v1.8h, v2.8h, v3.8h}, [x2], #64
         sub             x1,  x1,  #64
         ld1             {v4.8h, v5.8h, v6.8h, v7.8h}, [x2]
@@ -204,6 +214,7 @@ function ipred_h_16bpc_neon, export=1
         lsl             x1,  x1,  #1
         br              x5
 4:
+        AARCH64_VALID_JUMP_TARGET
         ld4r            {v0.8h, v1.8h, v2.8h, v3.8h},  [x2], x7
         st1             {v3.4h},  [x0], x1
         st1             {v2.4h},  [x6], x1
@@ -213,6 +224,7 @@ function ipred_h_16bpc_neon, export=1
         b.gt            4b
         ret
 8:
+        AARCH64_VALID_JUMP_TARGET
         ld4r            {v0.8h, v1.8h, v2.8h, v3.8h},  [x2], x7
         st1             {v3.8h},  [x0], x1
         st1             {v2.8h},  [x6], x1
@@ -222,6 +234,7 @@ function ipred_h_16bpc_neon, export=1
         b.gt            8b
         ret
 16:
+        AARCH64_VALID_JUMP_TARGET
         ld4r            {v0.8h, v1.8h, v2.8h, v3.8h},  [x2], x7
         str             q3,  [x0, #16]
         str             q2,  [x6, #16]
@@ -235,6 +248,7 @@ function ipred_h_16bpc_neon, export=1
         b.gt            16b
         ret
 32:
+        AARCH64_VALID_JUMP_TARGET
         ld4r            {v0.8h, v1.8h, v2.8h, v3.8h},  [x2], x7
         str             q3,  [x0, #16]
         str             q2,  [x6, #16]
@@ -252,6 +266,7 @@ function ipred_h_16bpc_neon, export=1
         b.gt            32b
         ret
 64:
+        AARCH64_VALID_JUMP_TARGET
         ld4r            {v0.8h, v1.8h, v2.8h, v3.8h},  [x2], x7
         str             q3,  [x0, #16]
         str             q2,  [x6, #16]
@@ -300,6 +315,7 @@ function ipred_dc_top_16bpc_neon, export=1
         lsl             x1,  x1,  #1
         br              x5
 40:
+        AARCH64_VALID_JUMP_TARGET
         ld1             {v0.4h},  [x2]
         addv            h0,      v0.4h
         urshr           v0.4h,   v0.4h,   #2
@@ -313,6 +329,7 @@ function ipred_dc_top_16bpc_neon, export=1
         b.gt            4b
         ret
 80:
+        AARCH64_VALID_JUMP_TARGET
         ld1             {v0.8h},  [x2]
         addv            h0,      v0.8h
         urshr           v0.4h,   v0.4h,   #3
@@ -326,6 +343,7 @@ function ipred_dc_top_16bpc_neon, export=1
         b.gt            8b
         ret
 160:
+        AARCH64_VALID_JUMP_TARGET
         ld1             {v0.8h, v1.8h}, [x2]
         addp            v0.8h,   v0.8h,   v1.8h
         addv            h0,      v0.8h
@@ -341,6 +359,7 @@ function ipred_dc_top_16bpc_neon, export=1
         b.gt            16b
         ret
 320:
+        AARCH64_VALID_JUMP_TARGET
         ld1             {v0.8h, v1.8h, v2.8h, v3.8h}, [x2]
         addp            v0.8h,   v0.8h,   v1.8h
         addp            v2.8h,   v2.8h,   v3.8h
@@ -360,6 +379,7 @@ function ipred_dc_top_16bpc_neon, export=1
         b.gt            32b
         ret
 640:
+        AARCH64_VALID_JUMP_TARGET
         ld1             {v0.8h, v1.8h, v2.8h, v3.8h}, [x2], #64
         addp            v0.8h,   v0.8h,   v1.8h
         ld1             {v4.8h, v5.8h, v6.8h, v7.8h}, [x2]
@@ -417,12 +437,14 @@ function ipred_dc_left_16bpc_neon, export=1
         br              x5
 
 L(ipred_dc_left_h4):
+        AARCH64_VALID_JUMP_TARGET
         ld1             {v0.4h},  [x2]
         addv            h0,      v0.4h
         urshr           v0.4h,   v0.4h,   #2
         dup             v0.8h,   v0.h[0]
         br              x3
 L(ipred_dc_left_w4):
+        AARCH64_VALID_JUMP_TARGET
         st1             {v0.4h},  [x0], x1
         st1             {v0.4h},  [x6], x1
         subs            w4,  w4,  #4
@@ -432,12 +454,14 @@ L(ipred_dc_left_w4):
         ret
 
 L(ipred_dc_left_h8):
+        AARCH64_VALID_JUMP_TARGET
         ld1             {v0.8h},  [x2]
         addv            h0,      v0.8h
         urshr           v0.4h,   v0.4h,   #3
         dup             v0.8h,   v0.h[0]
         br              x3
 L(ipred_dc_left_w8):
+        AARCH64_VALID_JUMP_TARGET
         st1             {v0.8h},  [x0], x1
         st1             {v0.8h},  [x6], x1
         subs            w4,  w4,  #4
@@ -447,6 +471,7 @@ L(ipred_dc_left_w8):
         ret
 
 L(ipred_dc_left_h16):
+        AARCH64_VALID_JUMP_TARGET
         ld1             {v0.8h, v1.8h}, [x2]
         addp            v0.8h,   v0.8h,   v1.8h
         addv            h0,      v0.8h
@@ -455,6 +480,7 @@ L(ipred_dc_left_h16):
         dup             v1.8h,   v2.h[0]
         br              x3
 L(ipred_dc_left_w16):
+        AARCH64_VALID_JUMP_TARGET
         mov             v1.16b,  v0.16b
 1:
         st1             {v0.8h, v1.8h}, [x0], x1
@@ -466,6 +492,7 @@ L(ipred_dc_left_w16):
         ret
 
 L(ipred_dc_left_h32):
+        AARCH64_VALID_JUMP_TARGET
         ld1             {v0.8h, v1.8h, v2.8h, v3.8h}, [x2]
         addp            v0.8h,   v0.8h,   v1.8h
         addp            v2.8h,   v2.8h,   v3.8h
@@ -476,6 +503,7 @@ L(ipred_dc_left_h32):
         dup             v0.8h,   v4.h[0]
         br              x3
 L(ipred_dc_left_w32):
+        AARCH64_VALID_JUMP_TARGET
         mov             v1.16b,  v0.16b
         mov             v2.16b,  v0.16b
         mov             v3.16b,  v0.16b
@@ -489,6 +517,7 @@ L(ipred_dc_left_w32):
         ret
 
 L(ipred_dc_left_h64):
+        AARCH64_VALID_JUMP_TARGET
         ld1             {v0.8h, v1.8h, v2.8h, v3.8h}, [x2], #64
         addp            v0.8h,   v0.8h,   v1.8h
         ld1             {v4.8h, v5.8h, v6.8h, v7.8h}, [x2]
@@ -503,6 +532,7 @@ L(ipred_dc_left_h64):
         dup             v0.8h,   v4.h[0]
         br              x3
 L(ipred_dc_left_w64):
+        AARCH64_VALID_JUMP_TARGET
         mov             v1.16b,  v0.16b
         mov             v2.16b,  v0.16b
         mov             v3.16b,  v0.16b
@@ -560,11 +590,13 @@ function ipred_dc_16bpc_neon, export=1
         br              x5
 
 L(ipred_dc_h4):
+        AARCH64_VALID_JUMP_TARGET
         ld1             {v0.4h},  [x2], #8
         uaddlv          s0,      v0.4h
         add             x2,  x2,  #2
         br              x3
 L(ipred_dc_w4):
+        AARCH64_VALID_JUMP_TARGET
         ld1             {v1.4h},  [x2]
         add             v0.2s,   v0.2s,   v16.2s
         uaddlv          s1,      v1.4h
@@ -592,11 +624,13 @@ L(ipred_dc_w4):
         ret
 
 L(ipred_dc_h8):
+        AARCH64_VALID_JUMP_TARGET
         ld1             {v0.8h},  [x2], #16
         uaddlv          s0,      v0.8h
         add             x2,  x2,  #2
         br              x3
 L(ipred_dc_w8):
+        AARCH64_VALID_JUMP_TARGET
         ld1             {v1.8h},  [x2]
         add             v0.2s,   v0.2s,   v16.2s
         uaddlv          s1,      v1.8h
@@ -624,12 +658,14 @@ L(ipred_dc_w8):
         ret
 
 L(ipred_dc_h16):
+        AARCH64_VALID_JUMP_TARGET
         ld1             {v0.8h, v1.8h}, [x2], #32
         addp            v0.8h,   v0.8h,   v1.8h
         add             x2,  x2,  #2
         uaddlv          s0,      v0.8h
         br              x3
 L(ipred_dc_w16):
+        AARCH64_VALID_JUMP_TARGET
         ld1             {v1.8h, v2.8h}, [x2]
         add             v0.2s,   v0.2s,   v16.2s
         addp            v1.8h,   v1.8h,   v2.8h
@@ -659,6 +695,7 @@ L(ipred_dc_w16):
         ret
 
 L(ipred_dc_h32):
+        AARCH64_VALID_JUMP_TARGET
         ld1             {v0.8h, v1.8h, v2.8h, v3.8h}, [x2], #64
         addp            v0.8h,   v0.8h,   v1.8h
         addp            v2.8h,   v2.8h,   v3.8h
@@ -667,6 +704,7 @@ L(ipred_dc_h32):
         uaddlv          s0,      v0.8h
         br              x3
 L(ipred_dc_w32):
+        AARCH64_VALID_JUMP_TARGET
         ld1             {v1.8h, v2.8h, v3.8h, v4.8h}, [x2]
         add             v0.2s,   v0.2s,   v16.2s
         addp            v1.8h,   v1.8h,   v2.8h
@@ -700,6 +738,7 @@ L(ipred_dc_w32):
         ret
 
 L(ipred_dc_h64):
+        AARCH64_VALID_JUMP_TARGET
         ld1             {v0.8h, v1.8h, v2.8h, v3.8h}, [x2], #64
         addp            v0.8h,   v0.8h,   v1.8h
         ld1             {v4.8h, v5.8h, v6.8h, v7.8h}, [x2], #64
@@ -713,6 +752,7 @@ L(ipred_dc_h64):
         uaddlv          s0,      v0.8h
         br              x3
 L(ipred_dc_w64):
+        AARCH64_VALID_JUMP_TARGET
         ld1             {v1.8h, v2.8h, v3.8h, v4.8h}, [x2], #64
         add             v0.2s,   v0.2s,   v16.2s
         addp            v1.8h,   v1.8h,   v2.8h
@@ -786,6 +826,7 @@ function ipred_paeth_16bpc_neon, export=1
         lsl             x1,  x1,  #1
         br              x5
 40:
+        AARCH64_VALID_JUMP_TARGET
         ld1r            {v5.2d},  [x8]
         sub             v6.8h,   v5.8h,   v4.8h   // top - topleft
 4:
@@ -821,6 +862,7 @@ function ipred_paeth_16bpc_neon, export=1
 160:
 320:
 640:
+        AARCH64_VALID_JUMP_TARGET
         ld1             {v5.8h},  [x8], #16
         mov             w9,  w3
         // Set up pointers for four rows in parallel; x0, x6, x5, x10
@@ -920,6 +962,7 @@ function ipred_smooth_16bpc_neon, export=1
         lsl             x1,  x1,  #1
         br              x5
 40:
+        AARCH64_VALID_JUMP_TARGET
         ld1r            {v6.2d}, [x8]             // top
         ld1r            {v7.2s}, [x10]            // weights_hor
         sub             x2,  x2,  #8
@@ -963,6 +1006,7 @@ function ipred_smooth_16bpc_neon, export=1
         b.gt            4b
         ret
 80:
+        AARCH64_VALID_JUMP_TARGET
         ld1             {v6.8h}, [x8]             // top
         ld1             {v7.8b}, [x10]            // weights_hor
         sub             x2,  x2,  #8
@@ -1024,6 +1068,7 @@ function ipred_smooth_16bpc_neon, export=1
 160:
 320:
 640:
+        AARCH64_VALID_JUMP_TARGET
         add             x12, x2,  w3, uxtw #1
         sub             x1,  x1,  w3, uxtw #1
         ld1r            {v5.8h}, [x12]            // right
@@ -1120,6 +1165,7 @@ function ipred_smooth_v_16bpc_neon, export=1
         lsl             x1,  x1,  #1
         br              x5
 40:
+        AARCH64_VALID_JUMP_TARGET
         ld1r            {v6.2d}, [x2]             // top
         sub             v6.8h,   v6.8h,   v4.8h   // top-bottom
 4:
@@ -1140,6 +1186,7 @@ function ipred_smooth_v_16bpc_neon, export=1
         b.gt            4b
         ret
 80:
+        AARCH64_VALID_JUMP_TARGET
         ld1             {v6.8h}, [x2]             // top
         sub             v6.8h,   v6.8h,   v4.8h   // top-bottom
 8:
@@ -1166,6 +1213,7 @@ function ipred_smooth_v_16bpc_neon, export=1
 160:
 320:
 640:
+        AARCH64_VALID_JUMP_TARGET
         // Set up pointers for four rows in parallel; x0, x6, x5, x8
         add             x5,  x0,  x1
         add             x8,  x6,  x1
@@ -1243,6 +1291,7 @@ function ipred_smooth_h_16bpc_neon, export=1
         lsl             x1,  x1,  #1
         br              x5
 40:
+        AARCH64_VALID_JUMP_TARGET
         ld1r            {v7.2s}, [x8]             // weights_hor
         sub             x2,  x2,  #8
         mov             x7,  #-8
@@ -1265,6 +1314,7 @@ function ipred_smooth_h_16bpc_neon, export=1
         b.gt            4b
         ret
 80:
+        AARCH64_VALID_JUMP_TARGET
         ld1             {v7.8b}, [x8]             // weights_hor
         sub             x2,  x2,  #8
         mov             x7,  #-8
@@ -1293,6 +1343,7 @@ function ipred_smooth_h_16bpc_neon, export=1
 160:
 320:
 640:
+        AARCH64_VALID_JUMP_TARGET
         sub             x2,  x2,  #8
         mov             x7,  #-8
         // Set up pointers for four rows in parallel; x0, x6, x5, x10
@@ -1354,6 +1405,1033 @@ L(ipred_smooth_h_tbl):
         .hword L(ipred_smooth_h_tbl) -  40b
 endfunc
 
+const padding_mask_buf
+        .byte 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+        .byte 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+        .byte 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+        .byte 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+        .byte 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+        .byte 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+padding_mask:
+        .byte 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff
+        .byte 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff
+        .byte 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff
+        .byte 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff
+        .byte 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff
+        .byte 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff
+endconst
+
+// void ipred_z1_upsample_edge_16bpc_neon(pixel *out, const int hsz,
+//                                        const pixel *const in, const int end,
+//                                        const int bitdepth_max);
+function ipred_z1_upsample_edge_16bpc_neon, export=1
+        dup             v30.8h,  w4               // bitdepth_max
+        movrel          x4,  padding_mask
+        ld1             {v0.8h, v1.8h},  [x2]     // in[]
+        add             x5,  x2,  w3,  uxtw #1    // in[end]
+        sub             x4,  x4,  w3,  uxtw #1
+
+        ld1r            {v2.8h},  [x5]            // padding
+        ld1             {v3.8h, v4.8h}, [x4]      // padding_mask
+
+        movi            v31.8h,  #9
+
+        bit             v0.16b,  v2.16b,  v3.16b  // padded in[]
+        bit             v1.16b,  v2.16b,  v4.16b
+
+        ext             v4.16b,  v0.16b,  v1.16b,  #2
+        ext             v5.16b,  v1.16b,  v2.16b,  #2
+        ext             v6.16b,  v0.16b,  v1.16b,  #4
+        ext             v7.16b,  v1.16b,  v2.16b,  #4
+        ext             v16.16b, v0.16b,  v1.16b,  #6
+        ext             v17.16b, v1.16b,  v2.16b,  #6
+
+        add             v18.8h,  v4.8h,   v6.8h   // in[i+1] + in[i+2]
+        add             v19.8h,  v5.8h,   v7.8h
+        add             v20.8h,  v0.8h,   v16.8h
+        add             v21.8h,  v1.8h,   v17.8h
+        umull           v22.4s,  v18.4h,  v31.4h  // 9*(in[i+1] + in[i+2])
+        umull2          v23.4s,  v18.8h,  v31.8h
+        umull           v24.4s,  v19.4h,  v31.4h
+        umull2          v25.4s,  v19.8h,  v31.8h
+        usubw           v22.4s,  v22.4s,  v20.4h
+        usubw2          v23.4s,  v23.4s,  v20.8h
+        usubw           v24.4s,  v24.4s,  v21.4h
+        usubw2          v25.4s,  v25.4s,  v21.8h
+
+        sqrshrun        v16.4h,  v22.4s,  #4
+        sqrshrun2       v16.8h,  v23.4s,  #4
+        sqrshrun        v17.4h,  v24.4s,  #4
+        sqrshrun2       v17.8h,  v25.4s,  #4
+
+        smin            v16.8h,  v16.8h,  v30.8h
+        smin            v17.8h,  v17.8h,  v30.8h
+
+        zip1            v0.8h,   v4.8h,   v16.8h
+        zip2            v1.8h,   v4.8h,   v16.8h
+        zip1            v2.8h,   v5.8h,   v17.8h
+        zip2            v3.8h,   v5.8h,   v17.8h
+
+        st1             {v0.8h, v1.8h, v2.8h, v3.8h}, [x0]
+
+        ret
+endfunc
+
+const edge_filter
+        .short 0, 4, 8, 0
+        .short 0, 5, 6, 0
+// Leaving out the coeffs for strength=3
+//      .byte 2, 4, 4, 0
+endconst
+
+// void ipred_z1_filter_edge_16bpc_neon(pixel *out, const int sz,
+//                                      const pixel *const in, const int end,
+//                                      const int strength);
+function ipred_z1_filter_edge_16bpc_neon, export=1
+        cmp             w4, #3
+        b.eq            L(fivetap)                // if (strength == 3) goto fivetap
+
+        movrel          x5,  edge_filter, -6
+        add             x5,  x5,  w4,  uxtw #3    // edge_filter + 2*((strength - 1)*4 + 1)
+
+        ld1             {v31.s}[0], [x5]          // kernel[1-2]
+
+        ld1             {v0.8h}, [x2], #16
+
+        dup             v30.8h, v31.h[0]
+        dup             v31.8h, v31.h[1]
+1:
+        // in[end], is the last valid pixel. We produce 16 pixels out by
+        // using 18 pixels in - the last pixel used is [17] of the ones
+        // read/buffered.
+        cmp             w3,  #17
+        ld1             {v1.8h, v2.8h}, [x2], #32
+        b.lt            2f
+        ext             v3.16b,  v0.16b,  v1.16b,  #2
+        ext             v4.16b,  v1.16b,  v2.16b,  #2
+        ext             v5.16b,  v0.16b,  v1.16b,  #4
+        ext             v6.16b,  v1.16b,  v2.16b,  #4
+        mul             v16.8h,  v0.8h,   v30.8h
+        mla             v16.8h,  v3.8h,   v31.8h
+        mla             v16.8h,  v5.8h,   v30.8h
+        mul             v17.8h,  v1.8h,   v30.8h
+        mla             v17.8h,  v4.8h,   v31.8h
+        mla             v17.8h,  v6.8h,   v30.8h
+        subs            w1,  w1,  #16
+        mov             v0.16b,  v2.16b
+        urshr           v16.8h,  v16.8h,  #4
+        urshr           v17.8h,  v17.8h,  #4
+        sub             w3,  w3,  #16
+        st1             {v16.8h, v17.8h}, [x0], #32
+        b.gt            1b
+        ret
+2:
+        // Right padding
+
+        // x2[w3-24] is the padding pixel (x2 points 24 pixels ahead)
+        movrel          x5,  padding_mask
+        sub             w6,  w3,  #24
+        sub             x5,  x5,  w3,  uxtw #1
+        add             x6,  x2,  w6,  sxtw #1
+
+        ld1             {v3.8h, v4.8h}, [x5] // padding_mask
+
+        ld1r            {v2.8h}, [x6]
+        bit             v0.16b,  v2.16b,  v3.16b  // Pad v0-v1
+        bit             v1.16b,  v2.16b,  v4.16b
+
+        // Filter one block
+        ext             v3.16b,  v0.16b,  v1.16b,  #2
+        ext             v4.16b,  v1.16b,  v2.16b,  #2
+        ext             v5.16b,  v0.16b,  v1.16b,  #4
+        ext             v6.16b,  v1.16b,  v2.16b,  #4
+        mul             v16.8h,  v0.8h,   v30.8h
+        mla             v16.8h,  v3.8h,   v31.8h
+        mla             v16.8h,  v5.8h,   v30.8h
+        mul             v17.8h,  v1.8h,   v30.8h
+        mla             v17.8h,  v4.8h,   v31.8h
+        mla             v17.8h,  v6.8h,   v30.8h
+        subs            w1,  w1,  #16
+        urshr           v16.8h,  v16.8h,  #4
+        urshr           v17.8h,  v17.8h,  #4
+        st1             {v16.8h, v17.8h}, [x0], #32
+        b.le            9f
+5:
+        // After one block, any remaining output would only be filtering
+        // padding - thus just store the padding.
+        subs            w1,  w1,  #16
+        st1             {v2.16b}, [x0], #16
+        b.gt            5b
+9:
+        ret
+
+L(fivetap):
+        sub             x2,  x2,  #2              // topleft -= 1 pixel
+        movi            v29.8h, #2
+        ld1             {v0.8h}, [x2], #16
+        movi            v30.8h, #4
+        movi            v31.8h, #4
+        ins             v0.h[0], v0.h[1]
+1:
+        // in[end+1], is the last valid pixel. We produce 16 pixels out by
+        // using 20 pixels in - the last pixel used is [19] of the ones
+        // read/buffered.
+        cmp             w3,  #18
+        ld1             {v1.8h, v2.8h}, [x2], #32
+        b.lt            2f                        // if (end + 1 < 19)
+        ext             v3.16b,  v0.16b,  v1.16b,  #2
+        ext             v4.16b,  v1.16b,  v2.16b,  #2
+        ext             v5.16b,  v0.16b,  v1.16b,  #4
+        ext             v6.16b,  v1.16b,  v2.16b,  #4
+        ext             v16.16b, v0.16b,  v1.16b,  #6
+        ext             v17.16b, v1.16b,  v2.16b,  #6
+        ext             v18.16b, v0.16b,  v1.16b,  #8
+        ext             v19.16b, v1.16b,  v2.16b,  #8
+        mul             v20.8h,  v0.8h,   v29.8h
+        mla             v20.8h,  v3.8h,   v30.8h
+        mla             v20.8h,  v5.8h,   v31.8h
+        mla             v20.8h,  v16.8h,  v30.8h
+        mla             v20.8h,  v18.8h,  v29.8h
+        mul             v21.8h,  v1.8h,   v29.8h
+        mla             v21.8h,  v4.8h,   v30.8h
+        mla             v21.8h,  v6.8h,   v31.8h
+        mla             v21.8h,  v17.8h,  v30.8h
+        mla             v21.8h,  v19.8h,  v29.8h
+        subs            w1,  w1,  #16
+        mov             v0.16b,  v2.16b
+        urshr           v20.8h,  v20.8h,  #4
+        urshr           v21.8h,  v21.8h,  #4
+        sub             w3,  w3,  #16
+        st1             {v20.8h, v21.8h}, [x0], #32
+        b.gt            1b
+        ret
+2:
+        // Right padding
+
+        // x2[w3+1-24] is the padding pixel (x2 points 24 pixels ahead)
+        movrel          x5,  padding_mask, -2
+        sub             w6,  w3,  #23
+        sub             x5,  x5,  w3,  uxtw #1
+        add             x6,  x2,  w6,  sxtw #1
+
+        ld1             {v3.8h, v4.8h, v5.8h}, [x5] // padding_mask
+
+        ld1r            {v28.8h}, [x6]
+        bit             v0.16b,  v28.16b, v3.16b  // Pad v0-v2
+        bit             v1.16b,  v28.16b, v4.16b
+        bit             v2.16b,  v28.16b, v5.16b
+4:
+        // Filter one block
+        ext             v3.16b,  v0.16b,  v1.16b,  #2
+        ext             v4.16b,  v1.16b,  v2.16b,  #2
+        ext             v5.16b,  v0.16b,  v1.16b,  #4
+        ext             v6.16b,  v1.16b,  v2.16b,  #4
+        ext             v16.16b, v0.16b,  v1.16b,  #6
+        ext             v17.16b, v1.16b,  v2.16b,  #6
+        ext             v18.16b, v0.16b,  v1.16b,  #8
+        ext             v19.16b, v1.16b,  v2.16b,  #8
+        mul             v20.8h,  v0.8h,   v29.8h
+        mla             v20.8h,  v3.8h,   v30.8h
+        mla             v20.8h,  v5.8h,   v31.8h
+        mla             v20.8h,  v16.8h,  v30.8h
+        mla             v20.8h,  v18.8h,  v29.8h
+        mul             v21.8h,  v1.8h,   v29.8h
+        mla             v21.8h,  v4.8h,   v30.8h
+        mla             v21.8h,  v6.8h,   v31.8h
+        mla             v21.8h,  v17.8h,  v30.8h
+        mla             v21.8h,  v19.8h,  v29.8h
+        subs            w1,  w1,  #16
+        mov             v0.16b,  v2.16b
+        mov             v1.16b,  v28.16b
+        mov             v2.16b,  v28.16b
+        urshr           v20.8h,  v20.8h,  #4
+        urshr           v21.8h,  v21.8h,  #4
+        sub             w3,  w3,  #16
+        st1             {v20.8h, v21.8h}, [x0], #32
+        b.le            9f
+        // v0-v1[w3+1] is the last valid pixel; if (w3 + 1 > 0) we need to
+        // filter properly once more - aka (w3 >= 0).
+        cmp             w3,  #0
+        b.ge            4b
+5:
+        // When w3 <= 0, all remaining pixels in v0-v1 are equal to the
+        // last valid pixel - thus just output that without filtering.
+        subs            w1,  w1,  #8
+        st1             {v28.8h}, [x0], #16
+        b.gt            5b
+9:
+        ret
+endfunc
+
+// void ipred_pixel_set_16bpc_neon(pixel *out, const pixel px,
+//                                 const int n);
+function ipred_pixel_set_16bpc_neon, export=1
+        dup             v0.8h,   w1
+1:
+        subs            w2,  w2,  #8
+        st1             {v0.8h}, [x0], #16
+        b.gt            1b
+        ret
+endfunc
+
+// void ipred_z1_fill1_16bpc_neon(pixel *dst, const ptrdiff_t stride,
+//                                const pixel *const top,
+//                                const int width, const int height,
+//                                const int dx, const int max_base_x);
+function ipred_z1_fill1_16bpc_neon, export=1
+        clz             w9,  w3
+        adr             x8,  L(ipred_z1_fill1_tbl)
+        sub             w9,  w9,  #25
+        ldrh            w9,  [x8, w9, uxtw #1]
+        add             x10, x2,  w6,  uxtw #1    // top[max_base_x]
+        sub             x8,  x8,  w9,  uxtw
+        ld1r            {v31.8h}, [x10]           // padding
+        mov             w7,  w5
+        mov             w15, #64
+        br              x8
+40:
+        AARCH64_VALID_JUMP_TARGET
+4:
+        lsr             w8,  w7,  #6              // base
+        and             w9,  w7,  #0x3e           // frac
+        add             w7,  w7,  w5              // xpos += dx
+        cmp             w8,  w6                   // base >= max_base_x
+        lsr             w10, w7,  #6              // base
+        and             w11, w7,  #0x3e           // frac
+        b.ge            49f
+        lsl             w8,  w8,  #1
+        lsl             w10, w10, #1
+        ldr             q0,  [x2, w8, uxtw]       // top[base]
+        ldr             q2,  [x2, w10, uxtw]
+        dup             v4.4h,   w9               // frac
+        dup             v5.4h,   w11
+        ext             v1.16b,  v0.16b,  v0.16b,  #2 // top[base+1]
+        ext             v3.16b,  v2.16b,  v2.16b,  #2
+        sub             v6.4h,   v1.4h,   v0.4h   // top[base+1]-top[base]
+        sub             v7.4h,   v3.4h,   v2.4h
+        ushll           v16.4s,  v0.4h,   #6      // top[base]*64
+        ushll           v17.4s,  v2.4h,   #6
+        smlal           v16.4s,  v6.4h,   v4.4h   // + top[base+1]*frac
+        smlal           v17.4s,  v7.4h,   v5.4h
+        rshrn           v16.4h,  v16.4s,  #6
+        rshrn           v17.4h,  v17.4s,  #6
+        st1             {v16.4h}, [x0], x1
+        add             w7,  w7,  w5              // xpos += dx
+        subs            w4,  w4,  #2
+        st1             {v17.4h}, [x0], x1
+        b.gt            4b
+        ret
+
+49:
+        st1             {v31.4h}, [x0], x1
+        subs            w4,  w4,  #2
+        st1             {v31.4h}, [x0], x1
+        b.gt            49b
+        ret
+
+80:
+        AARCH64_VALID_JUMP_TARGET
+8:
+        lsr             w8,  w7,  #6              // base
+        and             w9,  w7,  #0x3e           // frac
+        add             w7,  w7,  w5              // xpos += dx
+        cmp             w8,  w6                   // base >= max_base_x
+        lsr             w10, w7,  #6              // base
+        and             w11, w7,  #0x3e           // frac
+        b.ge            89f
+        add             x8,  x2,  w8,  uxtw #1
+        add             x10, x2,  w10, uxtw #1
+        dup             v4.8h,   w9               // frac
+        dup             v5.8h,   w11
+        ld1             {v0.8h},  [x8]            // top[base]
+        ld1             {v2.8h},  [x10]
+        sub             w9,  w15, w9              // 64 - frac
+        sub             w11, w15, w11
+        ldr             h1, [x8, #16]
+        ldr             h3, [x10, #16]
+        dup             v6.8h,   w9               // 64 - frac
+        dup             v7.8h,   w11
+        ext             v1.16b,  v0.16b,  v1.16b,  #2 // top[base+1]
+        ext             v3.16b,  v2.16b,  v3.16b,  #2
+        umull           v16.4s,  v0.4h,   v6.4h   // top[base]*(64-frac)
+        umlal           v16.4s,  v1.4h,   v4.4h   // + top[base+1]*frac
+        umull2          v17.4s,  v0.8h,   v6.8h
+        umlal2          v17.4s,  v1.8h,   v4.8h
+        umull           v18.4s,  v2.4h,   v7.4h
+        umlal           v18.4s,  v3.4h,   v5.4h
+        umull2          v19.4s,  v2.8h,   v7.8h
+        umlal2          v19.4s,  v3.8h,   v5.8h
+        rshrn           v16.4h,  v16.4s,  #6
+        rshrn2          v16.8h,  v17.4s,  #6
+        rshrn           v17.4h,  v18.4s,  #6
+        rshrn2          v17.8h,  v19.4s,  #6
+        st1             {v16.8h}, [x0], x1
+        add             w7,  w7,  w5              // xpos += dx
+        subs            w4,  w4,  #2
+        st1             {v17.8h}, [x0], x1
+        b.gt            8b
+        ret
+
+89:
+        st1             {v31.8h}, [x0], x1
+        subs            w4,  w4,  #2
+        st1             {v31.8h}, [x0], x1
+        b.gt            89b
+        ret
+
+160:
+320:
+640:
+        AARCH64_VALID_JUMP_TARGET
+
+        mov             w12, w3
+
+        add             x13, x0,  x1
+        lsl             x1,  x1,  #1
+        sub             x1,  x1,  w3,  uxtw #1
+1:
+        lsr             w8,  w7,  #6              // base
+        and             w9,  w7,  #0x3e           // frac
+        add             w7,  w7,  w5              // xpos += dx
+        cmp             w8,  w6                   // base >= max_base_x
+        lsr             w10, w7,  #6              // base
+        and             w11, w7,  #0x3e           // frac
+        b.ge            169f
+        add             x8,  x2,  w8,  uxtw #1
+        add             x10, x2,  w10, uxtw #1
+        dup             v6.8h,   w9               // frac
+        dup             v7.8h,   w11
+        ld1             {v0.8h, v1.8h, v2.8h}, [x8],  #48 // top[base]
+        ld1             {v3.8h, v4.8h, v5.8h}, [x10], #48
+        sub             w9,  w15, w9              // 64 - frac
+        sub             w11, w15, w11
+        dup             v16.8h,  w9               // 64 - frac
+        dup             v17.8h,  w11
+        add             w7,  w7,  w5              // xpos += dx
+2:
+        ext             v18.16b, v0.16b,  v1.16b,  #2 // top[base+1]
+        ext             v19.16b, v1.16b,  v2.16b,  #2
+        ext             v20.16b, v3.16b,  v4.16b,  #2
+        ext             v21.16b, v4.16b,  v5.16b,  #2
+        subs            w3,  w3,  #16
+        umull           v22.4s,  v0.4h,   v16.4h  // top[base]*(64-frac)
+        umlal           v22.4s,  v18.4h,  v6.4h   // + top[base+1]*frac
+        umull2          v23.4s,  v0.8h,   v16.8h
+        umlal2          v23.4s,  v18.8h,  v6.8h
+        umull           v24.4s,  v1.4h,   v16.4h
+        umlal           v24.4s,  v19.4h,  v6.4h
+        umull2          v25.4s,  v1.8h,   v16.8h
+        umlal2          v25.4s,  v19.8h,  v6.8h
+        umull           v26.4s,  v3.4h,   v17.4h
+        umlal           v26.4s,  v20.4h,  v7.4h
+        umull2          v27.4s,  v3.8h,   v17.8h
+        umlal2          v27.4s,  v20.8h,  v7.8h
+        umull           v28.4s,  v4.4h,   v17.4h
+        umlal           v28.4s,  v21.4h,  v7.4h
+        umull2          v29.4s,  v4.8h,   v17.8h
+        umlal2          v29.4s,  v21.8h,  v7.8h
+        rshrn           v22.4h,  v22.4s,  #6
+        rshrn2          v22.8h,  v23.4s,  #6
+        rshrn           v23.4h,  v24.4s,  #6
+        rshrn2          v23.8h,  v25.4s,  #6
+        rshrn           v24.4h,  v26.4s,  #6
+        rshrn2          v24.8h,  v27.4s,  #6
+        rshrn           v25.4h,  v28.4s,  #6
+        rshrn2          v25.8h,  v29.4s,  #6
+        st1             {v22.8h, v23.8h}, [x0],  #32
+        st1             {v24.8h, v25.8h}, [x13], #32
+        b.le            3f
+        mov             v0.16b,  v2.16b
+        ld1             {v1.8h, v2.8h}, [x8],  #32 // top[base]
+        mov             v3.16b,  v5.16b
+        ld1             {v4.8h, v5.8h}, [x10], #32
+        b               2b
+
+3:
+        subs            w4,  w4,  #2
+        b.le            9f
+        add             x0,  x0,  x1
+        add             x13, x13, x1
+        mov             w3,  w12
+        b               1b
+9:
+        ret
+
+169:
+        st1             {v31.8h}, [x0],  #16
+        subs            w3,  w3,  #8
+        st1             {v31.8h}, [x13], #16
+        b.gt            169b
+        subs            w4,  w4,  #2
+        b.le            9b
+        add             x0,  x0,  x1
+        add             x13, x13, x1
+        mov             w3,  w12
+        b               169b
+
+L(ipred_z1_fill1_tbl):
+        .hword L(ipred_z1_fill1_tbl) - 640b
+        .hword L(ipred_z1_fill1_tbl) - 320b
+        .hword L(ipred_z1_fill1_tbl) - 160b
+        .hword L(ipred_z1_fill1_tbl) -  80b
+        .hword L(ipred_z1_fill1_tbl) -  40b
+endfunc
+
+function ipred_z1_fill2_16bpc_neon, export=1
+        cmp             w3,  #8
+        add             x10, x2,  w6,  uxtw       // top[max_base_x]
+        ld1r            {v31.16b}, [x10]          // padding
+        mov             w7,  w5
+        mov             w15, #64
+        b.eq            8f
+
+4:      // w == 4
+        lsr             w8,  w7,  #6              // base
+        and             w9,  w7,  #0x3e           // frac
+        add             w7,  w7,  w5              // xpos += dx
+        cmp             w8,  w6                   // base >= max_base_x
+        lsr             w10, w7,  #6              // base
+        and             w11, w7,  #0x3e           // frac
+        b.ge            49f
+        lsl             w8,  w8,  #1
+        lsl             w10, w10, #1
+        ldr             q0,  [x2, w8, uxtw]       // top[base]
+        ldr             q2,  [x2, w10, uxtw]
+        dup             v4.4h,   w9               // frac
+        dup             v5.4h,   w11
+        uzp2            v1.8h,   v0.8h,   v0.8h   // top[base+1]
+        uzp1            v0.8h,   v0.8h,   v0.8h   // top[base]
+        uzp2            v3.8h,   v2.8h,   v2.8h
+        uzp1            v2.8h,   v2.8h,   v2.8h
+        sub             v6.4h,   v1.4h,   v0.4h   // top[base+1]-top[base]
+        sub             v7.4h,   v3.4h,   v2.4h
+        ushll           v16.4s,  v0.4h,   #6      // top[base]*64
+        ushll           v17.4s,  v2.4h,   #6
+        smlal           v16.4s,  v6.4h,   v4.4h   // + top[base+1]*frac
+        smlal           v17.4s,  v7.4h,   v5.4h
+        rshrn           v16.4h,  v16.4s,  #6
+        rshrn           v17.4h,  v17.4s,  #6
+        st1             {v16.4h}, [x0], x1
+        add             w7,  w7,  w5              // xpos += dx
+        subs            w4,  w4,  #2
+        st1             {v17.4h}, [x0], x1
+        b.gt            4b
+        ret
+
+49:
+        st1             {v31.4h}, [x0], x1
+        subs            w4,  w4,  #2
+        st1             {v31.4h}, [x0], x1
+        b.gt            49b
+        ret
+
+8:      // w == 8
+        lsr             w8,  w7,  #6              // base
+        and             w9,  w7,  #0x3e           // frac
+        add             w7,  w7,  w5              // xpos += dx
+        cmp             w8,  w6                   // base >= max_base_x
+        lsr             w10, w7,  #6              // base
+        and             w11, w7,  #0x3e           // frac
+        b.ge            89f
+        add             x8,  x2,  w8,  uxtw #1
+        add             x10, x2,  w10, uxtw #1
+        dup             v4.8h,   w9               // frac
+        dup             v5.8h,   w11
+        ld1             {v0.8h, v1.8h},  [x8]     // top[base]
+        ld1             {v2.8h, v3.8h},  [x10]
+        sub             w9,  w15, w9              // 64 - frac
+        sub             w11, w15, w11
+        dup             v6.8h,   w9               // 64 - frac
+        dup             v7.8h,   w11
+        uzp2            v20.8h,  v0.8h,   v1.8h   // top[base+1]
+        uzp1            v0.8h,   v0.8h,   v1.8h   // top[base]
+        uzp2            v21.8h,  v2.8h,   v3.8h
+        uzp1            v2.8h,   v2.8h,   v3.8h
+        umull           v16.4s,  v0.4h,   v6.4h   // top[base]*(64-frac)
+        umlal           v16.4s,  v20.4h,  v4.4h   // + top[base+1]*frac
+        umull2          v17.4s,  v0.8h,   v6.8h
+        umlal2          v17.4s,  v20.8h,  v4.8h
+        umull           v18.4s,  v2.4h,   v7.4h
+        umlal           v18.4s,  v21.4h,  v5.4h
+        umull2          v19.4s,  v2.8h,   v7.8h
+        umlal2          v19.4s,  v21.8h,  v5.8h
+        rshrn           v16.4h,  v16.4s,  #6
+        rshrn2          v16.8h,  v17.4s,  #6
+        rshrn           v17.4h,  v18.4s,  #6
+        rshrn2          v17.8h,  v19.4s,  #6
+        st1             {v16.8h}, [x0], x1
+        add             w7,  w7,  w5              // xpos += dx
+        subs            w4,  w4,  #2
+        st1             {v17.8h}, [x0], x1
+        b.gt            8b
+        ret
+
+89:
+        st1             {v31.8h}, [x0], x1
+        subs            w4,  w4,  #2
+        st1             {v31.8h}, [x0], x1
+        b.gt            89b
+        ret
+endfunc
+
+// void ipred_reverse_16bpc_neon(pixel *dst, const pixel *const src,
+//                               const int n);
+function ipred_reverse_16bpc_neon, export=1
+        sub             x1,  x1,  #16
+        add             x3,  x0,  #8
+        mov             x4,  #16
+1:
+        ld1             {v0.8h}, [x1]
+        subs            w2,  w2,  #8
+        rev64           v0.8h,  v0.8h
+        sub             x1,  x1,  #16
+        st1             {v0.d}[1], [x0], x4
+        st1             {v0.d}[0], [x3], x4
+        b.gt            1b
+        ret
+endfunc
+
+// void ipred_z3_fill1_16bpc_neon(pixel *dst, const ptrdiff_t stride,
+//                                const pixel *const left,
+//                                const int width, const int height,
+//                                const int dy, const int max_base_y);
+function ipred_z3_fill1_16bpc_neon, export=1
+        clz             w9,  w4
+        adr             x8,  L(ipred_z3_fill1_tbl)
+        sub             w9,  w9,  #25
+        ldrh            w9,  [x8, w9, uxtw #1]
+        add             x10, x2,  w6,  uxtw #1    // left[max_base_y]
+        sub             x8,  x8,  w9,  uxtw
+        ld1r            {v31.8h}, [x10]           // padding
+        mov             w7,  w5
+        mov             w15, #64
+        add             x13, x0,  x1
+        lsl             x1,  x1,  #1
+        br              x8
+
+40:
+        AARCH64_VALID_JUMP_TARGET
+4:
+        lsr             w8,  w7,  #6              // base
+        and             w9,  w7,  #0x3e           // frac
+        add             w7,  w7,  w5              // xpos += dx
+        cmp             w8,  w6                   // base >= max_base_x
+        lsr             w10, w7,  #6              // base
+        and             w11, w7,  #0x3e           // frac
+        b.ge            ipred_z3_fill_padding_neon
+        lsl             w8,  w8,  #1
+        lsl             w10, w10, #1
+        ldr             q0,  [x2, w8, uxtw]       // left[base]
+        ldr             q2,  [x2, w10, uxtw]
+        dup             v4.8h,   w9               // frac
+        dup             v5.8h,   w11
+        ext             v1.16b,  v0.16b,  v0.16b,  #2 // left[base+1]
+        ext             v3.16b,  v2.16b,  v2.16b,  #2
+        sub             v6.4h,   v1.4h,   v0.4h   // top[base+1]-top[base]
+        sub             v7.4h,   v3.4h,   v2.4h
+        ushll           v16.4s,  v0.4h,   #6      // top[base]*64
+        ushll           v17.4s,  v2.4h,   #6
+        smlal           v16.4s,  v6.4h,   v4.4h   // + top[base+1]*frac
+        smlal           v17.4s,  v7.4h,   v5.4h
+        rshrn           v16.4h,  v16.4s,  #6
+        rshrn           v17.4h,  v17.4s,  #6
+        subs            w3,  w3,  #2
+        zip1            v18.8h,  v16.8h,  v17.8h
+        st1             {v18.s}[0], [x0],  x1
+        st1             {v18.s}[1], [x13], x1
+        add             w7,  w7,  w5              // xpos += dx
+        st1             {v18.s}[2], [x0]
+        st1             {v18.s}[3], [x13]
+        b.le            9f
+        sub             x0,  x0,  x1              // ptr -= 4 * (2*stride)
+        sub             x13, x13, x1
+        add             x0,  x0,  #4
+        add             x13, x13, #4
+        b               4b
+9:
+        ret
+
+80:
+        AARCH64_VALID_JUMP_TARGET
+8:
+        lsr             w8,  w7,  #6              // base
+        and             w9,  w7,  #0x3e           // frac
+        add             w7,  w7,  w5              // xpos += dx
+        cmp             w8,  w6                   // base >= max_base_x
+        lsr             w10, w7,  #6              // base
+        and             w11, w7,  #0x3e           // frac
+        b.ge            ipred_z3_fill_padding_neon
+        add             x8,  x2,  w8,  uxtw #1
+        add             x10, x2,  w10, uxtw #1
+        dup             v4.8h,   w9               // frac
+        dup             v5.8h,   w11
+        ld1             {v0.8h},  [x8]            // left[base]
+        ld1             {v2.8h},  [x10]
+        sub             w9,  w15, w9              // 64 - frac
+        sub             w11, w15, w11
+        ldr             h1, [x8, #16]
+        ldr             h3, [x10, #16]
+        dup             v6.8h,   w9               // 64 - frac
+        dup             v7.8h,   w11
+        ext             v1.16b,  v0.16b,  v1.16b,  #2 // left[base+1]
+        ext             v3.16b,  v2.16b,  v3.16b,  #2
+        umull           v16.4s,  v0.4h,   v6.4h   // left[base]*(64-frac)
+        umlal           v16.4s,  v1.4h,   v4.4h   // + left[base+1]*frac
+        umull2          v17.4s,  v0.8h,   v6.8h
+        umlal2          v17.4s,  v1.8h,   v4.8h
+        umull           v18.4s,  v2.4h,   v7.4h
+        umlal           v18.4s,  v3.4h,   v5.4h
+        umull2          v19.4s,  v2.8h,   v7.8h
+        umlal2          v19.4s,  v3.8h,   v5.8h
+        rshrn           v16.4h,  v16.4s,  #6
+        rshrn2          v16.8h,  v17.4s,  #6
+        rshrn           v17.4h,  v18.4s,  #6
+        rshrn2          v17.8h,  v19.4s,  #6
+        subs            w3,  w3,  #2
+        zip1            v18.8h,  v16.8h,  v17.8h
+        zip2            v19.8h,  v16.8h,  v17.8h
+        add             w7,  w7,  w5              // xpos += dx
+        st1             {v18.s}[0], [x0],  x1
+        st1             {v18.s}[1], [x13], x1
+        st1             {v18.s}[2], [x0],  x1
+        st1             {v18.s}[3], [x13], x1
+        st1             {v19.s}[0], [x0],  x1
+        st1             {v19.s}[1], [x13], x1
+        st1             {v19.s}[2], [x0],  x1
+        st1             {v19.s}[3], [x13], x1
+        b.le            9f
+        sub             x0,  x0,  x1, lsl #2      // ptr -= 4 * (2*stride)
+        sub             x13, x13, x1, lsl #2
+        add             x0,  x0,  #4
+        add             x13, x13, #4
+        b               8b
+9:
+        ret
+
+160:
+320:
+640:
+        AARCH64_VALID_JUMP_TARGET
+        mov             w12, w4
+1:
+        lsr             w8,  w7,  #6              // base
+        and             w9,  w7,  #0x3e           // frac
+        add             w7,  w7,  w5              // ypos += dy
+        cmp             w8,  w6                   // base >= max_base_y
+        lsr             w10, w7,  #6              // base
+        and             w11, w7,  #0x3e           // frac
+        b.ge            ipred_z3_fill_padding_neon
+        add             x8,  x2,  w8,  uxtw #1
+        add             x10, x2,  w10, uxtw #1
+        dup             v6.8h,   w9               // frac
+        dup             v7.8h,   w11
+        ld1             {v0.8h, v1.8h, v2.8h}, [x8],  #48 // left[base]
+        ld1             {v3.8h, v4.8h, v5.8h}, [x10], #48
+        sub             w9,  w15, w9              // 64 - frac
+        sub             w11, w15, w11
+        dup             v16.8h,  w9               // 64 - frac
+        dup             v17.8h,  w11
+        add             w7,  w7,  w5              // ypos += dy
+2:
+        ext             v18.16b, v0.16b,  v1.16b,  #2 // left[base+1]
+        ext             v19.16b, v1.16b,  v2.16b,  #2
+        ext             v20.16b, v3.16b,  v4.16b,  #2
+        ext             v21.16b, v4.16b,  v5.16b,  #2
+        subs            w4,  w4,  #16
+        umull           v22.4s,  v0.4h,   v16.4h  // left[base]*(64-frac)
+        umlal           v22.4s,  v18.4h,  v6.4h   // + left[base+1]*frac
+        umull2          v23.4s,  v0.8h,   v16.8h
+        umlal2          v23.4s,  v18.8h,  v6.8h
+        umull           v24.4s,  v1.4h,   v16.4h
+        umlal           v24.4s,  v19.4h,  v6.4h
+        umull2          v25.4s,  v1.8h,   v16.8h
+        umlal2          v25.4s,  v19.8h,  v6.8h
+        umull           v26.4s,  v3.4h,   v17.4h
+        umlal           v26.4s,  v20.4h,  v7.4h
+        umull2          v27.4s,  v3.8h,   v17.8h
+        umlal2          v27.4s,  v20.8h,  v7.8h
+        umull           v28.4s,  v4.4h,   v17.4h
+        umlal           v28.4s,  v21.4h,  v7.4h
+        umull2          v29.4s,  v4.8h,   v17.8h
+        umlal2          v29.4s,  v21.8h,  v7.8h
+        rshrn           v22.4h,  v22.4s,  #6
+        rshrn2          v22.8h,  v23.4s,  #6
+        rshrn           v23.4h,  v24.4s,  #6
+        rshrn2          v23.8h,  v25.4s,  #6
+        rshrn           v24.4h,  v26.4s,  #6
+        rshrn2          v24.8h,  v27.4s,  #6
+        rshrn           v25.4h,  v28.4s,  #6
+        rshrn2          v25.8h,  v29.4s,  #6
+        zip1            v18.8h,  v22.8h,  v24.8h
+        zip2            v19.8h,  v22.8h,  v24.8h
+        zip1            v20.8h,  v23.8h,  v25.8h
+        zip2            v21.8h,  v23.8h,  v25.8h
+        st1             {v18.s}[0], [x0],  x1
+        st1             {v18.s}[1], [x13], x1
+        st1             {v18.s}[2], [x0],  x1
+        st1             {v18.s}[3], [x13], x1
+        st1             {v19.s}[0], [x0],  x1
+        st1             {v19.s}[1], [x13], x1
+        st1             {v19.s}[2], [x0],  x1
+        st1             {v19.s}[3], [x13], x1
+        st1             {v20.s}[0], [x0],  x1
+        st1             {v20.s}[1], [x13], x1
+        st1             {v20.s}[2], [x0],  x1
+        st1             {v20.s}[3], [x13], x1
+        st1             {v21.s}[0], [x0],  x1
+        st1             {v21.s}[1], [x13], x1
+        st1             {v21.s}[2], [x0],  x1
+        st1             {v21.s}[3], [x13], x1
+        b.le            3f
+        mov             v0.16b,  v2.16b
+        ld1             {v1.8h, v2.8h}, [x8],  #32      // left[base]
+        mov             v3.16b,  v5.16b
+        ld1             {v4.8h, v5.8h}, [x10], #32
+        b               2b
+
+3:
+        subs            w3,  w3,  #2
+        b.le            9f
+        lsr             x1,  x1,  #1
+        msub            x0,  x1,  x12, x0         // ptr -= h * stride
+        msub            x13, x1,  x12, x13
+        lsl             x1,  x1,  #1
+        add             x0,  x0,  #4
+        add             x13, x13, #4
+        mov             w4,  w12
+        b               1b
+9:
+        ret
+
+L(ipred_z3_fill1_tbl):
+        .hword L(ipred_z3_fill1_tbl) - 640b
+        .hword L(ipred_z3_fill1_tbl) - 320b
+        .hword L(ipred_z3_fill1_tbl) - 160b
+        .hword L(ipred_z3_fill1_tbl) -  80b
+        .hword L(ipred_z3_fill1_tbl) -  40b
+endfunc
+
+function ipred_z3_fill_padding_neon, export=0
+        cmp             w3,  #8
+        adr             x8,  L(ipred_z3_fill_padding_tbl)
+        b.gt            L(ipred_z3_fill_padding_wide)
+        // w3 = remaining width, w4 = constant height
+        mov             w12, w4
+
+1:
+        // Fill a WxH rectangle with padding. W can be any number;
+        // this fills the exact width by filling in the largest
+        // power of two in the remaining width, and repeating.
+        clz             w9,  w3
+        sub             w9,  w9,  #25
+        ldrh            w9,  [x8, w9, uxtw #1]
+        sub             x9,  x8,  w9,  uxtw
+        br              x9
+
+2:
+        st1             {v31.s}[0], [x0],  x1
+        subs            w4,  w4,  #4
+        st1             {v31.s}[0], [x13], x1
+        st1             {v31.s}[0], [x0],  x1
+        st1             {v31.s}[0], [x13], x1
+        b.gt            2b
+        subs            w3,  w3,  #2
+        lsr             x1,  x1,  #1
+        msub            x0,  x1,  x12, x0         // ptr -= h * stride
+        msub            x13, x1,  x12, x13
+        b.le            9f
+        lsl             x1,  x1,  #1
+        add             x0,  x0,  #4
+        add             x13, x13, #4
+        mov             w4,  w12
+        b               1b
+
+4:
+        st1             {v31.4h}, [x0],  x1
+        subs            w4,  w4,  #4
+        st1             {v31.4h}, [x13], x1
+        st1             {v31.4h}, [x0],  x1
+        st1             {v31.4h}, [x13], x1
+        b.gt            4b
+        subs            w3,  w3,  #4
+        lsr             x1,  x1,  #1
+        msub            x0,  x1,  x12, x0         // ptr -= h * stride
+        msub            x13, x1,  x12, x13
+        b.le            9f
+        lsl             x1,  x1,  #1
+        add             x0,  x0,  #8
+        add             x13, x13, #8
+        mov             w4,  w12
+        b               1b
+
+8:
+16:
+32:
+64:
+        st1             {v31.8h}, [x0],  x1
+        subs            w4,  w4,  #4
+        st1             {v31.8h}, [x13], x1
+        st1             {v31.8h}, [x0],  x1
+        st1             {v31.8h}, [x13], x1
+        b.gt            4b
+        subs            w3,  w3,  #8
+        lsr             x1,  x1,  #1
+        msub            x0,  x1,  x12, x0         // ptr -= h * stride
+        msub            x13, x1,  x12, x13
+        b.le            9f
+        lsl             x1,  x1,  #1
+        add             x0,  x0,  #16
+        add             x13, x13, #16
+        mov             w4,  w12
+        b               1b
+
+9:
+        ret
+
+L(ipred_z3_fill_padding_tbl):
+        .hword L(ipred_z3_fill_padding_tbl) - 64b
+        .hword L(ipred_z3_fill_padding_tbl) - 32b
+        .hword L(ipred_z3_fill_padding_tbl) - 16b
+        .hword L(ipred_z3_fill_padding_tbl) -  8b
+        .hword L(ipred_z3_fill_padding_tbl) -  4b
+        .hword L(ipred_z3_fill_padding_tbl) -  2b
+
+L(ipred_z3_fill_padding_wide):
+        // Fill a WxH rectangle with padding, with W > 8.
+        lsr             x1,  x1,  #1
+        mov             w12, w3
+        sub             x1,  x1,  w3,  uxtw #1
+1:
+        ands            w5,  w3,  #7
+        b.eq            2f
+        // If the width isn't aligned to 8, first do one 8 pixel write
+        // and align the start pointer.
+        sub             w3,  w3,  w5
+        st1             {v31.8h}, [x0]
+        add             x0,  x0,  w5,  uxtw #1
+2:
+        // Fill the rest of the line with aligned 8 pixel writes.
+        subs            w3,  w3,  #8
+        st1             {v31.8h}, [x0], #16
+        b.gt            2b
+        subs            w4,  w4,  #1
+        add             x0,  x0,  x1
+        b.le            9f
+        mov             w3,  w12
+        b               1b
+9:
+        ret
+endfunc
+
+function ipred_z3_fill2_16bpc_neon, export=1
+        cmp             w4,  #8
+        add             x10, x2,  w6,  uxtw       // left[max_base_y]
+        ld1r            {v31.16b}, [x10]          // padding
+        mov             w7,  w5
+        mov             w15, #64
+        add             x13, x0,  x1
+        lsl             x1,  x1,  #1
+        b.eq            8f
+
+4:      // h == 4
+        lsr             w8,  w7,  #6              // base
+        and             w9,  w7,  #0x3e           // frac
+        add             w7,  w7,  w5              // xpos += dx
+        cmp             w8,  w6                   // base >= max_base_x
+        lsr             w10, w7,  #6              // base
+        and             w11, w7,  #0x3e           // frac
+        b.ge            ipred_z3_fill_padding_neon
+        lsl             w8,  w8,  #1
+        lsl             w10, w10, #1
+        ldr             q0,  [x2, w8, uxtw]       // top[base]
+        ldr             q2,  [x2, w10, uxtw]
+        dup             v4.4h,   w9               // frac
+        dup             v5.4h,   w11
+        uzp2            v1.8h,   v0.8h,   v0.8h   // top[base+1]
+        uzp1            v0.8h,   v0.8h,   v0.8h   // top[base]
+        uzp2            v3.8h,   v2.8h,   v2.8h
+        uzp1            v2.8h,   v2.8h,   v2.8h
+        sub             v6.4h,   v1.4h,   v0.4h   // top[base+1]-top[base]
+        sub             v7.4h,   v3.4h,   v2.4h
+        ushll           v16.4s,  v0.4h,   #6      // top[base]*64
+        ushll           v17.4s,  v2.4h,   #6
+        smlal           v16.4s,  v6.4h,   v4.4h   // + top[base+1]*frac
+        smlal           v17.4s,  v7.4h,   v5.4h
+        rshrn           v16.4h,  v16.4s,  #6
+        rshrn           v17.4h,  v17.4s,  #6
+        subs            w3,  w3,  #2
+        zip1            v18.8h,  v16.8h,  v17.8h
+        st1             {v18.s}[0], [x0],  x1
+        st1             {v18.s}[1], [x13], x1
+        add             w7,  w7,  w5              // xpos += dx
+        st1             {v18.s}[2], [x0]
+        st1             {v18.s}[3], [x13]
+        b.le            9f
+        sub             x0,  x0,  x1              // ptr -= 4 * (2*stride)
+        sub             x13, x13, x1
+        add             x0,  x0,  #4
+        add             x13, x13, #4
+        b               4b
+9:
+        ret
+
+8:      // h == 8
+        lsr             w8,  w7,  #6              // base
+        and             w9,  w7,  #0x3e           // frac
+        add             w7,  w7,  w5              // xpos += dx
+        cmp             w8,  w6                   // base >= max_base_x
+        lsr             w10, w7,  #6              // base
+        and             w11, w7,  #0x3e           // frac
+        b.ge            ipred_z3_fill_padding_neon
+        add             x8,  x2,  w8,  uxtw #1
+        add             x10, x2,  w10, uxtw #1
+        dup             v4.8h,   w9               // frac
+        dup             v5.8h,   w11
+        ld1             {v0.8h, v1.8h},  [x8]     // top[base]
+        ld1             {v2.8h, v3.8h},  [x10]
+        sub             w9,  w15, w9              // 64 - frac
+        sub             w11, w15, w11
+        dup             v6.8h,   w9               // 64 - frac
+        dup             v7.8h,   w11
+        uzp2            v20.8h,  v0.8h,   v1.8h   // top[base+1]
+        uzp1            v0.8h,   v0.8h,   v1.8h   // top[base]
+        uzp2            v21.8h,  v2.8h,   v3.8h
+        uzp1            v2.8h,   v2.8h,   v3.8h
+        umull           v16.4s,  v0.4h,   v6.4h   // top[base]*(64-frac)
+        umlal           v16.4s,  v20.4h,  v4.4h   // + top[base+1]*frac
+        umull2          v17.4s,  v0.8h,   v6.8h
+        umlal2          v17.4s,  v20.8h,  v4.8h
+        umull           v18.4s,  v2.4h,   v7.4h
+        umlal           v18.4s,  v21.4h,  v5.4h
+        umull2          v19.4s,  v2.8h,   v7.8h
+        umlal2          v19.4s,  v21.8h,  v5.8h
+        rshrn           v16.4h,  v16.4s,  #6
+        rshrn2          v16.8h,  v17.4s,  #6
+        rshrn           v17.4h,  v18.4s,  #6
+        rshrn2          v17.8h,  v19.4s,  #6
+        subs            w3,  w3,  #2
+        zip1            v18.8h,  v16.8h,  v17.8h
+        zip2            v19.8h,  v16.8h,  v17.8h
+        add             w7,  w7,  w5              // xpos += dx
+        st1             {v18.s}[0], [x0],  x1
+        st1             {v18.s}[1], [x13], x1
+        st1             {v18.s}[2], [x0],  x1
+        st1             {v18.s}[3], [x13], x1
+        st1             {v19.s}[0], [x0],  x1
+        st1             {v19.s}[1], [x13], x1
+        st1             {v19.s}[2], [x0],  x1
+        st1             {v19.s}[3], [x13], x1
+        b.le            9f
+        sub             x0,  x0,  x1, lsl #2      // ptr -= 4 * (2*stride)
+        sub             x13, x13, x1, lsl #2
+        add             x0,  x0,  #4
+        add             x13, x13, #4
+        b               8b
+9:
+        ret
+endfunc
+
+
 // void ipred_filter_16bpc_neon(pixel *dst, const ptrdiff_t stride,
 //                              const pixel *const topleft,
 //                              const int width, const int height, const int filt_idx,
@@ -1387,6 +2465,7 @@ function ipred_filter_\bpc\()bpc_neon
 .endif
         br              x5
 40:
+        AARCH64_VALID_JUMP_TARGET
         ldur            d0,  [x2, #2]             // top (0-3)
         sub             x2,  x2,  #4
         mov             x7,  #-4
@@ -1428,6 +2507,7 @@ function ipred_filter_\bpc\()bpc_neon
         b.gt            4b
         ret
 80:
+        AARCH64_VALID_JUMP_TARGET
         ldur            q0,  [x2, #2]             // top (0-7)
         sub             x2,  x2,  #4
         mov             x7,  #-4
@@ -1497,6 +2577,7 @@ function ipred_filter_\bpc\()bpc_neon
         ret
 160:
 320:
+        AARCH64_VALID_JUMP_TARGET
         add             x8,  x2,  #2
         sub             x2,  x2,  #4
         mov             x7,  #-4
@@ -1675,6 +2756,7 @@ function pal_pred_16bpc_neon, export=1
         sub             x6,  x6,  w9, uxtw
         br              x6
 40:
+        AARCH64_VALID_JUMP_TARGET
         add             x2,  x0,  x1
         lsl             x1,  x1,  #1
 4:
@@ -1695,6 +2777,7 @@ function pal_pred_16bpc_neon, export=1
         b.gt            4b
         ret
 80:
+        AARCH64_VALID_JUMP_TARGET
         add             x2,  x0,  x1
         lsl             x1,  x1,  #1
 8:
@@ -1721,6 +2804,7 @@ function pal_pred_16bpc_neon, export=1
         b.gt            8b
         ret
 160:
+        AARCH64_VALID_JUMP_TARGET
         add             x2,  x0,  x1
         lsl             x1,  x1,  #1
 16:
@@ -1761,6 +2845,7 @@ function pal_pred_16bpc_neon, export=1
         b.gt            16b
         ret
 320:
+        AARCH64_VALID_JUMP_TARGET
         add             x2,  x0,  x1
         lsl             x1,  x1,  #1
 32:
@@ -1799,6 +2884,7 @@ function pal_pred_16bpc_neon, export=1
         b.gt            32b
         ret
 640:
+        AARCH64_VALID_JUMP_TARGET
         add             x2,  x0,  #64
 64:
         ld1             {v4.16b, v5.16b, v6.16b, v7.16b}, [x3], #64
@@ -1863,16 +2949,17 @@ function ipred_cfl_128_16bpc_neon, export=1
         movi            v30.8h,  #0
         br              x7
 L(ipred_cfl_splat_w4):
+        AARCH64_VALID_JUMP_TARGET
         ld1             {v4.8h, v5.8h}, [x5], #32
         subs            w4,  w4,  #4
         smull           v2.4s,   v4.4h,   v1.4h  // diff = ac * alpha
         smull2          v3.4s,   v4.8h,   v1.8h
         smull           v4.4s,   v5.4h,   v1.4h
         smull2          v5.4s,   v5.8h,   v1.8h
-        sshr            v16.4s,  v2.4s,   #31    // sign = diff >> 31
-        sshr            v17.4s,  v3.4s,   #31
-        sshr            v18.4s,  v4.4s,   #31
-        sshr            v19.4s,  v5.4s,   #31
+        cmlt            v16.4s,  v2.4s,   #0     // sign
+        cmlt            v17.4s,  v3.4s,   #0
+        cmlt            v18.4s,  v4.4s,   #0
+        cmlt            v19.4s,  v5.4s,   #0
         add             v2.4s,   v2.4s,   v16.4s // diff + sign
         add             v3.4s,   v3.4s,   v17.4s
         add             v4.4s,   v4.4s,   v18.4s
@@ -1894,16 +2981,17 @@ L(ipred_cfl_splat_w4):
         b.gt            L(ipred_cfl_splat_w4)
         ret
 L(ipred_cfl_splat_w8):
+        AARCH64_VALID_JUMP_TARGET
         ld1             {v4.8h, v5.8h}, [x5], #32
         subs            w4,  w4,  #2
         smull           v2.4s,   v4.4h,   v1.4h  // diff = ac * alpha
         smull2          v3.4s,   v4.8h,   v1.8h
         smull           v4.4s,   v5.4h,   v1.4h
         smull2          v5.4s,   v5.8h,   v1.8h
-        sshr            v16.4s,  v2.4s,   #31    // sign = diff >> 31
-        sshr            v17.4s,  v3.4s,   #31
-        sshr            v18.4s,  v4.4s,   #31
-        sshr            v19.4s,  v5.4s,   #31
+        cmlt            v16.4s,  v2.4s,   #0     // sign
+        cmlt            v17.4s,  v3.4s,   #0
+        cmlt            v18.4s,  v4.4s,   #0
+        cmlt            v19.4s,  v5.4s,   #0
         add             v2.4s,   v2.4s,   v16.4s // diff + sign
         add             v3.4s,   v3.4s,   v17.4s
         add             v4.4s,   v4.4s,   v18.4s
@@ -1923,6 +3011,7 @@ L(ipred_cfl_splat_w8):
         b.gt            L(ipred_cfl_splat_w8)
         ret
 L(ipred_cfl_splat_w16):
+        AARCH64_VALID_JUMP_TARGET
         add             x7,  x5,  w3, uxtw #1
         sub             x1,  x1,  w3, uxtw #1
         mov             w9,  w3
@@ -1938,14 +3027,14 @@ L(ipred_cfl_splat_w16):
         smull2          v3.4s,   v4.8h,   v1.8h
         smull           v4.4s,   v5.4h,   v1.4h
         smull2          v5.4s,   v5.8h,   v1.8h
-        sshr            v20.4s,  v16.4s,  #31    // sign = diff >> 31
-        sshr            v21.4s,  v17.4s,  #31
-        sshr            v22.4s,  v18.4s,  #31
-        sshr            v23.4s,  v19.4s,  #31
-        sshr            v24.4s,  v2.4s,   #31
-        sshr            v25.4s,  v3.4s,   #31
-        sshr            v26.4s,  v4.4s,   #31
-        sshr            v27.4s,  v5.4s,   #31
+        cmlt            v20.4s,  v16.4s,  #0     // sign
+        cmlt            v21.4s,  v17.4s,  #0
+        cmlt            v22.4s,  v18.4s,  #0
+        cmlt            v23.4s,  v19.4s,  #0
+        cmlt            v24.4s,  v2.4s,   #0
+        cmlt            v25.4s,  v3.4s,   #0
+        cmlt            v26.4s,  v4.4s,   #0
+        cmlt            v27.4s,  v5.4s,   #0
         add             v16.4s,  v16.4s,  v20.4s // diff + sign
         add             v17.4s,  v17.4s,  v21.4s
         add             v18.4s,  v18.4s,  v22.4s
@@ -2013,18 +3102,21 @@ function ipred_cfl_top_16bpc_neon, export=1
         movi            v30.8h,  #0
         br              x7
 4:
+        AARCH64_VALID_JUMP_TARGET
         ld1             {v0.4h},  [x2]
         addv            h0,      v0.4h
         urshr           v0.4h,   v0.4h,   #2
         dup             v0.8h,   v0.h[0]
         b               L(ipred_cfl_splat_w4)
 8:
+        AARCH64_VALID_JUMP_TARGET
         ld1             {v0.8h},  [x2]
         addv            h0,      v0.8h
         urshr           v0.4h,   v0.4h,   #3
         dup             v0.8h,   v0.h[0]
         b               L(ipred_cfl_splat_w8)
 16:
+        AARCH64_VALID_JUMP_TARGET
         ld1             {v2.8h, v3.8h}, [x2]
         addp            v0.8h,   v2.8h,   v3.8h
         addv            h0,      v0.8h
@@ -2032,6 +3124,7 @@ function ipred_cfl_top_16bpc_neon, export=1
         dup             v0.8h,   v0.h[0]
         b               L(ipred_cfl_splat_w16)
 32:
+        AARCH64_VALID_JUMP_TARGET
         ld1             {v2.8h, v3.8h, v4.8h, v5.8h}, [x2]
         addp            v2.8h,   v2.8h,   v3.8h
         addp            v4.8h,   v4.8h,   v5.8h
@@ -2073,6 +3166,7 @@ function ipred_cfl_left_16bpc_neon, export=1
         br              x7
 
 L(ipred_cfl_left_h4):
+        AARCH64_VALID_JUMP_TARGET
         ld1             {v0.4h},  [x2]
         addv            h0,      v0.4h
         urshr           v0.4h,   v0.4h,   #2
@@ -2080,6 +3174,7 @@ L(ipred_cfl_left_h4):
         br              x9
 
 L(ipred_cfl_left_h8):
+        AARCH64_VALID_JUMP_TARGET
         ld1             {v0.8h},  [x2]
         addv            h0,      v0.8h
         urshr           v0.4h,   v0.4h,   #3
@@ -2087,6 +3182,7 @@ L(ipred_cfl_left_h8):
         br              x9
 
 L(ipred_cfl_left_h16):
+        AARCH64_VALID_JUMP_TARGET
         ld1             {v2.8h, v3.8h}, [x2]
         addp            v0.8h,   v2.8h,   v3.8h
         addv            h0,      v0.8h
@@ -2095,6 +3191,7 @@ L(ipred_cfl_left_h16):
         br              x9
 
 L(ipred_cfl_left_h32):
+        AARCH64_VALID_JUMP_TARGET
         ld1             {v2.8h, v3.8h, v4.8h, v5.8h}, [x2]
         addp            v2.8h,   v2.8h,   v3.8h
         addp            v4.8h,   v4.8h,   v5.8h
@@ -2142,11 +3239,13 @@ function ipred_cfl_16bpc_neon, export=1
         br              x7
 
 L(ipred_cfl_h4):
+        AARCH64_VALID_JUMP_TARGET
         ld1             {v0.4h},  [x2], #8
         uaddlv          s0,      v0.4h
         add             x2,  x2,  #2
         br              x9
 L(ipred_cfl_w4):
+        AARCH64_VALID_JUMP_TARGET
         ld1             {v2.4h},  [x2]
         add             v0.2s,   v0.2s,   v16.2s
         uaddlv          s2,      v2.4h
@@ -2167,11 +3266,13 @@ L(ipred_cfl_w4):
         b               L(ipred_cfl_splat_w4)
 
 L(ipred_cfl_h8):
+        AARCH64_VALID_JUMP_TARGET
         ld1             {v0.8h},  [x2], #16
         uaddlv          s0,      v0.8h
         add             x2,  x2,  #2
         br              x9
 L(ipred_cfl_w8):
+        AARCH64_VALID_JUMP_TARGET
         ld1             {v2.8h},  [x2]
         add             v0.2s,   v0.2s,   v16.2s
         uaddlv          s2,      v2.8h
@@ -2192,12 +3293,14 @@ L(ipred_cfl_w8):
         b               L(ipred_cfl_splat_w8)
 
 L(ipred_cfl_h16):
+        AARCH64_VALID_JUMP_TARGET
         ld1             {v2.8h, v3.8h}, [x2], #32
         addp            v0.8h,   v2.8h,   v3.8h
         add             x2,  x2,  #2
         uaddlv          s0,      v0.8h
         br              x9
 L(ipred_cfl_w16):
+        AARCH64_VALID_JUMP_TARGET
         ld1             {v2.8h, v3.8h}, [x2]
         add             v0.2s,   v0.2s,   v16.2s
         addp            v2.8h,   v2.8h,   v3.8h
@@ -2219,6 +3322,7 @@ L(ipred_cfl_w16):
         b               L(ipred_cfl_splat_w16)
 
 L(ipred_cfl_h32):
+        AARCH64_VALID_JUMP_TARGET
         ld1             {v2.8h, v3.8h, v4.8h, v5.8h}, [x2], #64
         addp            v2.8h,   v2.8h,   v3.8h
         addp            v4.8h,   v4.8h,   v5.8h
@@ -2227,6 +3331,7 @@ L(ipred_cfl_h32):
         uaddlv          s0,      v0.8h
         br              x9
 L(ipred_cfl_w32):
+        AARCH64_VALID_JUMP_TARGET
         ld1             {v2.8h, v3.8h, v4.8h, v5.8h}, [x2]
         add             v0.4s,   v0.4s,   v16.4s
         addp            v2.8h,   v2.8h,   v3.8h
@@ -2287,6 +3392,7 @@ function ipred_cfl_ac_420_16bpc_neon, export=1
         br              x7
 
 L(ipred_cfl_ac_420_w4):
+        AARCH64_VALID_JUMP_TARGET
 1:      // Copy and subsample input
         ld1             {v0.8h}, [x1],  x2
         ld1             {v1.8h}, [x10], x2
@@ -2333,6 +3439,7 @@ L(ipred_cfl_ac_420_w4_calc_subtract_dc):
         ret
 
 L(ipred_cfl_ac_420_w8):
+        AARCH64_VALID_JUMP_TARGET
         cbnz            w3,  L(ipred_cfl_ac_420_w8_wpad)
 1:      // Copy and subsample input, without padding
         ld1             {v0.8h, v1.8h}, [x1],  x2
@@ -2402,12 +3509,14 @@ L(ipred_cfl_ac_420_w8_hpad):
         b               L(ipred_cfl_ac_420_w4_calc_subtract_dc)
 
 L(ipred_cfl_ac_420_w16):
+        AARCH64_VALID_JUMP_TARGET
         adr             x7,  L(ipred_cfl_ac_420_w16_tbl)
         ldrh            w3,  [x7, w3, uxtw #1]
         sub             x7,  x7,  w3, uxtw
         br              x7
 
 L(ipred_cfl_ac_420_w16_wpad0):
+        AARCH64_VALID_JUMP_TARGET
 1:      // Copy and subsample input, without padding
         ld1             {v0.8h, v1.8h, v2.8h, v3.8h}, [x1],  x2
         ld1             {v4.8h, v5.8h, v6.8h, v7.8h}, [x10], x2
@@ -2445,6 +3554,7 @@ L(ipred_cfl_ac_420_w16_wpad0):
         b               L(ipred_cfl_ac_420_w16_hpad)
 
 L(ipred_cfl_ac_420_w16_wpad1):
+        AARCH64_VALID_JUMP_TARGET
 1:      // Copy and subsample input, padding 4
         ldr             q2,  [x1,  #32]
         ld1             {v0.8h, v1.8h}, [x1],  x2
@@ -2490,6 +3600,7 @@ L(ipred_cfl_ac_420_w16_wpad1):
         b               L(ipred_cfl_ac_420_w16_hpad)
 
 L(ipred_cfl_ac_420_w16_wpad2):
+        AARCH64_VALID_JUMP_TARGET
 1:      // Copy and subsample input, padding 8
         ld1             {v0.8h, v1.8h}, [x1],  x2
         ld1             {v2.8h, v3.8h}, [x10], x2
@@ -2521,6 +3632,7 @@ L(ipred_cfl_ac_420_w16_wpad2):
         b               L(ipred_cfl_ac_420_w16_hpad)
 
 L(ipred_cfl_ac_420_w16_wpad3):
+        AARCH64_VALID_JUMP_TARGET
 1:      // Copy and subsample input, padding 12
         ld1             {v0.8h}, [x1],  x2
         ld1             {v2.8h}, [x10], x2
@@ -2617,6 +3729,7 @@ function ipred_cfl_ac_422_16bpc_neon, export=1
         br              x7
 
 L(ipred_cfl_ac_422_w4):
+        AARCH64_VALID_JUMP_TARGET
 1:      // Copy and subsample input
         ld1             {v0.8h}, [x1],  x2
         ld1             {v1.8h}, [x10], x2
@@ -2638,6 +3751,7 @@ L(ipred_cfl_ac_422_w4):
         b               L(ipred_cfl_ac_420_w4_hpad)
 
 L(ipred_cfl_ac_422_w8):
+        AARCH64_VALID_JUMP_TARGET
         cbnz            w3,  L(ipred_cfl_ac_422_w8_wpad)
 1:      // Copy and subsample input, without padding
         ld1             {v0.8h, v1.8h}, [x1],  x2
@@ -2701,12 +3815,14 @@ L(ipred_cfl_ac_422_w8_wpad):
         b               L(ipred_cfl_ac_420_w8_hpad)
 
 L(ipred_cfl_ac_422_w16):
+        AARCH64_VALID_JUMP_TARGET
         adr             x7,  L(ipred_cfl_ac_422_w16_tbl)
         ldrh            w3,  [x7, w3, uxtw #1]
         sub             x7,  x7,  w3, uxtw
         br              x7
 
 L(ipred_cfl_ac_422_w16_wpad0):
+        AARCH64_VALID_JUMP_TARGET
 1:      // Copy and subsample input, without padding
         ld1             {v0.8h, v1.8h, v2.8h, v3.8h}, [x1],  x2
         ld1             {v4.8h, v5.8h, v6.8h, v7.8h}, [x10], x2
@@ -2734,6 +3850,7 @@ L(ipred_cfl_ac_422_w16_wpad0):
         b               L(ipred_cfl_ac_420_w16_hpad)
 
 L(ipred_cfl_ac_422_w16_wpad1):
+        AARCH64_VALID_JUMP_TARGET
 1:      // Copy and subsample input, padding 4
         ldr             q2,  [x1,  #32]
         ld1             {v0.8h, v1.8h}, [x1],  x2
@@ -2767,6 +3884,7 @@ L(ipred_cfl_ac_422_w16_wpad1):
         b               L(ipred_cfl_ac_420_w16_hpad)
 
 L(ipred_cfl_ac_422_w16_wpad2):
+        AARCH64_VALID_JUMP_TARGET
 1:      // Copy and subsample input, padding 8
         ld1             {v0.8h, v1.8h}, [x1],  x2
         ld1             {v2.8h, v3.8h}, [x10], x2
@@ -2792,6 +3910,7 @@ L(ipred_cfl_ac_422_w16_wpad2):
         b               L(ipred_cfl_ac_420_w16_hpad)
 
 L(ipred_cfl_ac_422_w16_wpad3):
+        AARCH64_VALID_JUMP_TARGET
 1:      // Copy and subsample input, padding 12
         ld1             {v0.8h}, [x1],  x2
         ld1             {v2.8h}, [x10], x2
@@ -2858,6 +3977,7 @@ function ipred_cfl_ac_444_16bpc_neon, export=1
         br              x7
 
 L(ipred_cfl_ac_444_w4):
+        AARCH64_VALID_JUMP_TARGET
 1:      // Copy and expand input
         ld1             {v0.4h},   [x1],  x2
         ld1             {v0.d}[1], [x10], x2
@@ -2877,6 +3997,7 @@ L(ipred_cfl_ac_444_w4):
         b               L(ipred_cfl_ac_420_w4_hpad)
 
 L(ipred_cfl_ac_444_w8):
+        AARCH64_VALID_JUMP_TARGET
 1:      // Copy and expand input
         ld1             {v0.8h}, [x1],  x2
         ld1             {v1.8h}, [x10], x2
@@ -2902,6 +4023,7 @@ L(ipred_cfl_ac_444_w8):
         b               L(ipred_cfl_ac_420_w8_hpad)
 
 L(ipred_cfl_ac_444_w16):
+        AARCH64_VALID_JUMP_TARGET
         cbnz            w3,  L(ipred_cfl_ac_444_w16_wpad)
 1:      // Copy and expand input, without padding
         ld1             {v0.8h, v1.8h}, [x1],  x2
@@ -2949,6 +4071,7 @@ L(ipred_cfl_ac_444_w16_wpad):
         b               L(ipred_cfl_ac_420_w16_hpad)
 
 L(ipred_cfl_ac_444_w32):
+        AARCH64_VALID_JUMP_TARGET
         adr             x7,  L(ipred_cfl_ac_444_w32_tbl)
         ldrh            w3,  [x7, w3, uxtw] // (w3>>1) << 1
         lsr             x2,  x2,  #1 // Restore the stride to one line increments
@@ -2956,6 +4079,7 @@ L(ipred_cfl_ac_444_w32):
         br              x7
 
 L(ipred_cfl_ac_444_w32_wpad0):
+        AARCH64_VALID_JUMP_TARGET
 1:      // Copy and expand input, without padding
         ld1             {v0.8h, v1.8h, v2.8h, v3.8h}, [x1],  x2
         shl             v0.8h,   v0.8h,   #3
@@ -2976,6 +4100,7 @@ L(ipred_cfl_ac_444_w32_wpad0):
         b               L(ipred_cfl_ac_444_w32_hpad)
 
 L(ipred_cfl_ac_444_w32_wpad2):
+        AARCH64_VALID_JUMP_TARGET
 1:      // Copy and expand input, padding 8
         ld1             {v0.8h, v1.8h, v2.8h}, [x1],  x2
         shl             v2.8h,   v2.8h,   #3
@@ -2996,6 +4121,7 @@ L(ipred_cfl_ac_444_w32_wpad2):
         b               L(ipred_cfl_ac_444_w32_hpad)
 
 L(ipred_cfl_ac_444_w32_wpad4):
+        AARCH64_VALID_JUMP_TARGET
 1:      // Copy and expand input, padding 16
         ld1             {v0.8h, v1.8h}, [x1],  x2
         shl             v1.8h,   v1.8h,   #3
@@ -3016,6 +4142,7 @@ L(ipred_cfl_ac_444_w32_wpad4):
         b               L(ipred_cfl_ac_444_w32_hpad)
 
 L(ipred_cfl_ac_444_w32_wpad6):
+        AARCH64_VALID_JUMP_TARGET
 1:      // Copy and expand input, padding 24
         ld1             {v0.8h}, [x1],  x2
         shl             v0.8h,   v0.8h,   #3

@@ -1,29 +1,28 @@
 {
   "langpack_id": "sk",
   "manifest_version": 2,
-  "applications": {
+  "browser_specific_settings": {
     "gecko": {
       "id": "langpack-sk@thunderbird.mozilla.org",
-      "strict_min_version": "91.0",
-      "strict_max_version": "91.*"
+      "strict_min_version": "115.0",
+      "strict_max_version": "115.*"
     }
   },
-  "name": "Slovak (SK) Language Pack",
-  "description": "Language pack for Thunderbird for sk",
-  "version": "91.0buildid20211101223011",
+  "name": "Language: Slovenčina (Slovak)",
+  "description": "Thunderbird Language Pack for Slovenčina (sk) – Slovak",
+  "version": "115.8.20240216.174500",
   "languages": {
     "sk": {
-      "version": "20211017193806",
+      "version": "20240216183743",
       "chrome_resources": {
         "alerts": "chrome/sk/locale/sk/alerts/",
         "autoconfig": "chrome/sk/locale/sk/autoconfig/",
-        "branding": "chrome/sk/locale/sk/branding/",
+        "branding": "chrome/sk/locale/branding/",
         "calendar": "chrome/sk/locale/sk/calendar/",
         "chat": "chrome/sk/locale/sk/chat/",
         "communicator": "chrome/sk/locale/sk/communicator/",
         "devtools": "chrome/sk/locale/sk/devtools/client/",
         "devtools-shared": "chrome/sk/locale/sk/devtools/shared/",
-        "devtools-startup": "chrome/sk/locale/sk/devtools/startup/",
         "global": "chrome/sk/locale/sk/global/",
         "global-platform": {
           "macosx": "chrome/sk/locale/sk/global-platform/mac/",

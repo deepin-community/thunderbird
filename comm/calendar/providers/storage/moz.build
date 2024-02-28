@@ -12,7 +12,15 @@ XPCOM_MANIFESTS += [
 ]
 
 EXTRA_JS_MODULES.calendar += [
+    "CalStorageCachedItemModel.jsm",
+    "CalStorageDatabase.jsm",
     "calStorageHelpers.jsm",
+    "CalStorageItemModel.jsm",
+    "CalStorageMetaDataModel.jsm",
+    "CalStorageModelBase.jsm",
+    "CalStorageModelFactory.jsm",
+    "CalStorageOfflineModel.jsm",
+    "CalStorageStatements.jsm",
     "calStorageUpgrade.jsm",
 ]
 

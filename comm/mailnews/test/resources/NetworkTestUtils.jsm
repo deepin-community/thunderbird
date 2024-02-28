@@ -12,7 +12,6 @@ const EXPORTED_SYMBOLS = ["NetworkTestUtils"];
 var CC = Components.Constructor;
 
 const { NetUtil } = ChromeUtils.import("resource://gre/modules/NetUtil.jsm");
-const { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 
 const ServerSocket = CC(
   "@mozilla.org/network/server-socket;1",
@@ -40,8 +39,8 @@ const STATE_WAIT_SOCKS5_REQUEST = 2;
  * This doesn't implement all of SOCKSv5, just enough to get a simple proxy
  * working for the test code.
  *
- * @param client_in The nsIInputStream of the socket.
- * @param client_out The nsIOutputStream of the socket.
+ * @param {nsIInputStream} client_in - The nsIInputStream of the socket.
+ * @param {nsIOutputStream} client_out - The nsIOutputStream of the socket.
  */
 function SocksClient(client_in, client_out) {
   this.client_in = client_in;
@@ -146,18 +145,18 @@ SocksClient.prototype = {
     if (foundPort !== undefined) {
       this.write(
         "\x05\x00\x00" + // Header for response
-        "\x04" +
-        "\x00".repeat(15) +
-        "\x01" + // IPv6 address ::1
+          "\x04" +
+          "\x00".repeat(15) +
+          "\x01" + // IPv6 address ::1
           String.fromCharCode(foundPort >> 8) +
           String.fromCharCode(foundPort & 0xff) // Port number
       );
     } else {
       this.write(
         "\x05\x05\x00" + // Header for failed response
-        "\x04" +
-        "\x00".repeat(15) +
-        "\x01" + // IPv6 address ::1
+          "\x04" +
+          "\x00".repeat(15) +
+          "\x01" + // IPv6 address ::1
           "\x00\x00"
       );
       this.close();
@@ -231,9 +230,9 @@ var NetworkTestUtils = {
    * starting up a server, it does behoove you to call shutdownServers when you
    * no longer need to use the proxy server.
    *
-   * @param hostName          The DNS name to use for the client.
-   * @param hostPort          The port number to use for the client.
-   * @param localRemappedPort The port number on which the real server sits.
+   * @param {string} hostName - The DNS name to use for the client.
+   * @param {integer} hostPort - The port number to use for the client.
+   * @param {integer} localRemappedPort - The port number on which the real server sits.
    */
   configureProxy(hostName, hostPort, localRemappedPort) {
     if (gSocksServer == null) {

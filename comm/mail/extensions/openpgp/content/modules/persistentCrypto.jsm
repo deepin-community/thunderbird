@@ -6,159 +6,249 @@
 
 "use strict";
 
-const { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
+const { MailServices } = ChromeUtils.import(
+  "resource:///modules/MailServices.jsm"
+);
 
 var EXPORTED_SYMBOLS = ["EnigmailPersistentCrypto"];
 
-const { XPCOMUtils } = ChromeUtils.import(
-  "resource://gre/modules/XPCOMUtils.jsm"
+const { XPCOMUtils } = ChromeUtils.importESModule(
+  "resource://gre/modules/XPCOMUtils.sys.mjs"
 );
+const { MimeParser } = ChromeUtils.import("resource:///modules/mimeParser.jsm");
 
-XPCOMUtils.defineLazyModuleGetters(this, {
+const lazy = {};
+
+XPCOMUtils.defineLazyModuleGetters(lazy, {
   EnigmailArmor: "chrome://openpgp/content/modules/armor.jsm",
   EnigmailConstants: "chrome://openpgp/content/modules/constants.jsm",
-  EnigmailCore: "chrome://openpgp/content/modules/core.jsm",
   EnigmailData: "chrome://openpgp/content/modules/data.jsm",
   EnigmailFuncs: "chrome://openpgp/content/modules/funcs.jsm",
   EnigmailEncryption: "chrome://openpgp/content/modules/encryption.jsm",
   EnigmailLog: "chrome://openpgp/content/modules/log.jsm",
   EnigmailMime: "chrome://openpgp/content/modules/mime.jsm",
-  EnigmailStdlib: "chrome://openpgp/content/modules/stdlib.jsm",
   EnigmailFixExchangeMsg:
     "chrome://openpgp/content/modules/fixExchangeMessage.jsm",
   EnigmailDecryption: "chrome://openpgp/content/modules/decryption.jsm",
   EnigmailDialog: "chrome://openpgp/content/modules/dialog.jsm",
   GlodaUtils: "resource:///modules/gloda/GlodaUtils.jsm",
   jsmime: "resource:///modules/jsmime.jsm",
-  MailServices: "resource:///modules/MailServices.jsm",
   MailUtils: "resource:///modules/MailUtils.jsm",
-  setTimeout: "resource://gre/modules/Timer.jsm",
+  MailCryptoUtils: "resource:///modules/MailCryptoUtils.jsm",
 });
 
-XPCOMUtils.defineLazyGetter(this, "l10n", () => {
+XPCOMUtils.defineLazyGetter(lazy, "l10n", () => {
   return new Localization(["messenger/openpgp/openpgp.ftl"], true);
 });
 
-/*
- *  Decrypt a message and copy it to a folder
- *
- * @param nsIMsgDBHdr hdr   Header of the message
- * @param String destFolder   Folder URI
- * @param Boolean move      If true the original message will be deleted
- *
- * @return a Promise that we do that
- */
 var EnigmailPersistentCrypto = {
   /***
-   *  dispatchMessages
+   * cryptMessage
    *
-   *  Because Thunderbird throws all messages at once at us thus we have to rate limit the dispatching
-   *  of the message processing. Because there is only a negligible performance gain when dispatching
-   *  several message at once we serialize to not overwhelm low power devices.
+   * Decrypts a message and copy it to a folder. If targetKey is
+   * not null, it encrypts a message to the target key afterwards.
    *
-   *  If targetFolder is null the message will be copied / moved in the same folder as the original
-   *  message.
+   * @param {nsIMsgDBHdr} hdr - message to process
+   * @param {string} destFolder - target folder URI
+   * @param {boolean} move - true for move, false for copy
+   * @param {KeyObject} targetKey - target key if encryption is requested
    *
-   *  If targetKey is not null the message will be encrypted again to the targetKey.
-   *
-   *  The function is implemented asynchronously.
-   *
-   *  Parameters
-   *   aMsgHdrs:     Array of nsIMsgDBHdr
-   *   targetFolder: String; target folder URI or null
-   *   copyListener: listener for async request (nsIMsgCopyServiceListener)
-   *   move:         Boolean: type of action; true = "move" / false = "copy"
-   *   targetKey:    KeyObject of target key if encryption is requested
-   *
+   * @returns {nsMsgKey} Message key of the new message
    **/
+  async cryptMessage(hdr, destFolder, move, targetKey) {
+    return new Promise(function (resolve, reject) {
+      let msgUriSpec = hdr.folder.getUriForMsg(hdr);
+      let msgUrl = lazy.EnigmailFuncs.getUrlFromUriSpec(msgUriSpec);
 
-  dispatchMessages(aMsgHdrs, targetFolder, copyListener, move, targetKey) {
-    EnigmailLog.DEBUG("persistentCrypto.jsm: dispatchMessages()\n");
+      const crypt = new CryptMessageIntoFolder(destFolder, move, targetKey);
 
-    let enigmailSvc = EnigmailCore.getService();
-    if (copyListener && !enigmailSvc) {
-      // could not initiate Enigmail - do nothing
-      copyListener.OnStopCopy(0);
-      return;
-    }
-
-    if (copyListener) {
-      copyListener.OnStartCopy();
-    }
-    let promise = EnigmailPersistentCrypto.cryptMessage(
-      aMsgHdrs[0],
-      targetFolder,
-      move,
-      targetKey
-    );
-
-    let processNext = function(data) {
-      aMsgHdrs.splice(0, 1);
-      if (aMsgHdrs.length > 0) {
-        EnigmailPersistentCrypto.dispatchMessages(
-          aMsgHdrs,
-          targetFolder,
-          copyListener,
-          move,
-          targetKey
-        );
-      } else {
-        // last message was finished processing
-        if (copyListener) {
-          copyListener.OnStopCopy(0);
+      lazy.EnigmailMime.getMimeTreeFromUrl(msgUrl, true, async function (mime) {
+        try {
+          let newMsgKey = await crypt.messageParseCallback(mime, hdr);
+          resolve(newMsgKey);
+        } catch (ex) {
+          reject(ex);
         }
-        EnigmailLog.DEBUG("persistentCrypto.jsm: dispatchMessages - DONE\n");
-      }
-    };
-
-    promise.then(processNext);
-
-    promise.catch(function(err) {
-      processNext(null);
+      });
     });
   },
 
-  /***
-   *  cryptMessage
-   *
-   *  Decrypts a message. If targetKey is not null it
-   *  encrypts a message to the target key afterwards.
-   *
-   *  Parameters
-   *   hdr:        nsIMsgDBHdr of the message to encrypt
-   *   destFolder: String; target folder URI
-   *   move:       Boolean: type of action; true = "move" / false = "copy"
-   *   targetKey:  KeyObject of target key if encryption is requested
-   **/
-  cryptMessage(hdr, destFolder, move, targetKey) {
-    return new Promise(function(resolve, reject) {
-      let msgUriSpec = hdr.folder.getUriForMsg(hdr);
-      let msgUrl = EnigmailFuncs.getUrlFromUriSpec(msgUriSpec);
+  changeMessageId(content, newMessageIdPrefix) {
+    let [headerData, body] = MimeParser.extractHeadersAndBody(content);
+    content = "";
 
-      const crypt = new CryptMessageIntoFolder(
-        destFolder,
-        move,
-        resolve,
-        targetKey
+    let newHeaders = headerData.rawHeaderText;
+    if (!newHeaders.endsWith("\r\n")) {
+      newHeaders += "\r\n";
+    }
+
+    headerData = undefined;
+
+    let regExpMsgId = new RegExp("^message-id: <(.*)>", "mi");
+    let msgId;
+    let match = newHeaders.match(regExpMsgId);
+
+    if (match) {
+      msgId = match[1];
+      newHeaders = newHeaders.replace(
+        regExpMsgId,
+        "Message-Id: <" + newMessageIdPrefix + "-$1>"
       );
 
-      try {
-        EnigmailMime.getMimeTreeFromUrl(msgUrl, true, function(mime) {
-          crypt.messageParseCallback(mime, hdr);
-        });
-      } catch (ex) {
-        reject("msgHdrsDeleteoMimeMessage failed: " + ex.toString());
+      // Match the references header across multiple lines
+      // eslint-disable-next-line no-control-regex
+      let regExpReferences = new RegExp("^references: .*([\r\n]*^ .*$)*", "mi");
+      let refLines = newHeaders.match(regExpReferences);
+      if (refLines) {
+        // Take the full match of the existing header
+        let newRef = refLines[0] + " <" + msgId + ">";
+        newHeaders = newHeaders.replace(regExpReferences, newRef);
+      } else {
+        newHeaders += "References: <" + msgId + ">\r\n";
       }
+    }
+
+    return newHeaders + "\r\n" + body;
+  },
+
+  /*
+   * Copies an email message to a folder, which is a modified copy of an
+   * existing message, optionally creating a new message ID.
+   *
+   * @param {nsIMsgDBHdr} originalMsgHdr - Header of the original message
+   * @param {string} targetFolderUri - Target folder URI
+   * @param {boolean} deleteOrigMsg - Should the original message be deleted?
+   * @param {string} content - New message content
+   * @param {string} newMessageIdPrefix - If this is non-null, create a new message ID
+   *                                       by adding this prefix.
+   *
+   * @returns {nsMsgKey} Message key of the new message
+   */
+  async copyMessageToFolder(
+    originalMsgHdr,
+    targetFolderUri,
+    deleteOrigMsg,
+    content,
+    newMessageIdPrefix
+  ) {
+    lazy.EnigmailLog.DEBUG("persistentCrypto.jsm: copyMessageToFolder()\n");
+    return new Promise((resolve, reject) => {
+      if (newMessageIdPrefix) {
+        content = this.changeMessageId(content, newMessageIdPrefix);
+      }
+
+      // Create the temporary file where the new message will be stored.
+      let tempFile = Services.dirsvc.get("TmpD", Ci.nsIFile);
+      tempFile.append("message.eml");
+      tempFile.createUnique(0, 0o600);
+
+      let outputStream = Cc[
+        "@mozilla.org/network/file-output-stream;1"
+      ].createInstance(Ci.nsIFileOutputStream);
+      outputStream.init(tempFile, 2, 0x200, false); // open as "write only"
+      outputStream.write(content, content.length);
+      outputStream.close();
+
+      // Delete file on exit, because Windows locks the file
+      let extAppLauncher = Cc[
+        "@mozilla.org/uriloader/external-helper-app-service;1"
+      ].getService(Ci.nsPIExternalAppLauncher);
+      extAppLauncher.deleteTemporaryFileOnExit(tempFile);
+
+      let msgFolder = originalMsgHdr.folder;
+
+      // The following technique was copied from AttachmentDeleter in Thunderbird's
+      // nsMessenger.cpp. There is a "unified" listener which serves as copy and delete
+      // listener. In all cases, the `OnStopCopy()` of the delete listener selects the
+      // replacement message.
+      // The deletion happens in `OnStopCopy()` of the copy listener for local messages
+      // and in `OnStopRunningUrl()` for IMAP messages if the folder is displayed since
+      // otherwise `OnStopRunningUrl()` doesn't run.
+
+      let copyListener, newKey;
+      let statusCode = 0;
+      let destFolder = targetFolderUri
+        ? lazy.MailUtils.getExistingFolder(targetFolderUri)
+        : msgFolder;
+
+      copyListener = {
+        QueryInterface: ChromeUtils.generateQI([
+          "nsIMsgCopyServiceListener",
+          "nsIUrlListener",
+        ]),
+        GetMessageId(messageId) {
+          // Maybe enable this later. Most of the Thunderbird code does not supply this.
+          // messageId = { value: msgHdr.messageId };
+        },
+        SetMessageKey(key) {
+          lazy.EnigmailLog.DEBUG(
+            `persistentCrypto.jsm: copyMessageToFolder: Result of CopyFileMessage() is new message with key ${key}\n`
+          );
+          newKey = key;
+        },
+        applyFlags() {
+          let newHdr = destFolder.GetMessageHeader(newKey);
+          newHdr.markRead(originalMsgHdr.isRead);
+          newHdr.markFlagged(originalMsgHdr.isFlagged);
+          newHdr.subject = originalMsgHdr.subject;
+        },
+        OnStartCopy() {},
+        OnStopCopy(status) {
+          statusCode = status;
+          if (statusCode !== 0) {
+            lazy.EnigmailLog.ERROR(
+              `persistentCrypto.jsm: ${statusCode} replacing message, folder="${msgFolder.name}", key=${originalMsgHdr.messageKey}/${newKey}\n`
+            );
+            reject();
+            return;
+          }
+
+          try {
+            tempFile.remove();
+          } catch (ex) {}
+
+          lazy.EnigmailLog.DEBUG(
+            "persistentCrypto.jsm: copyMessageToFolder: Triggering deletion from OnStopCopy()\n"
+          );
+          this.applyFlags();
+
+          if (deleteOrigMsg) {
+            lazy.EnigmailLog.DEBUG(
+              `persistentCrypto.jsm: copyMessageToFolder: Deleting old message with key ${originalMsgHdr.messageKey}\n`
+            );
+            msgFolder.deleteMessages(
+              [originalMsgHdr],
+              null,
+              true,
+              false,
+              null,
+              false
+            );
+          }
+          resolve(newKey);
+        },
+      };
+
+      MailServices.copy.copyFileMessage(
+        tempFile,
+        destFolder,
+        null,
+        false,
+        originalMsgHdr.flags,
+        "",
+        copyListener,
+        null
+      );
     });
   },
 };
 
-function CryptMessageIntoFolder(destFolder, move, resolve, targetKey) {
+function CryptMessageIntoFolder(destFolder, move, targetKey) {
   this.destFolder = destFolder;
   this.move = move;
-  this.resolve = resolve;
   this.targetKey = targetKey;
-  this.messageDecrypted = false;
+  this.cryptoChanged = false;
+  this.decryptFailure = false;
 
   this.mimeTree = null;
   this.decryptionTasks = [];
@@ -166,6 +256,14 @@ function CryptMessageIntoFolder(destFolder, move, resolve, targetKey) {
 }
 
 CryptMessageIntoFolder.prototype = {
+  /** Here is the effective action of a call to cryptMessage.
+   * If no failure is seen when attempting to decrypt (!decryptFailure),
+   * then we copy. (This includes plain messages that didn't need
+   * decryption.)
+   * The cryptoChanged flag is set only after we have successfully
+   * completed a decryption (or encryption) operation, it's used to
+   * decide whether we need a new message ID.
+   */
   async messageParseCallback(mimeTree, msgHdr) {
     this.mimeTree = mimeTree;
     this.hdr = msgHdr;
@@ -182,46 +280,50 @@ CryptMessageIntoFolder.prototype = {
     if (this.targetKey) {
       msg = this.encryptToKey(mimeTree);
       if (!msg) {
-        // do nothing (still better than destroying the message)
-        this.resolve(true);
-        return;
+        throw new Error("Failure to encrypt message");
       }
-      this.messageDecrypted = true;
-    } else if (this.messageDecrypted) {
+      this.cryptoChanged = true;
+    } else {
       msg = this.mimeToString(mimeTree, true);
     }
 
-    if (this.messageDecrypted) {
-      this.resolve(await this.storeMessage(msg));
-    } else {
-      this.resolve(true);
+    if (this.decryptFailure) {
+      throw new Error("Failure to decrypt message");
     }
+    return EnigmailPersistentCrypto.copyMessageToFolder(
+      this.hdr,
+      this.destFolder,
+      this.move,
+      msg,
+      this.cryptoChanged ? "decrypted-" + new Date().valueOf() : null
+    );
   },
 
   encryptToKey(mimeTree) {
     let exitCodeObj = {};
     let statusFlagsObj = {};
     let errorMsgObj = {};
-    EnigmailLog.DEBUG("persistentCrypto.jsm: Encrypting message.\n");
+    lazy.EnigmailLog.DEBUG("persistentCrypto.jsm: Encrypting message.\n");
 
     let inputMsg = this.mimeToString(mimeTree, false);
 
     let encmsg = "";
     try {
-      encmsg = EnigmailEncryption.encryptMessage(
+      encmsg = lazy.EnigmailEncryption.encryptMessage(
         null,
         0,
         inputMsg,
         "0x" + this.targetKey.fpr,
         "0x" + this.targetKey.fpr,
         "",
-        EnigmailConstants.SEND_ENCRYPTED | EnigmailConstants.SEND_ALWAYS_TRUST,
+        lazy.EnigmailConstants.SEND_ENCRYPTED |
+          lazy.EnigmailConstants.SEND_ALWAYS_TRUST,
         exitCodeObj,
         statusFlagsObj,
         errorMsgObj
       );
     } catch (ex) {
-      EnigmailLog.DEBUG(
+      lazy.EnigmailLog.DEBUG(
         "persistentCrypto.jsm: Encryption failed: " + ex + "\n"
       );
       return null;
@@ -243,7 +345,7 @@ CryptMessageIntoFolder.prototype = {
       }
     }
     // Then multipart/encrypted ct
-    let boundary = EnigmailMime.createBoundary();
+    let boundary = lazy.EnigmailMime.createBoundary();
     msg += "Content-Transfer-Encoding: 7Bit\n";
     msg += "Content-Type: multipart/encrypted; ";
     msg +=
@@ -278,16 +380,18 @@ CryptMessageIntoFolder.prototype = {
    *  Walk through the MIME message structure and decrypt the body if there is something to decrypt
    */
   async decryptMimeTree(mimePart) {
-    EnigmailLog.DEBUG("persistentCrypto.jsm: decryptMimeTree:\n");
+    lazy.EnigmailLog.DEBUG("persistentCrypto.jsm: decryptMimeTree:\n");
 
     if (this.isBrokenByExchange(mimePart)) {
       this.fixExchangeMessage(mimePart);
     }
 
-    if (this.isPgpMime(mimePart)) {
+    if (this.isSMIME(mimePart)) {
+      this.decryptSMIME(mimePart);
+    } else if (this.isPgpMime(mimePart)) {
       this.decryptPGPMIME(mimePart);
     } else if (isAttachment(mimePart)) {
-      this.decryptAttachment(mimePart);
+      this.pgpDecryptAttachment(mimePart);
     } else {
       this.decryptINLINE(mimePart);
     }
@@ -310,7 +414,7 @@ CryptMessageIntoFolder.prototype = {
    */
 
   isBrokenByExchange(mime) {
-    EnigmailLog.DEBUG("persistentCrypto.jsm: isBrokenByExchange:\n");
+    lazy.EnigmailLog.DEBUG("persistentCrypto.jsm: isBrokenByExchange:\n");
 
     try {
       if (
@@ -334,7 +438,7 @@ CryptMessageIntoFolder.prototype = {
           .includes("application/octet-stream") &&
         mime.subParts[2].fullContentType.toLowerCase().includes("encrypted.asc")
       ) {
-        EnigmailLog.DEBUG(
+        lazy.EnigmailLog.DEBUG(
           "persistentCrypto.jsm: isBrokenByExchange: found message broken by MS-Exchange\n"
         );
         return true;
@@ -344,18 +448,92 @@ CryptMessageIntoFolder.prototype = {
     return false;
   },
 
+  decryptSMIME(mimePart) {
+    let encrypted = lazy.MailCryptoUtils.binaryStringToTypedArray(
+      mimePart.body
+    );
+
+    let cmsDecoderJS = Cc["@mozilla.org/nsCMSDecoderJS;1"].createInstance(
+      Ci.nsICMSDecoderJS
+    );
+    let decrypted = cmsDecoderJS.decrypt(encrypted);
+
+    if (decrypted.length === 0) {
+      // fail if no data found
+      this.decryptFailure = true;
+      return;
+    }
+
+    let data = "";
+    for (let c of decrypted) {
+      data += String.fromCharCode(c);
+    }
+
+    if (lazy.EnigmailLog.getLogLevel() > 5) {
+      lazy.EnigmailLog.DEBUG(
+        "*** start data ***\n'" + data + "'\n***end data***\n"
+      );
+    }
+
+    // Search for the separator between headers and message body.
+    let bodyIndex = data.search(/\n\s*\r?\n/);
+    if (bodyIndex < 0) {
+      // not found, body starts at beginning.
+      bodyIndex = 0;
+    } else {
+      // found, body starts after the headers.
+      let wsSize = data.match(/\n\s*\r?\n/);
+      bodyIndex += wsSize[0].length;
+    }
+
+    if (data.substr(bodyIndex).search(/\r?\n$/) === 0) {
+      return;
+    }
+
+    let m = Cc["@mozilla.org/messenger/mimeheaders;1"].createInstance(
+      Ci.nsIMimeHeaders
+    );
+    // headers are found from the beginning up to the start of the body
+    m.initialize(data.substr(0, bodyIndex));
+
+    mimePart.headers._rawHeaders.set("content-type", [
+      m.extractHeader("content-type", false) || "",
+    ]);
+
+    mimePart.headers._rawHeaders.delete("content-transfer-encoding");
+    mimePart.headers._rawHeaders.delete("content-disposition");
+    mimePart.headers._rawHeaders.delete("content-description");
+
+    mimePart.subParts = [];
+    mimePart.body = data.substr(bodyIndex);
+
+    this.cryptoChanged = true;
+  },
+
+  isSMIME(mimePart) {
+    if (!mimePart.headers.has("content-type")) {
+      return false;
+    }
+
+    return (
+      mimePart.headers.get("content-type").type.toLowerCase() ===
+        "application/pkcs7-mime" &&
+      mimePart.headers.get("content-type").get("smime-type").toLowerCase() ===
+        "enveloped-data" &&
+      mimePart.subParts.length === 0
+    );
+  },
+
   isPgpMime(mimePart) {
-    EnigmailLog.DEBUG("persistentCrypto.jsm: isPgpMime()\n");
+    lazy.EnigmailLog.DEBUG("persistentCrypto.jsm: isPgpMime()\n");
 
     try {
       if (mimePart.headers.has("content-type")) {
         if (
           mimePart.headers.get("content-type").type.toLowerCase() ===
             "multipart/encrypted" &&
-          mimePart.headers
-            .get("content-type")
-            .get("protocol")
-            .toLowerCase() === "application/pgp-encrypted" &&
+          mimePart.headers.get("content-type").get("protocol").toLowerCase() ===
+            "application/pgp-encrypted" &&
           mimePart.subParts.length === 2
         ) {
           return true;
@@ -366,7 +544,7 @@ CryptMessageIntoFolder.prototype = {
   },
 
   async decryptPGPMIME(mimePart) {
-    EnigmailLog.DEBUG(
+    lazy.EnigmailLog.DEBUG(
       "persistentCrypto.jsm: decryptPGPMIME(" + mimePart.partNum + ")\n"
     );
 
@@ -375,9 +553,9 @@ CryptMessageIntoFolder.prototype = {
     }
 
     const uiFlags =
-      EnigmailConstants.UI_INTERACTIVE |
-      EnigmailConstants.UI_UNVERIFIED_ENC_OK |
-      EnigmailConstants.UI_IGNORE_MDC_ERROR;
+      lazy.EnigmailConstants.UI_INTERACTIVE |
+      lazy.EnigmailConstants.UI_UNVERIFIED_ENC_OK |
+      lazy.EnigmailConstants.UI_IGNORE_MDC_ERROR;
     let exitCodeObj = {};
     let statusFlagsObj = {};
     let userIdObj = {};
@@ -391,10 +569,11 @@ CryptMessageIntoFolder.prototype = {
     var signatureObj = {};
     signatureObj.value = "";
 
-    let data = EnigmailDecryption.decryptMessage(
+    let data = lazy.EnigmailDecryption.decryptMessage(
       null,
       uiFlags,
       mimePart.subParts[1].body,
+      null, // date
       signatureObj,
       exitCodeObj,
       statusFlagsObj,
@@ -407,24 +586,27 @@ CryptMessageIntoFolder.prototype = {
     );
 
     if (!data || data.length === 0) {
-      if (statusFlagsObj.value & EnigmailConstants.DISPLAY_MESSAGE) {
-        EnigmailDialog.alert(null, errorMsgObj.value);
+      if (statusFlagsObj.value & lazy.EnigmailConstants.DISPLAY_MESSAGE) {
+        lazy.EnigmailDialog.alert(null, errorMsgObj.value);
         throw new Error("Decryption impossible");
       }
     }
 
-    EnigmailLog.DEBUG(
+    lazy.EnigmailLog.DEBUG(
       "persistentCrypto.jsm: analyzeDecryptedData: got " +
         data.length +
         " bytes\n"
     );
 
-    if (EnigmailLog.getLogLevel() > 5) {
-      EnigmailLog.DEBUG("*** start data ***\n'" + data + "'\n***end data***\n");
+    if (lazy.EnigmailLog.getLogLevel() > 5) {
+      lazy.EnigmailLog.DEBUG(
+        "*** start data ***\n'" + data + "'\n***end data***\n"
+      );
     }
 
     if (data.length === 0) {
       // fail if no data found
+      this.decryptFailure = true;
       return;
     }
 
@@ -432,7 +614,8 @@ CryptMessageIntoFolder.prototype = {
     if (bodyIndex < 0) {
       bodyIndex = 0;
     } else {
-      ++bodyIndex;
+      let wsSize = data.match(/\n\s*\r?\n/);
+      bodyIndex += wsSize[0].length;
     }
 
     if (data.substr(bodyIndex).search(/\r?\n$/) === 0) {
@@ -459,12 +642,29 @@ CryptMessageIntoFolder.prototype = {
           subject = subject.replace(/^(Re: )+/, "Re: ");
           this.mimeTree.headers._rawHeaders.set("subject", [subject]);
         }
+      } else if (
+        !(statusFlagsObj.value & lazy.EnigmailConstants.GOOD_SIGNATURE) &&
+        /^multipart\/signed/i.test(ct)
+      ) {
+        // RFC 3156, Section 6.1 message
+        let innerMsg = lazy.EnigmailMime.getMimeTree(data, false);
+        if (innerMsg.subParts.length > 0) {
+          ct = innerMsg.subParts[0].fullContentType;
+          let hdrMap = innerMsg.subParts[0].headers._rawHeaders;
+          if (ct.search(/protected-headers/i) >= 0 && hdrMap.has("subject")) {
+            let subject = innerMsg.subParts[0].headers._rawHeaders
+              .get("subject")
+              .join("");
+            subject = subject.replace(/^(Re: )+/, "Re: ");
+            this.mimeTree.headers._rawHeaders.set("subject", [subject]);
+          }
+        }
       }
     }
 
     let boundary = getBoundary(mimePart);
     if (!boundary) {
-      boundary = EnigmailMime.createBoundary();
+      boundary = lazy.EnigmailMime.createBoundary();
     }
 
     // append relevant headers
@@ -490,35 +690,108 @@ CryptMessageIntoFolder.prototype = {
       },
     ];
 
-    this.messageDecrypted = true;
+    this.cryptoChanged = true;
   },
 
-  decryptAttachment(mimePart) {
-    EnigmailLog.DEBUG("persistentCrypto.jsm: decryptAttachment()\n");
-    throw new Error("Not implemented");
-
-    /*
+  pgpDecryptAttachment(mimePart) {
+    lazy.EnigmailLog.DEBUG("persistentCrypto.jsm: pgpDecryptAttachment()\n");
     let attachmentHead = mimePart.body.substr(0, 30);
     if (attachmentHead.search(/-----BEGIN PGP \w{5,10} KEY BLOCK-----/) >= 0) {
-      // attachment appears to be a PGP key file, we just go-a-head
+      // attachment appears to be a PGP key file, skip
       return;
     }
 
-    let attachmentName = getAttachmentName(mimePart);
-    attachmentName = attachmentName ? attachmentName.replace(/\.(pgp|asc|gpg)$/, "") : "";
+    const uiFlags =
+      lazy.EnigmailConstants.UI_INTERACTIVE |
+      lazy.EnigmailConstants.UI_UNVERIFIED_ENC_OK |
+      lazy.EnigmailConstants.UI_IGNORE_MDC_ERROR;
+    let exitCodeObj = {};
+    let statusFlagsObj = {};
+    let userIdObj = {};
+    let sigDetailsObj = {};
+    let errorMsgObj = {};
+    let keyIdObj = {};
+    let blockSeparationObj = {
+      value: "",
+    };
+    let encToDetailsObj = {};
+    var signatureObj = {};
+    signatureObj.value = "";
 
-    EnigmailLog.DEBUG("persistentCrypto.jsm: decryptAttachment: decrypted to " + listener.stdoutData.length + " bytes\n");
-    if (statusFlagsObj.encryptedFileName && statusFlagsObj.encryptedFileName.length > 0) {
+    let attachmentName = getAttachmentName(mimePart);
+    attachmentName = attachmentName
+      ? attachmentName.replace(/\.(pgp|asc|gpg)$/, "")
+      : "";
+
+    let data = lazy.EnigmailDecryption.decryptMessage(
+      null,
+      uiFlags,
+      mimePart.body,
+      null, // date
+      signatureObj,
+      exitCodeObj,
+      statusFlagsObj,
+      keyIdObj,
+      userIdObj,
+      sigDetailsObj,
+      errorMsgObj,
+      blockSeparationObj,
+      encToDetailsObj
+    );
+
+    if (data || statusFlagsObj.value & lazy.EnigmailConstants.DECRYPTION_OKAY) {
+      lazy.EnigmailLog.DEBUG(
+        "persistentCrypto.jsm: pgpDecryptAttachment: decryption OK\n"
+      );
+    } else if (
+      statusFlagsObj.value &
+      (lazy.EnigmailConstants.DECRYPTION_FAILED |
+        lazy.EnigmailConstants.MISSING_MDC)
+    ) {
+      lazy.EnigmailLog.DEBUG(
+        "persistentCrypto.jsm: pgpDecryptAttachment: decryption without MDC protection\n"
+      );
+    } else if (
+      statusFlagsObj.value & lazy.EnigmailConstants.DECRYPTION_FAILED
+    ) {
+      lazy.EnigmailLog.DEBUG(
+        "persistentCrypto.jsm: pgpDecryptAttachment: decryption failed\n"
+      );
+      // Enigmail prompts the user here, but we just keep going.
+    } else if (
+      statusFlagsObj.value & lazy.EnigmailConstants.DECRYPTION_INCOMPLETE
+    ) {
+      // failure; message not complete
+      lazy.EnigmailLog.DEBUG(
+        "persistentCrypto.jsm: pgpDecryptAttachment: decryption incomplete\n"
+      );
+      return;
+    } else {
+      // there is nothing to be decrypted
+      lazy.EnigmailLog.DEBUG(
+        "persistentCrypto.jsm: pgpDecryptAttachment: no decryption required\n"
+      );
+      return;
+    }
+
+    lazy.EnigmailLog.DEBUG(
+      "persistentCrypto.jsm: pgpDecryptAttachment: decrypted to " +
+        data.length +
+        " bytes\n"
+    );
+    if (statusFlagsObj.encryptedFileName) {
       attachmentName = statusFlagsObj.encryptedFileName;
     }
 
     this.decryptedMessage = true;
-    mimePart.body = listener.stdoutData;
-    mimePart.headers._rawHeaders.set("content-disposition", `attachment; filename="${attachmentName}"`);
+    mimePart.body = data;
+    mimePart.headers._rawHeaders.set(
+      "content-disposition",
+      `attachment; filename="${attachmentName}"`
+    );
     mimePart.headers._rawHeaders.set("content-transfer-encoding", ["base64"]);
     let origCt = mimePart.headers.get("content-type");
     let ct = origCt.type;
-
 
     for (let i of origCt.entries()) {
       if (i[0].toLowerCase() === "name") {
@@ -528,11 +801,10 @@ CryptMessageIntoFolder.prototype = {
     }
 
     mimePart.headers._rawHeaders.set("content-type", [ct]);
-    */
   },
 
   async decryptINLINE(mimePart) {
-    EnigmailLog.DEBUG("persistentCrypto.jsm: decryptINLINE()\n");
+    lazy.EnigmailLog.DEBUG("persistentCrypto.jsm: decryptINLINE()\n");
 
     if ("decryptedPgpMime" in mimePart && mimePart.decryptedPgpMime) {
       return 0;
@@ -559,12 +831,12 @@ CryptMessageIntoFolder.prototype = {
       signatureObj.value = "";
 
       const uiFlags =
-        EnigmailConstants.UI_INTERACTIVE |
-        EnigmailConstants.UI_UNVERIFIED_ENC_OK |
-        EnigmailConstants.UI_IGNORE_MDC_ERROR;
+        lazy.EnigmailConstants.UI_INTERACTIVE |
+        lazy.EnigmailConstants.UI_UNVERIFIED_ENC_OK |
+        lazy.EnigmailConstants.UI_IGNORE_MDC_ERROR;
 
       var plaintexts = [];
-      var blocks = EnigmailArmor.locateArmoredBlocks(mimePart.body);
+      var blocks = lazy.EnigmailArmor.locateArmoredBlocks(mimePart.body);
       var tmp = [];
 
       for (let i = 0; i < blocks.length; i++) {
@@ -600,10 +872,11 @@ CryptMessageIntoFolder.prototype = {
               charset = chset[2].trim();
             }
           }
-          plaintext = EnigmailDecryption.decryptMessage(
+          plaintext = lazy.EnigmailDecryption.decryptMessage(
             null,
             uiFlags,
             ciphertext,
+            null, // date
             signatureObj,
             exitCodeObj,
             statusFlagsObj,
@@ -615,25 +888,28 @@ CryptMessageIntoFolder.prototype = {
             encToDetailsObj
           );
           if (!plaintext || plaintext.length === 0) {
-            if (statusFlagsObj.value & EnigmailConstants.DISPLAY_MESSAGE) {
-              EnigmailDialog.alert(null, errorMsgObj.value);
-              this.messageDecrypted = false;
+            if (statusFlagsObj.value & lazy.EnigmailConstants.DISPLAY_MESSAGE) {
+              lazy.EnigmailDialog.alert(null, errorMsgObj.value);
+              this.cryptoChanged = false;
+              this.decryptFailure = true;
               return -1;
             }
 
             if (
               statusFlagsObj.value &
-              (EnigmailConstants.DECRYPTION_FAILED |
-                EnigmailConstants.MISSING_MDC)
+              (lazy.EnigmailConstants.DECRYPTION_FAILED |
+                lazy.EnigmailConstants.MISSING_MDC)
             ) {
-              EnigmailLog.DEBUG(
+              lazy.EnigmailLog.DEBUG(
                 "persistentCrypto.jsm: decryptINLINE: no MDC protection, decrypting anyway\n"
               );
             }
-            if (statusFlagsObj.value & EnigmailConstants.DECRYPTION_FAILED) {
+            if (
+              statusFlagsObj.value & lazy.EnigmailConstants.DECRYPTION_FAILED
+            ) {
               // since we cannot find out if the user wants to cancel
               // we should ask
-              let msg = await l10n.formatValue(
+              let msg = await lazy.l10n.formatValue(
                 "converter-decrypt-body-failed",
                 {
                   subject: this.subject,
@@ -641,20 +917,23 @@ CryptMessageIntoFolder.prototype = {
               );
 
               if (
-                !EnigmailDialog.confirmDlg(
+                !lazy.EnigmailDialog.confirmDlg(
                   null,
                   msg,
-                  l10n.formatValueSync("dlg-button-retry"),
-                  l10n.formatValueSync("dlg-button-skip")
+                  lazy.l10n.formatValueSync("dlg-button-retry"),
+                  lazy.l10n.formatValueSync("dlg-button-skip")
                 )
               ) {
-                this.messageDecrypted = false;
+                this.cryptoChanged = false;
+                this.decryptFailure = true;
                 return -1;
               }
             } else if (
-              statusFlagsObj.value & EnigmailConstants.DECRYPTION_INCOMPLETE
+              statusFlagsObj.value &
+              lazy.EnigmailConstants.DECRYPTION_INCOMPLETE
             ) {
-              this.messageDecrypted = false;
+              this.cryptoChanged = false;
+              this.decryptFailure = true;
               return -1;
             } else {
               plaintext = " ";
@@ -676,7 +955,7 @@ CryptMessageIntoFolder.prototype = {
             mimePart.partNum.length > 0 &&
             mimePart.partNum.search(/[^01.]/) < 0
           ) {
-            let m = EnigmailMime.extractSubjectFromBody(plaintext);
+            let m = lazy.EnigmailMime.extractSubjectFromBody(plaintext);
             if (m) {
               plaintext = m.messageBody;
               this.mimeTree.headers._rawHeaders.set("subject", [m.subject]);
@@ -712,7 +991,7 @@ CryptMessageIntoFolder.prototype = {
       }
       mimePart.body = decryptedMessage;
 
-      let origCharset = getCharset(getHeaderValue(mimePart, "content-type"));
+      let origCharset = getCharset(mimePart, "content-type");
       if (origCharset) {
         mimePart.headers_rawHeaders.set(
           "content-type",
@@ -725,12 +1004,12 @@ CryptMessageIntoFolder.prototype = {
         );
       }
 
-      this.messageDecrypted = true;
+      this.cryptoChanged = true;
       return 1;
     }
 
     let ct = getContentType(mimePart);
-    EnigmailLog.DEBUG(
+    lazy.EnigmailLog.DEBUG(
       "persistentCrypto.jsm: Decryption skipped:  " + ct + "\n"
     );
 
@@ -768,7 +1047,7 @@ CryptMessageIntoFolder.prototype = {
    ******/
 
   mimeToString(mimePart, includeHeaders) {
-    EnigmailLog.DEBUG(
+    lazy.EnigmailLog.DEBUG(
       "persistentCrypto.jsm: mimeToString: part: '" + mimePart.partNum + "'\n"
     );
 
@@ -777,7 +1056,11 @@ CryptMessageIntoFolder.prototype = {
 
     if (includeHeaders && rawHdr.size > 0) {
       for (let hdr of rawHdr.keys()) {
-        msg += formatMimeHeader(hdr, rawHdr.get(hdr)) + "\r\n";
+        let formatted = formatMimeHeader(hdr, rawHdr.get(hdr));
+        msg += formatted;
+        if (!formatted.endsWith("\r\n")) {
+          msg += "\r\n";
+        }
       }
 
       msg += "\r\n";
@@ -789,22 +1072,20 @@ CryptMessageIntoFolder.prototype = {
         encoding = "8bit";
       }
 
-      if (encoding === "quoted-printable") {
-        mimePart.headers._rawHeaders.set("content-transfer-encoding", [
-          "base64",
-        ]);
-        encoding = "base64";
-      }
-
       if (encoding === "base64") {
-        msg += EnigmailData.encodeBase64(mimePart.body);
+        msg += lazy.EnigmailData.encodeBase64(mimePart.body);
       } else {
-        msg += mimePart.body;
+        let charset = getCharset(mimePart, "content-type");
+        if (charset) {
+          msg += lazy.EnigmailData.convertFromUnicode(mimePart.body, charset);
+        } else {
+          msg += mimePart.body;
+        }
       }
     }
 
     if (mimePart.subParts.length > 0) {
-      let boundary = EnigmailMime.getBoundary(
+      let boundary = lazy.EnigmailMime.getBoundary(
         rawHdr.get("content-type").join("")
       );
 
@@ -814,6 +1095,7 @@ CryptMessageIntoFolder.prototype = {
         if (msg.search(/[\r\n]$/) < 0) {
           msg += "\r\n";
         }
+        msg += "\r\n";
       }
 
       msg += `--${boundary}--\r\n`;
@@ -821,127 +1103,14 @@ CryptMessageIntoFolder.prototype = {
     return msg;
   },
 
-  storeMessage(msg) {
-    let self = this;
-
-    return new Promise((resolve, reject) => {
-      //XXX Do we wanna use the tmp for this?
-      let tempFile = Services.dirsvc.get("TmpD", Ci.nsIFile);
-      tempFile.append("message.eml");
-      tempFile.createUnique(0, 384); // == 0600, octal is deprecated
-
-      // ensure that file gets deleted on exit, if something goes wrong ...
-      let extAppLauncher = Cc["@mozilla.org/mime;1"].getService(
-        Ci.nsPIExternalAppLauncher
-      );
-
-      let foStream = Cc[
-        "@mozilla.org/network/file-output-stream;1"
-      ].createInstance(Ci.nsIFileOutputStream);
-      foStream.init(tempFile, 2, 0x200, false); // open as "write only"
-      foStream.write(msg, msg.length);
-      foStream.close();
-
-      extAppLauncher.deleteTemporaryFileOnExit(tempFile);
-
-      //
-      //  This was taken from the HeaderToolsLite Example Addon "original by Frank DiLecce"
-      //
-      // this is interesting: nsIMsgFolder.copyFileMessage seems to have a bug on Windows, when
-      // the nsIFile has been already used by foStream (because of Windows lock system?), so we
-      // must initialize another nsIFile object, pointing to the temporary file
-      let fileSpec = Cc["@mozilla.org/file/local;1"].createInstance(Ci.nsIFile);
-      fileSpec.initWithPath(tempFile.path);
-
-      let copyListener = {
-        QueryInterface: ChromeUtils.generateQI(["nsIMsgCopyServiceListener"]),
-        GetMessageId(messageId) {},
-        OnProgress(progress, progressMax) {},
-        OnStartCopy() {
-          EnigmailLog.DEBUG(
-            "persistentCrypto.jsm: copyListener: OnStartCopy()\n"
-          );
-        },
-        SetMessageKey(key) {
-          EnigmailLog.DEBUG(
-            "persistentCrypto.jsm: copyListener: SetMessageKey(" + key + ")\n"
-          );
-        },
-        OnStopCopy(statusCode) {
-          EnigmailLog.DEBUG(
-            "persistentCrypto.jsm: copyListener: OnStopCopy()\n"
-          );
-          if (statusCode !== 0) {
-            EnigmailLog.DEBUG(
-              "persistentCrypto.jsm: Error copying message: " +
-                statusCode +
-                "\n"
-            );
-            try {
-              tempFile.remove(false);
-            } catch (ex) {
-              try {
-                fileSpec.remove(false);
-              } catch (e2) {
-                EnigmailLog.DEBUG(
-                  "persistentCrypto.jsm: Could not delete temp file\n"
-                );
-              }
-            }
-            resolve(true);
-            return;
-          }
-          EnigmailLog.DEBUG("persistentCrypto.jsm: Copy complete\n");
-
-          if (self.move) {
-            deleteOriginalMail(self.hdr);
-          }
-
-          try {
-            tempFile.remove(false);
-          } catch (ex) {
-            try {
-              fileSpec.remove(false);
-            } catch (e2) {
-              EnigmailLog.DEBUG(
-                "persistentCrypto.jsm: Could not delete temp file\n"
-              );
-            }
-          }
-
-          EnigmailLog.DEBUG("persistentCrypto.jsm: Cave Johnson. We're done\n");
-          resolve(true);
-        },
-      };
-
-      EnigmailLog.DEBUG("persistentCrypto.jsm: copySvc ready for copy\n");
-      try {
-        if (self.mimeTree.headers.has("subject")) {
-          self.hdr.subject = self.mimeTree.headers.get("subject");
-        }
-      } catch (ex) {}
-
-      MailServices.copy.copyFileMessage(
-        fileSpec,
-        MailUtils.getExistingFolder(self.destFolder),
-        null,
-        false,
-        0,
-        "",
-        copyListener,
-        null
-      );
-    });
-  },
-
   fixExchangeMessage(mimePart) {
-    EnigmailLog.DEBUG("persistentCrypto.jsm: fixExchangeMessage()\n");
+    lazy.EnigmailLog.DEBUG("persistentCrypto.jsm: fixExchangeMessage()\n");
 
     let msg = this.mimeToString(mimePart, true);
 
     try {
-      let fixedMsg = EnigmailFixExchangeMsg.getRepairedMessage(msg);
-      let replacement = EnigmailMime.getMimeTree(fixedMsg, true);
+      let fixedMsg = lazy.EnigmailFixExchangeMsg.getRepairedMessage(msg);
+      let replacement = lazy.EnigmailMime.getMimeTree(fixedMsg, true);
 
       for (let i in replacement) {
         mimePart[i] = replacement[i];
@@ -957,44 +1126,40 @@ CryptMessageIntoFolder.prototype = {
  */
 
 function formatHeader(headerLabel) {
-  return headerLabel.replace(/^.|(-.)/g, function(match) {
+  return headerLabel.replace(/^.|(-.)/g, function (match) {
     return match.toUpperCase();
   });
 }
 
 function formatMimeHeader(headerLabel, headerValue) {
   if (Array.isArray(headerValue)) {
-    headerValue = headerValue.join("");
+    return headerValue
+      .map(v => formatHeader(headerLabel) + ": " + v)
+      .join("\r\n");
   }
-  if (headerLabel.search(/^(sender|from|reply-to|to|cc|bcc)$/i) === 0) {
-    return (
-      formatHeader(headerLabel) +
-      ": " +
-      EnigmailMime.formatHeaderData(
-        EnigmailMime.formatEmailAddress(headerValue)
-      )
-    );
-  }
-  return (
-    formatHeader(headerLabel) +
-    ": " +
-    EnigmailMime.formatHeaderData(EnigmailMime.encodeHeaderValue(headerValue))
-  );
+  return formatHeader(headerLabel) + ": " + headerValue + "\r\n";
 }
 
 function prettyPrintHeader(headerLabel, headerData) {
   if (Array.isArray(headerData)) {
     let h = [];
     for (let i in headerData) {
-      h.push(formatMimeHeader(headerLabel, GlodaUtils.deMime(headerData[i])));
+      h.push(
+        formatMimeHeader(headerLabel, lazy.GlodaUtils.deMime(headerData[i]))
+      );
     }
     return h.join("\r\n");
   }
-  return formatMimeHeader(headerLabel, GlodaUtils.deMime(String(headerData)));
+  return formatMimeHeader(
+    headerLabel,
+    lazy.GlodaUtils.deMime(String(headerData))
+  );
 }
 
 function getHeaderValue(mimeStruct, header) {
-  EnigmailLog.DEBUG("persistentCrypto.jsm: getHeaderValue: '" + header + "'\n");
+  lazy.EnigmailLog.DEBUG(
+    "persistentCrypto.jsm: getHeaderValue: '" + header + "'\n"
+  );
 
   try {
     if (mimeStruct.headers.has(header)) {
@@ -1006,7 +1171,7 @@ function getHeaderValue(mimeStruct, header) {
     }
     return "";
   } catch (ex) {
-    EnigmailLog.DEBUG(
+    lazy.EnigmailLog.DEBUG(
       "persistentCrypto.jsm: getHeaderValue: header not present\n"
     );
     return "";
@@ -1019,7 +1184,7 @@ function getContentType(mime) {
       return mime.headers.get("content-type").type.toLowerCase();
     }
   } catch (e) {
-    EnigmailLog.DEBUG("persistentCrypto.jsm: getContentType: " + e + "\n");
+    lazy.EnigmailLog.DEBUG("persistentCrypto.jsm: getContentType: " + e + "\n");
   }
   return null;
 }
@@ -1031,7 +1196,7 @@ function getBoundary(mime) {
       return mime.headers.get("content-type").get("boundary");
     }
   } catch (e) {
-    EnigmailLog.DEBUG("persistentCrypto.jsm: getBoundary: " + e + "\n");
+    lazy.EnigmailLog.DEBUG("persistentCrypto.jsm: getBoundary: " + e + "\n");
   }
   return null;
 }
@@ -1045,7 +1210,7 @@ function getCharset(mime) {
       }
     }
   } catch (e) {
-    EnigmailLog.DEBUG("persistentCrypto.jsm: getCharset: " + e + "\n");
+    lazy.EnigmailLog.DEBUG("persistentCrypto.jsm: getCharset: " + e + "\n");
   }
   return null;
 }
@@ -1063,7 +1228,9 @@ function getTransferEncoding(mime) {
       }
     }
   } catch (e) {
-    EnigmailLog.DEBUG("persistentCrypto.jsm: getTransferEncoding: " + e + "\n");
+    lazy.EnigmailLog.DEBUG(
+      "persistentCrypto.jsm: getTransferEncoding: " + e + "\n"
+    );
   }
   return "8Bit";
 }
@@ -1091,8 +1258,24 @@ function isAttachment(mime) {
   return false;
 }
 
+/**
+ * If the given MIME part is an attachment, return its filename.
+ *
+ * @param mime: a MIME part
+ * @return:     the filename or null
+ */
+function getAttachmentName(mime) {
+  if ("headers" in mime && mime.headers.has("content-disposition")) {
+    let c = mime.headers.get("content-disposition")[0];
+    if (/^attachment/i.test(c)) {
+      return lazy.EnigmailMime.getParameter(c, "filename");
+    }
+  }
+  return null;
+}
+
 function getPepSubject(mimeString) {
-  EnigmailLog.DEBUG("persistentCrypto.jsm: getPepSubject()\n");
+  lazy.EnigmailLog.DEBUG("persistentCrypto.jsm: getPepSubject()\n");
 
   let subject = null;
 
@@ -1100,7 +1283,7 @@ function getPepSubject(mimeString) {
     ct: "",
     firstPlainText: false,
     startPart(partNum, headers) {
-      EnigmailLog.DEBUG(
+      lazy.EnigmailLog.DEBUG(
         "persistentCrypto.jsm: getPepSubject.startPart: partNum=" +
           partNum +
           "\n"
@@ -1122,7 +1305,7 @@ function getPepSubject(mimeString) {
     endPart(partNum) {},
 
     deliverPartData(partNum, data) {
-      EnigmailLog.DEBUG(
+      lazy.EnigmailLog.DEBUG(
         "persistentCrypto.jsm: getPepSubject.deliverPartData: partNum=" +
           partNum +
           " ct=" +
@@ -1133,7 +1316,7 @@ function getPepSubject(mimeString) {
         // check data
         this.firstPlainText = true;
 
-        let o = EnigmailMime.extractSubjectFromBody(data);
+        let o = lazy.EnigmailMime.extractSubjectFromBody(data);
         if (o) {
           subject = o.subject;
         }
@@ -1147,35 +1330,9 @@ function getPepSubject(mimeString) {
   };
 
   try {
-    let p = new jsmime.MimeParser(emitter, opt);
+    let p = new lazy.jsmime.MimeParser(emitter, opt);
     p.deliverData(mimeString);
   } catch (ex) {}
 
   return subject;
-}
-
-/**
- * Lazy deletion of original messages
- */
-function deleteOriginalMail(msgHdr) {
-  EnigmailLog.DEBUG(
-    "persistentCrypto.jsm: deleteOriginalMail(" + msgHdr.messageKey + ")\n"
-  );
-
-  let delMsg = function() {
-    try {
-      EnigmailLog.DEBUG(
-        "persistentCrypto.jsm: deleting original message " +
-          msgHdr.messageKey +
-          "\n"
-      );
-      EnigmailStdlib.msgHdrsDelete([msgHdr]);
-    } catch (e) {
-      EnigmailLog.DEBUG(
-        "persistentCrypto.jsm: deletion failed. Error: " + e.toString() + "\n"
-      );
-    }
-  };
-
-  setTimeout(delMsg, 500);
 }

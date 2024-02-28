@@ -7,6 +7,7 @@
 #include "TimelineMarker.h"
 
 #include "jsapi.h"
+#include "js/Exception.h"
 #include "mozilla/dom/ProfileTimelineMarkerBinding.h"
 #include "nsContentUtils.h"
 
@@ -44,7 +45,7 @@ JSObject* TimelineMarker::GetStack() {
 void TimelineMarker::CaptureStack() {
   JSContext* ctx = nsContentUtils::GetCurrentJSContext();
   if (ctx) {
-    JS::RootedObject stack(ctx);
+    JS::Rooted<JSObject*> stack(ctx);
     if (JS::CaptureCurrentStack(ctx, &stack)) {
       mStackTrace.init(ctx, stack.get());
     } else {

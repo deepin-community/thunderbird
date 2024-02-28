@@ -1,4 +1,3 @@
-/* globals ChromeUtils, Assert, add_task */
 "use strict";
 
 do_get_profile();
@@ -87,7 +86,7 @@ function sendRequest(notification) {
 }
 
 function checkCookies(hasCookie) {
-  let cm = Cc["@mozilla.org/cookiemanager;1"].getService(Ci.nsICookieManager);
+  let cm = Services.cookies;
   Assert.equal(
     cm.cookieExists("localhost", "/beacon", "a", { privateBrowsingId: 1 }),
     hasCookie
@@ -114,7 +113,7 @@ const steps = [
 ];
 
 function next() {
-  if (steps.length == 0) {
+  if (!steps.length) {
     do_test_finished();
     return;
   }

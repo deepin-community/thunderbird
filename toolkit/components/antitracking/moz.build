@@ -8,10 +8,12 @@ with Files("**"):
     BUG_COMPONENT = ("Core", "Privacy: Anti-Tracking")
 
 XPIDL_SOURCES += [
+    "nsIContentBlockingAllowList.idl",
     "nsIPartitioningExceptionListService.idl",
     "nsIPurgeTrackerService.idl",
     "nsITrackingDBService.idl",
     "nsIURLDecorationAnnotationsService.idl",
+    "nsIURLQueryStringStripper.idl",
     "nsIURLQueryStrippingListService.idl",
 ]
 
@@ -22,13 +24,12 @@ EXTRA_COMPONENTS += [
 ]
 
 EXTRA_JS_MODULES += [
-    "ContentBlockingAllowList.jsm",
-    "PartitioningExceptionListService.jsm",
-    "PurgeTrackerService.jsm",
-    "TrackingDBService.jsm",
-    "URLDecorationAnnotationsService.jsm",
-    "URLQueryStrippingListProcessScript.js",
-    "URLQueryStrippingListService.jsm",
+    "ContentBlockingAllowList.sys.mjs",
+    "PartitioningExceptionListService.sys.mjs",
+    "PurgeTrackerService.sys.mjs",
+    "TrackingDBService.sys.mjs",
+    "URLDecorationAnnotationsService.sys.mjs",
+    "URLQueryStrippingListService.sys.mjs",
 ]
 
 XPCOM_MANIFESTS += [
@@ -39,14 +40,16 @@ EXPORTS.mozilla = [
     "AntiTrackingIPCUtils.h",
     "AntiTrackingRedirectHeuristic.h",
     "AntiTrackingUtils.h",
-    "ContentBlocking.h",
     "ContentBlockingAllowList.h",
     "ContentBlockingLog.h",
     "ContentBlockingNotifier.h",
     "ContentBlockingTelemetryService.h",
     "ContentBlockingUserInteraction.h",
     "DynamicFpiRedirectHeuristic.h",
+    "PartitioningExceptionList.h",
+    "RejectForeignAllowList.h",
     "StorageAccess.h",
+    "StorageAccessAPIHelper.h",
     "StoragePrincipalHelper.h",
     "URLDecorationStripper.h",
     "URLQueryStringStripper.h",
@@ -55,7 +58,6 @@ EXPORTS.mozilla = [
 UNIFIED_SOURCES += [
     "AntiTrackingRedirectHeuristic.cpp",
     "AntiTrackingUtils.cpp",
-    "ContentBlocking.cpp",
     "ContentBlockingAllowList.cpp",
     "ContentBlockingLog.cpp",
     "ContentBlockingNotifier.cpp",
@@ -66,6 +68,7 @@ UNIFIED_SOURCES += [
     "RejectForeignAllowList.cpp",
     "SettingsChangeObserver.cpp",
     "StorageAccess.cpp",
+    "StorageAccessAPIHelper.cpp",
     "StoragePrincipalHelper.cpp",
     "TemporaryAccessGrantObserver.cpp",
     "URLDecorationStripper.cpp",
@@ -90,3 +93,5 @@ if CONFIG["MOZ_BUILD_APP"] != "mobile/android":
 XPCSHELL_TESTS_MANIFESTS += ["test/xpcshell/xpcshell.ini"]
 
 TEST_DIRS += ["test/gtest"]
+
+SPHINX_TREES["anti-tracking"] = "docs"

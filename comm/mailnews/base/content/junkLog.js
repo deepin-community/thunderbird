@@ -6,10 +6,11 @@
 var { MailE10SUtils } = ChromeUtils.import(
   "resource:///modules/MailE10SUtils.jsm"
 );
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 
 var gLogView;
 var gLogFile;
+
+window.addEventListener("DOMContentLoaded", onLoad);
 
 function onLoad() {
   gLogView = document.getElementById("logView");
@@ -41,7 +42,7 @@ function addStyling() {
   style.sheet.insertRule(
     `@media (prefers-color-scheme: dark) {
        :root { scrollbar-color: rgba(249, 249, 250, .4) rgba(20, 20, 25, .3);}
-       body { color: #f9f9fa;}
+       body { color: #f9f9fa; }
      }`
   );
 }

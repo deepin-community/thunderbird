@@ -16,8 +16,7 @@ if CONFIG["OS_ARCH"] == "WINNT":
         "nsWindowsShellService.cpp",
     ]
     LOCAL_INCLUDES += [
-        "/%s/other-licenses/nsis/Contrib/CityHash/cityhash"
-        % (CONFIG["mozreltopsrcdir"],),
+        "/other-licenses/nsis/Contrib/CityHash/cityhash",
     ]
 
 elif CONFIG["MOZ_WIDGET_TOOLKIT"] == "cocoa":
@@ -32,8 +31,13 @@ elif CONFIG["MOZ_WIDGET_TOOLKIT"] == "gtk":
 if SOURCES:
     FINAL_LIBRARY = "mailcomps"
 
-CXXFLAGS += CONFIG["TK_CFLAGS"]
+if CONFIG["MOZ_WIDGET_TOOLKIT"] == "gtk":
+    CXXFLAGS += CONFIG["MOZ_GTK3_CFLAGS"]
 
 XPCSHELL_TESTS_MANIFESTS += [
     "test/unit/xpcshell.ini",
+]
+
+XPCOM_MANIFESTS += [
+    "components.conf",
 ]

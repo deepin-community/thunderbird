@@ -3,14 +3,13 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 #include "nsMsgSendLater.h"
+#include "nsIMsgMailNewsUrl.h"
 #include "nsMsgCopy.h"
 #include "nsIMsgSend.h"
 #include "nsIPrefService.h"
 #include "nsIPrefBranch.h"
 #include "nsIMsgMessageService.h"
 #include "nsIMsgAccountManager.h"
-#include "nsMsgBaseCID.h"
-#include "nsMsgCompCID.h"
 #include "nsMsgCompUtils.h"
 #include "nsMsgUtils.h"
 #include "nsMailHeaders.h"
@@ -21,11 +20,13 @@
 #include "prlog.h"
 #include "prmem.h"
 #include "nsIMimeConverter.h"
-#include "nsMsgMimeCID.h"
 #include "nsComposeStrings.h"
 #include "nsIObserverService.h"
 #include "nsIMsgLocalMailFolder.h"
 #include "nsIMsgDatabase.h"
+#include "nsIInputStream.h"
+#include "nsIOutputStream.h"
+#include "nsIMsgWindow.h"
 #include "nsMsgMessageFlags.h"
 #include "mozilla/dom/Promise.h"
 #include "mozilla/Services.h"
@@ -41,7 +42,6 @@ NS_IMPL_ISUPPORTS(nsMsgSendLater, nsIMsgSendLater, nsIFolderListener,
                   nsIUrlListener, nsIMsgShutdownTask)
 
 nsMsgSendLater::nsMsgSendLater() {
-  mJsSendModule = false;
   mSendingMessages = false;
   mTimerSet = false;
   mTotalSentSuccessfully = 0;
@@ -66,6 +66,8 @@ nsMsgSendLater::nsMsgSendLater() {
 
   mIdentityKey = nullptr;
   mAccountKey = nullptr;
+
+  mUserInitiated = false;
 }
 
 nsMsgSendLater::~nsMsgSendLater() {
@@ -84,8 +86,6 @@ nsresult nsMsgSendLater::Init() {
   nsresult rv;
   nsCOMPtr<nsIPrefBranch> prefs = do_GetService(NS_PREFSERVICE_CONTRACTID, &rv);
   NS_ENSURE_SUCCESS(rv, rv);
-
-  prefs->GetBoolPref("mailnews.send.jsmodule", &mJsSendModule);
 
   bool sendInBackground;
   rv = prefs->GetBoolPref("mailnews.sendInBackground", &sendInBackground);
@@ -151,6 +151,7 @@ nsMsgSendLater::Observe(nsISupports* aSubject, const char* aTopic,
       if (folder) {
         rv = folder->RemoveFolderListener(this);
         NS_ENSURE_SUCCESS(rv, rv);
+        folder->ForceDBClosed();
       }
     }
 
@@ -220,13 +221,16 @@ nsMsgSendLater::OnStopRequest(nsIRequest* request, nsresult status) {
 
     // extract the prompt object to use for the alert from the url....
     nsCOMPtr<nsIURI> uri;
-    nsCOMPtr<nsIPrompt> promptObject;
+    nsCOMPtr<mozIDOMWindowProxy> domWindow;
     if (channel) {
       channel->GetURI(getter_AddRefs(uri));
-      nsCOMPtr<nsISmtpUrl> smtpUrl(do_QueryInterface(uri));
-      if (smtpUrl) smtpUrl->GetPrompt(getter_AddRefs(promptObject));
+      nsCOMPtr<nsIMsgMailNewsUrl> msgUrl(do_QueryInterface(uri));
+      nsCOMPtr<nsIMsgWindow> msgWindow;
+      if (msgUrl) msgUrl->GetMsgWindow(getter_AddRefs(msgWindow));
+      if (msgWindow) msgWindow->GetDomWindow(getter_AddRefs(domWindow));
     }
-    nsMsgDisplayMessageByName(promptObject, "errorQueuedDeliveryFailed");
+
+    nsMsgDisplayMessageByName(domWindow, "errorQueuedDeliveryFailed");
 
     // Getting the data failed, but we will still keep trying to send the
     // rest...
@@ -275,7 +279,9 @@ nsresult nsMsgSendLater::RebufferLeftovers(char* startBuf, uint32_t aLen) {
 nsresult nsMsgSendLater::BuildNewBuffer(const char* aBuf, uint32_t aCount,
                                         uint32_t* totalBufSize) {
   // Only build a buffer when there are leftovers...
-  NS_ENSURE_TRUE(mLeftoverBuffer, NS_ERROR_FAILURE);
+  if (!mLeftoverBuffer) {
+    return NS_ERROR_FAILURE;
+  }
 
   int32_t leftoverSize = PL_strlen(mLeftoverBuffer);
   char* newBuffer = (char*)PR_Realloc(mLeftoverBuffer, aCount + leftoverSize);
@@ -365,7 +371,8 @@ SendOperationListener::SendOperationListener(nsMsgSendLater* aSendLater)
 SendOperationListener::~SendOperationListener(void) {}
 
 NS_IMETHODIMP
-SendOperationListener::OnGetDraftFolderURI(const char* aFolderURI) {
+SendOperationListener::OnGetDraftFolderURI(const char* aMsgID,
+                                           const nsACString& aFolderURI) {
   return NS_OK;
 }
 
@@ -465,10 +472,11 @@ nsresult nsMsgSendLater::CompleteMailFileSend() {
   if (!created) return NS_ERROR_FAILURE;
 
   nsCOMPtr<nsIMsgCompFields> compFields =
-      do_CreateInstance(NS_MSGCOMPFIELDS_CONTRACTID, &rv);
+      do_CreateInstance("@mozilla.org/messengercompose/composefields;1", &rv);
   NS_ENSURE_SUCCESS(rv, rv);
 
-  nsCOMPtr<nsIMsgSend> pMsgSend = do_CreateInstance(NS_MSGSEND_CONTRACTID, &rv);
+  nsCOMPtr<nsIMsgSend> pMsgSend =
+      do_CreateInstance("@mozilla.org/messengercompose/send;1", &rv);
   NS_ENSURE_SUCCESS(rv, rv);
 
   // Since we have already parsed all of the headers, we are simply going to
@@ -556,8 +564,7 @@ nsresult nsMsgSendLater::StartNextMailFileSend(nsresult prevStatus) {
   if (NS_FAILED(rv) && !messageService) return NS_ERROR_FACTORY_NOT_LOADED;
 
   nsCString identityKey;
-  rv = mMessage->GetStringProperty(HEADER_X_MOZILLA_IDENTITY_KEY,
-                                   getter_Copies(identityKey));
+  rv = mMessage->GetStringProperty(HEADER_X_MOZILLA_IDENTITY_KEY, identityKey);
   NS_ENSURE_SUCCESS(rv, rv);
 
   nsCOMPtr<nsIMsgIdentity> identity;
@@ -579,12 +586,11 @@ nsresult nsMsgSendLater::StartNextMailFileSend(nsresult prevStatus) {
   m_headersSize = 0;
   PR_FREEIF(mLeftoverBuffer);
 
-  // Now, get our stream listener interface and plug it into the DisplayMessage
+  // Now, get our stream listener interface and plug it into the LoadMessage
   // operation
-  nsCOMPtr<nsIURI> dummyNull;
-  rv = messageService->DisplayMessage(
-      messageURI.get(), static_cast<nsIStreamListener*>(this), nullptr, nullptr,
-      nullptr, getter_AddRefs(dummyNull));
+  rv = messageService->LoadMessage(messageURI,
+                                   static_cast<nsIStreamListener*>(this),
+                                   nullptr, nullptr, false);
 
   return rv;
 }
@@ -613,7 +619,7 @@ nsMsgSendLater::HasUnsentMessages(nsIMsgIdentity* aIdentity, bool* aResult) {
   nsresult rv;
 
   nsCOMPtr<nsIMsgAccountManager> accountManager =
-      do_GetService(NS_MSGACCOUNTMANAGER_CONTRACTID, &rv);
+      do_GetService("@mozilla.org/messenger/account-manager;1", &rv);
   NS_ENSURE_SUCCESS(rv, rv);
 
   nsTArray<RefPtr<nsIMsgAccount>> accounts;
@@ -758,17 +764,14 @@ nsresult nsMsgSendLater::SetOrigMsgDisposition() {
   // or forward of.
   nsCString originalMsgURIs;
   nsCString queuedDisposition;
-  mMessage->GetStringProperty(ORIG_URI_PROPERTY,
-                              getter_Copies(originalMsgURIs));
-  mMessage->GetStringProperty(QUEUED_DISPOSITION_PROPERTY,
-                              getter_Copies(queuedDisposition));
+  mMessage->GetStringProperty(ORIG_URI_PROPERTY, originalMsgURIs);
+  mMessage->GetStringProperty(QUEUED_DISPOSITION_PROPERTY, queuedDisposition);
   if (!queuedDisposition.IsEmpty()) {
     nsTArray<nsCString> uriArray;
     ParseString(originalMsgURIs, ',', uriArray);
     for (uint32_t i = 0; i < uriArray.Length(); i++) {
       nsCOMPtr<nsIMsgDBHdr> msgHdr;
-      nsresult rv =
-          GetMsgDBHdrFromURI(uriArray[i].get(), getter_AddRefs(msgHdr));
+      nsresult rv = GetMsgDBHdrFromURI(uriArray[i], getter_AddRefs(msgHdr));
       NS_ENSURE_SUCCESS(rv, rv);
       if (msgHdr) {
         // get the folder for the message resource
@@ -855,8 +858,6 @@ nsresult nsMsgSendLater::BuildHeaders() {
       case 'b':
         if (!PL_strncasecmp("BCC", buf, end - buf)) {
           header = &m_bcc;
-          // MessageSend.jsm ensures bcc header is not sent.
-          prune_p = !mJsSendModule;
         }
         break;
       case 'C':
@@ -1015,7 +1016,7 @@ nsresult DoGrowBuffer(int32_t desired_size, int32_t element_size,
                       &m_headersSize)                                 \
        : NS_OK)
 
-nsresult nsMsgSendLater::DeliverQueuedLine(char* line, int32_t length) {
+nsresult nsMsgSendLater::DeliverQueuedLine(const char* line, int32_t length) {
   int32_t flength = length;
 
   m_bytesRead += length;
@@ -1252,7 +1253,7 @@ nsresult nsMsgSendLater::GetIdentityFromKey(const char* aKey,
 
   nsresult rv;
   nsCOMPtr<nsIMsgAccountManager> accountManager =
-      do_GetService(NS_MSGACCOUNTMANAGER_CONTRACTID, &rv);
+      do_GetService("@mozilla.org/messenger/account-manager;1", &rv);
   NS_ENSURE_SUCCESS(rv, rv);
 
   if (aKey) {
@@ -1283,8 +1284,7 @@ nsresult nsMsgSendLater::GetIdentityFromKey(const char* aKey,
   return rv;
 }
 
-NS_IMETHODIMP
-nsMsgSendLater::OnItemAdded(nsIMsgFolder* aParentItem, nsISupports* aItem) {
+nsresult nsMsgSendLater::StartTimer() {
   // No need to trigger if timer is already set
   if (mTimerSet) return NS_OK;
 
@@ -1308,50 +1308,69 @@ nsMsgSendLater::OnItemAdded(nsIMsgFolder* aParentItem, nsISupports* aItem) {
 }
 
 NS_IMETHODIMP
-nsMsgSendLater::OnItemRemoved(nsIMsgFolder* aParentItem, nsISupports* aItem) {
+nsMsgSendLater::OnFolderAdded(nsIMsgFolder* /*parent*/,
+                              nsIMsgFolder* /*child*/) {
+  return StartTimer();
+}
+
+NS_IMETHODIMP
+nsMsgSendLater::OnMessageAdded(nsIMsgFolder* /*parent*/, nsIMsgDBHdr* /*msg*/) {
+  return StartTimer();
+}
+
+NS_IMETHODIMP
+nsMsgSendLater::OnFolderRemoved(nsIMsgFolder* /*parent*/,
+                                nsIMsgFolder* /*child*/) {
   return NS_OK;
 }
 
 NS_IMETHODIMP
-nsMsgSendLater::OnItemPropertyChanged(nsIMsgFolder* aItem,
-                                      const nsACString& aProperty,
-                                      const nsACString& aOldValue,
-                                      const nsACString& aNewValue) {
+nsMsgSendLater::OnMessageRemoved(nsIMsgFolder* /*parent*/,
+                                 nsIMsgDBHdr* /*msg*/) {
   return NS_OK;
 }
 
 NS_IMETHODIMP
-nsMsgSendLater::OnItemIntPropertyChanged(nsIMsgFolder* aItem,
-                                         const nsACString& aProperty,
-                                         int64_t aOldValue, int64_t aNewValue) {
+nsMsgSendLater::OnFolderPropertyChanged(nsIMsgFolder* aFolder,
+                                        const nsACString& aProperty,
+                                        const nsACString& aOldValue,
+                                        const nsACString& aNewValue) {
   return NS_OK;
 }
 
 NS_IMETHODIMP
-nsMsgSendLater::OnItemBoolPropertyChanged(nsIMsgFolder* aItem,
-                                          const nsACString& aProperty,
-                                          bool aOldValue, bool aNewValue) {
+nsMsgSendLater::OnFolderIntPropertyChanged(nsIMsgFolder* aFolder,
+                                           const nsACString& aProperty,
+                                           int64_t aOldValue,
+                                           int64_t aNewValue) {
   return NS_OK;
 }
 
 NS_IMETHODIMP
-nsMsgSendLater::OnItemUnicharPropertyChanged(nsIMsgFolder* aItem,
-                                             const nsACString& aProperty,
-                                             const nsAString& aOldValue,
-                                             const nsAString& aNewValue) {
+nsMsgSendLater::OnFolderBoolPropertyChanged(nsIMsgFolder* aFolder,
+                                            const nsACString& aProperty,
+                                            bool aOldValue, bool aNewValue) {
   return NS_OK;
 }
 
 NS_IMETHODIMP
-nsMsgSendLater::OnItemPropertyFlagChanged(nsIMsgDBHdr* aItem,
-                                          const nsACString& aProperty,
-                                          uint32_t aOldValue,
-                                          uint32_t aNewValue) {
+nsMsgSendLater::OnFolderUnicharPropertyChanged(nsIMsgFolder* aFolder,
+                                               const nsACString& aProperty,
+                                               const nsAString& aOldValue,
+                                               const nsAString& aNewValue) {
   return NS_OK;
 }
 
 NS_IMETHODIMP
-nsMsgSendLater::OnItemEvent(nsIMsgFolder* aItem, const nsACString& aEvent) {
+nsMsgSendLater::OnFolderPropertyFlagChanged(nsIMsgDBHdr* aMsg,
+                                            const nsACString& aProperty,
+                                            uint32_t aOldValue,
+                                            uint32_t aNewValue) {
+  return NS_OK;
+}
+
+NS_IMETHODIMP
+nsMsgSendLater::OnFolderEvent(nsIMsgFolder* aFolder, const nsACString& aEvent) {
   return NS_OK;
 }
 

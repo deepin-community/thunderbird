@@ -4,11 +4,16 @@
 
 "use strict";
 
-loader.lazyRequireGetter(this, "getFront", "devtools/shared/protocol", true);
+loader.lazyRequireGetter(
+  this,
+  "getFront",
+  "resource://devtools/shared/protocol.js",
+  true
+);
 loader.lazyRequireGetter(
   this,
   "getThreadOptions",
-  "devtools/client/shared/thread-utils",
+  "resource://devtools/client/shared/thread-utils.js",
   true
 );
 
@@ -30,7 +35,7 @@ loader.lazyRequireGetter(
  * - close: The target window has been closed. All tools attached to this
  *          target should close. This event is not currently cancelable.
  *
- * Optional events only dispatched by BrowsingContextTarget:
+ * Optional events only dispatched by WindowGlobalTarget:
  * - will-navigate: The target window will navigate to a different URL
  * - navigate: The target window has navigated to a different URL
  */
@@ -39,7 +44,11 @@ function TargetMixin(parentClass) {
     constructor(client, targetFront, parentFront) {
       super(client, targetFront, parentFront);
 
-      this._forceChrome = false;
+      // TargetCommand._onTargetAvailable will set this public attribute.
+      // This is a reference to the related `commands` object and helps all fronts
+      // easily call any command method. Without this bit of magic, Fronts wouldn't
+      // be able to interact with any commands while it is frequently useful.
+      this.commands = null;
 
       this.destroy = this.destroy.bind(this);
 
@@ -72,6 +81,12 @@ function TargetMixin(parentClass) {
         ["resource-available-form", offResourceAvailable],
         ["resource-updated-form", offResourceUpdated],
       ]);
+
+      // Expose a promise that is resolved once the target front is usable
+      // i.e. once attachAndInitThread has been called and resolved.
+      this.initialized = new Promise(resolve => {
+        this._onInitialized = resolve;
+      });
     }
 
     on(eventName, listener) {
@@ -103,42 +118,6 @@ function TargetMixin(parentClass) {
       return true;
     }
 
-    /**
-     * Get the descriptor front for this target.
-     *
-     * TODO: Should be removed. This is misleading as only the top level target should have a descriptor.
-     * This will return null for targets created by the Watcher actor and will still be defined
-     * by targets created by RootActor methods (listSomething methods).
-     */
-    get descriptorFront() {
-      if (this.isDestroyed()) {
-        throw new Error("Descriptor already destroyed for target: " + this);
-      }
-
-      if (this.isWorkerTarget) {
-        return this;
-      }
-
-      if (this._descriptorFront) {
-        return this._descriptorFront;
-      }
-
-      if (this.parentFront.typeName.endsWith("Descriptor")) {
-        return this.parentFront;
-      }
-      throw new Error("Missing descriptor for target: " + this);
-    }
-
-    /**
-     * Top-level targets created on the server will not be created and managed
-     * by a descriptor front. Instead they are created by the Watcher actor.
-     * On the client side we manually re-establish a link between the descriptor
-     * and the new top-level target.
-     */
-    setDescriptor(descriptorFront) {
-      this._descriptorFront = descriptorFront;
-    }
-
     get targetType() {
       return this._targetType;
     }
@@ -165,63 +144,32 @@ function TargetMixin(parentClass) {
     }
 
     /**
-     * Get the top level WatcherFront for this target.
-     *
-     * The targets should all ultimately be managed by a unique Watcher actor,
-     * created from the unique Descriptor actor which is passed to the Toolbox.
-     * For now, the top level target is still created by the top level Descriptor,
-     * but it is also meant to be created by the Watcher.
-     *
-     * @return {TargetMixin} the parent target.
-     */
-    getWatcherFront() {
-      // All additional frame targets are spawn by the WatcherActor and are managed by it.
-      if (this.parentFront.typeName == "watcher") {
-        return this.parentFront;
-      }
-
-      // Otherwise, for top level targets, the parent front is a Descriptor, from which we can retrieve the Watcher.
-      // TODO: top level target should also be exposed by the Watcher actor, like any target.
-      if (
-        this.parentFront.typeName.endsWith("Descriptor") &&
-        this.parentFront.traits &&
-        this.parentFront.traits.watcher
-      ) {
-        return this.parentFront.getWatcher();
-      }
-
-      // For WebExtension, the descriptor doesn't expose a watcher yet (See Bug 1675456).
-      return null;
-    }
-
-    /**
      * Get the immediate parent target for this target.
      *
      * @return {TargetMixin} the parent target.
      */
     async getParentTarget() {
-      // We now support frames watching via watchTargets for Tab and Process descriptors.
-      const watcherFront = await this.getWatcherFront();
-      if (watcherFront) {
-        // Safety check, in theory all watcher should support frames. We should be able
-        // to remove this as part of Bug 1680280.
-        if (watcherFront.traits.frame) {
-          // Retrieve the Watcher, which manage all the targets and should already have a reference to
-          // to the parent target.
-          return watcherFront.getParentBrowsingContextTarget(
-            this.browsingContextID
-          );
-        }
-        return null;
+      return this.commands.targetCommand.getParentTarget(this);
+    }
+
+    /**
+     * Returns a Promise that resolves to a boolean indicating if the provided target is
+     * an ancestor of this instance.
+     *
+     * @param {TargetFront} target: The possible ancestor target.
+     * @returns Promise<Boolean>
+     */
+    async isTargetAnAncestor(target) {
+      const parentTargetFront = await this.getParentTarget();
+      if (!parentTargetFront) {
+        return false;
       }
 
-      if (this.parentFront.getParentTarget) {
-        return this.parentFront.getParentTarget();
+      if (parentTargetFront == target) {
+        return true;
       }
 
-      // Other targets, like WebExtensions, don't have a Watcher yet, nor do expose `getParentTarget`.
-      // We can't fetch parent target yet for these targets.
-      return null;
+      return parentTargetFront.isTargetAnAncestor(target);
     }
 
     /**
@@ -229,14 +177,19 @@ function TargetMixin(parentClass) {
      *
      * @return {TargetMixin} the requested target.
      */
-    async getBrowsingContextTarget(browsingContextID) {
+    async getWindowGlobalTarget(browsingContextID) {
+      // Just for sanity as commands attribute is set late from TargetCommand._onTargetAvailable
+      // but ideally target front should be used before this happens.
+      if (!this.commands) {
+        return null;
+      }
       // Tab and Process Descriptors expose a Watcher, which is creating the
       // targets and should be used to fetch any.
-      const watcherFront = await this.getWatcherFront();
+      const { watcherFront } = this.commands;
       if (watcherFront) {
         // Safety check, in theory all watcher should support frames.
         if (watcherFront.traits.frame) {
-          return watcherFront.getBrowsingContextTarget(browsingContextID);
+          return watcherFront.getWindowGlobalTarget(browsingContextID);
         }
         return null;
       }
@@ -246,7 +199,7 @@ function TargetMixin(parentClass) {
       // removed in FF77.
       // Support for watcher in WebExtension descriptors is Bug 1644341.
       throw new Error(
-        `Unable to call getBrowsingContextTarget for ${this.actorID}`
+        `Unable to call getWindowGlobalTarget for ${this.actorID}`
       );
     }
 
@@ -265,7 +218,8 @@ function TargetMixin(parentClass) {
     }
 
     /**
-     * Returns a trait from the root actor.
+     * Returns a trait from the target actor if it exists,
+     * if not it will fallback to that on the root actor.
      *
      * @param {String} traitName
      * @return {Mixed}
@@ -280,32 +234,14 @@ function TargetMixin(parentClass) {
       return this.client.traits[traitName];
     }
 
-    get isLocalTab() {
-      // Worker Target is also the Descriptor,
-      // so avoid infinite loop.
-      if (this.isWorkerTarget) {
-        return false;
-      }
-      return !!this.descriptorFront?.isLocalTab;
-    }
-
-    get localTab() {
-      // Worker Target is also the Descriptor,
-      // so avoid infinite loop.
-      if (this.isWorkerTarget) {
-        return null;
-      }
-      return this.descriptorFront?.localTab || null;
-    }
-
-    // Get a promise of the RootActor's form
-    get root() {
-      return this.client.mainRoot.rootForm;
-    }
-
     // Get a Front for a target-scoped actor.
     // i.e. an actor served by RootActor.listTabs or RootActorActor.getTab requests
     async getFront(typeName) {
+      if (this.isDestroyed()) {
+        throw new Error(
+          "Target already destroyed, unable to fetch children fronts"
+        );
+      }
       let front = this.fronts.get(typeName);
       if (front) {
         // XXX: This is typically the kind of spot where switching to
@@ -340,32 +276,15 @@ function TargetMixin(parentClass) {
       return this._client;
     }
 
-    // Tells us if we are debugging content document
-    // or if we are debugging chrome stuff.
-    // Allows to controls which features are available against
-    // a chrome or a content document.
-    get chrome() {
-      return (
-        this.isAddon ||
-        this.isContentProcess ||
-        this.isParentProcess ||
-        this._forceChrome
-      );
-    }
-
-    forceChrome() {
-      this._forceChrome = true;
-    }
-
-    // Tells us if the related actor implements BrowsingContextTargetActor
+    // Tells us if the related actor implements WindowGlobalTargetActor
     // interface and requires to call `attach` request before being used and
     // `detach` during cleanup.
     get isBrowsingContext() {
-      return this.typeName === "browsingContextTarget";
+      return this.typeName === "windowGlobalTarget";
     }
 
     get name() {
-      if (this.isAddon || this.isContentProcess) {
+      if (this.isWebExtension || this.isContentProcess) {
         return this.targetForm.name;
       }
       return this.title;
@@ -379,22 +298,10 @@ function TargetMixin(parentClass) {
       return this._url;
     }
 
-    get isAddon() {
-      return this.isLegacyAddon || this.isWebExtension;
-    }
-
     get isWorkerTarget() {
       // XXX Remove the check on `workerDescriptor` as part of Bug 1667404.
       return (
         this.typeName === "workerTarget" || this.typeName === "workerDescriptor"
-      );
-    }
-
-    get isLegacyAddon() {
-      return !!(
-        this.targetForm &&
-        this.targetForm.actor &&
-        this.targetForm.actor.match(/conn\d+\.addon(Target)?\d+/)
       );
     }
 
@@ -429,10 +336,6 @@ function TargetMixin(parentClass) {
       );
     }
 
-    get isMultiProcess() {
-      return !this.window;
-    }
-
     getExtensionPathName(url) {
       // Return the url if the target is not a webextension.
       if (!this.isWebExtension) {
@@ -452,25 +355,6 @@ function TargetMixin(parentClass) {
       }
     }
 
-    // Attach the console actor
-    async attachConsole() {
-      const consoleFront = await this.getFront("console");
-
-      if (this.isDestroyedOrBeingDestroyed()) {
-        return;
-      }
-
-      // Calling startListeners will populate the traits as it's the first request we
-      // make to the front.
-      await consoleFront.startListeners([]);
-
-      this._onInspectObject = packet => this.emit("inspect-object", packet);
-      this.removeOnInspectObjectListener = consoleFront.on(
-        "inspectObject",
-        this._onInspectObject
-      );
-    }
-
     /**
      * This method attaches the target and then attaches its related thread, sending it
      * the options it needs (e.g. breakpoints, pause on exception setting, …).
@@ -487,6 +371,9 @@ function TargetMixin(parentClass) {
       }
 
       this._onThreadInitialized = this._attachAndInitThread(targetCommand);
+      // Resolve the `initialized` promise, while ignoring errors
+      // The empty function passed to catch will avoid spawning a new possibly rejected promise
+      this._onThreadInitialized.catch(() => {}).then(this._onInitialized);
       return this._onThreadInitialized;
     }
 
@@ -504,14 +391,17 @@ function TargetMixin(parentClass) {
         return;
       }
 
-      // WorkerTargetFront don't have an attach function as the related console and thread
-      // actors are created right away (from devtools/server/startup/worker.js)
-      if (this.attach) {
-        await this.attach();
+      // The current class we have is actually the WorkerDescriptorFront,
+      // which will morph into a target by fetching the underlying target's form.
+      // Ideally, worker targets would be spawn by the server, and we would no longer
+      // have the hybrid descriptor/target class which brings lots of complexity and confusion.
+      // To be removed in bug 1651522.
+      if (this.morphWorkerDescriptorIntoWorkerTarget) {
+        await this.morphWorkerDescriptorIntoWorkerTarget();
       }
 
       const isBrowserToolbox =
-        targetCommand.descriptorFront.isParentProcessDescriptor;
+        targetCommand.descriptorFront.isBrowserProcessDescriptor;
       const isNonTopLevelFrameTarget =
         !this.isTopLevel && this.targetType === targetCommand.TYPES.FRAME;
 
@@ -523,9 +413,10 @@ function TargetMixin(parentClass) {
         return;
       }
 
-      // Avoid attaching any thread actor in the browser console
-      // in order to avoid trigerring any type of breakpoint.
-      if (targetCommand.descriptorFront.createdForBrowserConsole) {
+      // Avoid attaching any thread actor in the browser console or in
+      // webextension commands in order to avoid triggering any type of
+      // breakpoint.
+      if (targetCommand.descriptorFront.doNotAttachThreadActor) {
         return;
       }
 
@@ -534,26 +425,7 @@ function TargetMixin(parentClass) {
       if (this.isDestroyedOrBeingDestroyed()) {
         return;
       }
-      const threadFront = await this.attachThread(options);
-
-      // @backward-compat { version 86 } ThreadActor.attach no longer pause the thread,
-      //                                 so that we no longer have to resume.
-      // Once 86 is in release, we can remove the rest of this method.
-      if (this.getTrait("noPauseOnThreadActorAttach")) {
-        return;
-      }
-      try {
-        if (this.isDestroyedOrBeingDestroyed() || threadFront.isDestroyed()) {
-          return;
-        }
-        await threadFront.resume();
-      } catch (ex) {
-        if (ex.error === "wrongOrder") {
-          targetCommand.emit("target-thread-wrong-order-on-resume");
-        } else {
-          throw ex;
-        }
-      }
+      await this.attachThread(options);
     }
 
     async attachThread(options = {}) {
@@ -570,30 +442,15 @@ function TargetMixin(parentClass) {
       // * targets that aren't yet supported by the Watcher (like web extensions),
       // * workers, which still use a unique codepath for thread actor attach
       // * all targets when connecting to an older server
-      // @backward-compat { version 87 } If all targets are supported by watcher actor, and workers no longer use
-      //                                 its unique attach sequence, we can assume the thread front is always attached.
-      const isAttached =
-        this.getTrait("supportsThreadActorIsAttached") &&
-        (await this.threadFront.isAttached());
-      if (isAttached) {
-        // If the Thread actor has already been attached from the server side
-        // by the Watcher Actor, we still have to pass options that aren't yet managed via
-        // the Watcher actor's addWatcherDataEntry codepath (bug 1687261).
+      // If all targets are supported by watcher actor, and workers no longer use
+      // its unique attach sequence, we can assume the thread front is always attached.
+      const isAttached = await this.threadFront.isAttached();
 
-        // @backward-compat { version 91 } Thread configuration actor now supports most thread options
-        if (!this.getTrait("supportsThreadConfigurationOptions")) {
-          await this.threadFront.reconfigure(options);
-        }
-        return this.threadFront;
+      const isDestroyed =
+        this.isDestroyedOrBeingDestroyed() || this.threadFront.isDestroyed();
+      if (!isAttached && !isDestroyed) {
+        await this.threadFront.attach(options);
       }
-      if (
-        this.isDestroyedOrBeingDestroyed() ||
-        this.threadFront.isDestroyed()
-      ) {
-        return this.threadFront;
-      }
-
-      await this.threadFront.attach(options);
 
       return this.threadFront;
     }
@@ -646,12 +503,7 @@ function TargetMixin(parentClass) {
           console.warn("Error while destroying front:", name, e);
         }
       }
-
-      // Remove listeners set in attachConsole
-      if (this.removeOnInspectObjectListener) {
-        this.removeOnInspectObjectListener();
-        this.removeOnInspectObjectListener = null;
-      }
+      this.fronts.clear();
 
       this.threadFront = null;
       this._offResourceEvent = null;
@@ -717,10 +569,6 @@ function TargetMixin(parentClass) {
       this.threadFront = null;
       this._client = null;
 
-      // All target front subclasses set this variable in their `attach` method.
-      // None of them overload destroy, so clean this up from here.
-      this._attach = null;
-
       this._title = null;
       this._url = null;
     }
@@ -753,7 +601,7 @@ function TargetMixin(parentClass) {
      * @returns {Promise}
      */
     logErrorInPage(text, category) {
-      if (this.traits.logInPage) {
+      if (this.getTrait("logInPage")) {
         const errorFlag = 0;
         return this.logInPage({ text, category, flags: errorFlag });
       }
@@ -770,7 +618,7 @@ function TargetMixin(parentClass) {
      * @returns {Promise}
      */
     logWarningInPage(text, category) {
-      if (this.traits.logInPage) {
+      if (this.getTrait("logInPage")) {
         const warningFlag = 1;
         return this.logInPage({ text, category, flags: warningFlag });
       }

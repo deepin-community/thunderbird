@@ -4,18 +4,12 @@
 
 "use strict";
 
-var controller = ChromeUtils.import(
-  "resource://testing-common/mozmill/controller.jsm"
-);
 var utils = ChromeUtils.import("resource://testing-common/mozmill/utils.jsm");
 
-var {
-  click_account_tree_row,
-  get_account_tree_row,
-  open_advanced_settings,
-} = ChromeUtils.import(
-  "resource://testing-common/mozmill/AccountManagerHelpers.jsm"
-);
+var { click_account_tree_row, get_account_tree_row, open_advanced_settings } =
+  ChromeUtils.import(
+    "resource://testing-common/mozmill/AccountManagerHelpers.jsm"
+  );
 var { mc } = ChromeUtils.import(
   "resource://testing-common/mozmill/FolderDisplayHelpers.jsm"
 );
@@ -32,24 +26,23 @@ var { MailServices } = ChromeUtils.import(
 
 var defaultIdentity;
 
-add_task(function setupModule(module) {
+add_setup(function () {
   defaultIdentity = MailServices.accounts.defaultAccount.defaultIdentity;
 });
 
 /**
  * Check that the archive options button is enabled or disabled appropriately.
  *
- * @param {Object} tab - The account manager tab.
- * @param {Number} accountKey - Key of the account the check.
+ * @param {object} tab - The account manager tab.
+ * @param {number} accountKey - Key of the account the check.
  * @param {boolean} isEnabled - True if the button should be enabled, false otherwise.
  */
 function subtest_check_archive_options_enabled(tab, accountKey, isEnabled) {
   let accountRow = get_account_tree_row(accountKey, "am-copies.xhtml", tab);
   click_account_tree_row(tab, accountRow);
 
-  let iframe = tab.browser.contentWindow.document.getElementById(
-    "contentFrame"
-  );
+  let iframe =
+    tab.browser.contentWindow.document.getElementById("contentFrame");
   let button = iframe.contentDocument.getElementById("archiveHierarchyButton");
 
   Assert.equal(button.disabled, !isEnabled);
@@ -78,32 +71,32 @@ add_task(async function test_archive_options_enabled() {
   defaultIdentity.archiveFolder = imapServer.rootFolder.URI;
 
   imapServer.isGMailServer = false;
-  await open_advanced_settings(function(tab) {
+  await open_advanced_settings(function (tab) {
     subtest_check_archive_options_enabled(tab, account.key, true);
   });
-  await open_advanced_settings(function(tab) {
+  await open_advanced_settings(function (tab) {
     subtest_check_archive_options_enabled(tab, defaultAccount.key, true);
   });
 
   imapServer.isGMailServer = true;
-  await open_advanced_settings(function(tab) {
+  await open_advanced_settings(function (tab) {
     subtest_check_archive_options_enabled(tab, account.key, false);
   });
-  await open_advanced_settings(function(tab) {
+  await open_advanced_settings(function (tab) {
     subtest_check_archive_options_enabled(tab, defaultAccount.key, false);
   });
 
   MailServices.accounts.removeAccount(account);
 });
 
-function subtest_initial_state(identity) {
-  plan_for_modal_dialog("archiveOptions", function(ac) {
+async function subtest_initial_state(identity) {
+  plan_for_modal_dialog("archiveOptions", async function (ac) {
     Assert.equal(
-      ac.e("archiveGranularity").selectedIndex,
+      ac.window.document.getElementById("archiveGranularity").selectedIndex,
       identity.archiveGranularity
     );
     Assert.equal(
-      ac.e("archiveKeepFolderStructure").checked,
+      ac.window.document.getElementById("archiveKeepFolderStructure").checked,
       identity.archiveKeepFolderStructure
     );
   });
@@ -116,20 +109,22 @@ function subtest_initial_state(identity) {
   wait_for_modal_dialog("archiveOptions");
 }
 
-add_task(function test_open_archive_options() {
+add_task(async function test_open_archive_options() {
   for (let granularity = 0; granularity < 3; granularity++) {
     defaultIdentity.archiveGranularity = granularity;
     for (let kfs = 0; kfs < 2; kfs++) {
       defaultIdentity.archiveKeepFolderStructure = kfs;
-      subtest_initial_state(defaultIdentity);
+      await subtest_initial_state(defaultIdentity);
     }
   }
 });
 
 function subtest_save_state(identity, granularity, kfs) {
-  plan_for_modal_dialog("archiveOptions", function(ac) {
-    ac.e("archiveGranularity").selectedIndex = granularity;
-    ac.e("archiveKeepFolderStructure").checked = kfs;
+  plan_for_modal_dialog("archiveOptions", function (ac) {
+    ac.window.document.getElementById("archiveGranularity").selectedIndex =
+      granularity;
+    ac.window.document.getElementById("archiveKeepFolderStructure").checked =
+      kfs;
     EventUtils.synthesizeKey("VK_RETURN", {}, ac.window);
     ac.window.document.querySelector("dialog").acceptDialog();
   });
@@ -156,9 +151,8 @@ function subtest_check_archive_enabled(tab, archiveEnabled) {
 
   click_account_tree_row(tab, 2);
 
-  let iframe = tab.browser.contentWindow.document.getElementById(
-    "contentFrame"
-  );
+  let iframe =
+    tab.browser.contentWindow.document.getElementById("contentFrame");
   let checkbox = iframe.contentDocument.getElementById(
     "identity.archiveEnabled"
   );
@@ -167,11 +161,11 @@ function subtest_check_archive_enabled(tab, archiveEnabled) {
 }
 
 add_task(async function test_archive_enabled() {
-  await open_advanced_settings(function(amc) {
+  await open_advanced_settings(function (amc) {
     subtest_check_archive_enabled(amc, true);
   });
 
-  await open_advanced_settings(function(amc) {
+  await open_advanced_settings(function (amc) {
     subtest_check_archive_enabled(amc, false);
   });
 });
@@ -180,16 +174,19 @@ function subtest_disable_archive(tab) {
   defaultIdentity.archiveEnabled = true;
   click_account_tree_row(tab, 2);
 
-  let iframe = tab.browser.contentWindow.document.getElementById(
-    "contentFrame"
-  );
+  let iframe =
+    tab.browser.contentWindow.document.getElementById("contentFrame");
   let checkbox = iframe.contentDocument.getElementById(
     "identity.archiveEnabled"
   );
 
   Assert.ok(checkbox.checked);
   Assert.ok(!checkbox.disabled);
-  mc.click(checkbox);
+  EventUtils.synthesizeMouseAtCenter(
+    checkbox,
+    { clickCount: 1 },
+    checkbox.ownerGlobal
+  );
   utils.waitFor(
     () => !checkbox.checked,
     "Archive checkbox didn't toggle to unchecked"

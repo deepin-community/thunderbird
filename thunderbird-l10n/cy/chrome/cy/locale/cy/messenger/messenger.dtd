@@ -24,8 +24,6 @@
 <!ENTITY moveToNewWindow.accesskey "S">
 <!ENTITY newVirtualFolderCmd.label "Chwilio a Gadwyd…">
 <!ENTITY newVirtualFolderCmd.accesskey "w">
-<!ENTITY newOtherAccountsCmd.label "Cyfrifon Eraill…">
-<!ENTITY newOtherAccountsCmd.accesskey "y">
 <!ENTITY newCreateEmailAccountCmd.label "Estyn Cyfrif E-bost Newydd…">
 <!ENTITY newCreateEmailAccountCmd.accesskey "E">
 <!ENTITY newExistingEmailAccountCmd.label "Cyfrif E-bost Cyfredol…">
@@ -37,7 +35,7 @@
 <!ENTITY newIMContactCmd.label "Cysylltiad Sgwrsio…">
 <!ENTITY newIMContactCmd.accesskey "S">
 <!ENTITY  newMessageCmd2.key "E">
-<!ENTITY  newMessageCmd.key "N">
+<!ENTITY  newMessageCmd.key "M">
 <!ENTITY  newMessageCmd.label "Neges">
 <!ENTITY  newMessageCmd.accesskey "n">
 <!ENTITY  newContactCmd.label "Cysylltiad Llyfr Cyfeiriadau…">
@@ -48,8 +46,6 @@
 <!ENTITY openMessageFileCmd.accesskey "s">
 <!ENTITY saveAsMenu.label "Cadw Fel">
 <!ENTITY saveAsMenu.accesskey "C">
-<!ENTITY saveAsFileCmd.label "Ffeil">
-<!ENTITY saveAsFileCmd.accesskey "F">
 <!ENTITY saveAsFileCmd.key "s">
 <!ENTITY saveAsTemplateCmd.label "Templed">
 <!ENTITY saveAsTemplateCmd.accesskey "T">
@@ -91,22 +87,10 @@
 <!ENTITY printCmd.key "p">
 
 <!-- Edit Menu -->
-<!ENTITY deleteMsgCmd.label "Dileu Neges">
-<!ENTITY deleteMsgCmd.accesskey "N">
-<!ENTITY undeleteMsgCmd.label "Dad-ddileu Neges">
-<!ENTITY undeleteMsgCmd.accesskey "a">
-<!ENTITY deleteMsgsCmd.label "Dileu'r Negeseuon Hyn">
-<!ENTITY deleteMsgsCmd.accesskey "i">
-<!ENTITY undeleteMsgsCmd.label "Dad-ddileu'r Negeseuon Hyn">
-<!ENTITY undeleteMsgsCmd.accesskey "a">
-<!ENTITY deleteFolderCmd.label "Dileu Ffolder">
-<!ENTITY deleteFolderCmd.accesskey "F">
-<!ENTITY unsubscribeNewsgroupCmd.label "Dad-danysgrifio">
-<!ENTITY unsubscribeNewsgroupCmd.accesskey "y">
 <!ENTITY selectMenu.label "Dewis">
 <!ENTITY selectMenu.accesskey "w">
-<!ENTITY all.label "Popeth">
-<!ENTITY all.accesskey "P">
+<!ENTITY all.label "Y Cyfan">
+<!ENTITY all.accesskey "C">
 <!ENTITY selectThreadCmd.label "Edefyn">
 <!ENTITY selectThreadCmd.accesskey "E">
 <!ENTITY selectThreadCmd.key "a">
@@ -114,18 +98,14 @@
 <!ENTITY selectFlaggedCmd.accesskey "S">
 <!ENTITY menuFavoriteFolder.label "Hoff Ffolder">
 <!ENTITY menuFavoriteFolder.accesskey "H">
-<!ENTITY folderPropsCmd2.label "Priodweddau">
-<!ENTITY folderPropsFolderCmd2.label "Priodweddau Ffolder">
-<!ENTITY folderPropsNewsgroupCmd2.label "Priodweddau Grŵp Newyddion">
-<!ENTITY folderPropsCmd.accesskey "o">
 <!ENTITY undoDeleteMsgCmd.label "Dadwneud Dileu Negeseuon">
 <!ENTITY redoDeleteMsgCmd.label "Ail-wneud Dileu Neges">
 <!ENTITY undoMoveMsgCmd.label "Dadwneud Symud Neges">
 <!ENTITY redoMoveMsgCmd.label "Ailwneud Symud Neges">
 <!ENTITY undoCopyMsgCmd.label "Dadwneud Copïo Neges">
 <!ENTITY redoCopyMsgCmd.label "Ail-wneud Copïo Neges">
-<!ENTITY undoMarkAllCmd.label "Dadwneud Marcio Pob Un Wedi ei Ddarllen">
-<!ENTITY redoMarkAllCmd.label "Ail-wneud Marcio Popeth Wedi'i Ddarllen">
+<!ENTITY undoMarkAllCmd.label "Dadwneud Marcio Pob Un Wedi ei Darllen">
+<!ENTITY redoMarkAllCmd.label "Ail-wneud Marcio'r Cyfan Wedi'u Darllen">
 <!ENTITY undoDefaultCmd.label "Dadwneud">
 <!ENTITY undoDefaultCmd.accesskey "u">
 <!ENTITY redoDefaultCmd.label "Ailwneud">
@@ -149,8 +129,6 @@
 <!ENTITY messagePaneVertical.accesskey "F">
 <!ENTITY showFolderPaneCmd.label "Paen Ffolder">
 <!ENTITY showFolderPaneCmd.accesskey "F">
-<!ENTITY showFolderPaneColsCmd.label "Colofnau Paenau Ffolderi">
-<!ENTITY showFolderPaneColsCmd.accesskey "P">
 <!ENTITY showMessageCmd.label "Paen Neges">
 <!ENTITY showMessageCmd.accesskey "N">
 
@@ -158,9 +136,9 @@
 <!ENTITY folderView.accesskey "F">
 <!ENTITY unifiedFolders.label "Unedig">
 <!ENTITY unifiedFolders.accesskey "U">
-<!ENTITY allFolders.label "Popeth">
-<!ENTITY allFolders.accesskey "P">
-<!ENTITY unreadFolders.label "Heb ei Ddarllen">
+<!ENTITY allFolders.label "Y Cyfan">
+<!ENTITY allFolders.accesskey "C">
+<!ENTITY unreadFolders.label "Heb ei Darllen">
 <!ENTITY unreadFolders.accesskey "H">
 <!ENTITY favoriteFolders.label "Ffefryn">
 <!ENTITY favoriteFolders.accesskey "F">
@@ -216,15 +194,15 @@
 <!ENTITY msgsMenu.accesskey "N">
 <!ENTITY threads.label "Edafedd">
 <!ENTITY threads.accesskey "d">
-<!ENTITY allMsgsCmd.label "Popeth">
-<!ENTITY allMsgsCmd.accesskey "P">
+<!ENTITY allMsgsCmd.label "Y Cyfan">
+<!ENTITY allMsgsCmd.accesskey "C">
 <!ENTITY expandAllThreadsCmd.label "Ehangu Pob Edefyn">
 <!ENTITY expandAllThreadsCmd.accesskey "E">
 <!ENTITY expandAllThreadsCmd.key "*">
 <!ENTITY collapseAllThreadsCmd.label "Cau Pob Edefyn">
 <!ENTITY collapseAllThreadsCmd.accesskey "C">
 <!ENTITY collapseAllThreadsCmd.key "\">
-<!ENTITY unreadMsgsCmd.label "Heb ei Ddarllen">
+<!ENTITY unreadMsgsCmd.label "Heb ei Darllen">
 <!ENTITY unreadMsgsCmd.accesskey "H">
 <!ENTITY threadsWithUnreadCmd.label "Edafedd gyda rhai Heb eu Darllen">
 <!ENTITY threadsWithUnreadCmd.accesskey "H">
@@ -235,8 +213,8 @@
 
 <!ENTITY headersMenu.label "Penynnau">
 <!ENTITY headersMenu.accesskey "P">
-<!ENTITY headersAllCmd.label "Popeth">
-<!ENTITY headersAllCmd.accesskey "P">
+<!ENTITY headersAllCmd.label "Y Cyfan">
+<!ENTITY headersAllCmd.accesskey "C">
 <!ENTITY headersNormalCmd.label "Arferol">
 <!ENTITY headersNormalCmd.accesskey "A">
 <!ENTITY bodyMenu.label "Corff y Neges Fel">
@@ -299,7 +277,7 @@
 <!ENTITY nextUnreadMsgCmd.label "Neges Heb ei Darllen">
 <!ENTITY nextUnreadMsgCmd.accesskey "H">
 <!ENTITY nextUnreadMsgCmd.key "n">
-<!ENTITY nextStarredMsgCmd.label "Neges Serenog">
+<!ENTITY nextStarredMsgCmd.label "Neges Serennog">
 <!ENTITY nextStarredMsgCmd.accesskey "S">
 <!ENTITY nextUnreadThread.label "Edafedd Heb eu Darllen">
 <!ENTITY nextUnreadThread.accesskey "D">
@@ -320,7 +298,6 @@
 <!ENTITY goBackCmd.commandKey "[">
 <!ENTITY goChatCmd.label "Sgwrsio">
 <!ENTITY goChatCmd.accesskey "g">
-<!ENTITY goChatCmd2.key "g">
 <!ENTITY prevStarredMsgCmd.label "Neges Serennog">
 <!ENTITY prevStarredMsgCmd.accesskey "S">
 <!ENTITY folderMenu.label "Ffolder">
@@ -333,7 +310,7 @@
 <!-- Message Menu -->
 <!ENTITY msgMenu.label "Neges">
 <!ENTITY msgMenu.accesskey "N">
-<!ENTITY newMsgCmd.label "Neges Newydd">
+<!ENTITY newMsgCmd.label "Neges">
 <!ENTITY newMsgCmd.accesskey "N">
 <!ENTITY newNewMsgCmd.label "Neges">
 <!ENTITY newNewMsgCmd.accesskey "e">
@@ -366,7 +343,7 @@
 <!ENTITY forwardAsAttachmentCmd.accesskey "A">
 <!ENTITY editAsNewMsgCmd.label "Golygu fel Neges Newydd">
 <!ENTITY editAsNewMsgCmd.accesskey "G">
-<!ENTITY editAsNewMsgCmd.key "g">
+<!ENTITY editAsNewMsgCmd.key "e">
 <!ENTITY editDraftMsgCmd.label "Golygu Neges Ddrafft">
 <!ENTITY editDraftMsgCmd.accesskey "D">
 <!ENTITY editTemplateMsgCmd.label "Golygu Templed">
@@ -410,9 +387,9 @@
 <!ENTITY markMenu.label "Marcio">
 <!ENTITY markMenu.accesskey "M">
 <!ENTITY toggleReadCmd.key "m">
-<!ENTITY markAsReadCmd.label "Wedi ei Ddarllen">
+<!ENTITY markAsReadCmd.label "Wedi ei Darllen">
 <!ENTITY markAsReadCmd.accesskey "W">
-<!ENTITY markAsUnreadCmd.label "Heb ei Ddarllen">
+<!ENTITY markAsUnreadCmd.label "Heb ei Darllen">
 <!ENTITY markAsUnreadCmd.accesskey "H">
 <!ENTITY markThreadAsReadCmd.label "Edefyn wedi'i Ddarllen">
 <!ENTITY markThreadAsReadCmd.accesskey "D">
@@ -420,8 +397,8 @@
 <!ENTITY markReadByDateCmd.label "Wedi Darllen yn ôl Dyddiad…">
 <!ENTITY markReadByDateCmd.accesskey "D">
 <!ENTITY markReadByDateCmd.key "c">
-<!ENTITY markAllReadCmd.label "Popeth Wedi ei Ddarllen">
-<!ENTITY markAllReadCmd.accesskey "P">
+<!ENTITY markAllReadCmd.label "Y Cyfan Wedi eu Darllen">
+<!ENTITY markAllReadCmd.accesskey "D">
 <!ENTITY markAllReadCmd.key "c">
 <!ENTITY markStarredCmd.label "Ychwanegu Seren">
 <!ENTITY markStarredCmd.accesskey "S">
@@ -448,7 +425,7 @@
 <!ENTITY openFeedWebPage.accesskey "G">
 <!ENTITY openFeedSummary.label "Agor fel Crynodeb">
 <!ENTITY openFeedSummary.accesskey "C">
-<!ENTITY openFeedWebPageInMP.label "Toglo Tudalen We a Chrynodeb mewn Paen Neges">
+<!ENTITY openFeedWebPageInMP.label "Newid Tudalen Gwe a Chrynodeb mewn Paen Neges">
 <!ENTITY openFeedWebPageInMP.accesskey "T">
 
 <!-- Windows Menu -->
@@ -494,7 +471,7 @@
 <!ENTITY exportCmd.accesskey "A">
 <!ENTITY clearRecentHistory.label "Clirio Hanes Diweddar…">
 <!ENTITY clearRecentHistory.accesskey "H">
-<!ENTITY accountManagerCmd2.label "Gosodiadau'r Cyfrif">
+<!ENTITY accountManagerCmd2.label "Gosodiadau Cyfrif">
 <!ENTITY accountManagerCmd2.accesskey "G">
 <!-- LOCALIZATION NOTE (accountManagerCmdUnix.accesskey):
      Belongs to accountManagerCmd.label, which is placed under the Edit menu
@@ -525,10 +502,10 @@
 <!ENTITY archiveButton.label "Archifo">
 <!ENTITY openConversationButton.label "Sgwrs">
 <!ENTITY nextButton.label "Nesaf">
-<!ENTITY nextButtonToolbarItem.label "Nesaf Heb ei Ddarllen">
+<!ENTITY nextButtonToolbarItem.label "Nesaf Heb ei Darllen">
 <!ENTITY nextMsgButton.label "Nesaf">
 <!ENTITY previousButton.label "Blaenorol">
-<!ENTITY previousButtonToolbarItem.label "Blaenorol Heb ei Ddarllen">
+<!ENTITY previousButtonToolbarItem.label "Blaenorol Heb ei Darllen">
 <!ENTITY previousMsgButton.label "Blaenorol">
 <!ENTITY backButton1.label "Nôl">
 <!ENTITY goForwardButton1.label "Ymlaen">
@@ -544,7 +521,7 @@
 <!ENTITY searchItem.title "Chwilio Cyflym">
 <!ENTITY mailViewsToolbarItem.title "Golwg E-bost">
 <!ENTITY folderLocationToolbarItem.title "Lleoliad Ffolder">
-<!ENTITY tagButton.label "Tag">
+<!ENTITY tagButton.label "Tagio">
 <!ENTITY compactButton.label "Cywasgu">
 <!ENTITY appmenuButton.label "AppMenu">
 
@@ -601,10 +578,7 @@
 <!-- AppMenu Popup -->
 <!ENTITY appmenuNewMsgCmd.label "Neges Newydd">
 <!ENTITY appmenuNewContactCmd.label "Cysylltiad Llyfr Cyfeiriadau…">
-<!ENTITY appmenuEditMenu.label "Golygu">
 <!ENTITY appmenuToolbarLayout.label "Cynllun Bar Offer…">
-<!ENTITY appmenuSelectThread.label "Dewis Edefyn">
-<!ENTITY appmenuSelectFlagged.label "Estyn Negeseuon Serennog">
 
 <!-- Tags Menu Popup -->
 <!ENTITY addNewTag.label "Tag Newydd…">
@@ -614,7 +588,7 @@
 
 <!-- Folder Pane -->
 <!ENTITY folderNameColumn.label "Enw">
-<!ENTITY folderUnreadColumn.label "Heb ei Ddarllen">
+<!ENTITY folderUnreadColumn.label "Heb ei Darllen">
 <!ENTITY folderTotalColumn.label "Cyfanswm">
 <!ENTITY folderSizeColumn.label "Maint">
 
@@ -702,7 +676,7 @@
 
 <!-- Thread Pane Tooltips -->
 <!ENTITY columnChooser2.tooltip "Dewis colofnau i'w dangos">
-<!ENTITY selectColumn.tooltip "Toglo dewis pob neges">
+<!ENTITY selectColumn.tooltip "Newid dewis pob neges">
 <!ENTITY threadColumn2.tooltip "Dangos edafedd negeseuon">
 <!ENTITY fromColumn2.tooltip "Trefnu yn ôl anfonwr">
 <!ENTITY recipientColumn2.tooltip "Trefnu yn ôl derbyniwr">
@@ -909,10 +883,6 @@
 <!ENTITY copyImageAllCmd.accesskey "p">
 <!ENTITY copyEmailCmd.label "Copïo Cyfeiriad E-bost">
 <!ENTITY copyEmailCmd.accesskey "E">
-<!ENTITY stopCmd.label "Atal">
-<!ENTITY stopCmd.accesskey "A">
-<!ENTITY reloadCmd.label "Ail-lwytho">
-<!ENTITY reloadCmd.accesskey "A">
 <!ENTITY openInBrowser.label "Agor yn y Porwr">
 <!ENTITY openInBrowser.accesskey "A">
 <!ENTITY openLinkInBrowser.label "Agor Dolen yn y Porwr">
@@ -924,7 +894,7 @@
 <!-- Mac OS X Window Menu -->
 <!ENTITY minimizeWindow.label "Lleihau">
 <!ENTITY minimizeWindow.key "m">
-<!ENTITY bringAllToFront.label "Dwyn y Cyfan i'r Blaen">
+<!ENTITY bringAllToFront.label "Dod â'r Cyfan i'r Blaen">
 <!ENTITY zoomWindow.label "Chwyddo">
 
 <!-- Mac OS X Application Menu (Cocoa widgets) -->
@@ -936,9 +906,9 @@
 <!ENTITY hideThisAppCmdMac.commandkey   "H">
 <!ENTITY hideThisAppCmdMac.modifiers    "accel">
 <!ENTITY hideOtherAppsCmdMac.label      "Cuddio Eraill">
-<!ENTITY hideOtherAppsCmdMac.commandkey "E">
+<!ENTITY hideOtherAppsCmdMac.commandkey "H">
 <!ENTITY hideOtherAppsCmdMac.modifiers  "accel,alt">
-<!ENTITY showAllAppsCmdMac.label        "Dangos Popeth">
+<!ENTITY showAllAppsCmdMac.label        "Dangos y Cyfan">
 
 <!-- Mac OS X Dock Icon pop-up menu -->
 <!ENTITY dockOptions.label              "Dewisiadau Eicon Ap…">

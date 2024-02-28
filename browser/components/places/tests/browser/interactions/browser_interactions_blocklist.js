@@ -5,14 +5,18 @@
  * Tests that interactions are not recorded for sites on the blocklist.
  */
 
-const ALLOWED_TEST_URL = "https://example.com/";
+const ALLOWED_TEST_URL = "http://mochi.test:8888/";
 const BLOCKED_TEST_URL = "https://example.com/browser";
 
-XPCOMUtils.defineLazyModuleGetters(this, {
-  InteractionsBlocklist: "resource:///modules/InteractionsBlocklist.jsm",
+ChromeUtils.defineESModuleGetters(this, {
+  InteractionsBlocklist: "resource:///modules/InteractionsBlocklist.sys.mjs",
 });
 
-add_task(async function setup() {
+XPCOMUtils.defineLazyModuleGetters(this, {
+  FilterAdult: "resource://activity-stream/lib/FilterAdult.jsm",
+});
+
+add_setup(async function () {
   let oldBlocklistValue = Services.prefs.getStringPref(
     "places.interactions.customBlocklist",
     "[]"
@@ -38,7 +42,7 @@ async function loadBlockedUrl(expectRecording) {
   await BrowserTestUtils.withNewTab(ALLOWED_TEST_URL, async browser => {
     Interactions._pageViewStartTime = Cu.now() - 10000;
 
-    BrowserTestUtils.loadURI(browser, BLOCKED_TEST_URL);
+    BrowserTestUtils.loadURIString(browser, BLOCKED_TEST_URL);
     await BrowserTestUtils.browserLoaded(browser, false, BLOCKED_TEST_URL);
 
     await assertDatabaseValues([
@@ -50,7 +54,7 @@ async function loadBlockedUrl(expectRecording) {
 
     Interactions._pageViewStartTime = Cu.now() - 20000;
 
-    BrowserTestUtils.loadURI(browser, "about:blank");
+    BrowserTestUtils.loadURIString(browser, "about:blank");
     await BrowserTestUtils.browserLoaded(browser, false, "about:blank");
 
     if (expectRecording) {
@@ -75,7 +79,7 @@ async function loadBlockedUrl(expectRecording) {
   });
 }
 
-add_task(async function test() {
+add_task(async function test_regexp() {
   info("Record BLOCKED_TEST_URL because it is not yet blocklisted.");
   await loadBlockedUrl(true);
 
@@ -95,4 +99,10 @@ add_task(async function test() {
     JSON.stringify([])
   );
   await loadBlockedUrl(true);
+});
+
+add_task(async function test_adult() {
+  FilterAdult.addDomainToList("https://example.com/browser");
+  await loadBlockedUrl(false);
+  FilterAdult.removeDomainFromList("https://example.com/browser");
 });

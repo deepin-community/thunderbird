@@ -7,7 +7,6 @@
 #include "nsMsgQuickSearchDBView.h"
 #include "nsMsgFolderFlags.h"
 #include "nsIMsgHdr.h"
-#include "nsMsgBaseCID.h"
 #include "nsIMsgImapMailFolder.h"
 #include "nsImapCore.h"
 #include "nsIMsgHdr.h"
@@ -214,6 +213,7 @@ NS_IMETHODIMP nsMsgQuickSearchDBView::OnHdrFlagsChanged(
 
 NS_IMETHODIMP
 nsMsgQuickSearchDBView::OnHdrPropertyChanged(nsIMsgDBHdr* aHdrChanged,
+                                             const nsACString& property,
                                              bool aPreChange, uint32_t* aStatus,
                                              nsIDBChangeListener* aInstigator) {
   // If the junk mail plugin just activated on a message, then
@@ -231,8 +231,7 @@ nsMsgQuickSearchDBView::OnHdrPropertyChanged(nsIMsgDBHdr* aHdrChanged,
     return NS_OK;
 
   nsCString originStr;
-  (void)aHdrChanged->GetStringProperty("junkscoreorigin",
-                                       getter_Copies(originStr));
+  (void)aHdrChanged->GetStringProperty("junkscoreorigin", originStr);
   // check for "plugin" with only first character for performance
   bool plugin = (originStr.get()[0] == 'p');
 
@@ -290,6 +289,8 @@ nsMsgQuickSearchDBView::OnSearchHit(nsIMsgDBHdr* aMsgHdr,
 
 NS_IMETHODIMP
 nsMsgQuickSearchDBView::OnSearchDone(nsresult status) {
+  // This batch began in OnNewSearch.
+  if (mJSTree) mJSTree->EndUpdateBatch();
   // We're a single-folder virtual folder if viewFolder != folder, and that is
   // the only case in which we want to be messing about with a results cache
   // or unread counts.
@@ -298,27 +299,26 @@ nsMsgQuickSearchDBView::OnSearchDone(nsresult status) {
     nsCString searchUri;
     m_viewFolder->GetURI(searchUri);
     uint32_t count = m_hdrHits.Count();
-    // Build up message keys. The hits are in descending order but the cache
-    // expects them to be in ascending key order.
-    for (uint32_t i = count; i > 0; i--) {
+    // Build up message keys. The cache expects them to be sorted.
+    for (uint32_t i = 0; i < count; i++) {
       nsMsgKey key;
-      m_hdrHits[i - 1]->GetMessageKey(&key);
+      m_hdrHits[i]->GetMessageKey(&key);
       keyArray.AppendElement(key);
     }
-    if (m_db) {
-      nsTArray<nsMsgKey> staleHits;
-      nsresult rv = m_db->RefreshCache(searchUri.get(), keyArray, staleHits);
-      NS_ENSURE_SUCCESS(rv, rv);
-      for (nsMsgKey staleKey : staleHits) {
-        nsCOMPtr<nsIMsgDBHdr> hdrDeleted;
-        m_db->GetMsgHdrForKey(staleKey, getter_AddRefs(hdrDeleted));
-        if (hdrDeleted) OnHdrDeleted(hdrDeleted, nsMsgKey_None, 0, this);
-      }
+    keyArray.Sort();
+    nsTArray<nsMsgKey> staleHits;
+    nsresult rv = m_db->RefreshCache(searchUri, keyArray, staleHits);
+    NS_ENSURE_SUCCESS(rv, rv);
+    for (nsMsgKey staleKey : staleHits) {
+      nsCOMPtr<nsIMsgDBHdr> hdrDeleted;
+      m_db->GetMsgHdrForKey(staleKey, getter_AddRefs(hdrDeleted));
+      if (hdrDeleted) OnHdrDeleted(hdrDeleted, nsMsgKey_None, 0, this);
     }
+
     nsCOMPtr<nsIMsgDatabase> virtDatabase;
     nsCOMPtr<nsIDBFolderInfo> dbFolderInfo;
-    nsresult rv = m_viewFolder->GetDBFolderInfoAndDB(
-        getter_AddRefs(dbFolderInfo), getter_AddRefs(virtDatabase));
+    rv = m_viewFolder->GetDBFolderInfoAndDB(getter_AddRefs(dbFolderInfo),
+                                            getter_AddRefs(virtDatabase));
     NS_ENSURE_SUCCESS(rv, rv);
     uint32_t numUnread = 0;
     size_t numTotal = m_origKeys.Length();
@@ -364,7 +364,7 @@ nsMsgQuickSearchDBView::OnNewSearch() {
     nsCOMPtr<nsIMsgEnumerator> cachedHits;
     nsCString searchUri;
     m_viewFolder->GetURI(searchUri);
-    m_db->GetCachedHits(searchUri.get(), getter_AddRefs(cachedHits));
+    m_db->GetCachedHits(searchUri, getter_AddRefs(cachedHits));
     if (cachedHits) {
       bool hasMore;
 
@@ -372,6 +372,7 @@ nsMsgQuickSearchDBView::OnNewSearch() {
       cachedHits->HasMoreElements(&hasMore);
       m_cacheEmpty = !hasMore;
       if (mTree) mTree->BeginUpdateBatch();
+      if (mJSTree) mJSTree->BeginUpdateBatch();
       while (hasMore) {
         nsCOMPtr<nsIMsgDBHdr> header;
         nsresult rv = cachedHits->GetNext(getter_AddRefs(header));
@@ -382,8 +383,13 @@ nsMsgQuickSearchDBView::OnNewSearch() {
         cachedHits->HasMoreElements(&hasMore);
       }
       if (mTree) mTree->EndUpdateBatch();
+      if (mJSTree) mJSTree->EndUpdateBatch();
     }
   }
+
+  // Prevent updates for every message found. This batch ends in OnSearchDone.
+  if (mJSTree) mJSTree->BeginUpdateBatch();
+
   return NS_OK;
 }
 
@@ -395,8 +401,7 @@ nsresult nsMsgQuickSearchDBView::GetFirstMessageHdrToDisplayInThread(
   threadHdr->GetNumChildren(&numChildren);
   nsMsgKey threadRootKey;
   nsCOMPtr<nsIMsgDBHdr> rootParent;
-  int32_t rootIndex;
-  threadHdr->GetRootHdr(&rootIndex, getter_AddRefs(rootParent));
+  threadHdr->GetRootHdr(getter_AddRefs(rootParent));
   if (rootParent)
     rootParent->GetMessageKey(&threadRootKey);
   else
@@ -426,7 +431,7 @@ nsresult nsMsgQuickSearchDBView::GetFirstMessageHdrToDisplayInThread(
         nsCOMPtr<nsIMsgDBHdr> parent;
         // count number of ancestors - that's our level
         while (parentId != nsMsgKey_None) {
-          rv = m_db->GetMsgHdrForKey(parentId, getter_AddRefs(parent));
+          m_db->GetMsgHdrForKey(parentId, getter_AddRefs(parent));
           if (parent) {
             nsMsgKey saveParentId = parentId;
             parent->GetThreadParent(&parentId);
@@ -682,8 +687,7 @@ nsresult nsMsgQuickSearchDBView::ListIdsInThreadOrder(nsIMsgThread* threadHdr,
     nsCOMPtr<nsIMsgDBHdr> root;
     nsCOMPtr<nsIMsgDBHdr> rootParent;
     nsMsgKey rootKey;
-    int32_t rootIndex;
-    threadHdr->GetRootHdr(&rootIndex, getter_AddRefs(rootParent));
+    threadHdr->GetRootHdr(getter_AddRefs(rootParent));
     if (rootParent) {
       rootParent->GetMessageKey(&rootKey);
       if (rootKey != parentKey)

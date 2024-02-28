@@ -13,12 +13,11 @@
 
 class nsAtom;
 
-namespace mozilla {
-namespace dom {
+namespace mozilla::dom {
 
 class CSSNamespaceRule final : public css::Rule {
  public:
-  CSSNamespaceRule(already_AddRefed<RawServoNamespaceRule> aRule,
+  CSSNamespaceRule(already_AddRefed<StyleNamespaceRule> aRule,
                    StyleSheet* aSheet, css::Rule* aParentRule, uint32_t aLine,
                    uint32_t aColumn)
       : css::Rule(aSheet, aParentRule, aLine, aColumn),
@@ -36,10 +35,10 @@ class CSSNamespaceRule final : public css::Rule {
   // WebIDL interface
   void GetCssText(nsACString& aCssText) const final;
 
-  // WebIDL interfaces
-  uint16_t Type() const final { return CSSRule_Binding::NAMESPACE_RULE; }
+  StyleCssRuleType Type() const final;
 
-  const RawServoNamespaceRule* Raw() const { return mRawRule.get(); }
+  const StyleNamespaceRule* Raw() const { return mRawRule.get(); }
+  void SetRawAfterClone(RefPtr<StyleNamespaceRule>);
 
   void GetNamespaceURI(nsString& aNamespaceURI) { GetURLSpec(aNamespaceURI); }
 
@@ -56,10 +55,9 @@ class CSSNamespaceRule final : public css::Rule {
 
  private:
   ~CSSNamespaceRule();
-  RefPtr<RawServoNamespaceRule> mRawRule;
+  RefPtr<StyleNamespaceRule> mRawRule;
 };
 
-}  // namespace dom
-}  // namespace mozilla
+}  // namespace mozilla::dom
 
 #endif  // mozilla_dom_CSSNamespaceRule_h

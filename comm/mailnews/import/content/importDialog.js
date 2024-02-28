@@ -8,7 +8,6 @@
 
 /* import-globals-from ../../extensions/newsblog/feed-subscriptions.js */
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 var { MailServices } = ChromeUtils.import(
   "resource:///modules/MailServices.jsm"
 );
@@ -26,7 +25,8 @@ var gSelectedModuleName = null;
 var gAddInterface = null;
 var gNewFeedAcctCreated = false;
 
-var nsISupportsString = Ci.nsISupportsString;
+window.addEventListener("DOMContentLoaded", OnLoadImportDialog);
+window.addEventListener("unload", OnUnloadImportDialog);
 
 function OnLoadImportDialog() {
   gImportMsgsBundle = document.getElementById("bundle_importMsgs");
@@ -45,13 +45,13 @@ function OnLoadImportDialog() {
   gProgressInfo.localFolderExists = false;
 
   gSuccessStr = Cc["@mozilla.org/supports-string;1"].createInstance(
-    nsISupportsString
+    Ci.nsISupportsString
   );
   gErrorStr = Cc["@mozilla.org/supports-string;1"].createInstance(
-    nsISupportsString
+    Ci.nsISupportsString
   );
   gInputStr = Cc["@mozilla.org/supports-string;1"].createInstance(
-    nsISupportsString
+    Ci.nsISupportsString
   );
 
   // look in arguments[0] for parameters
@@ -490,7 +490,7 @@ function ListFeedAccounts() {
   let index = 0;
   let feedRootFolders = FeedUtils.getAllRssServerRootFolders();
 
-  feedRootFolders.forEach(function(rootFolder) {
+  feedRootFolders.forEach(function (rootFolder) {
     item = document.createXULElement("richlistitem");
     let label = document.createXULElement("label");
     label.setAttribute("value", rootFolder.prettyName);
@@ -655,7 +655,8 @@ function attachStrings(aNode, aString) {
 
 /**
  * Show the file picker.
- * @return {Promise} the selected file, or null
+ *
+ * @returns {Promise} the selected file, or null
  */
 function promptForFile(fp) {
   return new Promise(resolve => {
@@ -706,7 +707,7 @@ async function ImportSettings(module, newAccount, error) {
 
           file = await promptForFile(filePicker);
         } catch (ex) {
-          Cu.reportError(ex);
+          console.error(ex);
           error.value = null;
           return false;
         }
@@ -770,7 +771,7 @@ async function ImportMail(module, success, error) {
           }
           mailInterface.SetData("mailLocation", file);
         } catch (ex) {
-          Cu.reportError(ex);
+          console.error(ex);
           // don't show an error when we return!
           return false;
         }
@@ -853,7 +854,7 @@ async function ImportAddress(module, success, error) {
           fileIsDirectory = true;
         }
       } catch (ex) {
-        Cu.reportError(ex);
+        console.error(ex);
         file = null;
       }
     } else {
@@ -911,7 +912,7 @@ async function ImportAddress(module, success, error) {
 
         file = await promptForFile(filePicker);
       } catch (ex) {
-        Cu.reportError(ex);
+        console.error(ex);
         file = null;
       }
     }
@@ -1009,7 +1010,7 @@ async function ImportFeeds() {
 
   acctName = server.rootFolder.prettyName;
 
-  let callback = function(aStatusReport, aLastFolder, aFeedWin) {
+  let callback = function (aStatusReport, aLastFolder, aFeedWin) {
     let message = gFeedsBundle.getFormattedString("ImportFeedsDone", [
       fileName,
       acctNewExist,

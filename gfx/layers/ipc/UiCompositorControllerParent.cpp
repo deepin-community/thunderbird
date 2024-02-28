@@ -7,7 +7,7 @@
 
 #if defined(MOZ_WIDGET_ANDROID)
 #  include "apz/src/APZCTreeManager.h"
-#  include "mozilla/layers/AsyncCompositionManager.h"
+#  include "mozilla/widget/AndroidCompositorWidget.h"
 #endif
 #include <utility>
 
@@ -19,7 +19,6 @@
 #include "mozilla/layers/Compositor.h"
 #include "mozilla/layers/CompositorBridgeParent.h"
 #include "mozilla/layers/CompositorThread.h"
-#include "mozilla/layers/LayerManagerComposite.h"
 #include "mozilla/layers/UiCompositorControllerMessageTypes.h"
 #include "mozilla/layers/WebRenderBridgeParent.h"
 
@@ -66,26 +65,33 @@ mozilla::ipc::IPCResult UiCompositorControllerParent::RecvPause() {
   return IPC_OK();
 }
 
-mozilla::ipc::IPCResult UiCompositorControllerParent::RecvResume() {
+mozilla::ipc::IPCResult UiCompositorControllerParent::RecvResume(
+    bool* aOutResumed) {
+  *aOutResumed = false;
   CompositorBridgeParent* parent =
       CompositorBridgeParent::GetCompositorBridgeParentFromLayersId(
           mRootLayerTreeId);
   if (parent) {
-    parent->ResumeComposition();
+    *aOutResumed = parent->ResumeComposition();
   }
   return IPC_OK();
 }
 
 mozilla::ipc::IPCResult UiCompositorControllerParent::RecvResumeAndResize(
     const int32_t& aX, const int32_t& aY, const int32_t& aWidth,
-    const int32_t& aHeight) {
+    const int32_t& aHeight, bool* aOutResumed) {
+  *aOutResumed = false;
   CompositorBridgeParent* parent =
       CompositorBridgeParent::GetCompositorBridgeParentFromLayersId(
           mRootLayerTreeId);
   if (parent) {
     // Front-end expects a first paint callback upon resume/resize.
     parent->ForceIsFirstPaint();
-    parent->ResumeCompositionAndResize(aX, aY, aWidth, aHeight);
+#if defined(MOZ_WIDGET_ANDROID)
+    parent->GetWidget()->AsAndroid()->NotifyClientSizeChanged(
+        LayoutDeviceIntSize(aWidth, aHeight));
+#endif
+    *aOutResumed = parent->ResumeCompositionAndResize(aX, aY, aWidth, aHeight);
   }
   return IPC_OK();
 }
@@ -96,8 +102,7 @@ UiCompositorControllerParent::RecvInvalidateAndRender() {
       CompositorBridgeParent::GetCompositorBridgeParentFromLayersId(
           mRootLayerTreeId);
   if (parent) {
-    parent->Invalidate();
-    parent->ScheduleComposition();
+    parent->ScheduleComposition(wr::RenderReasons::OTHER);
   }
   return IPC_OK();
 }
@@ -128,14 +133,7 @@ mozilla::ipc::IPCResult UiCompositorControllerParent::RecvDefaultClearColor(
   LayerTreeState* state =
       CompositorBridgeParent::GetIndirectShadowTree(mRootLayerTreeId);
 
-  if (state && state->mLayerManager) {
-    Compositor* compositor = state->mLayerManager->GetCompositor();
-    if (compositor) {
-      // Android Color is ARGB which is apparently unusual.
-      compositor->SetDefaultClearColor(
-          gfx::DeviceColor::UnusualFromARGB(aColor));
-    }
-  } else if (state && state->mWrBridge) {
+  if (state && state->mWrBridge) {
     state->mWrBridge->SetClearColor(gfx::DeviceColor::UnusualFromARGB(aColor));
   }
 
@@ -148,13 +146,9 @@ UiCompositorControllerParent::RecvRequestScreenPixels() {
   LayerTreeState* state =
       CompositorBridgeParent::GetIndirectShadowTree(mRootLayerTreeId);
 
-  if (state && state->mLayerManager && state->mParent) {
-    state->mLayerManager->RequestScreenPixels(this);
-    state->mParent->Invalidate();
-    state->mParent->ScheduleComposition();
-  } else if (state && state->mWrBridge) {
+  if (state && state->mWrBridge) {
     state->mWrBridge->RequestScreenPixels(this);
-    state->mWrBridge->ScheduleForcedGenerateFrame();
+    state->mWrBridge->ScheduleForcedGenerateFrame(wr::RenderReasons::OTHER);
   }
 #endif  // defined(MOZ_WIDGET_ANDROID)
 
@@ -172,12 +166,9 @@ UiCompositorControllerParent::RecvEnableLayerUpdateNotifications(
   return IPC_OK();
 }
 
-void UiCompositorControllerParent::ActorDestroy(ActorDestroyReason aWhy) {}
-
-void UiCompositorControllerParent::ActorDealloc() {
+void UiCompositorControllerParent::ActorDestroy(ActorDestroyReason aWhy) {
   MOZ_ASSERT(CompositorThreadHolder::IsInCompositorThread());
   Shutdown();
-  Release();  // For AddRef in Initialize()
 }
 
 void UiCompositorControllerParent::ToolbarAnimatorMessageFromCompositor(
@@ -199,7 +190,7 @@ void UiCompositorControllerParent::ToolbarAnimatorMessageFromCompositor(
 bool UiCompositorControllerParent::AllocPixelBuffer(const int32_t aSize,
                                                     ipc::Shmem* aMem) {
   MOZ_ASSERT(aSize > 0);
-  return AllocShmem(aSize, ipc::SharedMemory::TYPE_BASIC, aMem);
+  return AllocShmem(aSize, aMem);
 }
 
 void UiCompositorControllerParent::NotifyLayersUpdated() {
@@ -219,8 +210,7 @@ void UiCompositorControllerParent::NotifyUpdateScreenMetrics(
 #if defined(MOZ_WIDGET_ANDROID)
   // TODO: Need to handle different x-and y-scales.
   CSSToScreenScale scale = ViewTargetAs<ScreenPixel>(
-      aMetrics.mZoom.ToScaleFactor(),
-      PixelCastJustification::ScreenIsParentLayerForRoot);
+      aMetrics.mZoom, PixelCastJustification::ScreenIsParentLayerForRoot);
   ScreenPoint scrollOffset = aMetrics.mVisualScrollOffset * scale;
   CompositorThread()->Dispatch(NewRunnableMethod<ScreenPoint, CSSToScreenScale>(
       "UiCompositorControllerParent::SendRootFrameMetrics", this,
@@ -273,7 +263,6 @@ void UiCompositorControllerParent::InitializeForOutOfProcess() {
 
 void UiCompositorControllerParent::Initialize() {
   MOZ_ASSERT(CompositorThreadHolder::IsInCompositorThread());
-  AddRef();
   LayerTreeState* state =
       CompositorBridgeParent::GetIndirectShadowTree(mRootLayerTreeId);
   MOZ_ASSERT(state);

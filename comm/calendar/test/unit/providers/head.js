@@ -7,19 +7,19 @@ var { CalendarTestUtils } = ChromeUtils.import(
   "resource://testing-common/calendar/CalendarTestUtils.jsm"
 );
 var { CalEvent } = ChromeUtils.import("resource:///modules/CalEvent.jsm");
-var { PromiseUtils } = ChromeUtils.import("resource://gre/modules/PromiseUtils.jsm");
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
+var { PromiseUtils } = ChromeUtils.importESModule("resource://gre/modules/PromiseUtils.sys.mjs");
+
+var { updateAppInfo } = ChromeUtils.importESModule("resource://testing-common/AppInfo.sys.mjs");
+updateAppInfo();
 
 // The tests in this directory each do the same thing, with slight variations as needed for each
 // calendar provider. The core of the test lives in this file and the tests call it when ready.
 
-let manager = cal.getCalendarManager();
-
 do_get_profile();
-add_task(async () => {
-  await new Promise(resolve => manager.startup({ onResult: resolve }));
-  await new Promise(resolve => cal.getTimezoneService().startup({ onResult: resolve }));
-  manager.addCalendarObserver(calendarObserver);
+add_setup(async () => {
+  await new Promise(resolve => cal.manager.startup({ onResult: resolve }));
+  await new Promise(resolve => cal.timezoneService.startup({ onResult: resolve }));
+  cal.manager.addCalendarObserver(calendarObserver);
 });
 
 let calendarObserver = {
@@ -85,38 +85,17 @@ let calendarObserver = {
  * @returns {calICalendar}
  */
 function createCalendar(type, url, useCache) {
-  let calendar = manager.createCalendar(type, Services.io.newURI(url));
+  let calendar = cal.manager.createCalendar(type, Services.io.newURI(url));
   calendar.name = type + (useCache ? " with cache" : " without cache");
   calendar.id = cal.getUUID();
   calendar.setProperty("cache.enabled", useCache);
 
-  manager.registerCalendar(calendar);
-  calendar = manager.getCalendarById(calendar.id);
+  cal.manager.registerCalendar(calendar);
+  calendar = cal.manager.getCalendarById(calendar.id);
   calendarObserver._expectedCalendar = calendar;
 
   info(`Created calendar ${calendar.id}`);
   return calendar;
-}
-
-/**
- * Wraps calICalendar's getItem method in a Promise.
- *
- * @param {calICalendar} calendar
- * @param {string} uid
- * @returns {Promise} - resolves to calIItemBase or null
- */
-function getItem(calendar, uid) {
-  return new Promise(resolve => {
-    calendar.getItem(uid, {
-      _item: null,
-      onGetResult(c, status, itemType, detail, items) {
-        this._item = items[0];
-      },
-      onOperationComplete() {
-        resolve(this._item);
-      },
-    });
-  });
 }
 
 /**
@@ -134,7 +113,7 @@ async function runAddItem(calendar) {
 
   calendarObserver._onAddItemPromise = PromiseUtils.defer();
   calendarObserver._onModifyItemPromise = PromiseUtils.defer();
-  calendar.addItem(event, null);
+  await calendar.addItem(event);
   await Promise.any([
     calendarObserver._onAddItemPromise.promise,
     calendarObserver._onModifyItemPromise.promise,
@@ -149,13 +128,13 @@ async function runAddItem(calendar) {
  * @param {calICalendar} calendar
  */
 async function runModifyItem(calendar) {
-  let event = await getItem(calendar, "6b7dd6f6-d6f0-4e93-a953-bb5473c4c47a");
+  let event = await calendar.getItem("6b7dd6f6-d6f0-4e93-a953-bb5473c4c47a");
 
   let clone = event.clone();
   clone.title = "Modified event";
 
   calendarObserver._onModifyItemPromise = PromiseUtils.defer();
-  calendar.modifyItem(clone, event, null);
+  await calendar.modifyItem(clone, event);
   await calendarObserver._onModifyItemPromise.promise;
 }
 
@@ -165,9 +144,9 @@ async function runModifyItem(calendar) {
  * @param {calICalendar} calendar
  */
 async function runDeleteItem(calendar) {
-  let event = await getItem(calendar, "6b7dd6f6-d6f0-4e93-a953-bb5473c4c47a");
+  let event = await calendar.getItem("6b7dd6f6-d6f0-4e93-a953-bb5473c4c47a");
 
   calendarObserver._onDeleteItemPromise = PromiseUtils.defer();
-  calendar.deleteItem(event, null);
+  await calendar.deleteItem(event);
   await calendarObserver._onDeleteItemPromise.promise;
 }

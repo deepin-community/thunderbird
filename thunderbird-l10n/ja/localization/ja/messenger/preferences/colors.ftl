@@ -2,13 +2,9 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-colors-dialog-window =
+colors-dialog-window2 =
     .title = 配色
-    .style =
-        { PLATFORM() ->
-            [macos] width: 41em !important
-           *[other] width: 38em !important
-        }
+colors-dialog-title = 配色
 colors-dialog-legend = テキストと背景の色
 text-color-label =
     .value = テキスト:
@@ -28,6 +24,9 @@ visited-link-color-label =
     .accesskey = V
 underline-link-checkbox =
     .label = リンクに下線を表示する
+    .accesskey = U
+always-underline-links =
+    .label = 常にリンクに下線を付ける
     .accesskey = U
 override-color-label =
     .value = ウェブページに指定された配色を上記の設定に変更する:

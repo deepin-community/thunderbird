@@ -6,6 +6,7 @@
 
 #include "mozilla/layers/CompositorManagerParent.h"
 #include "mozilla/gfx/GPUParent.h"
+#include "mozilla/gfx/CanvasManagerParent.h"
 #include "mozilla/webrender/RenderThread.h"
 #include "mozilla/ipc/Endpoint.h"
 #include "mozilla/layers/CompositorBridgeParent.h"
@@ -46,14 +47,16 @@ CompositorManagerParent::CreateSameProcess() {
   // The child is responsible for setting up the IPC channel in the same
   // process case because if we open from the child perspective, we can do it
   // on the main thread and complete before we return the manager handles.
-  RefPtr<CompositorManagerParent> parent = new CompositorManagerParent();
+  RefPtr<CompositorManagerParent> parent =
+      new CompositorManagerParent(dom::ContentParentId());
   parent->SetOtherProcessId(base::GetCurrentProcId());
   return parent.forget();
 }
 
 /* static */
 bool CompositorManagerParent::Create(
-    Endpoint<PCompositorManagerParent>&& aEndpoint, bool aIsRoot) {
+    Endpoint<PCompositorManagerParent>&& aEndpoint,
+    dom::ContentParentId aChildId, bool aIsRoot) {
   MOZ_ASSERT(NS_IsMainThread());
 
   // We are creating a manager for the another process, inside the GPU process
@@ -64,7 +67,8 @@ bool CompositorManagerParent::Create(
     return false;
   }
 
-  RefPtr<CompositorManagerParent> bridge = new CompositorManagerParent();
+  RefPtr<CompositorManagerParent> bridge =
+      new CompositorManagerParent(aChildId);
 
   RefPtr<Runnable> runnable =
       NewRunnableMethod<Endpoint<PCompositorManagerParent>&&, bool>(
@@ -78,7 +82,8 @@ bool CompositorManagerParent::Create(
 already_AddRefed<CompositorBridgeParent>
 CompositorManagerParent::CreateSameProcessWidgetCompositorBridge(
     CSSToLayoutDeviceScale aScale, const CompositorOptions& aOptions,
-    bool aUseExternalSurfaceSize, const gfx::IntSize& aSurfaceSize) {
+    bool aUseExternalSurfaceSize, const gfx::IntSize& aSurfaceSize,
+    uint64_t aInnerWindowId) {
   MOZ_ASSERT(XRE_IsParentProcess());
   MOZ_ASSERT(NS_IsMainThread());
 
@@ -102,21 +107,21 @@ CompositorManagerParent::CreateSameProcessWidgetCompositorBridge(
     return nullptr;
   }
 
-  TimeDuration vsyncRate = gfxPlatform::GetPlatform()
-                               ->GetHardwareVsync()
-                               ->GetGlobalDisplay()
-                               .GetVsyncRate();
+  TimeDuration vsyncRate =
+      gfxPlatform::GetPlatform()->GetGlobalVsyncDispatcher()->GetVsyncRate();
 
-  RefPtr<CompositorBridgeParent> bridge =
-      new CompositorBridgeParent(sInstance, aScale, vsyncRate, aOptions,
-                                 aUseExternalSurfaceSize, aSurfaceSize);
+  RefPtr<CompositorBridgeParent> bridge = new CompositorBridgeParent(
+      sInstance, aScale, vsyncRate, aOptions, aUseExternalSurfaceSize,
+      aSurfaceSize, aInnerWindowId);
 
   sInstance->mPendingCompositorBridges.AppendElement(bridge);
   return bridge.forget();
 }
 
-CompositorManagerParent::CompositorManagerParent()
-    : mCompositorThreadHolder(CompositorThreadHolder::GetSingleton()) {}
+CompositorManagerParent::CompositorManagerParent(
+    dom::ContentParentId aContentId)
+    : mContentId(aContentId),
+      mCompositorThreadHolder(CompositorThreadHolder::GetSingleton()) {}
 
 CompositorManagerParent::~CompositorManagerParent() = default;
 
@@ -134,10 +139,6 @@ void CompositorManagerParent::BindComplete(bool aIsRoot) {
   MOZ_ASSERT(CompositorThreadHolder::IsInCompositorThread() ||
              NS_IsMainThread());
 
-  // Add the IPDL reference to ourself, so we can't get freed until IPDL is
-  // done with us.
-  AddRef();
-
   StaticMutexAutoLock lock(sMutex);
   if (aIsRoot) {
     sInstance = this;
@@ -154,24 +155,20 @@ void CompositorManagerParent::BindComplete(bool aIsRoot) {
 void CompositorManagerParent::ActorDestroy(ActorDestroyReason aReason) {
   SharedSurfacesParent::DestroyProcess(OtherPid());
 
-  StaticMutexAutoLock lock(sMutex);
-  if (sInstance == this) {
-    sInstance = nullptr;
-  }
-}
-
-void CompositorManagerParent::ActorDealloc() {
   GetCurrentSerialEventTarget()->Dispatch(
       NewRunnableMethod("layers::CompositorManagerParent::DeferredDestroy",
                         this, &CompositorManagerParent::DeferredDestroy));
 
-#ifdef COMPOSITOR_MANAGER_PARENT_EXPLICIT_SHUTDOWN
   StaticMutexAutoLock lock(sMutex);
+  if (sInstance == this) {
+    sInstance = nullptr;
+  }
+
+#ifdef COMPOSITOR_MANAGER_PARENT_EXPLICIT_SHUTDOWN
   if (sActiveActors) {
     sActiveActors->RemoveElement(this);
   }
 #endif
-  Release();
 }
 
 void CompositorManagerParent::DeferredDestroy() {
@@ -230,7 +227,7 @@ CompositorManagerParent::AllocPCompositorBridgeParent(
       const WidgetCompositorOptions& opt = aOpt.get_WidgetCompositorOptions();
       RefPtr<CompositorBridgeParent> bridge = new CompositorBridgeParent(
           this, opt.scale(), opt.vsyncRate(), opt.options(),
-          opt.useExternalSurfaceSize(), opt.surfaceSize());
+          opt.useExternalSurfaceSize(), opt.surfaceSize(), opt.innerWindowId());
       return bridge.forget();
     }
     case CompositorBridgeOptions::TSameProcessWidgetCompositorOptions: {
@@ -261,8 +258,8 @@ CompositorManagerParent::AllocPCompositorBridgeParent(
 }
 
 mozilla::ipc::IPCResult CompositorManagerParent::RecvAddSharedSurface(
-    const wr::ExternalImageId& aId, const SurfaceDescriptorShared& aDesc) {
-  SharedSurfacesParent::Add(aId, aDesc, OtherPid());
+    const wr::ExternalImageId& aId, SurfaceDescriptorShared&& aDesc) {
+  SharedSurfacesParent::Add(aId, std::move(aDesc), OtherPid());
   return IPC_OK();
 }
 
@@ -317,6 +314,12 @@ mozilla::ipc::IPCResult CompositorManagerParent::RecvReportMemory(
         MOZ_ASSERT_UNREACHABLE("MemoryReport promises are never rejected");
       });
 
+  return IPC_OK();
+}
+
+mozilla::ipc::IPCResult CompositorManagerParent::RecvInitCanvasManager(
+    Endpoint<PCanvasManagerParent>&& aEndpoint) {
+  gfx::CanvasManagerParent::Init(std::move(aEndpoint));
   return IPC_OK();
 }
 

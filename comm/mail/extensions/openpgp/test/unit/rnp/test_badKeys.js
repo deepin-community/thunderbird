@@ -8,7 +8,6 @@
 
 "use strict";
 
-const { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 const { RNP } = ChromeUtils.import("chrome://openpgp/content/modules/RNP.jsm");
 const { EnigmailConstants } = ChromeUtils.import(
   "chrome://openpgp/content/modules/constants.jsm"
@@ -28,7 +27,7 @@ const { OpenPGPTestUtils } = ChromeUtils.import(
 
 const KEY_DIR = "../../../../../test/browser/openpgp/data/keys";
 
-add_task(async function setUp() {
+add_setup(async function () {
   do_get_profile();
 
   await OpenPGPTestUtils.initOpenPGP();
@@ -41,8 +40,7 @@ add_task(async function testFailToImport() {
   let ids = await OpenPGPTestUtils.importKey(
     null,
     do_get_file(`${KEY_DIR}/invalid-pubkey-nosigs.pgp`),
-    true,
-    false
+    true
   );
   Assert.ok(!ids.length, "importKey should return empty list of imported keys");
 });
@@ -54,8 +52,7 @@ add_task(async function testAvoidBadSubkey() {
   let ids = await OpenPGPTestUtils.importKey(
     null,
     do_get_file(`${KEY_DIR}/encryption-subkey-bad.pgp`),
-    true,
-    false
+    true
   );
   await OpenPGPTestUtils.updateKeyIdAcceptance(
     ids,

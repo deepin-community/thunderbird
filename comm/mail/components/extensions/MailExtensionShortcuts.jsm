@@ -3,37 +3,34 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 "use strict";
 
-/* exported MailExtensionShortcuts */
 const EXPORTED_SYMBOLS = ["MailExtensionShortcuts"];
 
-const { XPCOMUtils } = ChromeUtils.import(
-  "resource://gre/modules/XPCOMUtils.jsm"
+const { XPCOMUtils } = ChromeUtils.importESModule(
+  "resource://gre/modules/XPCOMUtils.sys.mjs"
+);
+const { ExtensionShortcuts } = ChromeUtils.importESModule(
+  "resource://gre/modules/ExtensionShortcuts.sys.mjs"
 );
 
-ChromeUtils.defineModuleGetter(
-  this,
-  "ExtensionParent",
-  "resource://gre/modules/ExtensionParent.jsm"
-);
+const lazy = {};
 
-ChromeUtils.defineModuleGetter(
-  this,
-  "ExtensionShortcuts",
-  "resource://gre/modules/ExtensionShortcuts.jsm"
-);
-
-XPCOMUtils.defineLazyGetter(this, "browserActionFor", () => {
-  return ExtensionParent.apiManager.global.browserActionFor;
+ChromeUtils.defineESModuleGetters(lazy, {
+  ExtensionParent: "resource://gre/modules/ExtensionParent.sys.mjs",
 });
 
-XPCOMUtils.defineLazyGetter(this, "composeActionFor", () => {
-  return ExtensionParent.apiManager.global.composeActionFor;
+XPCOMUtils.defineLazyGetter(lazy, "browserActionFor", () => {
+  return lazy.ExtensionParent.apiManager.global.browserActionFor;
 });
 
-XPCOMUtils.defineLazyGetter(this, "messageDisplayActionFor", () => {
-  return ExtensionParent.apiManager.global.messageDisplayActionFor;
+XPCOMUtils.defineLazyGetter(lazy, "composeActionFor", () => {
+  return lazy.ExtensionParent.apiManager.global.composeActionFor;
 });
 
+XPCOMUtils.defineLazyGetter(lazy, "messageDisplayActionFor", () => {
+  return lazy.ExtensionParent.apiManager.global.messageDisplayActionFor;
+});
+
+const EXECUTE_ACTION = "_execute_action";
 const EXECUTE_BROWSER_ACTION = "_execute_browser_action";
 const EXECUTE_MSG_DISPLAY_ACTION = "_execute_message_display_action";
 const EXECUTE_COMPOSE_ACTION = "_execute_compose_action";
@@ -62,12 +59,17 @@ class MailExtensionShortcuts extends ExtensionShortcuts {
     // therefore the listeners for these elements will be garbage collected.
     keyElement.addEventListener("command", event => {
       let action;
-      if (name == EXECUTE_BROWSER_ACTION) {
-        action = browserActionFor(this.extension);
+      if (
+        name == EXECUTE_BROWSER_ACTION &&
+        this.extension.manifestVersion < 3
+      ) {
+        action = lazy.browserActionFor(this.extension);
+      } else if (name == EXECUTE_ACTION && this.extension.manifestVersion > 2) {
+        action = lazy.browserActionFor(this.extension);
       } else if (name == EXECUTE_COMPOSE_ACTION) {
-        action = composeActionFor(this.extension);
+        action = lazy.composeActionFor(this.extension);
       } else if (name == EXECUTE_MSG_DISPLAY_ACTION) {
-        action = messageDisplayActionFor(this.extension);
+        action = lazy.messageDisplayActionFor(this.extension);
       } else {
         this.extension.tabManager.addActiveTabPermission();
         this.onCommand(name);

@@ -4,10 +4,8 @@
 
 const EXPORTED_SYMBOLS = ["ICSServer"];
 
-Cu.importGlobalProperties(["crypto"]);
-
-const { Assert } = ChromeUtils.import("resource://testing-common/Assert.jsm");
-const { CommonUtils } = ChromeUtils.import("resource://services-common/utils.js");
+const { Assert } = ChromeUtils.importESModule("resource://testing-common/Assert.sys.mjs");
+const { CommonUtils } = ChromeUtils.importESModule("resource://services-common/utils.sys.mjs");
 const { HttpServer } = ChromeUtils.import("resource://testing-common/httpd.js");
 
 var ICSServer = {

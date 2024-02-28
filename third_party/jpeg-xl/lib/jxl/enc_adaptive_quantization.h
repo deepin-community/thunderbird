@@ -9,9 +9,7 @@
 #include <stddef.h>
 
 #include "lib/jxl/ac_strategy.h"
-#include "lib/jxl/aux_out.h"
 #include "lib/jxl/base/data_parallel.h"
-#include "lib/jxl/chroma_from_luma.h"
 #include "lib/jxl/common.h"
 #include "lib/jxl/enc_cache.h"
 #include "lib/jxl/enc_params.h"
@@ -31,11 +29,13 @@
 
 namespace jxl {
 
+struct AuxOut;
+
 // Computes the decoded image for a given set of compression parameters. Mainly
 // used in the FindBestQuantization loops and in some tests.
 // TODO(veluca): this doesn't seem the best possible file for this function.
 ImageBundle RoundtripImage(const Image3F& opsin, PassesEncoderState* enc_state,
-                           ThreadPool* pool);
+                           const JxlCmsInterface& cms, ThreadPool* pool);
 
 // Returns an image subsampled by kBlockDim in each direction. If the value
 // at pixel (x,y) in the returned image is greater than 1.0, it means that
@@ -57,7 +57,8 @@ void AdjustQuantField(const AcStrategyImage& ac_strategy, const Rect& rect,
 // dequant_float_map and chosen quantization levels.
 // `linear` is only used in Kitten mode or slower.
 void FindBestQuantizer(const ImageBundle* linear, const Image3F& opsin,
-                       PassesEncoderState* enc_state, ThreadPool* pool,
+                       PassesEncoderState* enc_state,
+                       const JxlCmsInterface& cms, ThreadPool* pool,
                        AuxOut* aux_out, double rescale = 1.0);
 
 }  // namespace jxl

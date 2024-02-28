@@ -4,23 +4,64 @@
 
 const EXPORTED_SYMBOLS = [
   "cancelItemDialog",
+  "formatDate",
+  "formatTime",
   "menulistSelect",
   "saveAndCloseItemDialog",
   "setData",
 ];
 
-var { Assert } = ChromeUtils.import("resource://testing-common/Assert.jsm");
-var { BrowserTestUtils } = ChromeUtils.import("resource://testing-common/BrowserTestUtils.jsm");
+var { Assert } = ChromeUtils.importESModule("resource://testing-common/Assert.sys.mjs");
+var { TestUtils } = ChromeUtils.importESModule("resource://testing-common/TestUtils.sys.mjs");
+var { BrowserTestUtils } = ChromeUtils.importESModule(
+  "resource://testing-common/BrowserTestUtils.sys.mjs"
+);
 var { sendString, synthesizeKey, synthesizeMouseAtCenter } = ChromeUtils.import(
   "resource://testing-common/mozmill/EventUtils.jsm"
 );
 
 var { cal } = ChromeUtils.import("resource:///modules/calendar/calUtils.jsm");
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-var { setTimeout } = ChromeUtils.import("resource://gre/modules/Timer.jsm");
+var { CalDateTime } = ChromeUtils.import("resource:///modules/CalDateTime.jsm");
+var { setTimeout } = ChromeUtils.importESModule("resource://gre/modules/Timer.sys.mjs");
 
 function sleep(window, time = 0) {
   return new Promise(resolve => window.setTimeout(resolve, time));
+}
+
+var dateFormatter = new Services.intl.DateTimeFormat(undefined, { dateStyle: "short" });
+var dateTimeFormatter = new Services.intl.DateTimeFormat(undefined, {
+  dateStyle: "short",
+  timeZone: "UTC",
+});
+var timeFormatter = new Services.intl.DateTimeFormat(undefined, {
+  timeStyle: "short",
+  timeZone: "UTC",
+});
+
+/**
+ * Formats a date for input in a datepicker. Don't use cal.dtz.formatter methods
+ * for this as they use the application locale but datepicker uses the OS locale.
+ *
+ * @param {calIDateTime} date
+ * @returns {string}
+ */
+function formatDate(date) {
+  if (date.isDate) {
+    return dateFormatter.format(cal.dtz.dateTimeToJsDate(date));
+  }
+
+  return dateTimeFormatter.format(cal.dtz.dateTimeToJsDate(date));
+}
+
+/**
+ * Formats a time for input in a timepicker. Don't use cal.dtz.formatter methods
+ * for this as they use the application locale but timepicker uses the OS locale.
+ *
+ * @param {calIDateTime} time
+ * @returns {string}
+ */
+function formatTime(time) {
+  return timeFormatter.format(cal.dtz.dateTimeToJsDate(time));
 }
 
 /**
@@ -86,7 +127,6 @@ async function setData(dialogWindow, iframeWindow, data) {
   let completeddateInput = iframeDocument.getElementById("completed-date-picker")._inputField;
   let untilDateInput = iframeDocument.getElementById("repeat-until-datepicker")._inputField;
 
-  let dateFormatter = cal.dtz.formatter;
   // Wait for input elements' values to be populated.
   await sleep(iframeWindow, 500);
 
@@ -136,8 +176,11 @@ async function setData(dialogWindow, iframeWindow, data) {
   }
 
   // startdate
-  if (data.startdate !== undefined && data.startdate instanceof Ci.calIDateTime) {
-    let startdate = dateFormatter.formatDateShort(data.startdate);
+  if (
+    data.startdate !== undefined &&
+    (data.startdate instanceof CalDateTime || data.startdate instanceof Ci.calIDateTime)
+  ) {
+    let startdate = formatDate(data.startdate);
 
     if (!isEvent) {
       let checkbox = iframeDocument.getElementById("todo-has-entrydate");
@@ -149,15 +192,21 @@ async function setData(dialogWindow, iframeWindow, data) {
   }
 
   // starttime
-  if (data.starttime !== undefined && data.starttime instanceof Ci.calIDateTime) {
-    let starttime = dateFormatter.formatTime(data.starttime);
+  if (
+    data.starttime !== undefined &&
+    (data.starttime instanceof CalDateTime || data.starttime instanceof Ci.calIDateTime)
+  ) {
+    let starttime = formatTime(data.starttime);
     replaceText(starttimeInput, starttime);
     await sleep(iframeWindow);
   }
 
   // enddate
-  if (data.enddate !== undefined && data.enddate instanceof Ci.calIDateTime) {
-    let enddate = dateFormatter.formatDateShort(data.enddate);
+  if (
+    data.enddate !== undefined &&
+    (data.enddate instanceof CalDateTime || data.enddate instanceof Ci.calIDateTime)
+  ) {
+    let enddate = formatDate(data.enddate);
     if (!isEvent) {
       let checkbox = iframeDocument.getElementById("todo-has-duedate");
       if (!checkbox.checked) {
@@ -168,8 +217,11 @@ async function setData(dialogWindow, iframeWindow, data) {
   }
 
   // endtime
-  if (data.endtime !== undefined && data.endtime instanceof Ci.calIDateTime) {
-    let endtime = dateFormatter.formatTime(data.endtime);
+  if (
+    data.endtime !== undefined &&
+    (data.endtime instanceof CalDateTime || data.endtime instanceof Ci.calIDateTime)
+  ) {
+    let endtime = formatTime(data.endtime);
     replaceText(endtimeInput, endtime);
   }
 
@@ -181,12 +233,14 @@ async function setData(dialogWindow, iframeWindow, data) {
         "chrome://calendar/content/calendar-event-dialog-recurrence.xhtml",
         {
           async callback(recurrenceWindow) {
-            Assert.report(false, undefined, undefined, "Reccurrence dialog opened");
-            if (Services.focus.activeWindow != recurrenceWindow) {
-              await BrowserTestUtils.waitForEvent(recurrenceWindow, "focus");
-            }
+            Assert.report(false, undefined, undefined, "Recurrence dialog opened");
+            await TestUtils.waitForCondition(
+              () => Services.focus.activeWindow == recurrenceWindow,
+              "recurrence dialog active"
+            );
 
-            recurrenceWindow.setTimeout(() => data.repeat(recurrenceWindow), 500);
+            await new Promise(resolve => recurrenceWindow.setTimeout(resolve, 500));
+            await data.repeat(recurrenceWindow);
           },
         }
       );
@@ -194,15 +248,18 @@ async function setData(dialogWindow, iframeWindow, data) {
         menulistSelect(iframeDocument.getElementById("item-repeat"), "custom"),
         repeatWindowPromise,
       ]);
-      Assert.report(false, undefined, undefined, "Reccurrence dialog closed");
+      Assert.report(false, undefined, undefined, "Recurrence dialog closed");
     } else {
       await menulistSelect(iframeDocument.getElementById("item-repeat"), data.repeat);
     }
   }
-  if (data.repeatuntil !== undefined && data.repeatuntil instanceof Ci.calIDateTime) {
+  if (
+    data.repeatuntil !== undefined &&
+    (data.repeatuntil instanceof CalDateTime || data.repeatuntil instanceof Ci.calIDateTime)
+  ) {
     // Only fill in date, when the Datepicker is visible.
     if (!iframeDocument.getElementById("repeat-untilDate").hidden) {
-      let untildate = dateFormatter.formatDateShort(data.repeatuntil);
+      let untildate = formatDate(data.repeatuntil);
       replaceText(untilDateInput, untildate);
     }
   }
@@ -245,8 +302,12 @@ async function setData(dialogWindow, iframeWindow, data) {
   let currentStatus = iframeDocument.getElementById("todo-status").value;
 
   // completed on
-  if (data.completed !== undefined && data.completed instanceof Ci.calIDateTime && !isEvent) {
-    let completeddate = dateFormatter.formatDateShort(data.completed);
+  if (
+    data.completed !== undefined &&
+    (data.completed instanceof CalDateTime || data.completed instanceof Ci.calIDateTime) &&
+    !isEvent
+  ) {
+    let completeddate = formatDate(data.completed);
     if (currentStatus == "COMPLETED") {
       replaceText(completeddateInput, completeddate);
     }
@@ -342,6 +403,7 @@ async function saveAndCloseItemDialog(dialogWindow) {
     dialogWindow
   );
   await dialogClosing;
+  Assert.report(false, undefined, undefined, "Item dialog closed");
   await new Promise(resolve => setTimeout(resolve));
 }
 
@@ -421,15 +483,16 @@ async function handleAddingAttachment(dialogWindow, url) {
   await menuShowing;
 
   let dialogPromise = BrowserTestUtils.promiseAlertDialog(undefined, undefined, {
-    callback(attachmentWindow) {
+    async callback(attachmentWindow) {
       Assert.report(false, undefined, undefined, "Attachment dialog opened");
-      let attachmentDocument = attachmentWindow.document;
+      await TestUtils.waitForCondition(
+        () => Services.focus.activeWindow == attachmentWindow,
+        "attachment dialog active"
+      );
 
+      let attachmentDocument = attachmentWindow.document;
       attachmentDocument.getElementById("loginTextbox").value = url;
-      attachmentDocument
-        .querySelector("dialog")
-        .getButton("accept")
-        .click();
+      attachmentDocument.querySelector("dialog").getButton("accept").click();
     },
   });
   synthesizeMouseAtCenter(dialogDocument.querySelector("#button-attach-url"), {}, dialogWindow);
@@ -459,13 +522,22 @@ async function addAttendees(dialogWindow, iframeWindow, attendeesString) {
         {
           async callback(attendeesWindow) {
             Assert.report(false, undefined, undefined, "Attendees dialog opened");
-            await sleep(attendeesWindow);
-            let attendeesDocument = attendeesWindow.document;
+            await TestUtils.waitForCondition(
+              () => Services.focus.activeWindow == attendeesWindow,
+              "attendees dialog active"
+            );
 
-            await sleep(attendeesWindow);
+            let attendeesDocument = attendeesWindow.document;
             Assert.equal(attendeesDocument.activeElement.localName, "input");
-            Assert.equal(attendeesDocument.activeElement.value, "");
+            Assert.equal(
+              attendeesDocument.activeElement.value,
+              "",
+              "active input value should be empty"
+            );
             sendString(attendee, attendeesWindow);
+            Assert.report(false, undefined, undefined, `Sent attendee ${attendee}`);
+            // Windows needs the focus() call here.
+            attendeesDocument.querySelector("dialog").getButton("accept").focus();
             synthesizeMouseAtCenter(
               attendeesDocument.querySelector("dialog").getButton("accept"),
               {},
@@ -529,10 +601,13 @@ async function setTimezone(dialogWindow, iframeWindow, timezone) {
 
   if (!BrowserTestUtils.is_visible(label)) {
     menuitem.click();
-    await sleep(iframeWindow);
+    await TestUtils.waitForCondition(
+      () => BrowserTestUtils.is_visible(label),
+      "Timezone label should become visible"
+    );
   }
 
-  Assert.ok(BrowserTestUtils.is_visible(label));
+  await TestUtils.waitForCondition(() => !label.disabled, "Tiemzone label should become enabled");
 
   let shownPromise = BrowserTestUtils.waitForEvent(menupopup, "popupshown");
   let dialogPromise = BrowserTestUtils.promiseAlertDialog(
@@ -541,11 +616,10 @@ async function setTimezone(dialogWindow, iframeWindow, timezone) {
     {
       async callback(timezoneWindow) {
         Assert.report(false, undefined, undefined, "Timezone dialog opened");
-        if (Services.focus.activeWindow != timezoneWindow) {
-          let focus = BrowserTestUtils.waitForEvent(timezoneWindow, "focus", true);
-          timezoneWindow.focus();
-          await focus;
-        }
+        await TestUtils.waitForCondition(
+          () => Services.focus.activeWindow == timezoneWindow,
+          "timezone dialog active"
+        );
 
         let timezoneDocument = timezoneWindow.document;
         let timezoneMenulist = timezoneDocument.getElementById("timezone-menulist");

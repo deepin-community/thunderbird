@@ -104,12 +104,7 @@ bool FramingChecker::CheckOneFrameOptionsPolicy(nsIHttpChannel* aHttpChannel,
     }
 
     if (checkSameOrigin) {
-      bool isPrivateWin = false;
-      bool isSameOrigin = false;
-      if (principal) {
-        isPrivateWin = principal->OriginAttributesRef().mPrivateBrowsingId > 0;
-        principal->IsSameOrigin(uri, isPrivateWin, &isSameOrigin);
-      }
+      bool isSameOrigin = principal && principal->IsSameOrigin(uri);
       // one of the ancestors is not same origin as this document
       if (!isSameOrigin) {
         ReportError("XFrameOptionsDeny", aHttpChannel, uri, aPolicy);
@@ -146,21 +141,6 @@ static bool ShouldIgnoreFrameOptions(nsIChannel* aChannel,
     return false;
   }
 
-  // log warning to console that xfo is ignored because of CSP
-  nsCOMPtr<nsILoadInfo> loadInfo = aChannel->LoadInfo();
-  uint64_t innerWindowID = loadInfo->GetInnerWindowID();
-  bool privateWindow = !!loadInfo->GetOriginAttributes().mPrivateBrowsingId;
-  AutoTArray<nsString, 2> params = {u"x-frame-options"_ns,
-                                    u"frame-ancestors"_ns};
-  CSP_LogLocalizedStr("IgnoringSrcBecauseOfDirective", params,
-                      u""_ns,  // no sourcefile
-                      u""_ns,  // no scriptsample
-                      0,       // no linenumber
-                      0,       // no columnnumber
-                      nsIScriptError::warningFlag,
-                      "IgnoringSrcBecauseOfDirective"_ns, innerWindowID,
-                      privateWindow);
-
   return true;
 }
 
@@ -170,7 +150,8 @@ static bool ShouldIgnoreFrameOptions(nsIChannel* aChannel,
 // multiple headers, etc).
 /* static */
 bool FramingChecker::CheckFrameOptions(nsIChannel* aChannel,
-                                       nsIContentSecurityPolicy* aCsp) {
+                                       nsIContentSecurityPolicy* aCsp,
+                                       bool& outIsFrameCheckingSkipped) {
   if (!aChannel) {
     return true;
   }
@@ -182,12 +163,6 @@ bool FramingChecker::CheckFrameOptions(nsIChannel* aChannel,
   // not a load of such type, there is nothing to do here.
   if (contentType != ExtContentPolicy::TYPE_SUBDOCUMENT &&
       contentType != ExtContentPolicy::TYPE_OBJECT) {
-    return true;
-  }
-
-  // xfo checks are ignored in case CSP frame-ancestors is present,
-  // if so, there is nothing to do here.
-  if (ShouldIgnoreFrameOptions(aChannel, aCsp)) {
     return true;
   }
 
@@ -223,6 +198,13 @@ bool FramingChecker::CheckFrameOptions(nsIChannel* aChannel,
 
   // if no header value, there's nothing to do.
   if (xfoHeaderValue.IsEmpty()) {
+    return true;
+  }
+
+  // xfo checks are ignored in case CSP frame-ancestors is present,
+  // if so, there is nothing to do here.
+  if (ShouldIgnoreFrameOptions(aChannel, aCsp)) {
+    outIsFrameCheckingSkipped = true;
     return true;
   }
 

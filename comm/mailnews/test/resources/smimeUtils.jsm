@@ -8,8 +8,8 @@
 
 var EXPORTED_SYMBOLS = ["SmimeUtils"];
 
-var { MockRegistrar } = ChromeUtils.import(
-  "resource://testing-common/MockRegistrar.jsm"
+var { MockRegistrar } = ChromeUtils.importESModule(
+  "resource://testing-common/MockRegistrar.sys.mjs"
 );
 
 const gCertDialogs = {
@@ -61,11 +61,11 @@ var SmimeUtils = {
     certDB.importCertsFromFile(file, certType);
   },
 
-  loadCertificateAndKey(file) {
+  loadCertificateAndKey(file, pw) {
     dump("Loading key from " + file.path + "\n");
     let certDB = Cc["@mozilla.org/security/x509certdb;1"].getService(
       Ci.nsIX509CertDB
     );
-    certDB.importPKCS12File(file, "");
+    certDB.importPKCS12File(file, pw);
   },
 };

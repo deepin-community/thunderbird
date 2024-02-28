@@ -55,6 +55,19 @@ nsresult nsDirectoryService::GetCurrentProcessDirectory(nsIFile** aFile)
   }
 
   if (!mXCurProcD) {
+#if defined(ANDROID)
+    // Some callers relying on this fallback make assumptions that don't
+    // hold on Android for BinaryPath::GetFile, so use GRE_HOME instead.
+    const char* greHome = getenv("GRE_HOME");
+    if (!greHome) {
+      return NS_ERROR_FAILURE;
+    }
+    nsresult rv = NS_NewNativeLocalFile(nsDependentCString(greHome), true,
+                                        getter_AddRefs(mXCurProcD));
+    if (NS_FAILED(rv)) {
+      return rv;
+    }
+#else
     nsCOMPtr<nsIFile> file;
     if (NS_SUCCEEDED(BinaryPath::GetFile(getter_AddRefs(file)))) {
       nsresult rv = file->GetParent(getter_AddRefs(mXCurProcD));
@@ -62,6 +75,7 @@ nsresult nsDirectoryService::GetCurrentProcessDirectory(nsIFile** aFile)
         return rv;
       }
     }
+#endif
   }
   return mXCurProcD->Clone(aFile);
 }  // GetCurrentProcessDirectory()
@@ -70,13 +84,9 @@ StaticRefPtr<nsDirectoryService> nsDirectoryService::gService;
 
 nsDirectoryService::nsDirectoryService() : mHashtable(128) {}
 
-nsresult nsDirectoryService::Create(nsISupports* aOuter, REFNSIID aIID,
-                                    void** aResult) {
+nsresult nsDirectoryService::Create(REFNSIID aIID, void** aResult) {
   if (NS_WARN_IF(!aResult)) {
     return NS_ERROR_INVALID_ARG;
-  }
-  if (NS_WARN_IF(aOuter)) {
-    return NS_ERROR_NO_AGGREGATION;
   }
 
   if (!gService) {
@@ -306,25 +316,6 @@ nsDirectoryService::UnregisterProvider(nsIDirectoryServiceProvider* aProv) {
   return NS_OK;
 }
 
-#if defined(MOZ_SANDBOX) && defined(XP_WIN)
-static nsresult GetLowIntegrityTempBase(nsIFile** aLowIntegrityTempBase) {
-  nsCOMPtr<nsIFile> localFile;
-  nsresult rv =
-      GetSpecialSystemDirectory(Win_LocalAppdataLow, getter_AddRefs(localFile));
-  if (NS_WARN_IF(NS_FAILED(rv))) {
-    return rv;
-  }
-
-  rv = localFile->Append(NS_LITERAL_STRING_FROM_CSTRING(MOZ_USER_DIR));
-  if (NS_WARN_IF(NS_FAILED(rv))) {
-    return rv;
-  }
-
-  localFile.forget(aLowIntegrityTempBase);
-  return rv;
-}
-#endif
-
 // DO NOT ADD ANY LOCATIONS TO THIS FUNCTION UNTIL YOU TALK TO:
 // dougt@netscape.com. This is meant to be a place of xpcom or system specific
 // file locations, not application specific locations.  If you need the later,
@@ -362,33 +353,32 @@ nsDirectoryService::GetFile(const char* aProp, bool* aPersistent,
   }
 #if defined(MOZ_WIDGET_COCOA)
   else if (inAtom == nsGkAtoms::DirectoryService_SystemDirectory) {
-    rv = GetOSXFolderType(kClassicDomain, kSystemFolderType,
-                          getter_AddRefs(localFile));
+    rv = GetSpecialSystemDirectory(Mac_SystemDirectory,
+                                   getter_AddRefs(localFile));
   } else if (inAtom == nsGkAtoms::DirectoryService_UserLibDirectory) {
-    rv = GetOSXFolderType(kUserDomain, kDomainLibraryFolderType,
-                          getter_AddRefs(localFile));
+    rv = GetSpecialSystemDirectory(Mac_UserLibDirectory,
+                                   getter_AddRefs(localFile));
   } else if (inAtom == nsGkAtoms::Home) {
-    rv = GetOSXFolderType(kUserDomain, kDomainTopLevelFolderType,
-                          getter_AddRefs(localFile));
+    rv =
+        GetSpecialSystemDirectory(Mac_HomeDirectory, getter_AddRefs(localFile));
   } else if (inAtom == nsGkAtoms::DirectoryService_DefaultDownloadDirectory) {
-    rv = GetOSXFolderType(kUserDomain, kDownloadsFolderType,
-                          getter_AddRefs(localFile));
-    if (NS_FAILED(rv)) {
-      rv = GetOSXFolderType(kUserDomain, kDesktopFolderType,
-                            getter_AddRefs(localFile));
-    }
+    rv = GetSpecialSystemDirectory(Mac_DefaultDownloadDirectory,
+                                   getter_AddRefs(localFile));
   } else if (inAtom == nsGkAtoms::DirectoryService_OS_DesktopDirectory) {
-    rv = GetOSXFolderType(kUserDomain, kDesktopFolderType,
-                          getter_AddRefs(localFile));
+    rv = GetSpecialSystemDirectory(Mac_UserDesktopDirectory,
+                                   getter_AddRefs(localFile));
   } else if (inAtom == nsGkAtoms::DirectoryService_LocalApplicationsDirectory) {
-    rv = GetOSXFolderType(kLocalDomain, kApplicationsFolderType,
-                          getter_AddRefs(localFile));
+    rv = GetSpecialSystemDirectory(Mac_LocalApplicationsDirectory,
+                                   getter_AddRefs(localFile));
   } else if (inAtom == nsGkAtoms::DirectoryService_UserPreferencesDirectory) {
-    rv = GetOSXFolderType(kUserDomain, kPreferencesFolderType,
-                          getter_AddRefs(localFile));
+    rv = GetSpecialSystemDirectory(Mac_UserPreferencesDirectory,
+                                   getter_AddRefs(localFile));
   } else if (inAtom == nsGkAtoms::DirectoryService_PictureDocumentsDirectory) {
-    rv = GetOSXFolderType(kUserDomain, kPictureDocumentsFolderType,
-                          getter_AddRefs(localFile));
+    rv = GetSpecialSystemDirectory(Mac_PictureDocumentsDirectory,
+                                   getter_AddRefs(localFile));
+  } else if (inAtom == nsGkAtoms::DirectoryService_DefaultScreenshotDirectory) {
+    rv = GetSpecialSystemDirectory(Mac_DefaultScreenshotDirectory,
+                                   getter_AddRefs(localFile));
   }
 #elif defined(XP_WIN)
   else if (inAtom == nsGkAtoms::DirectoryService_SystemDirectory) {
@@ -413,13 +403,6 @@ nsDirectoryService::GetFile(const char* aProp, bool* aPersistent,
     rv = GetSpecialSystemDirectory(Win_Appdata, getter_AddRefs(localFile));
   } else if (inAtom == nsGkAtoms::DirectoryService_LocalAppdata) {
     rv = GetSpecialSystemDirectory(Win_LocalAppdata, getter_AddRefs(localFile));
-#  if defined(MOZ_SANDBOX)
-  } else if (inAtom == nsGkAtoms::DirectoryService_LocalAppdataLow) {
-    rv = GetSpecialSystemDirectory(Win_LocalAppdataLow,
-                                   getter_AddRefs(localFile));
-  } else if (inAtom == nsGkAtoms::DirectoryService_LowIntegrityTempBase) {
-    rv = GetLowIntegrityTempBase(getter_AddRefs(localFile));
-#  endif
   } else if (inAtom == nsGkAtoms::DirectoryService_WinCookiesDirectory) {
     rv = GetSpecialSystemDirectory(Win_Cookies, getter_AddRefs(localFile));
   } else if (inAtom == nsGkAtoms::DirectoryService_DefaultDownloadDirectory) {
@@ -436,6 +419,9 @@ nsDirectoryService::GetFile(const char* aProp, bool* aPersistent,
     rv =
         GetSpecialSystemDirectory(Unix_XDG_Download, getter_AddRefs(localFile));
     *aPersistent = false;
+  } else if (inAtom == nsGkAtoms::DirectoryService_OS_SystemConfigDir) {
+    rv = GetSpecialSystemDirectory(Unix_SystemConfigDirectory,
+                                   getter_AddRefs(localFile));
   }
 #endif
 

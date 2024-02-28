@@ -8,20 +8,19 @@
 
 // Wrap in a block to prevent leaking to window scope.
 {
-  const { Services } = ChromeUtils.import(
-    "resource://gre/modules/Services.jsm"
+  const { DownloadUtils } = ChromeUtils.importESModule(
+    "resource://gre/modules/DownloadUtils.sys.mjs"
   );
-  const { DownloadUtils } = ChromeUtils.import(
-    "resource://gre/modules/DownloadUtils.jsm"
+  const { ChatIcons } = ChromeUtils.importESModule(
+    "resource:///modules/chatIcons.sys.mjs"
   );
-  const { ChatIcons } = ChromeUtils.import("resource:///modules/chatIcons.jsm");
 
   /**
    * The MozChatAccountRichlistitem widget displays the information about the
    * configured account: i.e. icon, state, name, error, checkbox for
    * auto sign in and buttons for disconnect and properties.
    *
-   * @extends {MozElements.MozRichlistitem}
+   * @augments {MozElements.MozRichlistitem}
    */
   class MozChatAccountRichlistitem extends MozElements.MozRichlistitem {
     static get inheritedAttributes() {

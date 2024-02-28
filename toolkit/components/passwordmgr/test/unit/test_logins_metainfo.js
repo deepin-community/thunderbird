@@ -10,13 +10,6 @@
 
 // Globals
 
-XPCOMUtils.defineLazyServiceGetter(
-  this,
-  "gUUIDGenerator",
-  "@mozilla.org/uuid-generator;1",
-  "nsIUUIDGenerator"
-);
-
 const gLooksLikeUUIDRegex = /^\{\w{8}-\w{4}-\w{4}-\w{4}-\w{12}\}$/;
 
 /**
@@ -76,7 +69,7 @@ add_task(function test_initialize() {
   gLoginInfo1 = TestData.formLogin();
   gLoginInfo2 = TestData.formLogin({
     origin: "http://other.example.com",
-    guid: gUUIDGenerator.generateUUID().toString(),
+    guid: Services.uuid.generateUUID().toString(),
     timeCreated: baseTimeMs,
     timeLastUsed: baseTimeMs + 2,
     timePasswordChanged: baseTimeMs + 1,
@@ -89,9 +82,9 @@ add_task(function test_initialize() {
  * Tests the behavior of addLogin with regard to metadata.  The logins added
  * here are also used by the following tests.
  */
-add_task(function test_addLogin_metainfo() {
+add_task(async function test_addLogin_metainfo() {
   // Add a login without metadata to the database.
-  Services.logins.addLogin(gLoginInfo1);
+  await Services.logins.addLoginAsync(gLoginInfo1);
 
   // The object provided to addLogin should not have been modified.
   Assert.equal(gLoginInfo1.guid, null);
@@ -111,7 +104,7 @@ add_task(function test_addLogin_metainfo() {
 
   // Add a login without metadata to the database.
   let originalLogin = gLoginInfo2.clone().QueryInterface(Ci.nsILoginMetaInfo);
-  Services.logins.addLogin(gLoginInfo2);
+  await Services.logins.addLoginAsync(gLoginInfo2);
 
   // The object provided to addLogin should not have been modified.
   assertMetaInfoEqual(gLoginInfo2, originalLogin);
@@ -121,7 +114,7 @@ add_task(function test_addLogin_metainfo() {
   assertMetaInfoEqual(gLoginMetaInfo2, gLoginInfo2);
 
   // Add an authentication login to the database before continuing.
-  Services.logins.addLogin(gLoginInfo3);
+  await Services.logins.addLoginAsync(gLoginInfo3);
   gLoginMetaInfo3 = retrieveLoginMatching(gLoginInfo3);
   LoginTestUtils.checkLogins([gLoginInfo1, gLoginInfo2, gLoginInfo3]);
 });
@@ -129,13 +122,13 @@ add_task(function test_addLogin_metainfo() {
 /**
  * Tests that adding a login with a duplicate GUID throws an exception.
  */
-add_task(function test_addLogin_metainfo_duplicate() {
+add_task(async function test_addLogin_metainfo_duplicate() {
   let loginInfo = TestData.formLogin({
     origin: "http://duplicate.example.com",
     guid: gLoginMetaInfo2.guid,
   });
-  Assert.throws(
-    () => Services.logins.addLogin(loginInfo),
+  await Assert.rejects(
+    Services.logins.addLoginAsync(loginInfo),
     /specified GUID already exists/
   );
 
@@ -149,7 +142,7 @@ add_task(function test_addLogin_metainfo_duplicate() {
  */
 add_task(function test_modifyLogin_nsILoginInfo_metainfo_ignored() {
   let newLoginInfo = gLoginInfo1.clone().QueryInterface(Ci.nsILoginMetaInfo);
-  newLoginInfo.guid = gUUIDGenerator.generateUUID().toString();
+  newLoginInfo.guid = Services.uuid.generateUUID().toString();
   newLoginInfo.timeCreated = Date.now();
   newLoginInfo.timeLastUsed = Date.now();
   newLoginInfo.timePasswordChanged = Date.now();
@@ -166,7 +159,7 @@ add_task(function test_modifyLogin_nsILoginInfo_metainfo_ignored() {
 add_task(function test_modifyLogin_nsIProperyBag_metainfo() {
   // Use a new reference time that is two minutes from now.
   let newTimeMs = Date.now() + 120000;
-  let newUUIDValue = gUUIDGenerator.generateUUID().toString();
+  let newUUIDValue = Services.uuid.generateUUID().toString();
 
   // Check that properties are changed as requested.
   Services.logins.modifyLogin(

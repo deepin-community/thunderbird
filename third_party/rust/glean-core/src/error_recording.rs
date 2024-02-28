@@ -15,6 +15,7 @@
 use std::convert::TryFrom;
 use std::fmt::Display;
 
+use crate::common_metric_data::CommonMetricDataInternal;
 use crate::error::{Error, ErrorKind};
 use crate::metrics::labeled::{combine_base_identifier_and_label, strip_label};
 use crate::metrics::CounterMetric;
@@ -26,7 +27,9 @@ use crate::Lifetime;
 /// Note: the cases in this enum must be kept in sync with the ones
 /// in the platform-specific code (e.g. `ErrorType.kt`) and with the
 /// metrics in the registry files.
-#[derive(Copy, Clone, Debug, PartialEq)]
+// When adding a new error type ensure it's also added to `ErrorType::iter()` below.
+#[repr(C)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum ErrorType {
     /// For when the value to be recorded does not match the metric-specific restrictions
     InvalidValue,
@@ -48,6 +51,27 @@ impl ErrorType {
             ErrorType::InvalidOverflow => "invalid_overflow",
         }
     }
+
+    /// Return an iterator over all possible error types.
+    ///
+    /// ```
+    /// # use glean_core::ErrorType;
+    /// let errors = ErrorType::iter();
+    /// let all_errors = errors.collect::<Vec<_>>();
+    /// assert_eq!(4, all_errors.len());
+    /// ```
+    pub fn iter() -> impl Iterator<Item = Self> {
+        // N.B.: This has no compile-time guarantees that it is complete.
+        // New `ErrorType` variants will need to be added manually.
+        [
+            ErrorType::InvalidValue,
+            ErrorType::InvalidLabel,
+            ErrorType::InvalidState,
+            ErrorType::InvalidOverflow,
+        ]
+        .iter()
+        .copied()
+    }
 }
 
 impl TryFrom<i32> for ErrorType {
@@ -65,14 +89,14 @@ impl TryFrom<i32> for ErrorType {
 }
 
 /// For a given metric, get the metric in which to record errors
-fn get_error_metric_for_metric(meta: &CommonMetricData, error: ErrorType) -> CounterMetric {
+fn get_error_metric_for_metric(meta: &CommonMetricDataInternal, error: ErrorType) -> CounterMetric {
     // Can't use meta.identifier here, since that might cause infinite recursion
     // if the label on this metric needs to report an error.
     let identifier = meta.base_identifier();
     let name = strip_label(&identifier);
 
     // Record errors in the pings the metric is in, as well as the metrics ping.
-    let mut send_in_pings = meta.send_in_pings.clone();
+    let mut send_in_pings = meta.inner.send_in_pings.clone();
     let ping_name = "metrics".to_string();
     if !send_in_pings.contains(&ping_name) {
         send_in_pings.push(ping_name);
@@ -105,7 +129,7 @@ fn get_error_metric_for_metric(meta: &CommonMetricData, error: ErrorType) -> Cou
 /// * `num_errors` - The number of errors of the same type to report.
 pub fn record_error<O: Into<Option<i32>>>(
     glean: &Glean,
-    meta: &CommonMetricData,
+    meta: &CommonMetricDataInternal,
     error: ErrorType,
     message: impl Display,
     num_errors: O,
@@ -115,7 +139,7 @@ pub fn record_error<O: Into<Option<i32>>>(
     log::warn!("{}: {}", meta.base_identifier(), message);
     let to_report = num_errors.into().unwrap_or(1);
     debug_assert!(to_report > 0);
-    metric.add(glean, to_report);
+    metric.add_sync(glean, to_report);
 }
 
 /// Gets the number of recorded errors for the given metric and error type.
@@ -133,18 +157,15 @@ pub fn record_error<O: Into<Option<i32>>>(
 /// The number of errors reported.
 pub fn test_get_num_recorded_errors(
     glean: &Glean,
-    meta: &CommonMetricData,
+    meta: &CommonMetricDataInternal,
     error: ErrorType,
-    ping_name: Option<&str>,
 ) -> Result<i32, String> {
-    let use_ping_name = ping_name.unwrap_or(&meta.send_in_pings[0]);
     let metric = get_error_metric_for_metric(meta, error);
 
-    metric.test_get_value(glean, use_ping_name).ok_or_else(|| {
+    metric.get_value(glean, Some("metrics")).ok_or_else(|| {
         format!(
-            "No error recorded for {} in '{}' store",
+            "No error recorded for {} in 'metrics' store",
             meta.base_identifier(),
-            use_ping_name
         )
     })
 }
@@ -199,24 +220,19 @@ mod test {
             expected_invalid_labels_errors,
         );
 
-        for store in &["store1", "store2", "metrics"] {
+        let invalid_val =
+            get_error_metric_for_metric(string_metric.meta(), ErrorType::InvalidValue);
+        let invalid_label =
+            get_error_metric_for_metric(string_metric.meta(), ErrorType::InvalidLabel);
+        for &store in &["store1", "store2", "metrics"] {
             assert_eq!(
-                Ok(expected_invalid_values_errors),
-                test_get_num_recorded_errors(
-                    &glean,
-                    string_metric.meta(),
-                    ErrorType::InvalidValue,
-                    Some(store)
-                )
+                Some(expected_invalid_values_errors),
+                invalid_val.get_value(&glean, Some(store))
             );
+
             assert_eq!(
-                Ok(expected_invalid_labels_errors),
-                test_get_num_recorded_errors(
-                    &glean,
-                    string_metric.meta(),
-                    ErrorType::InvalidLabel,
-                    Some(store)
-                )
+                Some(expected_invalid_labels_errors),
+                invalid_label.get_value(&glean, Some(store))
             );
         }
     }

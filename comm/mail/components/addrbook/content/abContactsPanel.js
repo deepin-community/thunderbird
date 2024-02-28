@@ -2,13 +2,22 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
+/* import-globals-from ../../../../../toolkit/content/editMenuOverlay.js */
+/* import-globals-from ../../../../mailnews/addrbook/content/abResultsPane.js */
+/* import-globals-from ../../../base/content/globalOverlay.js */
 /* import-globals-from abCommon.js */
 
+var { UIDensity } = ChromeUtils.import("resource:///modules/UIDensity.jsm");
 var { getSearchTokens, getModelQuery, generateQueryURI } = ChromeUtils.import(
   "resource:///modules/ABQueryUtils.jsm"
 );
 
+// A boolean variable determining whether AB column should be shown
+// in Contacts Sidebar in compose window.
+var gShowAbColumnInComposeSidebar = false;
 var gQueryURIFormat = null;
+
+UIDensity.registerWindow(window);
 
 function GetAbViewListener() {
   // the ab panel doesn't care if the total changes, or if the selection changes
@@ -56,8 +65,35 @@ function contactsListOnContextMenu(aEvent) {
     // If there's a selection, show "cardProperties" context menu.
   } else {
     contextMenuID = gAbResultsTree.getAttribute("contextSelection");
+    updateCardPropertiesMenu();
   }
   showContextMenu(contextMenuID, aEvent, positionArray);
+}
+
+/**
+ * Update the single row card properties context menu to show or hide the "Edit"
+ * menu item only depending on the selection type.
+ */
+function updateCardPropertiesMenu() {
+  let cards = GetSelectedAbCards();
+
+  let separator = document.getElementById("abContextBeforeEditContact");
+  let menuitem = document.getElementById("abContextEditContact");
+
+  // Only show the Edit item if one item is selected, is not a mailing list, and
+  // the contact is not part of a readOnly address book.
+  if (
+    cards.length != 1 ||
+    cards.some(c => c.isMailList) ||
+    MailServices.ab.getDirectoryFromUID(cards[0].directoryUID)?.readOnly
+  ) {
+    separator.hidden = true;
+    menuitem.hidden = true;
+    return;
+  }
+
+  separator.hidden = false;
+  menuitem.hidden = false;
 }
 
 /**
@@ -104,14 +140,27 @@ function contactsListOnClick(aEvent) {
 /**
  * Appends the currently selected cards as new recipients in the composed message.
  *
- * @param aRecipientType  Type of recipient, e.g. "addr_to".
+ * @param recipientType  Type of recipient, e.g. "addr_to".
  */
-function addSelectedAddresses(aRecipientType) {
+function addSelectedAddresses(recipientType) {
   var cards = GetSelectedAbCards();
 
   // Turn each card into a properly formatted address.
   let addresses = cards.map(makeMailboxObjectFromCard).filter(addr => addr);
-  parent.awAddRecipientsArray(aRecipientType, addresses);
+  parent.addressRowAddRecipientsArray(
+    parent.document.querySelector(
+      `.address-row[data-recipienttype="${recipientType}"]`
+    ),
+    addresses
+  );
+}
+
+/**
+ * Open the address book tab and trigger the edit of the selected contact.
+ */
+function editSelectedAddress() {
+  let cards = GetSelectedAbCards();
+  window.top.toAddressBook({ action: "edit", card: cards[0] });
 }
 
 function AddressBookMenuListChange(aValue) {
@@ -124,6 +173,7 @@ function AddressBookMenuListChange(aValue) {
 
   // Hide the addressbook column if the selected addressbook isn't
   // "All address books". Since the column is redundant in all other cases.
+  let abList = document.getElementById("addressbookList");
   let addrbookColumn = document.getElementById("addrbook");
   if (abList.value.startsWith(kAllDirectoryRoot + "?")) {
     addrbookColumn.hidden = !gShowAbColumnInComposeSidebar;
@@ -143,9 +193,7 @@ function AbPanelLoad() {
     document.getElementById("peopleSearchInput").focus();
   }
 
-  InitCommonJS();
-
-  document.title = parent.document.getElementById("sidebar-title").value;
+  document.title = parent.document.getElementById("contactsTitle").value;
 
   // Get the URI of the directory to display.
   let startupURI = Services.prefs.getCharPref("mail.addr_book.view.startupURI");
@@ -165,8 +213,8 @@ function AbPanelLoad() {
   // gets a chance to display quickly.
   setTimeout(ChangeDirectoryByURI, 0, abPopup.value);
 
-  mutationObs = new MutationObserver(function(aMutations) {
-    aMutations.forEach(function(mutation) {
+  mutationObs = new MutationObserver(function (aMutations) {
+    aMutations.forEach(function (mutation) {
       if (
         getSelectedDirectoryURI() == kAllDirectoryRoot + "?" &&
         mutation.type == "attributes" &&
@@ -200,29 +248,9 @@ function AbPanelUnload() {
   CloseAbView();
 }
 
-function AbPanelNewCard() {
-  goNewCardDialog(abList.value);
-}
-
-function AbPanelNewList() {
-  goNewListDialog(abList.value);
-}
-
-function ResultsPaneSelectionChanged() {
-  // do nothing for ab panel
-}
-
-function OnClickedCard() {
-  // do nothing for ab panel
-}
-
 function AbResultsPaneDoubleClick(card) {
   // double click for ab panel means "send mail to this person / list"
   AbNewMessage();
-}
-
-function UpdateCardView() {
-  // do nothing for ab panel
 }
 
 function CommandUpdate_AddressBook() {
@@ -233,7 +261,6 @@ function CommandUpdate_AddressBook() {
   document.getElementById("cmd_addrBcc").setAttribute("disabled", disabled);
 
   goUpdateCommand("cmd_delete");
-  goUpdateCommand("cmd_properties");
 }
 
 /**
@@ -293,4 +320,55 @@ function showContextMenu(aContextMenuID, aEvent, aPositionArray) {
     aPositionArray = [null, "", aEvent.clientX, aEvent.clientY, true];
   }
   theContextMenu.openPopup(...aPositionArray);
+}
+
+/**
+ * Get the URI of the selected directory.
+ *
+ * @returns The URI of the currently selected directory
+ */
+function getSelectedDirectoryURI() {
+  return document.getElementById("addressbookList").value;
+}
+
+function abToggleSelectedDirStartup() {
+  let selectedDirURI = getSelectedDirectoryURI();
+  if (!selectedDirURI) {
+    return;
+  }
+
+  let isDefault = Services.prefs.getBoolPref(
+    "mail.addr_book.view.startupURIisDefault"
+  );
+  let startupURI = Services.prefs.getCharPref("mail.addr_book.view.startupURI");
+
+  if (isDefault && startupURI == selectedDirURI) {
+    // The current directory has been the default startup view directory;
+    // toggle that off now. So there's no default startup view directory any more.
+    Services.prefs.setBoolPref(
+      "mail.addr_book.view.startupURIisDefault",
+      false
+    );
+  } else {
+    // The current directory will now be the default view
+    // when starting up the main AB window.
+    Services.prefs.setCharPref(
+      "mail.addr_book.view.startupURI",
+      selectedDirURI
+    );
+    Services.prefs.setBoolPref("mail.addr_book.view.startupURIisDefault", true);
+  }
+
+  // Update the checkbox in the menuitem.
+  goUpdateCommand("cmd_abToggleStartupDir");
+}
+
+function ChangeDirectoryByURI(uri = kPersonalAddressbookURI) {
+  SetAbView(uri);
+
+  // Actively de-selecting if there are any pre-existing selections
+  // in the results list.
+  if (gAbView && gAbView.selection && gAbView.getCardFromRow(0)) {
+    gAbView.selection.clearSelection();
+  }
 }

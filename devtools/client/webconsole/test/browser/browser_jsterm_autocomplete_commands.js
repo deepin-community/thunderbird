@@ -5,9 +5,9 @@
 
 // Test that console commands are autocompleted.
 
-const TEST_URI = `data:text/html;charset=utf-8,Test command autocomplete`;
+const TEST_URI = `data:text/html;charset=utf-8,<!DOCTYPE html>Test command autocomplete`;
 
-add_task(async function() {
+add_task(async function () {
   const hud = await openNewTabAndConsole(TEST_URI);
   const { jsterm } = hud;
   const { autocompletePopup } = jsterm;
@@ -18,7 +18,13 @@ add_task(async function() {
   EventUtils.sendString(":");
   await onAutocompleUpdated;
 
-  const expectedCommands = [":block", ":help", ":screenshot", ":unblock"];
+  const expectedCommands = [
+    ":block",
+    ":help",
+    ":history",
+    ":screenshot",
+    ":unblock",
+  ];
   ok(
     hasExactPopupLabels(autocompletePopup, expectedCommands),
     "popup contains expected commands"

@@ -100,6 +100,7 @@ var GlodaCollectionManager = {
       }
     }
 
+    LOG.debug("cacheLookupOne:\nhit null");
     return null;
   },
 
@@ -117,7 +118,7 @@ var GlodaCollectionManager = {
    *     likely want to pass false if you are only updating in-memory
    *     representations rather than performing a new query.
    *
-   * @return [The number that were found, the number that were not found,
+   * @returns [The number that were found, the number that were not found,
    *          a dictionary whose keys are the ids of noun instances that
    *          were not found.]
    */
@@ -478,7 +479,7 @@ var GlodaCollectionManager = {
  *  the query, or existing objects have experienced a change in attributes that
  *  does not affect their ability to be present (but the listener may care about
  *  because it is exposing those attributes).
- * @constructor
+ * @class
  */
 function GlodaCollection(
   aNounDef,
@@ -684,7 +685,8 @@ GlodaCollection.prototype = {
 
 /**
  * Create an LRU cache collection for the given noun with the given size.
- * @constructor
+ *
+ * @class
  */
 function GlodaLRUCacheCollection(aNounDef, aCacheSize) {
   GlodaCollection.call(this, aNounDef, null, null, null);
@@ -706,7 +708,7 @@ function GlodaLRUCacheCollection(aNounDef, aCacheSize) {
  * @augments GlodaCollection
  */
 GlodaLRUCacheCollection.prototype = new GlodaCollection();
-GlodaLRUCacheCollection.prototype.add = function(aItems) {
+GlodaLRUCacheCollection.prototype.add = function (aItems) {
   for (let item of aItems) {
     if (item.id in this._idMap) {
       // DEBUGME so, we're dealing with this, but it shouldn't happen.  need
@@ -760,7 +762,7 @@ GlodaLRUCacheCollection.prototype.add = function(aItems) {
   }
 };
 
-GlodaLRUCacheCollection.prototype.hit = function(aItem) {
+GlodaLRUCacheCollection.prototype.hit = function (aItem) {
   // don't do anything in the 0 or 1 items case, or if we're already
   //  the last item
   if (this._head === this._tail || this._tail === aItem) {
@@ -785,7 +787,7 @@ GlodaLRUCacheCollection.prototype.hit = function(aItem) {
   return aItem;
 };
 
-GlodaLRUCacheCollection.prototype.deleted = function(aItem) {
+GlodaLRUCacheCollection.prototype.deleted = function (aItem) {
   // unlink the item
   if (aItem._lruPrev !== null) {
     aItem._lruPrev._lruNext = aItem._lruNext;
@@ -815,7 +817,7 @@ GlodaLRUCacheCollection.prototype.deleted = function(aItem) {
  * If any of the cached items are dirty, commit them, and make them no longer
  *  dirty.
  */
-GlodaLRUCacheCollection.prototype.commitDirty = function() {
+GlodaLRUCacheCollection.prototype.commitDirty = function () {
   // we can only do this if there is an update method available...
   if (!this._nounDef.objUpdate) {
     return;

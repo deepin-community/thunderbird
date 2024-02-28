@@ -5,7 +5,7 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 with Files("**"):
-    BUG_COMPONENT = ("Core", "DOM: Device Interfaces")
+    BUG_COMPONENT = ("Core", "Networking")
 
 XPCSHELL_TESTS_MANIFESTS += ["test/unit/xpcshell.ini"]
 
@@ -16,7 +16,7 @@ XPIDL_SOURCES += [
 XPIDL_MODULE = "captivedetect"
 
 EXTRA_JS_MODULES += [
-    "CaptiveDetect.jsm",
+    "CaptiveDetect.sys.mjs",
 ]
 
 XPCOM_MANIFESTS += [

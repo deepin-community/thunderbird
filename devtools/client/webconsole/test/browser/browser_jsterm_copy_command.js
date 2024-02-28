@@ -16,7 +16,7 @@ const text =
   new Date();
 
 const id = "select-me";
-const TEST_URI = `data:text/html;charset=utf-8,
+const TEST_URI = `data:text/html;charset=utf-8,<!DOCTYPE html>
 <body>
   <div>
     <h1>Testing copy command</h1>
@@ -26,7 +26,7 @@ const TEST_URI = `data:text/html;charset=utf-8,
   <div><p></p></div>
 </body>`;
 
-add_task(async function() {
+add_task(async function () {
   const hud = await openNewTabAndConsole(TEST_URI);
   const random = Math.random();
   const string = "Text: " + random;
@@ -39,18 +39,32 @@ add_task(async function() {
   const outerHTML = await SpecialPowers.spawn(
     gBrowser.selectedBrowser,
     [id],
-    function(elementId) {
+    function (elementId) {
       return content.document.getElementById(elementId).outerHTML;
     }
   );
   await testCopy(hud, `$("#${id}")`, outerHTML);
 });
 
+add_task(async function () {
+  const hud = await openNewTabAndConsole(TEST_URI);
+  await executeAndWaitForErrorMessage(
+    hud,
+    "var a = {}; a.b = a; copy(a);",
+    "`copy` command failed, object can’t be stringified: TypeError: cyclic object value"
+  );
+});
+
 function testCopy(hud, stringToCopy, expectedResult) {
-  return waitForClipboardPromise(() => {
+  return waitForClipboardPromise(async () => {
     info(`Attempting to copy: "${stringToCopy}"`);
     const command = `copy(${stringToCopy})`;
     info(`Executing command: "${command}"`);
-    execute(hud, command);
+    await executeAndWaitForMessageByType(
+      hud,
+      command,
+      "String was copied to clipboard",
+      ".console-api"
+    );
   }, expectedResult);
 }

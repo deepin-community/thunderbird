@@ -3,7 +3,10 @@
  * file, You can obtain one at <http://mozilla.org/MPL/2.0/>. */
 
 // Test hovering in a selected frame
-add_task(async function() {
+
+"use strict";
+
+add_task(async function () {
   const dbg = await initDebugger("doc-script-switching.html");
 
   const found = findElement(dbg, "callStackBody");
@@ -20,7 +23,7 @@ add_task(async function() {
   info("Preview should still work after selecting different locations");
   const frame = dbg.selectors.getVisibleSelectedFrame();
   const inScopeLines = dbg.selectors.getInScopeLines(frame.location);
-  await selectSource(dbg, "switching-01");
+  await selectSource(dbg, "script-switching-01.js");
   await assertFunctionPreview(dbg, 8, 4, "secondCall()");
   is(
     dbg.selectors.getInScopeLines(frame.location),
@@ -34,10 +37,7 @@ function waitForSelectedFrame(dbg, displayName) {
   return waitForState(dbg, state => {
     const frame = getVisibleSelectedFrame();
 
-    return (
-      frame?.displayName == displayName &&
-      getInScopeLines(frame.location)
-    );
+    return frame?.displayName == displayName && getInScopeLines(frame.location);
   });
 }
 

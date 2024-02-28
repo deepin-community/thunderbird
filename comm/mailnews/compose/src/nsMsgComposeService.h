@@ -37,19 +37,18 @@ class nsMsgComposeService : public nsIMsgComposeService,
   virtual ~nsMsgComposeService();
   bool mLogComposePerformance;
 
-  nsresult LoadDraftOrTemplate(const nsACString& aMsgURI,
-                               nsMimeOutputType aOutType,
-                               nsIMsgIdentity* aIdentity,
-                               const char* aOriginalMsgURI,
-                               nsIMsgDBHdr* aOrigMsgHdr, bool aForwardInline,
-                               bool overrideComposeFormat,
-                               nsIMsgWindow* aMsgWindow);
+  nsresult LoadDraftOrTemplate(
+      const nsACString& aMsgURI, nsMimeOutputType aOutType,
+      nsIMsgIdentity* aIdentity, const nsACString& aOriginalMsgURI,
+      nsIMsgDBHdr* aOrigMsgHdr, bool aForwardInline, bool overrideComposeFormat,
+      nsIMsgWindow* aMsgWindow, bool autodetectCharset);
 
   nsresult RunMessageThroughMimeDraft(
       const nsACString& aMsgURI, nsMimeOutputType aOutType,
-      nsIMsgIdentity* aIdentity, const char* aOriginalMsgURI,
+      nsIMsgIdentity* aIdentity, const nsACString& aOriginalMsgURI,
       nsIMsgDBHdr* aOrigMsgHdr, bool aForwardInline, const nsAString& forwardTo,
-      bool overrideComposeFormat, nsIMsgWindow* aMsgWindow);
+      bool overrideComposeFormat, nsIMsgWindow* aMsgWindow,
+      bool autodetectCharset);
 
   // hash table mapping dom windows to nsIMsgCompose objects
   nsInterfaceHashtable<nsISupportsHashKey, nsIWeakReference>
@@ -59,7 +58,7 @@ class nsMsgComposeService : public nsIMsgComposeService,
   // selected text in the original message window so that it can be quoted
   // instead of the entire message.
   nsresult GetOrigWindowSelection(MSG_ComposeType type,
-                                  nsIMsgWindow* aMsgWindow,
+                                  mozilla::dom::Selection* selection,
                                   nsACString& aSelHTML);
 
 #ifdef MSGCOMP_TRACE_PERFORMANCE

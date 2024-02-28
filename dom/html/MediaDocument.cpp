@@ -41,11 +41,6 @@ MediaDocumentStreamListener::~MediaDocumentStreamListener() {
 NS_IMPL_ISUPPORTS(MediaDocumentStreamListener, nsIRequestObserver,
                   nsIStreamListener, nsIThreadRetargetableStreamListener)
 
-void MediaDocumentStreamListener::SetStreamListener(
-    nsIStreamListener* aListener) {
-  mNextStream = aListener;
-}
-
 NS_IMETHODIMP
 MediaDocumentStreamListener::OnStartRequest(nsIRequest* request) {
   NS_ENSURE_TRUE(mDocument, NS_ERROR_FAILURE);
@@ -112,7 +107,9 @@ const char* const MediaDocument::sFormatNames[4] = {
 };
 
 MediaDocument::MediaDocument()
-    : nsHTMLDocument(), mDidInitialDocumentSetup(false) {}
+    : nsHTMLDocument(), mDidInitialDocumentSetup(false) {
+  mCompatMode = eCompatibility_FullStandards;
+}
 MediaDocument::~MediaDocument() = default;
 
 nsresult MediaDocument::Init() {
@@ -124,14 +121,11 @@ nsresult MediaDocument::Init() {
   return NS_OK;
 }
 
-nsresult MediaDocument::StartDocumentLoad(const char* aCommand,
-                                          nsIChannel* aChannel,
-                                          nsILoadGroup* aLoadGroup,
-                                          nsISupports* aContainer,
-                                          nsIStreamListener** aDocListener,
-                                          bool aReset, nsIContentSink* aSink) {
-  nsresult rv = Document::StartDocumentLoad(
-      aCommand, aChannel, aLoadGroup, aContainer, aDocListener, aReset, aSink);
+nsresult MediaDocument::StartDocumentLoad(
+    const char* aCommand, nsIChannel* aChannel, nsILoadGroup* aLoadGroup,
+    nsISupports* aContainer, nsIStreamListener** aDocListener, bool aReset) {
+  nsresult rv = Document::StartDocumentLoad(aCommand, aChannel, aLoadGroup,
+                                            aContainer, aDocListener, aReset);
   if (NS_FAILED(rv)) {
     return rv;
   }

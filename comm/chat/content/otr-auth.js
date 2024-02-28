@@ -2,18 +2,24 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-const { Services } = ChromeUtils.import("resource:///modules/imServices.jsm");
-const { XPCOMUtils, l10nHelper } = ChromeUtils.import(
-  "resource:///modules/imXPCOMUtils.jsm"
+const { XPCOMUtils } = ChromeUtils.importESModule(
+  "resource://gre/modules/XPCOMUtils.sys.mjs"
 );
-const { OTR } = ChromeUtils.import("resource:///modules/OTR.jsm");
+const { l10nHelper } = ChromeUtils.importESModule(
+  "resource:///modules/imXPCOMUtils.sys.mjs"
+);
+const { OTR } = ChromeUtils.importESModule("resource:///modules/OTR.sys.mjs");
+
+window.addEventListener("DOMContentLoaded", event => {
+  otrAuth.onload();
+});
 
 var [mode, uiConv, contactInfo] = window.arguments;
 
 function showSection(selected, hideMenu) {
   document.getElementById("how").hidden = !!hideMenu;
   ["questionAndAnswer", "sharedSecret", "manualVerification", "ask"].forEach(
-    function(key) {
+    function (key) {
       document.getElementById(key).hidden = key !== selected;
     }
   );
@@ -82,10 +88,6 @@ var otrAuth = {
       return this.cancel();
     });
 
-    document.addEventListener("dialoghelp", () => {
-      return this.help();
-    });
-
     let context, theirs;
     switch (mode) {
       case "start":
@@ -109,9 +111,8 @@ var otrAuth = {
         let receivedQuestionLabel = document.getElementById(
           "receivedQuestionLabel"
         );
-        let receivedQuestionDisplay = document.getElementById(
-          "receivedQuestion"
-        );
+        let receivedQuestionDisplay =
+          document.getElementById("receivedQuestion");
         let responseLabel = document.getElementById("responseLabel");
         if (contactInfo.question) {
           receivedQuestionLabel.hidden = false;
@@ -176,10 +177,7 @@ var otrAuth = {
   },
 
   oninput(e) {
-    document
-      .getElementById("otrAuthDialog")
-      .querySelector("dialog")
-      .getButton("accept").disabled = !e.value;
+    document.querySelector("dialog").getButton("accept").disabled = !e.value;
   },
 
   how() {
@@ -196,14 +194,5 @@ var otrAuth = {
         break;
     }
     showSection(how);
-  },
-
-  async help() {
-    let [helpTitle, helpText] = await document.l10n.formatValues([
-      { id: "auth-help-title" },
-      { id: "auth-help" },
-    ]);
-
-    Services.prompt.alert(window, helpTitle, helpText);
   },
 };

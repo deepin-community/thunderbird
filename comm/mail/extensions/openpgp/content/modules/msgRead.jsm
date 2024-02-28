@@ -12,14 +12,15 @@ var EXPORTED_SYMBOLS = ["EnigmailMsgRead"];
  * Message-reading related functions
  */
 
-const { XPCOMUtils } = ChromeUtils.import(
-  "resource://gre/modules/XPCOMUtils.jsm"
+const { XPCOMUtils } = ChromeUtils.importESModule(
+  "resource://gre/modules/XPCOMUtils.sys.mjs"
 );
 
-XPCOMUtils.defineLazyModuleGetters(this, {
+const lazy = {};
+
+XPCOMUtils.defineLazyModuleGetters(lazy, {
   EnigmailFuncs: "chrome://openpgp/content/modules/funcs.jsm",
   EnigmailKeyRing: "chrome://openpgp/content/modules/keyRing.jsm",
-  Services: "resource://gre/modules/Services.jsm",
 });
 
 var EnigmailMsgRead = {
@@ -48,10 +49,10 @@ var EnigmailMsgRead = {
    *
    * @param uriSpec: String - URI of the desired message
    *
-   * @return Object: nsIURL or nsIMsgMailNewsUrl object
+   * @returns Object: nsIURL or nsIMsgMailNewsUrl object
    */
   getUrlFromUriSpec(uriSpec) {
-    return EnigmailFuncs.getUrlFromUriSpec(uriSpec);
+    return lazy.EnigmailFuncs.getUrlFromUriSpec(uriSpec);
   },
 
   /**
@@ -228,10 +229,10 @@ var EnigmailMsgRead = {
   /**
    * Match the key to the sender's from address
    *
-   * @param {String}  keyId:    signing key ID
-   * @param {String}  fromAddr: sender's email address
+   * @param {string}  keyId:    signing key ID
+   * @param {string}  fromAddr: sender's email address
    *
-   * @return Promise<String>: matching email address
+   * @returns Promise<String>: matching email address
    */
   matchUidToSender(keyId, fromAddr) {
     if (!fromAddr || !keyId) {
@@ -239,12 +240,12 @@ var EnigmailMsgRead = {
     }
 
     try {
-      fromAddr = EnigmailFuncs.stripEmail(fromAddr).toLowerCase();
+      fromAddr = lazy.EnigmailFuncs.stripEmail(fromAddr).toLowerCase();
     } catch (ex) {
       console.debug(ex);
     }
 
-    let keyObj = EnigmailKeyRing.getKeyById(keyId);
+    let keyObj = lazy.EnigmailKeyRing.getKeyById(keyId);
     if (!keyObj) {
       return null;
     }
@@ -255,20 +256,12 @@ var EnigmailMsgRead = {
       for (let i = 0; i < userIdList.length; i++) {
         if (
           fromAddr ==
-          EnigmailFuncs.stripEmail(userIdList[i].userId).toLowerCase()
+          lazy.EnigmailFuncs.stripEmail(userIdList[i].userId).toLowerCase()
         ) {
-          let result = EnigmailFuncs.stripEmail(userIdList[i].userId);
+          let result = lazy.EnigmailFuncs.stripEmail(userIdList[i].userId);
           return result;
         }
       }
-
-      // // uid not found, try Autocrypt keystore
-      // let acList = await EnigmailAutocrypt.getOpenPGPKeyForEmail([fromAddr]);
-      // for (let i = 0; i < acList.length; i++) {
-      //   if (acList[i].fpr == keyObj.fpr) {
-      //     return fromAddr;
-      //   }
-      // }
     } catch (ex) {
       console.debug(ex);
     }

@@ -8,18 +8,21 @@ SOURCES += [
     "nsNewsDownloader.cpp",
     "nsNewsFolder.cpp",
     "nsNewsUtils.cpp",
-    "nsNNTPArticleList.cpp",
-    "nsNntpIncomingServer.cpp",
-    "nsNntpMockChannel.cpp",
-    "nsNNTPNewsgroupList.cpp",
-    "nsNNTPNewsgroupPost.cpp",
-    "nsNNTPProtocol.cpp",
-    "nsNntpService.cpp",
     "nsNntpUrl.cpp",
 ]
 
 EXTRA_JS_MODULES += [
     "NewsAutoCompleteSearch.jsm",
+    "NewsDownloader.sys.mjs",
+    "NntpChannel.jsm",
+    "NntpClient.jsm",
+    "NntpIncomingServer.jsm",
+    "NntpMessageService.jsm",
+    "NntpNewsGroup.jsm",
+    "NntpProtocolHandler.jsm",
+    "NntpProtocolInfo.jsm",
+    "NntpService.jsm",
+    "NntpUtils.jsm",
 ]
 
 XPCOM_MANIFESTS += [

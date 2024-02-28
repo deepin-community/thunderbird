@@ -33,11 +33,9 @@ interface nsICacheStorage;
 [scriptable, uuid(aba44b3d-7a0f-4987-8794-96d2de66d966)]
 interface nsIImapService : nsISupports
 {
-  // You can pass in null for the url listener and the url if you don't require either.....
-  void selectFolder(in nsIMsgFolder aImapMailFolder,
-                    in nsIUrlListener aUrlListener,
-                    in nsIMsgWindow   aMsgWindow,
-                    out nsIURI aURL);
+  nsIURI selectFolder(in nsIMsgFolder aImapMailFolder,
+                      in nsIUrlListener aUrlListener,
+                      in nsIMsgWindow   aMsgWindow);
 
   /**
    * Select the folder on the imap server without doing a sync of flags or
@@ -67,7 +65,6 @@ interface nsIImapService : nsISupports
                     in nsISupports aConsumer,
                     in ACString aMessageIdentifierList,
                     in boolean convertDataToText,
-                    in ACString additionalHeader,
                     out nsIURI aOutURL);
 
   void noop(in nsIMsgFolder aImapMailFolder,
@@ -91,13 +88,10 @@ interface nsIImapService : nsISupports
    * @param aImapMailFolder     the folder to expunge
    * @param aUrlListener        url listener, can be null
    * @param aMsgWindow          msg window url is running in, can be null
-   *
-   * @returns the url created to run the expunge.
    */
   void expunge(in nsIMsgFolder aImapMailFolder,
                in nsIUrlListener aUrlListener,
-               in nsIMsgWindow aMsgWindow,
-               out nsIURI aURL);
+               in nsIMsgWindow aMsgWindow);
 
   /**
    * Issue a STATUS on the target folder.
@@ -134,19 +128,16 @@ interface nsIImapService : nsISupports
                       in boolean aMessageIdsAreUID);
 
   void deleteAllMessages(in nsIMsgFolder aImapMailFolder,
-                         in nsIUrlListener aUrlListener,
-                         out nsIURI aURL);
+                         in nsIUrlListener aUrlListener);
 
   void addMessageFlags(in nsIMsgFolder aImapMailFolder,
                        in nsIUrlListener aUrlListener,
-                       out nsIURI aURL,
                        in ACString aMessageIdentifierList,
                        in imapMessageFlagsType aFlags,
                        in boolean aMessageIdsAreUID);
 
   void subtractMessageFlags(in nsIMsgFolder aImapMailFolder,
                             in nsIUrlListener aUrlListener,
-                            out nsIURI aURL,
                             in ACString aMessageIdentifierList,
                             in imapMessageFlagsType aFlags,
                             in boolean aMessageIdsAreUID);
@@ -160,18 +151,15 @@ interface nsIImapService : nsISupports
 
   void discoverAllFolders(in nsIMsgFolder aImapMailFolder,
                           in nsIUrlListener aUrlListener,
-                          in nsIMsgWindow aMsgWindow,
-                          out nsIURI aURL);
+                          in nsIMsgWindow aMsgWindow);
 
   void discoverAllAndSubscribedFolders(in nsIMsgFolder aImapMailFolder,
                                        in nsIUrlListener aUrlListener,
-                                       in nsIMsgWindow aMsgWindow,
-                                       out nsIURI aURL);
+                                       in nsIMsgWindow aMsgWindow);
 
   void discoverChildren(in nsIMsgFolder aImapMailFolder,
                         in nsIUrlListener aUrlListener,
-                        in ACString folderPath,
-                        out nsIURI aURL);
+                        in ACString folderPath);
 
   void onlineMessageCopy(in nsIMsgFolder aSrcFolder,
                          in ACString aMessageIds,
@@ -190,32 +178,31 @@ interface nsIImapService : nsISupports
                              in boolean idsAreUids,
                              in boolean aInSelectedState,
                              in nsIUrlListener aUrlListener,
-                             out nsIURI aURL,
                              in nsISupports aCopyState,
                              in nsIMsgWindow aMsgWindow);
 
   void downloadMessagesForOffline(in ACString aMessageIds, in nsIMsgFolder aSrcFolder,
                       in nsIUrlListener aListener, in nsIMsgWindow   aMsgWindow);
 
-  nsIURI moveFolder(in nsIMsgFolder aSrcFolder,
-                    in nsIMsgFolder aDstFolder,
-                    in nsIUrlListener aUrlListener,
-                    in nsIMsgWindow msgWindow);
+  void moveFolder(in nsIMsgFolder aSrcFolder,
+                  in nsIMsgFolder aDstFolder,
+                  in nsIUrlListener aUrlListener,
+                  in nsIMsgWindow msgWindow);
 
-  nsIURI renameLeaf(in nsIMsgFolder aSrcFolder,
-                    in AString aLeafName,
-                    in nsIUrlListener aUrlListener,
-                    in nsIMsgWindow msgWindow);
+  void renameLeaf(in nsIMsgFolder aSrcFolder,
+                  in AString aLeafName,
+                  in nsIUrlListener aUrlListener,
+                  in nsIMsgWindow msgWindow);
 
-  nsIURI deleteFolder(in nsIMsgFolder aFolder,
-                      in nsIUrlListener aUrlListener,
-                      in nsIMsgWindow aMsgWindow);
+  void deleteFolder(in nsIMsgFolder aFolder,
+                    in nsIUrlListener aUrlListener,
+                    in nsIMsgWindow aMsgWindow);
 
   nsIURI createFolder(in nsIMsgFolder aParentFolder,
                       in AString aLeafName,
                       in nsIUrlListener aUrlListener);
 
-  nsIURI listFolder(in nsIMsgFolder aMailFolder,
+  void listFolder(in nsIMsgFolder aMailFolder,
                     in nsIUrlListener aUrlListener);
 
   nsIURI subscribeFolder(in nsIMsgFolder aMailFolder,
@@ -230,10 +217,10 @@ interface nsIImapService : nsISupports
   // not subscribed to, in which case it will subscribe to the folder.
   // otherwise, it will try to create the folder. It will try to do this
   // with one url.
-  nsIURI ensureFolderExists(in nsIMsgFolder aParentFolder,
-                            in AString aLeafName,
-                            in nsIMsgWindow aMsgWindow,
-                            in nsIUrlListener aUrlListener);
+  void ensureFolderExists(in nsIMsgFolder aParentFolder,
+                          in AString aLeafName,
+                          in nsIMsgWindow aMsgWindow,
+                          in nsIUrlListener aUrlListener);
 
 
   nsIURI getFolderAdminUrl(in nsIMsgFolder aMailFolder,

@@ -3,11 +3,13 @@
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
+exports.UnknownDeviceError = exports.EncryptionAlgorithm = exports.ENCRYPTION_CLASSES = exports.DecryptionError = exports.DecryptionAlgorithm = exports.DECRYPTION_CLASSES = void 0;
 exports.registerAlgorithm = registerAlgorithm;
-exports.UnknownDeviceError = exports.DecryptionError = exports.DecryptionAlgorithm = exports.EncryptionAlgorithm = exports.DECRYPTION_CLASSES = exports.ENCRYPTION_CLASSES = void 0;
-
+function _defineProperty(obj, key, value) { key = _toPropertyKey(key); if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
+function _toPropertyKey(arg) { var key = _toPrimitive(arg, "string"); return typeof key === "symbol" ? key : String(key); }
+function _toPrimitive(input, hint) { if (typeof input !== "object" || input === null) return input; var prim = input[Symbol.toPrimitive]; if (prim !== undefined) { var res = prim.call(input, hint || "default"); if (typeof res !== "object") return res; throw new TypeError("@@toPrimitive must return a primitive value."); } return (hint === "string" ? String : Number)(input); }
 /*
-Copyright 2016 OpenMarket Ltd
+Copyright 2016 - 2021 The Matrix.org Foundation C.I.C.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -24,120 +26,93 @@ limitations under the License.
 
 /**
  * Internal module. Defines the base classes of the encryption implementations
- *
- * @module
  */
 
 /**
- * map of registered encryption algorithm classes. A map from string to {@link
- * module:crypto/algorithms/base.EncryptionAlgorithm|EncryptionAlgorithm} class
- *
- * @type {Object.<string, function(new: module:crypto/algorithms/base.EncryptionAlgorithm)>}
+ * Map of registered encryption algorithm classes. A map from string to {@link EncryptionAlgorithm} class
  */
-const ENCRYPTION_CLASSES = {};
-/**
- * map of registered encryption algorithm classes. Map from string to {@link
- * module:crypto/algorithms/base.DecryptionAlgorithm|DecryptionAlgorithm} class
- *
- * @type {Object.<string, function(new: module:crypto/algorithms/base.DecryptionAlgorithm)>}
- */
-
+const ENCRYPTION_CLASSES = new Map();
 exports.ENCRYPTION_CLASSES = ENCRYPTION_CLASSES;
-const DECRYPTION_CLASSES = {};
+/**
+ * map of registered encryption algorithm classes. Map from string to {@link DecryptionAlgorithm} class
+ */
+const DECRYPTION_CLASSES = new Map();
+exports.DECRYPTION_CLASSES = DECRYPTION_CLASSES;
 /**
  * base type for encryption implementations
- *
- * @alias module:crypto/algorithms/base.EncryptionAlgorithm
- *
- * @param {object} params parameters
- * @param {string} params.userId  The UserID for the local user
- * @param {string} params.deviceId The identifier for this device.
- * @param {module:crypto} params.crypto crypto core
- * @param {module:crypto/OlmDevice} params.olmDevice olm.js wrapper
- * @param {module:base-apis~MatrixBaseApis} baseApis base matrix api interface
- * @param {string} params.roomId  The ID of the room we will be sending to
- * @param {object} params.config  The body of the m.room.encryption event
  */
-
-exports.DECRYPTION_CLASSES = DECRYPTION_CLASSES;
-
 class EncryptionAlgorithm {
+  /**
+   * @param params - parameters
+   */
   constructor(params) {
-    this._userId = params.userId;
-    this._deviceId = params.deviceId;
-    this._crypto = params.crypto;
-    this._olmDevice = params.olmDevice;
-    this._baseApis = params.baseApis;
-    this._roomId = params.roomId;
+    _defineProperty(this, "userId", void 0);
+    _defineProperty(this, "deviceId", void 0);
+    _defineProperty(this, "crypto", void 0);
+    _defineProperty(this, "olmDevice", void 0);
+    _defineProperty(this, "baseApis", void 0);
+    _defineProperty(this, "roomId", void 0);
+    this.userId = params.userId;
+    this.deviceId = params.deviceId;
+    this.crypto = params.crypto;
+    this.olmDevice = params.olmDevice;
+    this.baseApis = params.baseApis;
+    this.roomId = params.roomId;
   }
+
   /**
    * Perform any background tasks that can be done before a message is ready to
    * send, in order to speed up sending of the message.
    *
-   * @param {module:models/room} room the room the event is in
+   * @param room - the room the event is in
    */
-
-
   prepareToEncrypt(room) {}
+
   /**
    * Encrypt a message event
    *
-   * @method module:crypto/algorithms/base.EncryptionAlgorithm.encryptMessage
-   * @abstract
+   * @public
    *
-   * @param {module:models/room} room
-   * @param {string} eventType
-   * @param {object} plaintext event content
+   * @param content - event content
    *
-   * @return {Promise} Promise which resolves to the new event body
+   * @returns Promise which resolves to the new event body
    */
 
   /**
    * Called when the membership of a member of the room changes.
    *
-   * @param {module:models/event.MatrixEvent} event  event causing the change
-   * @param {module:models/room-member} member  user whose membership changed
-   * @param {string=} oldMembership  previous membership
+   * @param event -  event causing the change
+   * @param member -  user whose membership changed
+   * @param oldMembership -  previous membership
    * @public
    */
-
-
   onRoomMembership(event, member, oldMembership) {}
-
 }
+
 /**
  * base type for decryption implementations
- *
- * @alias module:crypto/algorithms/base.DecryptionAlgorithm
- * @param {object} params parameters
- * @param {string} params.userId  The UserID for the local user
- * @param {module:crypto} params.crypto crypto core
- * @param {module:crypto/OlmDevice} params.olmDevice olm.js wrapper
- * @param {module:base-apis~MatrixBaseApis} baseApis base matrix api interface
- * @param {string=} params.roomId The ID of the room we will be receiving
- *     from. Null for to-device events.
  */
-
-
 exports.EncryptionAlgorithm = EncryptionAlgorithm;
-
 class DecryptionAlgorithm {
   constructor(params) {
-    this._userId = params.userId;
-    this._crypto = params.crypto;
-    this._olmDevice = params.olmDevice;
-    this._baseApis = params.baseApis;
-    this._roomId = params.roomId;
+    _defineProperty(this, "userId", void 0);
+    _defineProperty(this, "crypto", void 0);
+    _defineProperty(this, "olmDevice", void 0);
+    _defineProperty(this, "baseApis", void 0);
+    _defineProperty(this, "roomId", void 0);
+    this.userId = params.userId;
+    this.crypto = params.crypto;
+    this.olmDevice = params.olmDevice;
+    this.baseApis = params.baseApis;
+    this.roomId = params.roomId;
   }
+
   /**
    * Decrypt an event
    *
-   * @method module:crypto/algorithms/base.DecryptionAlgorithm#decryptEvent
-   * @abstract
+   * @param event - undecrypted event
    *
-   * @param {MatrixEvent} event undecrypted event
-   *
-   * @return {Promise<module:crypto~EventDecryptionResult>} promise which
+   * @returns promise which
    * resolves once we have finished decrypting. Rejects with an
    * `algorithms.DecryptionError` if there is a problem decrypting the event.
    */
@@ -145,131 +120,107 @@ class DecryptionAlgorithm {
   /**
    * Handle a key event
    *
-   * @method module:crypto/algorithms/base.DecryptionAlgorithm#onRoomKeyEvent
-   *
-   * @param {module:models/event.MatrixEvent} params event key event
+   * @param params - event key event
    */
-
-
-  onRoomKeyEvent(params) {// ignore by default
+  async onRoomKeyEvent(params) {
+    // ignore by default
   }
+
   /**
    * Import a room key
    *
-   * @param {module:crypto/OlmDevice.MegolmSessionData} session
+   * @param opts - object
    */
-
-
-  importRoomKey(session) {// ignore by default
+  async importRoomKey(session, opts) {
+    // ignore by default
   }
+
   /**
    * Determine if we have the keys necessary to respond to a room key request
    *
-   * @param {module:crypto~IncomingRoomKeyRequest} keyRequest
-   * @return {Promise<boolean>} true if we have the keys and could (theoretically) share
+   * @returns true if we have the keys and could (theoretically) share
    *  them; else false.
    */
-
-
   hasKeysForKeyRequest(keyRequest) {
     return Promise.resolve(false);
   }
+
   /**
    * Send the response to a room key request
    *
-   * @param {module:crypto~IncomingRoomKeyRequest} keyRequest
    */
-
-
   shareKeysWithDevice(keyRequest) {
     throw new Error("shareKeysWithDevice not supported for this DecryptionAlgorithm");
   }
+
   /**
    * Retry decrypting all the events from a sender that haven't been
    * decrypted yet.
    *
-   * @param {string} senderKey the sender's key
+   * @param senderKey - the sender's key
    */
-
-
-  async retryDecryptionFromSender(senderKey) {// ignore by default
+  async retryDecryptionFromSender(senderKey) {
+    // ignore by default
+    return false;
   }
-
 }
+
 /**
  * Exception thrown when decryption fails
  *
- * @alias module:crypto/algorithms/base.DecryptionError
- * @param {string} msg user-visible message describing the problem
+ * @param msg - user-visible message describing the problem
  *
- * @param {Object=} details key/value pairs reported in the logs but not shown
+ * @param details - key/value pairs reported in the logs but not shown
  *   to the user.
- *
- * @extends Error
  */
-
-
 exports.DecryptionAlgorithm = DecryptionAlgorithm;
-
 class DecryptionError extends Error {
   constructor(code, msg, details) {
     super(msg);
     this.code = code;
-    this.name = 'DecryptionError';
-    this.detailedString = _detailedStringForDecryptionError(this, details);
+    _defineProperty(this, "detailedString", void 0);
+    this.code = code;
+    this.name = "DecryptionError";
+    this.detailedString = detailedStringForDecryptionError(this, details);
   }
-
 }
-
 exports.DecryptionError = DecryptionError;
-
-function _detailedStringForDecryptionError(err, details) {
-  let result = err.name + '[msg: ' + err.message;
-
+function detailedStringForDecryptionError(err, details) {
+  let result = err.name + "[msg: " + err.message;
   if (details) {
-    result += ', ' + Object.keys(details).map(k => k + ': ' + details[k]).join(', ');
+    result += ", " + Object.keys(details).map(k => k + ": " + details[k]).join(", ");
   }
-
-  result += ']';
+  result += "]";
   return result;
 }
-/**
- * Exception thrown specifically when we want to warn the user to consider
- * the security of their conversation before continuing
- *
- * @param {string} msg message describing the problem
- * @param {Object} devices userId -> {deviceId -> object}
- *      set of unknown devices per user we're warning about
- * @extends Error
- */
-
-
 class UnknownDeviceError extends Error {
-  constructor(msg, devices) {
+  /**
+   * Exception thrown specifically when we want to warn the user to consider
+   * the security of their conversation before continuing
+   *
+   * @param msg - message describing the problem
+   * @param devices - set of unknown devices per user we're warning about
+   */
+  constructor(msg, devices, event) {
     super(msg);
+    this.devices = devices;
+    this.event = event;
     this.name = "UnknownDeviceError";
     this.devices = devices;
   }
-
 }
+
 /**
  * Registers an encryption/decryption class for a particular algorithm
  *
- * @param {string} algorithm algorithm tag to register for
+ * @param algorithm - algorithm tag to register for
  *
- * @param {class} encryptor {@link
- *     module:crypto/algorithms/base.EncryptionAlgorithm|EncryptionAlgorithm}
- *     implementation
+ * @param encryptor - {@link EncryptionAlgorithm} implementation
  *
- * @param {class} decryptor {@link
- *     module:crypto/algorithms/base.DecryptionAlgorithm|DecryptionAlgorithm}
- *     implementation
+ * @param decryptor - {@link DecryptionAlgorithm} implementation
  */
-
-
 exports.UnknownDeviceError = UnknownDeviceError;
-
 function registerAlgorithm(algorithm, encryptor, decryptor) {
-  ENCRYPTION_CLASSES[algorithm] = encryptor;
-  DECRYPTION_CLASSES[algorithm] = decryptor;
+  ENCRYPTION_CLASSES.set(algorithm, encryptor);
+  DECRYPTION_CLASSES.set(algorithm, decryptor);
 }

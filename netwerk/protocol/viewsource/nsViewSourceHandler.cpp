@@ -32,18 +32,6 @@ nsViewSourceHandler::GetScheme(nsACString& result) {
 }
 
 NS_IMETHODIMP
-nsViewSourceHandler::GetDefaultPort(int32_t* result) {
-  *result = -1;
-  return NS_OK;
-}
-
-NS_IMETHODIMP
-nsViewSourceHandler::GetProtocolFlags(uint32_t* result) {
-  *result = DEFAULT_FLAGS;
-  return NS_OK;
-}
-
-NS_IMETHODIMP
 nsViewSourceHandler::GetFlagsForURI(nsIURI* aURI, uint32_t* result) {
   *result = DEFAULT_FLAGS;
   nsCOMPtr<nsINestedURI> nestedURI(do_QueryInterface(aURI));
@@ -91,7 +79,7 @@ nsresult nsViewSourceHandler::CreateNewURI(const nsACString& aSpec,
 
   nsCOMPtr<nsIURI> uri;
   rv = NS_MutateURI(new nsSimpleNestedURI::Mutator())
-           .Apply(NS_MutatorMethod(&nsINestedURIMutator::Init, innerURI))
+           .Apply(&nsINestedURIMutator::Init, innerURI)
            .SetSpec(asciiSpec)
            .Finalize(uri);
   if (NS_FAILED(rv)) {

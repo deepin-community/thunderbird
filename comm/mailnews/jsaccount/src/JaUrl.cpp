@@ -9,7 +9,6 @@
 #include "nsIFile.h"
 #include "nsIMessenger.h"
 #include "nsIMsgHdr.h"
-#include "nsMsgBaseCID.h"
 #include "nsMsgUtils.h"
 
 // This file contains an implementation of mailnews URLs in JsAccount.
@@ -86,12 +85,12 @@ NS_IMETHODIMP JaBaseCppUrl::SetCanonicalLineEnding(bool aCanonicalLineEnding) {
   return NS_OK;
 }
 
-NS_IMETHODIMP JaBaseCppUrl::GetOriginalSpec(char** aOriginalSpec) {
-  if (!aOriginalSpec || mOriginalSpec.IsEmpty()) return NS_ERROR_NULL_POINTER;
-  *aOriginalSpec = ToNewCString(mOriginalSpec);
+NS_IMETHODIMP JaBaseCppUrl::GetOriginalSpec(nsACString& aOriginalSpec) {
+  if (mOriginalSpec.IsEmpty()) return NS_ERROR_NULL_POINTER;
+  aOriginalSpec = mOriginalSpec;
   return NS_OK;
 }
-NS_IMETHODIMP JaBaseCppUrl::SetOriginalSpec(const char* aOriginalSpec) {
+NS_IMETHODIMP JaBaseCppUrl::SetOriginalSpec(const nsACString& aOriginalSpec) {
   mOriginalSpec = aOriginalSpec;
   return NS_OK;
 }
@@ -122,17 +121,13 @@ NS_IMETHODIMP JaBaseCppUrl::GetMessageHeader(nsIMsgDBHdr** aMessageHeader) {
   NS_ENSURE_TRUE(!mUri.IsEmpty(), NS_ERROR_NOT_INITIALIZED);
   nsresult rv;
   nsCOMPtr<nsIMessenger> messenger(
-      do_CreateInstance(NS_MESSENGER_CONTRACTID, &rv));
+      do_CreateInstance("@mozilla.org/messenger;1", &rv));
   NS_ENSURE_SUCCESS(rv, rv);
   nsCOMPtr<nsIMsgDBHdr> msgHdr;
   rv = messenger->MsgHdrFromURI(mUri, getter_AddRefs(msgHdr));
   NS_ENSURE_SUCCESS(rv, rv);
   msgHdr.forget(aMessageHeader);
   return NS_OK;
-}
-
-NS_IMETHODIMP JaBaseCppUrl::SetMessageHeader(nsIMsgDBHdr* aMsgHdr) {
-  return NS_ERROR_NOT_IMPLEMENTED;
 }
 
 // msgIJaUrl implementation

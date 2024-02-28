@@ -10,13 +10,20 @@ var wh = ChromeUtils.import(
   "resource://testing-common/mozmill/WindowHelpers.jsm"
 );
 
-var { Assert } = ChromeUtils.import("resource://testing-common/Assert.jsm");
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
+var { Assert } = ChromeUtils.importESModule(
+  "resource://testing-common/Assert.sys.mjs"
+);
+var EventUtils = ChromeUtils.import(
+  "resource://testing-common/mozmill/EventUtils.jsm"
+);
+
+var utils = ChromeUtils.import("resource://testing-common/mozmill/utils.jsm");
 
 var USE_SHEET_PREF = "toolbar.customization.usesheet";
 
 /**
  * Initialize the help for a customization dialog
+ *
  * @param {} aToolbarId
  *   the ID of the toolbar to be customized
  * @param {} aOpenElementId
@@ -33,40 +40,47 @@ function CustomizeDialogHelper(aToolbarId, aOpenElementId, aWindowType) {
 
 CustomizeDialogHelper.prototype = {
   /**
-   * Open a customization dialog by clicking on a given XUL element.
+   * Open a customization dialog by clicking on a given element.
+   *
    * @param {} aController
    *   the controller object of the window for which the customization
    *   dialog should be opened
    * @returns a controller for the customization dialog
    */
-  open: function CustomizeDialogHelper_open(aController) {
+  async open(aController) {
+    aController.window.document.getElementById(this._openElementId).click();
+
     let ctc;
-    aController.click(aController.e(this._openElementId));
     // Depending on preferences the customization dialog is
     // either a normal window or embedded into a sheet.
     if (!this._openInWindow) {
       ctc = wh.wait_for_frame_load(
-        aController.e("customizeToolbarSheetIFrame"),
+        aController.window.document.getElementById(
+          "customizeToolbarSheetIFrame"
+        ),
         "chrome://messenger/content/customizeToolbar.xhtml"
       );
     } else {
       ctc = wh.wait_for_existing_window(this._windowType);
     }
-    ctc.sleep(500);
+    utils.sleep(500);
     return ctc;
   },
 
   /**
    * Close the customization dialog.
+   *
    * @param {} aCtc
    *   the controller object of the customization dialog which should be closed
    */
-  close: function CustomizeDialogHelper_close(aCtc) {
+  close(aCtc) {
     if (this._openInWindow) {
       wh.plan_for_window_close(aCtc);
     }
 
-    aCtc.click(aCtc.e("donebutton"));
+    let doneButton = aCtc.window.document.getElementById("donebutton");
+    EventUtils.synthesizeMouseAtCenter(doneButton, {}, doneButton.ownerGlobal);
+    utils.sleep(0);
     // XXX There should be an equivalent for testing the closure of
     // XXX the dialog embedded in a sheet, but I do not know how.
     if (this._openInWindow) {
@@ -79,23 +93,27 @@ CustomizeDialogHelper.prototype = {
    *  Restore the default buttons in the header pane toolbar
    *  by clicking the corresponding button in the palette dialog
    *  and check if it worked.
+   *
    * @param {} aController
    *   the controller object of the window for which the customization
    *   dialog should be opened
    */
-  restoreDefaultButtons: function CustomizeDialogHelper_restoreDefaultButtons(
-    aController
-  ) {
-    let ctc = this.open(aController);
+  async restoreDefaultButtons(aController) {
+    let ctc = await this.open(aController);
     let restoreButton = ctc.window.document
       .getElementById("main-box")
       .querySelector("[oncommand*='overlayRestoreDefaultSet();']");
 
-    ctc.click(restoreButton);
+    EventUtils.synthesizeMouseAtCenter(
+      restoreButton,
+      {},
+      restoreButton.ownerGlobal
+    );
+    utils.sleep(0);
 
     this.close(ctc);
 
-    let toolbar = aController.e(this._toolbarId);
+    let toolbar = aController.window.document.getElementById(this._toolbarId);
     let defaultSet = toolbar.getAttribute("defaultset");
 
     Assert.equal(toolbar.currentSet, defaultSet);

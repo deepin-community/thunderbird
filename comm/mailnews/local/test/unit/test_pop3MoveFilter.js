@@ -83,11 +83,11 @@ var gTestArray = [
   function verifyMessages() {
     let hdrs = [];
     let keys = [];
-    for (let hdr of gMoveFolder.msgDatabase.EnumerateMessages()) {
+    for (let hdr of gMoveFolder.msgDatabase.enumerateMessages()) {
       keys.push(hdr.messageKey);
       hdrs.push(hdr);
     }
-    Assert.ok(!gMoveFolder.fetchMsgPreviewText(keys, false, null));
+    Assert.ok(!gMoveFolder.fetchMsgPreviewText(keys, null));
     Assert.equal(
       hdrs[0].getStringProperty("preview"),
       previews[hdrs[0].subject]
@@ -100,7 +100,7 @@ var gTestArray = [
 ];
 
 function folderCount(folder) {
-  return [...folder.msgDatabase.EnumerateMessages()].length;
+  return [...folder.msgDatabase.enumerateMessages()].length;
 }
 
 function setup_store(storeID) {
@@ -115,9 +115,8 @@ function setup_store(storeID) {
       localAccountUtils.loadLocalMailAccount();
     }
 
-    gMoveFolder = localAccountUtils.rootFolder.createLocalSubfolder(
-      "MoveFolder"
-    );
+    gMoveFolder =
+      localAccountUtils.rootFolder.createLocalSubfolder("MoveFolder");
   };
 }
 

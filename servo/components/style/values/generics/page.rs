@@ -70,6 +70,33 @@ impl PaperSize {
     }
 }
 
+/// Page orientation names.
+///
+/// https://drafts.csswg.org/css-page-3/#page-orientation-prop
+#[derive(
+    Clone,
+    Copy,
+    Debug,
+    Eq,
+    MallocSizeOf,
+    Parse,
+    PartialEq,
+    SpecifiedValueInfo,
+    ToComputedValue,
+    ToCss,
+    ToResolvedValue,
+    ToShmem,
+)]
+#[repr(u8)]
+pub enum PageOrientation {
+    /// upright
+    Upright,
+    /// rotate-left (counter-clockwise)
+    RotateLeft,
+    /// rotate-right (clockwise)
+    RotateRight,
+}
+
 /// Paper orientation
 ///
 /// https://drafts.csswg.org/css-page-3/#page-size-prop
@@ -87,11 +114,16 @@ impl PaperSize {
     ToShmem,
 )]
 #[repr(u8)]
-pub enum Orientation {
+pub enum PageSizeOrientation {
     /// Portrait orientation
     Portrait,
     /// Landscape orientation
     Landscape,
+}
+
+#[inline]
+fn is_portrait(orientation: &PageSizeOrientation) -> bool {
+    *orientation == PageSizeOrientation::Portrait
 }
 
 /// Page size property
@@ -100,16 +132,17 @@ pub enum Orientation {
 #[derive(Clone, Copy, Debug, MallocSizeOf, PartialEq, SpecifiedValueInfo, ToCss, ToShmem)]
 #[repr(C, u8)]
 pub enum GenericPageSize<S> {
-    /// Page dimensions.
-    Size(S),
-    /// Paper size with no orientation.
-    PaperSize(PaperSize),
-    /// An orientation with no size.
-    Orientation(Orientation),
-    /// Paper size by name, with an orientation.
-    PaperSizeAndOrientation(PaperSize, Orientation),
     /// `auto` value.
     Auto,
+    /// Page dimensions.
+    Size(S),
+    /// An orientation with no size.
+    Orientation(PageSizeOrientation),
+    /// Paper size by name
+    PaperSize(
+        PaperSize,
+        #[css(skip_if = "is_portrait")] PageSizeOrientation,
+    ),
 }
 
 pub use self::GenericPageSize as PageSize;

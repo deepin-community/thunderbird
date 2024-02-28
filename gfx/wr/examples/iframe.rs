@@ -38,6 +38,7 @@ impl Example for App {
         let sub_pipeline_id = PipelineId(pipeline_id.0, 42);
         let mut sub_builder = DisplayListBuilder::new(sub_pipeline_id);
         let mut space_and_clip = SpaceAndClipInfo::root_scroll(pipeline_id);
+        sub_builder.begin();
 
         sub_builder.push_simple_stacking_context(
             sub_bounds.min,
@@ -56,10 +57,7 @@ impl Example for App {
         let mut txn = Transaction::new();
         txn.set_display_list(
             Epoch(0),
-            None,
-            sub_bounds.size(),
-            sub_builder.finalize(),
-            true,
+            sub_builder.end(),
         );
         api.send_transaction(document_id, txn);
 
@@ -71,7 +69,9 @@ impl Example for App {
             ReferenceFrameKind::Transform {
                 is_2d_scale_translation: false,
                 should_snap: false,
+                paired_with_perspective: false,
             },
+            SpatialTreeItemKey::new(0, 0),
         );
 
         // And this is for the root pipeline

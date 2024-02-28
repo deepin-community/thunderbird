@@ -44,29 +44,36 @@ tasktype_map:
     repackage: repackage
     repackage-signing: repackage
     repackage-signing-msi: repackage
+    repackage-signing-shippable-l10n-msix: signing
     release-sign-and-push-langpacks: scriptworker
 platform_names:
     path_platform:
         by-platform:
             linux-shippable: 'linux-i686'
             linux64-shippable: 'linux-x86_64'
+            linux64-asan-reporter-shippable: 'linux-x86_64-asan-reporter'
             macosx64-shippable: 'mac'
             win32-shippable: 'win32'
             win64-shippable: 'win64'
+            win64-asan-reporter-shippable: 'win64-asan-reporter'
     tools_platform:
         by-platform:
             linux-shippable: 'linux'
             linux64-shippable: 'linux64'
+            linux64-asan-reporter-shippable: 'linux-x86_64-asan-reporter'
             macosx64-shippable: 'macosx64'
             win32-shippable: 'win32'
             win64-shippable: 'win64'
+            win64-asan-reporter-shippable: 'win64-asan-reporter'
     filename_platform:
         by-platform:
             linux-shippable: 'linux'
             linux64-shippable: 'linux64'
+            linux64-asan-reporter-shippable: 'linux-x86_64-asan-reporter'
             macosx64-shippable: 'macosx64'
             win32-shippable: 'win32'
             win64-shippable: 'win64'
+            win64-asan-reporter-shippable: 'win64-asan-reporter'
 
 default: &default
     from:
@@ -290,6 +297,17 @@ mapping:
             - win32-shippable
         pretty_name: Thunderbird Setup ${version}.msi
         checksums_path: ${path_platform}/${locale}/Thunderbird Setup ${version}.msi
+    target.installer.msix:
+        <<: *default
+        description: "Windows MSIX installer"
+        from:
+            - repackage-signing-shippable-l10n-msix
+        only_for_platforms:
+            - win64-shippable
+            - win32-shippable
+        locale_prefix: 'multi/'
+        pretty_name: Thunderbird Setup ${version}.msix
+        checksums_path: ${path_platform}/multi/Thunderbird Setup ${version}.msix
     target.complete.mar:
         <<: *default
         description: "Complete MAR to serve as updates"

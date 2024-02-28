@@ -6,12 +6,6 @@
 
 "use strict";
 
-ChromeUtils.defineModuleGetter(
-  this,
-  "Services",
-  "resource://gre/modules/Services.jsm"
-);
-
 var { withHandlingUserInput } = ExtensionCommon;
 
 var { ExtensionError } = ExtensionUtils;
@@ -123,16 +117,24 @@ class ContextMenusClickPropHandler {
 
 this.menus = class extends ExtensionAPI {
   getAPI(context) {
+    let { extension } = context;
     let onClickedProp = new ContextMenusClickPropHandler(context);
     let pendingMenuEvent;
 
     return {
       menus: {
         create(createProperties, callback) {
-          if (createProperties.id === null) {
+          let caller = context.getCaller();
+
+          if (extension.persistentBackground && createProperties.id === null) {
             createProperties.id = ++gNextMenuItemID;
           }
           let { onclick } = createProperties;
+          if (onclick && !context.extension.persistentBackground) {
+            throw new ExtensionError(
+              `Property "onclick" cannot be used in menus.create, replace with an "onClicked" event listener.`
+            );
+          }
           delete createProperties.onclick;
           context.childManager
             .callParentAsyncFunction("menus.create", [createProperties])
@@ -145,7 +147,7 @@ this.menus = class extends ExtensionAPI {
               }
             })
             .catch(error => {
-              context.withLastError(error, null, () => {
+              context.withLastError(error, caller, () => {
                 if (callback) {
                   context.runSafeWithoutClone(callback);
                 }
@@ -156,6 +158,11 @@ this.menus = class extends ExtensionAPI {
 
         update(id, updateProperties) {
           let { onclick } = updateProperties;
+          if (onclick && !context.extension.persistentBackground) {
+            throw new ExtensionError(
+              `Property "onclick" cannot be used in menus.update, replace with an "onClicked" event listener.`
+            );
+          }
           delete updateProperties.onclick;
           return context.childManager
             .callParentAsyncFunction("menus.update", [id, updateProperties])
@@ -241,8 +248,8 @@ this.menus = class extends ExtensionAPI {
               pendingMenuEvent = null;
               Services.obs.removeObserver(this, "on-prepare-contextmenu");
               subject = subject.wrappedJSObject;
-              if (context.principal.subsumes(subject.context.principal)) {
-                subject.webExtContextData = this.webExtContextData;
+              if (context.principal.subsumes(subject.principal)) {
+                subject.setWebExtContextData(this.webExtContextData);
               }
             },
             run() {
@@ -260,67 +267,17 @@ this.menus = class extends ExtensionAPI {
           Services.tm.dispatchToMainThread(pendingMenuEvent);
         },
 
-        // This event could have attachments in the `info` object, and
-        // attachments must be transformed for the child process.
-        // See ext-compose.js.
         onClicked: new EventManager({
           context,
           name: "menus.onClicked",
           register: fire => {
             let listener = (info, tab) => {
-              info = { ...info }; // Create a copy owned by this process.
-              if ("attachments" in info) {
-                extensions.loadModule("compose");
-                info.attachments = info.attachments.map(a =>
-                  // eslint-disable-next-line no-undef
-                  new ComposeAttachment(context, a).api()
-                );
-                fire.asyncWithoutClone(
-                  Cu.cloneInto(info, context.cloneScope, {
-                    cloneFunctions: true,
-                  }),
-                  Cu.cloneInto(tab, context.cloneScope)
-                );
-              } else {
-                withHandlingUserInput(context.contentWindow, () =>
-                  fire.sync(info, tab)
-                );
-              }
-            };
-
-            let event = context.childManager.getParentEvent("menus.onClicked");
-            event.addListener(listener);
-            return () => {
-              event.removeListener(listener);
-            };
-          },
-        }).api(),
-
-        // This event could have attachments in the `info` object, and
-        // attachments must be transformed for the child process.
-        // See ext-compose.js.
-        onShown: new EventManager({
-          context,
-          name: "menus.onShown",
-          register: fire => {
-            let listener = (info, tab) => {
-              info = { ...info }; // Create a copy owned by this process.
-              if ("attachments" in info) {
-                extensions.loadModule("compose");
-                info.attachments = info.attachments.map(a =>
-                  // eslint-disable-next-line no-undef
-                  new ComposeAttachment(context, a).api()
-                );
-              }
-              fire.asyncWithoutClone(
-                Cu.cloneInto(info, context.cloneScope, {
-                  cloneFunctions: true,
-                }),
-                Cu.cloneInto(tab, context.cloneScope)
+              withHandlingUserInput(context.contentWindow, () =>
+                fire.sync(info, tab)
               );
             };
 
-            let event = context.childManager.getParentEvent("menus.onShown");
+            let event = context.childManager.getParentEvent("menus.onClicked");
             event.addListener(listener);
             return () => {
               event.removeListener(listener);

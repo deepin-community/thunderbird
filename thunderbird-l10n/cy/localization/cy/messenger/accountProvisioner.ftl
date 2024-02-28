@@ -52,6 +52,10 @@ account-provisioner-results-title =
     }
 account-provisioner-mail-results-caption = Gallwch hefyd chwilio am lysenwau neu dermau eraill i ganfod ragor o e-byst eraill.
 account-provisioner-domain-results-caption = Gallwch hefyd chwilio am lysenwau neu dermau eraill i ganfod ragor o barthau  eraill.
-account-provisioner-free-account = Am Ddim
+account-provisioner-free-account = Rhydd
+# Variables:
+# $price (String) - Yearly fee for the mail account. For example "US $9.99".
 account-provision-price-per-year = { $price } y flwyddyn
 account-provisioner-all-results-button = Dangos yr holl ganlyniadau
+account-provisioner-open-in-tab-img =
+    .title = Yn agor mewn Tab newydd

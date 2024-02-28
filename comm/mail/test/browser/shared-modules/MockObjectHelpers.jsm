@@ -8,16 +8,6 @@ const EXPORTED_SYMBOLS = ["MockObjectReplacer", "MockObjectRegisterer"];
 
 var Cm = Components.manager;
 
-const { XPCOMUtils } = ChromeUtils.import(
-  "resource://gre/modules/XPCOMUtils.jsm"
-);
-XPCOMUtils.defineLazyServiceGetter(
-  this,
-  "UUIDGen",
-  "@mozilla.org/uuid-generator;1",
-  "nsIUUIDGenerator"
-);
-
 function MockObjectRegisterer(aContractID, aCID, aComponent) {
   this._contractID = aContractID;
   this._cid = Components.ID("{" + aCID + "}");
@@ -25,13 +15,10 @@ function MockObjectRegisterer(aContractID, aCID, aComponent) {
 }
 
 MockObjectRegisterer.prototype = {
-  register: function MOR_register() {
+  register() {
     let providedConstructor = this._component;
     this._mockFactory = {
-      createInstance: function MF_createInstance(aOuter, aIid) {
-        if (aOuter != null) {
-          throw Components.Exception("", Cr.NS_ERROR_NO_AGGREGATION);
-        }
+      createInstance(aIid) {
         return new providedConstructor().QueryInterface(aIid);
       },
     };
@@ -46,7 +33,7 @@ MockObjectRegisterer.prototype = {
     );
   },
 
-  unregister: function MOR_unregister() {
+  unregister() {
     let componentRegistrar = Cm.QueryInterface(Ci.nsIComponentRegistrar);
 
     componentRegistrar.unregisterFactory(this._cid, this._mockFactory);
@@ -92,10 +79,7 @@ MockObjectReplacer.prototype = {
     // Define a factory that creates a new object using the given constructor.
     var providedConstructor = this._replacementCtor;
     this._mockFactory = {
-      createInstance(aOuter, aIid) {
-        if (aOuter != null) {
-          throw Components.Exception("", Cr.NS_ERROR_NO_AGGREGATION);
-        }
+      createInstance(aIid) {
         return new providedConstructor().QueryInterface(aIid);
       },
     };
@@ -164,7 +148,7 @@ function swapFactoryRegistration(CID, originalCID, contractID, newFactory) {
         error: "trying to register a new contract ID: Missing contractID",
       };
     }
-    CID = UUIDGen.generateUUID();
+    CID = Services.uuid.generateUUID();
 
     componentRegistrar.registerFactory(CID, "", contractID, newFactory);
   } else {

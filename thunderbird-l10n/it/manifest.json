@@ -1,29 +1,28 @@
 {
   "langpack_id": "it",
   "manifest_version": 2,
-  "applications": {
+  "browser_specific_settings": {
     "gecko": {
       "id": "langpack-it@thunderbird.mozilla.org",
-      "strict_min_version": "91.0",
-      "strict_max_version": "91.*"
+      "strict_min_version": "115.0",
+      "strict_max_version": "115.*"
     }
   },
-  "name": "Italiano (IT) Language Pack",
-  "description": "Language pack for Thunderbird for it",
-  "version": "91.0buildid20211101223011",
+  "name": "Language: Italiano (Italian)",
+  "description": "Thunderbird Language Pack for Italiano (it) – Italian",
+  "version": "115.8.20240216.174500",
   "languages": {
     "it": {
-      "version": "20211018054448",
+      "version": "20240216183904",
       "chrome_resources": {
         "alerts": "chrome/it/locale/it/alerts/",
         "autoconfig": "chrome/it/locale/it/autoconfig/",
-        "branding": "chrome/it/locale/it/branding/",
+        "branding": "chrome/it/locale/branding/",
         "calendar": "chrome/it/locale/it/calendar/",
         "chat": "chrome/it/locale/it/chat/",
         "communicator": "chrome/it/locale/it/communicator/",
         "devtools": "chrome/it/locale/it/devtools/client/",
         "devtools-shared": "chrome/it/locale/it/devtools/shared/",
-        "devtools-startup": "chrome/it/locale/it/devtools/startup/",
         "global": "chrome/it/locale/it/global/",
         "global-platform": {
           "macosx": "chrome/it/locale/it/global-platform/mac/",

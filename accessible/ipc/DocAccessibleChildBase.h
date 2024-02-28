@@ -20,8 +20,7 @@ class AccShowEvent;
 
 class DocAccessibleChildBase : public PDocAccessibleChild {
  public:
-  explicit DocAccessibleChildBase(DocAccessible* aDoc)
-      : mDoc(aDoc), mIsRemoteConstructed(false) {
+  explicit DocAccessibleChildBase(DocAccessible* aDoc) : mDoc(aDoc) {
     MOZ_COUNT_CTOR(DocAccessibleChildBase);
   }
 
@@ -44,8 +43,7 @@ class DocAccessibleChildBase : public PDocAccessibleChild {
   /**
    * Serializes a shown tree and sends it to the chrome process.
    */
-  void InsertIntoIpcTree(LocalAccessible* aParent, LocalAccessible* aChild,
-                         uint32_t aIdxInParent);
+  void InsertIntoIpcTree(LocalAccessible* aChild, bool aSuppressShowEvent);
   void ShowEvent(AccShowEvent* aShowEvent);
 
   virtual void ActorDestroy(ActorDestroyReason) override {
@@ -57,13 +55,73 @@ class DocAccessibleChildBase : public PDocAccessibleChild {
     mDoc = nullptr;
   }
 
- protected:
-  static void SerializeTree(LocalAccessible* aRoot,
-                            nsTArray<AccessibleData>& aTree);
+  virtual mozilla::ipc::IPCResult RecvTakeFocus(const uint64_t& aID) override;
 
-  virtual void MaybeSendShowEvent(ShowEventData& aData, bool aFromUser) {
-    Unused << SendShowEvent(aData, aFromUser);
-  }
+  MOZ_CAN_RUN_SCRIPT_BOUNDARY
+  virtual mozilla::ipc::IPCResult RecvScrollTo(
+      const uint64_t& aID, const uint32_t& aScrollType) override;
+
+  virtual mozilla::ipc::IPCResult RecvTakeSelection(
+      const uint64_t& aID) override;
+  virtual mozilla::ipc::IPCResult RecvSetSelected(const uint64_t& aID,
+                                                  const bool& aSelect) override;
+
+  virtual mozilla::ipc::IPCResult RecvVerifyCache(
+      const uint64_t& aID, const uint64_t& aCacheDomain,
+      AccAttributes* aFields) override;
+
+  virtual mozilla::ipc::IPCResult RecvDoActionAsync(
+      const uint64_t& aID, const uint8_t& aIndex) override;
+
+  virtual mozilla::ipc::IPCResult RecvSetCaretOffset(
+      const uint64_t& aID, const int32_t& aOffset) override;
+
+  MOZ_CAN_RUN_SCRIPT_BOUNDARY
+  virtual mozilla::ipc::IPCResult RecvSetTextSelection(
+      const uint64_t& aStartID, const int32_t& aStartOffset,
+      const uint64_t& aEndID, const int32_t& aEndOffset,
+      const int32_t& aSelectionNum) override;
+
+  MOZ_CAN_RUN_SCRIPT_BOUNDARY
+  virtual mozilla::ipc::IPCResult RecvScrollTextLeafRangeIntoView(
+      const uint64_t& aStartID, const int32_t& aStartOffset,
+      const uint64_t& aEndID, const int32_t& aEndOffset,
+      const uint32_t& aScrollType) override;
+
+  virtual mozilla::ipc::IPCResult RecvRemoveTextSelection(
+      const uint64_t& aID, const int32_t& aSelectionNum) override;
+
+  virtual mozilla::ipc::IPCResult RecvSetCurValue(
+      const uint64_t& aID, const double& aValue) override;
+
+  virtual mozilla::ipc::IPCResult RecvReplaceText(
+      const uint64_t& aID, const nsAString& aText) override;
+
+  virtual mozilla::ipc::IPCResult RecvInsertText(
+      const uint64_t& aID, const nsAString& aText,
+      const int32_t& aPosition) override;
+
+  virtual mozilla::ipc::IPCResult RecvCopyText(const uint64_t& aID,
+                                               const int32_t& aStartPos,
+                                               const int32_t& aEndPos) override;
+
+  virtual mozilla::ipc::IPCResult RecvCutText(const uint64_t& aID,
+                                              const int32_t& aStartPos,
+                                              const int32_t& aEndPos) override;
+
+  virtual mozilla::ipc::IPCResult RecvDeleteText(
+      const uint64_t& aID, const int32_t& aStartPos,
+      const int32_t& aEndPos) override;
+
+  MOZ_CAN_RUN_SCRIPT_BOUNDARY
+  virtual mozilla::ipc::IPCResult RecvPasteText(
+      const uint64_t& aID, const int32_t& aPosition) override;
+
+ protected:
+  static void FlattenTree(LocalAccessible* aRoot,
+                          nsTArray<LocalAccessible*>& aTree);
+
+  static AccessibleData SerializeAcc(LocalAccessible* aAcc);
 
   void DetachDocument() {
     if (mDoc) {
@@ -72,11 +130,10 @@ class DocAccessibleChildBase : public PDocAccessibleChild {
     }
   }
 
-  bool IsConstructedInParentProcess() const { return mIsRemoteConstructed; }
-  void SetConstructedInParentProcess() { mIsRemoteConstructed = true; }
+  LocalAccessible* IdToAccessible(const uint64_t& aID) const;
+  HyperTextAccessible* IdToHyperTextAccessible(const uint64_t& aID) const;
 
   DocAccessible* mDoc;
-  bool mIsRemoteConstructed;
 
   friend void DocAccessible::DoInitialUpdate();
 };

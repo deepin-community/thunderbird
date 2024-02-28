@@ -2,32 +2,6 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-var { XPCOMUtils } = ChromeUtils.import("resource://gre/modules/XPCOMUtils.jsm");
-
-ChromeUtils.defineModuleGetter(this, "cal", "resource:///modules/calendar/calUtils.jsm");
-
-XPCOMUtils.defineLazyServiceGetter(
-  this,
-  "gParserUtils",
-  "@mozilla.org/parserutils;1",
-  "nsIParserUtils"
-);
-XPCOMUtils.defineLazyServiceGetter(
-  this,
-  "gTextToHtmlConverter",
-  "@mozilla.org/txttohtmlconv;1",
-  "mozITXTToHTMLConv"
-);
-XPCOMUtils.defineLazyPreferenceGetter(
-  this,
-  "calendarSortOrder",
-  "calendar.list.sortOrder",
-  null,
-  null,
-  val => (val ? val.split(" ") : [])
-);
-
 /**
  * View and DOM related helper functions
  */
@@ -35,53 +9,34 @@ XPCOMUtils.defineLazyPreferenceGetter(
 // NOTE: This module should not be loaded directly, it is available when
 // including calUtils.jsm under the cal.view namespace.
 
-const EXPORTED_SYMBOLS = ["calview"]; /* exported calview */
+const EXPORTED_SYMBOLS = ["calview"];
+
+var { XPCOMUtils } = ChromeUtils.importESModule("resource://gre/modules/XPCOMUtils.sys.mjs");
+
+const lazy = {};
+ChromeUtils.defineModuleGetter(lazy, "cal", "resource:///modules/calendar/calUtils.jsm");
+XPCOMUtils.defineLazyServiceGetter(
+  lazy,
+  "gParserUtils",
+  "@mozilla.org/parserutils;1",
+  "nsIParserUtils"
+);
+XPCOMUtils.defineLazyServiceGetter(
+  lazy,
+  "gTextToHtmlConverter",
+  "@mozilla.org/txttohtmlconv;1",
+  "mozITXTToHTMLConv"
+);
+XPCOMUtils.defineLazyPreferenceGetter(
+  lazy,
+  "calendarSortOrder",
+  "calendar.list.sortOrder",
+  null,
+  null,
+  val => (val ? val.split(" ") : [])
+);
 
 var calview = {
-  /**
-   * Checks if the mousepointer of an event resides over a XULBox during an event
-   *
-   * @param aMouseEvent   The event eg. a 'mouseout' or 'mousedown' event
-   * @param aXULBox       The xul element
-   * @return              true or false depending on whether the mouse pointer
-   *                      resides over the xulelement
-   */
-  isMouseOverBox(aMouseEvent, aXULElement) {
-    let boundingRect = aXULElement.getBoundingClientRect();
-    let boxWidth = boundingRect.width;
-    let boxHeight = boundingRect.height;
-    let boxScreenX = aXULElement.screenX;
-    let boxScreenY = aXULElement.screenY;
-    let mouseX = aMouseEvent.screenX;
-    let mouseY = aMouseEvent.screenY;
-    let xIsWithin = mouseX >= boxScreenX && mouseX <= boxScreenX + boxWidth;
-    let yIsWithin = mouseY >= boxScreenY && mouseY <= boxScreenY + boxHeight;
-    return xIsWithin && yIsWithin;
-  },
-
-  /**
-   * Returns a parentnode - or the passed node - with the given localName, by
-   * traversing up the DOM hierarchy.
-   *
-   * @param aChildNode  The childnode.
-   * @param aLocalName  The localName of the to-be-returned parent
-   *                      that is looked for.
-   * @return            The parent with the given localName or the
-   *                      given childNode 'aChildNode'. If no appropriate
-   *                      parent node with aLocalName could be
-   *                      retrieved it is returned 'null'.
-   */
-  getParentNodeOrThis(aChildNode, aLocalName) {
-    let node = aChildNode;
-    while (node && node.localName != aLocalName) {
-      node = node.parentNode;
-      if (node.tagName == undefined) {
-        return null;
-      }
-    }
-    return node;
-  },
-
   /**
    * Returns a parentnode  - or the passed node -  with the given attribute
    * value for the given attributename by traversing up the DOM hierarchy.
@@ -89,7 +44,7 @@ var calview = {
    * @param aChildNode      The childnode.
    * @param aAttibuteName   The name of the attribute that is to be compared with
    * @param aAttibuteValue  The value of the attribute that is to be compared with
-   * @return                The parent with the given attributeName set that has
+   * @returns The parent with the given attributeName set that has
    *                          the same value as the given given attributevalue
    *                          'aAttributeValue'. If no appropriate
    *                          parent node can be retrieved it is returned 'null'.
@@ -126,7 +81,7 @@ var calview = {
    *   http://www.w3.org/TR/CSS21/grammar.html#scanner
    *
    * @param aString       The unicode string to format
-   * @return              The formatted string using only chars [_a-zA-Z0-9-]
+   * @returns The formatted string using only chars [_a-zA-Z0-9-]
    */
   formatStringForCSSRule(aString) {
     function toReplacement(char) {
@@ -172,9 +127,8 @@ var calview = {
         },
         onCalendarDeleting(calendar) {},
       };
-      const calManager = cal.getCalendarManager();
-      calManager.addObserver(calManagerObserver);
-      aWindow.addEventListener("unload", () => calManager.removeObserver(calManagerObserver));
+      lazy.cal.manager.addObserver(calManagerObserver);
+      aWindow.addEventListener("unload", () => lazy.cal.manager.removeObserver(calManagerObserver));
 
       comp.prefPrefix = prefix; // populate calendar from existing calendars
 
@@ -192,7 +146,7 @@ var calview = {
    * color picker.
    *
    * @param str           The string to hash into a color.
-   * @return              The hashed color.
+   * @returns The hashed color.
    */
   hashColor(str) {
     // This is the palette of colors in the current colorpicker implementation.
@@ -296,7 +250,7 @@ var calview = {
       return "white";
     }
 
-    return "black";
+    return "#222";
   },
 
   /**
@@ -304,7 +258,7 @@ var calview = {
    *
    * @param a     The first item
    * @param b     The second item
-   * @return      The usual -1, 0, 1
+   * @returns The usual -1, 0, 1
    */
   compareItems(a, b) {
     if (!a) {
@@ -359,7 +313,9 @@ var calview = {
     }
 
     if (a.calendar && b.calendar) {
-      cmp = calendarSortOrder.indexOf(a.calendar.id) - calendarSortOrder.indexOf(b.calendar.id);
+      cmp =
+        lazy.calendarSortOrder.indexOf(a.calendar.id) -
+        lazy.calendarSortOrder.indexOf(b.calendar.id);
       if (cmp != 0) {
         return cmp;
       }
@@ -370,7 +326,7 @@ var calview = {
   },
 
   get calendarSortOrder() {
-    return calendarSortOrder;
+    return lazy.calendarSortOrder;
   },
 
   /**
@@ -379,7 +335,7 @@ var calview = {
    * @param {string} text - The text to convert.
    * @param {Document} doc - The document where the fragment will be appended.
    * @param {string} html - HTML if it's already available.
-   * @return {DocumentFragment} An HTML document fragment.
+   * @returns {DocumentFragment} An HTML document fragment.
    */
   textToHtmlDocumentFragment(text, doc, html) {
     if (!html) {
@@ -387,44 +343,60 @@ var calview = {
         Ci.mozITXTToHTMLConv.kStructPhrase |
         Ci.mozITXTToHTMLConv.kGlyphSubstitution |
         Ci.mozITXTToHTMLConv.kURLs;
-      html = gTextToHtmlConverter.scanTXT(text, mode);
+      html = lazy.gTextToHtmlConverter.scanTXT(text, mode);
       html = html.replace(/\r?\n/g, "<br>");
     }
 
     // Sanitize and convert the HTML into a document fragment.
     let flags =
-      gParserUtils.SanitizerLogRemovals |
-      gParserUtils.SanitizerDropForms |
-      gParserUtils.SanitizerDropMedia;
+      lazy.gParserUtils.SanitizerLogRemovals |
+      lazy.gParserUtils.SanitizerDropForms |
+      lazy.gParserUtils.SanitizerDropMedia;
 
     let uri = Services.io.newURI(doc.baseURI);
-    return gParserUtils.parseFragment(html, flags, false, uri, doc.createElement("div"));
+    return lazy.gParserUtils.parseFragment(html, flags, false, uri, doc.createElement("div"));
   },
 
   /**
-   * Fixes up a description of a Google Calendar item
+   * Correct the description of a Google Calendar item so that it will display
+   * as intended.
    *
-   * @param item      The item to check
+   * @param {calIItemBase} item - The item to correct.
    */
   fixGoogleCalendarDescription(item) {
-    let description = item.descriptionText;
-    if (description) {
-      // Google Calendar descriptions are actually HTML,
-      // but they contain bare URLs and newlines, so fix those up here.
-      let mode = Ci.mozITXTToHTMLConv.kURLs;
-      // scanHTML only allows &lt; &gt; and &amp; so decode other entities now
-      description = description.replace(/&#?\w+;?/g, entity => {
-        let body = new DOMParser().parseFromString(entity, "text/html").body;
+    // Google Calendar inserts bare HTML into its description field instead of
+    // using the standard Alternate Text Representation mechanism. However,
+    // the HTML is a poor representation of how it displays descriptions on
+    // the site: links may be included as bare URLs and line breaks may be
+    // included as raw newlines, so in order to display descriptions as Google
+    // intends, we need to make some corrections.
+    if (item.descriptionText) {
+      // Convert HTML entities which scanHTML won't handle into their standard
+      // text representation.
+      let description = item.descriptionText.replace(/&#?\w+;?/g, potentialEntity => {
+        // Attempt to parse the pattern match as an HTML entity.
+        let body = new DOMParser().parseFromString(potentialEntity, "text/html").body;
+
+        // Don't replace text that didn't parse as an entity or that parsed as
+        // an entity which could break HTML parsing below.
         return body.innerText.length == 1 && !'"&<>'.includes(body.innerText)
           ? body.innerText
-          : entity; // Entity didn't decode to a character, so leave it
+          : potentialEntity;
       });
-      description = gTextToHtmlConverter.scanHTML(description, mode);
+
+      // Replace bare URLs with links and convert remaining entities.
+      description = lazy.gTextToHtmlConverter.scanHTML(description, Ci.mozITXTToHTMLConv.kURLs);
+
+      // Setting the HTML description will mark the item dirty, but we want to
+      // avoid unnecessary updates; preserve modification time.
       let stamp = item.stampTime;
       let lastModified = item.lastModifiedTime;
+
       item.descriptionHTML = description.replace(/\r?\n/g, "<br>");
+
+      // Restore modification time.
       item.setProperty("DTSTAMP", stamp);
-      item.setProperty("LAST-MODIFIED", lastModified); // undirty the item
+      item.setProperty("LAST-MODIFIED", lastModified);
     }
   },
 };
@@ -442,10 +414,10 @@ calview.colorTracker = {
   // Deregistration is not required.
   registerWindow(aWindow) {
     if (this.calendars === null) {
-      let manager = cal.getCalendarManager();
-      this.calendars = new Set(manager.getCalendars());
-      manager.addObserver(this);
-      manager.addCalendarObserver(this);
+      this.calendars = new Set(lazy.cal.manager.getCalendars());
+      lazy.cal.manager.addObserver(this);
+      lazy.cal.manager.addCalendarObserver(this);
+
       this.categoryBranch = Services.prefs.getBranch("calendar.category.color.");
       this.categoryBranch.addObserver("", this);
       Services.obs.addObserver(this, "xpcom-shutdown");
@@ -453,6 +425,7 @@ calview.colorTracker = {
 
     this.windows.add(aWindow);
     aWindow.addEventListener("unload", () => this.windows.delete(aWindow));
+
     this.addColorsToDocument(aWindow.document);
   },
   addColorsToDocument(aDocument) {

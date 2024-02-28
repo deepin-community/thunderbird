@@ -4,7 +4,9 @@
  * license that can be found in the LICENSE file.
  */
 
-/** @file butteraugli.h
+/** @addtogroup libjxl_butteraugli
+ * @{
+ * @file butteraugli.h
  * @brief Butteraugli API for JPEG XL.
  */
 
@@ -15,10 +17,10 @@
 extern "C" {
 #endif
 
-#include "jxl/jxl_export.h"
-#include "jxl/memory_manager.h"
-#include "jxl/parallel_runner.h"
-#include "jxl/types.h"
+#include <jxl/jxl_export.h>
+#include <jxl/memory_manager.h>
+#include <jxl/parallel_runner.h>
+#include <jxl/types.h>
 
 /**
  * Opaque structure that holds a butteraugli API.
@@ -154,3 +156,5 @@ JXL_EXPORT void JxlButteraugliResultGetDistmap(
 #endif
 
 #endif /* JXL_BUTTERAUGLI_H_ */
+
+/** @}*/

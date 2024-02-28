@@ -8,11 +8,13 @@
 
 var EXPORTED_SYMBOLS = ["EnigmailMime"];
 
-const { XPCOMUtils } = ChromeUtils.import(
-  "resource://gre/modules/XPCOMUtils.jsm"
+const { XPCOMUtils } = ChromeUtils.importESModule(
+  "resource://gre/modules/XPCOMUtils.sys.mjs"
 );
 
-XPCOMUtils.defineLazyModuleGetters(this, {
+const lazy = {};
+
+XPCOMUtils.defineLazyModuleGetters(lazy, {
   EnigmailData: "chrome://openpgp/content/modules/data.jsm",
   EnigmailStreams: "chrome://openpgp/content/modules/streams.jsm",
   jsmime: "resource:///modules/jsmime.jsm",
@@ -28,7 +30,7 @@ var EnigmailMime = {
    * @see {MimeMultiPart._makePartSeparator}
    */
   createBoundary() {
-    return "------------" + MsgUtils.randomString(24);
+    return "------------" + lazy.MsgUtils.randomString(24);
   },
 
   /***
@@ -91,7 +93,7 @@ var EnigmailMime = {
 
   getAllParameters(headerStr) {
     headerStr = headerStr.replace(/[\r\n]+[ \t]+/g, "");
-    let hdrMap = jsmime.headerparser.parseParameterHeader(
+    let hdrMap = lazy.jsmime.headerparser.parseParameterHeader(
       ";" + headerStr,
       true,
       true
@@ -129,7 +131,7 @@ var EnigmailMime = {
 
     let exp = /[^\x01-\x7F]/; // eslint-disable-line no-control-regex
     if (aStr.search(exp) >= 0) {
-      let s = EnigmailData.convertFromUnicode(aStr, "utf-8");
+      let s = lazy.EnigmailData.convertFromUnicode(aStr, "utf-8");
       ret = "=?UTF-8?B?" + btoa(s) + "?=";
     } else {
       ret = aStr;
@@ -192,7 +194,7 @@ var EnigmailMime = {
    *
    * @param msgBody - String: message body
    *
-   * @return
+   * @returns
    * if subject is found:
    *  Object:
    *    - messageBody - String: message body without subject
@@ -308,7 +310,7 @@ var EnigmailMime = {
       if (headers.hasHeader(protectedHdr[i])) {
         let extracted = headers.extractHeader(protectedHdr[i], true);
         newHeaders[protectedHdr[i]] =
-          jsmime.headerparser.decodeRFC2047Words(extracted) || undefined;
+          lazy.jsmime.headerparser.decodeRFC2047Words(extracted) || undefined;
       }
     }
 
@@ -342,13 +344,13 @@ var EnigmailMime = {
       let ctBodyData = contentBody.substr(bodyStartPos);
 
       if (ctt.search(/^base64/i) === 0) {
-        ctBodyData = EnigmailData.decodeBase64(ctBodyData) + "\n";
+        ctBodyData = lazy.EnigmailData.decodeBase64(ctBodyData) + "\n";
       } else if (ctt.search(/^quoted-printable/i) === 0) {
-        ctBodyData = EnigmailData.decodeQuotedPrintable(ctBodyData) + "\n";
+        ctBodyData = lazy.EnigmailData.decodeQuotedPrintable(ctBodyData) + "\n";
       }
 
       if (charset) {
-        ctBodyData = EnigmailData.convertToUnicode(ctBodyData, charset);
+        ctBodyData = lazy.EnigmailData.convertToUnicode(ctBodyData, charset);
       }
 
       // get the headers of the MIME-subpart body --> that's the ones we need
@@ -361,7 +363,7 @@ var EnigmailMime = {
         let extracted = bodyHdr.extractHeader(protectedHdr[i], true);
         if (bodyHdr.hasHeader(protectedHdr[i])) {
           newHeaders[protectedHdr[i]] =
-            jsmime.headerparser.decodeRFC2047Words(extracted) || undefined;
+            lazy.jsmime.headerparser.decodeRFC2047Words(extracted) || undefined;
         }
       }
     } else {
@@ -382,7 +384,7 @@ var EnigmailMime = {
    *
    * @param spec: String - the URI spec to inspect
    *
-   * @return String: the mime part number (or "" if none found)
+   * @returns String: the mime part number (or "" if none found)
    */
   getMimePartNumber(spec) {
     let m = spec.match(/([\?&]part=)(\d+(\.\d+)*)/);
@@ -401,7 +403,7 @@ var EnigmailMime = {
    * @param mimePartNumber: String - the MIME part we are requested to decrypt
    * @param uriSpec:        String - the URI spec of the message (or msg part) loaded by TB
    *
-   * @return Boolean: true: regular message structure, MIME part is safe to be decrypted
+   * @returns Boolean: true: regular message structure, MIME part is safe to be decrypted
    *                  false: otherwise
    */
   isRegularMimeStructure(mimePartNumber, uriSpec, acceptSubParts = false) {
@@ -444,7 +446,7 @@ var EnigmailMime = {
   },
 
   /**
-   * Parse a MIME message and return a tree structur of TreeObject
+   * Parse a MIME message and return a tree structure of TreeObject
    *
    * @param url:         String   - the URL to load and parse
    * @param getBody:     Boolean  - if true, delivers the body text of each MIME part
@@ -452,7 +454,7 @@ var EnigmailMime = {
    *                                when parsing is complete.
    *                                Function signature: callBackFunc(TreeObject)
    *
-   * @return undefined
+   * @returns undefined
    */
   getMimeTreeFromUrl(url, getBody = false, callbackFunc) {
     function onData(data) {
@@ -460,8 +462,8 @@ var EnigmailMime = {
       callbackFunc(tree);
     }
 
-    let chan = EnigmailStreams.createChannel(url);
-    let bufferListener = EnigmailStreams.newStringStreamListener(onData);
+    let chan = lazy.EnigmailStreams.createChannel(url);
+    let bufferListener = lazy.EnigmailStreams.newStringStreamListener(onData);
     chan.asyncOpen(bufferListener, null);
   },
 
@@ -478,10 +480,10 @@ var EnigmailMime = {
  *     - body: String, if getBody == true
  *     - subParts: Array of TreeObject
  *
- * @param mimeStr: String  - a MIME structure to parse
+ * @param mimeStr: String - a MIME structure to parse
  * @param getBody: Boolean - if true, delivers the body text of each MIME part
  *
- * @return TreeObject, or NULL in case of failure
+ * @returns TreeObject, or NULL in case of failure
  */
 function getMimeTree(mimeStr, getBody = false) {
   let mimeTree = {
@@ -516,7 +518,7 @@ function getMimeTree(mimeStr, getBody = false) {
       };
     },
 
-    /** JSMime API **/
+    /** JSMime API */
     startMessage() {
       currentPart = mimeTree;
     },
@@ -548,7 +550,7 @@ function getMimeTree(mimeStr, getBody = false) {
       if (typeof data === "string") {
         currentPart.body += data;
       } else {
-        currentPart.body += EnigmailData.arrayBufferToString(data);
+        currentPart.body += lazy.EnigmailData.arrayBufferToString(data);
       }
     },
   };
@@ -556,10 +558,11 @@ function getMimeTree(mimeStr, getBody = false) {
   let opt = {
     strformat: "unicode",
     bodyformat: getBody ? "decode" : "none",
+    stripcontinuations: false,
   };
 
   try {
-    let p = new jsmime.MimeParser(jsmimeEmitter, opt);
+    let p = new lazy.jsmime.MimeParser(jsmimeEmitter, opt);
     p.deliverData(mimeStr);
     return mimeTree.subParts[0];
   } catch (ex) {

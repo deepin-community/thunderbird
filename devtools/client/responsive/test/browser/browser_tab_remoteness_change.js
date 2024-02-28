@@ -5,20 +5,20 @@
 
 // Verify Fission-enabled RDM remains open when tab changes remoteness.
 
-const { PromiseTestUtils } = ChromeUtils.import(
-  "resource://testing-common/PromiseTestUtils.jsm"
+const { PromiseTestUtils } = ChromeUtils.importESModule(
+  "resource://testing-common/PromiseTestUtils.sys.mjs"
 );
 PromiseTestUtils.allowMatchingRejectionsGlobally(
   /Permission denied to access property "document" on cross-origin object/
 );
 
-const Types = require("devtools/client/responsive/types");
+const Types = require("resource://devtools/client/responsive/types.js");
 
 const TEST_URL = "http://example.com/";
 
 addRDMTask(
   null,
-  async function() {
+  async function () {
     const tab = await addTab(TEST_URL);
 
     const { ui } = await openRDM(tab);
@@ -31,7 +31,7 @@ addRDMTask(
     );
 
     // Load URL that requires the main process, forcing a remoteness flip
-    await navigateToNewDomain("about:robots", ui);
+    await navigateTo("about:robots");
 
     // Bug 1625501: RDM will remain open when the embedded browser UI is enabled.
     is(ui.destroyed, false, "RDM is still open.");

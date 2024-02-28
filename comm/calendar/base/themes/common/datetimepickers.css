@@ -18,8 +18,8 @@ timepicker-grids {
   --tpFiveminBackground: Window;
   --tpItemHoverColor: InactiveCaptionText;
   --tpItemHoverBackground: InactiveCaption;
-  --tbHighlightColor: HighlightText;
-  --tbHighlightBackground: Highlight;
+  --tbHighlightColor: var(--selected-item-text-color);
+  --tbHighlightBackground: var(--selected-item-color);
 }
 
 :root[lwt-tree] timepicker-grids {
@@ -43,21 +43,25 @@ timepicker-grids {
 }
 
 /* menulist */
-datepicker > menulist {
-  width: 11em;
+datepicker > menulist::part(text-input) {
+  width: 9em;
 }
 
 /*-------------------------------------------------------------------
  *   Timepicker (text menulist with popup)
  *-------------------------------------------------------------------*/
 
-timepicker > menulist {
-  width: 8em;
+timepicker > menulist::part(text-input) {
+  width: 6em;
 }
 
 /*-------------------------------------------------------------------
  *   popup (from timepicker/timepicker.css)
  *-------------------------------------------------------------------*/
+
+.timepicker-menulist > menupopup::part(content) {
+  --panel-padding: 3px;
+}
 
 /* Box that occupies whole window */
 
@@ -93,13 +97,13 @@ timepicker > menulist {
 
 .time-picker-hour-grid[format12hours="false"] .time-picker-hour-box-class {
   min-width: 28px;
-  -moz-box-align: center;
+  align-items: center;
   border-inline-start: 1px solid var(--tpBorderColor);
 }
 
 .time-picker-hour-grid[format12hours="true"] .time-picker-hour-box-class {
   min-width: 24px;
-  -moz-box-align: center;
+  align-items: center;
   border-inline-start: 1px solid var(--tpBorderColor);
 }
 
@@ -139,7 +143,7 @@ timepicker > menulist {
 
 
 .time-picker-minute-box-class {
-  -moz-box-align: center;
+  align-items: center;
   border-inline-end: 1px solid var(--tpBorderColor);
   border-bottom: 1px solid var(--tpBorderColor);
 }
@@ -211,7 +215,7 @@ timepicker > menulist {
 /* box in one-minute grid elements */
 
 .time-picker-one-minute-class {
-  -moz-box-align: center;
+  align-items: center;
 }
 
 .time-picker-one-minute-class:hover {
@@ -236,12 +240,10 @@ timepicker > menulist {
 .time-picker-more-control-label {
   background-color: var(--tbHighlightBackground);
   color: var(--tbHighlightColor);
-  font-size: 12pt;
-  height: 12px;
-  min-width: 40px;
   margin: 0;
   border: 1px solid var(--tpSubBackground);
-  text-align: center;
+  padding-inline: 8px;
+  font-size: 1rem;
 }
 
 .time-picker-more-control-label:hover {

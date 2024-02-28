@@ -71,6 +71,7 @@ specified by any of the configuration files.
 ``extra`` is also optional and is a dict containing additional key/value
 pairs to add to the setting's metadata. The following keys may be specified
 in the ``extra`` dict:
+
     * ``choices`` - A set of allowed values for the setting.
 
 Wildcards
@@ -116,7 +117,6 @@ For example:
 
     from mach.decorators import (
         Command,
-        CommandProvider,
         SettingsProvider,
     )
     from mozbuild.base import MachCommandBase
@@ -129,15 +129,10 @@ For example:
             ('foo.baz', 'int', 'desc', 0, {'choices': set([0,1,2])}),
         ]
 
-    @CommandProvider
-    class Commands(MachCommandBase):
-        def __init__(self, *args, **kwargs):
-            super(Commands, self).__init__(*args, **kwargs)
-            self.settings = self._mach_context.settings
-
-        @Command('command', category='misc',
-                 description='Prints a setting')
-        def command(self):
-            print(self.settings.a.b)
-            for option in self.settings.foo:
-                print(self.settings.foo[option])
+    @Command('command', category='misc',
+             description='Prints a setting')
+    def command(command_context):
+        settings = command_context._mach_context.settings
+        print(settings.a.b)
+        for option in settings.foo:
+            print(settings.foo[option])

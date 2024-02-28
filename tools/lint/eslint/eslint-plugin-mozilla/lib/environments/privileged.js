@@ -1,5 +1,5 @@
 /**
- * @fileoverview Defines the environment for jsm files.
+ * @fileoverview Defines the environment for privileges JS files.
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -10,6 +10,9 @@
 
 module.exports = {
   globals: {
+    // Intl and WebAssembly are available everywhere but are not webIDL definitions.
+    Intl: false,
+    WebAssembly: false,
     // This list of items is currently obtained manually from the list of
     // mozilla::dom::constructor::id::ID enumerations in an object directory
     // generated dom/bindings/RegisterBindings.cpp
@@ -57,6 +60,7 @@ module.exports = {
     BoxObject: false,
     BroadcastChannel: false,
     BrowsingContext: false,
+    ByteLengthQueuingStrategy: false,
     CanonicalBrowsingContext: false,
     CDATASection: false,
     CSS: false,
@@ -114,6 +118,7 @@ module.exports = {
     ContentFrameMessageManager: false,
     ContentProcessMessageManager: false,
     ConvolverNode: false,
+    CountQueuingStrategy: false,
     CreateOfferRequest: false,
     Credential: false,
     CredentialsContainer: false,
@@ -141,6 +146,7 @@ module.exports = {
     DataTransfer: false,
     DataTransferItem: false,
     DataTransferItemList: false,
+    DebuggerNotificationObserver: false,
     DelayNode: false,
     DeprecationReportBody: false,
     DeviceLightEvent: false,
@@ -191,6 +197,8 @@ module.exports = {
     GamepadHapticActuator: false,
     GamepadPose: false,
     GamepadServiceTest: false,
+    Glean: false,
+    GleanPings: false,
     Grid: false,
     GridArea: false,
     GridDimension: false,
@@ -319,6 +327,8 @@ module.exports = {
     KeyEvent: false,
     KeyboardEvent: false,
     KeyframeEffect: false,
+    L10nFileSource: false,
+    L10nRegistry: false,
     Localization: false,
     Location: false,
     MIDIAccess: false,
@@ -427,8 +437,14 @@ module.exports = {
     Permissions: false,
     PlacesBookmark: false,
     PlacesBookmarkAddition: false,
+    PlacesBookmarkGuid: false,
+    PlacesBookmarkKeyword: false,
     PlacesBookmarkMoved: false,
     PlacesBookmarkRemoved: false,
+    PlacesBookmarkTags: false,
+    PlacesBookmarkTime: false,
+    PlacesBookmarkTitle: false,
+    PlacesBookmarkUrl: false,
     PlacesEvent: false,
     PlacesHistoryCleared: false,
     PlacesObservers: false,
@@ -481,6 +497,12 @@ module.exports = {
     RTCTrackEvent: false,
     RadioNodeList: false,
     Range: false,
+    ReadableStreamBYOBReader: false,
+    ReadableStreamBYOBRequest: false,
+    ReadableByteStreamController: false,
+    ReadableStream: false,
+    ReadableStreamDefaultController: false,
+    ReadableStreamDefaultReader: false,
     Report: false,
     ReportBody: false,
     ReportingObserver: false,
@@ -651,6 +673,8 @@ module.exports = {
     TouchList: false,
     TrackEvent: false,
     TransceiverImpl: false,
+    TransformStream: false,
+    TransformStreamDefaultController: false,
     TransitionEvent: false,
     TreeColumn: false,
     TreeColumns: false,
@@ -755,6 +779,9 @@ module.exports = {
     WindowRoot: false,
     Worker: false,
     Worklet: false,
+    WritableStream: false,
+    WritableStreamDefaultController: false,
+    WritableStreamDefaultWriter: false,
     XMLDocument: false,
     XMLHttpRequest: false,
     XMLHttpRequestEventTarget: false,
@@ -772,8 +799,5 @@ module.exports = {
     XULScrollElement: false,
     XULTextElement: false,
     console: false,
-    mozRTCIceCandidate: false,
-    mozRTCPeerConnection: false,
-    mozRTCSessionDescription: false,
   },
 };

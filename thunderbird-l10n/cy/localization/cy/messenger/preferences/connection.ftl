@@ -14,15 +14,9 @@ connection-dns-over-https-url-custom =
     .accesskey = C
     .tooltiptext = Rhowch eich hoff URL er mwyn datrys DNS drod HTTPS
 connection-dns-over-https-custom-label = Cyfaddas
-connection-dialog-window =
+connection-dialog-window2 =
     .title = Gosodiadau Cysylltu
-    .style =
-        { PLATFORM() ->
-            [macos] width: 44em !important
-           *[other] width: 49em !important
-        }
-connection-disable-extension =
-    .label = Analluogi Estyniad
+connection-dialog-title = Gosodiadau Cysylltu
 disable-extension-button = Analluogi Estyniad
 # Variables:
 #   $name (String) - The extension that is controlling the proxy settings.
@@ -51,7 +45,7 @@ http-port-label =
     .accesskey = P
 proxy-http-sharing =
     .label = Defnyddiwch y dirprwy yma hefyd ar gyfer HTTPS
-    .accesskey = x
+    .accesskey = D
 proxy-https-label =
     .value = Dirprwy HTTPS:
     .accesskey = S

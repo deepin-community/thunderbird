@@ -119,7 +119,7 @@ function checkAttachment(expectedCD, expectedCT) {
     pos++;
   } while (contentType.startsWith(" ", pos));
   contentType = contentType.substr(0, pos);
-  Assert.equal(contentType, expectedCT);
+  Assert.equal(contentType.toLowerCase(), expectedCT.toLowerCase());
 }
 
 async function testInput0() {
@@ -163,5 +163,9 @@ add_task(async function testBinaryAfterPlainTextAttachment() {
     mailTestUtils.firstMsgHdr(gDraftFolder)
   );
   // If only the first few chars are used, encoding will be incorrectly 7bit.
-  Assert.ok(msgData.includes("Content-Transfer-Encoding: base64\r\n"));
+  Assert.ok(
+    msgData.includes(
+      'Content-Disposition: attachment; filename="binary-after-plain.txt"\r\nContent-Transfer-Encoding: base64\r\n'
+    )
+  );
 });

@@ -9,18 +9,22 @@
 
 #include <vector>
 #include "mozilla/webrender/WebRenderAPI.h"
+#include "mozilla/image/WebRenderImageProvider.h"
 #include "mozilla/layers/AnimationInfo.h"
+#include "mozilla/layers/LayersTypes.h"
 #include "mozilla/dom/RemoteBrowser.h"
 #include "mozilla/UniquePtr.h"
 #include "nsIFrame.h"
 #include "nsRefPtrHashtable.h"
 #include "nsTHashSet.h"
 #include "ImageTypes.h"
+#include "ImgDrawResult.h"
 #include "DisplayItemClip.h"
+
+namespace mozilla {
 
 class nsDisplayItemGeometry;
 
-namespace mozilla {
 namespace webgpu {
 class WebGPUChild;
 }
@@ -34,8 +38,9 @@ class SourceSurface;
 }
 
 namespace layers {
+
 class BasicLayerManager;
-class CanvasLayer;
+class CanvasRenderer;
 class ImageClient;
 class ImageContainer;
 class WebRenderBridgeChild;
@@ -43,8 +48,8 @@ class WebRenderCanvasData;
 class WebRenderCanvasRenderer;
 class WebRenderCanvasRendererAsync;
 class WebRenderImageData;
+class WebRenderImageProviderData;
 class WebRenderFallbackData;
-class WebRenderLocalCanvasData;
 class RenderRootStateManager;
 class WebRenderGroupData;
 
@@ -68,7 +73,7 @@ class WebRenderUserData {
   static bool SupportsAsyncUpdate(nsIFrame* aFrame);
 
   static bool ProcessInvalidateForImage(nsIFrame* aFrame, DisplayItemType aType,
-                                        ContainerProducerID aProducerId);
+                                        image::ImageProviderId aProviderId);
 
   NS_INLINE_DECL_REFCOUNTING(WebRenderUserData)
 
@@ -77,9 +82,9 @@ class WebRenderUserData {
                     nsIFrame* aFrame);
 
   virtual WebRenderImageData* AsImageData() { return nullptr; }
+  virtual WebRenderImageProviderData* AsImageProviderData() { return nullptr; }
   virtual WebRenderFallbackData* AsFallbackData() { return nullptr; }
   virtual WebRenderCanvasData* AsCanvasData() { return nullptr; }
-  virtual WebRenderLocalCanvasData* AsLocalCanvasData() { return nullptr; }
   virtual WebRenderGroupData* AsGroupData() { return nullptr; }
 
   enum class UserDataType {
@@ -88,11 +93,11 @@ class WebRenderUserData {
     eAPZAnimation,
     eAnimation,
     eCanvas,
-    eLocalCanvas,
     eRemote,
     eGroup,
     eMask,
-    eBlobImage,  // SVG image
+    eImageProvider,  // ImageLib
+    eInProcessImage,
   };
 
   virtual UserDataType GetType() = 0;
@@ -168,8 +173,6 @@ class WebRenderImageData : public WebRenderUserData {
 
   bool IsAsync() { return mPipelineId.isSome(); }
 
-  bool UsingSharedSurface(ContainerProducerID aProducerId) const;
-
   void ClearImageKey();
 
  protected:
@@ -178,33 +181,32 @@ class WebRenderImageData : public WebRenderUserData {
   RefPtr<ImageClient> mImageClient;
   Maybe<wr::PipelineId> mPipelineId;
   RefPtr<ImageContainer> mContainer;
-  // The key can be owned by a shared surface that is used by several elements.
-  // when this is the case the shared surface is responsible for managing the
-  // destruction of the key.
-  // TODO: we surely can come up with a simpler/safer way to model this.
-  bool mOwnsKey;
 };
 
-/// Holds some data used to share blob recordings from VectorImages with the
-/// parent process.
-class WebRenderBlobImageData : public WebRenderUserData {
+/// Holds some data used to share ImageLib results with the parent process.
+/// This may be either in the form of a blob recording or a rasterized surface.
+class WebRenderImageProviderData final : public WebRenderUserData {
  public:
-  WebRenderBlobImageData(RenderRootStateManager* aManager,
-                         nsDisplayItem* aItem);
-  WebRenderBlobImageData(RenderRootStateManager* aManager,
-                         uint32_t aDisplayItemKey, nsIFrame* aFrame);
-  virtual ~WebRenderBlobImageData() {}
+  WebRenderImageProviderData(RenderRootStateManager* aManager,
+                             nsDisplayItem* aItem);
+  WebRenderImageProviderData(RenderRootStateManager* aManager,
+                             uint32_t aDisplayItemKey, nsIFrame* aFrame);
+  ~WebRenderImageProviderData() override;
 
-  UserDataType GetType() override { return UserDataType::eBlobImage; }
-  static UserDataType Type() { return UserDataType::eBlobImage; }
-  Maybe<wr::BlobImageKey> GetImageKey() { return mKey; }
+  WebRenderImageProviderData* AsImageProviderData() override { return this; }
+  UserDataType GetType() override { return UserDataType::eImageProvider; }
+  static UserDataType Type() { return UserDataType::eImageProvider; }
 
-  Maybe<wr::BlobImageKey> UpdateImageKey(
-      ImageContainer* aContainer, wr::IpcResourceUpdateQueue& aResources);
+  Maybe<wr::ImageKey> UpdateImageKey(image::WebRenderImageProvider* aProvider,
+                                     image::ImgDrawResult aDrawResult,
+                                     wr::IpcResourceUpdateQueue& aResources);
+
+  bool Invalidate(image::ImageProviderId aProviderId) const;
 
  protected:
-  Maybe<wr::BlobImageKey> mKey;
-  RefPtr<ImageContainer> mContainer;
+  RefPtr<image::WebRenderImageProvider> mProvider;
+  Maybe<wr::ImageKey> mKey;
+  image::ImgDrawResult mDrawResult = image::ImgDrawResult::NOT_READY;
 };
 
 /// Used for fallback rendering.
@@ -239,7 +241,8 @@ class WebRenderFallbackData : public WebRenderUserData {
   DisplayItemClip mClip;
   nsRect mBounds;
   nsRect mBuildingRect;
-  gfx::Size mScale;
+  gfx::MatrixScales mScale;
+  float mOpacity;
 
  protected:
   void ClearImageKey();
@@ -292,6 +295,7 @@ class WebRenderCanvasData : public WebRenderUserData {
   void ClearCanvasRenderer();
   WebRenderCanvasRendererAsync* GetCanvasRenderer();
   WebRenderCanvasRendererAsync* CreateCanvasRenderer();
+  bool SetCanvasRenderer(CanvasRenderer* aCanvasRenderer);
 
   void SetImageContainer(ImageContainer* aImageContainer);
   ImageContainer* GetImageContainer();
@@ -300,32 +304,6 @@ class WebRenderCanvasData : public WebRenderUserData {
  protected:
   RefPtr<WebRenderCanvasRendererAsync> mCanvasRenderer;
   RefPtr<ImageContainer> mContainer;
-};
-
-// WebRender data assocatiated with canvases that don't need to
-// synchronize across content-GPU process barrier.
-class WebRenderLocalCanvasData : public WebRenderUserData {
- public:
-  WebRenderLocalCanvasData(RenderRootStateManager* aManager,
-                           nsDisplayItem* aItem);
-  virtual ~WebRenderLocalCanvasData();
-
-  WebRenderLocalCanvasData* AsLocalCanvasData() override { return this; }
-  UserDataType GetType() override { return UserDataType::eLocalCanvas; }
-  static UserDataType Type() { return UserDataType::eLocalCanvas; }
-
-  void RequestFrameReadback();
-  void RefreshExternalImage();
-
-  // TODO: introduce a CanvasRenderer derivative to store here?
-
-  WeakPtr<webgpu::WebGPUChild> mGpuBridge;
-  uint64_t mGpuTextureId = 0;
-  wr::ExternalImageId mExternalImageId = {0};
-  wr::ImageKey mImageKey = {};
-  wr::ImageDescriptor mDescriptor;
-  gfx::SurfaceFormat mFormat = gfx::SurfaceFormat::UNKNOWN;
-  bool mDirty = false;
 };
 
 class WebRenderRemoteData : public WebRenderUserData {
@@ -342,6 +320,36 @@ class WebRenderRemoteData : public WebRenderUserData {
 
  protected:
   RefPtr<dom::RemoteBrowser> mRemoteBrowser;
+};
+
+class WebRenderMaskData : public WebRenderUserData {
+ public:
+  explicit WebRenderMaskData(RenderRootStateManager* aManager,
+                             nsDisplayItem* aItem)
+      : WebRenderUserData(aManager, aItem),
+        mMaskStyle(nsStyleImageLayers::LayerType::Mask),
+        mShouldHandleOpacity(false) {
+    MOZ_COUNT_CTOR(WebRenderMaskData);
+  }
+  virtual ~WebRenderMaskData() {
+    MOZ_COUNT_DTOR(WebRenderMaskData);
+    ClearImageKey();
+  }
+
+  void ClearImageKey();
+  void Invalidate();
+
+  UserDataType GetType() override { return UserDataType::eMask; }
+  static UserDataType Type() { return UserDataType::eMask; }
+
+  Maybe<wr::BlobImageKey> mBlobKey;
+  std::vector<RefPtr<gfx::ScaledFont>> mFonts;
+  std::vector<RefPtr<gfx::SourceSurface>> mExternalSurfaces;
+  LayerIntRect mItemRect;
+  nsPoint mMaskOffset;
+  nsStyleImageLayers mMaskStyle;
+  gfx::MatrixScales mScale;
+  bool mShouldHandleOpacity;
 };
 
 extern void DestroyWebRenderUserDataTable(WebRenderUserDataTable* aTable);

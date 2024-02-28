@@ -2,9 +2,12 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-dock-options-window-dialog =
+dock-options-window-dialog2 =
     .title = Sovelluskuvakkeen asetukset
-    .style = width: 35em;
+dock-options-dialog-title = Sovelluskuvakkeen asetukset
+dock-options-show-badge =
+    .label = Näytä lukumäärää ilmaiseva kuvake
+    .accesskey = m
 bounce-system-dock-icon =
     .label = Toteuta animaatio kuvakkeeseen kun uusi viesti saapuu
     .accesskey = k
@@ -17,4 +20,3 @@ count-unread-messages-radio =
 count-new-messages-radio =
     .label = Uusien viestien lukumäärä
     .accesskey = U
-notification-settings-info = Voit poistaa lisämerkin käytöstä huomautuspaneelista järjestelmäasetuksista.

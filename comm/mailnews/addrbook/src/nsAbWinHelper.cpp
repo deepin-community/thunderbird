@@ -48,7 +48,7 @@ struct nsMapiInterfaceWrapper {
 static void assignEntryID(LPENTRYID& aTarget, LPENTRYID aSource,
                           ULONG aByteCount) {
   if (aTarget != NULL) {
-    delete[](reinterpret_cast<LPBYTE>(aTarget));
+    delete[] (reinterpret_cast<LPBYTE>(aTarget));
     aTarget = NULL;
   }
   if (aSource != NULL) {
@@ -228,8 +228,6 @@ struct DlEntryIdOo {
 
 using namespace mozilla;
 
-static nsMapiEntry nullEntry;
-
 uint32_t nsAbWinHelper::sEntryCounter = 0;
 mozilla::StaticMutex nsAbWinHelper::sMutex;
 // There seems to be a deadlock/auto-destruction issue
@@ -335,6 +333,7 @@ BOOL nsAbWinHelper::GetPropertyString(const nsMapiEntry& aObject,
   LPSPropValue values = NULL;
   ULONG valueCount = 0;
 
+  nsMapiEntry nullEntry;
   if (!GetMAPIProperties(nullEntry, aObject, &aPropertyTag, 1, values,
                          valueCount)) {
     return FALSE;
@@ -365,6 +364,7 @@ BOOL nsAbWinHelper::GetPropertyUString(const nsMapiEntry& aObject,
   LPSPropValue values = NULL;
   ULONG valueCount = 0;
 
+  nsMapiEntry nullEntry;
   if (!GetMAPIProperties(nullEntry, aObject, &aPropertyTag, 1, values,
                          valueCount)) {
     return FALSE;
@@ -466,6 +466,7 @@ BOOL nsAbWinHelper::GetPropertyLong(const nsMapiEntry& aObject,
   LPSPropValue values = NULL;
   ULONG valueCount = 0;
 
+  nsMapiEntry nullEntry;
   if (!GetMAPIProperties(nullEntry, aObject, &aPropertyTag, 1, values,
                          valueCount)) {
     return FALSE;
@@ -493,6 +494,7 @@ BOOL nsAbWinHelper::GetPropertyBin(const nsMapiEntry& aObject,
   LPSPropValue values = NULL;
   ULONG valueCount = 0;
 
+  nsMapiEntry nullEntry;
   if (!GetMAPIProperties(nullEntry, aObject, &aPropertyTag, 1, values,
                          valueCount)) {
     return FALSE;
@@ -934,6 +936,7 @@ BOOL nsAbWinHelper::SetPropertyUString(const nsMapiEntry& aObject,
     PRINTF(("Property %08lx is not a string.\n", aPropertyTag));
     return FALSE;
   }
+  nsMapiEntry nullEntry;
   return SetMAPIProperties(nullEntry, aObject, 1, &value, false);
 }
 
@@ -1282,7 +1285,7 @@ BOOL nsAbWinHelper::GetContents(const nsMapiEntry& aParent,
         // Sometimes Outlooks spits the dummy here :-(
         // That is meant to be a byte count and NOT an error code of 0x8004010F.
         // We gloss over it.
-        if (currentValue.Value.bin.cb == MAPI_E_NOT_FOUND ||
+        if (currentValue.Value.bin.cb == (ULONG)MAPI_E_NOT_FOUND ||
             currentValue.Value.bin.lpb == NULL) {
           PRINTF(("Error fetching rows.\n"));
           return TRUE;

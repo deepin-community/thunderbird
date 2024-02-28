@@ -14,7 +14,6 @@
 #include "nsIMsgFolder.h"
 #include "nsCOMPtr.h"
 #include "nsMsgSearchCore.h"
-#include "nsMsgBaseCID.h"
 #include "nsMsgUtils.h"
 #include "msgCore.h"
 
@@ -436,11 +435,11 @@ nsresult nsBeckyFilters::CreateFilter(bool aIncoming, nsIMsgFilter** _retval) {
   NS_ENSURE_STATE(mServer);
 
   nsCOMPtr<nsIMsgFilterList> filterList;
-  nsresult rv = mServer->GetFilterList(nullptr, getter_AddRefs(filterList));
-  NS_ENSURE_SUCCESS(rv, rv);
+  mServer->GetFilterList(nullptr, getter_AddRefs(filterList));
+  NS_ENSURE_STATE(filterList);
 
   nsCOMPtr<nsIMsgFilter> filter;
-  rv = filterList->CreateFilter(EmptyString(), getter_AddRefs(filter));
+  nsresult rv = filterList->CreateFilter(EmptyString(), getter_AddRefs(filter));
   NS_ENSURE_SUCCESS(rv, rv);
 
   if (aIncoming)
@@ -459,11 +458,11 @@ nsresult nsBeckyFilters::AppendFilter(nsIMsgFilter* aFilter) {
   NS_ENSURE_STATE(mServer);
 
   nsCOMPtr<nsIMsgFilterList> filterList;
-  nsresult rv = mServer->GetFilterList(nullptr, getter_AddRefs(filterList));
-  NS_ENSURE_SUCCESS(rv, rv);
+  mServer->GetFilterList(nullptr, getter_AddRefs(filterList));
+  NS_ENSURE_STATE(filterList);
 
   uint32_t count;
-  rv = filterList->GetFilterCount(&count);
+  nsresult rv = filterList->GetFilterCount(&count);
   NS_ENSURE_SUCCESS(rv, rv);
 
   return filterList->InsertFilterAt(count, aFilter);
@@ -643,7 +642,8 @@ nsresult nsBeckyFilters::GetMessageFolder(const nsAString& aName,
   nsresult rv;
 
   nsCOMPtr<nsIMsgAccountManager> accountManager;
-  accountManager = do_GetService(NS_MSGACCOUNTMANAGER_CONTRACTID, &rv);
+  accountManager =
+      do_GetService("@mozilla.org/messenger/account-manager;1", &rv);
   NS_ENSURE_SUCCESS(rv, rv);
 
   nsTArray<RefPtr<nsIMsgAccount>> accounts;
@@ -679,7 +679,8 @@ nsresult nsBeckyFilters::GetMessageFolder(const nsAString& aName,
 nsresult nsBeckyFilters::CollectServers() {
   nsresult rv;
   nsCOMPtr<nsIMsgAccountManager> accountManager;
-  accountManager = do_GetService(NS_MSGACCOUNTMANAGER_CONTRACTID, &rv);
+  accountManager =
+      do_GetService("@mozilla.org/messenger/account-manager;1", &rv);
   NS_ENSURE_SUCCESS(rv, rv);
 
   nsCOMPtr<nsIMsgAccount> defaultAccount;

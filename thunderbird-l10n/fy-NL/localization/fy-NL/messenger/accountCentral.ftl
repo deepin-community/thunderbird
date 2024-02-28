@@ -39,10 +39,10 @@ feeds-description = Mei { -brand-short-name } kinne jo ferbine mei RSS/Atom-feed
 
 newsgroups-label = Nijsgroepen
     .aria-label = Ferbine mei in nijsgroep
-newsgroups-description = Me { -brand-short-name } kinne jo mei alle nijsgroepen dy't jo wolle ferbine.
+newsgroups-description = Me { -brand-short-name } kinne jo mei alle nijsgroepen dy’t jo wolle ferbine.
 
 import-title = Ymportearje fan in oar programma út
-import-paragraph = Mei { -brand-short-name } kinne jo e-mailberjochten, adresboekfermeldingen, feedabonneminten, foarkarren en/of filters út oare e-mailprogramma’s en bekende adresboekyndielingen ymportearje.
+import-paragraph2 = Mei { -brand-short-name } kinne jo e-mailberjochten, adresboekfermeldingen, feedabonneminten, ynstellingen en/of filters út oare e-mailprogramma’s en bekende adresboekyndielingen ymportearje.
 
 import-label = Ymportearje
     .aria-label = Gegevens út oare programma’s ymportearje

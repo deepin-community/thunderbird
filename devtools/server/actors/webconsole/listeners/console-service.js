@@ -4,11 +4,12 @@
 
 "use strict";
 
-const { Ci } = require("chrome");
-const { isWindowIncluded } = require("devtools/shared/layout/utils");
-const Services = require("Services");
-const ChromeUtils = require("ChromeUtils");
-const { WebConsoleUtils } = require("devtools/server/actors/webconsole/utils");
+const {
+  isWindowIncluded,
+} = require("resource://devtools/shared/layout/utils.js");
+const {
+  WebConsoleUtils,
+} = require("resource://devtools/server/actors/webconsole/utils.js");
 
 // The page errors listener
 
@@ -23,11 +24,16 @@ const { WebConsoleUtils } = require("devtools/server/actors/webconsole/utils");
  * @param Function handler
  *        This function is invoked with one argument, the nsIConsoleMessage, whenever a
  *        relevant message is received.
+ * @param object filteringOptions
+ *        Optional - The filteringOptions that this listener should listen to:
+ *        - matchExactWindow: Set to true to match the messages on a specific window (when
+ *          `window` is defined) and not on the whole window tree.
  */
 class ConsoleServiceListener {
-  constructor(window, handler) {
+  constructor(window, handler, { matchExactWindow } = {}) {
     this.window = window;
     this.handler = handler;
+    this.matchExactWindow = matchExactWindow;
   }
 
   QueryInterface = ChromeUtils.generateQI([Ci.nsIConsoleListener]);
@@ -76,7 +82,16 @@ class ConsoleServiceListener {
       const errorWindow = Services.wm.getOuterWindowWithId(
         message.outerWindowID
       );
-      if (!errorWindow || !isWindowIncluded(this.window, errorWindow)) {
+
+      if (!errorWindow) {
+        return;
+      }
+
+      if (this.matchExactWindow && this.window !== errorWindow) {
+        return;
+      }
+
+      if (!isWindowIncluded(this.window, errorWindow)) {
         return;
       }
     }
@@ -140,7 +155,9 @@ class ConsoleServiceListener {
       });
     }
 
-    const ids = WebConsoleUtils.getInnerWindowIDsForFrames(this.window);
+    const ids = this.matchExactWindow
+      ? [WebConsoleUtils.getInnerWindowId(this.window)]
+      : WebConsoleUtils.getInnerWindowIDsForFrames(this.window);
 
     return errors.filter(error => {
       if (error instanceof Ci.nsIScriptError) {

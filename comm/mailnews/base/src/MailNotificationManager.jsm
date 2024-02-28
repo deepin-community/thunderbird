@@ -4,20 +4,25 @@
 
 const EXPORTED_SYMBOLS = ["MailNotificationManager"];
 
-const { XPCOMUtils } = ChromeUtils.import(
-  "resource://gre/modules/XPCOMUtils.jsm"
+const { AppConstants } = ChromeUtils.importESModule(
+  "resource://gre/modules/AppConstants.sys.mjs"
+);
+const { MailServices } = ChromeUtils.import(
+  "resource:///modules/MailServices.jsm"
+);
+const { XPCOMUtils } = ChromeUtils.importESModule(
+  "resource://gre/modules/XPCOMUtils.sys.mjs"
 );
 
-XPCOMUtils.defineLazyModuleGetters(this, {
-  AppConstants: "resource://gre/modules/AppConstants.jsm",
-  Services: "resource://gre/modules/Services.jsm",
-  MailServices: "resource:///modules/MailServices.jsm",
+const lazy = {};
+
+XPCOMUtils.defineLazyModuleGetters(lazy, {
   MailUtils: "resource:///modules/MailUtils.jsm",
   WinUnreadBadge: "resource:///modules/WinUnreadBadge.jsm",
 });
 
 XPCOMUtils.defineLazyGetter(
-  this,
+  lazy,
   "l10n",
   () => new Localization(["messenger/messenger.ftl"])
 );
@@ -50,23 +55,30 @@ class MailNotificationManager {
     this._bundle = Services.strings.createBundle(
       "chrome://messenger/locale/messenger.properties"
     );
-    try {
-      this._osIntegration = Cc[
-        "@mozilla.org/messenger/osintegration;1"
-      ].getService(Ci.nsIMessengerOSIntegration);
-    } catch (e) {
-      // We don't have OS integration on all platforms.
-    }
     MailServices.mailSession.AddFolderListener(
       this,
       Ci.nsIFolderListener.intPropertyChanged
     );
+
+    // Ensure that OS integration is defined before we attempt to initialize the
+    // system tray icon.
+    XPCOMUtils.defineLazyGetter(this, "_osIntegration", () => {
+      try {
+        return Cc["@mozilla.org/messenger/osintegration;1"].getService(
+          Ci.nsIMessengerOSIntegration
+        );
+      } catch (e) {
+        // We don't have OS integration on all platforms.
+        return null;
+      }
+    });
 
     if (["macosx", "win"].includes(AppConstants.platform)) {
       // We don't have indicator for unread count on Linux yet.
       Cc["@mozilla.org/newMailNotificationService;1"]
         .getService(Ci.mozINewMailNotificationService)
         .addListener(this, Ci.mozINewMailNotificationService.count);
+
       Services.obs.addObserver(this, "unread-im-count-changed");
       Services.obs.addObserver(this, "profile-before-change");
     }
@@ -74,9 +86,11 @@ class MailNotificationManager {
     if (AppConstants.platform == "macosx") {
       Services.obs.addObserver(this, "new-directed-incoming-message");
     }
+
     if (AppConstants.platform == "win") {
       Services.obs.addObserver(this, "windows-refresh-badge-tray");
       Services.prefs.addObserver("mail.biff.show_badge", this);
+      Services.prefs.addObserver("mail.biff.show_tray_icon_always", this);
     }
   }
 
@@ -87,7 +101,7 @@ class MailNotificationManager {
         let msgHdr = Cc["@mozilla.org/messenger;1"]
           .getService(Ci.nsIMessenger)
           .msgHdrFromURI(data);
-        MailUtils.displayMessageInFolderTab(msgHdr);
+        lazy.MailUtils.displayMessageInFolderTab(msgHdr, true);
         return;
       case "unread-im-count-changed":
         this._logger.log(
@@ -111,7 +125,10 @@ class MailNotificationManager {
         this._showCustomizedAlert();
         return;
       case "nsPref:changed":
-        if (data == "mail.biff.show_badge") {
+        if (
+          data == "mail.biff.show_badge" ||
+          data == "mail.biff.show_tray_icon_always"
+        ) {
           this._updateUnreadCount();
         }
     }
@@ -120,31 +137,23 @@ class MailNotificationManager {
   /**
    * Following are nsIFolderListener interfaces. Do nothing about them.
    */
-  OnItemAdded() {}
-
-  OnItemRemoved() {}
-
-  OnItemPropertyChanged() {}
-
-  OnItemBoolPropertyChanged() {}
-
-  OnItemUnicharPropertyChanged() {}
-
-  OnItemPropertyFlagChanged() {}
-
-  OnItemEvent() {}
-
+  onFolderAdded() {}
+  onMessageAdded() {}
+  onFolderRemoved() {}
+  onMessageRemoved() {}
+  onFolderPropertyChanged() {}
   /**
    * The only nsIFolderListener interface we care about.
+   *
    * @see nsIFolderListener
    */
-  OnItemIntPropertyChanged(folder, property, oldValue, newValue) {
+  onFolderIntPropertyChanged(folder, property, oldValue, newValue) {
     if (!Services.prefs.getBoolPref("mail.biff.show_alert")) {
       return;
     }
 
     this._logger.debug(
-      `OnItemIntPropertyChanged; property=${property}: ${oldValue} => ${newValue}, folder.URI=${folder.URI}`
+      `onFolderIntPropertyChanged; property=${property}: ${oldValue} => ${newValue}, folder.URI=${folder.URI}`
     );
 
     switch (property) {
@@ -160,6 +169,10 @@ class MailNotificationManager {
         break;
     }
   }
+  onFolderBoolPropertyChanged() {}
+  onFolderUnicharPropertyChanged() {}
+  onFolderPropertyFlagChanged() {}
+  onFolderEvent() {}
 
   /**
    * @see mozINewMailNotificationService
@@ -171,7 +184,8 @@ class MailNotificationManager {
   }
 
   /**
-   * Show an alert according the changed folder.
+   * Show an alert according to the changed folder.
+   *
    * @param {nsIMsgFolder} changedFolder - The folder that emitted the change
    *   event, can be a root folder or a real folder.
    */
@@ -181,16 +195,16 @@ class MailNotificationManager {
       return;
     }
 
-    let numNewMessages = folder.getNumNewMessages(false);
-    let msgDb = folder.msgDatabase;
-    let newMsgKeys = msgDb.getNewList().slice(-numNewMessages);
-    if (newMsgKeys.length == 0) {
+    let newMsgKeys = this._getNewMsgKeysNotNotified(folder);
+    let numNewMessages = newMsgKeys.length;
+    if (!numNewMessages) {
       return;
     }
+
     this._logger.debug(
       `Filling alert info; folder.URI=${folder.URI}, numNewMessages=${numNewMessages}`
     );
-    let firstNewMsgHdr = msgDb.GetMsgHdrForKey(newMsgKeys[0]);
+    let firstNewMsgHdr = folder.msgDatabase.getMsgHdrForKey(newMsgKeys[0]);
 
     let title = this._getAlertTitle(folder, numNewMessages);
     let body;
@@ -209,6 +223,7 @@ class MailNotificationManager {
   /**
    * Iterate the subfolders of changedFolder, return the first real folder with
    * new mail.
+   *
    * @param {nsIMsgFolder} changedFolder - The folder that emitted the change event.
    * @returns {nsIMsgFolder} The first real folder.
    */
@@ -236,6 +251,7 @@ class MailNotificationManager {
 
   /**
    * Get the title for the alert.
+   *
    * @param {nsIMsgFolder} folder - The changed folder.
    * @param {number} numNewMessages - The count of new messages.
    * @returns {string} The alert title.
@@ -251,13 +267,14 @@ class MailNotificationManager {
 
   /**
    * Get the body for the alert.
+   *
    * @param {nsIMsgFolder} folder - The changed folder.
    * @param {nsIMsgHdr} msgHdr - The nsIMsgHdr of the first new messages.
    * @returns {string} The alert body.
    */
   async _getAlertBody(folder, msgHdr) {
     await new Promise((resolve, reject) => {
-      let isAsync = folder.fetchMsgPreviewText([msgHdr.messageKey], false, {
+      let isAsync = folder.fetchMsgPreviewText([msgHdr.messageKey], {
         OnStartRunningUrl() {},
         // @see nsIUrlListener
         OnStopRunningUrl(url, exitCode) {
@@ -300,7 +317,7 @@ class MailNotificationManager {
         "mail.biff.alert.preview_length",
         40
       );
-      let preview = msgHdr.getProperty("preview").slice(0, previewLength);
+      let preview = msgHdr.getStringProperty("preview").slice(0, previewLength);
       if (preview) {
         alertBody += (alertBody ? "\n" : "") + preview;
       }
@@ -310,6 +327,7 @@ class MailNotificationManager {
 
   /**
    * Show the alert.
+   *
    * @param {nsIMsgHdr} msgHdr - The nsIMsgHdr of the first new messages.
    * @param {string} title - The alert title.
    * @param {string} body - The alert body.
@@ -355,45 +373,30 @@ class MailNotificationManager {
    * Show a customized alert window (newmailalert.xhtml), if there is already
    * one showing, do not show another one, because the newer one will block the
    * older one. Instead, save the folder and newMsgKeys to this._pendingFolders.
+   *
    * @param {nsIMsgFolder} [folder] - The folder containing new messages.
    */
   _showCustomizedAlert(folder) {
-    let newMsgKeys;
-    if (folder) {
-      // Show this folder or queue it.
-      newMsgKeys = folder.msgDatabase
-        .getNewList()
-        .slice(-folder.getNumNewMessages(false));
-      if (this._customizedAlertShown) {
-        this._pendingFolders.add(folder);
-        return;
-      }
-    } else {
+    if (this._customizedAlertShown) {
+      // Queue the folder.
+      this._pendingFolders.add(folder);
+      return;
+    }
+    if (!folder) {
       // Get the next folder from the queue.
       folder = this._pendingFolders.keys().next().value;
       if (!folder) {
         return;
       }
-      let msgDb = folder.msgDatabase;
-      let lastBiffTime = this._folderBiffTime.get(folder) || 0;
-      newMsgKeys = msgDb.getNewList().filter(key => {
-        // It's possible that after we queued the folder, user has opened the
-        // folder and read some new messages. We compare the timestamp of each
-        // NEW message with the last biff time to make sure only real NEW
-        // messages are alerted.
-        let msgHdr = msgDb.GetMsgHdrForKey(key);
-        return msgHdr.dateInSeconds * 1000 > lastBiffTime;
-      });
-
       this._pendingFolders.delete(folder);
     }
-    if (newMsgKeys.length == 0) {
+
+    let newMsgKeys = this._getNewMsgKeysNotNotified(folder);
+    if (!newMsgKeys.length) {
       // No NEW message in the current folder, try the next queued folder.
       this._showCustomizedAlert();
       return;
     }
-
-    this._folderBiffTime.set(folder, Date.now());
 
     let args = Cc["@mozilla.org/array;1"].createInstance(Ci.nsIMutableArray);
     args.appendElement(folder);
@@ -409,6 +412,25 @@ class MailNotificationManager {
       args
     );
     this._customizedAlertShown = true;
+    this._folderBiffTime.set(folder, Date.now());
+  }
+
+  /**
+   * Get all NEW messages from a folder that we received after last biff time.
+   *
+   * @param {nsIMsgFolder} folder - The message folder to check.
+   * @returns {number[]} An array of message keys.
+   */
+  _getNewMsgKeysNotNotified(folder) {
+    let msgDb = folder.msgDatabase;
+    let lastBiffTime = this._folderBiffTime.get(folder) || 0;
+    return msgDb
+      .getNewList()
+      .slice(-folder.getNumNewMessages(false))
+      .filter(key => {
+        let msgHdr = msgDb.getMsgHdrForKey(key);
+        return msgHdr.dateInSeconds * 1000 > lastBiffTime;
+      });
   }
 
   async _updateUnreadCount() {
@@ -430,11 +452,11 @@ class MailNotificationManager {
         count = 0;
       }
       if (count > 0) {
-        tooltip = await l10n.formatValue("unread-messages-os-tooltip", {
+        tooltip = await lazy.l10n.formatValue("unread-messages-os-tooltip", {
           count,
         });
       }
-      await WinUnreadBadge.updateUnreadCount(count, tooltip);
+      await lazy.WinUnreadBadge.updateUnreadCount(count, tooltip);
     }
     this._osIntegration?.updateUnreadCount(count, tooltip);
 

@@ -9,6 +9,8 @@
 
 #include <windows.h>
 #include "mozilla/Maybe.h"
+#include "nsString.h"
+
 #include <stdint.h>
 
 namespace mozilla {
@@ -76,6 +78,9 @@ class Compatibility {
    */
   static bool IsModuleVersionLessThan(HMODULE aModuleHandle,
                                       unsigned long long aVersion);
+
+  static void SuppressA11yForClipboardCopy();
+  static bool IsA11ySuppressedForClipboardCopy();
 
  private:
   Compatibility();

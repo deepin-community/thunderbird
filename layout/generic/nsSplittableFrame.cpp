@@ -26,15 +26,14 @@ void nsSplittableFrame::Init(nsIContent* aContent, nsContainerFrame* aParent,
   nsIFrame::Init(aContent, aParent, aPrevInFlow);
 }
 
-void nsSplittableFrame::DestroyFrom(nsIFrame* aDestructRoot,
-                                    PostDestroyData& aPostDestroyData) {
+void nsSplittableFrame::Destroy(DestroyContext& aContext) {
   // Disconnect from the flow list
   if (mPrevContinuation || mNextContinuation) {
     RemoveFromFlow(this);
   }
 
   // Let the base class destroy the frame
-  nsIFrame::DestroyFrom(aDestructRoot, aPostDestroyData);
+  nsIFrame::Destroy(aContext);
 }
 
 nsIFrame* nsSplittableFrame::GetPrevContinuation() const {
@@ -180,8 +179,12 @@ void nsSplittableFrame::RemoveFromFlow(nsIFrame* aFrame) {
     }
   }
 
-  aFrame->SetPrevInFlow(nullptr);
+  // **Note: it is important here that we clear the Next link from aFrame
+  // BEFORE clearing its Prev link, because in nsContinuingTextFrame,
+  // SetPrevInFlow() would follow the Next pointers, wiping out the cached
+  // mFirstContinuation field from each following frame in the list.
   aFrame->SetNextInFlow(nullptr);
+  aFrame->SetPrevInFlow(nullptr);
 }
 
 NS_DECLARE_FRAME_PROPERTY_SMALL_VALUE(ConsumedBSizeProperty, nscoord);
@@ -194,6 +197,12 @@ nscoord nsSplittableFrame::CalcAndCacheConsumedBSize() {
   const auto wm = GetWritingMode();
   nscoord bSize = 0;
   for (; prev; prev = prev->GetPrevContinuation()) {
+    if (prev->IsTrueOverflowContainer()) {
+      // Overflow containers might not get reflowed, and they have no bSize
+      // anyways.
+      continue;
+    }
+
     bSize += prev->ContentSize(wm).BSize(wm);
     bool found = false;
     nscoord consumed = prev->GetProperty(ConsumedBSizeProperty(), &found);

@@ -6,18 +6,13 @@
 
 #include <string.h>
 #include "prprf.h"
-#include "plstr.h"
 #include "prmem.h"
 #include "plbase64.h"
 #include "nsCRT.h"
-#include "nsMemory.h"
 #include "nsTArray.h"
-#include "nsCOMPtr.h"
 #include "nsEscape.h"
 #include "nsMIMEHeaderParamImpl.h"
-#include "nsReadableUtils.h"
 #include "nsNativeCharsetUtils.h"
-#include "nsError.h"
 #include "mozilla/Encoding.h"
 #include "mozilla/TextUtils.h"
 #include "mozilla/Utf8.h"
@@ -125,6 +120,27 @@ nsresult nsMIMEHeaderParamImpl::GetParameterHTTP(const nsACString& aHeaderVal,
                         false, nullptr, aResult);
 }
 
+/* static */
+// detects any non-null characters pass null
+bool nsMIMEHeaderParamImpl::ContainsTrailingCharPastNull(
+    const nsACString& aVal) {
+  nsACString::const_iterator first;
+  aVal.BeginReading(first);
+  nsACString::const_iterator end;
+  aVal.EndReading(end);
+
+  if (FindCharInReadable(L'\0', first, end)) {
+    while (first != end) {
+      if (*first != '\0') {
+        // contains trailing characters past the null character
+        return true;
+      }
+      ++first;
+    }
+  }
+  return false;
+}
+
 // XXX : aTryLocaleCharset is not yet effective.
 /* static */
 nsresult nsMIMEHeaderParamImpl::DoGetParameter(
@@ -138,9 +154,8 @@ nsresult nsMIMEHeaderParamImpl::DoGetParameter(
   // aDecoding (5987 being a subset of 2231) and return charset.)
   nsCString med;
   nsCString charset;
-  rv = DoParameterInternal(PromiseFlatCString(aHeaderVal).get(), aParamName,
-                           aDecoding, getter_Copies(charset), aLang,
-                           getter_Copies(med));
+  rv = DoParameterInternal(aHeaderVal, aParamName, aDecoding,
+                           getter_Copies(charset), aLang, getter_Copies(med));
   if (NS_FAILED(rv)) return rv;
 
   // convert to UTF-8 after charset conversion and RFC 2047 decoding
@@ -375,7 +390,7 @@ bool IsValidOctetSequenceForCharset(const nsACString& aCharset,
 // The format of these header lines  is
 // <token> [ ';' <token> '=' <token-or-quoted-string> ]*
 NS_IMETHODIMP
-nsMIMEHeaderParamImpl::GetParameterInternal(const char* aHeaderValue,
+nsMIMEHeaderParamImpl::GetParameterInternal(const nsACString& aHeaderValue,
                                             const char* aParamName,
                                             char** aCharset, char** aLang,
                                             char** aResult) {
@@ -385,9 +400,23 @@ nsMIMEHeaderParamImpl::GetParameterInternal(const char* aHeaderValue,
 
 /* static */
 nsresult nsMIMEHeaderParamImpl::DoParameterInternal(
-    const char* aHeaderValue, const char* aParamName, ParamDecoding aDecoding,
-    char** aCharset, char** aLang, char** aResult) {
-  if (!aHeaderValue || !*aHeaderValue || !aResult) return NS_ERROR_INVALID_ARG;
+    const nsACString& aHeaderValue, const char* aParamName,
+    ParamDecoding aDecoding, char** aCharset, char** aLang, char** aResult) {
+  if (aHeaderValue.IsEmpty() || !aResult) {
+    return NS_ERROR_INVALID_ARG;
+  }
+
+  if (ContainsTrailingCharPastNull(aHeaderValue)) {
+    // See Bug 1784348
+    return NS_ERROR_INVALID_ARG;
+  }
+
+  const nsCString& flat = PromiseFlatCString(aHeaderValue);
+  const char* str = flat.get();
+
+  if (!*str) {
+    return NS_ERROR_INVALID_ARG;
+  }
 
   *aResult = nullptr;
 
@@ -399,8 +428,6 @@ nsresult nsMIMEHeaderParamImpl::DoParameterInternal(
   // change to (aDecoding != HTTP_FIELD_ENCODING) when we want to disable
   // them for HTTP header fields later on, see bug 776324
   bool acceptContinuations = true;
-
-  const char* str = aHeaderValue;
 
   // skip leading white space.
   for (; *str && nsCRT::IsAsciiSpace(*str); ++str) {
@@ -579,8 +606,8 @@ nsresult nsMIMEHeaderParamImpl::DoParameterInternal(
       // in quotes (quotes required even if lang is blank)
       if (caseB || (caseCStart && acceptContinuations)) {
         // look for single quotation mark(')
-        const char* sQuote1 = PL_strchr(valueStart, 0x27);
-        const char* sQuote2 = sQuote1 ? PL_strchr(sQuote1 + 1, 0x27) : nullptr;
+        const char* sQuote1 = strchr(valueStart, 0x27);
+        const char* sQuote2 = sQuote1 ? strchr(sQuote1 + 1, 0x27) : nullptr;
 
         // Two single quotation marks must be present even in
         // absence of charset and lang.
@@ -754,13 +781,13 @@ nsresult internalDecodeRFC2047Header(const char* aHeaderVal,
   // If aHeaderVal is RFC 2047 encoded or is not a UTF-8 string  but
   // aDefaultCharset is specified, decodes RFC 2047 encoding and converts
   // to UTF-8. Otherwise, just strips away CRLF.
-  if (PL_strstr(aHeaderVal, "=?") ||
+  if (strstr(aHeaderVal, "=?") ||
       (!aDefaultCharset.IsEmpty() &&
        (!IsUtf8(nsDependentCString(aHeaderVal)) ||
         Is7bitNonAsciiString(aHeaderVal, strlen(aHeaderVal))))) {
     DecodeRFC2047Str(aHeaderVal, aDefaultCharset, aOverrideCharset, aResult);
   } else if (aEatContinuations &&
-             (PL_strchr(aHeaderVal, '\n') || PL_strchr(aHeaderVal, '\r'))) {
+             (strchr(aHeaderVal, '\n') || strchr(aHeaderVal, '\r'))) {
     aResult = aHeaderVal;
   } else {
     aEatContinuations = false;
@@ -1174,11 +1201,13 @@ nsresult DecodeRFC2047Str(const char* aHeader,
   // safe because we don't use a raw *char any more.
   aResult.SetCapacity(3 * strlen(aHeader));
 
-  while ((p = PL_strstr(begin, "=?")) != nullptr) {
+  while ((p = strstr(begin, "=?")) != nullptr) {
     if (isLastEncodedWord) {
       // See if it's all whitespace.
       for (q = begin; q < p; ++q) {
-        if (!PL_strchr(" \t\r\n", *q)) break;
+        if (!strchr(" \t\r\n", *q)) {
+          break;
+        }
       }
     }
 
@@ -1204,7 +1233,7 @@ nsresult DecodeRFC2047Str(const char* aHeader,
     charsetStart = p;
     charsetEnd = nullptr;
     for (q = p; *q != '?'; q++) {
-      if (*q <= ' ' || PL_strchr(especials, *q)) {
+      if (*q <= ' ' || strchr(especials, *q)) {
         goto badsyntax;
       }
 
@@ -1253,7 +1282,7 @@ nsresult DecodeRFC2047Str(const char* aHeader,
       // bug 227290. ignore an extraneous '=' at the end.
       // (# of characters in B-encoded part has to be a multiple of 4)
       int32_t n = r - (q + 2);
-      R -= (n % 4 == 1 && !PL_strncmp(r - 3, "===", 3)) ? 1 : 0;
+      R -= (n % 4 == 1 && !strncmp(r - 3, "===", 3)) ? 1 : 0;
     }
     // Bug 493544. Don't decode the encoded text until it ends
     if (R[-1] != '=' &&

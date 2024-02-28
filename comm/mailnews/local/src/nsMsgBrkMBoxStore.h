@@ -15,6 +15,7 @@
 #include "nsIFile.h"
 #include "nsInterfaceHashtable.h"
 #include "nsISeekableStream.h"
+#include "nsIOutputStream.h"
 
 class nsMsgBrkMBoxStore final : public nsMsgLocalStoreUtils,
                                 nsIMsgPluggableStore {
@@ -28,6 +29,9 @@ class nsMsgBrkMBoxStore final : public nsMsgLocalStoreUtils,
   ~nsMsgBrkMBoxStore();
 
  protected:
+  nsresult InternalGetNewMsgOutputStream(nsIMsgFolder* aFolder,
+                                         nsIMsgDBHdr** aNewMsgHdr,
+                                         nsIOutputStream** aResult);
   nsresult AddSubFolders(nsIMsgFolder* parent, nsCOMPtr<nsIFile>& path,
                          bool deep);
   nsresult CreateDirectoryForFolder(nsIFile* path);
@@ -38,6 +42,7 @@ class nsMsgBrkMBoxStore final : public nsMsgLocalStoreUtils,
   void GetMailboxModProperties(nsIMsgFolder* aFolder, int64_t* aSize,
                                uint32_t* aDate);
   void SetDBValid(nsIMsgDBHdr* aHdr);
+
   // We don't want to keep re-opening an output stream when downloading
   // multiple pop3 messages, or adjusting x-mozilla-status headers, so
   // we cache output streams based on folder uri's. If the caller has closed

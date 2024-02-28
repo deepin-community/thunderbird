@@ -5,18 +5,14 @@
 
 DIRS += [
     "base",
+    "extract",
     "import-export",
     "itip",
-    "libical",
     "locales",
     "providers",
 ]
 
 TEST_DIRS += ["test"]
-
-FINAL_TARGET_FILES.res += [
-    "timezones/zones.json",
-]
 
 with Files("**"):
     BUG_COMPONENT = ("Calendar", "General")

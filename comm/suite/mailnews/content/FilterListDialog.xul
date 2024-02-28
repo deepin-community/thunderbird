@@ -33,6 +33,34 @@
     <key id="key_selectAll"/>
   </keyset>
 
+  <hbox align="center">
+    <label value="&filtersForPrefix.label;"
+           accesskey="&filtersForPrefix.accesskey;"
+           control="serverMenu"/>
+
+    <menulist id="serverMenu"
+              class="folderMenuItem"
+              IsServer="true"
+              IsSecure="false"
+              ServerType="none">
+      <menupopup id="serverMenuPopup"
+                 class="menulist-menupopup"
+                 type="folder"
+                 mode="filters"
+                 expandFolders="nntp"
+                 showFileHereLabel="true"
+                 showAccountsFileHere="true"
+                 oncommand="setFilterFolder(event.target._folder)"/>
+    </menulist>
+    <textbox id="searchBox"
+             class="searchBox"
+             flex="1"
+             type="search"
+             oncommand="rebuildFilterList();"
+             emptytext="&searchBox.emptyText;"
+             isempty="true"/>
+  </hbox>
+
   <grid flex="1">
     <columns>
       <column flex="1"/>
@@ -40,64 +68,45 @@
     </columns>
     <rows>
       <row>
-        <hbox align="center">
-          <label value="&filtersForPrefix.label;"
-                 accesskey="&filtersForPrefix.accesskey;"
-                 control="serverMenu"/>
-
-          <menulist id="serverMenu"
-                    class="folderMenuItem"
-                    IsServer="true"
-                    IsSecure="false"
-                    ServerType="none">
-            <menupopup id="serverMenuPopup"
-                       class="menulist-menupopup"
-                       type="folder"
-                       mode="filters"
-                       expandFolders="nntp"
-                       showFileHereLabel="true"
-                       showAccountsFileHere="true"
-                       oncommand="onFolderSelect(event.target._folder)"/>
-          </menulist>
-          <spacer flex="1"/>
-        </hbox>
-        <button label="&viewLogButton.label;"
-                accesskey="&viewLogButton.accesskey;"
-                oncommand="viewLog();"/>
+        <separator class="thin"/>
       </row>
 
       <row>
-        <separator/>
-      </row>
-
-      <row>
-        <label id="filterHeader" control="filterTree">&filterHeader.label;</label>
+        <hbox>
+          <label id="filterHeader"
+                 flex="1"
+                 control="filterTree">&filterHeader.label;</label>
+          <label id="countBox"/>
+       </hbox>
       </row>
 
       <row flex="1">
-        <tree id="filterTree"
-              hidecolumnpicker="true"
-              onselect="onFilterSelect(event);"
-              onkeypress="onFilterTreeKeyPress(event);"
-              ondblclick="onFilterDoubleClick(event);">
+        <vbox>
+          <listbox id="filterList"
+                   flex="1"
+                   seltype="multiple"
+                   onselect="updateButtons();"
+                   onkeypress="onFilterListKeyPress(event);">
+            <listhead>
+              <listheader id="nameColumn"
+                          label="&nameColumn.label;"
+                          flex="1"/>
+              <listheader id="activeColumn"
+                          label="&activeColumn.label;"
+                          minwidth="40px"/>
+            </listhead>
+          </listbox>
+        </vbox>
 
-          <treecols>
-            <treecol id="nameColumn"
-                     flex="1"
-                     label="&nameColumn.label;"
-                     sort="?Name"/>
-            <treecol id="activeColumn"
-                     label="&activeColumn.label;"
-                     cycler="true"/>
-          </treecols>
-
-          <treechildren/>
-        </tree>
         <vbox>
           <button id="newButton"
                   label="&newButton.label;"
                   accesskey="&newButton.accesskey;"
-                  oncommand="onNewFilter(null);"/>
+                  oncommand="onNewFilter();"/>
+          <button id="copyToNewButton"
+                  label="&copyButton.label;"
+                  accesskey="&copyButton.accesskey;"
+                  oncommand="onCopyToNewFilter();"/>
           <button id="editButton"
                   label="&editButton.label;"
                   accesskey="&editButton.accesskey;"
@@ -107,6 +116,11 @@
                   accesskey="&deleteButton.accesskey;"
                   oncommand="onDeleteFilter();"/>
           <spacer flex="1"/>
+          <button id="reorderTopButton"
+                  label="&reorderTopButton;"
+                  accesskey="&reorderTopButton.accessKey;"
+                  tooltiptext="&reorderTopButton.toolTip;"
+                  oncommand="onTop(event);"/>
           <button id="reorderUpButton"
                   label="&reorderUpButton.label;"
                   accesskey="&reorderUpButton.accesskey;"
@@ -117,8 +131,18 @@
                   accesskey="&reorderDownButton.accesskey;"
                   class="down"
                   oncommand="onDown(event);"/>
+          <button id="reorderBottomButton"
+                  label="&reorderBottomButton;"
+                  accesskey="&reorderBottomButton.accessKey;"
+                  tooltiptext="&reorderBottomButton.toolTip;"
+                  oncommand="onBottom(event);"/>
           <spacer flex="1"/>
+          <button dlgtype="help" class="dialog-button"/>
         </vbox>
+      </row>
+
+      <row>
+        <separator class="thin"/>
       </row>
 
       <row align="center">
@@ -139,7 +163,7 @@
                        type="folder"
                        showFileHereLabel="true"
                        showAccountsFileHere="false"
-                       oncommand="onTargetSelect(event);"/>
+                       oncommand="setRunFolder(event.target._folder);"/>
           </menulist>
           <spacer flex="1"/>
           <button id="runFiltersButton"
@@ -152,8 +176,10 @@
                   disabled="true"
                   oncommand="runSelectedFilters();"/>
         </hbox>
-        <vbox align="center">
-          <button dlgtype="help" class="dialog-button"/>
+        <vbox>
+          <button label="&viewLogButton.label;"
+                  accesskey="&viewLogButton.accesskey;"
+                  oncommand="viewLog();"/>
         </vbox>
       </row>
     </rows>

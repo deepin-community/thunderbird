@@ -3,11 +3,12 @@
 
 "use strict";
 
-const { Preferences } = ChromeUtils.import(
-  "resource://gre/modules/Preferences.jsm"
+const { Preferences } = ChromeUtils.importESModule(
+  "resource://gre/modules/Preferences.sys.mjs"
 );
-const { ctypes } = ChromeUtils.import("resource://gre/modules/ctypes.jsm");
-const { OS } = ChromeUtils.import("resource://gre/modules/osfile.jsm");
+const { ctypes } = ChromeUtils.importESModule(
+  "resource://gre/modules/ctypes.sys.mjs"
+);
 
 const MAX_NAME_LENGTH = 64;
 
@@ -49,15 +50,15 @@ const libNoPDB = chooseDLL(
   "testNoPDB64.dll",
   "testNoPDBAArch64.dll"
 );
-const libxul = OS.Path.basename(OS.Constants.Path.libxul);
+const libxul = PathUtils.filename(PathUtils.xulLibraryPath);
 
 const libModulesFile = do_get_file(libModules).path;
-const libUnicodeFile = OS.Path.join(
-  OS.Path.dirname(libModulesFile),
+const libUnicodeFile = PathUtils.join(
+  PathUtils.parent(libModulesFile),
   libUnicode
 );
-const libLongNameFile = OS.Path.join(
-  OS.Path.dirname(libModulesFile),
+const libLongNameFile = PathUtils.join(
+  PathUtils.parent(libModulesFile),
   libLongName
 );
 const libUnicodePDBFile = do_get_file(libUnicodePDB).path;
@@ -116,10 +117,6 @@ if (AppConstants.platform === "win") {
       certSubject: "Microsoft Windows",
     },
   ];
-} else if (AppConstants.platform === "android") {
-  // Listing shared libraries doesn't work in Android xpcshell tests.
-  // https://hg.mozilla.org/mozilla-central/file/0eef1d5a39366059677c6d7944cfe8a97265a011/tools/profiler/core/shared-libraries-linux.cc#l95
-  expectedLibs = [];
 } else {
   expectedLibs = [
     {
@@ -148,18 +145,24 @@ if (AppConstants.platform === "win") {
 add_task(async function setup() {
   do_get_profile();
 
-  await OS.File.copy(libModulesFile, libUnicodeFile);
-  await OS.File.copy(libModulesFile, libLongName);
+  await IOUtils.copy(libModulesFile, libUnicodeFile);
+  await IOUtils.copy(libModulesFile, libLongNameFile);
 
-  if (AppConstants.platform !== "android") {
-    libModulesHandle = ctypes.open(libModulesFile);
-    libUnicodeHandle = ctypes.open(libUnicodeFile);
-    libLongNameHandle = ctypes.open(libLongNameFile);
-    if (AppConstants.platform === "win") {
-      libUnicodePDBHandle = ctypes.open(libUnicodePDBFile);
-      libNoPDBHandle = ctypes.open(libNoPDBFile);
-    }
+  libModulesHandle = ctypes.open(libModulesFile);
+  libUnicodeHandle = ctypes.open(libUnicodeFile);
+  libLongNameHandle = ctypes.open(libLongNameFile);
+  if (AppConstants.platform === "win") {
+    libUnicodePDBHandle = ctypes.open(libUnicodePDBFile);
+    libNoPDBHandle = ctypes.open(libNoPDBFile);
   }
+
+  // Pretend the untrustedmodules ping has already been sent now to get it out
+  // of the way and avoid confusing the test with our PingServer receiving two
+  // pings during our test.
+  Services.prefs.setIntPref(
+    "app.update.lastUpdateTime.telemetry_untrustedmodules_ping",
+    Math.round(Date.now() / 1000)
+  );
 
   // Force the timer to fire (using a small interval).
   Cc["@mozilla.org/updates/timer-manager;1"]
@@ -176,7 +179,7 @@ add_task(async function setup() {
   );
 });
 
-registerCleanupFunction(function() {
+registerCleanupFunction(function () {
   if (libModulesHandle) {
     libModulesHandle.close();
   }
@@ -193,8 +196,8 @@ registerCleanupFunction(function() {
     libNoPDBHandle.close();
   }
 
-  return OS.File.remove(libUnicodeFile)
-    .then(() => OS.File.remove(libLongNameFile))
+  return IOUtils.remove(libUnicodeFile)
+    .then(() => IOUtils.remove(libLongNameFile))
     .then(() => PingServer.stop());
 });
 
@@ -218,7 +221,7 @@ add_task(
     let nameComparator;
     if (AppConstants.platform === "win") {
       // Do case-insensitive checking of file/module names on Windows
-      nameComparator = function(a, b) {
+      nameComparator = function (a, b) {
         if (typeof a === "string" && typeof b === "string") {
           return a.toLowerCase() === b.toLowerCase();
         }
@@ -226,7 +229,7 @@ add_task(
         return a === b;
       };
     } else {
-      nameComparator = function(a, b) {
+      nameComparator = function (a, b) {
         return a === b;
       };
     }

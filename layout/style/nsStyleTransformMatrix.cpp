@@ -36,7 +36,7 @@ namespace nsStyleTransformMatrix {
 // correctly, since when the frames are initially being reflowed, their
 // continuations all compute their bounding rects independently of each other
 // and consequently get the wrong value.
-//#define UNIFIED_CONTINUATIONS
+// #define UNIFIED_CONTINUATIONS
 
 void TransformReferenceBox::EnsureDimensionsAreCached() {
   if (mIsCached) {
@@ -374,9 +374,16 @@ static void ProcessRotate3D(Matrix4x4& aMatrix, float aX, float aY, float aZ,
   aMatrix = temp * aMatrix;
 }
 
-static void ProcessPerspective(Matrix4x4& aMatrix, const Length& aLength) {
-  float depth = aLength.ToCSSPixels();
-  ApplyPerspectiveToMatrix(aMatrix, depth);
+static void ProcessPerspective(
+    Matrix4x4& aMatrix,
+    const StyleGenericPerspectiveFunction<Length>& aPerspective) {
+  if (aPerspective.IsNone()) {
+    return;
+  }
+  float p = aPerspective.AsLength().ToCSSPixels();
+  if (!std::isinf(p)) {
+    aMatrix.Perspective(std::max(p, 1.0f));
+  }
 }
 
 static void MatrixForTransformFunction(Matrix4x4& aMatrix,

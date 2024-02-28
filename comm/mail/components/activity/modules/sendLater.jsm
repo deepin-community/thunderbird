@@ -21,8 +21,6 @@ var nsActWarning = Components.Constructor(
   "init"
 );
 
-const { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-
 /**
  * This really, really, sucks. Due to mailnews widespread use of
  * nsIMsgStatusFeedback we're bound to the UI to get any sensible feedback of
@@ -103,9 +101,8 @@ var sendLaterModule = {
     process.groupingStyle = Ci.nsIActivity.GROUPING_STYLE_BYCONTEXT;
     process.contextObj = this;
     process.contextType = "SendLater";
-    process.contextDisplayText = this.bundle.GetStringFromName(
-      "sendingMessages"
-    );
+    process.contextDisplayText =
+      this.bundle.GetStringFromName("sendingMessages");
 
     return process;
   },
@@ -233,14 +230,13 @@ var sendLaterModule = {
       } else if (aMessageCopyPercent >= 100) {
         // We need to set this to completed otherwise activity manager
         // complains.
-        if (this._copyProcess.state != Ci.nsIActivityProcess.STATE_COMPLETED) {
+        if (this._copyProcess) {
           this._copyProcess.state = Ci.nsIActivityProcess.STATE_COMPLETED;
+          this.activityMgr.removeActivity(this._copyProcess.id);
+          this._copyProcess = null;
         }
 
-        // Just drop the copy process, we don't need it now.
-        this.activityMgr.removeActivity(this._copyProcess.id);
         this._sendProcess = null;
-        this._copyProcess = null;
       }
     }
   },

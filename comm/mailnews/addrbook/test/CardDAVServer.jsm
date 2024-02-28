@@ -13,9 +13,11 @@ const NAMESPACE_STRING = Object.entries(PREFIX_BINDINGS)
   .map(([prefix, url]) => `xmlns:${prefix}="${url}"`)
   .join(" ");
 
-const { Assert } = ChromeUtils.import("resource://testing-common/Assert.jsm");
-const { CommonUtils } = ChromeUtils.import(
-  "resource://services-common/utils.js"
+const { Assert } = ChromeUtils.importESModule(
+  "resource://testing-common/Assert.sys.mjs"
+);
+const { CommonUtils } = ChromeUtils.importESModule(
+  "resource://services-common/utils.sys.mjs"
 );
 const { HttpServer } = ChromeUtils.import("resource://testing-common/httpd.js");
 
@@ -377,6 +379,10 @@ var CardDAVServer = {
     let token = input
       .querySelector("sync-token")
       .textContent.replace(/\D/g, "");
+    if (!token) {
+      response.setStatusLine("1.1", 400, "Bad Request");
+      return;
+    }
     let propNames = this._inputProps(input);
 
     let output = `<multistatus xmlns="${PREFIX_BINDINGS.d}" ${NAMESPACE_STRING}>`;
@@ -559,8 +565,21 @@ var CardDAVServer = {
     }
 
     let vCard = CommonUtils.readBytesFromInputStream(request.bodyInputStream);
+    if (this.mimicGoogle && !/^N[;:]/im.test(vCard)) {
+      response.setStatusLine("1.1", 400, "Bad Request");
+      return;
+    }
+
     this.putCardInternal(request.path, vCard);
     response.setStatusLine("1.1", 204, "No Content");
+
+    if (this.responseDelay) {
+      response.processAsync();
+      this.responseDelay.promise.then(() => {
+        delete this.responseDelay;
+        response.finish();
+      });
+    }
   },
 
   putCardInternal(name, vCard) {
@@ -576,6 +595,17 @@ var CardDAVServer = {
         return "UID:" + newUID + "\r\nX-MODIFIED-BY-SERVER:1";
       });
     }
+    if (this.mimicGoogle && vCard.includes("\nPHOTO")) {
+      let [, version] = vCard.match(/VERSION:([34]\.0)/);
+      if (version && version != "3.0") {
+        let start = vCard.indexOf("\nPHOTO") + 1;
+        let end = vCard.indexOf("\n", start) + 1;
+        while (vCard[end] == " ") {
+          end = vCard.indexOf("\n", end) + 1;
+        }
+        vCard = vCard.substring(0, start) + vCard.substring(end);
+      }
+    }
     let etag = "" + vCard.length;
     this.cards.set(name, { etag, vCard, changed: ++this.changeCount });
     this.deletedCards.delete(name);
@@ -584,6 +614,14 @@ var CardDAVServer = {
   deleteCard(request, response) {
     this.deleteCardInternal(request.path);
     response.setStatusLine("1.1", 204, "No Content");
+
+    if (this.responseDelay) {
+      response.processAsync();
+      this.responseDelay.promise.then(() => {
+        delete this.responseDelay;
+        response.finish();
+      });
+    }
   },
 
   deleteCardInternal(name) {

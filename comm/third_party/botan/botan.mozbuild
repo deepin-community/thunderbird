@@ -44,7 +44,7 @@ if CONFIG['COMPILE_ENVIRONMENT']:
     botan_build = GENERATED_FILES['build/build.h']
     botan_build.script = 'botan_configure.py'
     botan_build.flags = [
-        '--cc-bin={}'.format(CONFIG['MZLA_RNP_CXX']),
+        '--cc-bin={}'.format(CONFIG['CXX']),
         '--cpu={}'.format(CONFIG['target_cpu']),
         '--os={}'.format(botan_os),
         '--with-build-dir={}'.format(OBJDIR),
@@ -56,9 +56,6 @@ if CONFIG['COMPILE_ENVIRONMENT']:
         '--with-cmake',
     ]
 
-    # clock_gettime is not part of OSX until 10.12 sdk, Taskcluster builds with 10.11
-    if CONFIG['OS_ARCH'] == 'Darwin':
-        botan_build.flags.append('--without-os-features=clock_gettime')
 
 LOCAL_INCLUDES = ['!build/include']
 

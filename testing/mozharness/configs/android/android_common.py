@@ -5,11 +5,9 @@
 # Shared/common mozharness configuration for Android unit tests.
 #
 # This configuration should be combined with platform-specific mozharness
-# configuration such as androidx86_7_0.py, android_hw, or similar.
+# configuration such as android-x86_64.py, android_hw, or similar.
 
-from __future__ import absolute_import
 import os
-
 
 NODEJS_PATH = None
 if "MOZ_FETCHES_DIR" in os.environ:
@@ -30,8 +28,6 @@ def WebglSuite(name):
             "--certificate-path=%(certs_path)s",
             "--symbols-path=%(symbols_path)s",
             "--quiet",
-            "--log-raw=%(raw_log_file)s",
-            "--log-raw-level=%(log_raw_level)s",
             "--log-errorsummary=%(error_summary_file)s",
             "--log-tbpl-level=%(log_tbpl_level)s",
             "--screenshot-on-fail",
@@ -44,7 +40,6 @@ def WebglSuite(name):
 config = {
     "default_actions": [
         "clobber",
-        "setup-avds",
         "download-and-extract",
         "create-virtualenv",
         "start-emulator",
@@ -76,8 +71,6 @@ config = {
                 "--certificate-path=%(certs_path)s",
                 "--symbols-path=%(symbols_path)s",
                 "--quiet",
-                "--log-raw=%(raw_log_file)s",
-                "--log-raw-level=%(log_raw_level)s",
                 "--log-errorsummary=%(error_summary_file)s",
                 "--log-tbpl-level=%(log_tbpl_level)s",
                 "--extra-profile-file=fonts",
@@ -105,8 +98,6 @@ config = {
                 "--certificate-path=%(certs_path)s",
                 "--symbols-path=%(symbols_path)s",
                 "--quiet",
-                "--log-raw=%(raw_log_file)s",
-                "--log-raw-level=%(log_raw_level)s",
                 "--log-errorsummary=%(error_summary_file)s",
                 "--log-tbpl-level=%(log_tbpl_level)s",
                 "--screenshot-on-fail",
@@ -127,8 +118,6 @@ config = {
                 "--certificate-path=%(certs_path)s",
                 "--symbols-path=%(symbols_path)s",
                 "--quiet",
-                "--log-raw=%(raw_log_file)s",
-                "--log-raw-level=%(log_raw_level)s",
                 "--log-errorsummary=%(error_summary_file)s",
                 "--log-tbpl-level=%(log_tbpl_level)s",
                 "--screenshot-on-fail",
@@ -154,8 +143,6 @@ config = {
                 "--extra-profile-file=fonts",
                 "--extra-profile-file=hyphenation",
                 "--suite=reftest",
-                "--log-raw=%(raw_log_file)s",
-                "--log-raw-level=%(log_raw_level)s",
                 "--log-errorsummary=%(error_summary_file)s",
                 "--log-tbpl-level=%(log_tbpl_level)s",
                 "--deviceSerial=%(device_serial)s",
@@ -182,8 +169,6 @@ config = {
                 "--extra-profile-file=fonts",
                 "--extra-profile-file=hyphenation",
                 "--suite=reftest",
-                "--log-raw=%(raw_log_file)s",
-                "--log-raw-level=%(log_raw_level)s",
                 "--log-errorsummary=%(error_summary_file)s",
                 "--log-tbpl-level=%(log_tbpl_level)s",
                 "--deviceSerial=%(device_serial)s",
@@ -208,8 +193,6 @@ config = {
                 "%(modules_dir)s",
                 "--symbols-path=%(symbols_path)s",
                 "--suite=crashtest",
-                "--log-raw=%(raw_log_file)s",
-                "--log-raw-level=%(log_raw_level)s",
                 "--log-errorsummary=%(error_summary_file)s",
                 "--log-tbpl-level=%(log_tbpl_level)s",
                 "--deviceSerial=%(device_serial)s",
@@ -234,8 +217,6 @@ config = {
                 "%(modules_dir)s",
                 "--symbols-path=%(symbols_path)s",
                 "--suite=crashtest",
-                "--log-raw=%(raw_log_file)s",
-                "--log-raw-level=%(log_raw_level)s",
                 "--log-errorsummary=%(error_summary_file)s",
                 "--log-tbpl-level=%(log_tbpl_level)s",
                 "--deviceSerial=%(device_serial)s",
@@ -277,8 +258,6 @@ config = {
                 "--symbols-path=%(symbols_path)s",
                 "--extra-profile-file=jsreftest/tests/js/src/tests/user.js",
                 "--suite=jstestbrowser",
-                "--log-raw=%(raw_log_file)s",
-                "--log-raw-level=%(log_raw_level)s",
                 "--log-errorsummary=%(error_summary_file)s",
                 "--log-tbpl-level=%(log_tbpl_level)s",
                 "--deviceSerial=%(device_serial)s",
@@ -298,11 +277,8 @@ config = {
                 "--no-logfiles",
                 "--symbols-path=%(symbols_path)s",
                 "--manifest=tests/xpcshell.ini",
-                "--log-raw=%(raw_log_file)s",
-                "--log-raw-level=%(log_raw_level)s",
                 "--log-errorsummary=%(error_summary_file)s",
                 "--log-tbpl-level=%(log_tbpl_level)s",
-                "--test-plugin-path=none",
                 "--threads=4",
                 "--deviceSerial=%(device_serial)s",
                 "%(xpcshell_extra)s",
@@ -319,8 +295,6 @@ config = {
                 "--apk=%(installer_path)s",
                 ".",
                 "--deviceSerial=%(device_serial)s",
-                "--log-raw=%(raw_log_file)s",
-                "--log-raw-level=%(log_raw_level)s",
                 "--log-errorsummary=%(error_summary_file)s",
             ],
         },
@@ -333,8 +307,6 @@ config = {
                 "--symbols-path=%(symbols_path)s",
                 "--utility-path=%(utility_path)s",
                 "--deviceSerial=%(device_serial)s",
-                "--log-raw=%(raw_log_file)s",
-                "--log-raw-level=%(log_raw_level)s",
             ],
         },
         "gtest": {

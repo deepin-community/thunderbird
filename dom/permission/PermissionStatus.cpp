@@ -33,7 +33,7 @@ PermissionStatus::PermissionStatus(nsPIDOMWindowInner* aWindow,
     : DOMEventTargetHelper(aWindow),
       mName(aName),
       mState(PermissionState::Denied) {
-  KeepAliveIfHasListenersFor(u"change"_ns);
+  KeepAliveIfHasListenersFor(nsGkAtoms::onchange);
 }
 
 nsresult PermissionStatus::Init() {
@@ -63,6 +63,10 @@ JSObject* PermissionStatus::WrapObject(JSContext* aCx,
   return PermissionStatus_Binding::Wrap(aCx, this, aGivenProto);
 }
 
+nsLiteralCString PermissionStatus::GetPermissionType() {
+  return PermissionNameToType(mName);
+}
+
 nsresult PermissionStatus::UpdateState() {
   nsCOMPtr<nsPIDOMWindowInner> window = GetOwner();
   if (NS_WARN_IF(!window)) {
@@ -83,7 +87,7 @@ nsresult PermissionStatus::UpdateState() {
   }
 
   nsresult rv = permissionHandler->GetPermissionForPermissionsAPI(
-      PermissionNameToType(mName), &action);
+      GetPermissionType(), &action);
   if (NS_WARN_IF(NS_FAILED(rv))) {
     return rv;
   }
@@ -111,6 +115,10 @@ already_AddRefed<nsIPrincipal> PermissionStatus::GetPrincipal() const {
 }
 
 void PermissionStatus::PermissionChanged() {
+  nsCOMPtr<nsPIDOMWindowInner> window = GetOwner();
+  if (NS_WARN_IF(!window) || !window->IsFullyActive()) {
+    return;
+  }
   auto oldState = mState;
   UpdateState();
   if (mState != oldState) {
@@ -121,7 +129,7 @@ void PermissionStatus::PermissionChanged() {
 }
 
 void PermissionStatus::DisconnectFromOwner() {
-  IgnoreKeepAliveIfHasListenersFor(u"change"_ns);
+  IgnoreKeepAliveIfHasListenersFor(nsGkAtoms::onchange);
 
   if (mObserver) {
     mObserver->RemoveSink(this);

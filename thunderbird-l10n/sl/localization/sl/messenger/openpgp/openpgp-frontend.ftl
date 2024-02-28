@@ -32,10 +32,21 @@ openpgp-broken-exchange-info = To je sporočilo OpenPGP, ki ga je očitno poško
 openpgp-broken-exchange-repair =
     .label = Popravi sporočilo
 openpgp-broken-exchange-wait = Počakajte trenutek …
+openpgp-has-nested-encrypted-parts = To sporočilo vsebuje dodatne šifrirane dele.
+openpgp-show-encrypted-parts = Dešifriraj in prikaži
 openpgp-cannot-decrypt-because-mdc =
     To je šifrirano sporočilo, ki uporablja star in ranljiv mehanizem.
     Med potovanjem bi lahko bilo spremenjeno z namenom kraje njegove vsebine.
     Za preprečitev tega tveganja vsebina ni prikazana.
 openpgp-cannot-decrypt-because-missing-key = Skrivni ključ, ki je potreben za dešifriranje tega sporočila, ni na voljo.
+openpgp-partially-signed =
+    Samo del tega sporočila je bil digitalno podpisan z uporabo OpenPGP.
+    Ob kliku na gumb Preveri bodo nezaščiteni deli skriti in prikazano bo stanje digitalnega podpisa.
+openpgp-partially-encrypted =
+    Samo del tega sporočila je bil šifriran z OpenPGP.
+    Berljivi deli sporočila, ki so že prikazani, niso bili šifrirani.
+    Če kliknete gumb Dešifriraj, bo prikazana vsebina šifriranih delov.
+openpgp-reminder-partial-display = Opomnik: Spodaj prikazano sporočilo je le del izvirnega sporočila.
 openpgp-partial-verify-button = Preveri
 openpgp-partial-decrypt-button = Dešifriraj
+openpgp-unexpected-key-for-you = Opozorilo: To sporočilo vsebuje neznan ključ OpenPGP, ki se nanaša na enega od vaših e-poštnih naslovov. Če to ni eden od vaših lastnih ključev, je lahko poskus prevare drugih dopisnikov.

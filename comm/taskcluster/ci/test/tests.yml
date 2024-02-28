@@ -4,7 +4,7 @@
 ---
 # Each stanza here describes a particular test suite or sub-suite.  These are
 # processed through the transformations described in kind.yml to produce a
-# bunch of tasks.  See the schema in `taskcluster/taskgraph/transforms/tests.py`
+# bunch of tasks.  See the schema in `taskcluster/gecko_taskgraph/transforms/tests.py`
 # for a description of the fields used here.
 
 # Note that these are in lexical order, as enforced by the task loader.
@@ -14,39 +14,55 @@
 
 xpcshell:
     description: "xpcshell test run"
-    suite: xpcshell
+    suite:
+        category: xpcshell
+        name:
+            by-variant:
+                msix: xpcshell-msix
+                default: xpcshell
+    target:
+        by-test-platform:
+            windows11-64.*:
+                by-variant:
+                    msix: target.installer.msix
+                    default: null
+            default: null
     treeherder-symbol: X(X)
+    variants:
+        - msix
     run-on-projects:
         by-variant:
-            noqr: built-projects
+            msix:
+                by-test-platform:
+                    windows11-64.*: built-projects
+                    default: []
+            default: built-projects
+    tier:
+        by-variant:
+            msix: 2
             default:
                 by-test-platform:
-                    windows.*shippable-qr/opt: []
-                    (linux|macos).*shippable/opt: built-projects
-                    default: []
-    built-projects-only: true
-    variants:
-        by-test-platform:
-            windows.*shippable-qr/opt: ["noqr"]
-            default: []
-    tier:
-        by-test-platform:
-            .*-asan.*: 2
-            .*-tsan.*: 2
-            macosx1100.*: 2
-            default: default
+                    .*-asan.*: 2
+                    .*-tsan.*: 2
+                    macosx1100.*: 2
+                    windows11.*: 1
+                    default: default
     chunks:
         by-test-platform:
-            .*-tsan/opt: 8
+            .*-ccov.*/.*: 8
+            .*-tsan.*/opt: 8
             default: 4
     instance-size: default
     max-run-time:
-        by-test-platform:
-            windows.*(-shippable)/opt: 5400
-            .*-tsan/opt: 7200
-            default: 2700
+        by-variant:
+            msix: 7200
+            default:
+                by-test-platform:
+                    windows.*/opt: 5400
+                    .*-ccov(-qr)?/.*: 7200
+                    .*-tsan.*/opt: 7200
+                    default: 2700
     allow-software-gl-layers: false
-    python-3: true
     mozharness:
         script: desktop_unittest.py
         config:
@@ -62,10 +78,13 @@ xpcshell:
                     - remove_executables.py
                     - unittests/thunderbird_extra.py
         extra-options:
-            - "--xpcshell-suite=xpcshell"
+            by-test-platform:
+                windows1.*:
+                    - --threads=2
+                default: []
         requires-signed-builds:
             by-test-platform:
-                windows10-64-asan-qr/opt: false
+                windows1.-64-asan-qr/opt: false
                 windows.*: true
                 default: false
     fetches:
@@ -94,40 +113,50 @@ mochitest-thunderbird:
     suite:
         category: mochitest
         name: mochitest-browser-chrome-thunderbird
+    target:
+        by-test-platform:
+            windows11-64.*:
+                by-variant:
+                    msix: target.installer.msix
+                    default: null
+            default: null
     treeherder-symbol: M(bct)
-    run-on-projects:
-        by-variant:
-            noqr: built-projects
-            default:
-                by-test-platform:
-                    windows.*shippable-qr/opt: []
-                    (linux|macos).*shippable/opt: built-projects
-                    default: []
     built-projects-only: true
     test-manifest-loader: null  # don't load tests in the taskgraph
     loopback-video: true
-    variants:
-        by-test-platform:
-            windows.*shippable-qr/opt: ["noqr"]
-            default: []
     max-run-time:
-        by-test-platform:
-            linux.*64-tsan/opt: 9000
-            default: 3600
+        by-variant:
+            msix: 5400
+            default:
+                by-test-platform:
+                    linux.*64-ccov.*/.*: 9000
+                    linux.*64-tsan.*/opt: 9000
+                    default: 3600
+    variants:
+        - msix
+    run-on-projects:
+        by-variant:
+            msix:
+                by-test-platform:
+                    windows11-64.*: built-projects
+                    default: []
+            default: built-projects
     tier:
-        by-test-platform:
-            .*-asan.*: 2
-            .*-tsan.*: 2
-            macosx1100.*: 2
-            default: default
+        by-variant:
+            msix: 2
+            default:
+                by-test-platform:
+                    .*-asan.*: 2
+                    .*-tsan.*: 2
+                    macosx1100.*: 2
+                    windows11.*: 1
+                    default: default
     chunks:
         by-test-platform:
-            linux.*64-asan/opt: 16
-            linux.*64-tsan/opt: 15
-            windows10-64-asan-qr/opt: 9
-            default: 5
-    e10s: true
-    python-3: true
+            linux.*64-asan.*/opt: 16
+            linux.*64-tsan.*/opt: 15
+            windows1.-64-asan.*/opt: 9
+            default: 7
     mozharness:
         script: desktop_unittest.py
         mochitest-flavor: browser
@@ -145,6 +174,6 @@ mochitest-thunderbird:
                     - unittests/thunderbird_extra.py
     instance-size:
         by-test-platform:
-            linux.*64-tsan/opt: xlarge  # runs out of memory on default/m3.large
+            linux.*64-tsan.*/opt: xlarge  # runs out of memory on default/m3.large
             default: default
     allow-software-gl-layers: false

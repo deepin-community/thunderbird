@@ -9,7 +9,6 @@
 var { MailServices } = ChromeUtils.import(
   "resource:///modules/MailServices.jsm"
 );
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 
 // Platform-specific includes
 var AboutSupportPlatform;
@@ -68,6 +67,9 @@ var AboutSupport = {
     for (let identity of aAccount.identities) {
       let isDefault = identity == defaultIdentity;
       let smtpServer = MailServices.smtp.getServerByIdentity(identity);
+      if (!smtpServer) {
+        continue;
+      }
       smtpDetails.push({
         identityName: identity.identityName,
         name: smtpServer.displayname,
@@ -95,7 +97,7 @@ var AboutSupport = {
           "(" +
           server.type +
           ") " +
-          server.realHostName +
+          server.hostName +
           (server.port != -1 ? ":" + server.port : ""),
         socketType: server.socketType,
         authMethod: server.authMethod,

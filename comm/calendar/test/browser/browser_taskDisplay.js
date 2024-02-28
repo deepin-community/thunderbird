@@ -2,18 +2,15 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, you can obtain one at http://mozilla.org/MPL/2.0/. */
 
-var { CALENDARNAME, controller, createCalendar, deleteCalendars } = ChromeUtils.import(
-  "resource://testing-common/calendar/CalendarUtils.jsm"
-);
-var { XPCOMUtils } = ChromeUtils.import("resource://gre/modules/XPCOMUtils.jsm");
-
 XPCOMUtils.defineLazyModuleGetters(this, {
   CalRecurrenceInfo: "resource:///modules/CalRecurrenceInfo.jsm",
   CalTodo: "resource:///modules/CalTodo.jsm",
 });
 
-var calendarId = createCalendar(controller, CALENDARNAME);
-var calendar = cal.async.promisifyCalendar(cal.getCalendarManager().getCalendarById(calendarId));
+var calendar = CalendarTestUtils.createCalendar();
+registerCleanupFunction(() => {
+  CalendarTestUtils.removeCalendar(calendar);
+});
 
 let tree = document.getElementById("calendar-task-tree");
 
@@ -68,9 +65,18 @@ add_task(async () => {
       }
       return task.title;
     }
-    tree.height; // Try and trigger a reflow...
+    tree.getBoundingClientRect(); // Try and trigger a reflow...
     tree.invalidate();
-    await new Promise(r => setTimeout(r));
+
+    // It seems that under certain conditions notifyOperationComplete() is
+    // called in CalStorageCalender.getItems before all the results have been
+    // retrieved. This results in the "refresh" event being fired prematurely in
+    // calendar-task-tree. After some investigation, the cause of this seems to
+    // be related to multiple calls of executeAsync() in CalStorageItemModel.
+    // getAdditionalDataForItemMap() not finishing before notifyOperationComplete()
+    // is called despite being awaited on.
+    // eslint-disable-next-line mozilla/no-arbitrary-setTimeout
+    await new Promise(r => setTimeout(r, 500));
 
     let actualTasks = [];
     for (let i = 0; i < tree.view.rowCount; i++) {
@@ -265,8 +271,4 @@ add_task(async () => {
     await calendar.deleteItem(task);
   }
   await setFilterGroup("throughcurrent");
-});
-
-registerCleanupFunction(() => {
-  deleteCalendars(controller, CALENDARNAME);
 });

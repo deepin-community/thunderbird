@@ -4,26 +4,36 @@
 
 "use strict";
 
-const promise = require("promise");
 const {
   FrontClassWithSpec,
   types,
   registerFront,
-} = require("devtools/shared/protocol.js");
-const { nodeSpec, nodeListSpec } = require("devtools/shared/specs/node");
-const { SimpleStringFront } = require("devtools/client/fronts/string");
-const Services = require("Services");
+} = require("resource://devtools/shared/protocol.js");
+const {
+  nodeSpec,
+  nodeListSpec,
+} = require("resource://devtools/shared/specs/node.js");
+const {
+  SimpleStringFront,
+} = require("resource://devtools/client/fronts/string.js");
 
 loader.lazyRequireGetter(
   this,
   "nodeConstants",
-  "devtools/shared/dom-node-constants"
+  "resource://devtools/shared/dom-node-constants.js"
 );
 
-const BROWSER_TOOLBOX_FISSION_ENABLED = Services.prefs.getBoolPref(
-  "devtools.browsertoolbox.fission",
-  false
+const { XPCOMUtils } = ChromeUtils.importESModule(
+  "resource://gre/modules/XPCOMUtils.sys.mjs"
 );
+
+XPCOMUtils.defineLazyPreferenceGetter(
+  this,
+  "browserToolboxScope",
+  "devtools.browsertoolbox.scope"
+);
+
+const BROWSER_TOOLBOX_SCOPE_EVERYTHING = "everything";
 
 const HIDDEN_CLASS = "__fx-devtools-hide-shortcut__";
 
@@ -122,6 +132,8 @@ class NodeFront extends FrontClassWithSpec(nodeSpec) {
     this._next = null;
     // The previous sibling of this node.
     this._prev = null;
+    // Store the flag to use it after destroy, where targetFront is set to null.
+    this._hasParentProcessTarget = targetFront.isParentProcess;
   }
 
   /**
@@ -153,14 +165,18 @@ class NodeFront extends FrontClassWithSpec(nodeSpec) {
       // Get the owner actor for this actor (the walker), and find the
       // parent node of this actor from it, creating a standin node if
       // necessary.
-      const parentNodeFront = ctx
-        .marshallPool()
-        .ensureDOMNodeFront(form.parent);
-      this.reparent(parentNodeFront);
+      const owner = ctx.marshallPool();
+      if (typeof owner.ensureDOMNodeFront === "function") {
+        const parentNodeFront = owner.ensureDOMNodeFront(form.parent);
+        this.reparent(parentNodeFront);
+      }
     }
 
     if (form.host) {
-      this.host = ctx.marshallPool().ensureDOMNodeFront(form.host);
+      const owner = ctx.marshallPool();
+      if (typeof owner.ensureDOMNodeFront === "function") {
+        this.host = owner.ensureDOMNodeFront(form.host);
+      }
     }
 
     if (form.inlineTextChild) {
@@ -185,6 +201,28 @@ class NodeFront extends FrontClassWithSpec(nodeSpec) {
    */
   parentOrHost() {
     return this.isShadowRoot ? this.host : this._parent;
+  }
+
+  /**
+   * Returns the owner DocumentElement|ShadowRootElement NodeFront for this NodeFront,
+   * or null if such element can't be found.
+   *
+   * @returns {NodeFront|null}
+   */
+  getOwnerRootNodeFront() {
+    let currentNode = this;
+    while (currentNode) {
+      if (
+        currentNode.isShadowRoot ||
+        currentNode.nodeType === Node.DOCUMENT_NODE
+      ) {
+        return currentNode;
+      }
+
+      currentNode = currentNode.parentNode();
+    }
+
+    return null;
   }
 
   /**
@@ -270,22 +308,52 @@ class NodeFront extends FrontClassWithSpec(nodeSpec) {
     return this._form.baseURI;
   }
 
+  get browsingContextID() {
+    return this._form.browsingContextID;
+  }
+
   get className() {
     return this.getAttribute("class") || "";
   }
 
+  // Check if the node has children but the current DevTools session is unable
+  // to retrieve them.
+  // Typically: a <frame> or <browser> element which loads a document in another
+  // process, but the toolbox' configuration prevents to inspect it (eg the
+  // parent-process only Browser Toolbox).
+  get childrenUnavailable() {
+    return (
+      // If form.useChildTargetToFetchChildren is true, it means the node HAS
+      // children in another target.
+      // Note: useChildTargetToFetchChildren might be undefined, force
+      // conversion to boolean. See Bug 1783613 to try and improve this.
+      !!this._form.useChildTargetToFetchChildren &&
+      // But if useChildTargetToFetchChildren is false, it means the client
+      // configuration prevents from displaying such children.
+      // This is the only case where children are considered as unavailable:
+      // they exist, but can't be retrieved by configuration.
+      !this.useChildTargetToFetchChildren
+    );
+  }
   get hasChildren() {
-    return this._form.numChildren > 0;
+    return this.numChildren > 0;
   }
   get numChildren() {
+    if (this.childrenUnavailable) {
+      return 0;
+    }
+
     return this._form.numChildren;
   }
-  get remoteFrame() {
-    if (!BROWSER_TOOLBOX_FISSION_ENABLED && this.targetFront.isParentProcess) {
+  get useChildTargetToFetchChildren() {
+    if (
+      this._hasParentProcessTarget &&
+      browserToolboxScope != BROWSER_TOOLBOX_SCOPE_EVERYTHING
+    ) {
       return false;
     }
 
-    return this._form.remoteFrame;
+    return !!this._form.useChildTargetToFetchChildren;
   }
   get hasEventListeners() {
     return this._form.hasEventListeners;
@@ -428,7 +496,7 @@ class NodeFront extends FrontClassWithSpec(nodeSpec) {
     }
 
     const str = this._form.nodeValue || "";
-    return promise.resolve(new SimpleStringFront(str));
+    return Promise.resolve(new SimpleStringFront(str));
   }
 
   /**
@@ -518,7 +586,9 @@ class NodeFront extends FrontClassWithSpec(nodeSpec) {
       console.warn("Tried to use rawNode on a remote connection.");
       return null;
     }
-    const { DevToolsServer } = require("devtools/server/devtools-server");
+    const {
+      DevToolsServer,
+    } = require("resource://devtools/server/devtools-server.js");
     const actor = DevToolsServer.searchAllConnectionsForActor(this.actorID);
     if (!actor) {
       // Can happen if we try to get the raw node for an already-expired
@@ -528,20 +598,30 @@ class NodeFront extends FrontClassWithSpec(nodeSpec) {
     return actor.rawNode;
   }
 
-  async connectToRemoteFrame() {
-    if (!this.remoteFrame) {
-      console.warn("Tried to open remote connection to an invalid frame.");
+  async connectToFrame() {
+    if (!this.useChildTargetToFetchChildren) {
+      console.warn("Tried to open connection to an invalid frame.");
       return null;
     }
-    if (this._remoteFrameTarget && !this._remoteFrameTarget.isDestroyed()) {
-      return this._remoteFrameTarget;
+    if (
+      this._childBrowsingContextTarget &&
+      !this._childBrowsingContextTarget.isDestroyed()
+    ) {
+      return this._childBrowsingContextTarget;
     }
 
-    // Get the target for this remote frame element
-    this._remoteFrameTarget = await this.targetFront.getBrowsingContextTarget(
-      this._form.browsingContextID
-    );
-    return this._remoteFrameTarget;
+    // Get the target for this frame element
+    this._childBrowsingContextTarget =
+      await this.targetFront.getWindowGlobalTarget(
+        this._form.browsingContextID
+      );
+
+    // Bug 1776250: When the target is destroyed, we need to easily find the
+    // parent node front so that we can update its frontend container in the
+    // markup-view.
+    this._childBrowsingContextTarget.setParentNodeFront(this);
+
+    return this._childBrowsingContextTarget;
   }
 }
 

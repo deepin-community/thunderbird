@@ -2,7 +2,10 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this file,
  * You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-import { actionCreators as ac, actionTypes as at } from "common/Actions.jsm";
+import {
+  actionCreators as ac,
+  actionTypes as at,
+} from "common/Actions.sys.mjs";
 import { Card, PlaceholderCard } from "content-src/components/Card/Card";
 import { CollapsibleSection } from "content-src/components/CollapsibleSection/CollapsibleSection";
 import { ComponentPerfTimer } from "content-src/components/ComponentPerfTimer/ComponentPerfTimer";
@@ -166,7 +169,6 @@ export class Section extends React.PureComponent {
       id,
       eventSource,
       title,
-      icon,
       rows,
       Pocket,
       topics,
@@ -266,7 +268,6 @@ export class Section extends React.PureComponent {
       <ComponentPerfTimer {...this.props}>
         <CollapsibleSection
           className={sectionClassName}
-          icon={icon}
           title={title}
           id={id}
           eventSource={eventSource}
@@ -289,17 +290,6 @@ export class Section extends React.PureComponent {
           {shouldShowEmptyState && (
             <div className="section-empty-state">
               <div className="empty-state">
-                {emptyState.icon &&
-                emptyState.icon.startsWith("moz-extension://") ? (
-                  <span
-                    className="empty-state-icon icon"
-                    style={{ "background-image": `url('${emptyState.icon}')` }}
-                  />
-                ) : (
-                  <span
-                    className={`empty-state-icon icon icon-${emptyState.icon}`}
-                  />
-                )}
                 <FluentOrText message={emptyState.message}>
                   <p className="empty-state-message" />
                 </FluentOrText>
@@ -354,10 +344,8 @@ export class _Sections extends React.PureComponent {
     const enabledSections = this.props.Sections.filter(
       section => section.enabled
     );
-    const {
-      sectionOrder,
-      "feeds.topsites": showTopSites,
-    } = this.props.Prefs.values;
+    const { sectionOrder, "feeds.topsites": showTopSites } =
+      this.props.Prefs.values;
     // Enabled sections doesn't include Top Sites, so we add it if enabled.
     const expectedCount = enabledSections.length + ~~showTopSites;
 

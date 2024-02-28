@@ -1,4 +1,7 @@
-/* -*- Mode: Java; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
 /*
  * Test to ensure that downloadAllForOffline works correctly with imap folders
  * and returns success.
@@ -26,7 +29,7 @@ async function setup() {
     .QueryInterface(Ci.nsIFileURL);
 
   IMAPPump.mailbox.addMessage(
-    new imapMessage(msgfileuri.spec, IMAPPump.mailbox.uidnext++, [])
+    new ImapMessage(msgfileuri.spec, IMAPPump.mailbox.uidnext++, [])
   );
 
   let messages = [];
@@ -35,7 +38,7 @@ async function setup() {
   let dataUri = Services.io.newURI(
     "data:text/plain;base64," + btoa(messages[0].toMessageString())
   );
-  let imapMsg = new imapMessage(dataUri.spec, IMAPPump.mailbox.uidnext++, []);
+  let imapMsg = new ImapMessage(dataUri.spec, IMAPPump.mailbox.uidnext++, []);
   imapMsg.setSize(5000);
   IMAPPump.mailbox.addMessage(imapMsg);
 
@@ -53,17 +56,13 @@ async function downloadAllForOffline() {
 
 function verifyDownloaded() {
   // verify that the message headers have the offline flag set.
-  let offset = {};
-  let size = {};
-  for (let header of IMAPPump.inbox.msgDatabase.EnumerateMessages()) {
+  for (let header of IMAPPump.inbox.msgDatabase.enumerateMessages()) {
     // Verify that each message has been downloaded and looks OK.
     if (
       header instanceof Ci.nsIMsgDBHdr &&
       header.flags & Ci.nsMsgMessageFlags.Offline
     ) {
-      IMAPPump.inbox
-        .getOfflineFileStream(header.messageKey, offset, size)
-        .close();
+      IMAPPump.inbox.getLocalMsgStream(header).close();
     } else {
       do_throw("Message not downloaded for offline use");
     }

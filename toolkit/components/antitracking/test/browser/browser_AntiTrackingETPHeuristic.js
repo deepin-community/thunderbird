@@ -1,7 +1,5 @@
 "use strict";
 
-/* import-globals-from antitracking_head.js */
-
 const TEST_PAGE = TEST_DOMAIN + TEST_PATH + "page.html";
 const TEST_REDIRECT_PAGE = TEST_DOMAIN + TEST_PATH + "redirect.sjs";
 const TEST_TRACKING_PAGE = TEST_3RD_PARTY_DOMAIN + TEST_PATH + "page.html";
@@ -129,16 +127,30 @@ const TEST_CASES = [
       ],
     ],
   },
+  // Tracker(Interacted) -> Non-Tracker (heuristic disabled)
+  {
+    trackersHasUserInteraction: [TEST_3RD_PARTY_DOMAIN],
+    redirects: [TEST_TRACKING_REDIRECT_PAGE, TEST_PAGE],
+    expectedPermissionNumber: 0,
+    expects: [
+      [
+        TEST_DOMAIN,
+        TEST_3RD_PARTY_DOMAIN,
+        Ci.nsIPermissionManager.UNKNOWN_ACTION,
+      ],
+    ],
+    extraPrefs: [["privacy.antitracking.enableWebcompat", false]],
+  },
 ];
 
 async function interactWithSpecificTracker(aTracker) {
   let win = await BrowserTestUtils.openNewBrowserWindow();
   await BrowserTestUtils.withNewTab(
     { gBrowser: win.gBrowser, url: aTracker },
-    async function(browser) {
+    async function (browser) {
       info("Let's interact with the tracker");
 
-      await SpecialPowers.spawn(browser, [], async function() {
+      await SpecialPowers.spawn(browser, [], async function () {
         SpecialPowers.wrap(content.document).userInteractionForTesting();
       });
     }
@@ -172,7 +184,7 @@ async function verifyStorageAccessPermission(aExpects) {
   }
 }
 
-add_task(async function setup() {
+add_setup(async function () {
   await SpecialPowers.pushPrefEnv({
     set: [
       ["network.cookie.cookieBehavior", BEHAVIOR_REJECT_TRACKER],
@@ -196,6 +208,13 @@ add_task(async function testETPRedirectHeuristic() {
   info("Starting testing ETP redirect heuristic ...");
 
   for (const test of TEST_CASES) {
+    let { extraPrefs } = test;
+    if (extraPrefs) {
+      await SpecialPowers.pushPrefEnv({
+        set: extraPrefs,
+      });
+    }
+
     // First, clear all permissions.
     Services.perms.removeAll();
 
@@ -234,5 +253,9 @@ add_task(async function testETPRedirectHeuristic() {
 
     info("Removing the tab");
     BrowserTestUtils.removeTab(tab);
+
+    if (extraPrefs) {
+      await SpecialPowers.popPrefEnv();
+    }
   }
 });

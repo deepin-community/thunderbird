@@ -57,7 +57,7 @@ BENCHMARK_FLAGS="-DCMAKE_BUILD_TYPE=Release -DBENCHMARK_ENABLE_TESTING=OFF \
   -DCMAKE_POSITION_INDEPENDENT_CODE=ON"
 
 # V8
-V8_VERSION="8.7.230"
+V8_VERSION="9.3.22"
 
 # Temporary files cleanup hooks.
 CLEANUP_FILES=()
@@ -168,6 +168,11 @@ install_pkgs() {
     parallel
     pkg-config
 
+    # For compiling / testing JNI wrapper. JDK8 is almost 2x smaller than JDK11
+    # openjdk-8-jdk-headless would be 50MB smaller, unfortunately, CMake
+    # does mistakenly thinks it does not contain JNI feature.
+    openjdk-8-jdk
+
     # These are used by the ./ci.sh lint in the native builder.
     clang-format-7
     clang-format-8
@@ -209,10 +214,8 @@ install_pkgs() {
       libgif7:"${ubarch}"
       libjpeg-dev:"${ubarch}"
       libpng-dev:"${ubarch}"
-      libqt5x11extras5-dev:"${ubarch}"
 
       libstdc++-8-dev:"${ubarch}"
-      qtbase5-dev:"${ubarch}"
 
       # For OpenEXR:
       libilmbase12:"${ubarch}"
@@ -358,7 +361,7 @@ install_from_source() {
     fi
 
     if [[ -e "${srcdir}/CMakeLists.txt" ]]; then
-      # Most pacakges use cmake for building which is easier to configure for
+      # Most packages use cmake for building which is easier to configure for
       # cross-compiling.
       if [[ "${package}" == "JPEG_TURBO" && "${target}" == wasm* ]]; then
         # JT erroneously detects WASM CPU as i386 and tries to use asm.
@@ -399,6 +402,10 @@ install_from_source() {
       exit 1
     fi
 
+    # CMake mistakenly uses ".so" libraries and EMCC fails to link properly.
+    if [[ "${target}" == wasm* ]]; then
+      rm -f "${prefix}/lib"/*.so*
+    fi
   done
 }
 
@@ -430,6 +437,9 @@ main() {
   install_pkgs
   install_binutils
   apt clean
+
+  # Remove prebuilt Java classes cache.
+  rm /usr/lib/jvm/java-8-openjdk-amd64/jre/lib/amd64/server/classes.jsa
 
   # Manually extract packages for the target arch that can't install it directly
   # at the same time as the native ones.
@@ -492,7 +502,7 @@ main() {
 
   install_from_source BENCHMARK "${LIST_TARGETS[@]}" "${LIST_MINGW_TARGETS[@]}"
 
-  # Install v8. v8 has better WASM SIMD support than NodeJS 14.
+  # Install v8. v8 has better WASM SIMD support than NodeJS 14 (LTS).
   # First we need the installer to install v8.
   npm install jsvu -g
   # install specific version;

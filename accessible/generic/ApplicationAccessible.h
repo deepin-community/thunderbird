@@ -33,13 +33,13 @@ class ApplicationAccessible : public AccessibleWrap {
 
   // LocalAccessible
   virtual void Shutdown() override;
-  virtual nsIntRect Bounds() const override;
+  virtual LayoutDeviceIntRect Bounds() const override;
   virtual nsRect BoundsInAppUnits() const override;
   virtual already_AddRefed<AccAttributes> NativeAttributes() override;
   virtual GroupPos GroupPosition() override;
   virtual ENameValueFlag Name(nsString& aName) const override;
   virtual void ApplyARIAState(uint64_t* aState) const override;
-  virtual void Description(nsString& aDescription) override;
+  virtual void Description(nsString& aDescription) const override;
   virtual void Value(nsString& aValue) const override;
   virtual mozilla::a11y::role NativeRole() const override;
   virtual uint64_t State() override;
@@ -48,7 +48,7 @@ class ApplicationAccessible : public AccessibleWrap {
 
   virtual LocalAccessible* LocalChildAtPoint(
       int32_t aX, int32_t aY, EWhichChildAtPoint aWhichChild) override;
-  virtual LocalAccessible* FocusedChild() override;
+  virtual Accessible* FocusedChild() override;
 
   // ActionAccessible
   virtual KeyBinding AccessKey() const override;

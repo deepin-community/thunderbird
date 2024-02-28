@@ -10,7 +10,7 @@ use crate::scene_building::{CreateShadow, IsVisible};
 use crate::frame_builder::{FrameBuildingState};
 use crate::gpu_cache::GpuDataRequest;
 use crate::intern;
-use crate::internal_types::LayoutPrimitiveInfo;
+use crate::internal_types::{LayoutPrimitiveInfo, FrameId};
 use crate::prim_store::{
     BorderSegmentInfo, BrushSegment, NinePatchDescriptor, PrimKey,
     PrimTemplate, PrimTemplateCommonData,
@@ -20,7 +20,6 @@ use crate::prim_store::{
 use crate::resource_cache::ImageRequest;
 use crate::render_task::RenderTask;
 use crate::render_task_graph::RenderTaskId;
-use crate::render_backend::FrameId;
 
 use super::storage;
 
@@ -382,7 +381,7 @@ fn test_struct_sizes() {
     assert_eq!(mem::size_of::<NormalBorderPrim>(), 84, "NormalBorderPrim size changed");
     assert_eq!(mem::size_of::<NormalBorderTemplate>(), 216, "NormalBorderTemplate size changed");
     assert_eq!(mem::size_of::<NormalBorderKey>(), 104, "NormalBorderKey size changed");
-    assert_eq!(mem::size_of::<ImageBorder>(), 84, "ImageBorder size changed");
+    assert_eq!(mem::size_of::<ImageBorder>(), 68, "ImageBorder size changed");
     assert_eq!(mem::size_of::<ImageBorderTemplate>(), 104, "ImageBorderTemplate size changed");
-    assert_eq!(mem::size_of::<ImageBorderKey>(), 104, "ImageBorderKey size changed");
+    assert_eq!(mem::size_of::<ImageBorderKey>(), 88, "ImageBorderKey size changed");
 }

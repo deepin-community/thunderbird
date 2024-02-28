@@ -51,16 +51,13 @@ function initPrefs()
     var logDefault = client.prefManager.logPath.clone();
     logDefault.append(escapeFileName("client.log"));
 
-    var gotos = ["goto-url-newtab", "goto-url-newwin",
-                 "goto-url-newtab", "goto-url-newtab"];
-
     // Set up default nickname, if possible.
     var defaultNick = DEFAULT_NICK;
     var en = getService("@mozilla.org/process/environment;1", "nsIEnvironment");
     if (en)
     {
         /* Get the enviroment variables used by various OSes:
-         *   USER     - Linux, Mac OSX and other *nix-types.
+         *   USER     - Linux, macOS and other *nix-types.
          *   USERNAME - Windows.
          *   LOGNAME  - *nix again.
          */
@@ -100,6 +97,7 @@ function initPrefs()
          ["aliases",            [],       "lists.aliases"],
          ["autoAwayCap",        300,      "global"],
          ["autoAwayPeriod",     2,        "appearance.misc"],
+         ["autoMarker",         false,    "appearance.misc"],
          ["autoperform.channel", [],      "lists.autoperform"],
          ["autoperform.client",  [],      "lists.autoperform"],
          ["autoperform.network", [],      "lists.autoperform"],
@@ -145,7 +143,6 @@ function initPrefs()
          ["initialScripts",     ["scripts/"], "startup.initialScripts"],
          ["initialURLs",        [],       "startup.initialURLs"],
          ["inputSpellcheck",     true,    "global"],
-         ["link.focus",         true,     "global.links"],
          ["log",                false,
                                           ".log"],
          ["logFile.channel",    "$(network)/channels/$(channel).$y-$m-$d.log",
@@ -161,10 +158,7 @@ function initPrefs()
          ["logFileName",        makeLogNameClient,
                                           "hidden"],
          ["logFolder",          getURLSpecFromFile(logPath.path), ".log"],
-         ["messages.click",     gotos[0],   "global.links"],
-         ["messages.ctrlClick", gotos[1],   "global.links"],
-         ["messages.metaClick", gotos[2],   "global.links"],
-         ["messages.middleClick", gotos[3], "global.links"],
+         ["login.promptToSave", true,       "global.security"],
          ["motif.current",      "chrome://chatzilla/skin/output-light.css",
                                           "appearance.motif"],
          ["motif.dark",         "chrome://chatzilla/skin/output-dark.css",
@@ -200,6 +194,7 @@ function initPrefs()
                                           "hidden"],
          ["proxy.typeOverride", "",       ".connect"],
          ["reconnect",          true,     ".connect"],
+         ["sasl.plain.enabled", false,    ".ident"],
          ["showModeSymbols",    false,    "appearance.userlist"],
          ["sortUsersByMode",    true,     "appearance.userlist"],
          // Chat  == "Activity" activity.
@@ -216,11 +211,13 @@ function initPrefs()
          ["sound.user.start",    "beep beep", ".soundEvts"],
          ["stalkWholeWords",    true,     "lists.stalkWords"],
          ["stalkWords",         [],       "lists.stalkWords"],
+         ["sts.enabled",        true,     ".connect"],
          ["tabLabel",           "",       "hidden"],
          ["tabGotoKeyModifiers", 0,       "hidden"],
          ["timestamps",         false,    "appearance.timestamps"],
          ["timestamps.display", "[%H:%M]", "appearance.timestamps"],
          ["timestamps.log",     "[%Y-%m-%d %H:%M:%S]", "hidden"],
+         ["upgrade-insecure",   false,    ".connect"],
          ["urls.display",       10,       "hidden"],
          ["urls.store.max",     100,      "global"],
          ["userHeader",         true,     "global.header"],
@@ -243,6 +240,9 @@ function initPrefs()
     CIRCNetwork.prototype.INITIAL_UMODE = client.prefs["usermode"];
     CIRCNetwork.prototype.MAX_MESSAGES  = client.prefs["networkMaxLines"];
     CIRCNetwork.prototype.PROXY_TYPE_OVERRIDE = client.prefs["proxy.typeOverride"];
+    CIRCNetwork.prototype.USE_SASL      = client.prefs["sasl.plain.enabled"];
+    CIRCNetwork.prototype.UPGRADE_INSECURE = client.prefs["upgrade-insecure"];
+    CIRCNetwork.prototype.STS_MODULE.ENABLED = client.prefs["sts.enabled"];
     CIRCChannel.prototype.MAX_MESSAGES  = client.prefs["channelMaxLines"];
     CIRCUser.prototype.MAX_MESSAGES     = client.prefs["userMaxLines"];
     CIRCDCCChat.prototype.MAX_MESSAGES  = client.prefs["dccUserMaxLines"];
@@ -396,6 +396,7 @@ function getNetworkPrefManager(network)
          ["alert.channel.stalk",defer,     ".palert"],
          ["alert.user.chat",    defer,     ".palert"],
          ["autoAwayPeriod",   defer, "appearance.misc"],
+         ["autoMarker",       defer, "appearance.misc"],
          ["autoperform",      [],    "lists.autoperform"],
          ["autoRejoin",       defer, ".connect"],
          ["away",             defer, "hidden"],
@@ -427,6 +428,7 @@ function getNetworkPrefManager(network)
          ["outputWindowURL",  defer, "hidden"],
          ["proxy.typeOverride", defer, ".connect"],
          ["reconnect",        defer, ".connect"],
+         ["sasl.plain.enabled",  defer, ".ident"],
          ["sound.channel.chat",  defer, ".soundEvts"],
          ["sound.channel.event", defer, ".soundEvts"],
          ["sound.channel.stalk", defer, ".soundEvts"],
@@ -437,6 +439,7 @@ function getNetworkPrefManager(network)
          ["timestamps",         defer, "appearance.timestamps"],
          ["timestamps.display", defer, "appearance.timestamps"],
          ["timestamps.log",     defer, "hidden"],
+         ["upgrade-insecure",   defer, ".connect"],
          ["usermode",         defer, ".ident"],
          ["username",         defer, ".ident"]
         ];
@@ -467,6 +470,14 @@ function getNetworkPrefManager(network)
     value = prefManager.prefs["proxy.typeOverride"];
     if (value != CIRCNetwork.prototype.PROXY_TYPE_OVERRIDE)
         network.PROXY_TYPE_OVERRIDE = value;
+
+    value = prefManager.prefs["sasl.plain.enabled"];
+    if (value != CIRCNetwork.prototype.USE_SASL)
+        network.USE_SASL = value;
+
+    value = prefManager.prefs["upgrade-insecure"];
+    if (value != CIRCNetwork.prototype.UPGRADE_INSECURE)
+        network.UPGRADE_INSECURE = value;
 
     network.stayingPower  = prefManager.prefs["reconnect"];
     network.MAX_CONNECT_ATTEMPTS = prefManager.prefs["connectTries"];
@@ -509,6 +520,7 @@ function getChannelPrefManager(channel)
          ["alert.channel.stalk",defer,     ".palert"],
          ["autoperform",      [],    "lists.autoperform"],
          ["autoRejoin",       defer, ".connect"],
+         ["autoMarker",       defer, "appearance.misc"],
          ["bugURL",           defer, "appearance.misc"],
          ["bugURL.comment",   defer, "appearance.misc"],
          ["charset",          defer, ".connect"],
@@ -727,6 +739,18 @@ function onPrefChanged(prefName, newValue, oldValue)
                 setListMode("graphic");
             break;
 
+        case "sasl.plain.enabled":
+            CIRCNetwork.prototype.USE_SASL = newValue;
+            break;
+
+        case "upgrade-insecure":
+            CIRCNetwork.prototype.UPGRADE_INSECURE = newValue;
+            break;
+
+        case "sts.enabled":
+            CIRCNetwork.prototype.STS_MODULE.ENABLED = newValue;
+            break;
+
         case "nickname":
             CIRCNetwork.prototype.INITIAL_NICK = newValue;
             break;
@@ -847,7 +871,7 @@ function onPrefChanged(prefName, newValue, oldValue)
 
 function onNetworkPrefChanged(network, prefName, newValue, oldValue)
 {
-    if (network != client.networks[network.canonicalName])
+    if (network != client.networks[network.collectionKey])
     {
         /* this is a stale observer, remove it */
         network.prefManager.destroy();
@@ -899,6 +923,19 @@ function onNetworkPrefChanged(network, prefName, newValue, oldValue)
             network.dispatch("sync-motif");
             break;
 
+        case "notifyList":
+            if (!network.primServ.supports["monitor"])
+                break;
+            var adds = newValue.filter((el) =>
+                { return oldValue.indexOf(el) < 0; });
+            var subs = oldValue.filter((el) =>
+                { return newValue.indexOf(el) < 0; });
+            if (adds.length > 0)
+                network.primServ.sendMonitorList(adds, true);
+            if (subs.length > 0)
+                network.primServ.sendMonitorList(subs, false);
+            break;
+
         case "outputWindowURL":
             network.dispatch("sync-window");
             break;
@@ -925,6 +962,14 @@ function onNetworkPrefChanged(network, prefName, newValue, oldValue)
         case "connectTries":
             network.MAX_CONNECT_ATTEMPTS = newValue;
             break;
+
+        case "sasl.plain.enabled":
+            network.USE_SASL = newValue;
+            break;
+
+        case "upgrade-insecure":
+            network.UPGRADE_INSECURE = newValue;
+            break;
     }
 }
 
@@ -932,9 +977,9 @@ function onChannelPrefChanged(channel, prefName, newValue, oldValue)
 {
     var network = channel.parent.parent;
 
-    if (network != client.networks[network.canonicalName] ||
+    if (network != client.networks[network.collectionKey] ||
         channel.parent != network.primServ ||
-        channel != network.primServ.channels[channel.canonicalName])
+        channel != network.primServ.channels[channel.collectionKey])
     {
         /* this is a stale observer, remove it */
         channel.prefManager.destroy();
@@ -1001,9 +1046,9 @@ function onUserPrefChanged(user, prefName, newValue, oldValue)
 {
     var network = user.parent.parent;
 
-    if (network != client.networks[network.canonicalName] ||
+    if (network != client.networks[network.collectionKey] ||
         user.parent != network.primServ ||
-        user != network.primServ.users[user.canonicalName])
+        user != network.primServ.users[user.collectionKey])
     {
         /* this is a stale observer, remove it */
         user.prefManager.destroy();

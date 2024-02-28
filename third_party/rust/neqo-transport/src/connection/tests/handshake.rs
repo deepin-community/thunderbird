@@ -4,20 +4,20 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use super::super::{Connection, Output, State, LOCAL_IDLE_TIMEOUT};
+use super::super::{Connection, Output, State};
 use super::{
     assert_error, connect, connect_force_idle, connect_with_rtt, default_client, default_server,
-    get_tokens, handshake, maybe_authenticate, send_something, CountingConnectionIdGenerator,
-    AT_LEAST_PTO, DEFAULT_RTT, DEFAULT_STREAM_DATA,
+    get_tokens, handshake, maybe_authenticate, resumed_server, send_something,
+    CountingConnectionIdGenerator, AT_LEAST_PTO, DEFAULT_RTT, DEFAULT_STREAM_DATA,
 };
 use crate::connection::AddressValidation;
 use crate::events::ConnectionEvent;
 use crate::path::PATH_MTU_V6;
 use crate::server::ValidateAddress;
-use crate::tparams::TransportParameter;
+use crate::tparams::{TransportParameter, MIN_ACK_DELAY};
+use crate::tracking::DEFAULT_ACK_DELAY;
 use crate::{
-    ConnectionError, ConnectionParameters, EmptyConnectionIdGenerator, Error, QuicVersion,
-    StreamType,
+    ConnectionError, ConnectionParameters, EmptyConnectionIdGenerator, Error, StreamType, Version,
 };
 
 use neqo_common::{event::Provider, qdebug, Datagram};
@@ -25,6 +25,7 @@ use neqo_crypto::{
     constants::TLS_CHACHA20_POLY1305_SHA256, generate_ech_keys, AuthenticationStatus,
 };
 use std::cell::RefCell;
+use std::convert::TryFrom;
 use std::mem;
 use std::net::{IpAddr, Ipv6Addr, SocketAddr};
 use std::rc::Rc;
@@ -354,7 +355,7 @@ fn reorder_05rtt_with_0rtt() {
     let token = get_tokens(&mut client).pop().unwrap();
     let mut client = default_client();
     client.enable_resumption(now, token).unwrap();
-    let mut server = default_server();
+    let mut server = resumed_server(&client);
 
     // Send ClientHello and some 0-RTT.
     let c1 = send_something(&mut client, now);
@@ -396,7 +397,9 @@ fn reorder_05rtt_with_0rtt() {
     now += RTT / 2;
     server.process_input(c4.unwrap(), now);
     assert_eq!(*server.state(), State::Confirmed);
-    assert_eq!(server.paths.rtt(), RTT);
+    // Don't check server RTT as it will be massively inflated by a
+    // poor initial estimate received when the server dropped the
+    // Initial packet number space.
 }
 
 /// Test that a server that coalesces 0.5 RTT with handshake packets
@@ -486,7 +489,7 @@ fn reorder_handshake() {
     // It can only send another Initial packet.
     now += RTT / 2;
     let dgram = client.process(s_hs, now).dgram();
-    assertions::assert_initial(&dgram.as_ref().unwrap(), false);
+    assertions::assert_initial(dgram.as_ref().unwrap(), false);
     assert_eq!(client.stats().saved_datagrams, 1);
     assert_eq!(client.stats().packets_rx, 1);
 
@@ -520,7 +523,9 @@ fn reorder_handshake() {
     now += RTT / 2;
     let s3 = server.process(c3, now).dgram();
     assert_eq!(*server.state(), State::Confirmed);
-    assert_eq!(server.paths.rtt(), RTT);
+    // Don't check server RTT estimate as it will be inflated due to
+    // it making a guess based on retransmissions when it dropped
+    // the Initial packet number space.
 
     now += RTT / 2;
     client.process_input(s3.unwrap(), now);
@@ -531,7 +536,7 @@ fn reorder_handshake() {
 #[test]
 fn reorder_1rtt() {
     const RTT: Duration = Duration::from_millis(100);
-    const PACKETS: usize = 6; // Many, but not enough to overflow cwnd.
+    const PACKETS: usize = 4; // Many, but not enough to overflow cwnd.
     let mut client = default_client();
     let mut server = default_server();
     let mut now = now();
@@ -564,9 +569,8 @@ fn reorder_1rtt() {
     now += RTT / 2;
     let s2 = server.process(c2, now).dgram();
     // The server has now received those packets, and saved them.
-    // The three additional are: an Initial ACK, a Handshake,
-    // and a 1-RTT (containing NEW_CONNECTION_ID).
-    assert_eq!(server.stats().packets_rx, PACKETS * 2 + 5);
+    // The two additional are a Handshake and a 1-RTT (w/ NEW_CONNECTION_ID).
+    assert_eq!(server.stats().packets_rx, PACKETS * 2 + 4);
     assert_eq!(server.stats().saved_datagrams, PACKETS);
     assert_eq!(server.stats().dropped_rx, 1);
     assert_eq!(*server.state(), State::Confirmed);
@@ -630,7 +634,8 @@ fn verify_pkt_honors_mtu() {
     let now = now();
 
     let res = client.process(None, now);
-    assert_eq!(res, Output::Callback(LOCAL_IDLE_TIMEOUT));
+    let idle_timeout = ConnectionParameters::default().get_idle_timeout();
+    assert_eq!(res, Output::Callback(idle_timeout));
 
     // Try to send a large stream and verify first packet is correctly sized
     let stream_id = client.stream_create(StreamType::UniDi).unwrap();
@@ -662,7 +667,7 @@ fn extra_initial_hs() {
     // another Initial packet.
     for _ in 0..=super::super::EXTRA_INITIALS {
         let c_init = client.process(undecryptable.clone(), now).dgram();
-        assertions::assert_initial(&c_init.as_ref().unwrap(), false);
+        assertions::assert_initial(c_init.as_ref().unwrap(), false);
         now += DEFAULT_RTT / 10;
     }
 
@@ -711,51 +716,36 @@ fn extra_initial_invalid_cid() {
     assert!(nothing.is_none());
 }
 
-fn connect_version(version: QuicVersion) {
-    fixture_init();
-    let mut client = Connection::new_client(
-        test_fixture::DEFAULT_SERVER_NAME,
-        test_fixture::DEFAULT_ALPN,
-        Rc::new(RefCell::new(CountingConnectionIdGenerator::default())),
-        addr(),
-        addr(),
-        ConnectionParameters::default().quic_version(version),
-        now(),
-    )
-    .unwrap();
-    let mut server = Connection::new_server(
-        test_fixture::DEFAULT_KEYS,
-        test_fixture::DEFAULT_ALPN,
-        Rc::new(RefCell::new(CountingConnectionIdGenerator::default())),
-        ConnectionParameters::default().quic_version(version),
-    )
-    .unwrap();
-    connect_force_idle(&mut client, &mut server);
-}
-
 #[test]
-fn connect_v1() {
-    connect_version(QuicVersion::Version1);
-}
+fn connect_one_version() {
+    fn connect_v(version: Version) {
+        fixture_init();
+        let mut client = Connection::new_client(
+            test_fixture::DEFAULT_SERVER_NAME,
+            test_fixture::DEFAULT_ALPN,
+            Rc::new(RefCell::new(CountingConnectionIdGenerator::default())),
+            addr(),
+            addr(),
+            ConnectionParameters::default().versions(version, vec![version]),
+            now(),
+        )
+        .unwrap();
+        let mut server = Connection::new_server(
+            test_fixture::DEFAULT_KEYS,
+            test_fixture::DEFAULT_ALPN,
+            Rc::new(RefCell::new(CountingConnectionIdGenerator::default())),
+            ConnectionParameters::default().versions(version, vec![version]),
+        )
+        .unwrap();
+        connect_force_idle(&mut client, &mut server);
+        assert_eq!(client.version(), version);
+        assert_eq!(server.version(), version);
+    }
 
-#[test]
-fn connect_29() {
-    connect_version(QuicVersion::Draft29);
-}
-
-#[test]
-fn connect_30() {
-    connect_version(QuicVersion::Draft30);
-}
-
-#[test]
-fn connect_31() {
-    connect_version(QuicVersion::Draft31);
-}
-
-#[test]
-fn connect_32() {
-    connect_version(QuicVersion::Draft32);
+    for v in Version::all() {
+        println!("Connecting with {:?}", v);
+        connect_v(v);
+    }
 }
 
 #[test]
@@ -794,9 +784,9 @@ fn anti_amplification() {
     let ack = client.process(Some(s_init3), now).dgram().unwrap();
     assert!(!maybe_authenticate(&mut client)); // No need yet.
 
-    // The client sends a padded datagram, with just ACK for Initial + Handshake.
-    assert_eq!(client.stats().frame_tx.ack, ack_count + 2);
-    assert_eq!(client.stats().frame_tx.all, frame_count + 2);
+    // The client sends a padded datagram, with just ACK for Handshake.
+    assert_eq!(client.stats().frame_tx.ack, ack_count + 1);
+    assert_eq!(client.stats().frame_tx.all, frame_count + 1);
     assert_ne!(ack.len(), PATH_MTU_V6); // Not padded (it includes Handshake).
 
     now += DEFAULT_RTT / 2;
@@ -898,7 +888,7 @@ fn damaged_ech_config(config: &[u8]) -> Vec<u8> {
     let mut cfg = Vec::from(config);
     // Ensure that the version and config_id is correct.
     assert_eq!(cfg[2], 0xfe);
-    assert_eq!(cfg[3], 0x0a);
+    assert_eq!(cfg[3], 0x0d);
     assert_eq!(cfg[6], ECH_CONFIG_ID);
     // Change the config_id so that the server doesn't recognize it.
     cfg[6] ^= 0x94;
@@ -997,4 +987,143 @@ fn ech_retry_fallback_rejected() {
         server.state().error(),
         Some(&ConnectionError::Transport(Error::PeerError(298)))
     ); // A bad_certificate alert.
+}
+
+#[test]
+fn bad_min_ack_delay() {
+    const EXPECTED_ERROR: ConnectionError =
+        ConnectionError::Transport(Error::TransportParameterError);
+    let mut server = default_server();
+    let max_ad = u64::try_from(DEFAULT_ACK_DELAY.as_micros()).unwrap();
+    server
+        .set_local_tparam(MIN_ACK_DELAY, TransportParameter::Integer(max_ad + 1))
+        .unwrap();
+    let mut client = default_client();
+
+    let dgram = client.process_output(now()).dgram();
+    let dgram = server.process(dgram, now()).dgram();
+    client.process_input(dgram.unwrap(), now());
+    client.authenticated(AuthenticationStatus::Ok, now());
+    assert_eq!(client.state().error(), Some(&EXPECTED_ERROR));
+    let dgram = client.process_output(now()).dgram();
+
+    server.process_input(dgram.unwrap(), now());
+    assert_eq!(
+        server.state().error(),
+        Some(&ConnectionError::Transport(Error::PeerError(
+            Error::TransportParameterError.code()
+        )))
+    );
+}
+
+/// Ensure that the client probes correctly if it only receives Initial packets
+/// from the server.
+#[test]
+fn only_server_initial() {
+    let mut server = default_server();
+    let mut client = default_client();
+    let mut now = now();
+
+    let client_dgram = client.process_output(now).dgram();
+
+    // Now fetch two flights of messages from the server.
+    let server_dgram1 = server.process(client_dgram, now).dgram();
+    let server_dgram2 = server.process_output(now + AT_LEAST_PTO).dgram();
+
+    // Only pass on the Initial from the first.  We should get a Handshake in return.
+    let (initial, handshake) = split_datagram(&server_dgram1.unwrap());
+    assert!(handshake.is_some());
+
+    // The client will not acknowledge the Initial as it discards keys.
+    // It sends a Handshake probe instead, containing just a PING frame.
+    assert_eq!(client.stats().frame_tx.ping, 0);
+    let probe = client.process(Some(initial), now).dgram();
+    assertions::assert_handshake(&probe.unwrap());
+    assert_eq!(client.stats().dropped_rx, 0);
+    assert_eq!(client.stats().frame_tx.ping, 1);
+
+    let (initial, handshake) = split_datagram(&server_dgram2.unwrap());
+    assert!(handshake.is_some());
+
+    // The same happens after a PTO, even though the client will discard the Initial packet.
+    now += AT_LEAST_PTO;
+    assert_eq!(client.stats().frame_tx.ping, 1);
+    let discarded = client.stats().dropped_rx;
+    let probe = client.process(Some(initial), now).dgram();
+    assertions::assert_handshake(&probe.unwrap());
+    assert_eq!(client.stats().frame_tx.ping, 2);
+    assert_eq!(client.stats().dropped_rx, discarded + 1);
+
+    // Pass the Handshake packet and complete the handshake.
+    client.process_input(handshake.unwrap(), now);
+    maybe_authenticate(&mut client);
+    let dgram = client.process_output(now).dgram();
+    let dgram = server.process(dgram, now).dgram();
+    client.process_input(dgram.unwrap(), now);
+
+    assert_eq!(*client.state(), State::Confirmed);
+    assert_eq!(*server.state(), State::Confirmed);
+}
+
+// Collect a few spare Initial packets as the handshake is exchanged.
+// Later, replay those packets to see if they result in additional probes; they should not.
+#[test]
+fn no_extra_probes_after_confirmed() {
+    let mut server = default_server();
+    let mut client = default_client();
+    let mut now = now();
+
+    // First, collect a client Initial.
+    let spare_initial = client.process_output(now).dgram();
+    assert!(spare_initial.is_some());
+
+    // Collect ANOTHER client Initial.
+    now += AT_LEAST_PTO;
+    let dgram = client.process_output(now).dgram();
+    let (replay_initial, _) = split_datagram(dgram.as_ref().unwrap());
+
+    // Finally, run the handshake.
+    now += AT_LEAST_PTO * 2;
+    let dgram = client.process_output(now).dgram();
+    let dgram = server.process(dgram, now).dgram();
+
+    // The server should have dropped the Initial keys now, so passing in the Initial
+    // should elicit a retransmit rather than having it completely ignored.
+    let spare_handshake = server.process(Some(replay_initial), now).dgram();
+    assert!(spare_handshake.is_some());
+
+    client.process_input(dgram.unwrap(), now);
+    maybe_authenticate(&mut client);
+    let dgram = client.process_output(now).dgram();
+    let dgram = server.process(dgram, now).dgram();
+    client.process_input(dgram.unwrap(), now);
+
+    assert_eq!(*client.state(), State::Confirmed);
+    assert_eq!(*server.state(), State::Confirmed);
+
+    let probe = server.process(spare_initial, now).dgram();
+    assert!(probe.is_none());
+    let probe = client.process(spare_handshake, now).dgram();
+    assert!(probe.is_none());
+}
+
+#[test]
+fn implicit_rtt_server() {
+    const RTT: Duration = Duration::from_secs(2);
+    let mut server = default_server();
+    let mut client = default_client();
+    let mut now = now();
+
+    let dgram = client.process_output(now).dgram();
+    now += RTT / 2;
+    let dgram = server.process(dgram, now).dgram();
+    now += RTT / 2;
+    let dgram = client.process(dgram, now).dgram();
+    assertions::assert_handshake(dgram.as_ref().unwrap());
+    now += RTT / 2;
+    server.process_input(dgram.unwrap(), now);
+
+    // The server doesn't receive any acknowledgments, but it can infer
+    // an RTT estimate from having discarded the Initial packet number space.
+    assert_eq!(server.stats().rtt, RTT);
 }

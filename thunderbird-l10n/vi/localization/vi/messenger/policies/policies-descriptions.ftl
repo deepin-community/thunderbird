@@ -14,6 +14,8 @@ policy-3rdparty = Đặt chính sách mà WebExtensions có thể truy cập th�
 
 policy-AppAutoUpdate = Bật hoặc tắt cập nhật chương trình tự động.
 
+policy-AppUpdatePin = Ngăn không cho cập nhật { -brand-short-name } ngoài phiên bản đã chỉ định.
+
 policy-AppUpdateURL = Đặt URL cập nhật ứng dụng tùy chỉnh.
 
 policy-Authentication = Định cấu hình xác thực tích hợp cho các trang web hỗ trợ nó.

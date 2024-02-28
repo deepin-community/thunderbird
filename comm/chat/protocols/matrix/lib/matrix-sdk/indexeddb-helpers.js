@@ -4,7 +4,6 @@ Object.defineProperty(exports, "__esModule", {
   value: true
 });
 exports.exists = exists;
-
 /*
 Copyright 2019 New Vector Ltd
 
@@ -25,27 +24,23 @@ limitations under the License.
  * Check if an IndexedDB database exists. The only way to do so is to try opening it, so
  * we do that and then delete it did not exist before.
  *
- * @param {Object} indexedDB The `indexedDB` interface
- * @param {string} dbName The database name to test for
- * @returns {boolean} Whether the database exists
+ * @param indexedDB - The `indexedDB` interface
+ * @param dbName - The database name to test for
+ * @returns Whether the database exists
  */
 function exists(indexedDB, dbName) {
   return new Promise((resolve, reject) => {
     let exists = true;
     const req = indexedDB.open(dbName);
-
     req.onupgradeneeded = () => {
       // Since we did not provide an explicit version when opening, this event
       // should only fire if the DB did not exist before at any version.
       exists = false;
     };
-
-    req.onblocked = () => reject();
-
+    req.onblocked = () => reject(req.error);
     req.onsuccess = () => {
       const db = req.result;
       db.close();
-
       if (!exists) {
         // The DB did not exist before, but has been created as part of this
         // existence check. Delete it now to restore previous state. Delete can
@@ -54,10 +49,8 @@ function exists(indexedDB, dbName) {
         // properly set up the DB.
         indexedDB.deleteDatabase(dbName);
       }
-
       resolve(exists);
     };
-
-    req.onerror = ev => reject(ev.target.error);
+    req.onerror = () => reject(req.error);
   });
 }

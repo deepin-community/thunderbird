@@ -11,6 +11,8 @@
 #endif
 /pingsender
 /pk12util
+/rnp-cli
+/rnpkeys
 /ssltunnel
 /xpcshell
 /XUL

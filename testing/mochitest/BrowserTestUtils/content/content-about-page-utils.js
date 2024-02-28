@@ -1,19 +1,13 @@
-/* eslint-env mozilla/frame-script */
+/* eslint-env mozilla/process-script */
 
 "use strict";
 
 var Cm = Components.manager;
 
-const { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-
-const { generateUUID } = Cc["@mozilla.org/uuid-generator;1"].getService(
-  Ci.nsIUUIDGenerator
-);
-
 function AboutPage(aboutHost, chromeURL, uriFlags) {
   this.chromeURL = chromeURL;
   this.aboutHost = aboutHost;
-  this.classID = Components.ID(generateUUID().number);
+  this.classID = Components.ID(Services.uuid.generateUUID().number);
   this.description = "BrowserTestUtils: " + aboutHost;
   this.uriFlags = uriFlags;
 }
@@ -36,10 +30,7 @@ AboutPage.prototype = {
     return channel;
   },
 
-  createInstance(outer, iid) {
-    if (outer !== null) {
-      throw Components.Exception("", Cr.NS_ERROR_NO_AGGREGATION);
-    }
+  createInstance(iid) {
     return this.QueryInterface(iid);
   },
 

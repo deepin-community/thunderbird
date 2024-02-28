@@ -1,28 +1,23 @@
 /* globals openAddonsMgr, openContentTab */
 
-ChromeUtils.defineModuleGetter(
-  this,
-  "AddonTestUtils",
-  "resource://testing-common/AddonTestUtils.jsm"
-);
+ChromeUtils.defineESModuleGetters(this, {
+  AddonTestUtils: "resource://testing-common/AddonTestUtils.sys.mjs",
+  Management: "resource://gre/modules/Extension.sys.mjs",
+});
 
 const BASE = getRootDirectory(gTestPath).replace(
   "chrome://mochitests/content/",
   "https://example.com/"
 );
 
-const gBrowserBundle = Services.strings.createBundle(
-  "chrome://messenger/locale/addons.properties"
-);
-
-var { ExtensionsUI } = ChromeUtils.import(
-  "resource:///modules/ExtensionsUI.jsm"
-);
-ChromeUtils.defineModuleGetter(
-  this,
-  "Management",
-  "resource://gre/modules/Extension.jsm"
-);
+const l10n = new Localization([
+  "toolkit/global/extensions.ftl",
+  "toolkit/global/extensionPermissions.ftl",
+  "messenger/extensionsUI.ftl",
+  "messenger/extensionPermissions.ftl",
+  "messenger/addonNotifications.ftl",
+  "branding/brand.ftl",
+]);
 
 var { CustomizableUITestUtils } = ChromeUtils.import(
   "resource://testing-common/CustomizableUITestUtils.jsm"
@@ -91,7 +86,7 @@ function promiseInstallEvent(addon, event) {
  *
  * @param {string} url
  *        URL of the .xpi file to install
- * @param {Object?} installTelemetryInfo
+ * @param {object?} installTelemetryInfo
  *        an optional object that contains additional details used by the telemetry events.
  *
  * @returns {Promise}
@@ -174,59 +169,27 @@ function isDefaultIcon(icon) {
 }
 
 /**
- * Check the contents of an individual permission string.
- * This function is fairly specific to the use here and probably not
- * suitable for re-use elsewhere...
- *
- * @param {string} string
- *        The string value to check (i.e., pulled from the DOM)
- * @param {string} key
- *        The key in browser.properties for the localized string to
- *        compare with.
- * @param {string|null} param
- *        Optional string to substitute for %S in the localized string.
- * @param {string} msg
- *        The message to be emitted as part of the actual test.
- */
-function checkPermissionString(string, key, param, msg) {
-  console.log(key);
-  let localizedString = param
-    ? gBrowserBundle.formatStringFromName(key, [param])
-    : gBrowserBundle.GetStringFromName(key);
-
-  // If this is a parameterized string and the parameter isn't given,
-  // just do a simple comparison of the text before and after the %S
-  if (localizedString.includes("%S")) {
-    let i = localizedString.indexOf("%S");
-    ok(string.startsWith(localizedString.slice(0, i)), msg);
-    ok(string.endsWith(localizedString.slice(i + 2)), msg);
-  } else {
-    is(string, localizedString, msg);
-  }
-}
-
-/**
  * Check the contents of a permission popup notification
  *
  * @param {Window} panel
  *        The popup window.
- * @param {string|regexp|function} checkIcon
+ * @param {string | RegExp | Function} checkIcon
  *        The icon expected to appear in the notification.  If this is a
  *        string, it must match the icon url exactly.  If it is a
  *        regular expression it is tested against the icon url, and if
  *        it is a function, it is called with the icon url and returns
  *        true if the url is correct.
- * @param {array} permissions
- *        The expected entries in the permissions list.  Each element
+ * @param {Object[]} permissions
+ *        The expected entries in the permissions list. Each element
  *        in this array is itself a 2-element array with the string key
- *        for the item (e.g., "webextPerms.description.foo") and an
- *        optional formatting parameter.
+ *        for the item (e.g., "webext-perms-description-foo") for permission foo
+ *        and an optional formatting parameter.
  * @param {boolean} sideloaded
  *        Whether the notification is for a sideloaded extenion.
  * @param {boolean} [warning]
  *        Whether the experiments warning should be visible.
  */
-function checkNotification(
+async function checkNotification(
   panel,
   checkIcon,
   permissions,
@@ -252,21 +215,6 @@ function checkNotification(
     is(icon, checkIcon, "Notification icon is correct");
   }
 
-  let description = panel.querySelector(".popup-notification-description")
-    .textContent;
-  let expectedDescription = "webextPerms.header";
-  if (permissions.length) {
-    expectedDescription += "WithPerms";
-  }
-  if (sideloaded) {
-    expectedDescription = "webextPerms.sideloadHeader";
-  }
-  checkPermissionString(
-    description,
-    expectedDescription,
-    undefined,
-    `Description is the expected one`
-  );
   is(
     learnMoreLink.hidden,
     !permissions.length,
@@ -290,15 +238,6 @@ function checkNotification(
       !singleDataEl.textContent,
       "Single permission data label has not been set"
     );
-    for (let i in permissions) {
-      let [key, param] = permissions[i];
-      checkPermissionString(
-        ul.children[i].textContent,
-        key,
-        param,
-        `Permission number ${i + 1} is correct`
-      );
-    }
   }
 
   if (warning) {
@@ -316,13 +255,10 @@ function checkNotification(
  *        Callable that takes the name of an xpi file to install and
  *        starts to install it.  Should return a Promise that resolves
  *        when the install is finished or rejects if the install is canceled.
- * @param {string} telemetryBase
- *        If supplied, the base type for telemetry events that should be
- *        recorded for this install method.
  *
  * @returns {Promise}
  */
-async function testInstallMethod(installFn, telemetryBase) {
+async function testInstallMethod(installFn) {
   const PERMS_XPI = "browser_webext_permissions.xpi";
   const NO_PERMS_XPI = "browser_webext_nopermissions.xpi";
   const ID = "permissions@test.mozilla.org";
@@ -334,16 +270,15 @@ async function testInstallMethod(installFn, telemetryBase) {
     ],
   });
 
-  if (telemetryBase !== undefined) {
-    hookExtensionsTelemetry();
-  }
-
   let testURI = makeURI("https://example.com/");
   PermissionTestUtils.add(testURI, "install", Services.perms.ALLOW_ACTION);
   registerCleanupFunction(() => PermissionTestUtils.remove(testURI, "install"));
 
   async function runOnce(filename, cancel) {
-    openContentTab("about:blank");
+    let tab = openContentTab("about:blank");
+    if (tab.browser.webProgress.isLoadingDocument) {
+      await BrowserTestUtils.browserLoaded(tab.browser);
+    }
 
     let installPromise = new Promise(resolve => {
       let listener = {
@@ -382,17 +317,17 @@ async function testInstallMethod(installFn, telemetryBase) {
       // The icon should come from the extension, don't bother with the precise
       // path, just make sure we've got a jar url pointing to the right path
       // inside the jar.
-      checkNotification(panel, /^jar:file:\/\/.*\/icon\.png$/, [
-        ["webextPerms.hostDescription.wildcard", "wildcard.domain"],
-        ["webextPerms.hostDescription.oneSite", "singlehost.domain"],
-        ["webextPerms.description.nativeMessaging"],
+      await checkNotification(panel, /^jar:file:\/\/.*\/icon\.png$/, [
+        ["webext-perms-host-description-wildcard", "domain"],
+        ["webext-perms-host-description-one-site", "domain"],
+        ["webext-perms-description-nativeMessaging"],
         // The below permissions are deliberately in this order as permissions
         // are sorted alphabetically by the permission string to match AMO.
-        ["webextPerms.description.accountsRead2"],
-        ["webextPerms.description.tabs"],
+        ["webext-perms-description-accountsRead"],
+        ["webext-perms-description-tabs"],
       ]);
     } else if (filename == NO_PERMS_XPI) {
-      checkNotification(panel, isDefaultIcon, []);
+      await checkNotification(panel, isDefaultIcon, []);
     }
 
     if (cancel) {
@@ -439,16 +374,6 @@ async function testInstallMethod(installFn, telemetryBase) {
   //    accept the permissions to install the extension.  (Then uninstall
   //    the extension to clean up.)
   await runOnce(PERMS_XPI, false);
-
-  if (telemetryBase !== undefined) {
-    // Should see 2 canceled installs followed by 1 successful install
-    // for this method.
-    expectTelemetry([
-      `${telemetryBase}Rejected`,
-      `${telemetryBase}Rejected`,
-      `${telemetryBase}Accepted`,
-    ]);
-  }
 
   await SpecialPowers.popPrefEnv();
 }
@@ -646,11 +571,11 @@ async function interactiveUpdateTest(autoUpdate, checkFn) {
 // Individual tests can store a cleanup function in the testCleanup global
 // to ensure it gets called before the final check is performed.
 let testCleanup;
-add_task(async function() {
+add_task(async function () {
   let addons = await AddonManager.getAllAddons();
   let existingAddons = new Set(addons.map(a => a.id));
 
-  registerCleanupFunction(async function() {
+  registerCleanupFunction(async function () {
     if (testCleanup) {
       await testCleanup();
       testCleanup = null;
@@ -673,14 +598,14 @@ add_task(async function() {
   });
 });
 
-// Any opened tabs should be closed by the end of the test.
 registerCleanupFunction(() => {
-  let tabmail = document.getElementById("tabmail");
-  is(tabmail.tabInfo.length, 1);
+  // The appmenu should be closed by the end of the test.
+  ok(PanelUI.panel.state == "closed", "Main menu is closed.");
 
-  while (tabmail.tabInfo.length > 1) {
-    tabmail.closeTab(tabmail.tabInfo[1]);
-  }
+  // Any opened tabs should be closed by the end of the test.
+  let tabmail = document.getElementById("tabmail");
+  is(tabmail.tabInfo.length, 1, "All tabs are closed.");
+  tabmail.closeOtherTabs(0);
 });
 
 let collectedTelemetry = [];

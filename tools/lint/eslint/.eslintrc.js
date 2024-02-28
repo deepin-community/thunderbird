@@ -5,6 +5,8 @@
 "use strict";
 
 module.exports = {
+  plugins: ["eslint-plugin"],
+  extends: ["plugin:eslint-plugin/recommended"],
   // eslint-plugin-mozilla runs under node, so we need a more restrictive
   // environment / parser setup here than the rest of mozilla-central.
   env: {
@@ -13,7 +15,7 @@ module.exports = {
   },
   parser: "espree",
   parserOptions: {
-    ecmaVersion: 10,
+    ecmaVersion: 12,
   },
 
   rules: {
@@ -23,5 +25,6 @@ module.exports = {
     "no-undef-init": "error",
     "one-var": ["error", "never"],
     strict: ["error", "global"],
+    "eslint-plugin/prefer-message-ids": "off",
   },
 };

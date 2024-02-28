@@ -7,6 +7,7 @@
 /**
  * Tests a given url.
  * The de-emphasized parts must be wrapped in "<" and ">" chars.
+ *
  * @param {string} aExpected The url to test.
  * @param {string} aClobbered [optional] Normally the url is de-emphasized
  *        in-place, thus it's enough to pass aExpected. Though, in some cases
@@ -61,7 +62,7 @@ function testVal(aExpected, aClobbered = null, synthesizeInput = false) {
 function test() {
   const prefname = "browser.urlbar.formatting.enabled";
 
-  registerCleanupFunction(function() {
+  registerCleanupFunction(function () {
     Services.prefs.clearUserPref(prefname);
     gURLBar.setURI();
   });
@@ -94,6 +95,9 @@ function test() {
 
   testVal("<https://>mozilla.org<   >");
   testVal("mozilla.org<   >");
+  // RTL characters in domain change order of domain and suffix. Domain should
+  // be highlighted correctly.
+  testVal("<http://>اختبار.اختبار</www.mozilla.org/index.html>");
 
   testVal("<https://>mozilla.org</file.ext>");
   testVal("<https://>mozilla.org</sub/file.ext>");
@@ -146,7 +150,7 @@ function test() {
     "[1:2:3:4:5::255.255.255.255]",
     "[1:2:3:4:5:6:255.255.255.255]",
   ];
-  IPs.forEach(function(IP) {
+  IPs.forEach(function (IP) {
     testVal(IP);
     testVal(IP + "</file.ext>");
     testVal(IP + "<:666/file.ext>");

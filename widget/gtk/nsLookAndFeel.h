@@ -15,6 +15,7 @@
 
 enum WidgetNodeType : int;
 struct _GtkStyle;
+typedef struct _GDBusProxy GDBusProxy;
 
 class nsLookAndFeel final : public nsXPLookAndFeel {
  public:
@@ -32,24 +33,19 @@ class nsLookAndFeel final : public nsXPLookAndFeel {
   char16_t GetPasswordCharacterImpl() override;
   bool GetEchoPasswordImpl() override;
 
-  template <typename Callback>
-  void WithAltThemeConfigured(const Callback&);
+  bool GetDefaultDrawInTitlebar() override;
 
-  void InitializeAltTheme();
-
-  void GetGtkContentTheme(LookAndFeelTheme&) override;
-
-  static void ConfigureTheme(const LookAndFeelTheme& aTheme);
-
-  bool IsCSDAvailable() const { return mCSDAvailable; }
+  void GetThemeInfo(nsACString&) override;
 
   static const nscolor kBlack = NS_RGB(0, 0, 0);
   static const nscolor kWhite = NS_RGB(255, 255, 255);
+  void OnColorSchemeSettingChanged();
 
  protected:
   static bool WidgetUsesImage(WidgetNodeType aNodeType);
   void RecordLookAndFeelSpecificTelemetry() override;
   static bool ShouldHonorThemeScrollbarColors();
+  mozilla::Maybe<ColorScheme> ComputeColorSchemeSetting();
 
   // We use up to two themes (one light, one dark), which might have different
   // sets of fonts and colors.
@@ -78,8 +74,6 @@ class nsLookAndFeel final : public nsXPLookAndFeel {
     nscolor mInfoBackground = kWhite;
     nscolor mInfoText = kBlack;
     nscolor mMenuBackground = kWhite;
-    nscolor mMenuBarText = kBlack;
-    nscolor mMenuBarHoverText = kBlack;
     nscolor mMenuText = kBlack;
     nscolor mMenuTextInactive = kWhite;
     nscolor mMenuHover = kWhite;
@@ -93,6 +87,7 @@ class nsLookAndFeel final : public nsXPLookAndFeel {
     nscolor mFrameInnerDarkBorder = kBlack;
     nscolor mOddCellBackground = kWhite;
     nscolor mNativeHyperLinkText = kBlack;
+    nscolor mNativeVisitedHyperLinkText = kBlack;
     nscolor mComboBoxText = kBlack;
     nscolor mComboBoxBackground = kWhite;
     nscolor mFieldText = kBlack;
@@ -101,18 +96,20 @@ class nsLookAndFeel final : public nsXPLookAndFeel {
     nscolor mMozWindowBackground = kWhite;
     nscolor mMozWindowActiveBorder = kBlack;
     nscolor mMozWindowInactiveBorder = kBlack;
-    nscolor mMozWindowInactiveCaption = kWhite;
     nscolor mMozCellHighlightBackground = kWhite;
     nscolor mMozCellHighlightText = kBlack;
     nscolor mTextSelectedText = kBlack;
     nscolor mTextSelectedBackground = kWhite;
     nscolor mAccentColor = kWhite;
-    nscolor mAccentColorForeground = kWhite;
-    nscolor mMozScrollbar = kWhite;
+    nscolor mAccentColorText = kWhite;
+    nscolor mSelectedItem = kWhite;
+    nscolor mSelectedItemText = kBlack;
     nscolor mMozColHeaderText = kBlack;
     nscolor mMozColHeaderHoverText = kBlack;
     nscolor mTitlebarText = kBlack;
+    nscolor mTitlebarBackground = kWhite;
     nscolor mTitlebarInactiveText = kBlack;
+    nscolor mTitlebarInactiveBackground = kWhite;
     nscolor mThemedScrollbar = kWhite;
     nscolor mThemedScrollbarInactive = kWhite;
     nscolor mThemedScrollbarThumb = kBlack;
@@ -121,6 +118,7 @@ class nsLookAndFeel final : public nsXPLookAndFeel {
     nscolor mThemedScrollbarThumbInactive = kBlack;
 
     float mCaretRatio = 0.0f;
+    int32_t mTitlebarRadius = 0;
     char16_t mInvisibleCharacter = 0;
     bool mMenuSupportsDrag = false;
 
@@ -145,9 +143,14 @@ class nsLookAndFeel final : public nsXPLookAndFeel {
     return mSystemTheme.mIsDark ? mSystemTheme : mAltTheme;
   }
 
+  const PerThemeData& EffectiveTheme() const {
+    return mSystemThemeOverridden ? mAltTheme : mSystemTheme;
+  }
+
+  RefPtr<GDBusProxy> mDBusSettingsProxy;
+  mozilla::Maybe<ColorScheme> mColorSchemePreference;
   int32_t mCaretBlinkTime = 0;
-  bool mCSDAvailable = false;
-  bool mCSDHideTitlebarByDefault = false;
+  int32_t mCaretBlinkCount = -1;
   bool mCSDMaximizeButton = false;
   bool mCSDMinimizeButton = false;
   bool mCSDCloseButton = false;
@@ -159,11 +162,19 @@ class nsLookAndFeel final : public nsXPLookAndFeel {
   int32_t mCSDMinimizeButtonPosition = 0;
   int32_t mCSDCloseButtonPosition = 0;
 
-  void EnsureInit();
+  void EnsureInit() {
+    if (mInitialized) {
+      return;
+    }
+    Initialize();
+  }
 
-  static void FirefoxThemeChanged(const char*, void* aInstance);
+  void Initialize();
+
   void RestoreSystemTheme();
-  bool MatchFirefoxThemeIfNeeded();
+  void InitializeGlobalSettings();
+  void ConfigureAndInitializeAltTheme();
+  void ConfigureFinalEffectiveTheme();
 };
 
 #endif

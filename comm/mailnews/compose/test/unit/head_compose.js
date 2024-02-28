@@ -1,9 +1,8 @@
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 var { MailServices } = ChromeUtils.import(
   "resource:///modules/MailServices.jsm"
 );
-var { XPCOMUtils } = ChromeUtils.import(
-  "resource://gre/modules/XPCOMUtils.jsm"
+var { XPCOMUtils } = ChromeUtils.importESModule(
+  "resource://gre/modules/XPCOMUtils.sys.mjs"
 );
 var { mailTestUtils } = ChromeUtils.import(
   "resource://testing-common/mailnews/MailTestUtils.jsm"
@@ -15,8 +14,8 @@ var { localAccountUtils } = ChromeUtils.import(
 var CC = Components.Constructor;
 
 // WebApps.jsm called by ProxyAutoConfig (PAC) requires a valid nsIXULAppInfo.
-var { getAppInfo, newAppInfo, updateAppInfo } = ChromeUtils.import(
-  "resource://testing-common/AppInfo.jsm"
+var { getAppInfo, newAppInfo, updateAppInfo } = ChromeUtils.importESModule(
+  "resource://testing-common/AppInfo.sys.mjs"
 );
 updateAppInfo();
 
@@ -39,7 +38,7 @@ var {
   fsDebugRecv,
   fsDebugRecvSend,
 } = ChromeUtils.import("resource://testing-common/mailnews/Maild.jsm");
-var { smtpDaemon, SMTP_RFC2821_handler } = ChromeUtils.import(
+var { SmtpDaemon, SMTP_RFC2821_handler } = ChromeUtils.import(
   "resource://testing-common/mailnews/Smtpd.jsm"
 );
 var { AuthPLAIN, AuthLOGIN, AuthCRAM } = ChromeUtils.import(
@@ -51,11 +50,11 @@ var gDraftFolder;
 // Setup the daemon and server
 function setupServerDaemon(handler) {
   if (!handler) {
-    handler = function(d) {
+    handler = function (d) {
       return new SMTP_RFC2821_handler(d);
     };
   }
-  var server = new nsMailServer(handler, new smtpDaemon());
+  var server = new nsMailServer(handler, new SmtpDaemon());
   return server;
 }
 
@@ -86,6 +85,9 @@ function getSmtpIdentity(senderName, smtpServer) {
 var test;
 
 function do_check_transaction(real, expected) {
+  if (Array.isArray(real)) {
+    real = real.at(-1);
+  }
   // real.them may have an extra QUIT on the end, where the stream is only
   // closed after we have a chance to process it and not them. We therefore
   // excise this from the list
@@ -107,7 +109,7 @@ var copyListener = {
   onProgress(aMsgID, aProgress, aProgressMax) {},
   onStatus(aMsgID, aMsg) {},
   onStopSending(aMsgID, aStatus, aMsg, aReturnFile) {},
-  onGetDraftFolderURI(aFolderURI) {},
+  onGetDraftFolderURI(aMsgID, aFolderURI) {},
   onSendNotPerformed(aMsgID, aStatus) {},
   onTransportSecurityError(msgID, status, secInfo, location) {},
 
@@ -158,6 +160,8 @@ function createMessage(aAttachment) {
   let fields = Cc[
     "@mozilla.org/messengercompose/composefields;1"
   ].createInstance(Ci.nsIMsgCompFields);
+  fields.from = "Nobody <nobody@tinderbox.test>";
+
   let attachments = [];
   if (aAttachment) {
     let attachment = Cc[
@@ -202,7 +206,7 @@ function richCreateMessage(
     gDraftFolder = rootFolder.createLocalSubfolder("Drafts");
   }
   // Clear all messages
-  let msgs = [...gDraftFolder.msgDatabase.EnumerateMessages()];
+  let msgs = [...gDraftFolder.msgDatabase.enumerateMessages()];
   if (msgs.length > 0) {
     gDraftFolder.deleteMessages(msgs, null, true, false, null, false);
   }
@@ -261,6 +265,7 @@ function getAttachmentFromContent(aContent) {
 
 /**
  * Get the body part of an MIME message.
+ *
  * @param {string} content - The message content.
  * @returns {string}
  */
@@ -270,6 +275,6 @@ function getMessageBody(content) {
   return content.slice(separatorIndex + 4, -2);
 }
 
-registerCleanupFunction(function() {
+registerCleanupFunction(function () {
   load(gDEPTH + "mailnews/resources/mailShutdown.js");
 });

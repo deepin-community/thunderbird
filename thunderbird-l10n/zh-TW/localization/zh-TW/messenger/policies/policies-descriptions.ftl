@@ -14,6 +14,8 @@ policy-3rdparty = 設定 WebExtension 可透過 chrome.storage.managed 存取的
 
 policy-AppAutoUpdate = 開啟或關閉應用程式自動更新。
 
+policy-AppUpdatePin = 防止 { -brand-short-name } 更新超過特定版本。
+
 policy-AppUpdateURL = 自訂應用程式更新網址。
 
 policy-Authentication = 為支援的網站設定整合身分驗證方式。

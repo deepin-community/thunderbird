@@ -2,22 +2,22 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-sanitize-prefs =
+sanitize-prefs2 =
     .title = Settings for Clearing History
-    .style = width: 34em
+    .style = min-width: 34em
 
 sanitize-prefs-style =
     .style = width: 17em
 
-dialog-title =
+sanitize-dialog-title =
     .title = Clear Recent History
-    .style = width: 34em
+    .style = min-width: 34em
 
 # When "Time range to clear" is set to "Everything", this message is used for the
 # title instead of dialog-title.
-dialog-title-everything =
+sanitize-dialog-title-everything =
     .title = Clear All History
-    .style = width: 34em
+    .style = min-width: 34em
 
 clear-data-settings-label = When closed, { -brand-short-name } should automatically clear all
 
@@ -34,13 +34,13 @@ clear-time-duration-prefix =
     .accesskey = T
 
 clear-time-duration-value-last-hour =
-    .label = Last Hour
+    .label = Last hour
 
 clear-time-duration-value-last-2-hours =
-    .label = Last Two Hours
+    .label = Last two hours
 
 clear-time-duration-value-last-4-hours =
-    .label = Last Four Hours
+    .label = Last four hours
 
 clear-time-duration-value-today =
     .label = Today
@@ -57,7 +57,7 @@ clear-time-duration-suffix =
 history-section-label = History
 
 item-history-and-downloads =
-    .label = Browsing & Download History
+    .label = Browsing & download history
     .accesskey = B
 
 item-cookies =
@@ -65,25 +65,25 @@ item-cookies =
     .accesskey = C
 
 item-active-logins =
-    .label = Active Logins
-    .accesskey = L
+    .label = Active logins
+    .accesskey = l
 
 item-cache =
     .label = Cache
     .accesskey = a
 
 item-form-search-history =
-    .label = Form & Search History
+    .label = Form & search history
     .accesskey = F
 
 data-section-label = Data
 
-item-site-preferences =
-    .label = Site Preferences
+item-site-settings =
+    .label = Site settings
     .accesskey = S
 
 item-offline-apps =
-    .label = Offline Website Data
+    .label = Offline website data
     .accesskey = O
 
 sanitize-everything-undo-warning = This action cannot be undone.

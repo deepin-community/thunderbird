@@ -16,18 +16,17 @@ class nsIDocShellTreeItem;
 class nsIURI;
 class nsIContentSecurityPolicy;
 
-namespace mozilla {
-namespace dom {
+namespace mozilla::dom {
 class BrowsingContext;
-}
-}  // namespace mozilla
+}  // namespace mozilla::dom
 
 class FramingChecker {
  public:
   // Determine if X-Frame-Options allows content to be framed
   // as a subdocument
   static bool CheckFrameOptions(nsIChannel* aChannel,
-                                nsIContentSecurityPolicy* aCSP);
+                                nsIContentSecurityPolicy* aCSP,
+                                bool& outIsFrameCheckingSkipped);
 
  protected:
   enum XFOHeader { eDENY, eSAMEORIGIN };

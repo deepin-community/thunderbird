@@ -16,10 +16,13 @@ var EventUtils = ChromeUtils.import(
   "resource://testing-common/mozmill/EventUtils.jsm"
 );
 
-var { Assert } = ChromeUtils.import("resource://testing-common/Assert.jsm");
+var { Assert } = ChromeUtils.importESModule(
+  "resource://testing-common/Assert.sys.mjs"
+);
 
 /**
  * Execute a drag and drop session.
+ *
  * @param {XULElement} aDragObject
  *   the element from which the drag session should be started.
  * @param {} aDragWindow
@@ -47,7 +50,7 @@ function drag_n_drop_element(
   aListener
 ) {
   let dt = synthesize_drag_start(aDragWindow, aDragObject, aListener);
-  Assert.ok(dt, "Drag target was undefined");
+  Assert.ok(dt, "Drag data transfer was undefined");
 
   synthesize_drag_over(aDropWindow, aDropObject, dt);
 
@@ -60,18 +63,19 @@ function drag_n_drop_element(
 
 /**
  * Starts a drag new session.
+ *
  * @param {} aWindow
  * @param {XULElement} aDispatcher
  *   the element from which the drag session should be started.
  * @param {XULElement} aListener
  *   the element who's drop target should be captured and returned.
- * @return {nsIDataTransfer}
+ * @returns {nsIDataTransfer}
  *   returns the DataTransfer Object of captured by aListener.
  */
 function synthesize_drag_start(aWindow, aDispatcher, aListener) {
   let dt;
 
-  let trapDrag = function(event) {
+  let trapDrag = function (event) {
     if (!event.dataTransfer) {
       throw new Error("no DataTransfer");
     }
@@ -106,6 +110,7 @@ function synthesize_drag_start(aWindow, aDispatcher, aListener) {
 
 /**
  * Synthesizes a drag over event.
+ *
  * @param {} aWindow
  * @param {XULElement} aDispatcher
  *   the element from which the drag session should be started.
@@ -120,6 +125,7 @@ function synthesize_drag_over(aWindow, aDispatcher, aDt, aArgs) {
 
 /**
  * Synthesizes a drag end event.
+ *
  * @param {} aWindow
  * @param {XULElement} aDispatcher
  *   the element from which the drag session should be started.
@@ -145,6 +151,7 @@ function synthesize_drag_end(aWindow, aDispatcher, aListener, aDt, aArgs) {
 
 /**
  * Synthesizes a drop event.
+ *
  * @param {} aWindow
  * @param {XULElement} aDispatcher
  *   the element from which the drag session should be started.
@@ -170,6 +177,7 @@ function synthesize_drop(aWindow, aDispatcher, aDt, aArgs) {
 
 /**
  * Private function: Synthesizes a specified drag event.
+ *
  * @param {} aType
  *   the type of the drag event to be synthesiyzed.
  * @param {} aWindow

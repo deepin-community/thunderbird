@@ -10,8 +10,6 @@
 SimpleTest.ignoreAllUncaughtExceptions(true);
 SimpleTest.requestLongerTimeout(2);
 
-const TEST_URL =
-  "http://example.com/browser/browser/base/content/test/fullscreen/open_and_focus_helper.html";
 const IFRAME_ID = "testIframe";
 
 async function testWindowOpen(iframeID) {
@@ -30,7 +28,27 @@ async function testWindowOpen(iframeID) {
   BrowserTestUtils.removeTab(tab);
 }
 
-add_task(async function setup() {
+async function testWindowOpenExistingWindow(funToOpenExitingWindow, iframeID) {
+  let tab = await BrowserTestUtils.openNewForegroundTab(gBrowser, TEST_URL);
+  let popup = await jsWindowOpen(tab.linkedBrowser, true);
+
+  info("re-focusing main window");
+  await waitForFocus(tab.linkedBrowser);
+
+  info("Entering full-screen");
+  await changeFullscreen(tab.linkedBrowser, true);
+
+  info("open existing popup window");
+  await testExpectFullScreenExit(tab.linkedBrowser, true, async () => {
+    await funToOpenExitingWindow(tab.linkedBrowser, iframeID);
+  });
+
+  // Cleanup
+  await BrowserTestUtils.closeWindow(popup);
+  BrowserTestUtils.removeTab(tab);
+}
+
+add_setup(async function () {
   await SpecialPowers.pushPrefEnv({
     set: [
       ["dom.disable_open_during_load", false], // Allow window.open calls without user interaction
@@ -45,4 +63,40 @@ add_task(function test_parentWindowOpen() {
 
 add_task(function test_iframeWindowOpen() {
   return testWindowOpen(IFRAME_ID);
+});
+
+add_task(async function test_parentWindowOpenExistWindow() {
+  await testWindowOpenExistingWindow(browser => {
+    info(
+      "Calling window.open() with same name again should reuse the existing window"
+    );
+    jsWindowOpen(browser, true);
+  });
+});
+
+add_task(async function test_iframeWindowOpenExistWindow() {
+  await testWindowOpenExistingWindow((browser, iframeID) => {
+    info(
+      "Calling window.open() with same name again should reuse the existing window"
+    );
+    jsWindowOpen(browser, true, iframeID);
+  }, IFRAME_ID);
+});
+
+add_task(async function test_parentWindowClickLinkOpenExistWindow() {
+  await testWindowOpenExistingWindow(browser => {
+    info(
+      "Clicking link with same target name should reuse the existing window"
+    );
+    jsClickLink(browser, true);
+  });
+});
+
+add_task(async function test_iframeWindowClickLinkOpenExistWindow() {
+  await testWindowOpenExistingWindow((browser, iframeID) => {
+    info(
+      "Clicking link with same target name should reuse the existing window"
+    );
+    jsClickLink(browser, true, iframeID);
+  }, IFRAME_ID);
 });

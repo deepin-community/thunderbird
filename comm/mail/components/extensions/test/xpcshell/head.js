@@ -2,8 +2,8 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-var { ExtensionTestUtils } = ChromeUtils.import(
-  "resource://testing-common/ExtensionXPCShellUtils.jsm"
+var { ExtensionTestUtils } = ChromeUtils.importESModule(
+  "resource://testing-common/ExtensionXPCShellUtils.sys.mjs"
 );
 var { MailServices } = ChromeUtils.import(
   "resource:///modules/MailServices.jsm"
@@ -20,12 +20,31 @@ var { fsDebugAll, gThreadManager, nsMailServer } = ChromeUtils.import(
 var { PromiseTestUtils } = ChromeUtils.import(
   "resource://testing-common/mailnews/PromiseTestUtils.jsm"
 );
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
+
+// Persistent Listener test functionality
+var { assertPersistentListeners } = ExtensionTestUtils.testAssertions;
 
 ExtensionTestUtils.init(this);
 
 var IS_IMAP = false;
 var IS_NNTP = false;
+
+function formatVCard(strings, ...values) {
+  let arr = [];
+  for (let str of strings) {
+    arr.push(str);
+    arr.push(values.shift());
+  }
+  let lines = arr.join("").split("\n");
+  let indent = lines[1].length - lines[1].trimLeft().length;
+  let outLines = [];
+  for (let line of lines) {
+    if (line.length > 0) {
+      outLines.push(line.substring(indent) + "\r\n");
+    }
+  }
+  return outLines.join("");
+}
 
 function createAccount(type = "none") {
   let account;
@@ -60,8 +79,20 @@ function createAccount(type = "none") {
 }
 
 function cleanUpAccount(account) {
-  info(`Cleaning up account ${account.toString()}`);
+  let serverKey = account.incomingServer.key;
+  let serverType = account.incomingServer.type;
+  info(
+    `Cleaning up ${serverType} account ${account.key} and server ${serverKey}`
+  );
   MailServices.accounts.removeAccount(account, true);
+
+  try {
+    let server = MailServices.accounts.getIncomingServer(serverKey);
+    if (server) {
+      info(`Cleaning up leftover ${serverType} server ${serverKey}`);
+      MailServices.accounts.removeIncomingServer(server, false);
+    }
+  } catch (e) {}
 }
 
 registerCleanupFunction(() => {
@@ -154,12 +185,12 @@ async function getUtilsJS() {
 
 var IMAPServer = {
   open() {
-    let { imapDaemon, imapMessage, IMAP_RFC3501_handler } = ChromeUtils.import(
+    let { ImapDaemon, ImapMessage, IMAP_RFC3501_handler } = ChromeUtils.import(
       "resource://testing-common/mailnews/Imapd.jsm"
     );
-    IMAPServer.imapMessage = imapMessage;
+    IMAPServer.ImapMessage = ImapMessage;
 
-    this.daemon = new imapDaemon();
+    this.daemon = new ImapDaemon();
     this.server = new nsMailServer(
       daemon => new IMAP_RFC3501_handler(daemon),
       this.daemon
@@ -184,7 +215,7 @@ var IMAPServer = {
       let msgURI = Services.io.newURI(
         "data:text/plain;base64," + btoa(message)
       );
-      let imapMsg = new IMAPServer.imapMessage(
+      let imapMsg = new IMAPServer.ImapMessage(
         msgURI.spec,
         fakeFolder.uidnext++,
         []
@@ -212,11 +243,11 @@ function createNewsgroup(group) {
 
 var NNTPServer = {
   open() {
-    let { NNTP_RFC977_handler, nntpDaemon } = ChromeUtils.import(
+    let { NNTP_RFC977_handler, NntpDaemon } = ChromeUtils.import(
       "resource://testing-common/mailnews/Nntpd.jsm"
     );
 
-    this.daemon = new nntpDaemon();
+    this.daemon = new NntpDaemon();
     this.server = new nsMailServer(
       daemon => new NNTP_RFC977_handler(daemon),
       this.daemon
@@ -242,7 +273,7 @@ var NNTPServer = {
   },
 
   addMessages(folder, messages) {
-    let { newsArticle } = ChromeUtils.import(
+    let { NewsArticle } = ChromeUtils.import(
       "resource://testing-common/mailnews/Nntpd.jsm"
     );
 
@@ -255,7 +286,7 @@ var NNTPServer = {
       if (!message.endsWith("\r\n")) {
         message = message + "\r\n";
       }
-      let article = new newsArticle(message);
+      let article = new NewsArticle(message);
       article.groups = [group];
       this.daemon.addArticle(article);
     });

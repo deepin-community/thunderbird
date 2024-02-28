@@ -16,6 +16,14 @@ body {
 }
 
 @media not print {
+  .fullZoomOut {
+    cursor: zoom-out;
+  }
+
+  .fullZoomIn {
+    cursor: zoom-in;
+  }
+
   .shrinkToFit {
     cursor: zoom-in;
   }
@@ -25,14 +33,11 @@ body {
   }
 }
 
-@media print {
-  /* We must declare the image as a block element. If we stay as
-  an inline element, our parent LineBox will be inline too and
-  ignore the available height during reflow.
-  This is bad during printing, it means tall image frames won't know
-  the size of the paper and cannot break into continuations along
-  multiple pages. */
-  img {
-    display: block;
-  }
+.isInObjectOrEmbed {
+  width: 100%;
+  height: 100vh;
+}
+
+img {
+  display: block;
 }

@@ -4,7 +4,6 @@
 
 const EXPORTED_SYMBOLS = ["Extractor"];
 var { cal } = ChromeUtils.import("resource:///modules/calendar/calUtils.jsm");
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 
 /**
  * Initializes extraction
@@ -163,14 +162,14 @@ Extractor.prototype = {
         // dictionary locale and patterns locale match
         if (this.checkBundle(dicts[dict])) {
           let time1 = new Date().getTime();
-          spellchecker.dictionary = dicts[dict];
+          spellchecker.dictionaries = [dicts[dict]];
           let dur = new Date().getTime() - time1;
           cal.LOG("[calExtract] Loading " + dicts[dict] + " dictionary took " + dur + "ms");
           patterns = dicts[dict];
           // beginning of dictionary locale matches patterns locale
         } else if (this.checkBundle(dicts[dict].substring(0, 2))) {
           let time1 = new Date().getTime();
-          spellchecker.dictionary = dicts[dict];
+          spellchecker.dictionaries = [dicts[dict]];
           let dur = new Date().getTime() - time1;
           cal.LOG("[calExtract] Loading " + dicts[dict] + " dictionary took " + dur + "ms");
           patterns = dicts[dict].substring(0, 2);
@@ -249,7 +248,7 @@ Extractor.prototype = {
    * @param sel   selection object of email content, when defined times
    *                  outside selection are discarded
    * @param title email title
-   * @return      sorted list of extracted datetime objects
+   * @returns sorted list of extracted datetime objects
    */
   extract(title, body, now, sel) {
     let initial = {};
@@ -888,7 +887,7 @@ Extractor.prototype = {
    * Guesses start time from list of guessed datetimes
    *
    * @param isTask    whether start time should be guessed for task or event
-   * @return          datetime object for start time
+   * @returns datetime object for start time
    */
   guessStart(isTask) {
     let startTimes = this.collected.filter(val => val.relation == "start");
@@ -964,7 +963,7 @@ Extractor.prototype = {
    *
    * @param start         start time to consider when guessing
    * @param doGuessStart  whether start time should be guessed for task or event
-   * @return              datetime object for end time
+   * @returns datetime object for end time
    */
   guessEnd(start, doGuessStart) {
     let guess = {};
@@ -1114,7 +1113,7 @@ Extractor.prototype = {
       for (let idx = vals.length - 1; idx >= 0; idx--) {
         if (vals[idx].trim() == "") {
           vals.splice(idx, 1);
-          Cu.reportError("[calExtract] Faulty extraction pattern " + value + " for " + name);
+          console.error("[calExtract] Faulty extraction pattern " + value + " for " + name);
         }
       }
 
@@ -1164,7 +1163,7 @@ Extractor.prototype = {
       for (let idx = vals.length - 1; idx >= 0; idx--) {
         if (vals[idx].trim() == "") {
           vals.splice(idx, 1);
-          Cu.reportError("[calExtract] Faulty extraction pattern " + value + " for " + name);
+          console.error("[calExtract] Faulty extraction pattern " + value + " for " + name);
         }
       }
 
@@ -1226,7 +1225,7 @@ Extractor.prototype = {
     // correctness checking
     for (i = 1; i <= count; i++) {
       if (positions[i] === undefined) {
-        Cu.reportError(
+        console.error(
           "[calExtract] Faulty extraction pattern " + name + ", missing parameter #" + i
         );
       }

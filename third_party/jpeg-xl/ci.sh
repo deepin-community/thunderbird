@@ -15,13 +15,16 @@ OS=`uname -s`
 MYDIR=$(dirname $(realpath "$0"))
 
 ### Environment parameters:
-TEST_STACK_LIMIT="${TEST_STACK_LIMIT:-128}"
+TEST_STACK_LIMIT="${TEST_STACK_LIMIT:-256}"
 CMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE:-RelWithDebInfo}
 CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH:-}
 CMAKE_C_COMPILER_LAUNCHER=${CMAKE_C_COMPILER_LAUNCHER:-}
 CMAKE_CXX_COMPILER_LAUNCHER=${CMAKE_CXX_COMPILER_LAUNCHER:-}
 CMAKE_MAKE_PROGRAM=${CMAKE_MAKE_PROGRAM:-}
+SKIP_BUILD="${SKIP_BUILD:-0}"
 SKIP_TEST="${SKIP_TEST:-0}"
+TARGETS="${TARGETS:-all doc}"
+TEST_SELECTOR="${TEST_SELECTOR:-}"
 BUILD_TARGET="${BUILD_TARGET:-}"
 ENABLE_WASM_SIMD="${ENABLE_WASM_SIMD:-0}"
 if [[ -n "${BUILD_TARGET}" ]]; then
@@ -41,27 +44,11 @@ FUZZER_MAX_TIME="${FUZZER_MAX_TIME:-0}"
 
 SANITIZER="none"
 
-if [[ "${BUILD_TARGET}" == wasm* ]]; then
-  # Check that environment is setup for the WASM build target.
-  if [[ -z "${EMSCRIPTEN}" ]]; then
-    echo "'EMSCRIPTEN' is not defined. Use 'emconfigure' wrapper to setup WASM build environment" >&2
-    return 1
-  fi
-  # Remove the side-effect of "emconfigure" wrapper - it considers NodeJS environment.
-  unset EMMAKEN_JUST_CONFIGURE
-  EMS_TOOLCHAIN_FILE="${EMSCRIPTEN}/cmake/Modules/Platform/Emscripten.cmake"
-  if [[ -f "${EMS_TOOLCHAIN_FILE}" ]]; then
-    CMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE:-${EMS_TOOLCHAIN_FILE}}
-  else
-    echo "Warning: EMSCRIPTEN CMake module not found" >&2
-  fi
-  CMAKE_CROSSCOMPILING_EMULATOR="${MYDIR}/js-wasm-wrapper.sh"
-fi
 
 if [[ "${BUILD_TARGET%%-*}" == "x86_64" ||
     "${BUILD_TARGET%%-*}" == "i686" ]]; then
   # Default to building all targets, even if compiler baseline is SSE4
-  HWY_BASELINE_TARGETS=${HWY_BASELINE_TARGETS:-HWY_SCALAR}
+  HWY_BASELINE_TARGETS=${HWY_BASELINE_TARGETS:-HWY_EMU128}
 else
   HWY_BASELINE_TARGETS=${HWY_BASELINE_TARGETS:-}
 fi
@@ -84,12 +71,17 @@ if [[ "${ENABLE_WASM_SIMD}" -ne "0" ]]; then
   CMAKE_EXE_LINKER_FLAGS="${CMAKE_EXE_LINKER_FLAGS} -msimd128"
 fi
 
+if [[ "${ENABLE_WASM_SIMD}" -eq "2" ]]; then
+  CMAKE_CXX_FLAGS="${CMAKE_CXX_FLAGS} -DHWY_WANT_WASM2"
+  CMAKE_C_FLAGS="${CMAKE_C_FLAGS} -DHWY_WANT_WASM2"
+fi
+
 if [[ ! -z "${HWY_BASELINE_TARGETS}" ]]; then
   CMAKE_CXX_FLAGS="${CMAKE_CXX_FLAGS} -DHWY_BASELINE_TARGETS=${HWY_BASELINE_TARGETS}"
 fi
 
 # Version inferred from the CI variables.
-CI_COMMIT_SHA=${CI_COMMIT_SHA:-}
+CI_COMMIT_SHA=${CI_COMMIT_SHA:-${GITHUB_SHA:-}}
 JPEGXL_VERSION=${JPEGXL_VERSION:-${CI_COMMIT_SHA:0:8}}
 
 # Benchmark parameters
@@ -154,6 +146,7 @@ detect_clang_version() {
   fi
   local clang_version=$("${CC:-clang}" --version | head -n1)
   clang_version=${clang_version#"Debian "}
+  clang_version=${clang_version#"Ubuntu "}
   local llvm_tag
   case "${clang_version}" in
     "clang version 6."*)
@@ -226,8 +219,13 @@ merge_request_commits() {
   { set +x; } 2>/dev/null
   # GITHUB_SHA is the current reference being build in GitHub Actions.
   if [[ -n "${GITHUB_SHA:-}" ]]; then
-    git -C "${MYDIR}" fetch -q origin "${GITHUB_SHA}"
-    MR_HEAD_SHA="${GITHUB_SHA}"
+    # GitHub normally does a checkout of a merge commit on a shallow repository
+    # by default. We want to get a bit more of the history to be able to diff
+    # changes on the Pull Request if needed. This fetches 10 more commits which
+    # should be enough given that PR normally should have 1 commit.
+    git -C "${MYDIR}" fetch -q origin "${GITHUB_SHA}" --depth 10
+    MR_HEAD_SHA="$(git rev-parse "FETCH_HEAD^2" 2>/dev/null ||
+                   echo "${GITHUB_SHA}")"
   else
     # CI_BUILD_REF is the reference currently being build in the CI workflow.
     MR_HEAD_SHA=$(git -C "${MYDIR}" rev-parse -q "${CI_BUILD_REF:-HEAD}")
@@ -345,7 +343,6 @@ cmake_configure() {
     -G Ninja
     -DCMAKE_CXX_FLAGS="${CMAKE_CXX_FLAGS}"
     -DCMAKE_C_FLAGS="${CMAKE_C_FLAGS}"
-    -DCMAKE_TOOLCHAIN_FILE="${CMAKE_TOOLCHAIN_FILE}"
     -DCMAKE_EXE_LINKER_FLAGS="${CMAKE_EXE_LINKER_FLAGS}"
     -DCMAKE_MODULE_LINKER_FLAGS="${CMAKE_MODULE_LINKER_FLAGS}"
     -DCMAKE_SHARED_LINKER_FLAGS="${CMAKE_SHARED_LINKER_FLAGS}"
@@ -355,6 +352,8 @@ cmake_configure() {
     -DJPEGXL_ENABLE_VIEWERS=ON
     -DJPEGXL_ENABLE_PLUGINS=ON
     -DJPEGXL_ENABLE_DEVTOOLS=ON
+    # We always use libfuzzer in the ci.sh wrapper.
+    -DJPEGXL_FUZZER_LINK_FLAGS="-fsanitize=fuzzer"
   )
   if [[ "${BUILD_TARGET}" != *mingw32 ]]; then
     args+=(
@@ -385,11 +384,14 @@ cmake_configure() {
         # Only the first element of the target triplet.
         -DCMAKE_SYSTEM_PROCESSOR="${BUILD_TARGET%%-*}"
         -DCMAKE_SYSTEM_NAME="${system_name}"
+        -DCMAKE_TOOLCHAIN_FILE="${CMAKE_TOOLCHAIN_FILE}"
       )
     else
-      # sjpeg confuses WASM SIMD with SSE.
       args+=(
+        # sjpeg confuses WASM SIMD with SSE.
         -DSJPEG_ENABLE_SIMD=OFF
+        # Building shared libs is not very useful for WASM.
+        -DBUILD_SHARED_LIBS=OFF
       )
     fi
     args+=(
@@ -450,17 +452,26 @@ cmake_configure() {
       -DCMAKE_MAKE_PROGRAM="${CMAKE_MAKE_PROGRAM}"
     )
   fi
-  cmake "${args[@]}" "$@"
+  if [[ "${BUILD_TARGET}" == wasm* ]]; then
+    emcmake cmake "${args[@]}" "$@"
+  else
+    cmake "${args[@]}" "$@"
+  fi
 }
 
 cmake_build_and_test() {
+  if [[ "${SKIP_BUILD}" -eq "1" ]]; then
+      return 0
+  fi
   # gtest_discover_tests() runs the test binaries to discover the list of tests
   # at build time, which fails under qemu.
-  ASAN_OPTIONS=detect_leaks=0 cmake --build "${BUILD_DIR}" -- all doc
+  ASAN_OPTIONS=detect_leaks=0 cmake --build "${BUILD_DIR}" -- $TARGETS
   # Pack test binaries if requested.
   if [[ "${PACK_TEST:-}" == "1" ]]; then
     (cd "${BUILD_DIR}"
      ${FIND_BIN} -name '*.cmake' -a '!' -path '*CMakeFiles*'
+     # gtest / gmock / gtest_main shared libs
+     ${FIND_BIN} lib/ -name 'libg*.so*'
      ${FIND_BIN} -type d -name tests -a '!' -path '*CMakeFiles*'
     ) | tar -C "${BUILD_DIR}" -cf "${BUILD_DIR}/tests.tar.xz" -T - \
       --use-compress-program="xz --threads=$(nproc --all || echo 1) -6"
@@ -476,7 +487,7 @@ cmake_build_and_test() {
     (cd "${BUILD_DIR}"
      export UBSAN_OPTIONS=print_stacktrace=1
      [[ "${TEST_STACK_LIMIT}" == "none" ]] || ulimit -s "${TEST_STACK_LIMIT}"
-     ctest -j $(nproc --all || echo 1) --output-on-failure)
+     ctest -j $(nproc --all || echo 1) ${TEST_SELECTOR} --output-on-failure)
   fi
 }
 
@@ -485,7 +496,7 @@ cmake_build_and_test() {
 # library.
 strip_dead_code() {
   # Emscripten does tree shaking without any extra flags.
-  if [[ "${CMAKE_TOOLCHAIN_FILE##*/}" == "Emscripten.cmake" ]]; then
+  if [[ "${BUILD_TARGET}" == wasm* ]]; then
     return 0
   fi
   # -ffunction-sections, -fdata-sections and -Wl,--gc-sections effectively
@@ -544,10 +555,14 @@ cmd_coverage_report() {
   local gcovr_args=(
     -r "${real_build_dir}"
     --gcov-executable "${LLVM_COV} gcov"
-    # Only print coverage information for the jxl and fuif directories. The rest
+    # Only print coverage information for the libjxl directories. The rest
     # is not part of the code under test.
     --filter '.*jxl/.*'
+    --exclude '.*_gbench.cc'
     --exclude '.*_test.cc'
+    --exclude '.*_testonly..*'
+    --exclude '.*_debug.*'
+    --exclude '.*test_utils..*'
     --object-directory "${real_build_dir}"
   )
 
@@ -573,7 +588,7 @@ cmd_test() {
   (cd "${BUILD_DIR}"
    export UBSAN_OPTIONS=print_stacktrace=1
    [[ "${TEST_STACK_LIMIT}" == "none" ]] || ulimit -s "${TEST_STACK_LIMIT}"
-   ctest -j $(nproc --all || echo 1) --output-on-failure "$@")
+   ctest -j $(nproc --all || echo 1) ${TEST_SELECTOR} --output-on-failure "$@")
 }
 
 cmd_gbench() {
@@ -585,6 +600,27 @@ cmd_gbench() {
      --benchmark_out_format=json \
      --benchmark_out=gbench.json "$@"
   )
+}
+
+cmd_asanfuzz() {
+  CMAKE_CXX_FLAGS+=" -fsanitize=fuzzer-no-link -DFUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION=1"
+  CMAKE_C_FLAGS+=" -fsanitize=fuzzer-no-link -DFUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION=1"
+  cmd_asan -DJPEGXL_ENABLE_FUZZERS=ON "$@"
+}
+
+cmd_msanfuzz() {
+  # Install msan if needed before changing the flags.
+  detect_clang_version
+  local msan_prefix="${HOME}/.msan/${CLANG_VERSION}"
+  if [[ ! -d "${msan_prefix}" || -e "${msan_prefix}/lib/libc++abi.a" ]]; then
+    # Install msan libraries for this version if needed or if an older version
+    # with libc++abi was installed.
+    cmd_msan_install
+  fi
+
+  CMAKE_CXX_FLAGS+=" -fsanitize=fuzzer-no-link -DFUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION=1"
+  CMAKE_C_FLAGS+=" -fsanitize=fuzzer-no-link -DFUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION=1"
+  cmd_msan -DJPEGXL_ENABLE_FUZZERS=ON "$@"
 }
 
 cmd_asan() {
@@ -664,7 +700,8 @@ cmd_msan() {
   strip_dead_code
   cmake_configure "$@" \
     -DCMAKE_CROSSCOMPILING=1 -DRUN_HAVE_STD_REGEX=0 -DRUN_HAVE_POSIX_REGEX=0 \
-    -DJPEGXL_ENABLE_TCMALLOC=OFF
+    -DJPEGXL_ENABLE_TCMALLOC=OFF -DJPEGXL_WARNINGS_AS_ERRORS=OFF \
+    -DCMAKE_REQUIRED_LINK_OPTIONS="${msan_linker_flags[@]}"
   cmake_build_and_test
 }
 
@@ -677,20 +714,24 @@ cmd_msan_install() {
   export CC="${CC:-clang}"
   export CXX="${CXX:-clang++}"
   detect_clang_version
-  local llvm_tag="llvmorg-${CLANG_VERSION}.0.0"
-  case "${CLANG_VERSION}" in
-    "6.0")
-      llvm_tag="llvmorg-6.0.1"
-      ;;
-    "7")
-      llvm_tag="llvmorg-7.0.1"
-      ;;
-  esac
-  local llvm_targz="${tmpdir}/${llvm_tag}.tar.gz"
-  curl -L --show-error -o "${llvm_targz}" \
-    "https://github.com/llvm/llvm-project/archive/${llvm_tag}.tar.gz"
-  tar -C "${tmpdir}" -zxf "${llvm_targz}"
-  local llvm_root="${tmpdir}/llvm-project-${llvm_tag}"
+  # Allow overriding the LLVM checkout.
+  local llvm_root="${LLVM_ROOT:-}"
+  if [ -z "${llvm_root}" ]; then
+    local llvm_tag="llvmorg-${CLANG_VERSION}.0.0"
+    case "${CLANG_VERSION}" in
+      "6.0")
+        llvm_tag="llvmorg-6.0.1"
+        ;;
+      "7")
+        llvm_tag="llvmorg-7.0.1"
+        ;;
+    esac
+    local llvm_targz="${tmpdir}/${llvm_tag}.tar.gz"
+    curl -L --show-error -o "${llvm_targz}" \
+      "https://github.com/llvm/llvm-project/archive/${llvm_tag}.tar.gz"
+    tar -C "${tmpdir}" -zxf "${llvm_targz}"
+    llvm_root="${tmpdir}/llvm-project-${llvm_tag}"
+  fi
 
   local msan_prefix="${HOME}/.msan/${CLANG_VERSION}"
   rm -rf "${msan_prefix}"
@@ -720,6 +761,75 @@ cmd_msan_install() {
     cmake --build "${proj_build}"
     ninja -C "${proj_build}" install
   done
+}
+
+# Internal build step shared between all cmd_ossfuzz_* commands.
+_cmd_ossfuzz() {
+  local sanitizer="$1"
+  shift
+  mkdir -p "${BUILD_DIR}"
+  local real_build_dir=$(realpath "${BUILD_DIR}")
+
+  # oss-fuzz defines three directories:
+  # * /work, with the working directory to do re-builds
+  # * /src, with the source code to build
+  # * /out, with the output directory where to copy over the built files.
+  # We use $BUILD_DIR as the /work and the script directory as the /src. The
+  # /out directory is ignored as developers are used to look for the fuzzers in
+  # $BUILD_DIR/tools/ directly.
+
+  if [[ "${sanitizer}" = "memory" && ! -d "${BUILD_DIR}/msan" ]]; then
+    sudo docker run --rm -i \
+      --user $(id -u):$(id -g) \
+      -v "${real_build_dir}":/work \
+      gcr.io/oss-fuzz-base/msan-libs-builder \
+      bash -c "cp -r /msan /work"
+  fi
+
+  # Args passed to ninja. These will be evaluated as a string separated by
+  # spaces.
+  local jpegxl_extra_args="$@"
+
+  sudo docker run --rm -i \
+    -e JPEGXL_UID=$(id -u) \
+    -e JPEGXL_GID=$(id -g) \
+    -e FUZZING_ENGINE="${FUZZING_ENGINE:-libfuzzer}" \
+    -e SANITIZER="${sanitizer}" \
+    -e ARCHITECTURE=x86_64 \
+    -e FUZZING_LANGUAGE=c++ \
+    -e MSAN_LIBS_PATH="/work/msan" \
+    -e JPEGXL_EXTRA_ARGS="${jpegxl_extra_args}" \
+    -v "${MYDIR}":/src/libjxl \
+    -v "${MYDIR}/tools/scripts/ossfuzz-build.sh":/src/build.sh \
+    -v "${real_build_dir}":/work \
+    gcr.io/oss-fuzz/libjxl
+}
+
+cmd_ossfuzz_asan() {
+  _cmd_ossfuzz address "$@"
+}
+cmd_ossfuzz_msan() {
+  _cmd_ossfuzz memory "$@"
+}
+cmd_ossfuzz_ubsan() {
+  _cmd_ossfuzz undefined "$@"
+}
+
+cmd_ossfuzz_ninja() {
+  [[ -e "${BUILD_DIR}/build.ninja" ]]
+  local real_build_dir=$(realpath "${BUILD_DIR}")
+
+  if [[ -e "${BUILD_DIR}/msan" ]]; then
+    echo "ossfuzz_ninja doesn't work with msan builds. Use ossfuzz_msan." >&2
+    exit 1
+  fi
+
+  sudo docker run --rm -i \
+    --user $(id -u):$(id -g) \
+    -v "${MYDIR}":/src/libjxl \
+    -v "${real_build_dir}":/work \
+    gcr.io/oss-fuzz/libjxl \
+    ninja -C /work "$@"
 }
 
 cmd_fast_benchmark() {
@@ -802,7 +912,7 @@ run_benchmark() {
 
   local benchmark_args=(
     --input "${src_img_dir}/*.png"
-    --codec=jpeg:yuv420:q85,webp:q80,jxl:fast:d1,jxl:fast:d1:downsampling=8,jxl:fast:d4,jxl:fast:d4:downsampling=8,jxl:m:cheetah:nl,jxl:cheetah:m,jxl:m:cheetah:P6,jxl:m:falcon:q80
+    --codec=jpeg:yuv420:q85,webp:q80,jxl:d1:6,jxl:d1:6:downsampling=8,jxl:d5:6,jxl:d5:6:downsampling=8,jxl:m:d0:2,jxl:m:d0:3,jxl:m:d2:2
     --output_dir "${output_dir}"
     --noprofiler --show_progress
     --num_threads="${num_threads}"
@@ -833,7 +943,7 @@ $(cat "${output_dir}/results.txt")
 # Helper function to wait for the CPU temperature to cool down on ARM.
 wait_for_temp() {
   { set +x; } 2>/dev/null
-  local temp_limit=${1:-37000}
+  local temp_limit=${1:-38000}
   if [[ -z "${THERMAL_FILE:-}" ]]; then
     echo "Must define the THERMAL_FILE with the thermal_zoneX/temp file" \
       "to read the temperature from. This is normally set in the runner." >&2
@@ -844,9 +954,15 @@ wait_for_temp() {
     echo -n "Waiting for temp to get down from ${org_temp}... "
   fi
   local temp="${org_temp}"
+  local secs=0
   while [[ "${temp}" -ge "${temp_limit}" ]]; do
     sleep 1
     temp=$(cat "${THERMAL_FILE}")
+    echo -n "${temp} "
+    secs=$((secs + 1))
+    if [[ ${secs} -ge 5 ]]; then
+      break
+    fi
   done
   if [[ "${org_temp}" -ge "${temp_limit}" ]]; then
     echo "Done, temp=${temp}"
@@ -901,7 +1017,6 @@ cmd_arm_benchmark() {
     "--modular --responsive=1"
     # Near-lossless options:
     "--epf=0 --distance=0.3 --speed=fast"
-    "--modular -N 3 -I 0"
     "--modular -Q 97"
   )
 
@@ -912,11 +1027,11 @@ cmd_arm_benchmark() {
   )
 
   local images=(
-    "third_party/testdata/imagecompression.info/flower_foveon.png"
+    "testdata/jxl/flower/flower.png"
   )
 
   local jpg_images=(
-    "third_party/testdata/imagecompression.info/flower_foveon.png.im_q85_420.jpg"
+    "testdata/jxl/flower/flower.png.im_q85_420.jpg"
   )
 
   if [[ "${SKIP_CPUSET:-}" == "1" ]]; then
@@ -1081,22 +1196,38 @@ cmd_fuzz() {
   )
 }
 
-# Runs the linter (clang-format) on the pending CLs.
+# Runs the linters (clang-format, build_cleaner, buildirier) on the pending CLs.
 cmd_lint() {
   merge_request_commits
   { set +x; } 2>/dev/null
-  local versions=(${1:-6.0 7 8 9})
+  local versions=(${1:-16 15 14 13 12 11 10 9 8 7 6.0})
   local clang_format_bins=("${versions[@]/#/clang-format-}" clang-format)
   local tmpdir=$(mktemp -d)
   CLEANUP_FILES+=("${tmpdir}")
 
   local ret=0
   local build_patch="${tmpdir}/build_cleaner.patch"
-  if ! "${MYDIR}/tools/build_cleaner.py" >"${build_patch}"; then
+  if ! "${MYDIR}/tools/scripts/build_cleaner.py" >"${build_patch}"; then
     ret=1
     echo "build_cleaner.py findings:" >&2
     "${COLORDIFF_BIN}" <"${build_patch}"
-    echo "Run \`tools/build_cleaner.py --update\` to apply them" >&2
+    echo "Run \`tools/scripts/build_cleaner.py --update\` to apply them" >&2
+  fi
+
+  # It is ok, if buildifier is not installed.
+  if which buildifier >/dev/null; then
+    local buildifier_patch="${tmpdir}/buildifier.patch"
+    local bazel_files=`git -C ${MYDIR} ls-files | grep -E "/BUILD$|WORKSPACE|.bzl$"`
+    set -x
+    buildifier -d ${bazel_files} >"${buildifier_patch}"|| true
+    { set +x; } 2>/dev/null
+    if [ -s "${buildifier_patch}" ]; then
+      ret=1
+      echo 'buildifier have found some problems in Bazel build files:' >&2
+      "${COLORDIFF_BIN}" <"${buildifier_patch}"
+      echo 'To fix them run (from the base directory):' >&2
+      echo '  buildifier `git ls-files | grep -E "/BUILD$|WORKSPACE|.bzl$"`' >&2
+    fi
   fi
 
   local installed=()
@@ -1108,13 +1239,13 @@ cmd_lint() {
     fi
     installed+=("${clang_format}")
     local tmppatch="${tmpdir}/${clang_format}.patch"
-    # We include in this linter all the changes including the uncommited changes
+    # We include in this linter all the changes including the uncommitted changes
     # to avoid printing changes already applied.
     set -x
+    # Ignoring the error that git-clang-format outputs.
     git -C "${MYDIR}" "${clang_format}" --binary "${clang_format}" \
-      --style=file --diff "${MR_ANCESTOR_SHA}" -- >"${tmppatch}"
+      --style=file --diff "${MR_ANCESTOR_SHA}" -- >"${tmppatch}" || true
     { set +x; } 2>/dev/null
-
     if grep -E '^--- ' "${tmppatch}">/dev/null; then
       if [[ -n "${LINT_OUTPUT:-}" ]]; then
         cp "${tmppatch}" "${LINT_OUTPUT}"
@@ -1258,6 +1389,75 @@ cmd_debian_build() {
   esac
 }
 
+get_version() {
+  local varname=$1
+  local line=$(grep -F "set(${varname} " lib/CMakeLists.txt | head -n 1)
+  [[ -n "${line}" ]]
+  line="${line#set(${varname} }"
+  line="${line%)}"
+  echo "${line}"
+}
+
+cmd_bump_version() {
+  local newver="${1:-}"
+
+  if ! which dch >/dev/null; then
+    echo "Missing dch\nTo install it run:\n  sudo apt install devscripts"
+    exit 1
+  fi
+
+  if [[ -z "${newver}" ]]; then
+    local major=$(get_version JPEGXL_MAJOR_VERSION)
+    local minor=$(get_version JPEGXL_MINOR_VERSION)
+    local patch=0
+    minor=$(( ${minor}  + 1))
+  else
+    local major="${newver%%.*}"
+    newver="${newver#*.}"
+    local minor="${newver%%.*}"
+    newver="${newver#${minor}}"
+    local patch="${newver#.}"
+    if [[ -z "${patch}" ]]; then
+      patch=0
+    fi
+  fi
+
+  newver="${major}.${minor}.${patch}"
+
+  echo "Bumping version to ${newver} (${major}.${minor}.${patch})"
+  sed -E \
+    -e "s/(set\\(JPEGXL_MAJOR_VERSION) [0-9]+\\)/\\1 ${major})/" \
+    -e "s/(set\\(JPEGXL_MINOR_VERSION) [0-9]+\\)/\\1 ${minor})/" \
+    -e "s/(set\\(JPEGXL_PATCH_VERSION) [0-9]+\\)/\\1 ${patch})/" \
+    -i lib/CMakeLists.txt
+  sed -E \
+    -e "s/(LIBJXL_VERSION: )[0-9\\.]+/\\1 ${major}.${minor}.${patch}/" \
+    -e "s/(LIBJXL_ABI_VERSION: )[0-9\\.]+/\\1 ${major}.${minor}/" \
+    -i .github/workflows/conformance.yml
+
+  # Update lib.gni
+  tools/scripts/build_cleaner.py --update
+
+  # Mark the previous version as "unstable".
+  DEBCHANGE_RELEASE_HEURISTIC=log dch -M --distribution unstable --release ''
+  DEBCHANGE_RELEASE_HEURISTIC=log dch -M \
+    --newversion "${newver}" \
+    "Bump JPEG XL version to ${newver}."
+}
+
+# Check that the AUTHORS file contains the email of the committer.
+cmd_authors() {
+  merge_request_commits
+  local emails
+  local names
+  readarray -t emails < <(git log --format='%ae' "${MR_ANCESTOR_SHA}..${MR_HEAD_SHA}")
+  readarray -t names < <(git log --format='%an' "${MR_ANCESTOR_SHA}..${MR_HEAD_SHA}")
+  for i in "${!names[@]}"; do
+    echo "Checking name '${names[$i]}' with email '${emails[$i]}' ..."
+    "${MYDIR}"/tools/scripts/check_author.py "${emails[$i]}" "${names[$i]}"
+  done
+}
+
 main() {
   local cmd="${1:-}"
   if [[ -z "${cmd}" ]]; then
@@ -1272,6 +1472,8 @@ Where cmd is one of:
  msan      Build and test an MSan (MemorySanitizer) build. Needs to have msan
            c++ libs installed with msan_install first.
  tsan      Build and test a TSan (ThreadSanitizer) build.
+ asanfuzz  Build and test an ASan (AddressSanitizer) build for fuzzing.
+ msanfuzz  Build and test an MSan (MemorySanitizer) build for fuzzing.
  test      Run the tests build by opt, debug, release, asan or msan. Useful when
            building with SKIP_TEST=1.
  gbench    Run the Google benchmark tests.
@@ -1280,19 +1482,29 @@ Where cmd is one of:
  benchmark Run the benchmark over the default corpus.
  fast_benchmark Run the benchmark over the small corpus.
 
- coverage  Buils and run tests with coverage support. Runs coverage_report as
+ coverage  Build and run tests with coverage support. Runs coverage_report as
            well.
  coverage_report Generate HTML, XML and text coverage report after a coverage
            run.
 
  lint      Run the linter checks on the current commit or merge request.
  tidy      Run clang-tidy on the current commit or merge request.
+ authors   Check that the last commit's author is listed in the AUTHORS file.
 
  msan_install Install the libc++ libraries required to build in msan mode. This
               needs to be done once.
 
  debian_build <srcpkg> Build the given source package.
  debian_stats  Print stats about the built packages.
+
+oss-fuzz commands:
+ ossfuzz_asan   Build the local source inside oss-fuzz docker with asan.
+ ossfuzz_msan   Build the local source inside oss-fuzz docker with msan.
+ ossfuzz_ubsan  Build the local source inside oss-fuzz docker with ubsan.
+ ossfuzz_ninja  Run ninja on the BUILD_DIR inside the oss-fuzz docker. Extra
+                parameters are passed to ninja, for example "djxl_fuzzer" will
+                only build that ninja target. Use for faster build iteration
+                after one of the ossfuzz_*san commands.
 
 You can pass some optional environment variables as well:
  - BUILD_DIR: The output build directory (by default "$$repo/build")
@@ -1303,9 +1515,11 @@ You can pass some optional environment variables as well:
  - FUZZER_MAX_TIME: "fuzz" command fuzzer running timeout in seconds.
  - LINT_OUTPUT: Path to the output patch from the "lint" command.
  - SKIP_CPUSET=1: Skip modifying the cpuset in the arm_benchmark.
+ - SKIP_BUILD=1: Skip the build stage, cmake configure only.
  - SKIP_TEST=1: Skip the test stage.
  - STORE_IMAGES=0: Makes the benchmark discard the computed images.
  - TEST_STACK_LIMIT: Stack size limit (ulimit -s) during tests, in KiB.
+ - TEST_SELECTOR: pass additional arguments to ctest, e.g. "-R .Resample.".
  - STACK_SIZE=1: Generate binaries with the .stack_sizes sections.
 
 These optional environment variables are forwarded to the cmake call as

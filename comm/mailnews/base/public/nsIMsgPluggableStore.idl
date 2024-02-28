@@ -115,24 +115,23 @@ interface nsIMsgPluggableStore : nsISupports {
    *                needs to base any of this on the contents of the message,
    *                it will need remember the message header and hook into
    *                the output stream somehow to alter the message header.
-   * @param aReusable set to true on output if the caller can reuse the
-   *                  stream for multiple messages, e.g., mbox format.
-   *                  This means the caller will likely get the same stream
-   *                  back on multiple calls to this method, and shouldn't
-   *                  close the stream in between calls if they want reuse.
    *
    * @return The output stream to write to. The output stream will be positioned
    *         for writing (e.g., for berkeley mailbox, it will be at the end).
    */
   nsIOutputStream getNewMsgOutputStream(in nsIMsgFolder aFolder,
-                                        inout nsIMsgDBHdr aNewHdr,
-                                        out boolean aReusable);
+                                        inout nsIMsgDBHdr aNewHdr);
+
 
   /**
    * Called when the current message is discarded, e.g., it is moved
    * to an other folder as a filter action, or is deleted because it's
    * a duplicate. This gives the berkeley mailbox store a chance to simply
    * truncate the Inbox w/o leaving a deleted message in the store.
+   *
+   * discardNewMessage closes aOutputStream always unless the passed stream
+   * is nullptr due to error processing..
+   * (Clarification/Rationale in Bug 1121842, 1122698, 1242030)
    *
    * @param aOutputStream stream we were writing the message to be discarded to
    * @param aNewHdr header of message to discard
@@ -145,11 +144,15 @@ interface nsIMsgPluggableStore : nsISupports {
    * the process of storing a new message, if the new msg has not been
    * discarded. Could/should this be combined with discardNewMessage?
    *
+   * finishNewMessage closes aOutputStream always unless the passed stream
+   * is nullptr due to error processing.
+   * (Clarification/Rationale in Bug 1121842, 1122698, 1242030)
+   *
    * @param aOutputStream stream we were writing the message to.
    * @param aNewHdr header of message finished.
    */
   void finishNewMessage(in nsIOutputStream aOutputStream,
-                         in nsIMsgDBHdr aNewHdr);
+                        in nsIMsgDBHdr aNewHdr);
 
   /**
    * Called by pop3 message filters when a newly downloaded message is being
@@ -168,26 +171,32 @@ interface nsIMsgPluggableStore : nsISupports {
 
   /**
    * Get an input stream that we can read the contents of a message from.
-   * If the input stream is reusable, and the caller is going to ask
-   * for input streams for other messages in the folder, then the caller
-   * should not close the stream until it is done with its messages.
    *
    * @param aMsgFolder Folder containing the message
    * @param aMsgToken token that identifies message. This is store-dependent,
    *                  and must be set as a string property "storeToken" on the
    *                  message hdr by the store when the message is added
    *                  to the store.
-   * @param aOffset offset in the returned stream of the message.
-   * @param[optional] aHdr msgHdr to use in case storeToken is not set. This is
-   *                  for upgrade from existing profiles.
-   * @param[optional] aReusable Is the returned stream re-usable for other
-   *                            messages' input streams?
    */
   nsIInputStream getMsgInputStream(in nsIMsgFolder aFolder,
-                                   in ACString aMsgToken,
-                                   out long long aOffset,
-                                   [optional] in nsIMsgDBHdr aHdr,
-                                   [optional] out boolean aReusable);
+                                   in ACString aMsgToken);
+
+  /**
+   * This is a hack to expose to allow JsAccount folders to implement a
+   * working getLocalMsgStream().
+   * It just provides a way to construct a SlicedInputStream from JS.
+   * It'll be removed once Bug 1733849 is complete.
+   *
+   * @param inStream The stream providing the data to be sliced.
+   *                 Should not be read after calling this function.
+   * @param start Where slice begins, from current position of inStream.
+   * @param length The size of the slice.
+   *
+   * @return A new input stream which produces the data slice when read from.
+   */
+  nsIInputStream sliceStream(in nsIInputStream inStream,
+                             in unsigned long long start,
+                             in unsigned long length);
 
   /**
    * Delete the passed in messages. These message should all be in the
@@ -200,18 +209,17 @@ interface nsIMsgPluggableStore : nsISupports {
    * This allows the store to handle a msg move/copy if it wants. This lets
    * it optimize move/copies within the same store. E.g., for maildir, a
    * msg move mostly entails moving the file containing the message, and
-   * updating the db. If the store does not want to implement this, the core
-   * code will use getMsgInputStream on the source message,
-   * getNewMsgOutputStream for the dest message, and stream the input to
-   * the output. This operation can be asynchronous.
+   * updating the db.
    * If the store does the copy, it must return the appropriate undo action,
    * which can be store dependent. And it must send the appropriate
    * nsIMsgFolderNotificationService notifications.
+   * If the store does not perform the copy, it returns false and the caller
+   * has to handle the copy itself (by streaming messages).
+   * This function is synchronous.
    *
    * @param isMove true if this is a move, false if it is a copy.
    * @param aHdrArray array of nsIMsgDBHdr's, all in the same folder
    * @param aDstFolder folder to move/copy the messages to.
-   * @param aListener listener to notify of copy status.
    * @param aDstHdrs array of nsIMsgDBHdr's in the destination folder.
    * @param[out,optional] aUndoAction transaction to provide undo, if
    * the store does the copy itself.
@@ -221,7 +229,6 @@ interface nsIMsgPluggableStore : nsISupports {
   boolean copyMessages(in boolean isMove,
                        in Array<nsIMsgDBHdr> aHdrArray,
                        in nsIMsgFolder aDstFolder,
-                       in nsIMsgCopyServiceListener aListener,
                        out Array<nsIMsgDBHdr> aDstHdrs,
                        out nsITransaction aUndoAction);
 

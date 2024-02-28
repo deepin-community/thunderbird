@@ -16,7 +16,7 @@ var gGenericImportHelper;
  *                    value, LDIF, and tab-delimited files.
  * @param aFile       An instance of nsIFile to import.
  *
- * @constructor
+ * @class
  * @class
  */
 function GenericImportHelper(aModuleType, aModuleSearchString, aFile) {
@@ -60,7 +60,7 @@ GenericImportHelper.prototype = {
   /**
    * GenericImportHelper.getInterface
    *
-   * @return An nsIImportGeneric import interface.
+   * @returns An nsIImportGeneric import interface.
    */
   getInterface() {
     return this.mInterface;
@@ -104,7 +104,7 @@ GenericImportHelper.prototype = {
     if (this.mInterface.GetProgress() != 100) {
       // use the helper object to check the progress of the import after 200 ms
       gGenericImportHelper = this;
-      do_timeout(200, function() {
+      do_timeout(200, function () {
         gGenericImportHelper.checkProgress();
       });
     } else {
@@ -139,7 +139,7 @@ GenericImportHelper.prototype = {
  *                  the extension).
  * @param aJsonName The name of the array in addressbook.json with the cards
  *                  to compare with the imported cards.
- * @constructor
+ * @class
  * @class
  */
 function AbImportHelper(aFile, aModuleSearchString, aAbName, aJsonName) {
@@ -147,8 +147,7 @@ function AbImportHelper(aFile, aModuleSearchString, aAbName, aJsonName) {
 
   this.mAbName = aAbName;
   /* Attribute notes:  The attributes listed in the declaration below are
-   * supported by all three text export/import types. PreferMailFormat is only
-   * supported by LDIF.
+   * supported by all three text export/import types.
    * The following are not supported: anniversaryYear, anniversaryMonth,
    * anniversaryDay, popularityIndex, isMailList, mailListURI, lastModifiedDate.
    */
@@ -190,14 +189,12 @@ function AbImportHelper(aFile, aModuleSearchString, aAbName, aJsonName) {
     "Custom4",
     "Notes",
     "_AimScreenName",
+    "_vCard",
   ];
 
   // get the extra attributes supported for the given type of import
   if (this.mFile.leafName.toLowerCase().endsWith(".ldif")) {
-    // LDIF: add PreferMailFormat
-    this.mSupportedAttributes = supportedAttributes.concat([
-      "PreferMailFormat",
-    ]);
+    this.mSupportedAttributes = supportedAttributes;
   } else if (this.mFile.leafName.toLowerCase().endsWith(".csv")) {
     this.mSupportedAttributes = supportedAttributes;
     this.setFieldMap(this.getDefaultFieldMap(true));
@@ -219,7 +216,7 @@ AbImportHelper.prototype = {
    *
    * @param aSkipFirstRecord True if the first record of the text file should
    *                         be skipped.
-   * @return A default field map.
+   * @returns A default field map.
    */
   getDefaultFieldMap(aSkipFirstRecord) {
     var importService = Cc["@mozilla.org/import/import-service;1"].getService(
@@ -228,6 +225,10 @@ AbImportHelper.prototype = {
     var fieldMap = importService.CreateNewFieldMap();
 
     fieldMap.DefaultFieldMap(fieldMap.numMozFields);
+    this.mInterface
+      .GetData("addressInterface")
+      .QueryInterface(Ci.nsIImportAddressBooks)
+      .InitFieldMap(fieldMap);
     fieldMap.skipFirstRecord = aSkipFirstRecord;
 
     return fieldMap;
@@ -302,7 +303,7 @@ AbImportHelper.prototype = {
    * Returns the Address Book (if any) with the given name.
    *
    * @param aName The name of the Address Book to find.
-   * @return An nsIAbDirectory, if found.
+   * @returns An nsIAbDirectory, if found.
    *         null if the requested Address Book could not be found.
    */
   getAbByName(aName) {
@@ -324,9 +325,23 @@ AbImportHelper.prototype = {
    * @param aCard     The imported card to compare with.
    */
   compareCards(aJsonCard, aCard) {
-    for (var i in aJsonCard) {
-      if (this.mSupportedAttributes.includes(i)) {
-        Assert.equal(aJsonCard[i], aCard.getProperty(i, "BAD"));
+    for (let [key, value] of Object.entries(aJsonCard)) {
+      if (!this.mSupportedAttributes.includes(key)) {
+        continue;
+      }
+      if (key == "_vCard") {
+        equal(
+          aCard
+            .getProperty(key, "")
+            .replace(
+              /UID:[a-f0-9-]{36}/i,
+              "UID:xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+            ),
+          `BEGIN:VCARD\r\n${value.join("\r\n")}\r\nEND:VCARD\r\n`,
+          "_vCard should be correct"
+        );
+      } else {
+        equal(aCard.getProperty(key, ""), value, `${key} should be correct`);
       }
     }
   },
@@ -339,7 +354,7 @@ AbImportHelper.prototype = {
    * See addressbook.json for an example and AB_README for more details.
    *
    * @param aName The name of the array in addressbook.json.
-   * @return An array of "cards".
+   * @returns An array of "cards".
    */
   getJsonCards(aName) {
     if (!aName) {
@@ -391,7 +406,7 @@ AbImportHelper.prototype = {
  * @param aExpected  An instance of nsIFile to compare with the imported
  *                   folders.
  *
- * @constructor
+ * @class
  * @class
  */
 function MailImportHelper(aFile, aModuleSearchString, aExpected) {
@@ -439,7 +454,7 @@ MailImportHelper.prototype = {
  * @param aExpected  An array of object which has incomingServer, identity
  *                   and smtpSever to compare with imported nsIMsgAccount.
  *
- * @constructor
+ * @class
  * @class
  */
 function SettingsImportHelper(aFile, aModuleSearchString, aExpected) {
@@ -543,7 +558,7 @@ SettingsImportHelper.prototype = {
   },
 
   _findExpectedAccount(account) {
-    return this.mExpected.filter(function(expectedAccount) {
+    return this.mExpected.filter(function (expectedAccount) {
       return (
         expectedAccount.incomingServer.type == account.incomingServer.type &&
         expectedAccount.incomingServer.username ==
@@ -575,9 +590,9 @@ SettingsImportHelper.prototype = {
  * @param aModuleSearchString
  *                   The string to search the module names for, such as
  *                   "Outlook Express", etc.
- * @param aExpected  The number of filters that should exists after import.
+ * @param aExpected  The number of filters that should exist after import.
  *
- * @constructor
+ * @class
  * @class
  */
 function FiltersImportHelper(aFile, aModuleSearchString, aExpected) {

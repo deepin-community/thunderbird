@@ -42,7 +42,7 @@ newsgroups-label = Gruppi di discussione
 newsgroups-description = Con { -brand-short-name } puoi connetterti a tutti i gruppi di discussione che desideri.
 
 import-title = Importa da un altro programma
-import-paragraph = Con { -brand-short-name } puoi importare messaggi di posta, voci di rubrica, sottoscrizioni ai feed, preferenze e/o filtri da altri programmi di posta e formati di rubriche comuni.
+import-paragraph2 = Con { -brand-short-name } puoi importare messaggi di posta, voci di rubrica, sottoscrizioni ai feed, impostazioni e/o filtri da altri programmi di posta e formati di rubriche comuni.
 
 import-label = Importa
     .aria-label = Importa dati da altri programmi

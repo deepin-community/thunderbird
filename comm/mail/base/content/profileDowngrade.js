@@ -4,10 +4,13 @@
 
 let gParams;
 
-const { AppConstants } = ChromeUtils.import(
-  "resource://gre/modules/AppConstants.jsm"
+const { AppConstants } = ChromeUtils.importESModule(
+  "resource://gre/modules/AppConstants.sys.mjs"
 );
-const { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
+
+window.addEventListener("load", event => {
+  init();
+});
 
 function init() {
   /*
@@ -23,10 +26,7 @@ function init() {
   document.addEventListener("dialogaccept", quit);
   document.addEventListener("dialogcancel", quit);
 
-  document
-    .querySelector("dialog")
-    .getButton("accept")
-    .focus();
+  document.querySelector("dialog").getButton("accept").focus();
 }
 
 function quit() {

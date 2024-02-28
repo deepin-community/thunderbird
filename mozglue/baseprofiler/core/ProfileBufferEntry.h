@@ -19,13 +19,15 @@
 #include "mozilla/Vector.h"
 
 #include <string>
+#include <type_traits>
 
 namespace mozilla {
 namespace baseprofiler {
 
 class ProfileBufferEntry {
  public:
-  using KindUnderlyingType = ::mozilla::ProfileBufferEntryKindUnderlyingType;
+  using KindUnderlyingType =
+      std::underlying_type_t<::mozilla::ProfileBufferEntryKind>;
   using Kind = ::mozilla::ProfileBufferEntryKind;
 
   ProfileBufferEntry();
@@ -41,6 +43,7 @@ class ProfileBufferEntry {
   ProfileBufferEntry(Kind aKind, int64_t aInt64);
   ProfileBufferEntry(Kind aKind, uint64_t aUint64);
   ProfileBufferEntry(Kind aKind, int aInt);
+  ProfileBufferEntry(Kind aKind, BaseProfilerThreadId aThreadId);
 
  public:
 #define CTOR(KIND, TYPE, SIZE)                   \
@@ -74,6 +77,7 @@ class ProfileBufferEntry {
   int GetInt() const;
   int64_t GetInt64() const;
   uint64_t GetUint64() const;
+  BaseProfilerThreadId GetThreadId() const;
   void CopyCharsInto(char (&aOutArray)[kNumChars]) const;
 };
 
@@ -202,14 +206,17 @@ class UniqueStacks {
   void SpliceFrameTableElements(SpliceableJSONWriter& aWriter);
   void SpliceStackTableElements(SpliceableJSONWriter& aWriter);
 
+  UniqueJSONStrings& UniqueStrings() {
+    MOZ_RELEASE_ASSERT(mUniqueStrings.get());
+    return *mUniqueStrings;
+  }
+
  private:
   void StreamNonJITFrame(const FrameKey& aFrame);
   void StreamStack(const StackKey& aStack);
 
- public:
   UniquePtr<UniqueJSONStrings> mUniqueStrings;
 
- private:
   SpliceableChunkedJSONWriter mFrameTableWriter;
   HashMap<FrameKey, uint32_t, FrameKeyHasher> mFrameToIndexMap;
 
@@ -287,11 +294,10 @@ class UniqueStacks {
 //       "relevantForJS": 1,  /* bool */
 //       "innerWindowID": 2,  /* inner window ID of global JS `window` object */
 //       "implementation": 3, /* index into stringTable */
-//       "optimizations": 4,  /* arbitrary JSON */
-//       "line": 5,           /* number */
-//       "column": 6,         /* number */
-//       "category": 7,       /* index into profile.meta.categories */
-//       "subcategory": 8     /* index into
+//       "line": 4,           /* number */
+//       "column": 5,         /* number */
+//       "category": 6,       /* index into profile.meta.categories */
+//       "subcategory": 7     /* index into
 //       profile.meta.categories[category].subcategories */
 //     },
 //     "data":

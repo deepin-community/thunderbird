@@ -8,6 +8,12 @@
 #include "nsIFile.h"
 #include "nsIDBFolderInfo.h"
 #include "nsIMsgDatabase.h"
+#include "HeaderReader.h"
+#include "nsPrintfCString.h"
+#include "nsReadableUtils.h"
+#include "mozilla/Buffer.h"
+#include "nsIInputStream.h"
+#include "nsIOutputStream.h"
 #include "prprf.h"
 
 #define EXTRA_SAFETY_SPACE 0x400000  // (4MiB)
@@ -74,206 +80,138 @@ bool nsMsgLocalStoreUtils::nsShouldIgnoreFile(nsAString& name, nsIFile* path) {
           StringEndsWith(name, NS_LITERAL_STRING_FROM_CSTRING(SUMMARY_SUFFIX)));
 }
 
-/**
- * We're passed a stream positioned at the start of the message.
- * We start reading lines, looking for x-mozilla-keys: headers; If we're
- * adding the keyword and we find a header with the desired keyword already
- * in it, we don't need to do anything. Likewise, if removing keyword and we
- * don't find it,we don't need to do anything. Otherwise, if adding, we need
- * to see if there's an x-mozilla-keys header with room for the new keyword.
- *  If so, we replace the corresponding number of spaces with the keyword.
- * If no room, we can't do anything until the folder is compacted and another
- * x-mozilla-keys header is added. In that case, we set a property
- * on the header, which the compaction code will check.
- * This is not true for maildir, however, since it won't require compaction.
- */
-
-void nsMsgLocalStoreUtils::ChangeKeywordsHelper(
-    nsIMsgDBHdr* message, uint64_t desiredOffset,
-    nsLineBuffer<char>& lineBuffer, nsTArray<nsCString>& keywordArray,
-    bool aAdd, nsIOutputStream* outputStream, nsISeekableStream* seekableStream,
-    nsIInputStream* inputStream) {
-  uint32_t bytesWritten;
-
-  for (uint32_t i = 0; i < keywordArray.Length(); i++) {
-    nsAutoCString header;
-    nsAutoCString keywords;
-    bool done = false;
-    uint32_t len = 0;
-    nsAutoCString keywordToWrite(" ");
-
-    keywordToWrite.Append(keywordArray[i]);
-    seekableStream->Seek(nsISeekableStream::NS_SEEK_SET, desiredOffset);
-    // need to reset lineBuffer, which is cheaper than creating a new one.
-    lineBuffer.start = lineBuffer.end = lineBuffer.buf;
-    bool inKeywordHeader = false;
-    bool foundKeyword = false;
-    int64_t offsetToAddKeyword = 0;
-    bool more;
-    message->GetMessageSize(&len);
-    // loop through
-    while (!done) {
-      int64_t lineStartPos;
-      seekableStream->Tell(&lineStartPos);
-      // we need to adjust the linestart pos by how much extra the line
-      // buffer has read from the stream.
-      lineStartPos -= (lineBuffer.end - lineBuffer.start);
-      // NS_ReadLine doesn't return line termination chars.
-      nsCString keywordHeaders;
-      nsresult rv =
-          NS_ReadLine(inputStream, &lineBuffer, keywordHeaders, &more);
-      if (NS_SUCCEEDED(rv)) {
-        if (keywordHeaders.IsEmpty())
-          break;  // passed headers; no x-mozilla-keywords header; give up.
-        if (StringBeginsWith(keywordHeaders,
-                             nsLiteralCString(HEADER_X_MOZILLA_KEYWORDS)))
-          inKeywordHeader = true;
-        else if (inKeywordHeader && (keywordHeaders.CharAt(0) == ' ' ||
-                                     keywordHeaders.CharAt(0) == '\t'))
-          ;  // continuation header line
-        else if (inKeywordHeader)
-          break;
-        else
-          continue;
-        uint32_t keywordHdrLength = keywordHeaders.Length();
-        int32_t startOffset, keywordLength;
-        // check if we have the keyword
-        if (MsgFindKeyword(keywordArray[i], keywordHeaders, &startOffset,
-                           &keywordLength)) {
-          foundKeyword = true;
-          if (!aAdd)  // if we're removing, remove it, and break;
-          {
-            keywordHeaders.Cut(startOffset, keywordLength);
-            for (int32_t j = keywordLength; j > 0; j--)
-              keywordHeaders.Append(' ');
-            seekableStream->Seek(nsISeekableStream::NS_SEEK_SET, lineStartPos);
-            outputStream->Write(keywordHeaders.get(), keywordHeaders.Length(),
-                                &bytesWritten);
-          }
-          offsetToAddKeyword = 0;
-          // if adding and we already have the keyword, done
-          done = true;
-          break;
-        }
-        // argh, we need to check all the lines to see if we already have the
-        // keyword, but if we don't find it, we want to remember the line and
-        // position where we have room to add the keyword.
-        if (aAdd) {
-          nsAutoCString curKeywordHdr(keywordHeaders);
-          // strip off line ending spaces.
-          curKeywordHdr.Trim(" ", false, true);
-          if (!offsetToAddKeyword &&
-              curKeywordHdr.Length() + keywordToWrite.Length() <
-                  keywordHdrLength)
-            offsetToAddKeyword = lineStartPos + curKeywordHdr.Length();
-        }
-      }
+// Attempts to fill a buffer. Returns a span holding the data read.
+// Might be less than buffer size, if EOF was encountered.
+// Upon error, an empty span is returned.
+static mozilla::Span<char> readBuf(nsIInputStream* readable,
+                                   mozilla::Buffer<char>& buf) {
+  uint32_t total = 0;
+  while (total < buf.Length()) {
+    uint32_t n;
+    nsresult rv =
+        readable->Read(buf.Elements() + total, buf.Length() - total, &n);
+    if (NS_FAILED(rv)) {
+      total = 0;
+      break;
     }
-    if (aAdd && !foundKeyword) {
-      if (!offsetToAddKeyword)
-        message->SetUint32Property("growKeywords", 1);
-      else {
-        seekableStream->Seek(nsISeekableStream::NS_SEEK_SET,
-                             offsetToAddKeyword);
-        outputStream->Write(keywordToWrite.get(), keywordToWrite.Length(),
-                            &bytesWritten);
+    if (n == 0) {
+      break;  // EOF
+    }
+    total += n;
+  }
+  return mozilla::Span<char>(buf.Elements(), total);
+}
+
+// Write data to outputstream, until complete or error.
+static nsresult writeBuf(nsIOutputStream* writeable, const char* data,
+                         size_t dataSize) {
+  uint32_t written = 0;
+  while (written < dataSize) {
+    uint32_t n;
+    nsresult rv = writeable->Write(data + written, dataSize - written, &n);
+    NS_ENSURE_SUCCESS(rv, rv);
+    written += n;
+  }
+  return NS_OK;
+}
+
+/**
+ * Attempt to update X-Mozilla-Status and X-Mozilla-Status2 headers with
+ * new message flags by rewriting them in place.
+ */
+nsresult nsMsgLocalStoreUtils::RewriteMsgFlags(nsISeekableStream* seekable,
+                                               uint32_t msgFlags) {
+  nsresult rv;
+
+  // Remember where we started.
+  int64_t msgStart;
+  rv = seekable->Tell(&msgStart);
+  NS_ENSURE_SUCCESS(rv, rv);
+
+  // We edit the file in-place, so need to be able to read and write too.
+  nsCOMPtr<nsIInputStream> readable(do_QueryInterface(seekable, &rv));
+  NS_ENSURE_SUCCESS(rv, rv);
+  nsCOMPtr<nsIOutputStream> writable = do_QueryInterface(seekable, &rv);
+  NS_ENSURE_SUCCESS(rv, rv);
+
+  // Read in the first chunk of the header and search for the X-Mozilla-Status
+  // headers. We know that those headers always appear at the beginning, so
+  // don't need to look too far in.
+  mozilla::Buffer<char> buf(512);
+  mozilla::Span<const char> data = readBuf(readable, buf);
+
+  // If there's a "From " line, consume it.
+  mozilla::Span<const char> fromLine;
+  if (data.Length() >= 5 &&
+      nsDependentCSubstring(data.First(5)).EqualsLiteral("From ")) {
+    fromLine = FirstLine(data);
+    data = data.From(fromLine.Length());
+  }
+
+  HeaderReader::Hdr statusHdr;
+  HeaderReader::Hdr status2Hdr;
+  auto findHeadersFn = [&](auto const& hdr) {
+    if (hdr.Name(data).EqualsLiteral(X_MOZILLA_STATUS)) {
+      statusHdr = hdr;
+    } else if (hdr.Name(data).EqualsLiteral(X_MOZILLA_STATUS2)) {
+      status2Hdr = hdr;
+    } else {
+      return true;  // Keep looking.
+    }
+    // Keep looking until we find both.
+    return statusHdr.IsEmpty() || status2Hdr.IsEmpty();
+  };
+  HeaderReader rdr;
+  rdr.Parse(data, findHeadersFn);
+
+  // Update X-Mozilla-Status (holds the lower 16bits worth of flags).
+  if (!statusHdr.IsEmpty()) {
+    uint32_t oldFlags = statusHdr.Value(data).ToInteger(&rv, 16);
+    if (NS_SUCCEEDED(rv)) {
+      // Preserve the Queued flag from existing X-Mozilla-Status header.
+      // (Note: not sure why we do this, but keeping it in for now. - BenC)
+      msgFlags |= oldFlags & nsMsgMessageFlags::Queued;
+
+      if ((msgFlags & 0xFFFF) != oldFlags) {
+        auto out = nsPrintfCString("%4.4x", msgFlags & 0xFFFF);
+        if (out.Length() <= statusHdr.rawValLen) {
+          rv = seekable->Seek(nsISeekableStream::NS_SEEK_SET,
+                              msgStart + fromLine.Length() + statusHdr.pos +
+                                  statusHdr.rawValOffset);
+          NS_ENSURE_SUCCESS(rv, rv);
+          // Should be an exact fit already, but just in case...
+          while (out.Length() < statusHdr.rawValLen) {
+            out.Append(' ');
+          }
+          rv = writeBuf(writable, out.BeginReading(), out.Length());
+          NS_ENSURE_SUCCESS(rv, rv);
+        }
       }
     }
   }
-}
 
-nsresult nsMsgLocalStoreUtils::UpdateFolderFlag(nsIMsgDBHdr* mailHdr, bool bSet,
-                                                nsMsgMessageFlagType flag,
-                                                nsIOutputStream* fileStream) {
-  uint32_t statusOffset;
-  uint64_t msgOffset;
-  nsresult rv = mailHdr->GetStatusOffset(&statusOffset);
-  // This probably means there's no x-mozilla-status header, so
-  // we just ignore this.
-  if (NS_FAILED(rv) || (statusOffset == 0)) return NS_OK;
-  rv = mailHdr->GetMessageOffset(&msgOffset);
-  NS_ENSURE_SUCCESS(rv, rv);
-  uint64_t statusPos = msgOffset + statusOffset;
-  nsCOMPtr<nsISeekableStream> seekableStream(
-      do_QueryInterface(fileStream, &rv));
-  NS_ENSURE_SUCCESS(rv, rv);
-  rv = seekableStream->Seek(nsISeekableStream::NS_SEEK_SET, statusPos);
-  NS_ENSURE_SUCCESS(rv, rv);
-  char buf[50];
-  buf[0] = '\0';
-  nsCOMPtr<nsIInputStream> inputStream = do_QueryInterface(fileStream, &rv);
-  NS_ENSURE_SUCCESS(rv, rv);
-  uint32_t bytesRead;
-  if (NS_SUCCEEDED(
-          inputStream->Read(buf, X_MOZILLA_STATUS_LEN + 6, &bytesRead))) {
-    buf[bytesRead] = '\0';
-    if (strncmp(buf, X_MOZILLA_STATUS, X_MOZILLA_STATUS_LEN) == 0 &&
-        strncmp(buf + X_MOZILLA_STATUS_LEN, ": ", 2) == 0 &&
-        strlen(buf) >= X_MOZILLA_STATUS_LEN + 6) {
-      uint32_t flags;
-      uint32_t bytesWritten;
-      (void)mailHdr->GetFlags(&flags);
-      if (!(flags & nsMsgMessageFlags::Expunged)) {
-        char* p = buf + X_MOZILLA_STATUS_LEN + 2;
-
-        nsresult errorCode = NS_OK;
-        flags = nsDependentCString(p).ToInteger(&errorCode, 16);
-
-        uint32_t curFlags;
-        (void)mailHdr->GetFlags(&curFlags);
-        flags = (flags & nsMsgMessageFlags::Queued) |
-                (curFlags & ~nsMsgMessageFlags::RuntimeOnly);
-        if (bSet)
-          flags |= flag;
-        else
-          flags &= ~flag;
-      } else {
-        flags &= ~nsMsgMessageFlags::RuntimeOnly;
-      }
-      seekableStream->Seek(nsISeekableStream::NS_SEEK_SET, statusPos);
-      // We are filing out x-mozilla-status flags here
-      PR_snprintf(buf, sizeof(buf), X_MOZILLA_STATUS_FORMAT,
-                  flags & 0x0000FFFF);
-      int32_t lineLen = PL_strlen(buf);
-      uint64_t status2Pos = statusPos + lineLen;
-      fileStream->Write(buf, lineLen, &bytesWritten);
-
-      if (flag & 0xFFFF0000) {
-        // Time to update x-mozilla-status2,
-        // first find it by finding end of previous line, see bug 234935.
-        seekableStream->Seek(nsISeekableStream::NS_SEEK_SET, status2Pos);
-        do {
-          rv = inputStream->Read(buf, 1, &bytesRead);
-          status2Pos++;
-        } while (NS_SUCCEEDED(rv) && (*buf == '\n' || *buf == '\r'));
-        status2Pos--;
-        seekableStream->Seek(nsISeekableStream::NS_SEEK_SET, status2Pos);
-        if (NS_SUCCEEDED(inputStream->Read(buf, X_MOZILLA_STATUS2_LEN + 10,
-                                           &bytesRead))) {
-          if (strncmp(buf, X_MOZILLA_STATUS2, X_MOZILLA_STATUS2_LEN) == 0 &&
-              strncmp(buf + X_MOZILLA_STATUS2_LEN, ": ", 2) == 0 &&
-              strlen(buf) >= X_MOZILLA_STATUS2_LEN + 10) {
-            uint32_t dbFlags;
-            (void)mailHdr->GetFlags(&dbFlags);
-            dbFlags &= 0xFFFF0000;
-            seekableStream->Seek(nsISeekableStream::NS_SEEK_SET, status2Pos);
-            PR_snprintf(buf, sizeof(buf), X_MOZILLA_STATUS2_FORMAT, dbFlags);
-            fileStream->Write(buf, PL_strlen(buf), &bytesWritten);
+  // Update X-Mozilla-Status2 (holds the upper 16bit flags only(!)).
+  if (!status2Hdr.IsEmpty()) {
+    uint32_t oldFlags = status2Hdr.Value(data).ToInteger(&rv, 16);
+    if (NS_SUCCEEDED(rv)) {
+      if ((msgFlags & 0xFFFF0000) != oldFlags) {
+        auto out = nsPrintfCString("%8.8x", msgFlags & 0xFFFF0000);
+        if (out.Length() <= status2Hdr.rawValLen) {
+          rv = seekable->Seek(nsISeekableStream::NS_SEEK_SET,
+                              msgStart + fromLine.Length() + status2Hdr.pos +
+                                  status2Hdr.rawValOffset);
+          NS_ENSURE_SUCCESS(rv, rv);
+          while (out.Length() < status2Hdr.rawValLen) {
+            out.Append(' ');
           }
+          rv = writeBuf(writable, out.BeginReading(), out.Length());
+          NS_ENSURE_SUCCESS(rv, rv);
         }
       }
-    } else {
-#ifdef DEBUG
-      printf(
-          "Didn't find %s where expected at position %ld\n"
-          "instead, found %s.\n",
-          X_MOZILLA_STATUS, (long)statusPos, buf);
-#endif
-      rv = NS_ERROR_FAILURE;
     }
-  } else
-    rv = NS_ERROR_FAILURE;
-  return rv;
+  }
+
+  return NS_OK;
 }
 
 /**
@@ -328,4 +266,115 @@ void nsMsgLocalStoreUtils::ResetForceReparse(nsIMsgDatabase* aMsgDB) {
     aMsgDB->GetDBFolderInfo(getter_AddRefs(folderInfo));
     if (folderInfo) folderInfo->SetBooleanProperty("forceReparse", false);
   }
+}
+
+/**
+ * Update the value of an X-Mozilla-Keys header in place.
+ *
+ * @param seekable The stream containing the message, positioned at the
+ *                 beginning of the message (must also be readable and
+ *                 writable).
+ * @param keywordsToAdd The list of keywords to add.
+ * @param keywordsToRemove The list of keywords to remove.
+ * @param notEnoughRoom Upon return, this will be set if the header is missing
+ * or too small to contain the new keywords.
+ *
+ */
+nsresult nsMsgLocalStoreUtils::ChangeKeywordsHelper(
+    nsISeekableStream* seekable, nsTArray<nsCString> const& keywordsToAdd,
+    nsTArray<nsCString> const& keywordsToRemove, bool& notEnoughRoom) {
+  notEnoughRoom = false;
+  nsresult rv;
+
+  // Remember where we started.
+  int64_t msgStart;
+  rv = seekable->Tell(&msgStart);
+  NS_ENSURE_SUCCESS(rv, rv);
+
+  // We edit the file in-place, so need to be able to read and write too.
+  nsCOMPtr<nsIInputStream> readable(do_QueryInterface(seekable, &rv));
+  NS_ENSURE_SUCCESS(rv, rv);
+  nsCOMPtr<nsIOutputStream> writable = do_QueryInterface(seekable, &rv);
+  NS_ENSURE_SUCCESS(rv, rv);
+
+  // Read in the first chunk of the header and search for X-Mozilla-Keys.
+  // We know that it always appears near the beginning, so don't need to look
+  // too far in.
+  mozilla::Buffer<char> buf(512);
+  mozilla::Span<const char> data = readBuf(readable, buf);
+
+  // If there's a "From " line, consume it.
+  mozilla::Span<const char> fromLine;
+  if (data.Length() >= 5 &&
+      nsDependentCSubstring(data.First(5)).EqualsLiteral("From ")) {
+    fromLine = FirstLine(data);
+    data = data.From(fromLine.Length());
+  }
+
+  HeaderReader::Hdr kwHdr;
+  auto findHeaderFn = [&](auto const& hdr) {
+    if (hdr.Name(data).EqualsLiteral(HEADER_X_MOZILLA_KEYWORDS)) {
+      kwHdr = hdr;
+      return false;
+    }
+    return true;  // Keep looking.
+  };
+  HeaderReader rdr;
+  rdr.Parse(data, findHeaderFn);
+
+  if (kwHdr.IsEmpty()) {
+    NS_WARNING("X-Mozilla-Keys header not found.");
+    notEnoughRoom = true;
+    return NS_OK;
+  }
+
+  // Get existing keywords.
+  nsTArray<nsCString> keywords;
+  nsAutoCString old(kwHdr.Value(data));
+  old.CompressWhitespace();
+  for (nsACString const& kw : old.Split(' ')) {
+    keywords.AppendElement(kw);
+  }
+
+  bool altered = false;
+  // Add missing keywords.
+  for (auto const& add : keywordsToAdd) {
+    if (!keywords.Contains(add)) {
+      keywords.AppendElement(add);
+      altered = true;
+    }
+  }
+
+  // Remove any keywords we want gone.
+  for (auto const& remove : keywordsToRemove) {
+    auto idx = keywords.IndexOf(remove);
+    if (idx != keywords.NoIndex) {
+      keywords.RemoveElementAt(idx);
+      altered = true;
+    }
+  }
+
+  if (!altered) {
+    return NS_OK;
+  }
+
+  // Write updated keywords over existing value.
+  auto out = StringJoin(" "_ns, keywords);
+  if (out.Length() > kwHdr.rawValLen) {
+    NS_WARNING("X-Mozilla-Keys too small for new value.");
+    notEnoughRoom = true;
+    return NS_OK;
+  }
+  while (out.Length() < kwHdr.rawValLen) {
+    out.Append(' ');
+  }
+
+  rv = seekable->Seek(
+      nsISeekableStream::NS_SEEK_SET,
+      msgStart + fromLine.Length() + kwHdr.pos + kwHdr.rawValOffset);
+  NS_ENSURE_SUCCESS(rv, rv);
+  rv = writeBuf(writable, out.BeginReading(), out.Length());
+  NS_ENSURE_SUCCESS(rv, rv);
+
+  return NS_OK;
 }

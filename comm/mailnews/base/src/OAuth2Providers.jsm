@@ -16,6 +16,9 @@ var EXPORTED_SYMBOLS = ["OAuth2Providers"];
 // up an address book/calendar without wanting mail.
 const GOOGLE_SCOPES =
   "https://mail.google.com/ https://www.googleapis.com/auth/carddav https://www.googleapis.com/auth/calendar";
+const FASTMAIL_SCOPES =
+  "https://www.fastmail.com/dev/protocol-imap https://www.fastmail.com/dev/protocol-pop https://www.fastmail.com/dev/protocol-smtp https://www.fastmail.com/dev/protocol-carddav https://www.fastmail.com/dev/protocol-caldav";
+const COMCAST_SCOPES = "https://email.comcast.net/ profile openid";
 
 /**
  * Map of hostnames to [issuer, scope].
@@ -50,23 +53,36 @@ var kHostnames = new Map([
     "outlook.office365.com",
     [
       "login.microsoftonline.com",
-      "https://outlook.office365.com/IMAP.AccessAsUser.All https://outlook.office365.com/POP.AccessAsUser.All https://outlook.office365.com/SMTP.Send offline_access",
+      "https://outlook.office.com/IMAP.AccessAsUser.All https://outlook.office.com/POP.AccessAsUser.All https://outlook.office.com/SMTP.Send offline_access",
     ],
   ],
   [
     "smtp.office365.com",
     [
       "login.microsoftonline.com",
-      "https://outlook.office365.com/IMAP.AccessAsUser.All https://outlook.office365.com/POP.AccessAsUser.All https://outlook.office365.com/SMTP.Send offline_access",
+      "https://outlook.office.com/IMAP.AccessAsUser.All https://outlook.office.com/POP.AccessAsUser.All https://outlook.office.com/SMTP.Send offline_access",
     ],
   ],
+
+  ["imap.fastmail.com", ["www.fastmail.com", FASTMAIL_SCOPES]],
+  ["pop.fastmail.com", ["www.fastmail.com", FASTMAIL_SCOPES]],
+  ["smtp.fastmail.com", ["www.fastmail.com", FASTMAIL_SCOPES]],
+  [
+    "carddav.fastmail.com",
+    ["www.fastmail.com", "https://www.fastmail.com/dev/protocol-carddav"],
+  ],
+
+  ["imap.comcast.net", ["comcast.net", COMCAST_SCOPES]],
+  ["pop.comcast.net", ["comcast.net", COMCAST_SCOPES]],
+  ["smtp.comcast.net", ["comcast.net", COMCAST_SCOPES]],
 
   // For testing purposes.
   ["mochi.test", ["mochi.test", "test_scope"]],
 ]);
 
 /**
- * Map of issuers to clientId, clientSecret, authorizationEndpoint, tokenEndpoint.
+ * Map of issuers to clientId, clientSecret, authorizationEndpoint, tokenEndpoint,
+ *  and usePKCE (RFC7636).
  * Issuer is a unique string for the organization that a Thunderbird account
  * was registered at.
  *
@@ -79,70 +95,102 @@ var kHostnames = new Map([
 var kIssuers = new Map([
   [
     "accounts.google.com",
-    [
-      "406964657835-aq8lmia8j95dhl1a2bvharmfk3t1hgqj.apps.googleusercontent.com",
-      "kSmqreRr0qwBWJgbf5Y-PjSU",
-      "https://accounts.google.com/o/oauth2/auth",
-      "https://www.googleapis.com/oauth2/v3/token",
-    ],
+    {
+      clientId:
+        "406964657835-aq8lmia8j95dhl1a2bvharmfk3t1hgqj.apps.googleusercontent.com",
+      clientSecret: "kSmqreRr0qwBWJgbf5Y-PjSU",
+      authorizationEndpoint: "https://accounts.google.com/o/oauth2/auth",
+      tokenEndpoint: "https://www.googleapis.com/oauth2/v3/token",
+    },
   ],
   [
     "o2.mail.ru",
-    [
-      "thunderbird",
-      "I0dCAXrcaNFujaaY",
-      "https://o2.mail.ru/login",
-      "https://o2.mail.ru/token",
-    ],
+    {
+      clientId: "thunderbird",
+      clientSecret: "I0dCAXrcaNFujaaY",
+      authorizationEndpoint: "https://o2.mail.ru/login",
+      tokenEndpoint: "https://o2.mail.ru/token",
+    },
   ],
   [
     "oauth.yandex.com",
-    [
-      "2a00bba7374047a6ab79666485ffce31",
-      "3ded85b4ec574c2187a55dc49d361280",
-      "https://oauth.yandex.com/authorize",
-      "https://oauth.yandex.com/token",
-    ],
+    {
+      clientId: "2a00bba7374047a6ab79666485ffce31",
+      clientSecret: "3ded85b4ec574c2187a55dc49d361280",
+      authorizationEndpoint: "https://oauth.yandex.com/authorize",
+      tokenEndpoint: "https://oauth.yandex.com/token",
+    },
   ],
   [
     "login.yahoo.com",
-    [
-      "dj0yJmk9NUtCTWFMNVpTaVJmJmQ9WVdrOVJ6UjVTa2xJTXpRbWNHbzlNQS0tJnM9Y29uc3VtZXJzZWNyZXQmeD0yYw--",
-      "f2de6a30ae123cdbc258c15e0812799010d589cc",
-      "https://api.login.yahoo.com/oauth2/request_auth",
-      "https://api.login.yahoo.com/oauth2/get_token",
-    ],
+    {
+      clientId:
+        "dj0yJmk9NUtCTWFMNVpTaVJmJmQ9WVdrOVJ6UjVTa2xJTXpRbWNHbzlNQS0tJnM9Y29uc3VtZXJzZWNyZXQmeD0yYw--",
+      clientSecret: "f2de6a30ae123cdbc258c15e0812799010d589cc",
+      authorizationEndpoint: "https://api.login.yahoo.com/oauth2/request_auth",
+      tokenEndpoint: "https://api.login.yahoo.com/oauth2/get_token",
+    },
   ],
   [
     "login.aol.com",
-    [
-      "dj0yJmk9OXRHc1FqZHRQYzVvJmQ9WVdrOU1UQnJOR0pvTjJrbWNHbzlNQS0tJnM9Y29uc3VtZXJzZWNyZXQmeD02NQ--",
-      "79c1c11991d148ddd02a919000d69879942fc278",
-      "https://api.login.aol.com/oauth2/request_auth",
-      "https://api.login.aol.com/oauth2/get_token",
-    ],
+    {
+      clientId:
+        "dj0yJmk9OXRHc1FqZHRQYzVvJmQ9WVdrOU1UQnJOR0pvTjJrbWNHbzlNQS0tJnM9Y29uc3VtZXJzZWNyZXQmeD02NQ--",
+      clientSecret: "79c1c11991d148ddd02a919000d69879942fc278",
+      authorizationEndpoint: "https://api.login.aol.com/oauth2/request_auth",
+      tokenEndpoint: "https://api.login.aol.com/oauth2/get_token",
+    },
   ],
 
   [
     "login.microsoftonline.com",
-    [
-      "08162f7c-0fd2-4200-a84a-f25a4db0b584", // Application (client) ID
-      "TxRBilcHdC6WGBee]fs?QR:SJ8nI[g82", // @see App registrations | Certificates & secrets
+    {
+      clientId: "9e5f94bc-e8a4-4e73-b8be-63364c29d753", // Application (client) ID
       // https://docs.microsoft.com/en-us/azure/active-directory/develop/active-directory-v2-protocols#endpoints
-      "https://login.microsoftonline.com/common/oauth2/v2.0/authorize",
-      "https://login.microsoftonline.com/common/oauth2/v2.0/token",
-    ],
+      authorizationEndpoint:
+        "https://login.microsoftonline.com/common/oauth2/v2.0/authorize",
+      tokenEndpoint:
+        "https://login.microsoftonline.com/common/oauth2/v2.0/token",
+      redirectionEndpoint: "https://localhost",
+    },
+  ],
+
+  [
+    "www.fastmail.com",
+    {
+      clientId: "35f141ae",
+      authorizationEndpoint: "https://api.fastmail.com/oauth/authorize",
+      tokenEndpoint: "https://api.fastmail.com/oauth/refresh",
+      usePKCE: true,
+    },
+  ],
+
+  [
+    "comcast.net",
+    {
+      clientId: "thunderbird-oauth",
+      clientSecret: "fc5d0a314549bb3d059e0cec751fa4bd40a9cc7b",
+      authorizationEndpoint: "https://oauth.xfinity.com/oauth/authorize",
+      tokenEndpoint: "https://oauth.xfinity.com/oauth/token",
+      usePKCE: true,
+    },
   ],
 
   // For testing purposes.
   [
     "mochi.test",
-    [
-      "test_client_id",
-      "test_secret",
-      "http://mochi.test:8888/browser/comm/mailnews/addrbook/test/browser/data/redirect_auto.sjs",
-      "http://mochi.test:8888/browser/comm/mailnews/addrbook/test/browser/data/token.sjs",
-    ],
+    {
+      clientId: "test_client_id",
+      clientSecret: "test_secret",
+      authorizationEndpoint:
+        "http://mochi.test:8888/browser/comm/mail/components/addrbook/test/browser/data/redirect_auto.sjs",
+      tokenEndpoint:
+        "http://mochi.test:8888/browser/comm/mail/components/addrbook/test/browser/data/token.sjs",
+      // I don't know why, but tests refuse to work with a plain HTTP endpoint
+      // (the request is redirected to HTTPS, which we're not listening to).
+      // Just use an HTTPS endpoint.
+      redirectionEndpoint: "https://localhost",
+    },
   ],
 ]);
 
@@ -163,7 +211,34 @@ var OAuth2Providers = {
    *   - scope is an OAuth2 parameter describing the required access level
    */
   getHostnameDetails(hostname) {
-    return kHostnames.get(hostname);
+    // During CardDAV SRV autodiscovery, rfc6764#section-6 says:
+    //
+    // *  The client will need to make authenticated HTTP requests to
+    //    the service.  Typically, a "user identifier" is required for
+    //    some form of user/password authentication.  When a user
+    //    identifier is required, clients MUST first use the "mailbox"
+    //
+    // However macOS Contacts does not do this and just uses the "localpart"
+    // instead. To work around this bug, during SRV autodiscovery Fastmail
+    // returns SRV records of the form '0 1 443 d[0-9]+.carddav.fastmail.com.'
+    // which encodes the internal domainid of the queried SRV domain in the
+    // sub-domain of the Target (rfc2782) of the SRV result. This can
+    // then be extracted from the Host header on each DAV request, the
+    // original domain looked up and attached to the "localpart" to create
+    // a full "mailbox", allowing autodiscovery to just work for usernames
+    // in any domain including self hosted domains.
+    //
+    // So for this hostname -> issuer/scope lookup to work, we need to
+    // look not just at the hostname, but also any sub-domains of this
+    // hostname.
+    while (hostname.includes(".")) {
+      let foundHost = kHostnames.get(hostname);
+      if (foundHost) {
+        return foundHost;
+      }
+      hostname = hostname.replace(/^[^.]*[.]/, "");
+    }
+    return undefined;
   },
 
   /**

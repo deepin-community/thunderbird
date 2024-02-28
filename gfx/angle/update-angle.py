@@ -26,9 +26,10 @@ An easy choice is to grab Chrome's Beta's ANGLE branch.
 
 Prepare your env:
 
-~~~
-export PATH="$PATH:/path/to/depot_tools"
-~~~
+* If in `cmd`:
+    `export PATH="$PATH:/path/to/depot_tools"`
+* If in `powershell`:
+    `$env:Path += ";C:\path\to\depot_tools"`
 
 If this is a new repo, don't forget:
 
@@ -42,7 +43,7 @@ Update: (in the angle repo)
 
 ~~~
 # In the angle repo:
-/path/to/gecko/gfx/angle/update-angle.py origin/chromium/XXXX
+/path/to/gecko/gfx/angle/update-angle.py origin
 git push moz # Push the firefox-XX branch to github.com/mozilla/angle
 ~~~~
 
@@ -154,9 +155,15 @@ is_clang = true
 is_debug = false
 angle_build_all = false
 angle_enable_abseil = false
+angle_enable_apple_translator_workarounds = true
+angle_enable_essl = true
 angle_enable_gl = false
+angle_enable_gl_desktop_frontend = false
+angle_enable_glsl = true
 angle_enable_null = false
+angle_enable_share_context_lock = true
 angle_enable_vulkan = false
+angle_has_astc_encoder = false
 use_custom_libcxx = false
 """[
     1:
@@ -171,7 +178,7 @@ except subprocess.CalledProcessError:
     exit(1)
 
 p = run_checked(
-    "py",
+    "python3",
     "scripts/export_targets.py",
     str(OUT_DIR),
     *ROOTS,
@@ -190,6 +197,7 @@ libraries = json.loads(p.stdout.decode())
 # platforms.
 # descs["//:angle_common"]["sources"] +=
 EXTRA_ANGLE_COMMON_SOURCES = [
+    "//src/common/system_utils_apple.cpp",
     "//src/common/system_utils_linux.cpp",
     "//src/common/system_utils_mac.cpp",
     "//src/common/system_utils_posix.cpp",
@@ -240,8 +248,11 @@ def append_arr(dest, name, vals, indent=0):
 REGISTERED_DEFINES = {
     "ADLER32_SIMD_SSSE3": False,
     "ANGLE_CAPTURE_ENABLED": True,
+    "ANGLE_DISABLE_POOL_ALLOC": True,
     "ANGLE_EGL_LIBRARY_NAME": False,
+    "ANGLE_ENABLE_APPLE_WORKAROUNDS": True,
     "ANGLE_ENABLE_D3D11": True,
+    "ANGLE_ENABLE_D3D11_COMPOSITOR_NATIVE_WINDOW": True,
     "ANGLE_ENABLE_D3D9": True,
     "ANGLE_ENABLE_DEBUG_ANNOTATIONS": True,
     "ANGLE_ENABLE_NULL": False,
@@ -250,12 +261,21 @@ REGISTERED_DEFINES = {
     "ANGLE_ENABLE_ESSL": True,
     "ANGLE_ENABLE_GLSL": True,
     "ANGLE_ENABLE_HLSL": True,
+    "ANGLE_ENABLE_SHARE_CONTEXT_LOCK": True,
     "ANGLE_GENERATE_SHADER_DEBUG_INFO": True,
     "ANGLE_GLESV2_LIBRARY_NAME": True,
+    "ANGLE_HAS_ASTCENC": True,
+    "ANGLE_HAS_VULKAN_SYSTEM_INFO": False,
     "ANGLE_IS_64_BIT_CPU": False,
     "ANGLE_IS_WIN": False,
     "ANGLE_PRELOADED_D3DCOMPILER_MODULE_NAMES": False,
+    "ANGLE_SHARED_LIBVULKAN": True,
+    "ANGLE_USE_CUSTOM_LIBVULKAN": True,
     "ANGLE_USE_EGL_LOADER": True,
+    "ANGLE_VK_LAYERS_DIR": True,
+    "ANGLE_VK_MOCK_ICD_JSON": True,
+    "ANGLE_VMA_VERSION": True,
+    "ASTCENC_DECOMPRESS_ONLY": True,
     "CERT_CHAIN_PARA_HAS_EXTRA_FIELDS": False,
     "CHROMIUM_BUILD": False,
     "COMPONENT_BUILD": False,
@@ -316,6 +336,7 @@ REGISTERED_DEFINES = {
     "_USING_V110_SDK71_": False,
     "_WIN32_WINNT": False,
     "_WINDOWS": False,
+    "_WINSOCK_DEPRECATED_NO_WARNINGS": True,
     "__STD_C": False,
     # clang specific
     "CR_CLANG_REVISION": True,
@@ -328,8 +349,9 @@ REGISTERED_DEFINES = {
 
 print("\nRun actions")
 required_files: Set[str] = set()
+required_files.add("//LICENSE")
 
-run_checked("ninja", "-C", str(OUT_DIR), ":angle_commit_id")
+run_checked("ninja", "-C", str(OUT_DIR), ":angle_commit_id", shell=True)
 required_files.add("//out/gen/angle/angle_commit.h")
 
 # -
@@ -410,7 +432,7 @@ def export_target(target_full_name) -> Set[str]:
             elif b.endswith("_linux"):
                 # Include these on BSDs too.
                 config = 'CONFIG["OS_ARCH"] not in ("Darwin", "WINNT")'
-            elif b.endswith("_mac"):
+            elif b.endswith("_apple") or b.endswith("_mac"):
                 config = 'CONFIG["OS_ARCH"] == "Darwin"'
             elif b.endswith("_posix"):
                 config = 'CONFIG["OS_ARCH"] != "WINNT"'
@@ -444,6 +466,8 @@ def export_target(target_full_name) -> Set[str]:
 
             def_rel_path = list(fixup_paths([def_path]))[0]
             extras["DEFFILE"] = '"{}"'.format(def_rel_path)
+        elif x.startswith("/PDBSourcePath:"):
+            ldflags.remove(x)
 
     os_libs = list(map(lambda x: x[: -len(".lib")], set(desc.get("libs", []))))
 

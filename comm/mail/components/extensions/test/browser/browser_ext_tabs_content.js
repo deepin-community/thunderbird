@@ -84,12 +84,7 @@ async function subTest(createTab, getBrowser, shouldRemove = true) {
 
   await extension.awaitMessage();
   let browser = getBrowser();
-  if (
-    browser.webProgress?.isLoadingDocument ||
-    browser.currentURI?.spec == "about:blank"
-  ) {
-    await BrowserTestUtils.browserLoaded(browser);
-  }
+  await awaitBrowserLoaded(browser, url => url != "about:blank");
 
   await checkContent(browser, {
     backgroundColor: "rgba(0, 0, 0, 0)",
@@ -118,7 +113,7 @@ async function subTest(createTab, getBrowser, shouldRemove = true) {
 
 add_task(async function testFirstTab() {
   let createTab = async () => {
-    window.createTab = async function() {
+    window.createTab = async function () {
       let tabs = await browser.tabs.query({});
       browser.test.assertEq(1, tabs.length);
       await browser.tabs.update(tabs[0].id, { url: "test.html" });
@@ -126,29 +121,23 @@ add_task(async function testFirstTab() {
     };
   };
 
+  let tabmail = document.getElementById("tabmail");
   function getBrowser(expected) {
-    let tabmail = document.getElementById("tabmail");
     return tabmail.currentTabInfo.browser;
   }
 
-  if (
-    document.getElementById("folderpane_splitter").getAttribute("state") ==
-    "collapsed"
-  ) {
-    window.MsgToggleFolderPane();
-  }
-
   let gAccount = createAccount();
-  window.gFolderTreeView.selectFolder(
-    gAccount.incomingServer.rootFolder.subFolders[0]
-  );
-  window.ClearMessagePane();
+  tabmail.currentAbout3Pane.restoreState({
+    folderPaneVisible: true,
+    folderURI: gAccount.incomingServer.rootFolder.subFolders[0].URI,
+  });
+
   return subTest(createTab, getBrowser, false);
 });
 
 add_task(async function testContentTab() {
   let createTab = async () => {
-    window.createTab = async function() {
+    window.createTab = async function () {
       let tab = await browser.tabs.create({ url: "test.html" });
       return tab.id;
     };
@@ -159,12 +148,26 @@ add_task(async function testContentTab() {
     return tabmail.currentTabInfo.browser;
   }
 
-  return subTest(createTab, getBrowser);
+  let tabmail = document.getElementById("tabmail");
+  Assert.equal(
+    tabmail.tabInfo.length,
+    1,
+    "Should find the correct number of tabs before the test."
+  );
+  // Run the subtest without removing the created tab, to check if extension tabs
+  // are removed automatically, when the extension is removed.
+  let rv = await subTest(createTab, getBrowser, false);
+  Assert.equal(
+    tabmail.tabInfo.length,
+    1,
+    "Should find the correct number of tabs after the test."
+  );
+  return rv;
 });
 
 add_task(async function testPopupWindow() {
   let createTab = async () => {
-    window.createTab = async function() {
+    window.createTab = async function () {
       let popup = await browser.windows.create({
         url: "test.html",
         type: "popup",
@@ -185,6 +188,149 @@ add_task(async function testPopupWindow() {
 
     return popupBrowser;
   }
+  let popups = [...Services.wm.getEnumerator("mail:extensionPopup")];
+  Assert.equal(
+    popups.length,
+    0,
+    "Should find the no extension windows before the test."
+  );
+  // Run the subtest without removing the created window, to check if extension
+  // windows are removed automatically, when the extension is removed.
+  let rv = await subTest(createTab, getBrowser, false);
+  Assert.equal(
+    popups.length,
+    0,
+    "Should find the no extension windows after the test."
+  );
+  return rv;
+});
 
-  return subTest(createTab, getBrowser);
+add_task(async function testMultipleContentTabs() {
+  let extension = ExtensionTestUtils.loadExtension({
+    files: {
+      "background.js": async () => {
+        let tabs = [];
+        let tests = [
+          {
+            url: "test.html",
+            expectedUrl: browser.runtime.getURL("test.html"),
+          },
+          {
+            url: "test.html",
+            expectedUrl: browser.runtime.getURL("test.html"),
+          },
+          {
+            url: "https://www.example.com",
+            expectedUrl: "https://www.example.com/",
+          },
+          {
+            url: "https://www.example.com",
+            expectedUrl: "https://www.example.com/",
+          },
+          {
+            url: "https://www.example.com/",
+            expectedUrl: "https://www.example.com/",
+          },
+          {
+            url: "https://www.example.com/",
+            expectedUrl: "https://www.example.com/",
+          },
+          {
+            url: "https://www.example.com/",
+            expectedUrl: "https://www.example.com/",
+          },
+        ];
+
+        async function create(url, expectedUrl) {
+          let tabDonePromise = new Promise(resolve => {
+            let changeInfoStatus = false;
+            let changeInfoUrl = false;
+
+            let listener = (tabId, changeInfo) => {
+              if (!tab || tab.id != tabId) {
+                return;
+              }
+              // Looks like "complete" is reached sometimes before the url is done,
+              // so check for both.
+              if (changeInfo.status == "complete") {
+                changeInfoStatus = true;
+              }
+              if (changeInfo.url) {
+                changeInfoUrl = changeInfo.url;
+              }
+
+              if (changeInfoStatus && changeInfoUrl) {
+                browser.tabs.onUpdated.removeListener(listener);
+                resolve(changeInfoUrl);
+              }
+            };
+            browser.tabs.onUpdated.addListener(listener);
+          });
+
+          let tab = await browser.tabs.create({ url });
+          for (let otherTab of tabs) {
+            browser.test.assertTrue(
+              tab.id != otherTab.id,
+              "Id of created tab should be unique."
+            );
+          }
+          tabs.push(tab);
+
+          let changeInfoUrl = await tabDonePromise;
+          browser.test.assertEq(
+            expectedUrl,
+            changeInfoUrl,
+            "Should have seen the correct url."
+          );
+        }
+
+        for (let { url, expectedUrl } of tests) {
+          await create(url, expectedUrl);
+        }
+
+        browser.test.notifyPass();
+      },
+      "test.html": "<html><body>I'm a real page!</body></html>",
+    },
+    manifest: {
+      background: { scripts: ["background.js"] },
+      permissions: ["tabs"],
+    },
+  });
+
+  let tabmail = document.getElementById("tabmail");
+  Assert.equal(
+    tabmail.tabInfo.length,
+    1,
+    "Should find the correct number of tabs before the test."
+  );
+
+  await extension.startup();
+  await extension.awaitFinish();
+  Assert.equal(
+    tabmail.tabInfo.length,
+    8,
+    "Should find the correct number of tabs after the test."
+  );
+
+  await extension.unload();
+  // After unload, the two extension tabs should be closed.
+  Assert.equal(
+    tabmail.tabInfo.length,
+    6,
+    "Should find the correct number of tabs after extension unload."
+  );
+
+  for (let i = tabmail.tabInfo.length; i > 0; i--) {
+    let nativeTabInfo = tabmail.tabInfo[i - 1];
+    let uri = nativeTabInfo.browser?.browsingContext.currentURI;
+    if (uri && ["https", "http"].includes(uri.scheme)) {
+      tabmail.closeTab(nativeTabInfo);
+    }
+  }
+  Assert.equal(
+    tabmail.tabInfo.length,
+    1,
+    "Should find the correct number of tabs after test has finished."
+  );
 });

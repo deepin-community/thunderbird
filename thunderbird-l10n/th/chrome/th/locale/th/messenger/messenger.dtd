@@ -24,8 +24,6 @@
 <!ENTITY moveToNewWindow.accesskey "ย">
 <!ENTITY newVirtualFolderCmd.label "การค้นหาที่บันทึกไว้…">
 <!ENTITY newVirtualFolderCmd.accesskey "ก">
-<!ENTITY newOtherAccountsCmd.label "บัญชีอื่น ๆ…">
-<!ENTITY newOtherAccountsCmd.accesskey "บ">
 <!ENTITY newCreateEmailAccountCmd.label "รับบัญชีจดหมายใหม่…">
 <!ENTITY newCreateEmailAccountCmd.accesskey "ร">
 <!ENTITY newExistingEmailAccountCmd.label "บัญชีจดหมายที่มีอยู่…">
@@ -48,8 +46,6 @@
 <!ENTITY openMessageFileCmd.accesskey "ป">
 <!ENTITY saveAsMenu.label "บันทึกเป็น">
 <!ENTITY saveAsMenu.accesskey "บ">
-<!ENTITY saveAsFileCmd.label "ไฟล์">
-<!ENTITY saveAsFileCmd.accesskey "ฟ">
 <!ENTITY saveAsFileCmd.key "s">
 <!ENTITY saveAsTemplateCmd.label "แม่แบบ">
 <!ENTITY saveAsTemplateCmd.accesskey "ม">
@@ -320,7 +316,6 @@
 <!ENTITY goBackCmd.commandKey "[">
 <!ENTITY goChatCmd.label "แชท">
 <!ENTITY goChatCmd.accesskey "ช">
-<!ENTITY goChatCmd2.key "H">
 <!ENTITY prevStarredMsgCmd.label "ข้อความที่ติดดาว">
 <!ENTITY prevStarredMsgCmd.accesskey "ต">
 <!ENTITY folderMenu.label "โฟลเดอร์">
@@ -490,6 +485,8 @@
 <!ENTITY deleteJunk.accesskey "ล">
 <!ENTITY importCmd.label "นำเข้า…">
 <!ENTITY importCmd.accesskey "น">
+<!ENTITY exportCmd.label "ส่งออก…">
+<!ENTITY exportCmd.accesskey "ส">
 <!ENTITY clearRecentHistory.label "ล้างประวัติล่าสุด…">
 <!ENTITY clearRecentHistory.accesskey "ป">
 <!ENTITY accountManagerCmd2.label "การตั้งค่าบัญชี">
@@ -585,7 +582,7 @@
 <!ENTITY remoteContentOptionsAllowForMsg.accesskey "ส">
 <!ENTITY editRemoteContentSettings.label "แก้ไขตัวเลือกเนื้อหาระยะไกล…">
 <!ENTITY editRemoteContentSettings.accesskey "ก">
-<!ENTITY editRemoteContentSettingsUnix.label "แก้ไขค่ากำหนดเนื้อหาระยะไกล…">
+<!ENTITY editRemoteContentSettingsUnix.label "แก้ไขการกำหนดลักษณะเนื้อหาระยะไกล…">
 <!ENTITY editRemoteContentSettingsUnix.accesskey "ก">
 
 <!-- Phishing Button Popup -->
@@ -593,7 +590,7 @@
 <!ENTITY phishingOptionIgnore.accesskey "พ">
 <!ENTITY phishingOptionSettings.label "แก้ไขตัวเลือกการตรวจหาการหลอกลวง…">
 <!ENTITY phishingOptionSettings.accesskey "แ">
-<!ENTITY phishingOptionSettingsUnix.label "แก้ไขค่ากำหนดการตรวจหาการหลอกลวง…">
+<!ENTITY phishingOptionSettingsUnix.label "แก้ไขการกำหนดลักษณะการตรวจหาการหลอกลวง…">
 <!ENTITY phishingOptionSettingsUnix.accesskey "แ">
 
 <!-- AppMenu Popup -->
@@ -696,7 +693,6 @@
 <!ENTITY locationColumn.label "ตำแหน่งที่ตั้ง">
 <!ENTITY idColumn.label "ลำดับที่ได้รับ">
 <!ENTITY attachmentColumn.label "ไฟล์แนบ">
-
 <!ENTITY deleteColumn.label "ลบ">
 
 <!-- Thread Pane Tooltips -->
@@ -722,7 +718,6 @@
 <!ENTITY locationColumn2.tooltip "เรียงตามตำแหน่งที่ตั้ง">
 <!ENTITY idColumn2.tooltip "เรียงตามลำดับที่ได้รับ">
 <!ENTITY attachmentColumn2.tooltip "เรียงตามไฟล์แนบ">
-
 <!ENTITY deleteColumn.tooltip "ลบข้อความ">
 
 <!-- Thread Pane Context Menu -->
@@ -928,7 +923,7 @@
 <!ENTITY zoomWindow.label "ซูม">
 
 <!-- Mac OS X Application Menu (Cocoa widgets) -->
-<!ENTITY preferencesCmdMac2.label       "ค่ากำหนด">
+<!ENTITY preferencesCmdMac2.label       "การกำหนดลักษณะ">
 <!ENTITY preferencesCmdMac.commandkey   ",">
 <!ENTITY preferencesCmdMac.modifiers    "accel">
 <!ENTITY servicesMenuMac.label          "บริการ">

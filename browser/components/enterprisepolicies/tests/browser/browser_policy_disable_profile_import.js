@@ -43,7 +43,7 @@ add_task(async function test_disable_profile_import() {
 });
 
 add_task(async function test_file_menu() {
-  updateImportCommandEnabledState();
+  gFileMenu.updateImportCommandEnabledState();
 
   let command = document.getElementById("cmd_file_importFromAnotherBrowser");
   ok(
@@ -67,5 +67,34 @@ add_task(async function test_import_button() {
   ok(
     !document.getElementById("import-button"),
     "Import button should be hidden."
+  );
+});
+
+add_task(async function test_prefs_entrypoint() {
+  await SpecialPowers.pushPrefEnv({
+    set: [["browser.migrate.preferences-entrypoint.enabled", true]],
+  });
+
+  let finalPaneEvent = Services.prefs.getBoolPref("identity.fxaccounts.enabled")
+    ? "sync-pane-loaded"
+    : "privacy-pane-loaded";
+  let finalPrefPaneLoaded = TestUtils.topicObserved(finalPaneEvent, () => true);
+  await BrowserTestUtils.withNewTab(
+    "about:preferences#general-migrate",
+    async browser => {
+      await finalPrefPaneLoaded;
+      await browser.contentWindow.customElements.whenDefined(
+        "migration-wizard"
+      );
+      let doc = browser.contentDocument;
+      ok(
+        !doc.getElementById("dataMigrationGroup"),
+        "Should remove import entrypoint in prefs if disabled via policy."
+      );
+      ok(
+        !doc.getElementById("migrationWizardDialog").open,
+        "Should not have opened the migration wizard."
+      );
+    }
   );
 });

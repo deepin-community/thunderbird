@@ -1,3 +1,14 @@
+# Please DO NOT add more third party files to this file.
+# They should be added to tools/rewriting/ThirdPartyPaths.txt instead.
+#
+# Please also DO NOT add generated files that are for some reason checked
+# into source - add them to tools/rewriting/Generated.txt instead.
+
+# This file should only be used for exclusions where we have:
+# - preprocessed files
+# - intentionally invalid files
+# - build directories and other items that we need to ignore
+
 # Temporarily disabled, see bug 1605845
 *.xhtml
 
@@ -7,6 +18,10 @@
 # lint eslint config files which are excluded by default
 !**/.eslintrc.js
 
+# For now, skip all json files for ESLint, these will still be run through
+# Prettier.
+**/*.json
+
 # Exclude expected objdirs.
 obj*/**
 
@@ -15,12 +30,8 @@ mozilla/**
 
 # These directories don't contain any js and are not meant to
 config/**
-db/**
 other-licenses/**
 testing/**
-
-# Temporarily disabled until the XUL parser is fixed (see bug 1542548).
-common/src/viewSource.xul
 
 # We ignore all these directories by default, until we get them enabled.
 # If you are enabling a directory, please add directory specific exclusions
@@ -30,36 +41,26 @@ suite/**
 
 # calendar/ exclusions
 calendar/base/calendar.js
-calendar/base/modules/Ical.jsm
 
 # chat exclusions
 chat/chat-prefs.js
-# third-party code
-chat/protocols/matrix/lib/**
-chat/protocols/xmpp/lib/**
 # preprocessed files
 chat/content/imtooltip.xml
 
 # mailnews exclusions
 mailnews/mailnews.js
-mailnews/extensions/dsn/dsn.js
 mailnews/extensions/mdn/mdn.js
 
 # mail exclusions
 mail/app/profile/all-thunderbird.js
 mail/app/profile/channel-prefs.js
-mail/base/content/protovis-r2.6-modded.js
-mail/branding/nightly/thunderbird-branding.js
-mail/branding/thunderbird/thunderbird-branding.js
+mail/branding/nightly/pref/thunderbird-branding.js
+mail/branding/thunderbird/pref/thunderbird-branding.js
 # This file is split into two in order to keep it as a valid json file
 # for documentation purposes (policies.json) but to be accessed by the
-# code as a .jsm (schema.jsm)
-mail/components/enterprisepolicies/schemas/schema.jsm
+# code as a JS module (schema.sys.mjs)
+mail/components/enterprisepolicies/schemas/schema.sys.mjs
 mail/components/im/all-im.js
 mail/extensions/am-e2e/prefs/e2e-prefs.js
 mail/locales/en-US/all-l10n.js
-mail/components/compose/texzilla/**
 mail/components/compose/composer.js
-
-# exclude MailConstants.jsm because: #filter substitution
-mail/modules/MailConstants.jsm

@@ -7,7 +7,7 @@ found in the LICENSE.txt file.
 <html>
 <head>
 <meta charset="utf-8">
-<title>Upload texture from animating transparent WebM</title>
+<title>Upload texture from animating transparent WebM or HEVC</title>
 <link rel="stylesheet" href="../../../resources/js-test-style.css"/>
 <script src="../../../js/js-test-pre.js"></script>
 <script src="../../../js/webgl-test-utils.js"></script>
@@ -20,9 +20,25 @@ let video;
 
 initTestingHarness();
 
+function logVisibility(isOnload)
+{
+    let prefix = '';
+    if (isOnload)
+        prefix = 'Upon load: ';
+    if (document.hidden) {
+        console.log(prefix + '*** Tab was backgrounded (if running in automated test harness, why?) ***');
+    } else {
+        console.log(prefix + 'Tab was foregrounded');
+    }
+}
+
 function init()
 {
-    description("Upload texture from animating transparent WebM");
+    description("Upload texture from animating transparent WebM or HEVC");
+
+    document.addEventListener("visibilitychange", visibilityChanged, false);
+
+    logVisibility(true);
 
     const canvas = document.getElementById("example");
     gl = wtu.create3DContext(canvas);
@@ -38,18 +54,24 @@ function init()
     gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
 
     video = document.getElementById("vid");
-    const type = 'video/webm; codecs="vp8"';
+    const typeWebM = 'video/webm; codecs="vp8"';
+    const typeHEVC = 'video/mp4; codecs="hvc1"';
     if (!video.canPlayType) {
         testFailed("video.canPlayType required method missing");
         finishTest();
         return;
     }
-    if (!video.canPlayType(type).replace(/no/, '')) {
-        debug(info.type + " unsupported");
+    if (!video.canPlayType(typeWebM).replace(/no/, '') && !video.canPlayType(typeHEVC).replace(/no/, '')) {
+        debug(typeWebM + " unsupported");
+        debug(typeHEVC + " unsupported");
         finishTest();
         return;
     };
     wtu.startPlayingAndWaitForVideo(video, runTest);
+}
+
+function visibilityChanged() {
+    logVisibility(false);
 }
 
 function runTest(videoElement)
@@ -89,7 +111,7 @@ function runOneIteration(videoElement, useTexSubImage2D)
     // Draw the triangles
     wtu.clearAndDrawUnitQuad(gl, [255, 0, 0, 255]);
 
-    const tolerance = 5;
+    const tolerance = 20;
     const red = [255, 0, 0];
     const green = [0, 255, 0];
     const blue = [0, 0, 255];
@@ -99,31 +121,33 @@ function runOneIteration(videoElement, useTexSubImage2D)
     // - Left is green and right is transparent-blended-with-red
     let leftIsGreen = false, leftIsRed = false, rightIsBlue = false, rightIsRed = false;
     let greenRedError = "", redBlueError = "";
+    let leftGreenError = "", rightBlueError = "";
+    let bufLeft, bufRight;
     wtu.checkCanvasRectColor(gl, 4, 4, 8, 24, green, tolerance,
-        /* sameFn */ () => { leftIsGreen = true; }, /* differentFn */ m => {}, debug);
+        /* sameFn */ () => { leftIsGreen = true; }, /* differentFn */ (m, b) => { leftGreenError = m; bufLeft = b;}, debug);
     wtu.checkCanvasRectColor(gl, 20, 4, 8, 24, red, tolerance,
-        /* sameFn */ () => { rightIsRed = true; }, /* differentFn */ m => { greenRedError = m; }, debug);
+        /* sameFn */ () => { rightIsRed = true; }, /* differentFn */ (m, b) => { greenRedError = m; bufRight = b;}, debug);
 
     // - Right is blue and left is transparent-blended-with-red
     wtu.checkCanvasRectColor(gl, 20, 4, 8, 24, blue, tolerance,
-        /* sameFn */ () => { rightIsBlue = true; }, /* differentFn */ m => {}, debug);
+        /* sameFn */ () => { rightIsBlue = true; }, /* differentFn */ (m, b) => { rightBlueError = m; bufRight = b;}, debug);
     wtu.checkCanvasRectColor(gl, 4, 4, 8, 24, red, tolerance,
-        /* sameFn */ () => { leftIsRed = true; }, /* differentFn */ m => { redBlueError = m; }, debug);
+        /* sameFn */ () => { leftIsRed = true; }, /* differentFn */ (m, b) => { redBlueError = m; bufLeft = b;}, debug);
 
     if (leftIsGreen) {
         if (rightIsRed) {
-            testPassed("left is green, right is transparent-blended-with-red")
+            testPassed("left is green, right is transparent-blended-with-red");
         } else {
-            testFailed("left is green, but: " + greenRedError);
+            testFailed("left is green, but: " + greenRedError + "\n" + bufRight);
         }
     } else if (rightIsBlue) {
         if (leftIsRed) {
             testPassed("right is blue, left is transparent-blended-with-red");
         } else {
-            testFailed("right is blue, but: " + redBlueError);
+            testFailed("right is blue, but: " + redBlueError + "\n" + bufLeft);
         }
     } else {
-        testFailed("neither left is green nor right is blue")
+        testFailed("neither left is green nor right is blue \n" + leftGreenError + "\n" + rightBlueError + "\n" + bufLeft + "\n" + bufRight);
     }
 }
 </script>
@@ -133,6 +157,7 @@ function runOneIteration(videoElement, useTexSubImage2D)
 <div id="description"></div>
 <div id="console"></div>
 <video id="vid" style="display:none;">
+  <source src="../../../resources/transparent-2frames.mp4" type='video/mp4; codecs="hvc1"' />
   <source src="../../../resources/transparent-2frames.webm" type='video/webm; codecs="vp8"' />
 </video>
 </body>

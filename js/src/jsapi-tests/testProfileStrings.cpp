@@ -9,7 +9,9 @@
 
 #include "mozilla/Atomics.h"
 
+#include "js/CallAndConstruct.h"
 #include "js/ContextOptions.h"
+#include "js/GlobalObject.h"
 #include "js/PropertySpec.h"
 #include "jsapi-tests/tests.h"
 #include "vm/JSContext.h"
@@ -65,7 +67,7 @@ static const JSFunctionSpec ptestFunctions[] = {
 static JSObject* initialize(JSContext* cx) {
   js::SetContextProfilingStack(cx, &profilingStack);
   JS::RootedObject global(cx, JS::CurrentGlobalOrNull(cx));
-  return JS_InitClass(cx, global, nullptr, &ptestClass, Prof, 0, nullptr,
+  return JS_InitClass(cx, global, nullptr, nullptr, "Prof", Prof, 0, nullptr,
                       ptestFunctions, nullptr, nullptr);
 }
 

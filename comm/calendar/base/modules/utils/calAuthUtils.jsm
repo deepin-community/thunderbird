@@ -2,19 +2,27 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-var { setTimeout } = ChromeUtils.import("resource://gre/modules/Timer.jsm");
-
-ChromeUtils.defineModuleGetter(this, "cal", "resource:///modules/calendar/calUtils.jsm");
-
-/*
+/**
  * Authentication tools and prompts, mostly for providers
  */
 
 // NOTE: This module should not be loaded directly, it is available when including
 // calUtils.jsm under the cal.auth namespace.
 
-const EXPORTED_SYMBOLS = ["calauth"]; /* exported calauth */
+const EXPORTED_SYMBOLS = ["calauth"];
+
+var { XPCOMUtils } = ChromeUtils.importESModule("resource://gre/modules/XPCOMUtils.sys.mjs");
+
+const lazy = {};
+
+ChromeUtils.defineESModuleGetters(lazy, {
+  setTimeout: "resource://gre/modules/Timer.sys.mjs",
+});
+
+XPCOMUtils.defineLazyModuleGetters(lazy, {
+  cal: "resource:///modules/calendar/calUtils.jsm",
+  MsgAuthPrompt: "resource:///modules/MsgAsyncPrompter.jsm",
+});
 
 /**
  * The userContextId of nsIHttpChannel is currently implemented as a uint32, so
@@ -31,11 +39,11 @@ class ContainerMap extends Map {
   /**
    * Create a container map with a given range of userContextIds.
    *
-   * @param {Number} min        The lower range limit of userContextIds to be
+   * @param {number} min - The lower range limit of userContextIds to be
    *                            used.
-   * @param {Number} max        The upper range limit of userContextIds to be
+   * @param {number} max - The upper range limit of userContextIds to be
    *                            used.
-   * @param {?Object} iterable  Optional parameter which is passed to the
+   * @param {?object} iterable - Optional parameter which is passed to the
    *                            constructor of Map. See definition of Map
    *                            for more details.
    */
@@ -69,8 +77,8 @@ class ContainerMap extends Map {
   /**
    * Add a new username to the map.
    *
-   * @param {String} username - The username to be added.
-   * @return {Number} The userContextId assigned to the given username.
+   * @param {string} username - The username to be added.
+   * @returns {number} The userContextId assigned to the given username.
    */
   _add(username) {
     let nextUserContextId;
@@ -93,9 +101,9 @@ class ContainerMap extends Map {
    * Look up the userContextId for the given username. Create a new one,
    * if the username is not yet known.
    *
-   * @param {String} username        The username for which the userContextId
+   * @param {string} username - The username for which the userContextId
    *                                 is to be looked up.
-   * @return {Number}                The userContextId which is assigned to
+   * @returns {number} The userContextId which is assigned to
    *                                 the provided username.
    */
   getUserContextIdForUsername(username) {
@@ -109,9 +117,9 @@ class ContainerMap extends Map {
    * Look up the username for the given userContextId. Return empty string
    * if not found.
    *
-   * @param {Number} userContextId        The userContextId for which the
+   * @param {number} userContextId - The userContextId for which the
    *                                      username is to be to looked up.
-   * @return {String}                     The username mapped to the given
+   * @returns {string} The username mapped to the given
    *                                      userContextId.
    */
   getUsernameForUserContextId(userContextId) {
@@ -135,24 +143,24 @@ var calauth = {
    */
   Prompt: class {
     constructor() {
-      this.mWindow = cal.window.getCalendarWindow();
+      this.mWindow = lazy.cal.window.getCalendarWindow();
       this.mReturnedLogins = {};
       this.mProvider = null;
     }
 
     /**
-     * @typedef {Object} PasswordInfo
-     * @property {Boolean} found        True, if the password was found
-     * @property {?String} username     The found username
-     * @property {?String} password     The found password
+     * @typedef {object} PasswordInfo
+     * @property {boolean} found        True, if the password was found
+     * @property {?string} username     The found username
+     * @property {?string} password     The found password
      */
 
     /**
      * Retrieve password information from the login manager
      *
-     * @param {String} aPasswordRealm       The realm to retrieve password info for
-     * @param {String} aRequestedUser       The username to look up.
-     * @return {PasswordInfo}               The retrieved password information
+     * @param {string} aPasswordRealm - The realm to retrieve password info for
+     * @param {string} aRequestedUser - The username to look up.
+     * @returns {PasswordInfo} The retrieved password information
      */
     getPasswordInfo(aPasswordRealm, aRequestedUser) {
       // Prefill aRequestedUser, so it will be used in the prompter.
@@ -181,7 +189,7 @@ var calauth = {
           this.mReturnedLogins[keyStr] &&
           now.getTime() - this.mReturnedLogins[keyStr].getTime() < 60000
         ) {
-          cal.LOG(
+          lazy.cal.LOG(
             "Credentials removed for: user=" +
               username +
               ", host=" +
@@ -215,7 +223,7 @@ var calauth = {
       }
       hostRealm.passwordRealm = aChannel.URI.host + ":" + port + " (" + aAuthInfo.realm + ")";
 
-      let requestedUser = cal.auth.containerMap.getUsernameForUserContextId(
+      let requestedUser = lazy.cal.auth.containerMap.getUsernameForUserContextId(
         aChannel.loadInfo.originAttributes.userContextId
       );
       let pwInfo = this.getPasswordInfo(hostRealm, requestedUser);
@@ -226,11 +234,14 @@ var calauth = {
       }
       let savePasswordLabel = null;
       if (Services.prefs.getBoolPref("signon.rememberSignons", true)) {
-        savePasswordLabel = cal.l10n.getAnyString("passwordmgr", "passwordmgr", "rememberPassword");
+        savePasswordLabel = lazy.cal.l10n.getAnyString(
+          "passwordmgr",
+          "passwordmgr",
+          "rememberPassword"
+        );
       }
       let savePassword = {};
-      let returnValue = Services.prompt.promptAuth(
-        null,
+      let returnValue = new lazy.MsgAuthPrompt().promptAuth(
         aChannel,
         aLevel,
         aAuthInfo,
@@ -287,20 +298,20 @@ var calauth = {
         },
       };
 
-      let requestedUser = cal.auth.containerMap.getUsernameForUserContextId(
+      let requestedUser = lazy.cal.auth.containerMap.getUsernameForUserContextId(
         aChannel.loadInfo.originAttributes.userContextId
       );
       let hostKey = aChannel.URI.prePath + ":" + aAuthInfo.realm + ":" + requestedUser;
       gAuthCache.planForAuthInfo(hostKey);
 
-      let queuePrompt = function() {
+      let queuePrompt = function () {
         let asyncprompter = Cc["@mozilla.org/messenger/msgAsyncPrompter;1"].getService(
           Ci.nsIMsgAsyncPrompter
         );
         asyncprompter.queueAsyncAuthPrompt(hostKey, false, promptlistener);
       };
 
-      let finalSteps = function() {
+      let finalSteps = function () {
         // the prompt will fail if we are too early
         if (self.mWindow.document.readyState == "complete") {
           queuePrompt();
@@ -309,10 +320,10 @@ var calauth = {
         }
       };
 
-      let tryUntilReady = function() {
-        self.mWindow = cal.window.getCalendarWindow();
+      let tryUntilReady = function () {
+        self.mWindow = lazy.cal.window.getCalendarWindow();
         if (!self.mWindow) {
-          setTimeout(tryUntilReady, 1000);
+          lazy.setTimeout(tryUntilReady, 1000);
           return;
         }
 
@@ -334,13 +345,13 @@ var calauth = {
    * Tries to get the username/password combination of a specific calendar name from the password
    * manager or asks the user.
    *
-   * @param {String} aTitle                   The dialog title.
-   * @param {String} aCalendarName            The calendar name or url to look up. Can be null.
-   * @param {{value:String}} aUsername        The username that belongs to the calendar.
-   * @param {{value:String}} aPassword        The password that belongs to the calendar.
-   * @param {{value:String}} aSavePassword    Should the password be saved?
-   * @param {Boolean} aFixedUsername          Whether the user name is fixed or editable
-   * @return {Boolean}                        Could a password be retrieved?
+   * @param {string} aTitle - The dialog title.
+   * @param {string} aCalendarName - The calendar name or url to look up. Can be null.
+   * @param {{value: string}} aUsername        The username that belongs to the calendar.
+   * @param {{value: string}} aPassword        The password that belongs to the calendar.
+   * @param {{value: string}} aSavePassword    Should the password be saved?
+   * @param {boolean} aFixedUsername - Whether the user name is fixed or editable
+   * @returns {boolean} Could a password be retrieved?
    */
   getCredentials(aTitle, aCalendarName, aUsername, aPassword, aSavePassword, aFixedUsername) {
     if (
@@ -351,23 +362,23 @@ var calauth = {
       throw new Components.Exception("", Cr.NS_ERROR_XPC_NEED_OUT_OBJECT);
     }
 
-    let prompter = Services.ww.getNewPrompter(null);
+    let prompter = new lazy.MsgAuthPrompt();
 
     // Only show the save password box if we are supposed to.
     let savepassword = null;
     if (Services.prefs.getBoolPref("signon.rememberSignons", true)) {
-      savepassword = cal.l10n.getAnyString("passwordmgr", "passwordmgr", "rememberPassword");
+      savepassword = lazy.cal.l10n.getAnyString("passwordmgr", "passwordmgr", "rememberPassword");
     }
 
     let aText;
     if (aFixedUsername) {
-      aText = cal.l10n.getAnyString("global", "commonDialogs", "EnterPasswordFor", [
+      aText = lazy.cal.l10n.getAnyString("global", "commonDialogs", "EnterPasswordFor", [
         aUsername.value,
         aCalendarName,
       ]);
       return prompter.promptPassword(aTitle, aText, aPassword, savepassword, aSavePassword);
     }
-    aText = cal.l10n.getAnyString("global", "commonDialogs", "EnterUserPasswordFor2", [
+    aText = lazy.cal.l10n.getAnyString("global", "commonDialogs", "EnterUserPasswordFor2", [
       aCalendarName,
     ]);
     return prompter.promptUsernameAndPassword(
@@ -385,8 +396,8 @@ var calauth = {
    * require it. This is a fallback for compatibility only and should be removed a few versions
    * after Lightning 6.2
    *
-   * @param {String} aOrigin      The hostname or origin to check
-   * @return {String}             The origin uri
+   * @param {string} aOrigin - The hostname or origin to check
+   * @returns {string} The origin uri
    */
   _ensureOrigin(aOrigin) {
     try {
@@ -403,14 +414,14 @@ var calauth = {
   /**
    * Helper to insert/update an entry to the password manager.
    *
-   * @param {String} aUsername    The username to insert
-   * @param {String} aPassword    The corresponding password
-   * @param {String} aOrigin      The corresponding origin
-   * @param {String} aRealm       The password realm (unused on branch)
+   * @param {string} aUsername - The username to insert
+   * @param {string} aPassword - The corresponding password
+   * @param {string} aOrigin - The corresponding origin
+   * @param {string} aRealm - The password realm (unused on branch)
    */
   passwordManagerSave(aUsername, aPassword, aOrigin, aRealm) {
-    cal.ASSERT(aUsername);
-    cal.ASSERT(aPassword);
+    lazy.cal.ASSERT(aUsername);
+    lazy.cal.ASSERT(aPassword);
 
     let origin = this._ensureOrigin(aOrigin);
 
@@ -437,22 +448,22 @@ var calauth = {
       Services.logins.addLogin(newLoginInfo);
     } catch (exc) {
       // Only show the message if its not an abort, which can happen if
-      // the user canceled the master password dialog
-      cal.ASSERT(exc.result == Cr.NS_ERROR_ABORT, exc);
+      // the user canceled the primary password dialog
+      lazy.cal.ASSERT(exc.result == Cr.NS_ERROR_ABORT, exc);
     }
   },
 
   /**
    * Helper to retrieve an entry from the password manager.
    *
-   * @param {String} aUsername    The username to search
-   * @param {String} aPassword    The corresponding password
-   * @param {String} aOrigin      The corresponding origin
-   * @param {String} aRealm       The password realm (unused on branch)
-   * @return {Boolean}            True, if an entry exists in the password manager
+   * @param {string} aUsername - The username to search
+   * @param {string} aPassword - The corresponding password
+   * @param {string} aOrigin - The corresponding origin
+   * @param {string} aRealm - The password realm (unused on branch)
+   * @returns {boolean} True, if an entry exists in the password manager
    */
   passwordManagerGet(aUsername, aPassword, aOrigin, aRealm) {
-    cal.ASSERT(aUsername);
+    lazy.cal.ASSERT(aUsername);
 
     if (typeof aPassword != "object") {
       throw new Components.Exception("", Cr.NS_ERROR_XPC_NEED_OUT_OBJECT);
@@ -472,7 +483,7 @@ var calauth = {
         }
       }
     } catch (exc) {
-      cal.ASSERT(false, exc);
+      lazy.cal.ASSERT(false, exc);
     }
     return false;
   },
@@ -480,13 +491,13 @@ var calauth = {
   /**
    * Helper to remove an entry from the password manager
    *
-   * @param {String} aUsername    The username to remove
-   * @param {String} aOrigin      The corresponding origin
-   * @param {String} aRealm       The password realm (unused on branch)
-   * @return {Boolean}            Could the user be removed?
+   * @param {string} aUsername - The username to remove
+   * @param {string} aOrigin - The corresponding origin
+   * @param {string} aRealm - The password realm (unused on branch)
+   * @returns {boolean} Could the user be removed?
    */
   passwordManagerRemove(aUsername, aOrigin, aRealm) {
-    cal.ASSERT(aUsername);
+    lazy.cal.ASSERT(aUsername);
 
     let origin = this._ensureOrigin(aOrigin);
 
@@ -508,9 +519,9 @@ var calauth = {
    * A map which maps usernames to userContextIds, reserving a range
    * of 20000 - 29999 for userContextIds to be used within calendar.
    *
-   * @param {Number} min        The lower range limit of userContextIds to be
+   * @param {number} min - The lower range limit of userContextIds to be
    *                            used.
-   * @param {Number} max        The upper range limit of userContextIds to be
+   * @param {number} max - The upper range limit of userContextIds to be
    *                            used.
    */
   containerMap: new ContainerMap(20000, 29999),

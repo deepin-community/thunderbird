@@ -9,6 +9,7 @@ Library("winlauncher")
 FORCE_STATIC_LIB = True
 
 UNIFIED_SOURCES += [
+    "/ipc/mscom/COMWrappers.cpp",
     "/ipc/mscom/ProcessRuntime.cpp",
     "/toolkit/xre/WinTokenUtils.cpp",
     "/widget/windows/WindowsConsole.cpp",
@@ -39,11 +40,20 @@ TEST_DIRS += [
 ]
 
 if CONFIG["MOZ_LAUNCHER_PROCESS"]:
+    LOCAL_INCLUDES += [
+        "/other-licenses/nsis/Contrib/CityHash/cityhash",
+        "/toolkit/mozapps/update/common",
+    ]
     UNIFIED_SOURCES += [
+        "/other-licenses/nsis/Contrib/CityHash/cityhash/city.cpp",
+        "/toolkit/mozapps/update/common/commonupdatedir.cpp",
         "/toolkit/xre/LauncherRegistryInfo.cpp",
     ]
-    for var in ("MOZ_APP_BASENAME", "MOZ_APP_VENDOR"):
-        DEFINES[var] = '"%s"' % CONFIG[var]
+
+for var in ("MOZ_APP_BASENAME", "MOZ_APP_VENDOR", "MOZ_APP_DISPLAYNAME"):
+    DEFINES[var] = '"%s"' % CONFIG[var]
+
+DEFINES["MOZ_USE_LAUNCHER_ERROR"] = 1
 
 DisableStlWrapping()
 

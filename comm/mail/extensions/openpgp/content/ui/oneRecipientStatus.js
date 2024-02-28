@@ -2,7 +2,6 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 var { EnigmailFuncs } = ChromeUtils.import(
   "chrome://openpgp/content/modules/funcs.jsm"
 );
@@ -11,6 +10,9 @@ var EnigmailKeyRing = ChromeUtils.import(
 ).EnigmailKeyRing;
 var { EnigmailWindows } = ChromeUtils.import(
   "chrome://openpgp/content/modules/windows.jsm"
+);
+var { EnigmailDialog } = ChromeUtils.import(
+  "chrome://openpgp/content/modules/dialog.jsm"
 );
 var { EnigmailKey } = ChromeUtils.import(
   "chrome://openpgp/content/modules/key.jsm"
@@ -31,8 +33,12 @@ var gRowToKey = [];
 async function setListEntries(keys = null) {
   let index = 0;
 
+  // Temporary code for debugging/development, should be removed when
+  // a final patch for bug 1627956 lands.
+  console.log(await EnigmailKeyRing.getEncryptionKeyMeta(gAddr));
+
   if (!keys) {
-    keys = await EnigmailKeyRing.getMultValidKeysForOneRecipient(gAddr);
+    keys = await EnigmailKeyRing.getMultValidKeysForOneRecipient(gAddr, true);
   }
 
   for (let keyObj of keys) {
@@ -45,7 +51,13 @@ async function setListEntries(keys = null) {
     listitem.appendChild(keyId);
 
     let acceptanceText;
-    if (keyObj.secretAvailable) {
+
+    // Further above, we called getMultValidKeysForOneRecipient
+    // and asked to ignore if a key is expired.
+    // If the following check fails, the key must be expired.
+    if (!EnigmailKeyRing.isValidForEncryption(keyObj)) {
+      acceptanceText = "openpgp-key-expired";
+    } else if (keyObj.secretAvailable) {
       if (await PgpSqliteDb2.isAcceptedAsPersonalKey(keyObj.fpr)) {
         acceptanceText = "openpgp-key-own";
       } else {
@@ -149,5 +161,17 @@ function viewSelectedKey() {
 }
 
 async function discoverKey() {
-  KeyLookupHelper.lookupAndImportByEmail(window, gAddr, true, reloadAndSelect);
+  let keyIds = gRowToKey;
+  let foundNewData = await KeyLookupHelper.fullOnlineDiscovery(
+    "interactive-import",
+    window,
+    gAddr,
+    keyIds
+  );
+  if (foundNewData) {
+    reloadAndSelect();
+  } else {
+    let value = await document.l10n.formatValue("no-key-found2");
+    EnigmailDialog.alert(window, value);
+  }
 }

@@ -19,11 +19,8 @@ var {
 } = ChromeUtils.import(
   "resource://testing-common/mozmill/FolderDisplayHelpers.jsm"
 );
-var {
-  close_window,
-  plan_for_new_window,
-  wait_for_new_window,
-} = ChromeUtils.import("resource://testing-common/mozmill/WindowHelpers.jsm");
+var { close_window, plan_for_new_window, wait_for_new_window } =
+  ChromeUtils.import("resource://testing-common/mozmill/WindowHelpers.jsm");
 
 var { ExtensionSupport } = ChromeUtils.import(
   "resource:///modules/ExtensionSupport.jsm"
@@ -35,13 +32,13 @@ var { MailUtils } = ChromeUtils.import("resource:///modules/MailUtils.jsm");
 
 var gInbox;
 
-add_task(function setupModule(module) {
-  let server = MailServices.accounts.FindServer(
+add_setup(async function () {
+  let server = MailServices.accounts.findServer(
     "tinderbox",
     FAKE_SERVER_HOSTNAME,
     "pop3"
   );
-  gInbox = get_special_folder(Ci.nsMsgFolderFlags.Inbox, false, server);
+  gInbox = await get_special_folder(Ci.nsMsgFolderFlags.Inbox, false, server);
 
   ExtensionSupport.registerWindowListener("mochitest", {
     chromeURLs: ["chrome://messenger/content/messenger.xhtml"],
@@ -53,7 +50,7 @@ add_task(function setupModule(module) {
             "resource:///modules/MailServices.jsm"
           );
           // Pick the tinderbox@foo.invalid inbox and use it as the only folder
-          let server = MailServices.accounts.FindServer(
+          let server = MailServices.accounts.findServer(
             "tinderbox",
             "tinderbox123",
             "pop3"

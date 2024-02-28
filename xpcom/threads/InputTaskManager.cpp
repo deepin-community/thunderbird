@@ -6,6 +6,7 @@
 
 #include "InputTaskManager.h"
 #include "VsyncTaskManager.h"
+#include "nsRefreshDriver.h"
 
 namespace mozilla {
 
@@ -15,7 +16,6 @@ void InputTaskManager::EnableInputEventPrioritization() {
   MOZ_ASSERT(NS_IsMainThread());
   MOZ_ASSERT(mInputQueueState == STATE_DISABLED);
   mInputQueueState = STATE_ENABLED;
-  mInputHandlingStartTime = TimeStamp();
 }
 
 void InputTaskManager::FlushInputEventPrioritization() {
@@ -51,47 +51,16 @@ int32_t InputTaskManager::GetPriorityModifierForEventLoopTurn(
            static_cast<int32_t>(EventQueuePriority::InputHigh);
   }
 
-  if (StaticPrefs::dom_input_events_strict_input_vsync_alignment()) {
-    return GetPriorityModifierForEventLoopTurnForStrictVsyncAlignment();
-  }
-
-  size_t inputCount = PendingTaskCount();
-  if (State() == STATE_ENABLED && InputHandlingStartTime().IsNull() &&
-      inputCount > 0) {
-    SetInputHandlingStartTime(
-        InputEventStatistics::Get().GetInputHandlingStartTime(inputCount));
-  }
-
-  if (inputCount > 0 && (State() == InputTaskManager::STATE_FLUSHING ||
-                         (State() == InputTaskManager::STATE_ENABLED &&
-                          !InputHandlingStartTime().IsNull() &&
-                          TimeStamp::Now() > InputHandlingStartTime()))) {
-    return 0;
-  }
-
-  int32_t modifier = static_cast<int32_t>(EventQueuePriority::InputLow) -
-                     static_cast<int32_t>(EventQueuePriority::MediumHigh);
-  return modifier;
+  return GetPriorityModifierForEventLoopTurnForStrictVsyncAlignment();
 }
 
 void InputTaskManager::WillRunTask() {
   TaskManager::WillRunTask();
-  mStartTimes.AppendElement(TimeStamp::Now());
-  if (StaticPrefs::dom_input_events_strict_input_vsync_alignment()) {
-    mInputPriorityController.WillRunTask();
-  }
-}
-
-void InputTaskManager::DidRunTask() {
-  TaskManager::DidRunTask();
-  MOZ_ASSERT(!mStartTimes.IsEmpty());
-  TimeStamp start = mStartTimes.PopLastElement();
-  InputEventStatistics::Get().UpdateInputDuration(TimeStamp::Now() - start);
+  mInputPriorityController.WillRunTask();
 }
 
 int32_t
 InputTaskManager::GetPriorityModifierForEventLoopTurnForStrictVsyncAlignment() {
-  MOZ_ASSERT(StaticPrefs::dom_input_events_strict_input_vsync_alignment());
   MOZ_ASSERT(!IsSuspended());
 
   size_t inputCount = PendingTaskCount();
@@ -111,20 +80,10 @@ InputTaskManager::GetPriorityModifierForEventLoopTurnForStrictVsyncAlignment() {
 }
 
 InputTaskManager::InputPriorityController::InputPriorityController()
-    : mIsInitialized(false),
-      mInputVsyncState(InputVsyncState::NoPendingVsync) {}
+    : mInputVsyncState(InputVsyncState::NoPendingVsync) {}
 
 bool InputTaskManager::InputPriorityController::ShouldUseHighestPriority(
     InputTaskManager* aInputTaskManager) {
-  if (!mIsInitialized) {
-    // Have to initialize mMaxInputHandlingDuration lazily because
-    // Preference may not be ready upon the construction of
-    // InputTaskManager.
-    mMaxInputHandlingDuration =
-        InputEventStatistics::Get().GetMaxInputHandlingDuration();
-    mIsInitialized = true;
-  }
-
   if (mInputVsyncState == InputVsyncState::HasPendingVsync) {
     return true;
   }
@@ -144,7 +103,6 @@ bool InputTaskManager::InputPriorityController::ShouldUseHighestPriority(
 
 void InputTaskManager::InputPriorityController::EnterPendingVsyncState(
     uint32_t aNumPendingTasks) {
-  MOZ_ASSERT(StaticPrefs::dom_input_events_strict_input_vsync_alignment());
   MOZ_ASSERT(mInputVsyncState == InputVsyncState::NoPendingVsync);
 
   mInputVsyncState = InputVsyncState::HasPendingVsync;
@@ -153,8 +111,6 @@ void InputTaskManager::InputPriorityController::EnterPendingVsyncState(
 }
 
 void InputTaskManager::InputPriorityController::WillRunVsync() {
-  MOZ_ASSERT(StaticPrefs::dom_input_events_strict_input_vsync_alignment());
-
   if (mInputVsyncState == InputVsyncState::RunVsync ||
       mInputVsyncState == InputVsyncState::HasPendingVsync) {
     LeavePendingVsyncState(false);
@@ -163,8 +119,6 @@ void InputTaskManager::InputPriorityController::WillRunVsync() {
 
 void InputTaskManager::InputPriorityController::LeavePendingVsyncState(
     bool aRunVsync) {
-  MOZ_ASSERT(StaticPrefs::dom_input_events_strict_input_vsync_alignment());
-
   if (aRunVsync) {
     MOZ_ASSERT(mInputVsyncState == InputVsyncState::HasPendingVsync);
     mInputVsyncState = InputVsyncState::RunVsync;
@@ -176,8 +130,6 @@ void InputTaskManager::InputPriorityController::LeavePendingVsyncState(
 }
 
 void InputTaskManager::InputPriorityController::WillRunTask() {
-  MOZ_ASSERT(StaticPrefs::dom_input_events_strict_input_vsync_alignment());
-
   switch (mInputVsyncState) {
     case InputVsyncState::NoPendingVsync:
       return;
@@ -185,7 +137,9 @@ void InputTaskManager::InputPriorityController::WillRunTask() {
       MOZ_ASSERT(mMaxInputTasksToRun > 0);
       --mMaxInputTasksToRun;
       if (!mMaxInputTasksToRun ||
-          TimeStamp::Now() - mRunInputStartTime >= mMaxInputHandlingDuration) {
+          TimeStamp::Now() - mRunInputStartTime >=
+              TimeDuration::FromMilliseconds(
+                  StaticPrefs::dom_input_event_queue_duration_max())) {
         LeavePendingVsyncState(true);
       }
       return;

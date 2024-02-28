@@ -5,7 +5,7 @@
 
 // Create a simple page for the iframe
 const httpServer = createTestHTTPServer();
-httpServer.registerPathHandler(`/`, function(request, response) {
+httpServer.registerPathHandler(`/`, function (request, response) {
   response.setStatusLine(request.httpVersion, 200, "OK");
   response.write(`
     <html>
@@ -24,7 +24,7 @@ httpServer.registerPathHandler(`/`, function(request, response) {
     </html>`);
 });
 
-const TEST_URI = `data:text/html,<meta charset=utf8>
+const TEST_URI = `data:text/html,<!DOCTYPE html><meta charset=utf8>
   <style>
     button {
       cursor: unknownCursor;
@@ -35,7 +35,7 @@ const TEST_URI = `data:text/html,<meta charset=utf8>
   <iframe src="http://localhost:${httpServer.identity.primaryPort}/"></iframe>
   `;
 
-add_task(async function() {
+add_task(async function () {
   // Enable CSS Warnings
   await pushPref("devtools.webconsole.filter.css", true);
 
@@ -48,7 +48,7 @@ add_task(async function() {
 
   info("Check the CSS warning message for the top level document");
   let messageNode = await waitFor(() =>
-    findMessage(hud, "Error in parsing value for ‘cursor’", ".message.css")
+    findWarningMessage(hud, "Error in parsing value for ‘cursor’", ".css")
   );
 
   info("Click on the expand arrow");
@@ -88,7 +88,7 @@ add_task(async function() {
 
   info("Check the CSS warning message for the third-party iframe");
   messageNode = await waitFor(() =>
-    findMessage(hud, "Error in parsing value for ‘color’", ".message.css")
+    findWarningMessage(hud, "Error in parsing value for ‘color’", ".css")
   );
 
   info("Click on the expand arrow");

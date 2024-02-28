@@ -2,9 +2,8 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-/* import-globals-from item-editing/calendar-item-editing.js */
-/* import-globals-from calendar-management.js */
-/* import-globals-from import-export.js */
+/* globals getSelectedCalendar, MODE_RDONLY, startBatchTransaction, doTransaction,
+   endBatchTransaction, createEventWithDialog, createTodoWithDialog */
 
 /* exported invokeEventDragSession,
  *          calendarMailButtonDNDObserver, calendarCalendarButtonDNDObserver,
@@ -19,10 +18,9 @@ var calendarTaskButtonDNDObserver;
 // Wrap in a block to prevent leaking to window scope.
 {
   var { cal } = ChromeUtils.import("resource:///modules/calendar/calUtils.jsm");
-  var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-  var { AppConstants } = ChromeUtils.import("resource://gre/modules/AppConstants.jsm");
+  var { AppConstants } = ChromeUtils.importESModule("resource://gre/modules/AppConstants.sys.mjs");
   var { MailServices } = ChromeUtils.import("resource:///modules/MailServices.jsm");
-  var { XPCOMUtils } = ChromeUtils.import("resource://gre/modules/XPCOMUtils.jsm");
+  var { XPCOMUtils } = ChromeUtils.importESModule("resource://gre/modules/XPCOMUtils.sys.mjs");
 
   XPCOMUtils.defineLazyModuleGetters(this, {
     CalAttachment: "resource:///modules/CalAttachment.jsm",
@@ -35,39 +33,56 @@ var calendarTaskButtonDNDObserver;
     /**
      * Converts an email message to a calendar item.
      *
-     * @param {Object} aItem - The target calIItemBase.
-     * @param {Object} aMsgHdr - The nsIMsgHdr to convert from.
+     * @param {calIItemBase} item - The target calIItemBase.
+     * @param {nsIMsgDBHdr} message - The nsIMsgDBHdr to convert from.
      */
-    calendarItemFromMessage(aItem, aMsgHdr) {
-      let msgFolder = aMsgHdr.folder;
-      let msgUri = msgFolder.getUriForMsg(aMsgHdr);
+    async calendarItemFromMessage(item, message) {
+      let folder = message.folder;
+      let msgUri = folder.getUriForMsg(message);
 
-      aItem.calendar = getSelectedCalendar();
-      aItem.title = aMsgHdr.mime2DecodedSubject;
-      aItem.setProperty("URL", `mid:${aMsgHdr.messageId}`);
+      item.calendar = getSelectedCalendar();
+      item.title = message.mime2DecodedSubject;
+      item.setProperty("URL", `mid:${message.messageId}`);
 
-      cal.dtz.setDefaultStartEndHour(aItem);
-      cal.alarms.setDefaultValues(aItem);
+      cal.dtz.setDefaultStartEndHour(item);
+      cal.alarms.setDefaultValues(item);
 
-      let messenger = Cc["@mozilla.org/messenger;1"].createInstance(Ci.nsIMessenger);
-      let streamListener = Cc["@mozilla.org/network/sync-stream-listener;1"].createInstance(
-        Ci.nsISyncStreamListener
-      );
-      messenger
-        .messageServiceFromURI(msgUri)
-        .streamMessage(msgUri, streamListener, null, null, false, "", false);
-
-      let plainTextMessage = "";
-      plainTextMessage = msgFolder.getMsgTextFromStream(
-        streamListener.inputStream,
-        aMsgHdr.Charset,
-        65536,
-        32768,
-        false,
-        true,
-        {}
-      );
-      aItem.setProperty("DESCRIPTION", plainTextMessage);
+      let content = "";
+      await new Promise((resolve, reject) => {
+        let streamListener = {
+          QueryInterface: ChromeUtils.generateQI(["nsIStreamListener"]),
+          onDataAvailable(request, inputStream, offset, count) {
+            let text = folder.getMsgTextFromStream(
+              inputStream,
+              message.charset,
+              count, // bytesToRead
+              32768, // maxOutputLen
+              false, // compressQuotes
+              true, // stripHTMLTags
+              {} // out contentType
+            );
+            // If we ever got text, we're good. Ignore further chunks.
+            content ||= text;
+          },
+          onStartRequest(request) {},
+          onStopRequest(request, statusCode) {
+            if (!Components.isSuccessCode(statusCode)) {
+              reject(new Error(statusCode));
+            }
+            resolve();
+          },
+        };
+        MailServices.messageServiceFromURI(msgUri).streamMessage(
+          msgUri,
+          streamListener,
+          null,
+          null,
+          false,
+          "",
+          false
+        );
+      });
+      item.setProperty("DESCRIPTION", content);
     },
 
     /**
@@ -75,8 +90,8 @@ var calendarTaskButtonDNDObserver;
      * like title, location, description, priority, transparency, attendees,
      * categories, calendar, recurrence and possibly more.
      *
-     * @param {Object} aItem - The item to copy from.
-     * @param {Object} aTarget - The item to copy to.
+     * @param {object} aItem - The item to copy from.
+     * @param {object} aTarget - The item to copy to.
      */
     copyItemBase(aItem, aTarget) {
       const copyProps = ["SUMMARY", "LOCATION", "DESCRIPTION", "URL", "CLASS", "PRIORITY"];
@@ -112,8 +127,8 @@ var calendarTaskButtonDNDObserver;
      * Creates a task from the passed event. This function copies the base item
      * and a few event specific properties (dates, alarms, ...).
      *
-     * @param {Object} aEvent - The event to copy from.
-     * @return {Object} The resulting task.
+     * @param {object} aEvent - The event to copy from.
+     * @returns {object} The resulting task.
      */
     taskFromEvent(aEvent) {
       let item = new CalTodo();
@@ -150,8 +165,8 @@ var calendarTaskButtonDNDObserver;
      * and a few task specific properties (dates, alarms, ...). If the task has
      * no due date, the default event length is used.
      *
-     * @param {Object} aTask - The task to copy from.
-     * @return {Object} The resulting event.
+     * @param {object} aTask - The task to copy from.
+     * @returns {object} The resulting event.
      */
     eventFromTask(aTask) {
       let item = new CalEvent();
@@ -214,6 +229,7 @@ var calendarTaskButtonDNDObserver;
   class CalDNDTransferHandler {
     /**
      * List of mime types this class handles (Overridden by child class).
+     *
      * @type {string[]}
      */
     mimeTypes = [];
@@ -407,11 +423,7 @@ var calendarTaskButtonDNDObserver;
       // attachment list. These will appear as uris rather than file blobs so we
       // check the "filename" query parameter for a .ics extension.
       if (this._icsFilename.test(uri.query)) {
-        let url = uri
-          .mutate()
-          .setUsername("")
-          .setUserPass("")
-          .finalize().spec;
+        let url = uri.mutate().setUsername("").setUserPass("").finalize().spec;
 
         let resp = await fetch(new Request(url, { method: "GET" }));
         let txt = await resp.text();
@@ -427,7 +439,7 @@ var calendarTaskButtonDNDObserver;
    * from internally dropped text.
    */
   class CalDNDPlainTextTransferHandler extends CalDNDDirectTransferHandler {
-    mimeTypes = ["text/plain", "text/unicode"];
+    mimeTypes = ["text/plain"];
 
     _keyWords = ["VEVENT", "VTODO", "VCALENDAR"];
 
@@ -464,7 +476,6 @@ var calendarTaskButtonDNDObserver;
       inputStream.init(localFileInstance, MODE_RDONLY, parseInt("0444", 8), {});
 
       try {
-        // XXX support csv
         let importer = Cc["@mozilla.org/calendar/import;1?type=ics"].getService(Ci.calIImporter);
         let items = importer.importFromStream(inputStream);
         this.onDropItems(items);
@@ -724,9 +735,9 @@ var calendarTaskButtonDNDObserver;
      *
      * @param {nsIMsgHdr} msgHdr
      */
-    onDropMessage(msgHdr) {
+    async onDropMessage(msgHdr) {
       let newItem = new CalEvent();
-      itemConversion.calendarItemFromMessage(newItem, msgHdr);
+      await itemConversion.calendarItemFromMessage(newItem, msgHdr);
       createEventWithDialog(null, null, null, null, newItem);
     }
 
@@ -801,7 +812,7 @@ var calendarTaskButtonDNDObserver;
      * Gets called in case we're dropping an array of items on the
      * 'open tasks tab'-button.
      *
-     * @param {Object} items - An array of items to handle.
+     * @param {object} items - An array of items to handle.
      */
     onDropItems(items) {
       for (let item of items) {
@@ -819,9 +830,9 @@ var calendarTaskButtonDNDObserver;
      *
      * @param {nsIMsgHdr} msgHdr
      */
-    onDropMessage(msgHdr) {
+    async onDropMessage(msgHdr) {
       let todo = new CalTodo();
-      itemConversion.calendarItemFromMessage(todo, msgHdr);
+      await itemConversion.calendarItemFromMessage(todo, msgHdr);
       createTodoWithDialog(null, null, null, todo);
     }
 
@@ -852,8 +863,8 @@ var calendarTaskButtonDNDObserver;
  * Invoke a drag session for the passed item. The passed box will be used as a
  * source.
  *
- * @param {Object} aItem - The item to drag.
- * @param {Object} aXULBox - The XUL box to invoke the drag session from.
+ * @param {object} aItem - The item to drag.
+ * @param {object} aXULBox - The XUL box to invoke the drag session from.
  */
 function invokeEventDragSession(aItem, aXULBox) {
   let transfer = Cc["@mozilla.org/widget/transferable;1"].createInstance(Ci.nsITransferable);
@@ -893,14 +904,14 @@ function invokeEventDragSession(aItem, aXULBox) {
   let supportsString = Cc["@mozilla.org/supports-string;1"].createInstance(Ci.nsISupportsString);
   supportsString.data = serializer.serializeToString();
   transfer.setTransferData("text/calendar", supportsString);
-  transfer.setTransferData("text/unicode", supportsString);
+  transfer.setTransferData("text/plain", supportsString);
 
   let action = Ci.nsIDragService.DRAGDROP_ACTION_MOVE;
   let mutArray = Cc["@mozilla.org/array;1"].createInstance(Ci.nsIMutableArray);
   mutArray.appendElement(transfer);
   aXULBox.sourceObject = aItem;
   try {
-    cal.getDragService().invokeDragSession(aXULBox, null, null, null, mutArray, action);
+    cal.dragService.invokeDragSession(aXULBox, null, null, null, mutArray, action);
   } catch (e) {
     if (e.result != Cr.NS_ERROR_FAILURE) {
       // Pressing Escape on some platforms results in NS_ERROR_FAILURE

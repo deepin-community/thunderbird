@@ -3,22 +3,17 @@
  * file, You can obtain one at <http://mozilla.org/MPL/2.0/>. */
 
 import React, { PureComponent } from "react";
+import PropTypes from "prop-types";
 import { connect } from "../../../utils/connect";
 import { createSelector } from "reselect";
-import classnames from "classnames";
 import actions from "../../../actions";
-import { memoize } from "lodash";
 
 import showContextMenu from "./BreakpointsContextMenu";
 import { CloseButton } from "../../shared/Button";
 
-import {
-  getLocationWithoutColumn,
-  getSelectedText,
-  makeBreakpointId,
-} from "../../../utils/breakpoint";
+import { getSelectedText, makeBreakpointId } from "../../../utils/breakpoint";
 import { getSelectedLocation } from "../../../utils/selected-location";
-import { features } from "../../../utils/prefs";
+import { isLineBlackboxed } from "../../../utils/source";
 
 import {
   getBreakpointsList,
@@ -26,9 +21,31 @@ import {
   getSelectedSource,
   getCurrentThread,
   getContext,
+  isSourceMapIgnoreListEnabled,
+  isSourceOnSourceMapIgnoreList,
 } from "../../../selectors";
 
+const classnames = require("devtools/client/shared/classnames.js");
+
 class Breakpoint extends PureComponent {
+  static get propTypes() {
+    return {
+      breakpoint: PropTypes.object.isRequired,
+      cx: PropTypes.object.isRequired,
+      disableBreakpoint: PropTypes.func.isRequired,
+      editor: PropTypes.object.isRequired,
+      enableBreakpoint: PropTypes.func.isRequired,
+      frame: PropTypes.object,
+      openConditionalPanel: PropTypes.func.isRequired,
+      removeBreakpoint: PropTypes.func.isRequired,
+      selectSpecificLocation: PropTypes.func.isRequired,
+      selectedSource: PropTypes.object,
+      source: PropTypes.object.isRequired,
+      blackboxedRangesForSource: PropTypes.array.isRequired,
+      checkSourceOnIgnoreList: PropTypes.func.isRequired,
+    };
+  }
+
   onContextMenu = e => {
     showContextMenu({ ...this.props, contextMenuEvent: e });
   };
@@ -74,12 +91,8 @@ class Breakpoint extends PureComponent {
       return false;
     }
 
-    const bpId = features.columnBreakpoints
-      ? makeBreakpointId(this.selectedLocation)
-      : getLocationWithoutColumn(this.selectedLocation);
-    const frameId = features.columnBreakpoints
-      ? makeBreakpointId(frame.selectedLocation)
-      : getLocationWithoutColumn(frame.selectedLocation);
+    const bpId = makeBreakpointId(this.selectedLocation);
+    const frameId = makeBreakpointId(frame.selectedLocation);
     return bpId == frameId;
   }
 
@@ -88,7 +101,7 @@ class Breakpoint extends PureComponent {
     const { column, line } = this.selectedLocation;
 
     const isWasm = source?.isWasm;
-    const columnVal = features.columnBreakpoints && column ? `:${column}` : "";
+    const columnVal = column ? `:${column}` : "";
     const bpLocation = isWasm
       ? `0x${line.toString(16).toUpperCase()}`
       : `${line}${columnVal}`;
@@ -102,17 +115,19 @@ class Breakpoint extends PureComponent {
     return logValue || condition || getSelectedText(breakpoint, selectedSource);
   }
 
-  highlightText = memoize(
-    (text = "", editor) => {
-      const node = document.createElement("div");
-      editor.CodeMirror.runMode(text, "application/javascript", node);
-      return { __html: node.innerHTML };
-    },
-    text => text
-  );
+  highlightText(text = "", editor) {
+    const node = document.createElement("div");
+    editor.CodeMirror.runMode(text, "application/javascript", node);
+    return { __html: node.innerHTML };
+  }
 
   render() {
-    const { breakpoint, editor } = this.props;
+    const {
+      breakpoint,
+      editor,
+      blackboxedRangesForSource,
+      checkSourceOnIgnoreList,
+    } = this.props;
     const text = this.getBreakpointText();
     const labelId = `${breakpoint.id}-label`;
 
@@ -134,6 +149,11 @@ class Breakpoint extends PureComponent {
           type="checkbox"
           className="breakpoint-checkbox"
           checked={!breakpoint.disabled}
+          disabled={isLineBlackboxed(
+            blackboxedRangesForSource,
+            breakpoint.location.line,
+            checkSourceOnIgnoreList(breakpoint.location.source)
+          )}
           onChange={this.handleBreakpointCheckbox}
           onClick={ev => ev.stopPropagation()}
           aria-labelledby={labelId}
@@ -179,6 +199,9 @@ const mapStateToProps = (state, p) => ({
   cx: getContext(state),
   breakpoints: getBreakpointsList(state),
   frame: getFormattedFrame(state, getCurrentThread(state)),
+  checkSourceOnIgnoreList: source =>
+    isSourceMapIgnoreListEnabled(state) &&
+    isSourceOnSourceMapIgnoreList(state, source),
 });
 
 export default connect(mapStateToProps, {

@@ -4,9 +4,13 @@
 
 "use strict";
 
+const { save_compose_message } = ChromeUtils.import(
+  "resource://testing-common/mozmill/ComposeHelpers.jsm"
+);
 const {
   open_message_from_file,
   be_in_folder,
+  get_about_message,
   get_special_folder,
   select_click_row,
   open_selected_message,
@@ -19,9 +23,7 @@ const { close_window } = ChromeUtils.import(
 const { OpenPGPTestUtils } = ChromeUtils.import(
   "resource://testing-common/mozmill/OpenPGPTestUtils.jsm"
 );
-const { FileUtils } = ChromeUtils.import(
-  "resource://gre/modules/FileUtils.jsm"
-);
+
 const { MailServices } = ChromeUtils.import(
   "resource:///modules/MailServices.jsm"
 );
@@ -29,6 +31,7 @@ const { MailServices } = ChromeUtils.import(
 function waitForComposeWindow() {
   return BrowserTestUtils.domWindowOpened(null, async win => {
     await BrowserTestUtils.waitForEvent(win, "load");
+    await BrowserTestUtils.waitForEvent(win, "focus", true);
     return (
       win.document.documentURI ===
       "chrome://messenger/content/messengercompose/messengercompose.xhtml"
@@ -44,7 +47,7 @@ let initialKeyIdPref = "";
  * Setup a mail account with a private key and an imported public key for an
  * address we can send messages to.
  */
-add_task(async function setUp() {
+add_setup(async function () {
   aliceAcct = MailServices.accounts.createAccount();
   aliceAcct.incomingServer = MailServices.accounts.createIncomingServer(
     "alice",
@@ -84,19 +87,19 @@ add_task(async function setUp() {
  * reply for an encrypted message. See bug 1661510.
  */
 add_task(async function testDraftReplyToEncryptedMessageKeepsRePrefix() {
-  let draftsFolder = get_special_folder(
+  let draftsFolder = await get_special_folder(
     Ci.nsMsgFolderFlags.Drafts,
     true,
     aliceAcct.incomingServer.localFoldersServer
   );
 
-  be_in_folder(draftsFolder);
+  await be_in_folder(draftsFolder);
 
   // Delete the messages we saved to drafts.
   registerCleanupFunction(
     async () =>
       new Promise(resolve => {
-        let msgs = [...draftsFolder.msgDatabase.EnumerateMessages()];
+        let msgs = [...draftsFolder.msgDatabase.enumerateMessages()];
 
         draftsFolder.deleteMessages(
           msgs,
@@ -114,6 +117,7 @@ add_task(async function testDraftReplyToEncryptedMessageKeepsRePrefix() {
     "data/eml/signed-by-0xfbfcc82a015e7330-encrypted-to-0xf231550c4f47e38e.eml",
     "data/eml/unsigned-encrypted-to-0xf231550c4f47e38e-from-0xfbfcc82a015e7330.eml",
   ];
+  let wantedRow = 0;
 
   for (let msg of msgFiles) {
     let mc = await open_message_from_file(
@@ -121,12 +125,13 @@ add_task(async function testDraftReplyToEncryptedMessageKeepsRePrefix() {
     );
 
     let replyWindowPromise = waitForComposeWindow();
-    mc.window.document.querySelector("#hdrReplyButton").click();
+    get_about_message(mc.window)
+      .document.querySelector("#hdrReplyButton")
+      .click();
     close_window(mc);
 
     let replyWindow = await replyWindowPromise;
-    await BrowserTestUtils.waitForEvent(replyWindow, "focus", true);
-    replyWindow.document.querySelector("#button-save").click();
+    await save_compose_message(replyWindow);
     replyWindow.close();
 
     await TestUtils.waitForCondition(
@@ -135,11 +140,11 @@ add_task(async function testDraftReplyToEncryptedMessageKeepsRePrefix() {
     );
 
     let draftWindowPromise = waitForComposeWindow();
-    select_click_row(0);
+    select_click_row(wantedRow);
+    ++wantedRow;
     open_selected_message();
 
     let draftWindow = await draftWindowPromise;
-    await BrowserTestUtils.waitForEvent(draftWindow, "focus", true);
 
     Assert.ok(
       draftWindow.document.querySelector("#msgSubject").value.startsWith("Re:"),
@@ -153,4 +158,5 @@ add_task(async function testDraftReplyToEncryptedMessageKeepsRePrefix() {
 registerCleanupFunction(function tearDown() {
   aliceIdentity.setUnicharAttribute("openpgp_key_id", initialKeyIdPref);
   MailServices.accounts.removeIncomingServer(aliceAcct.incomingServer, true);
+  MailServices.accounts.removeAccount(aliceAcct);
 });

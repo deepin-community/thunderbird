@@ -24,8 +24,6 @@
 <!ENTITY moveToNewWindow.accesskey "n">
 <!ENTITY newVirtualFolderCmd.label "Tschertga memorisada…">
 <!ENTITY newVirtualFolderCmd.accesskey "S">
-<!ENTITY newOtherAccountsCmd.label "Auters contos…">
-<!ENTITY newOtherAccountsCmd.accesskey "O">
 <!ENTITY newCreateEmailAccountCmd.label "Ir per in nov conto…">
 <!ENTITY newCreateEmailAccountCmd.accesskey "R">
 <!ENTITY newExistingEmailAccountCmd.label "In conto dad e-mail existent…">
@@ -48,8 +46,6 @@
 <!ENTITY openMessageFileCmd.accesskey "O">
 <!ENTITY saveAsMenu.label "Memorisar sco">
 <!ENTITY saveAsMenu.accesskey "S">
-<!ENTITY saveAsFileCmd.label "Datoteca">
-<!ENTITY saveAsFileCmd.accesskey "D">
 <!ENTITY saveAsFileCmd.key "s">
 <!ENTITY saveAsTemplateCmd.label "Model">
 <!ENTITY saveAsTemplateCmd.accesskey "M">
@@ -103,6 +99,8 @@
 <!ENTITY deleteFolderCmd.accesskey "z">
 <!ENTITY unsubscribeNewsgroupCmd.label "Annullar l'abunament">
 <!ENTITY unsubscribeNewsgroupCmd.accesskey "A">
+
+<!-- Edit Menu -->
 <!ENTITY selectMenu.label "Tscherner">
 <!ENTITY selectMenu.accesskey "h">
 <!ENTITY all.label "Tuts">
@@ -320,7 +318,6 @@
 <!ENTITY goBackCmd.commandKey "[">
 <!ENTITY goChatCmd.label "Chat">
 <!ENTITY goChatCmd.accesskey "c">
-<!ENTITY goChatCmd2.key "H">
 <!ENTITY prevStarredMsgCmd.label "Messadi cun staila">
 <!ENTITY prevStarredMsgCmd.accesskey "S">
 <!ENTITY folderMenu.label "Ordinatur">
@@ -494,7 +491,7 @@
 <!ENTITY exportCmd.accesskey "x">
 <!ENTITY clearRecentHistory.label "Stizzar la cronologia pli nova…">
 <!ENTITY clearRecentHistory.accesskey "c">
-<!ENTITY accountManagerCmd2.label "Configuraziun da contos">
+<!ENTITY accountManagerCmd2.label "Parameters dals contos">
 <!ENTITY accountManagerCmd2.accesskey "S">
 <!-- LOCALIZATION NOTE (accountManagerCmdUnix.accesskey):
      Belongs to accountManagerCmd.label, which is placed under the Edit menu

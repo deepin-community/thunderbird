@@ -24,13 +24,13 @@ button > .button-box {
   padding: 0;
   border: none;
   background-color: transparent;
-  list-style-image: url("chrome://global/skin/icons/arrow-down-12.svg");
-  -moz-context-properties: fill;
-  fill: currentColor;
+  list-style-image: var(--icon-nav-down-sm);
+  -moz-context-properties: stroke;
+  stroke: currentColor;
 }
 
 menulist::part(dropmarker) {
-  display: -moz-box;
+  display: flex;
 }
 
 html|input {
@@ -39,7 +39,6 @@ html|input {
 
 html|input[type="number"]::-moz-number-spin-up,
 html|input[type="number"]::-moz-number-spin-down {
-  width: 16px;
   min-height: 0.7em;
 }
 
@@ -66,7 +65,8 @@ menulist menupopup menu,
 menulist menupopup menuitem,
 button menupopup menu,
 button menupopup menuitem {
-  padding: 5px;
+  appearance: none;
+  padding: 5px 8px;
 }
 
 .menu-right {

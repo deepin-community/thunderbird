@@ -14,15 +14,9 @@ connection-dns-over-https-url-custom =
     .accesskey = P
     .tooltiptext = Vnesite želeni URL za razreševanje DNS preko HTTPS
 connection-dns-over-https-custom-label = Po meri
-connection-dialog-window =
+connection-dialog-window2 =
     .title = Nastavitve povezave
-    .style =
-        { PLATFORM() ->
-            [macos] width: 44em !important
-           *[other] width: 49em !important
-        }
-connection-disable-extension =
-    .label = Onemogoči razširitev
+connection-dialog-title = Nastavitve povezave
 disable-extension-button = Onemogoči razširitev
 # Variables:
 #   $name (String) - The extension that is controlling the proxy settings.

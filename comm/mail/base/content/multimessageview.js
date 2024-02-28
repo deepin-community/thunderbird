@@ -2,42 +2,35 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-var { XPCOMUtils } = ChromeUtils.import(
-  "resource://gre/modules/XPCOMUtils.jsm"
-);
-var { Gloda } = ChromeUtils.import("resource:///modules/gloda/Gloda.jsm");
-var { mimeMsgToContentSnippetAndMeta } = ChromeUtils.import(
-  "resource:///modules/gloda/GlodaContent.jsm"
-);
-var { MsgHdrToMimeMessage } = ChromeUtils.import(
-  "resource:///modules/gloda/MimeMessage.jsm"
-);
-var { DisplayNameUtils } = ChromeUtils.import(
-  "resource:///modules/DisplayNameUtils.jsm"
+var { XPCOMUtils } = ChromeUtils.importESModule(
+  "resource://gre/modules/XPCOMUtils.sys.mjs"
 );
 var { MailServices } = ChromeUtils.import(
   "resource:///modules/MailServices.jsm"
 );
-var { TagUtils } = ChromeUtils.import("resource:///modules/TagUtils.jsm");
 
-var { PluralStringFormatter, makeFriendlyDateAgo } = ChromeUtils.import(
-  "resource:///modules/TemplateUtils.jsm"
-);
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
+XPCOMUtils.defineLazyModuleGetters(this, {
+  DisplayNameUtils: "resource:///modules/DisplayNameUtils.jsm",
+  Gloda: "resource:///modules/gloda/Gloda.jsm",
+  makeFriendlyDateAgo: "resource:///modules/TemplateUtils.jsm",
+  MessageArchiver: "resource:///modules/MessageArchiver.jsm",
+  mimeMsgToContentSnippetAndMeta: "resource:///modules/gloda/GlodaContent.jsm",
+  MsgHdrToMimeMessage: "resource:///modules/gloda/MimeMessage.jsm",
+  PluralStringFormatter: "resource:///modules/TemplateUtils.jsm",
+  TagUtils: "resource:///modules/TagUtils.jsm",
+});
 
 var gMessenger = Cc["@mozilla.org/messenger;1"].createInstance(Ci.nsIMessenger);
 
 // Set up our string formatter for localizing strings.
-XPCOMUtils.defineLazyGetter(this, "formatString", function() {
+XPCOMUtils.defineLazyGetter(this, "formatString", function () {
   let formatter = new PluralStringFormatter(
     "chrome://messenger/locale/multimessageview.properties"
   );
-  return function(...args) {
+  return function (...args) {
     return formatter.get(...args);
   };
 });
-
-var msgWindow = window.browsingContext.topChromeWindow;
 
 /**
  * A LimitIterator is a utility class that allows limiting the maximum number
@@ -83,7 +76,7 @@ var ITERATOR_SYMBOL = JS_HAS_SYMBOLS ? Symbol.iterator : "@@iterator";
  * Iterate over the array until we hit the end or the maximum length,
  * whichever comes first.
  */
-LimitIterator.prototype[ITERATOR_SYMBOL] = function*() {
+LimitIterator.prototype[ITERATOR_SYMBOL] = function* () {
   let length = this.length;
   for (let i = 0; i < length; i++) {
     yield this._array[i];
@@ -96,10 +89,6 @@ LimitIterator.prototype[ITERATOR_SYMBOL] = function*() {
  */
 function MultiMessageSummary() {
   this._summarizers = {};
-
-  // Hook into the resize event on the header to make the #content node shift
-  // down as it reflows.
-  window.addEventListener("resize", this._adjustHeadingSize.bind(this));
 }
 
 MultiMessageSummary.prototype = {
@@ -134,6 +123,7 @@ MultiMessageSummary.prototype = {
    * Clear all the content from the summary.
    */
   clear() {
+    this._selectCallback = null;
     this._listener = null;
     this._glodaQuery = null;
     this._msgNodes = {};
@@ -145,8 +135,7 @@ MultiMessageSummary.prototype = {
     }
 
     // Clear the notice.
-    let notice = document.getElementById("notice");
-    notice.classList.add("hidden");
+    document.getElementById("notice").textContent = "";
   },
 
   /**
@@ -154,12 +143,16 @@ MultiMessageSummary.prototype = {
    *
    * @param aType       The type of summary to perform (e.g. 'multimessage').
    * @param aMessages   The messages to summarize.
+   * @param aDBView     The current DB view.
+   * @param aSelectCallback  Called with an array of nsIMsgHdrs when one of
+   *                    a summarized message is clicked on.
    * @param [aListener] A listener to be notified when the summary starts and
    *                    finishes.
    */
-  summarize(aType, aMessages, aListener) {
+  summarize(aType, aMessages, aDBView, aSelectCallback, aListener) {
     this.clear();
 
+    this._selectCallback = aSelectCallback;
     this._listener = aListener;
     if (this._listener) {
       this._listener.onLoadStarted();
@@ -167,7 +160,22 @@ MultiMessageSummary.prototype = {
 
     // Enable/disable the archive button as appropriate.
     let archiveBtn = document.getElementById("hdrArchiveButton");
-    archiveBtn.collapsed = !msgWindow.gFolderDisplay.canArchiveSelectedMessages;
+    archiveBtn.hidden = !MessageArchiver.canArchive(aMessages);
+
+    // Set archive and delete button listeners.
+    let topChromeWindow = window.browsingContext.topChromeWindow;
+    archiveBtn.onclick = event => {
+      if (event.button == 0) {
+        topChromeWindow.goDoCommand("cmd_archive");
+      }
+    };
+    document.getElementById("hdrTrashButton").onclick = event => {
+      if (event.button == 0) {
+        topChromeWindow.goDoCommand("cmd_delete");
+      }
+    };
+
+    headerToolbarNavigation.init();
 
     let summarizer = this._summarizers[aType];
     if (!summarizer) {
@@ -175,7 +183,7 @@ MultiMessageSummary.prototype = {
     }
 
     let messages = new LimitIterator(aMessages, this.kMaxMessages);
-    let summarizedMessages = summarizer.summarize(messages);
+    let summarizedMessages = summarizer.summarize(messages, aDBView);
 
     // Stash somewhere so it doesn't get GC'ed.
     this._glodaQuery = Gloda.getMessageCollectionForHeaders(
@@ -196,8 +204,6 @@ MultiMessageSummary.prototype = {
     let subtitleNode = document.getElementById("summary_subtitle");
     titleNode.textContent = title || "";
     subtitleNode.textContent = subtitle || "";
-
-    this._adjustHeadingSize();
   },
 
   /**
@@ -209,7 +215,7 @@ MultiMessageSummary.prototype = {
    *                        should be shown; defaults to false
    *                      snippetLength: the length in bytes of the message
    *                        snippet; defaults to undefined (let Gloda decide)
-   * @return A DOM node for the summary item.
+   * @returns A DOM node for the summary item.
    */
   makeSummaryItem(aMsgOrThread, aOptions) {
     let message, thread, numUnread, isStarred, tags;
@@ -225,10 +231,10 @@ MultiMessageSummary.prototype = {
       thread = aMsgOrThread;
       message = thread[0];
 
-      numUnread = thread.reduce(function(x, hdr) {
+      numUnread = thread.reduce(function (x, hdr) {
         return x + (hdr.isRead ? 0 : 1);
       }, 0);
-      isStarred = thread.some(function(hdr) {
+      isStarred = thread.some(function (hdr) {
         return hdr.isFlagged;
       });
 
@@ -241,6 +247,7 @@ MultiMessageSummary.prototype = {
     }
 
     let row = document.createElement("li");
+    row.dataset.messageId = message.messageId;
     row.classList.toggle("thread", thread && thread.length > 1);
     row.classList.toggle("unread", numUnread > 0);
     row.classList.toggle("starred", isStarred);
@@ -272,9 +279,7 @@ MultiMessageSummary.prototype = {
       subjectNode.classList.add("subject", "primary_header", "link");
       subjectNode.textContent =
         message.mime2DecodedSubject || formatString("noSubject");
-      subjectNode.addEventListener("click", function() {
-        msgWindow.gFolderDisplay.selectMessages(thread);
-      });
+      subjectNode.addEventListener("click", () => this._selectCallback(thread));
       itemHeaderNode.appendChild(subjectNode);
 
       if (thread && thread.length > 1) {
@@ -308,9 +313,8 @@ MultiMessageSummary.prototype = {
       itemHeaderNode.appendChild(dateNode);
 
       authorNode.classList.add("primary_header", "link");
-      authorNode.addEventListener("click", function() {
-        msgWindow.gFolderDisplay.selectMessage(message);
-        msgWindow.document.getElementById("messagepane").focus();
+      authorNode.addEventListener("click", () => {
+        this._selectCallback([message]);
       });
       itemHeaderNode.appendChild(authorNode);
     }
@@ -326,7 +330,7 @@ MultiMessageSummary.prototype = {
       MsgHdrToMimeMessage(
         message,
         null,
-        function(aMsgHdr, aMimeMsg) {
+        function (aMsgHdr, aMimeMsg) {
           if (aMimeMsg == null) {
             // Shouldn't happen, but sometimes does?
             return;
@@ -353,7 +357,6 @@ MultiMessageSummary.prototype = {
         throw e;
       }
     }
-
     return row;
   },
 
@@ -366,7 +369,6 @@ MultiMessageSummary.prototype = {
   showNotice(aNoticeText) {
     let notice = document.getElementById("notice");
     notice.textContent = aNoticeText;
-    notice.classList.remove("hidden");
   },
 
   /**
@@ -375,13 +377,13 @@ MultiMessageSummary.prototype = {
    * be a good candidate for a utility library.
    *
    * @param aMsgHdr The msgHdr whose tags we want.
-   * @return An array of nsIMsgTag objects.
+   * @returns An array of nsIMsgTag objects.
    */
   _getTagsForMsg(aMsgHdr) {
     let keywords = new Set(aMsgHdr.getStringProperty("keywords").split(" "));
     let allTags = MailServices.tags.getAllTags();
 
-    return allTags.filter(function(tag) {
+    return allTags.filter(function (tag) {
       return keywords.has(tag.key);
     });
   },
@@ -395,23 +397,24 @@ MultiMessageSummary.prototype = {
   _addTagNodes(aTags, aTagsNode) {
     // Make sure the tags are sorted in their natural order.
     let sortedTags = [...aTags];
-    sortedTags.sort(function(a, b) {
+    sortedTags.sort(function (a, b) {
       return a.key.localeCompare(b.key) || a.ordinal.localeCompare(b.ordinal);
     });
 
     for (let tag of sortedTags) {
       let tagNode = document.createElement("span");
-      let color = MailServices.tags.getColorForKey(tag.key);
-      let textColor = "black";
-      if (!TagUtils.isColorContrastEnough(color)) {
-        textColor = "white";
-      }
 
       tagNode.className = "tag";
-      tagNode.setAttribute(
-        "style",
-        "color: " + textColor + "; background-color: " + color + ";"
-      );
+      let color = MailServices.tags.getColorForKey(tag.key);
+      if (color) {
+        let textColor = !TagUtils.isColorContrastEnough(color)
+          ? "white"
+          : "black";
+        tagNode.setAttribute(
+          "style",
+          "color: " + textColor + "; background-color: " + color + ";"
+        );
+      }
       tagNode.dataset.tag = tag.tag;
       tagNode.textContent = tag.tag;
       aTagsNode.appendChild(tagNode);
@@ -437,22 +440,6 @@ MultiMessageSummary.prototype = {
     document.getElementById("size").textContent = formatString(format, [
       gMessenger.formatFileSize(numBytes),
     ]);
-  },
-
-  /**
-   * Adjust the position of the top of the main content so that it fits below
-   * the heading.
-   */
-  _adjustHeadingSize() {
-    let content = document.getElementById("content");
-    let heading = document.getElementById("heading");
-    let buttonbox = document.getElementById("header-view-toolbox");
-
-    content.style.top =
-      Math.max(
-        buttonbox.getBoundingClientRect().height,
-        heading.getBoundingClientRect().height
-      ) + "px";
   },
 
   // These are listeners for the gloda collections.
@@ -563,9 +550,9 @@ ThreadSummarizer.prototype = {
    * Summarize a list of messages.
    *
    * @param aMessages A LimitIterator of the messages to summarize.
-   * @return An array of the messages actually summarized.
+   * @returns An array of the messages actually summarized.
    */
-  summarize(aMessages) {
+  summarize(aMessages, aDBView) {
     let messageList = document.getElementById("message_list");
 
     // Remove all ignored messages from summarization.
@@ -624,7 +611,6 @@ ThreadSummarizer.prototype = {
         ])
       );
     }
-
     return summarizedMessages;
   },
 };
@@ -667,10 +653,10 @@ MultipleSelectionSummarizer.prototype = {
    *
    * @param aMessages The messages to summarize.
    */
-  summarize(aMessages) {
+  summarize(aMessages, aDBView) {
     let messageList = document.getElementById("message_list");
 
-    let threads = this._buildThreads(aMessages);
+    let threads = this._buildThreads(aMessages, aDBView);
     let threadsCount = threads.length;
 
     // Set the heading based on the number of messages & threads.
@@ -711,7 +697,7 @@ MultipleSelectionSummarizer.prototype = {
 
       // Return only the messages for the threads we're actually showing. We
       // need to collapse our array-of-arrays into a flat array.
-      return threads.reduce(function(accum, curr) {
+      return threads.reduce(function (accum, curr) {
         accum.push(...curr);
         return accum;
       }, []);
@@ -726,16 +712,14 @@ MultipleSelectionSummarizer.prototype = {
    * Group all the messages to be summarized into threads.
    *
    * @param aMessages The messages to group.
-   * @return An array of arrays of messages, grouped by thread.
+   * @returns An array of arrays of messages, grouped by thread.
    */
-  _buildThreads(aMessages) {
+  _buildThreads(aMessages, aDBView) {
     // First, we group the messages in threads and count the threads.
     let threads = [];
     let threadMap = {};
     for (let msgHdr of aMessages) {
-      let viewThreadId = msgWindow.gFolderDisplay.view.dbView.getThreadContainingMsgHdr(
-        msgHdr
-      ).threadKey;
+      let viewThreadId = aDBView.getThreadContainingMsgHdr(msgHdr).threadKey;
       if (!(viewThreadId in threadMap)) {
         threadMap[viewThreadId] = threads.length;
         threads.push([msgHdr]);
@@ -751,3 +735,110 @@ var gMessageSummary = new MultiMessageSummary();
 
 gMessageSummary.registerSummarizer(new ThreadSummarizer());
 gMessageSummary.registerSummarizer(new MultipleSelectionSummarizer());
+
+/**
+ * Roving tab navigation for the header buttons.
+ */
+const headerToolbarNavigation = {
+  /**
+   * If the roving tab has already been loaded.
+   *
+   * @type {boolean}
+   */
+  isLoaded: false,
+  /**
+   * Get all currently visible buttons of the message header toolbar.
+   *
+   * @returns {Array} An array of buttons.
+   */
+  get headerButtons() {
+    return this.headerToolbar.querySelectorAll(
+      `toolbarbutton:not([hidden="true"])`
+    );
+  },
+
+  init() {
+    // Bail out if we already initialized this.
+    if (this.isLoaded) {
+      return;
+    }
+    this.headerToolbar = document.getElementById("header-view-toolbar");
+    this.headerToolbar.addEventListener("keypress", event => {
+      this.triggerMessageHeaderRovingTab(event);
+    });
+    this.updateRovingTab();
+    this.isLoaded = true;
+  },
+
+  /**
+   * Update the `tabindex` attribute of the currently visible buttons.
+   */
+  updateRovingTab() {
+    for (const button of this.headerButtons) {
+      button.tabIndex = -1;
+    }
+    // Allow focus on the first available button.
+    // We use `setAttribute` to guarantee compatibility with XUL toolbarbuttons.
+    this.headerButtons[0].setAttribute("tabindex", "0");
+  },
+
+  /**
+   * Handles the keypress event on the message header toolbar.
+   *
+   * @param {Event} event - The keypress DOMEvent.
+   */
+  triggerMessageHeaderRovingTab(event) {
+    // Expected keyboard actions are Left, Right, Home, End, Space, and Enter.
+    if (!["ArrowRight", "ArrowLeft", " ", "Enter"].includes(event.key)) {
+      return;
+    }
+
+    const headerButtons = [...this.headerButtons];
+    const focusableButton = headerButtons.find(b => b.tabIndex != -1);
+    let elementIndex = headerButtons.indexOf(focusableButton);
+
+    // TODO: Remove once the buttons are updated to not be XUL
+    // NOTE: Normally a button click handler would cover Enter and Space key
+    // events. However, we need to prevent the default behavior and explicitly
+    // trigger the button click because the XUL toolbarbuttons do not work when
+    // the Enter key is pressed. They do work when the Space key is pressed.
+    // However, if the toolbarbutton is a dropdown menu, the Space key
+    // does not open the menu.
+    if (
+      event.key == "Enter" ||
+      (event.key == " " && event.target.hasAttribute("type"))
+    ) {
+      event.preventDefault();
+      event.target.click();
+      return;
+    }
+
+    // Find the adjacent focusable element based on the pressed key.
+    const isRTL = document.dir == "rtl";
+    if (
+      (isRTL && event.key == "ArrowLeft") ||
+      (!isRTL && event.key == "ArrowRight")
+    ) {
+      elementIndex++;
+      if (elementIndex > headerButtons.length - 1) {
+        elementIndex = 0;
+      }
+    } else if (
+      (!isRTL && event.key == "ArrowLeft") ||
+      (isRTL && event.key == "ArrowRight")
+    ) {
+      elementIndex--;
+      if (elementIndex == -1) {
+        elementIndex = headerButtons.length - 1;
+      }
+    }
+
+    // Move the focus to a new toolbar button and update the tabindex attribute.
+    const newFocusableButton = headerButtons[elementIndex];
+    if (newFocusableButton) {
+      focusableButton.tabIndex = -1;
+      newFocusableButton.setAttribute("tabindex", "0");
+      newFocusableButton.focus();
+    }
+  },
+};

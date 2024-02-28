@@ -1,29 +1,28 @@
 {
   "langpack_id": "et",
   "manifest_version": 2,
-  "applications": {
+  "browser_specific_settings": {
     "gecko": {
       "id": "langpack-et@thunderbird.mozilla.org",
-      "strict_min_version": "91.0",
-      "strict_max_version": "91.*"
+      "strict_min_version": "115.0",
+      "strict_max_version": "115.*"
     }
   },
-  "name": "Estonian Language Pack",
-  "description": "Language pack for Thunderbird for et",
-  "version": "91.0buildid20211101223011",
+  "name": "Language: Eesti (Estonian)",
+  "description": "Thunderbird Language Pack for Eesti (et) – Estonian",
+  "version": "115.8.20240216.174500",
   "languages": {
     "et": {
-      "version": "20211011130709",
+      "version": "20240216183823",
       "chrome_resources": {
         "alerts": "chrome/et/locale/et/alerts/",
         "autoconfig": "chrome/et/locale/et/autoconfig/",
-        "branding": "chrome/et/locale/et/branding/",
+        "branding": "chrome/et/locale/branding/",
         "calendar": "chrome/et/locale/et/calendar/",
         "chat": "chrome/et/locale/et/chat/",
         "communicator": "chrome/et/locale/et/communicator/",
         "devtools": "chrome/et/locale/et/devtools/client/",
         "devtools-shared": "chrome/et/locale/et/devtools/shared/",
-        "devtools-startup": "chrome/et/locale/et/devtools/startup/",
         "global": "chrome/et/locale/et/global/",
         "global-platform": {
           "macosx": "chrome/et/locale/et/global-platform/mac/",

@@ -3,22 +3,12 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 "use strict";
 
-const { XPCOMUtils } = ChromeUtils.import(
-  "resource://gre/modules/XPCOMUtils.jsm"
-);
+const lazy = {};
 
-XPCOMUtils.defineLazyModuleGetters(this, {
-  PrivateBrowsingUtils: "resource://gre/modules/PrivateBrowsingUtils.jsm",
-  RemoteL10n: "resource://activity-stream/lib/RemoteL10n.jsm",
-  Services: "resource://gre/modules/Services.jsm",
+ChromeUtils.defineESModuleGetters(lazy, {
+  PrivateBrowsingUtils: "resource://gre/modules/PrivateBrowsingUtils.sys.mjs",
+  RemoteL10n: "resource://activity-stream/lib/RemoteL10n.sys.mjs",
 });
-
-XPCOMUtils.defineLazyPreferenceGetter(
-  this,
-  "PROTON_ENABLED",
-  "browser.proton.enabled",
-  false
-);
 
 class InfoBarNotification {
   constructor(message, dispatch) {
@@ -41,24 +31,22 @@ class InfoBarNotification {
     let doc = gBrowser.ownerDocument;
     let notificationContainer;
     if (content.type === "global") {
-      notificationContainer = browser.ownerGlobal.gHighPriorityNotificationBox;
+      notificationContainer = browser.ownerGlobal.gNotificationBox;
     } else {
       notificationContainer = gBrowser.getNotificationBox(browser);
     }
 
-    let priority =
-      content.priority ||
-      (PROTON_ENABLED
-        ? notificationContainer.PRIORITY_SYSTEM
-        : notificationContainer.PRIORITY_INFO_MEDIUM);
+    let priority = content.priority || notificationContainer.PRIORITY_SYSTEM;
 
     this.notification = notificationContainer.appendNotification(
-      this.formatMessageConfig(doc, content.text),
       this.message.id,
-      content.icon || "chrome://branding/content/icon64.png",
-      priority,
-      content.buttons.map(b => this.formatButtonConfig(b)),
-      this.infobarCallback
+      {
+        label: this.formatMessageConfig(doc, content.text),
+        image: content.icon || "chrome://branding/content/icon64.png",
+        priority,
+        eventCallback: this.infobarCallback,
+      },
+      content.buttons.map(b => this.formatButtonConfig(b))
     );
 
     this.addImpression();
@@ -67,7 +55,9 @@ class InfoBarNotification {
   formatMessageConfig(doc, content) {
     let docFragment = doc.createDocumentFragment();
     // notificationbox will only `appendChild` for documentFragments
-    docFragment.appendChild(RemoteL10n.createElement(doc, "span", { content }));
+    docFragment.appendChild(
+      lazy.RemoteL10n.createElement(doc, "span", { content })
+    );
 
     return docFragment;
   }
@@ -162,9 +152,9 @@ const InfoBar = {
       return null;
     }
 
-    const win = browser.ownerGlobal;
+    const win = browser?.ownerGlobal;
 
-    if (PrivateBrowsingUtils.isWindowPrivate(win)) {
+    if (!win || lazy.PrivateBrowsingUtils.isWindowPrivate(win)) {
       return null;
     }
 
@@ -178,7 +168,5 @@ const InfoBar = {
     return notification;
   },
 };
-
-this.InfoBar = InfoBar;
 
 const EXPORTED_SYMBOLS = ["InfoBar"];

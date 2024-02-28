@@ -5,7 +5,7 @@
          type="arrow"
          orient="vertical"
          class="cui-widget-panel"
-         position="bottomcenter topright"
+         position="bottomright topright"
          tabindex="-1">
     <vbox class="security-panel-body">
       <html:header class="message-security-header">
@@ -24,7 +24,6 @@
                         alt="" />
               <description>
                 <html:span data-l10n-id="openpgp-has-sender-key"></html:span>
-                <html:span id="hasConflictingKeyOpenPGP" hidden="hidden"></html:span>
               </description>
               <button id="openpgpImportButton"
                       class="button-focusable"
@@ -75,19 +74,25 @@
           </hbox>
         </vbox>
 
-        <vbox id="signatureKey" class="message-security-container"
-              collapsed="true">
-          <hbox flex="1" align="center">
-            <label id="signatureKeyId" flex="1" context="copyPopup"/>
-            <button id="viewSignatureKey" data-l10n-id="openpgp-view-signer-key"
-                    class="button-focusable"
-                    oncommand="viewSignatureKey()" collapsed="true"/>
-          </hbox>
-        </vbox>
+        <hbox id="signatureKey" class="message-security-container"
+              collapsed="true" align="center">
+          <label id="signatureKeyId" flex="1" context="simpleCopyPopup"/>
+          <button id="viewSignatureKey" data-l10n-id="openpgp-view-signer-key"
+                  class="button-focusable"
+                  oncommand="viewSignatureKey()" collapsed="true"/>
+        </hbox>
 
         <label id="encryptionLabel" class="message-security-label"/>
         <label id="encryptionHeader" collapsed="true" />
         <description id="encryptionExplanation"/>
+
+        <hbox pack="end">
+          <button id="packetDumpView"
+                  hidden="true"
+                  data-l10n-id="debug-log-title"
+                  class="button-focusable"
+                  oncommand="Enigmail.msg.viewPacketDump()" />
+        </hbox>
 
         <vbox id="encryptionCert" class="message-security-container"
               collapsed="true">
@@ -115,7 +120,7 @@
 
         <vbox id="encryptionKey" class="message-security-container"
               collapsed="true">
-          <label id="encryptionKeyId" context="copyPopup"/>
+          <label id="encryptionKeyId" context="simpleCopyPopup"/>
           <hbox pack="end">
             <button id="viewEncryptionKey"
                     data-l10n-id="openpgp-view-your-encryption-key"

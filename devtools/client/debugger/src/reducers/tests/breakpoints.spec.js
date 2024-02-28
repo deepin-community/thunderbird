@@ -2,10 +2,8 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at <http://mozilla.org/MPL/2.0/>. */
 
-import {
-  getBreakpointsForSource,
-  initialBreakpointsState,
-} from "../breakpoints";
+import { initialBreakpointsState } from "../breakpoints";
+import { getBreakpointsForSource } from "../../selectors/breakpoints";
 
 import { makeMockBreakpoint, makeMockSource } from "../../utils/test-mockup";
 
@@ -47,14 +45,14 @@ describe("Breakpoints Selectors", () => {
     const matchingBreakpoints = {
       id1: {
         ...makeMockBreakpoint(makeMockSource(undefined, generatedSourceId), 1),
-        location: { line: 1, sourceId: "original-source-id-1" },
+        location: { line: 1, source: { id: "original-source-id-1" } },
       },
     };
 
     const otherBreakpoints = {
       id2: {
         ...makeMockBreakpoint(makeMockSource(undefined, "not-this-source"), 1),
-        location: { line: 1, sourceId: "original-source-id-2" },
+        location: { line: 1, source: { id: "original-source-id-2" } },
       },
     };
 

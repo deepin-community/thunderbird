@@ -165,7 +165,8 @@ class nsSHistory : public mozilla::LinkedListElement<nsSHistory>,
                   nsTArray<LoadEntryResult>& aLoadResults);
   nsresult ReloadCurrentEntry(nsTArray<LoadEntryResult>& aLoadResults);
   nsresult GotoIndex(int32_t aIndex, nsTArray<LoadEntryResult>& aLoadResults,
-                     bool aSameEpoch = false, bool aUserActivation = false);
+                     bool aSameEpoch, bool aLoadCurrentEntry,
+                     bool aUserActivation);
 
   void WindowIndices(int32_t aIndex, int32_t* aOutStartIndex,
                      int32_t* aOutEndIndex);
@@ -173,16 +174,18 @@ class nsSHistory : public mozilla::LinkedListElement<nsSHistory>,
 
   int32_t Length() { return int32_t(mEntries.Length()); }
   int32_t Index() { return mIndex; }
-  mozilla::dom::BrowsingContext* GetBrowsingContext() { return mRootBC; }
+  already_AddRefed<mozilla::dom::BrowsingContext> GetBrowsingContext() {
+    return mozilla::dom::BrowsingContext::Get(mRootBC);
+  }
   bool HasOngoingUpdate() { return mHasOngoingUpdate; }
   void SetHasOngoingUpdate(bool aVal) { mHasOngoingUpdate = aVal; }
 
   void SetBrowsingContext(mozilla::dom::BrowsingContext* aRootBC) {
-    if (mRootBC == aRootBC) {
-      return;
+    uint64_t newID = aRootBC ? aRootBC->Id() : 0;
+    if (mRootBC != newID) {
+      mRootBC = newID;
+      UpdateRootBrowsingContextState(aRootBC);
     }
-    mRootBC = aRootBC;
-    UpdateRootBrowsingContextState();
   }
 
   int32_t GetIndexForReplace() {
@@ -194,7 +197,10 @@ class nsSHistory : public mozilla::LinkedListElement<nsSHistory>,
 
   // Update the root browsing context state when adding, removing or
   // replacing entries.
-  void UpdateRootBrowsingContextState();
+  void UpdateRootBrowsingContextState() {
+    RefPtr<mozilla::dom::BrowsingContext> rootBC(GetBrowsingContext());
+    UpdateRootBrowsingContextState(rootBC);
+  }
 
   void GetEpoch(uint64_t& aEpoch,
                 mozilla::Maybe<mozilla::dom::ContentParentId>& aId) const {
@@ -212,25 +218,29 @@ class nsSHistory : public mozilla::LinkedListElement<nsSHistory>,
  protected:
   virtual ~nsSHistory();
 
-  // Weak reference. Do not refcount this.
-  mozilla::dom::BrowsingContext* mRootBC;
+  uint64_t mRootBC;
 
  private:
   friend class nsSHistoryObserver;
+
+  void UpdateRootBrowsingContextState(
+      mozilla::dom::BrowsingContext* aBrowsingContext);
 
   bool LoadDifferingEntries(nsISHEntry* aPrevEntry, nsISHEntry* aNextEntry,
                             mozilla::dom::BrowsingContext* aParent,
                             long aLoadType,
                             nsTArray<LoadEntryResult>& aLoadResults,
-                            bool aUserActivation);
+                            bool aLoadCurrentEntry, bool aUserActivation,
+                            int32_t aOffset);
   void InitiateLoad(nsISHEntry* aFrameEntry,
                     mozilla::dom::BrowsingContext* aFrameBC, long aLoadType,
                     nsTArray<LoadEntryResult>& aLoadResult,
-                    bool aUserActivation);
+                    bool aLoadCurrentEntry, bool aUserActivation,
+                    int32_t aOffset);
 
   nsresult LoadEntry(int32_t aIndex, long aLoadType, uint32_t aHistCmd,
-                     nsTArray<LoadEntryResult>& aLoadResults,
-                     bool aSameEpoch = false, bool aUserActivation = false);
+                     nsTArray<LoadEntryResult>& aLoadResults, bool aSameEpoch,
+                     bool aLoadCurrentEntry, bool aUserActivation);
 
   // Find the history entry for a given bfcache entry. It only looks up between
   // the range where alive viewers may exist (i.e nsSHistory::VIEWER_WINDOW).
@@ -251,7 +261,7 @@ class nsSHistory : public mozilla::LinkedListElement<nsSHistory>,
   nsresult LoadNextPossibleEntry(int32_t aNewIndex, long aLoadType,
                                  uint32_t aHistCmd,
                                  nsTArray<LoadEntryResult>& aLoadResults,
-                                 bool aUserActivation);
+                                 bool aLoadCurrentEntry, bool aUserActivation);
 
   // aIndex is the index of the entry which may be removed.
   // If aKeepNext is true, aIndex is compared to aIndex + 1,

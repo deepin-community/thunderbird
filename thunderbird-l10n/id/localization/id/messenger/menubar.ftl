@@ -3,17 +3,26 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 
-## View Menu
-
 ## Tools Menu
+
 
 ## Help Menu
 
+menu-help-troubleshooting-info =
+    .label = Informasi Pemecahan Masalah
+    .accesskey = { "" }
+
 ## Mail Toolbar
+
 
 ## View
 
+
+## View / Folders
+
+
 ## View / Layout
+
 
 ## File
 

@@ -4,11 +4,6 @@
 
 @import url(chrome://calendar/skin/shared/calendar.css);
 
-#calendarContent {
-  color: -moz-DialogText;
-  background-color: -moz-Dialog;
-}
-
 #calsidebar_splitter,
 #today-splitter {
   appearance: none;
@@ -31,11 +26,6 @@
   padding-bottom: 5px;
 }
 
-/* Calendar sidebar background in calendar and task mode. */
-#calSidebar {
-  background-color: Field;
-}
-
 /* Today pane button in status bar */
 #calendar-status-todaypane-button,
 #calendar-status-todaypane-button[checked="true"] {
@@ -47,18 +37,10 @@
 }
 
 #calendar-status-todaypane-button > stack > .toolbarbutton-day-text {
-  margin-top: 3px;
+  margin-top: 4px;
 }
 
 /* shift the today pane button label up by one pixel to center it */
 #calendar-status-todaypane-button > .toolbarbutton-text {
   margin: 0 0 1px !important;
-}
-
-#calMinimonthBox {
-  margin-top: 3px;
-}
-
-#imip-view-toolbar {
-  --imip-button-background: AppWorkspace;
 }

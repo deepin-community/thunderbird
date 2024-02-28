@@ -12,7 +12,6 @@
  *  or not.
  */
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 // eslint-disable-next-line mozilla/reject-importGlobalProperties
 Cu.importGlobalProperties(["Element", "Node"]);
 
@@ -28,6 +27,7 @@ var _logHelperInterestedListeners = false;
  * Let test code extend the list of allowed XPCOM errors.
  */
 var logHelperAllowedErrors = ["NS_ERROR_FAILURE"];
+var logHelperAllowedWarnings = [/Quirks Mode/];
 
 /**
  * Let other test helping code decide whether to register for potentially
@@ -66,8 +66,6 @@ var _errorConsoleTunnel = {
     }
 
     try {
-      // meh, let's just use mark_failure for now.
-      // and let's avoid feedback loops (happens in mozmill)
       if (
         aMessage instanceof Ci.nsIScriptError &&
         !aMessage.errorMessage.includes("Error console says")
@@ -96,7 +94,14 @@ var _errorConsoleTunnel = {
           }
           info("Found XPCOM error: " + message);
         }
-        mark_failure(["Error console says", aMessage]);
+        // Ignore warnings that match a white-listed pattern.
+        if (
+          /JavaScript Warning:/.test(aMessage) &&
+          logHelperAllowedWarnings.some(w => w.test(aMessage))
+        ) {
+          return;
+        }
+        dump(`Error console says: ${aMessage}`);
       }
     } catch (ex) {
       // This is to avoid pathological error loops.  we definitely do not
@@ -157,8 +162,8 @@ _init_log_helper();
 
 /**
  * Mark the start of a test.  This creates nice console output as well as
- *  setting up logging contexts so that use of other helpers in here like
- *  mark_action get associated with the context.
+ *  setting up logging contexts so that use of other helpers in here
+ *  get associated with the context.
  *
  * This will likely only be used by the test driver framework, such as
  *  asyncTestUtils.js.  However, |mark_sub_test_start| is for user test code.
@@ -215,14 +220,15 @@ function mark_test_end(aPopTo) {
 /**
  * For user test code and test support code to mark sub-regions of tests.
  *
- * @param aName The name of the (sub) test.
- * @param [aParameter=null] The parameter if the test is being parameterized.
- * @param [aNest=false] Should this nest inside other sub-tests?  If you omit or
- *     pass false, we will close out any existing sub-tests.  If you pass true,
- *     we nest inside the previous test/sub-test and rely on you to call
- *     |mark_sub_test_end|.  Sub tests can lost no longer than their parent.
- *     You should strongly consider using the aNest parameter if you are
- *     test support code.
+ * @param {string} aName The name of the (sub) test.
+ * @param {string} [aParameter=null] The parameter if the test is being parameterized.
+ * @param {boolean} [aNest=false] Should this nest inside other sub-tests?
+ *   If you omit orpass false, we will close out any existing sub-tests.
+ *   If you pass true, we nest inside the previous test/sub-test and rely on
+ *   you to call |mark_sub_test_end|.
+ *   Sub tests can lost no longer than their parent.
+ *   You should strongly consider using the aNest parameter if you are test
+ *   support code.
  */
 function mark_sub_test_start(aName, aParameter, aNest) {
   let depth = aNest ? _testLoggerContexts.length : 1;
@@ -283,9 +289,9 @@ function __value_copy(aObj, aDepthAllowed) {
  * Simple object copier to limit accidentally JSON-ing a ridiculously complex
  *  object graph or getting tripped up by prototypes.
  *
- * @param aObj Input object.
- * @param aDepthAllowed How many times we are allowed to recursively call
- *     ourselves.
+ * @param {object} aObj - Input object.
+ * @param {integer} aDepthAllowed - How many times we are allowed to recursively
+ *   call ourselves.
  */
 function __simple_obj_copy(aObj, aDepthAllowed) {
   let oot = {};
@@ -503,67 +509,6 @@ function register_json_normalizer(aType, aHandler) {
   _registered_json_normalizers.push([aType, aHandler]);
 }
 
-/**
- * Helper for |mark_action| that creates json-transportable representation so
- *  cool UI on the other end can do something.
- */
-function _MarkAction(aWho, aWhat, aArgs) {
-  this.type = "action";
-  this.who = aWho;
-  this.what = aWhat;
-  this.args = aArgs;
-}
-_MarkAction.prototype = {
-  _jsonMe: true,
-  toString() {
-    let argStr;
-    if (this.args) {
-      argStr = ":";
-      for (let arg of this.args) {
-        if (arg != null && typeof arg == "object" && "type" in arg) {
-          if ("name" in arg) {
-            argStr += " " + arg.type + ": " + arg.name;
-          } else {
-            argStr += " " + arg.type;
-          }
-        } else {
-          argStr += " " + arg;
-        }
-      }
-    } else {
-      argStr = "";
-    }
-    return this.who + " " + this.what + argStr;
-  },
-};
-
-/**
- * Report performance of an action (by testing code).  You would use this rather
- *  than dump because we attempt to do interesting and useful logging things.
- *  In the future, this may mean prettier logs when buildbot runs a test and it
- *  fails, but right now it means great fun for people who use logsploder and
- *  just nicely formatted text for people looking at the console output.
- *
- * @param aWho Think of this like a logger handle... it might be soon.
- * @param aWhat What did you do?
- * @param aArgs A list of arguments, which could each be something like an
- *     nsIMsgFolder or nsIMsgDBHdr or something like that.  It uses
- *     |_normalize_for_json| which can handle some native objects, be extended
- *     to handle more, and does a fair job on straight JS objects.
- */
-function mark_action(aWho, aWhat, aArgs) {
-  let logger = console.createInstance({
-    prefix: "test." + aWho,
-    maxLogLevelPref: "test.loghelper.loglevel",
-  });
-
-  aArgs = aArgs.map(arg => _normalize_for_json(arg, undefined, true));
-  logger.info(
-    _testLoggerActiveContext,
-    new _MarkAction(aWho, aWhat, aArgs).toString()
-  );
-}
-
 /*
  * Wrap the xpcshell test functions that do interesting things.  The idea is
  *  that we clobber these only if we're going to value-add; that decision
@@ -603,34 +548,6 @@ function _Failure(aText, aStack) {
 _Failure.prototype = {
   _jsonMe: true,
 };
-
-function mark_failure(aRichString) {
-  let args = [_testLoggerActiveContext];
-  let text = "";
-  for (let [i, richThing] of aRichString.entries()) {
-    text += i ? " " : "";
-    if (richThing == null || typeof richThing != "object") {
-      text += richThing;
-      args.push(richThing);
-    } else {
-      let jsonThing = _normalize_for_json(richThing);
-      if ("type" in jsonThing && "name" in jsonThing) {
-        text += "[" + jsonThing.type + " " + jsonThing.name + "]";
-      } else {
-        text += "[" + jsonThing + "]";
-      }
-
-      // hook things up to be json serialized.
-      if (!("_jsonMe" in jsonThing)) {
-        jsonThing._jsonMe = true;
-      }
-      args.push(jsonThing);
-    }
-  }
-  _xpcshellLogger.info.apply(_xpcshellLogger, args);
-
-  do_throw(text, Components.stack.caller);
-}
 
 function _wrapped_do_throw(text, stack) {
   if (!stack) {

@@ -7,16 +7,18 @@ const { mailTestUtils } = ChromeUtils.import(
 );
 
 add_task(async function testTopicRestored() {
-  const account = Services.accounts.createAccount("testuser", "prpl-mochitest");
+  const account = IMServices.accounts.createAccount(
+    "testuser",
+    "prpl-mochitest"
+  );
   account.password = "this is a test";
   account.connect();
 
   await openChatTab();
   ok(BrowserTestUtils.is_visible(document.getElementById("chatPanel")));
 
-  const conversation = account.prplAccount.wrappedJSObject.makeMUC(
-    "logs topic"
-  );
+  const conversation =
+    account.prplAccount.wrappedJSObject.makeMUC("logs topic");
   let convNode = getConversationItem(conversation);
   ok(convNode);
 
@@ -44,9 +46,8 @@ add_task(async function testTopicRestored() {
 
   // Close and re-open conversation to get logs
   conversation.close();
-  const newConversation = account.prplAccount.wrappedJSObject.makeMUC(
-    "logs topic"
-  );
+  const newConversation =
+    account.prplAccount.wrappedJSObject.makeMUC("logs topic");
   convNode = getConversationItem(newConversation);
   ok(convNode);
 
@@ -92,5 +93,5 @@ add_task(async function testTopicRestored() {
 
   newConversation.close();
   account.disconnect();
-  Services.accounts.deleteAccount(account.id);
+  IMServices.accounts.deleteAccount(account.id);
 });

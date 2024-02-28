@@ -59,7 +59,8 @@ function setColors(target) {
     return;
   }
 
-  var regexp = /color:\s*hsl\(\s*(\d{1,3})\s*,\s*\d{1,3}\%\s*,\s*\d{1,3}\%\s*\)/;
+  var regexp =
+    /color:\s*hsl\(\s*(\d{1,3})\s*,\s*\d{1,3}\%\s*,\s*\d{1,3}\%\s*\)/;
   var parsed = regexp.exec(senderColor);
 
   if (!parsed) {
@@ -296,7 +297,7 @@ function checkNewText(target) {
     let parent = target.parentNode;
     // We need to start a group with this element if there are at least 4
     // system messages and they aren't already grouped.
-    if (!parent.grouped && parent.querySelector("p.event:nth-of-type(4)")) {
+    if (!parent?.grouped && parent?.querySelector("p.event:nth-of-type(4)")) {
       let p = document.createElement("p");
       p.className = "eventToggle";
       p.addEventListener("click", event =>
@@ -313,7 +314,7 @@ function checkNewText(target) {
   }
 }
 
-new MutationObserver(function(aMutations) {
+new MutationObserver(function (aMutations) {
   for (let mutation of aMutations) {
     for (let node of mutation.addedNodes) {
       if (node instanceof HTMLElement) {

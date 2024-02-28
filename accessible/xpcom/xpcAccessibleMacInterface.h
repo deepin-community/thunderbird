@@ -7,9 +7,8 @@
 #ifndef mozilla_a11y_xpcAccessibleMacInterface_h_
 #define mozilla_a11y_xpcAccessibleMacInterface_h_
 
+#include "mozilla/a11y/Accessible.h"
 #include "nsIAccessibleMacInterface.h"
-
-#include "AccessibleOrProxy.h"
 
 class nsIAccessibleMacInterface;
 
@@ -21,10 +20,7 @@ class xpcAccessibleMacNSObjectWrapper : public nsIAccessibleMacNSObjectWrapper {
   explicit xpcAccessibleMacNSObjectWrapper(id aTextMarker);
 
   NS_DECL_ISUPPORTS
-  NS_DECL_NSIACCESSIBLEMACNSOBJECTWRAPPER;
-
-  // Get the wrapped NSObject for this interface.
-  id GetNativeObject() const final;
+  NS_DECL_NSIACCESSIBLEMACNSOBJECTWRAPPER
 
  protected:
   virtual ~xpcAccessibleMacNSObjectWrapper();
@@ -41,8 +37,8 @@ class xpcAccessibleMacInterface : public xpcAccessibleMacNSObjectWrapper,
       : xpcAccessibleMacNSObjectWrapper(aNativeObj) {}
 
   // Construct an xpcAccessibleMacInterface using the native object
-  // associated with this accessible or proxy.
-  explicit xpcAccessibleMacInterface(AccessibleOrProxy aObj);
+  // associated with this accessible.
+  explicit xpcAccessibleMacInterface(Accessible* aObj);
 
   NS_DECL_ISUPPORTS_INHERITED
   NS_DECL_NSIACCESSIBLEMACINTERFACE

@@ -3,7 +3,25 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 
-# Addressing widget
+## Send Format
+
+compose-send-format-menu =
+    .label = 发送格式
+    .accesskey = F
+compose-send-auto-menu-item =
+    .label = 自动
+    .accesskey = A
+compose-send-both-menu-item =
+    .label = HTML 和纯文本
+    .accesskey = B
+compose-send-html-menu-item =
+    .label = 仅 HTML
+    .accesskey = H
+compose-send-plain-menu-item =
+    .label = 仅纯文本
+    .accesskey = P
+
+## Addressing widget
 
 #   $type (String) - the type of the addressing row
 remove-address-row-button =
@@ -29,6 +47,13 @@ pill-tooltip-not-in-address-book = { $email } 不在您的通讯录中
 pill-action-edit =
     .label = 编辑地址
     .accesskey = e
+#   $type (String) - the type of the addressing row, e.g. Cc, Bcc, etc.
+pill-action-select-all-sibling-pills =
+    .label = 选择所有{ $type }地址
+    .accesskey = A
+pill-action-select-all-pills =
+    .label = 选择所有地址
+    .accesskey = S
 pill-action-move-to =
     .label = 移动到“收件人”
     .accesskey = t
@@ -42,7 +67,7 @@ pill-action-expand-list =
     .label = 展开列表
     .accesskey = x
 
-# Attachment widget
+## Attachment widget
 
 ctrl-cmd-shift-pretty-prefix =
     { PLATFORM() ->
@@ -58,9 +83,6 @@ menuitem-toggle-attachment-pane =
 toolbar-button-add-attachment =
     .label = 附件
     .tooltiptext = 添加附件（{ ctrl-cmd-shift-pretty-prefix }{ trigger-attachment-picker-key }）
-add-attachment-notification-reminder =
-    .label = 添加附件…
-    .tooltiptext = { toolbar-button-add-attachment.tooltiptext }
 add-attachment-notification-reminder2 =
     .label = 添加附件…
     .accesskey = A
@@ -73,15 +95,27 @@ context-menuitem-attach-files =
     .label = 附件…
     .accesskey = F
     .acceltext = { ctrl-cmd-shift-pretty-prefix }{ trigger-attachment-picker-key }
-
-expand-attachment-pane-tooltip =
-    .tooltiptext = 显示附件窗格（{ ctrl-cmd-shift-pretty-prefix }{ toggle-attachment-pane-key }）
-collapse-attachment-pane-tooltip =
-    .tooltiptext = 隐藏附件窗格（{ ctrl-cmd-shift-pretty-prefix }{ toggle-attachment-pane-key }）
+# Note: Do not translate the term 'vCard'.
+context-menuitem-attach-vcard =
+    .label = 我的 vCard
+    .accesskey = C
+context-menuitem-attach-openpgp-key =
+    .label = 我的 OpenPGP 公钥
+    .accesskey = K
+#   $count (Number) - the number of attachments in the attachment bucket
+attachment-bucket-count-value =
+    { $count ->
+        [1] { $count } 个附件
+       *[other] { $count } 个附件
+    }
 attachment-area-show =
     .title = 显示附件窗格（{ ctrl-cmd-shift-pretty-prefix }{ toggle-attachment-pane-key }）
 attachment-area-hide =
     .title = 隐藏附件窗格（{ ctrl-cmd-shift-pretty-prefix }{ toggle-attachment-pane-key }）
+
+## Variables:
+## $count (Number) - Number of files being dropped onto the composer.
+
 drop-file-label-attachment =
     { $count ->
        *[other] 添加为附件
@@ -91,7 +125,7 @@ drop-file-label-inline =
        *[other] 行内追加
     }
 
-# Reorder Attachment Panel
+## Reorder Attachment Panel
 
 move-attachment-first-panel-button =
     .label = 移到首位
@@ -105,47 +139,83 @@ button-return-receipt =
     .label = 回执
     .tooltiptext = 要求对方收件后发送回执
 
-# Encryption
+## Encryption
 
-message-to-be-signed-icon =
-    .alt = 签名消息
-message-to-be-encrypted-icon =
-    .alt = 加密消息
-
-# Addressing Area
-
-to-compose-address-row-label =
-    .value = 收件人
-#   $key (String) - the shortcut key for this field
-to-compose-show-address-row-menuitem =
-    .label = “{ to-compose-address-row-label.value }”栏
-    .accesskey = T
-    .acceltext = { ctrl-cmd-shift-pretty-prefix }{ $key }
-to-compose-show-address-row-label =
-    .value = { to-compose-address-row-label.value }
-    .tooltiptext = 显示“{ to-compose-address-row-label.value }”栏（{ to-compose-show-address-row-menuitem.acceltext }）
-cc-compose-address-row-label =
-    .value = 抄送
-#   $key (String) - the shortcut key for this field
-cc-compose-show-address-row-menuitem =
-    .label = “{ cc-compose-address-row-label.value }”栏
-    .accesskey = C
-    .acceltext = { ctrl-cmd-shift-pretty-prefix }{ $key }
-cc-compose-show-address-row-label =
-    .value = { cc-compose-address-row-label.value }
-    .tooltiptext = 显示“{ cc-compose-address-row-label.value }”栏（{ cc-compose-show-address-row-menuitem.acceltext }）
-bcc-compose-address-row-label =
-    .value = 密送
-#   $key (String) - the shortcut key for this field
-bcc-compose-show-address-row-menuitem =
-    .label = “{ bcc-compose-address-row-label.value }”栏
+encryption-menu =
+    .label = 安全性
+    .accesskey = c
+encryption-toggle =
+    .label = 加密
+    .tooltiptext = 端到端加密此消息
+encryption-options-openpgp =
+    .label = OpenPGP
+    .tooltiptext = 查看或更改 OpenPGP 加密设置
+encryption-options-smime =
+    .label = S/MIME
+    .tooltiptext = 查看或更改 S/MIME 加密设置
+signing-toggle =
+    .label = 签名
+    .tooltiptext = 对消息进行数字签名
+menu-openpgp =
+    .label = OpenPGP
+    .accesskey = O
+menu-smime =
+    .label = S/MIME
+    .accesskey = S
+menu-encrypt =
+    .label = 加密
+    .accesskey = E
+menu-encrypt-subject =
+    .label = 加密主题
     .accesskey = B
-    .acceltext = { ctrl-cmd-shift-pretty-prefix }{ $key }
-bcc-compose-show-address-row-label =
-    .value = { bcc-compose-address-row-label.value }
-    .tooltiptext = 显示“{ bcc-compose-address-row-label.value }”栏（{ bcc-compose-show-address-row-menuitem.acceltext }）
-#   $count (Number) - the count of addresses in the "To" and "Cc" fields.
-many-public-recipients-info = “收件人（To）”与“抄送（Cc）”共有 { $count } 位，他们可以看到彼此的邮箱地址。您可以改用“密送”来避免泄露收件人信息。
+menu-sign =
+    .label = 数字签名
+    .accesskey = i
+menu-manage-keys =
+    .label = 密钥助手
+    .accesskey = A
+menu-view-certificates =
+    .label = 查看收件人证书
+    .accesskey = V
+menu-open-key-manager =
+    .label = 密钥管理器
+    .accesskey = M
+openpgp-key-issue-notification-one = 端到端加密功能需解决 { $addr } 的密钥问题。
+openpgp-key-issue-notification-many = 端到端加密功能需解决 { $count } 位收件人的密钥问题。
+smime-cert-issue-notification-one = 端到端加密功能需解决 { $addr } 的证书问题。
+smime-cert-issue-notification-many = 端到端加密功能需解决 { $count } 位收件人的证书问题。
+# Variables:
+# $addr (String) - Email address (which related to the currently selected
+#                  from address) which isn't set up to end-to-end encryption.
+openpgp-key-issue-notification-from = 您未设置为从 { $addr } 发送端到端的加密消息。
+# Variables:
+# $addr (String) - Email address with key issues.
+openpgp-key-issue-notification-single = 端到端加密需要 { $addr } 的密钥。
+# Variables:
+# $count (Number) - Number of recipients with key issues.
+openpgp-key-issue-notification-multi = 端到端加密功能需要 { $count } 位收件人的密钥。
+# Variables:
+# $addr (String) - mail address with certificate issues.
+smime-cert-issue-notification-single = 端到端加密功能需要 { $addr } 的证书。
+# Variables:
+# $count (Number) - Number of recipients with certificate issues.
+smime-cert-issue-notification-multi = 端到端加密功能需要 { $count } 位收件人的证书。
+key-notification-disable-encryption =
+    .label = 不加密
+    .accesskey = D
+    .tooltiptext = 禁用端到端加密
+key-notification-resolve =
+    .label = 解决…
+    .accesskey = R
+    .tooltiptext = 打开 OpenPGP 密钥助手
+can-encrypt-smime-notification = S/MIME 端到端加密可用。
+can-encrypt-openpgp-notification = OpenPGP 端到端加密可用。
+can-e2e-encrypt-button =
+    .label = 加密
+    .accesskey = E
+
+## Addressing Area
+
 to-address-row-label =
     .value = 收件人
 #   $key (String) - the shortcut key for this field
@@ -198,6 +268,10 @@ many-public-recipients-notice =
     { $count ->
        *[other] “收件人（To）”与“抄送（Cc）”共有 { $count } 位，他们可以看到彼此的邮箱地址。您可以改用“密送”来避免泄露收件人信息。
     }
+public-recipients-notice-single = 您的消息的收件人公开可见。改用密送可避免泄露收件人。
+# Variables:
+# $count (Number) - the count of addresses in the "To" and "Cc" fields.
+public-recipients-notice-multi = 共有 { $count } 位 “收件人（To）”与“抄送人（Cc）”，他们可以看到彼此的邮箱地址。您可以改用“密送”来避免泄露收件人信息。
 many-public-recipients-bcc =
     .label = 改用密送
     .accesskey = U
@@ -221,6 +295,7 @@ many-public-recipients-prompt-send = 仍要发送
 compose-missing-identity-warning = 找不到匹配发件人（From）地址的唯一身份。该邮件将使用当前 From 字段和 { $identity } 身份的设置发送。
 encrypted-bcc-warning = 发送加密邮件时，并未完全隐藏密送的收件者。所有收件者都可能识别出他们。
 encrypted-bcc-ignore-button = 好的
+auto-disable-e2ee-warning = 已自动禁用此消息的端到端加密。
 
 ## Editing
 
@@ -229,3 +304,103 @@ encrypted-bcc-ignore-button = 好的
 
 compose-tool-button-remove-text-styling =
     .tooltiptext = 移除文本样式
+
+## Filelink
+
+# A text used in a tooltip of Filelink attachments, whose account has been
+# removed or is unknown.
+cloud-file-unknown-account-tooltip = 上传至未知的文件快传账户。
+
+# Placeholder file
+
+# Title for the html placeholder file.
+# $filename - name of the file
+cloud-file-placeholder-title = { $filename } - 文件快传附件
+# A text describing that the file was attached as a Filelink and can be downloaded
+# from the link shown below.
+# $filename - name of the file
+cloud-file-placeholder-intro = 文件 { $filename } 已上传至文件快传，可从下方链接下载。
+
+# Template
+
+# A line of text describing how many uploaded files have been appended to this
+# message. Emphasis should be on sharing as opposed to attaching. This item is
+# used as a header to a list, hence the colon.
+# Variables:
+# $count (Number) - Number of files.
+cloud-file-count-header =
+    { $count ->
+       *[other] 我已将 { $count } 个文件的链接附至此邮件：
+    }
+# A text used in a footer, instructing the reader where to find additional
+# information about the used service provider.
+# $link (string) - html a-tag for a link pointing to the web page of the provider
+cloud-file-service-provider-footer-single = 详细了解 { $link }。
+# A text used in a footer, instructing the reader where to find additional
+# information about the used service providers. Links for the used providers are
+# split into a comma separated list of the first n-1 providers and a single entry
+# at the end.
+# $firstLinks (string) - comma separated list of html a-tags pointing to web pages
+#                        of the first n-1 used providers
+# $lastLink (string) - html a-tag pointing the web page of the n-th used provider
+cloud-file-service-provider-footer-multiple = 详细了解 { $firstLinks } 和 { $lastLink }。
+# Tooltip for an icon, indicating that the link is protected by a password.
+cloud-file-tooltip-password-protected-link = 密码保护链接
+# Used in a list of stats about a specific file
+# Service - the used service provider to host the file (Filelink Service: BOX.com)
+# Size - the size of the file (Size: 4.2 MB)
+# Link - the link to the file (Link: https://some.provider.com)
+# Expiry Date - stating the date the link will expire (Expiry Date: 12.12.2022)
+# Download Limit - stating the maximum allowed downloads, before the link becomes invalid
+#                  (Download Limit: 6)
+cloud-file-template-service-name = 文件快传服务：
+cloud-file-template-size = 大小：
+cloud-file-template-link = 链接：
+cloud-file-template-password-protected-link = 密码保护链接：
+cloud-file-template-expiry-date = 有效期至：
+cloud-file-template-download-limit = 下载限制：
+
+# Messages
+
+cloud-file-connection-error-title = 连接错误
+# Variables:
+# $provider (string) - name of the online storage service that reported the error
+cloud-file-connection-error = { -brand-short-name } 已离线，无法连接至 { $provider }。
+# Variables:
+# $provider (string) - name of the online storage service that reported the error
+# $filename (string) - name of the file that was uploaded and caused the error
+cloud-file-upload-error-with-custom-message-title = 上传 { $filename } 到 { $provider } 失败
+cloud-file-rename-error-title = 重命名错误
+# Variables:
+# $provider (string) - name of the online storage service that reported the error
+# $filename (string) - name of the file that was renamed and caused the error
+cloud-file-rename-error = 在 { $provider } 重命名 { $filename } 时出错。
+# Variables:
+# $provider (string) - name of the online storage service that reported the error
+# $filename (string) - name of the file that was renamed and caused the error
+cloud-file-rename-error-with-custom-message-title = 在 { $provider } 重命名 { $filename } 失败
+# Variables:
+# $provider (string) - name of the online storage service that reported the error
+cloud-file-rename-not-supported = { $provider } 不支持重命名已上传的文件。
+cloud-file-attachment-error-title = 文件快传附件出错
+# Variables:
+# $filename (string) - name of the file that was renamed and caused the error
+cloud-file-attachment-error = 由于本地文件移动或删除，文件快传附件 { $filename } 未能更新。
+cloud-file-account-error-title = 文件快传账户错误
+# Variables:
+# $filename (string) - name of the file that was renamed and caused the error
+cloud-file-account-error = 由于文件快传已被删除，文件快传附件 { $filename } 未能更新。
+
+## Link Preview
+
+link-preview-title = 链接预览
+link-preview-description = { -brand-short-name } 可以在粘贴链接时嵌入预览。
+link-preview-autoadd = 可用时，自动添加链接预览
+link-preview-replace-now = 为此链接添加链接预览？
+link-preview-yes-replace = 好的
+
+## Dictionary selection popup
+
+spell-add-dictionaries =
+    .label = 添加字典…
+    .accesskey = A

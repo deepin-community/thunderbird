@@ -11,13 +11,14 @@
 #include "base/shared_memory.h"
 #include "mozilla/Array.h"
 #include "mozilla/ClearOnShutdown.h"
+#include "mozilla/Omnijar.h"
 #include "mozilla/Preferences.h"
 #include "mozilla/SandboxLaunch.h"
 #include "mozilla/SandboxSettings.h"
 #include "mozilla/StaticPrefs_security.h"
+#include "mozilla/StaticMutex.h"
 #include "mozilla/UniquePtr.h"
 #include "mozilla/UniquePtrExtensions.h"
-#include "mozilla/dom/ContentChild.h"
 #include "nsComponentManagerUtils.h"
 #include "nsPrintfCString.h"
 #include "nsString.h"
@@ -32,6 +33,7 @@
 #include "nsIFile.h"
 
 #include "nsNetCID.h"
+#include "prenv.h"
 
 #ifdef ANDROID
 #  include "cutils/properties.h"
@@ -61,14 +63,13 @@ static const int access = SandboxBroker::MAY_ACCESS;
 static const int deny = SandboxBroker::FORCE_DENY;
 }  // namespace
 
-static void AddMesaSysfsPaths(SandboxBroker::Policy* aPolicy) {
-  // Bug 1384178: Mesa driver loader
-  aPolicy->AddPrefix(rdonly, "/sys/dev/char/226:");
+using CacheE = std::pair<nsCString, int>;
+using FileCacheT = nsTArray<CacheE>;
 
-  // Bug 1480755: Mesa tries to probe /sys paths in turn
-  aPolicy->AddAncestors("/sys/dev/char/");
-
+static void AddDriPaths(SandboxBroker::Policy* aPolicy) {
   // Bug 1401666: Mesa driver loader part 2: Mesa <= 12 using libudev
+  // Used by libdrm, which is used by Mesa, and
+  // Intel(R) Media Driver for VAAPI.
   if (auto dir = opendir("/dev/dri")) {
     while (auto entry = readdir(dir)) {
       if (entry->d_name[0] != '.') {
@@ -77,35 +78,67 @@ static void AddMesaSysfsPaths(SandboxBroker::Policy* aPolicy) {
         if (stat(devPath.get(), &sb) == 0 && S_ISCHR(sb.st_mode)) {
           // For both the DRI node and its parent (the physical
           // device), allow reading the "uevent" file.
-          static const Array<const char*, 2> kSuffixes = {"", "/device"};
-          for (const auto suffix : kSuffixes) {
-            nsPrintfCString sysPath("/sys/dev/char/%u:%u%s", major(sb.st_rdev),
-                                    minor(sb.st_rdev), suffix);
+          static const Array<nsCString, 2> kSuffixes = {""_ns, "/device"_ns};
+          nsPrintfCString prefix("/sys/dev/char/%u:%u", major(sb.st_rdev),
+                                 minor(sb.st_rdev));
+          for (const auto& suffix : kSuffixes) {
+            nsCString sysPath(prefix + suffix);
+
             // libudev will expand the symlink but not do full
             // canonicalization, so it will leave in ".." path
             // components that will be realpath()ed in the
             // broker.  To match this, allow the canonical paths.
             UniqueFreePtr<char[]> realSysPath(realpath(sysPath.get(), nullptr));
             if (realSysPath) {
-              constexpr const char* kMesaAttrSuffixes[] = {
-                  "config",    "device",           "revision",
-                  "subsystem", "subsystem_device", "subsystem_vendor",
-                  "uevent",    "vendor",
-              };
-              for (const auto& attrSuffix : kMesaAttrSuffixes) {
-                nsPrintfCString attrPath("%s/%s", realSysPath.get(),
-                                         attrSuffix);
-                aPolicy->AddPath(rdonly, attrPath.get());
+              // https://gitlab.freedesktop.org/mesa/drm/-/commit/3988580e4c0f4b3647a0c6af138a3825453fe6e0
+              // > term = strrchr(real_path, '/');
+              // > if (term && strncmp(term, "/virtio", 7) == 0)
+              // >     *term = 0;
+              char* term = strrchr(realSysPath.get(), '/');
+              if (term && strncmp(term, "/virtio", 7) == 0) {
+                *term = 0;
               }
-              // Allowing stat-ing the parent dirs
+
+              aPolicy->AddFilePrefix(rdonly, realSysPath.get(), "");
+              // Allowing stat-ing and readlink-ing the parent dirs
               nsPrintfCString basePath("%s/", realSysPath.get());
-              aPolicy->AddAncestors(basePath.get());
+              aPolicy->AddAncestors(basePath.get(), rdonly);
             }
           }
+
+          // https://gitlab.freedesktop.org/mesa/drm/-/commit/a02900133b32dd4a7d6da4966f455ab337e80dfc
+          // > strncpy(path, device_path, PATH_MAX);
+          // > strncat(path, "/subsystem", PATH_MAX);
+          // >
+          // > if (readlink(path, link, PATH_MAX) < 0)
+          // >     return -errno;
+          nsCString subsystemPath(prefix + "/device/subsystem"_ns);
+          aPolicy->AddPath(rdonly, subsystemPath.get());
+          aPolicy->AddAncestors(subsystemPath.get(), rdonly);
         }
       }
     }
     closedir(dir);
+  }
+
+  // https://gitlab.freedesktop.org/mesa/mesa/-/commit/04bdbbcab3c4862bf3f54ce60fcc1d2007776f80
+  aPolicy->AddPath(rdonly, "/usr/share/drirc.d");
+
+  // https://dri.freedesktop.org/wiki/ConfigurationInfrastructure/
+  aPolicy->AddPath(rdonly, "/etc/drirc");
+
+  nsCOMPtr<nsIFile> drirc;
+  nsresult rv =
+      GetSpecialSystemDirectory(Unix_HomeDirectory, getter_AddRefs(drirc));
+  if (NS_SUCCEEDED(rv)) {
+    rv = drirc->AppendNative(".drirc"_ns);
+    if (NS_SUCCEEDED(rv)) {
+      nsAutoCString tmpPath;
+      rv = drirc->GetNativePath(tmpPath);
+      if (NS_SUCCEEDED(rv)) {
+        aPolicy->AddPath(rdonly, tmpPath.get());
+      }
+    }
   }
 }
 
@@ -113,7 +146,7 @@ static void JoinPathIfRelative(const nsACString& aCwd, const nsACString& inPath,
                                nsACString& outPath) {
   if (inPath.Length() < 1) {
     outPath.Assign(aCwd);
-    SANDBOX_LOG_ERROR("Unjoinable path: %s", PromiseFlatCString(aCwd).get());
+    SANDBOX_LOG("Unjoinable path: %s", PromiseFlatCString(aCwd).get());
     return;
   }
   const char* startChar = inPath.BeginReading();
@@ -128,12 +161,11 @@ static void JoinPathIfRelative(const nsACString& aCwd, const nsACString& inPath,
   }
 }
 
-static void AddPathsFromFile(SandboxBroker::Policy* aPolicy,
-                             const nsACString& aPath);
+static void CachePathsFromFile(FileCacheT& aCache, const nsACString& aPath);
 
-static void AddPathsFromFileInternal(SandboxBroker::Policy* aPolicy,
-                                     const nsACString& aCwd,
-                                     const nsACString& aPath) {
+static void CachePathsFromFileInternal(FileCacheT& aCache,
+                                       const nsACString& aCwd,
+                                       const nsACString& aPath) {
   nsresult rv;
   nsCOMPtr<nsIFile> ldconfig(do_CreateInstance(NS_LOCAL_FILE_CONTRACTID, &rv));
   if (NS_FAILED(rv)) {
@@ -194,7 +226,7 @@ static void AddPathsFromFileInternal(SandboxBroker::Policy* aPolicy,
                   &globbuf)) {
           for (size_t fileIdx = 0; fileIdx < globbuf.gl_pathc; fileIdx++) {
             nsAutoCString filePath(globbuf.gl_pathv[fileIdx]);
-            AddPathsFromFile(aPolicy, filePath);
+            CachePathsFromFile(aCache, filePath);
           }
           globfree(&globbuf);
         }
@@ -208,14 +240,13 @@ static void AddPathsFromFileInternal(SandboxBroker::Policy* aPolicy,
     }
     char* resolvedPath = realpath(line.get(), nullptr);
     if (resolvedPath) {
-      aPolicy->AddDir(rdonly, resolvedPath);
+      aCache.AppendElement(std::make_pair(nsCString(resolvedPath), rdonly));
       free(resolvedPath);
     }
   } while (more);
 }
 
-static void AddPathsFromFile(SandboxBroker::Policy* aPolicy,
-                             const nsACString& aPath) {
+static void CachePathsFromFile(FileCacheT& aCache, const nsACString& aPath) {
   // Find the new base path where that file sits in.
   nsresult rv;
   nsCOMPtr<nsIFile> includeFile(
@@ -228,8 +259,8 @@ static void AddPathsFromFile(SandboxBroker::Policy* aPolicy,
     return;
   }
   if (SandboxInfo::Get().Test(SandboxInfo::kVerbose)) {
-    SANDBOX_LOG_ERROR("Adding paths from %s to policy.",
-                      PromiseFlatCString(aPath).get());
+    SANDBOX_LOG("Adding paths from %s to policy.",
+                PromiseFlatCString(aPath).get());
   }
 
   // Find the parent dir where this file sits in.
@@ -244,15 +275,28 @@ static void AddPathsFromFile(SandboxBroker::Policy* aPolicy,
     return;
   }
   if (SandboxInfo::Get().Test(SandboxInfo::kVerbose)) {
-    SANDBOX_LOG_ERROR("Parent path is %s",
-                      PromiseFlatCString(parentPath).get());
+    SANDBOX_LOG("Parent path is %s", PromiseFlatCString(parentPath).get());
   }
-  AddPathsFromFileInternal(aPolicy, parentPath, aPath);
+  CachePathsFromFileInternal(aCache, parentPath, aPath);
 }
 
 static void AddLdconfigPaths(SandboxBroker::Policy* aPolicy) {
-  nsAutoCString ldConfig("/etc/ld.so.conf"_ns);
-  AddPathsFromFile(aPolicy, ldConfig);
+  static StaticMutex sMutex;
+  StaticMutexAutoLock lock(sMutex);
+
+  static FileCacheT ldConfigCache{};
+  static bool ldConfigCachePopulated = false;
+  if (!ldConfigCachePopulated) {
+    CachePathsFromFile(ldConfigCache, "/etc/ld.so.conf"_ns);
+    ldConfigCachePopulated = true;
+    RunOnShutdown([&] {
+      ldConfigCache.Clear();
+      MOZ_ASSERT(ldConfigCache.IsEmpty(), "ldconfig cache should be empty");
+    });
+  }
+  for (const CacheE& e : ldConfigCache) {
+    aPolicy->AddDir(e.second, e.first.get());
+  }
 }
 
 static void AddLdLibraryEnvPaths(SandboxBroker::Policy* aPolicy) {
@@ -298,6 +342,74 @@ static void AddDynamicPathList(SandboxBroker::Policy* policy,
   }
 }
 
+static void AddX11Dependencies(SandboxBroker::Policy* policy) {
+  // Allow Primus to contact the Bumblebee daemon to manage GPU
+  // switching on NVIDIA Optimus systems.
+  const char* bumblebeeSocket = PR_GetEnv("BUMBLEBEE_SOCKET");
+  if (bumblebeeSocket == nullptr) {
+    bumblebeeSocket = "/var/run/bumblebee.socket";
+  }
+  policy->AddPath(SandboxBroker::MAY_CONNECT, bumblebeeSocket);
+
+#if defined(MOZ_WIDGET_GTK) && defined(MOZ_X11)
+  // Allow local X11 connections, for several purposes:
+  //
+  // * for content processes to use WebGL when the browser is in headless
+  //   mode, by opening the X display if/when needed
+  //
+  // * if Primus or VirtualGL is used, to contact the secondary X server
+  static const bool kIsX11 =
+      !mozilla::widget::GdkIsWaylandDisplay() && PR_GetEnv("DISPLAY");
+  if (kIsX11) {
+    policy->AddPrefix(SandboxBroker::MAY_CONNECT, "/tmp/.X11-unix/X");
+    if (auto* const xauth = PR_GetEnv("XAUTHORITY")) {
+      policy->AddPath(rdonly, xauth);
+    } else if (auto* const home = PR_GetEnv("HOME")) {
+      // This follows the logic in libXau: append "/.Xauthority",
+      // even if $HOME ends in a slash, except in the special case
+      // where HOME=/ because POSIX allows implementations to treat
+      // an initial double slash specially.
+      nsAutoCString xauth(home);
+      if (xauth != "/"_ns) {
+        xauth.Append('/');
+      }
+      xauth.AppendLiteral(".Xauthority");
+      policy->AddPath(rdonly, xauth.get());
+    }
+  }
+#endif
+}
+
+static void AddGLDependencies(SandboxBroker::Policy* policy) {
+  // Devices
+  policy->AddDir(rdwr, "/dev/dri");
+  policy->AddFilePrefix(rdwr, "/dev", "nvidia");
+
+  // Hardware info
+  AddDriPaths(policy);
+
+  // /etc and /usr/share (glvnd, libdrm, drirc, ...?)
+  policy->AddDir(rdonly, "/etc");
+  policy->AddDir(rdonly, "/usr/share");
+  policy->AddDir(rdonly, "/usr/local/share");
+
+  // Snap puts the usual /usr/share things in a different place, and
+  // we'll fail to load the library if we don't have (at least) the
+  // glvnd config:
+  if (const char* snapDesktopDir = PR_GetEnv("SNAP_DESKTOP_RUNTIME")) {
+    nsAutoCString snapDesktopShare(snapDesktopDir);
+    snapDesktopShare.AppendLiteral("/usr/share");
+    policy->AddDir(rdonly, snapDesktopShare.get());
+  }
+
+  // Note: This function doesn't do anything about Mesa's shader
+  // cache, because the details can vary by process type, including
+  // whether caching is enabled.
+
+  // This also doesn't include permissions for connecting to a display
+  // server, because headless GL (e.g., Mesa GBM) may not need it.
+}
+
 void SandboxBrokerPolicyFactory::InitContentPolicy() {
   const bool headless =
       StaticPrefs::security_sandbox_content_headless_AtStartup();
@@ -306,20 +418,19 @@ void SandboxBrokerPolicyFactory::InitContentPolicy() {
   // are cached over the lifetime of the factory.
   SandboxBroker::Policy* policy = new SandboxBroker::Policy;
   // Write permssions
-  //
-  if (!headless) {
-    // Bug 1308851: NVIDIA proprietary driver when using WebGL
-    policy->AddFilePrefix(rdwr, "/dev", "nvidia");
-
-    // Bug 1312678: Mesa with DRI when using WebGL
-    policy->AddDir(rdwr, "/dev/dri");
-  }
 
   // Bug 1575985: WASM library sandbox needs RW access to /dev/null
   policy->AddPath(rdwr, "/dev/null");
 
+  if (!headless) {
+    AddGLDependencies(policy);
+    AddX11Dependencies(policy);
+  }
+
   // Read permissions
   policy->AddPath(rdonly, "/dev/urandom");
+  policy->AddPath(rdonly, "/dev/random");
+  policy->AddPath(rdonly, "/proc/sys/crypto/fips_enabled");
   policy->AddPath(rdonly, "/proc/cpuinfo");
   policy->AddPath(rdonly, "/proc/meminfo");
   policy->AddDir(rdonly, "/sys/devices/cpu");
@@ -335,13 +446,16 @@ void SandboxBrokerPolicyFactory::InitContentPolicy() {
   // Various places where fonts reside
   policy->AddDir(rdonly, "/usr/X11R6/lib/X11/fonts");
   policy->AddDir(rdonly, "/nix/store");
+  // https://gitlab.com/freedesktop-sdk/freedesktop-sdk/-/blob/e434e680d22260f277f4a30ec4660ed32b591d16/files/fontconfig-flatpak.conf
   policy->AddDir(rdonly, "/run/host/fonts");
   policy->AddDir(rdonly, "/run/host/user-fonts");
+  policy->AddDir(rdonly, "/run/host/local-fonts");
   policy->AddDir(rdonly, "/var/cache/fontconfig");
 
-  if (!headless) {
-    AddMesaSysfsPaths(policy);
-  }
+  // Bug 1848615
+  policy->AddPath(rdonly, "/usr");
+  policy->AddPath(rdonly, "/nix");
+
   AddLdconfigPaths(policy);
   AddLdLibraryEnvPaths(policy);
 
@@ -511,22 +625,10 @@ void SandboxBrokerPolicyFactory::InitContentPolicy() {
     }
   }
 
-  // ~/.mozilla/systemextensionsdev (bug 1393805)
-  nsCOMPtr<nsIFile> sysExtDevDir;
-  rv = NS_GetSpecialDirectory(XRE_USER_SYS_EXTENSION_DEV_DIR,
-                              getter_AddRefs(sysExtDevDir));
-  if (NS_SUCCEEDED(rv)) {
-    nsAutoCString tmpPath;
-    rv = sysExtDevDir->GetNativePath(tmpPath);
-    if (NS_SUCCEEDED(rv)) {
-      policy->AddDir(rdonly, tmpPath.get());
-    }
-  }
-
-  if (mozilla::IsDevelopmentBuild()) {
-    // If this is a developer build the resources are symlinks to outside the
-    // binary dir. Therefore in non-release builds we allow reads from the whole
-    // repository. MOZ_DEVELOPER_REPO_DIR is set by mach run.
+  if (!mozilla::IsPackagedBuild()) {
+    // If this is not a packaged build the resources are likely symlinks to
+    // outside the binary dir. Therefore in non-release builds we allow reads
+    // from the whole repository. MOZ_DEVELOPER_REPO_DIR is set by mach run.
     const char* developer_repo_dir = PR_GetEnv("MOZ_DEVELOPER_REPO_DIR");
     if (developer_repo_dir) {
       policy->AddDir(rdonly, developer_repo_dir);
@@ -550,41 +652,7 @@ void SandboxBrokerPolicyFactory::InitContentPolicy() {
 #endif
 
   if (!headless) {
-    // Allow Primus to contact the Bumblebee daemon to manage GPU
-    // switching on NVIDIA Optimus systems.
-    const char* bumblebeeSocket = PR_GetEnv("BUMBLEBEE_SOCKET");
-    if (bumblebeeSocket == nullptr) {
-      bumblebeeSocket = "/var/run/bumblebee.socket";
-    }
-    policy->AddPath(SandboxBroker::MAY_CONNECT, bumblebeeSocket);
-
-#if defined(MOZ_WIDGET_GTK) && defined(MOZ_X11)
-    // Allow local X11 connections, for several purposes:
-    //
-    // * for content processes to use WebGL when the browser is in headless
-    //   mode, by opening the X display if/when needed
-    //
-    // * if Primus or VirtualGL is used, to contact the secondary X server
-    static const bool kIsX11 =
-        !mozilla::widget::GdkIsWaylandDisplay() && PR_GetEnv("DISPLAY");
-    if (kIsX11) {
-      policy->AddPrefix(SandboxBroker::MAY_CONNECT, "/tmp/.X11-unix/X");
-      if (auto* const xauth = PR_GetEnv("XAUTHORITY")) {
-        policy->AddPath(rdonly, xauth);
-      } else if (auto* const home = PR_GetEnv("HOME")) {
-        // This follows the logic in libXau: append "/.Xauthority",
-        // even if $HOME ends in a slash, except in the special case
-        // where HOME=/ because POSIX allows implementations to treat
-        // an initial double slash specially.
-        nsAutoCString xauth(home);
-        if (xauth != "/"_ns) {
-          xauth.Append('/');
-        }
-        xauth.AppendLiteral(".Xauthority");
-        policy->AddPath(rdonly, xauth.get());
-      }
-    }
-#endif
+    AddX11Dependencies(policy);
   }
 
   // Bug 1732580: when packaged as a strictly confined snap, may need
@@ -594,7 +662,7 @@ void SandboxBrokerPolicyFactory::InitContentPolicy() {
     // When running as a snap, the directory pointed to by $SNAP is guaranteed
     // to exist before the app is launched, but unit tests need to create it
     // dynamically, hence the use of AddFutureDir().
-    policy->AddFutureDir(rdonly, snap);
+    policy->AddDir(rdonly, snap);
   }
 
   // Read any extra paths that will get write permissions,
@@ -606,6 +674,7 @@ void SandboxBrokerPolicyFactory::InitContentPolicy() {
   AddDynamicPathList(policy, "security.sandbox.content.read_path_whitelist",
                      rdonly);
 
+#if defined(MOZ_CONTENT_TEMP_DIR)
   // Add write permissions on the content process specific temporary dir.
   nsCOMPtr<nsIFile> tmpDir;
   rv = NS_GetSpecialDirectory(NS_APP_CONTENT_PROCESS_TEMP_DIR,
@@ -617,6 +686,7 @@ void SandboxBrokerPolicyFactory::InitContentPolicy() {
       policy->AddDir(rdwrcr, tmpPath.get());
     }
   }
+#endif
 
   // userContent.css and the extensions dir sit in the profile, which is
   // normally blocked.
@@ -708,8 +778,6 @@ void SandboxBrokerPolicyFactory::InitContentPolicy() {
   if (!headless && HasAtiDrivers()) {
     policy->AddDir(rdonly, "/opt/amdgpu/share");
     policy->AddPath(rdonly, "/sys/module/amdgpu");
-    // AMDGPU-PRO's MESA version likes to readlink a lot of things here
-    policy->AddDir(access, "/sys");
   }
 
   mCommonContentPolicy.reset(policy);
@@ -725,6 +793,8 @@ UniquePtr<SandboxBroker::Policy> SandboxBrokerPolicyFactory::GetContentPolicy(
   const int level = GetEffectiveContentSandboxLevel();
   // The file broker is used at level 2 and up.
   if (level <= 1) {
+    // Level 1 has been removed.
+    MOZ_ASSERT(level == 0);
     return nullptr;
   }
 
@@ -750,6 +820,9 @@ UniquePtr<SandboxBroker::Policy> SandboxBrokerPolicyFactory::GetContentPolicy(
   // Bug 1198550: the profiler's replacement for dl_iterate_phdr
   policy->AddPath(rdonly, nsPrintfCString("/proc/%d/maps", aPid).get());
 
+  // Bug 1736040: CPU use telemetry
+  policy->AddPath(rdonly, nsPrintfCString("/proc/%d/stat", aPid).get());
+
   // Bug 1198552: memory reporting.
   AddMemoryReporting(policy.get(), aPid);
 
@@ -769,6 +842,7 @@ SandboxBrokerPolicyFactory::GetRDDPolicy(int aPid) {
 
   AddSharedMemoryPaths(policy.get(), aPid);
 
+  policy->AddPath(rdonly, "/dev/urandom");
   // FIXME (bug 1662321): we should fix nsSystemInfo so that every
   // child process doesn't need to re-read these files to get the info
   // the parent process already has.
@@ -785,6 +859,8 @@ SandboxBrokerPolicyFactory::GetRDDPolicy(int aPid) {
   policy->AddDir(rdonly, "/usr/lib");
   policy->AddDir(rdonly, "/usr/lib32");
   policy->AddDir(rdonly, "/usr/lib64");
+  policy->AddDir(rdonly, "/run/opengl-driver/lib");
+  policy->AddDir(rdonly, "/nix/store");
 
   // Bug 1647957: memory reporting.
   AddMemoryReporting(policy.get(), aPid);
@@ -804,15 +880,23 @@ SandboxBrokerPolicyFactory::GetRDDPolicy(int aPid) {
     }
   }
 
-  if (mozilla::IsDevelopmentBuild()) {
-    // If this is a developer build the resources are symlinks to outside the
-    // binary dir. Therefore in non-release builds we allow reads from the whole
-    // repository. MOZ_DEVELOPER_REPO_DIR is set by mach run.
+  if (!mozilla::IsPackagedBuild()) {
+    // If this is not a packaged build the resources are likely symlinks to
+    // outside the binary dir. Therefore in non-release builds we allow reads
+    // from the whole repository. MOZ_DEVELOPER_REPO_DIR is set by mach run.
     const char* developer_repo_dir = PR_GetEnv("MOZ_DEVELOPER_REPO_DIR");
     if (developer_repo_dir) {
       policy->AddDir(rdonly, developer_repo_dir);
     }
   }
+
+  // VA-API needs GPU access and GL context creation (but not display
+  // server access, as of bug 1769499).
+  AddGLDependencies(policy.get());
+
+  // FFmpeg and GPU drivers may need general-case library loading
+  AddLdconfigPaths(policy.get());
+  AddLdLibraryEnvPaths(policy.get());
 
   if (policy->IsEmpty()) {
     policy = nullptr;
@@ -825,6 +909,8 @@ SandboxBrokerPolicyFactory::GetSocketProcessPolicy(int aPid) {
   auto policy = MakeUnique<SandboxBroker::Policy>();
 
   policy->AddPath(rdonly, "/dev/urandom");
+  policy->AddPath(rdonly, "/dev/random");
+  policy->AddPath(rdonly, "/proc/sys/crypto/fips_enabled");
   policy->AddPath(rdonly, "/proc/cpuinfo");
   policy->AddPath(rdonly, "/proc/meminfo");
   policy->AddDir(rdonly, "/sys/devices/cpu");
@@ -846,6 +932,61 @@ SandboxBrokerPolicyFactory::GetSocketProcessPolicy(int aPid) {
   AddLdconfigPaths(policy.get());
 
   // Socket process sandbox needs to allow shmem in order to support
+  // profiling.  See Bug 1626385.
+  AddSharedMemoryPaths(policy.get(), aPid);
+
+  // Bug 1647957: memory reporting.
+  AddMemoryReporting(policy.get(), aPid);
+
+  // Firefox binary dir.
+  // Note that unlike the previous cases, we use NS_GetSpecialDirectory
+  // instead of GetSpecialSystemDirectory. The former requires a working XPCOM
+  // system, which may not be the case for some tests. For querying for the
+  // location of XPCOM things, we can use it anyway.
+  nsCOMPtr<nsIFile> ffDir;
+  nsresult rv = NS_GetSpecialDirectory(NS_GRE_DIR, getter_AddRefs(ffDir));
+  if (NS_SUCCEEDED(rv)) {
+    nsAutoCString tmpPath;
+    rv = ffDir->GetNativePath(tmpPath);
+    if (NS_SUCCEEDED(rv)) {
+      policy->AddDir(rdonly, tmpPath.get());
+    }
+  }
+
+  if (policy->IsEmpty()) {
+    policy = nullptr;
+  }
+  return policy;
+}
+
+/* static */ UniquePtr<SandboxBroker::Policy>
+SandboxBrokerPolicyFactory::GetUtilityProcessPolicy(int aPid) {
+  auto policy = MakeUnique<SandboxBroker::Policy>();
+
+  policy->AddPath(rdonly, "/dev/urandom");
+  policy->AddPath(rdonly, "/proc/cpuinfo");
+  policy->AddPath(rdonly, "/proc/meminfo");
+  policy->AddPath(rdonly, nsPrintfCString("/proc/%d/exe", aPid).get());
+  policy->AddDir(rdonly, "/sys/devices/cpu");
+  policy->AddDir(rdonly, "/sys/devices/system/cpu");
+  policy->AddDir(rdonly, "/lib");
+  policy->AddDir(rdonly, "/lib64");
+  policy->AddDir(rdonly, "/usr/lib");
+  policy->AddDir(rdonly, "/usr/lib32");
+  policy->AddDir(rdonly, "/usr/lib64");
+  policy->AddDir(rdonly, "/usr/share");
+  policy->AddDir(rdonly, "/usr/local/share");
+  policy->AddDir(rdonly, "/etc");
+
+  // glibc will try to stat64("/") while populating nsswitch database
+  // https://sourceware.org/git/?p=glibc.git;a=blob;f=nss/nss_database.c;h=cf0306adc47f12d9bc761ab1b013629f4482b7e6;hb=9826b03b747b841f5fc6de2054bf1ef3f5c4bdf3#l396
+  // denying will make getaddrinfo() return ENONAME
+  policy->AddDir(access, "/");
+
+  AddLdconfigPaths(policy.get());
+  AddLdLibraryEnvPaths(policy.get());
+
+  // Utility process sandbox needs to allow shmem in order to support
   // profiling.  See Bug 1626385.
   AddSharedMemoryPaths(policy.get(), aPid);
 

@@ -4,9 +4,8 @@
 
 var EXPORTED_SYMBOLS = ["convertMailStoreTo", "terminateWorkers"];
 
-const { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-const { FileUtils } = ChromeUtils.import(
-  "resource://gre/modules/FileUtils.jsm"
+const { FileUtils } = ChromeUtils.importESModule(
+  "resource://gre/modules/FileUtils.sys.mjs"
 );
 
 let log = console.createInstance({
@@ -21,13 +20,13 @@ let gConverterWorker = null;
  * Sets a server to use a different type of mailstore, converting
  * all the existing data.
  *
- * @param {String} aMailstoreContractId - XPCOM id of new mailstore type.
- * @param {nsIMsgServer} aServer        - server to migrate.
- * @param aEventTarget                  - if set, element to send progress events.
+ * @param {string} aMailstoreContractId - XPCOM id of new mailstore type.
+ * @param {nsIMsgServer} aServer - server to migrate.
+ * @param {?Element} aEventTarget - If set, element to send progress events.
  *
- * @returns {Promise} - Resolves with a string containing the new root
- *                     directory for the migrated server.
- *                     Rejects with an error message.
+ * @returns {Promise<string>} - Resolves with a string containing the new root
+ *   directory for the migrated server.
+ *   Rejects with an error message.
  */
 function convertMailStoreTo(aMailstoreContractId, aServer, aEventTarget) {
   let accountRootFolder = aServer.rootFolder.filePath;
@@ -51,12 +50,12 @@ function convertMailStoreTo(aMailstoreContractId, aServer, aEventTarget) {
   );
 
   // Return a promise that will complete once the worker is done.
-  return new Promise(function(resolve, reject) {
+  return new Promise(function (resolve, reject) {
     let worker = new ChromeWorker("resource:///modules/converterWorker.js");
     gConverterWorker = worker;
 
     // Helper to log error, clean up and reject with error message.
-    let bailout = function(errmsg) {
+    let bailout = function (errmsg) {
       log.error("bailing out (" + errmsg + ")");
       // Cleanup.
       log.info("Trying to remove converter folder: " + destDir.path);
@@ -65,7 +64,7 @@ function convertMailStoreTo(aMailstoreContractId, aServer, aEventTarget) {
     };
 
     // Handle exceptions thrown by the worker thread.
-    worker.addEventListener("error", function(e) {
+    worker.addEventListener("error", function (e) {
       // (e is type ErrorEvent)
 
       // if we're lucky, the error will contain location info
@@ -77,7 +76,7 @@ function convertMailStoreTo(aMailstoreContractId, aServer, aEventTarget) {
     });
 
     // Handle updates from the worker thread.
-    worker.addEventListener("message", function(e) {
+    worker.addEventListener("message", function (e) {
       let response = e.data;
       // log.debug("WORKER SAYS: " + JSON.stringify(response) + "\n");
       if (response.msg == "progress") {
@@ -126,8 +125,9 @@ function convertMailStoreTo(aMailstoreContractId, aServer, aEventTarget) {
 /**
  * Checks if Converter folder exists in tmp dir, removes it and creates a new
  * "Converter" folder.
- * @param {nsIFile} aFolder             - account root folder.
- * @param {String} aMailstoreContractId - XPCOM id of dest mailstore type
+ *
+ * @param {nsIFile} aFolder - account root folder.
+ * @param {string} aMailstoreContractId - XPCOM id of dest mailstore type
  *
  * @returns {nsIFile} - the new tmp directory to use as converter dest.
  */
@@ -197,11 +197,11 @@ function createTmpConverterFolder(aFolder, aMailstoreContractId) {
  * Switch server over to use the newly-converted directory tree.
  * Moves the converted directory into an appropriate place for the server.
  *
- * @param {nsIMsgServer} server   - server to migrate.
- * @param {String} dir            - dir of converted mailstore to install
+ * @param {nsIMsgServer} server - server to migrate.
+ * @param {string} dir - dir of converted mailstore to install
  *                                  (will be moved by this function).
- * @param {String} newStoreTypeID - XPCOM id of new mailstore type.
- * @returns {String} new location of dir.
+ * @param {string} newStoreTypeID - XPCOM id of new mailstore type.
+ * @returns {string} new location of dir.
  */
 function installNewRoot(server, dir, newStoreTypeID) {
   let accountRootFolder = server.rootFolder.filePath;

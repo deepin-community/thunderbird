@@ -1,9 +1,14 @@
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
 "use strict";
 
 const path = require("path");
 
 const xpcshellTestConfig = require("eslint-plugin-mozilla/lib/configs/xpcshell-test.js");
 const browserTestConfig = require("eslint-plugin-mozilla/lib/configs/browser-test.js");
+const fs = require("fs");
 
 /**
  * Some configurations have overrides, which can't be specified within overrides,
@@ -15,6 +20,19 @@ function removeOverrides(config) {
   return config;
 }
 
+function readFile(path) {
+  return fs
+    .readFileSync(path, { encoding: "utf-8" })
+    .split("\n")
+    .filter(p => p && !p.startsWith("#"))
+    .map(p => p.replace(/^comm\//, ""));
+}
+
+const ignorePatterns = [
+  ...readFile(path.join(__dirname, "tools", "lint", "ThirdPartyPaths.txt")),
+  ...readFile(path.join(__dirname, "tools", "lint", "Generated.txt")),
+];
+
 const xpcshellTestPaths = [
   "**/test*/unit*/",
   "**/test*/xpcshell/",
@@ -24,6 +42,8 @@ const xpcshellTestPaths = [
 const browserTestPaths = [
   "**/test*/**/browser/",
   "mail/base/test/performance/",
+  "mail/base/test/webextensions/",
+  "mail/test/static/",
 ];
 
 module.exports = {
@@ -34,15 +54,24 @@ module.exports = {
       configFile: path.join(__dirname, "..", ".babel-eslint.rc.js"),
     },
   },
-
+  settings: {
+    "import/extensions": [".mjs"],
+    // To avoid bad interactions of the html plugin with the xml preprocessor in
+    // eslint-plugin-mozilla, we turn off processing of the html plugin for .xml
+    // files.
+    "html/xml-extensions": [".xhtml"],
+  },
+  // Ignore eslint configurations in parent directories.
   root: true,
+
+  ignorePatterns,
 
   // We would like the same base rules as provided by
   // mozilla/tools/lint/eslint/eslint-plugin-mozilla/lib/configs/recommended.js
   extends: ["plugin:mozilla/recommended"],
 
   // When adding items to this file please check for effects on sub-directories.
-  plugins: ["mozilla"],
+  plugins: ["mozilla", "import"],
 
   rules: {
     complexity: ["error", 80],
@@ -50,18 +79,42 @@ module.exports = {
     "mozilla/prefer-boolean-length-check": "off",
   },
 
-  // To avoid bad interactions of the html plugin with the xml preprocessor in
-  // eslint-plugin-mozilla, we turn off processing of the html plugin for .xml
-  // files.
-  settings: {
-    "html/xml-extensions": [".xhtml"],
-  },
-
   overrides: [
     {
-      files: "**/.eslintrc.js",
+      files: [".eslintrc.js"],
       env: {
         node: true,
+        browser: false,
+      },
+    },
+    {
+      files: ["*.mjs"],
+      rules: {
+        "import/default": "error",
+        "import/export": "error",
+        "import/named": "error",
+        "import/namespace": "error",
+        "import/newline-after-import": "error",
+        "import/no-duplicates": "error",
+        "import/no-absolute-path": "error",
+        "import/no-named-default": "error",
+        "import/no-named-as-default": "error",
+        "import/no-named-as-default-member": "error",
+        "import/no-self-import": "error",
+        "import/no-unassigned-import": "error",
+        "import/no-unresolved": [
+          "error",
+          // Bug 1773473 - Ignore resolver URLs for chrome and resource as we
+          // do not yet have a resolver for them.
+          { ignore: ["chrome://", "resource://"] },
+        ],
+        "import/no-useless-path-segments": "error",
+      },
+    },
+    {
+      files: ["mail/components/storybook/**"],
+      rules: {
+        "import/no-unresolved": "off",
       },
     },
     {
@@ -97,17 +150,6 @@ module.exports = {
       rules: {
         ...browserTestConfig.rules,
         "func-names": "off",
-      },
-    },
-    {
-      // TODO: Bug 1609885 Fix all violations for ChromeUtils.import(..., null)
-      files: [
-        "mail/components/enterprisepolicies/tests/browser/browser_policies_setAndLockPref_API.js",
-        "mail/components/enterprisepolicies/tests/xpcshell/test_proxy.js",
-        "mail/components/enterprisepolicies/tests/xpcshell/test_runOnce_helper.js",
-      ],
-      rules: {
-        "mozilla/reject-chromeutils-import-params": "off",
       },
     },
   ],

@@ -18,6 +18,8 @@ describe("#CachedTargetingGetter", () => {
   let frecentStub;
   let topsitesCache;
   let globals;
+  let doesAppNeedPinStub;
+  let getAddonsByTypesStub;
   beforeEach(() => {
     sandbox = sinon.createSandbox();
     clock = sinon.useFakeTimers();
@@ -25,7 +27,6 @@ describe("#CachedTargetingGetter", () => {
       global.NewTabUtils.activityStreamProvider,
       "getTopFrecentSites"
     );
-    sandbox.stub(global.Cu, "reportError");
     topsitesCache = new CachedTargetingGetter("getTopFrecentSites");
     globals = new GlobalOverrider();
     globals.set(
@@ -40,12 +41,69 @@ describe("#CachedTargetingGetter", () => {
         }
       }
     );
+    doesAppNeedPinStub = sandbox.stub().resolves();
+    getAddonsByTypesStub = sandbox.stub().resolves();
   });
 
   afterEach(() => {
     sandbox.restore();
     clock.restore();
     globals.restore();
+  });
+
+  it("should cache allow for optional getter argument", async () => {
+    let pinCachedGetter = new CachedTargetingGetter(
+      "doesAppNeedPin",
+      true,
+      undefined,
+      { doesAppNeedPin: doesAppNeedPinStub }
+    );
+    // Need to tick forward because Date.now() is stubbed
+    clock.tick(sixHours);
+
+    await pinCachedGetter.get();
+    await pinCachedGetter.get();
+    await pinCachedGetter.get();
+
+    // Called once; cached request
+    assert.calledOnce(doesAppNeedPinStub);
+
+    // Called with option argument
+    assert.calledWith(doesAppNeedPinStub, true);
+
+    // Expire and call again
+    clock.tick(sixHours);
+    await pinCachedGetter.get();
+
+    // Call goes through
+    assert.calledTwice(doesAppNeedPinStub);
+
+    let themesCachedGetter = new CachedTargetingGetter(
+      "getAddonsByTypes",
+      ["foo"],
+      undefined,
+      { getAddonsByTypes: getAddonsByTypesStub }
+    );
+
+    // Need to tick forward because Date.now() is stubbed
+    clock.tick(sixHours);
+
+    await themesCachedGetter.get();
+    await themesCachedGetter.get();
+    await themesCachedGetter.get();
+
+    // Called once; cached request
+    assert.calledOnce(getAddonsByTypesStub);
+
+    // Called with option argument
+    assert.calledWith(getAddonsByTypesStub, ["foo"]);
+
+    // Expire and call again
+    clock.tick(sixHours);
+    await themesCachedGetter.get();
+
+    // Call goes through
+    assert.calledTwice(getAddonsByTypesStub);
   });
 
   it("should only make a request every 6 hours", async () => {
@@ -84,11 +142,8 @@ describe("#CachedTargetingGetter", () => {
   });
   describe("sortMessagesByPriority", () => {
     it("should sort messages in descending priority order", async () => {
-      const [
-        m1,
-        m2,
-        m3 = { id: "m3" },
-      ] = await OnboardingMessageProvider.getUntranslatedMessages();
+      const [m1, m2, m3 = { id: "m3" }] =
+        await OnboardingMessageProvider.getUntranslatedMessages();
       const checkMessageTargetingStub = sandbox
         .stub(ASRouterTargeting, "checkMessageTargeting")
         .resolves(false);
@@ -115,11 +170,8 @@ describe("#CachedTargetingGetter", () => {
       assert.equal(arg_m3.id, m1.id);
     });
     it("should sort messages with no priority last", async () => {
-      const [
-        m1,
-        m2,
-        m3 = { id: "m3" },
-      ] = await OnboardingMessageProvider.getUntranslatedMessages();
+      const [m1, m2, m3 = { id: "m3" }] =
+        await OnboardingMessageProvider.getUntranslatedMessages();
       const checkMessageTargetingStub = sandbox
         .stub(ASRouterTargeting, "checkMessageTargeting")
         .resolves(false);
@@ -146,11 +198,8 @@ describe("#CachedTargetingGetter", () => {
       assert.equal(arg_m3.id, m2.id);
     });
     it("should keep the order of messages with same priority unchanged", async () => {
-      const [
-        m1,
-        m2,
-        m3 = { id: "m3" },
-      ] = await OnboardingMessageProvider.getUntranslatedMessages();
+      const [m1, m2, m3 = { id: "m3" }] =
+        await OnboardingMessageProvider.getUntranslatedMessages();
       const checkMessageTargetingStub = sandbox
         .stub(ASRouterTargeting, "checkMessageTargeting")
         .resolves(false);
@@ -242,7 +291,7 @@ describe("#CacheListAttachedOAuthClients", () => {
     globals.set("fxAccounts", fakeFxAccount);
     authClientsCache = QueryCache.queries.ListAttachedOAuthClients;
     sandbox
-      .stub(fxAccounts, "listAttachedOAuthClients")
+      .stub(global.fxAccounts, "listAttachedOAuthClients")
       .returns(Promise.resolve({}));
   });
 
@@ -256,116 +305,21 @@ describe("#CacheListAttachedOAuthClients", () => {
     clock.tick(fourHours);
 
     await authClientsCache.get();
-    assert.calledOnce(fxAccounts.listAttachedOAuthClients);
+    assert.calledOnce(global.fxAccounts.listAttachedOAuthClients);
 
     clock.tick(fourHours);
     await authClientsCache.get();
-    assert.calledTwice(fxAccounts.listAttachedOAuthClients);
+    assert.calledTwice(global.fxAccounts.listAttachedOAuthClients);
   });
 
   it("should not make additional request before 4 hours", async () => {
     clock.tick(fourHours);
 
     await authClientsCache.get();
-    assert.calledOnce(fxAccounts.listAttachedOAuthClients);
+    assert.calledOnce(global.fxAccounts.listAttachedOAuthClients);
 
     await authClientsCache.get();
-    assert.calledOnce(fxAccounts.listAttachedOAuthClients);
-  });
-});
-describe("#mainPingSubmissions", () => {
-  let promiseArchivedPingList;
-  let globals;
-  let sandbox;
-  beforeEach(() => {
-    sandbox = sinon.createSandbox();
-    globals = new GlobalOverrider();
-  });
-  afterEach(() => {
-    sandbox.restore();
-    globals.restore();
-  });
-  it("should return an empty list", async () => {
-    promiseArchivedPingList = sandbox.stub().resolves([]);
-    globals.set("TelemetryArchive", { promiseArchivedPingList });
-    assert.typeOf(
-      await ASRouterTargeting.Environment.mainPingSubmissions,
-      "array",
-      "we get back an array"
-    );
-    assert.lengthOf(
-      await ASRouterTargeting.Environment.mainPingSubmissions,
-      0,
-      "no pings available"
-    );
-  });
-  it("should filter out bhr pings", async () => {
-    promiseArchivedPingList = sandbox.stub().resolves([
-      {
-        id: "5c8c786b-eca5-734b-a755-7ec0f022aaaf",
-        timestampCreated: 1622525975674,
-        type: "bhr",
-      },
-    ]);
-    globals.set("TelemetryArchive", { promiseArchivedPingList });
-    assert.lengthOf(
-      await ASRouterTargeting.Environment.mainPingSubmissions,
-      0,
-      "no `main` pings available"
-    );
-  });
-  it("should filter out pings less than 24hrs apart", async () => {
-    let startTime = 0;
-    promiseArchivedPingList = sandbox.stub().resolves([
-      {
-        id: "5c8c786b-eca5-734b-a755-7ec0f022aaaf",
-        timestampCreated: 1622525975674,
-        type: "bhr",
-      },
-      {
-        id: "5c8c786b-eca5-734b-a755-7ec0f022aaaa",
-        timestampCreated: startTime,
-        type: "main",
-      },
-      {
-        id: "5c8c786b-eca5-734b-a755-7ec0f022aaaa",
-        timestampCreated: startTime + 1000,
-        type: "main",
-      },
-      {
-        id: "5c8c786b-eca5-734b-a755-7ec0f022aaac",
-        timestampCreated: startTime + 86400001,
-        type: "main",
-      },
-    ]);
-    globals.set("TelemetryArchive", { promiseArchivedPingList });
-    assert.lengthOf(
-      await ASRouterTargeting.Environment.mainPingSubmissions,
-      2,
-      "1 main ping is removed"
-    );
-  });
-  it("should allow for pings < 24hrs apart but on different days", async () => {
-    let startTime = new Date().setHours(0);
-    let previousDay = new Date(startTime - 60 * 60 * 1000).getTime();
-    promiseArchivedPingList = sandbox.stub().resolves([
-      {
-        id: "5c8c786b-eca5-734b-a755-7ec0f022aaaa",
-        timestampCreated: startTime,
-        type: "main",
-      },
-      {
-        id: "5c8c786b-eca5-734b-a755-7ec0f022aaac",
-        timestampCreated: previousDay,
-        type: "main",
-      },
-    ]);
-    globals.set("TelemetryArchive", { promiseArchivedPingList });
-    assert.lengthOf(
-      await ASRouterTargeting.Environment.mainPingSubmissions,
-      2,
-      "pings are less day oneDay apart but fall on different days"
-    );
+    assert.calledOnce(global.fxAccounts.listAttachedOAuthClients);
   });
 });
 describe("ASRouterTargeting", () => {
@@ -381,6 +335,7 @@ describe("ASRouterTargeting", () => {
     fakeTargetingContext = {
       combineContexts: sandbox.stub(),
       evalWithDefault: sandbox.stub().resolves(),
+      setTelemetrySource: sandbox.stub(),
     };
     globals = new GlobalOverrider();
     globals.set(
@@ -388,6 +343,10 @@ describe("ASRouterTargeting", () => {
       class {
         static combineContexts(...args) {
           return fakeTargetingContext.combineContexts.apply(sandbox, args);
+        }
+
+        setTelemetrySource(id) {
+          fakeTargetingContext.setTelemetrySource(id);
         }
 
         evalWithDefault(expr) {
@@ -401,6 +360,23 @@ describe("ASRouterTargeting", () => {
     clock.restore();
     sandbox.restore();
     globals.restore();
+  });
+  it("should provide message.id as source", async () => {
+    await ASRouterTargeting.checkMessageTargeting(
+      {
+        id: "message",
+        targeting: "true",
+      },
+      fakeTargetingContext,
+      sandbox.stub(),
+      false
+    );
+    assert.calledOnce(fakeTargetingContext.evalWithDefault);
+    assert.calledWithExactly(fakeTargetingContext.evalWithDefault, "true");
+    assert.calledWithExactly(
+      fakeTargetingContext.setTelemetrySource,
+      "message"
+    );
   });
   it("should cache evaluation result", async () => {
     evalStub.resolves(true);

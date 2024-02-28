@@ -146,9 +146,9 @@
 
 <!ENTITY event.invite.attendees.label                     "Invite Attendees…">
 <!ENTITY event.invite.attendees.accesskey                 "I">
-<!ENTITY event.email.attendees.label                      "Compose E-Mail to All Attendees…">
+<!ENTITY event.email.attendees.label                      "Compose Email to All Attendees…">
 <!ENTITY event.email.attendees.accesskey                  "A">
-<!ENTITY event.email.tentative.attendees.label            "Compose E-Mail to Undecided Attendees…">
+<!ENTITY event.email.tentative.attendees.label            "Compose Email to Undecided Attendees…">
 <!ENTITY event.email.tentative.attendees.accesskey        "U">
 <!ENTITY event.remove.attendees.label2                    "Remove all attendees">
 <!ENTITY event.remove.attendees.accesskey                 "r">
@@ -358,7 +358,6 @@
 <!ENTITY event.recurrence.repeat.for.label              "Create" >
 <!ENTITY event.recurrence.appointments.label            "Appointment(s)" >
 <!ENTITY event.repeat.until.label                       "Repeat until" >
-<!ENTITY event.recurrence.preview.label                 "Preview">
 
 <!-- Attendees dialog -->
 <!ENTITY invite.title.label                     "Invite Attendees">

@@ -4,6 +4,7 @@
 /*---
 esid: sec-applying-the-exp-operator
 description: If base is +0 and exponent < 0, the result is +∞.
+features: [exponentiation]
 ---*/
 
 
@@ -16,7 +17,7 @@ exponents[3] = -0.000000000000001;
 
 for (var i = 0; i < exponents.length; i++) {
   if ((base ** exponents[i]) !== +Infinity) {
-    $ERROR("(" + base + " **  " + exponents[i] + ") !== +Infinity");
+    throw new Test262Error("(" + base + " **  " + exponents[i] + ") !== +Infinity");
   }
 }
 

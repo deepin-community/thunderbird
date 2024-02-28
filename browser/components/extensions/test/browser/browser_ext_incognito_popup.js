@@ -9,13 +9,14 @@ add_task(async function testIncognitoPopup() {
       permissions: ["tabs"],
       browser_action: {
         default_popup: "popup.html",
+        default_area: "navbar",
       },
       page_action: {
         default_popup: "popup.html",
       },
     },
 
-    background: async function() {
+    background: async function () {
       let resolveMessage;
       browser.runtime.onMessage.addListener(msg => {
         if (resolveMessage && msg.message == "popup-details") {
@@ -23,7 +24,7 @@ add_task(async function testIncognitoPopup() {
         }
       });
 
-      let awaitPopup = windowId => {
+      const awaitPopup = windowId => {
         return new Promise(resolve => {
           resolveMessage = resolve;
         }).then(msg => {
@@ -36,8 +37,8 @@ add_task(async function testIncognitoPopup() {
         });
       };
 
-      let testWindow = async window => {
-        let [tab] = await browser.tabs.query({
+      const testWindow = async window => {
+        const [tab] = await browser.tabs.query({
           active: true,
           windowId: window.id,
         });
@@ -62,51 +63,60 @@ add_task(async function testIncognitoPopup() {
         );
       };
 
-      const URL = "https://example.com/incognito";
-      let windowReady = new Promise(resolve => {
-        browser.tabs.onUpdated.addListener(function listener(
-          tabId,
-          changed,
-          tab
-        ) {
-          if (changed.status == "complete" && tab.url == URL) {
-            browser.tabs.onUpdated.removeListener(listener);
-            resolve();
-          }
+      const testNonPrivateWindow = async () => {
+        const window = await browser.windows.getCurrent();
+        await testWindow(window);
+      };
+
+      const testPrivateWindow = async () => {
+        const URL = "https://example.com/incognito";
+        const windowReady = new Promise(resolve => {
+          browser.tabs.onUpdated.addListener(function listener(
+            tabId,
+            changed,
+            tab
+          ) {
+            if (changed.status == "complete" && tab.url == URL) {
+              browser.tabs.onUpdated.removeListener(listener);
+              resolve();
+            }
+          });
         });
+
+        const window = await browser.windows.create({
+          incognito: true,
+          url: URL,
+        });
+        await windowReady;
+
+        await testWindow(window);
+      };
+
+      browser.test.onMessage.addListener(async msg => {
+        switch (msg) {
+          case "test-nonprivate-window":
+            await testNonPrivateWindow();
+            break;
+          case "test-private-window":
+            await testPrivateWindow();
+            break;
+          default:
+            browser.test.fail(
+              `Unexpected test message: ${JSON.stringify(msg)}`
+            );
+        }
+
+        browser.test.sendMessage(`${msg}:done`);
       });
 
-      try {
-        {
-          let window = await browser.windows.getCurrent();
-
-          await testWindow(window);
-        }
-
-        {
-          let window = await browser.windows.create({
-            incognito: true,
-            url: URL,
-          });
-          await windowReady;
-
-          await testWindow(window);
-
-          await browser.windows.remove(window.id);
-        }
-
-        browser.test.notifyPass("incognito");
-      } catch (error) {
-        browser.test.fail(`Error: ${error} :: ${error.stack}`);
-        browser.test.notifyFail("incognito");
-      }
+      browser.test.sendMessage("bgscript:ready");
     },
 
     files: {
       "popup.html":
         '<html><head><meta charset="utf-8"><script src="popup.js"></script></head></html>',
 
-      "popup.js": async function() {
+      "popup.js": async function () {
         let win = await browser.windows.getCurrent();
         browser.runtime.sendMessage({
           message: "popup-details",
@@ -118,22 +128,43 @@ add_task(async function testIncognitoPopup() {
     },
   });
 
-  extension.onMessage("click-browserAction", () => {
-    clickBrowserAction(
-      extension,
-      Services.wm.getMostRecentWindow("navigator:browser")
-    );
-  });
-
-  extension.onMessage("click-pageAction", () => {
-    clickPageAction(
-      extension,
-      Services.wm.getMostRecentWindow("navigator:browser")
-    );
-  });
-
   await extension.startup();
-  await extension.awaitFinish("incognito");
+  await extension.awaitMessage("bgscript:ready");
+
+  info("Run test on non private window");
+  extension.sendMessage("test-nonprivate-window");
+  await extension.awaitMessage("click-pageAction");
+  const win = Services.wm.getMostRecentWindow("navigator:browser");
+  ok(!PrivateBrowsingUtils.isWindowPrivate(win), "Got a nonprivate window");
+  await clickPageAction(extension, win);
+
+  await extension.awaitMessage("click-browserAction");
+  await clickBrowserAction(extension, win);
+
+  await extension.awaitMessage("test-nonprivate-window:done");
+  await closeBrowserAction(extension, win);
+  await closePageAction(extension, win);
+
+  info("Run test on private window");
+  extension.sendMessage("test-private-window");
+  await extension.awaitMessage("click-pageAction");
+  const privateWin = Services.wm.getMostRecentWindow("navigator:browser");
+  ok(PrivateBrowsingUtils.isWindowPrivate(privateWin), "Got a private window");
+  await clickPageAction(extension, privateWin);
+
+  await extension.awaitMessage("click-browserAction");
+  await clickBrowserAction(extension, privateWin);
+
+  await extension.awaitMessage("test-private-window:done");
+  // Wait for the private window chrome document to be flushed before
+  // closing the browserACtion, pageAction and the entire private window,
+  // to prevent intermittent failures.
+  await privateWin.promiseDocumentFlushed(() => {});
+
+  await closeBrowserAction(extension, privateWin);
+  await closePageAction(extension, privateWin);
+  await BrowserTestUtils.closeWindow(privateWin);
+
   await extension.unload();
 });
 

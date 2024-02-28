@@ -6,13 +6,13 @@
 XPIDL_SOURCES += [
     "nsICertPickDialogs.idl",
     "nsICMSDecoder.idl",
+    "nsICMSDecoderJS.idl",
     "nsICMSEncoder.idl",
     "nsICMSMessage.idl",
     "nsICMSMessageErrors.idl",
     "nsICMSSecureMessage.idl",
     "nsIEncryptedSMIMEURIsSrvc.idl",
     "nsIMsgSMIMEHeaderSink.idl",
-    "nsISMimeJSHelper.idl",
     "nsIUserCertPicker.idl",
 ]
 
@@ -24,13 +24,14 @@ SOURCES += [
     "nsCMSSecureMessage.cpp",
     "nsEncryptedSMIMEURIsService.cpp",
     "nsMsgComposeSecure.cpp",
-    "nsSMimeJSHelper.cpp",
 ]
 
 FINAL_LIBRARY = "mail"
 
 LOCAL_INCLUDES += [
-    "/%s/security/certverifier" % CONFIG["mozreltopsrcdir"],
-    "/%s/security/manager/pki" % CONFIG["mozreltopsrcdir"],
-    "/%s/security/manager/ssl" % CONFIG["mozreltopsrcdir"],
+    "/security/certverifier",
+    "/security/manager/pki",
+    "/security/manager/ssl",
 ]
+
+XPCOM_MANIFESTS += ["components.conf"]

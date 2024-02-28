@@ -4,9 +4,8 @@
 
 /* Provides methods to make sure our test shuts down mailnews properly. */
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-var { MockRegistrar } = ChromeUtils.import(
-  "resource://testing-common/MockRegistrar.jsm"
+var { MockRegistrar } = ChromeUtils.importESModule(
+  "resource://testing-common/MockRegistrar.sys.mjs"
 );
 
 // Notifies everyone that the we're shutting down. This is needed to make sure
@@ -27,15 +26,18 @@ function postShutdownNotifications() {
   }
 
   // post all notifications in the right order. none of these are cancellable
-  var notifications = [
-    "quit-application",
-    "profile-change-net-teardown",
-    "profile-change-teardown",
-    "profile-before-change",
-  ];
-  notifications.forEach(function(notification) {
-    Services.obs.notifyObservers(null, notification);
-  });
+  Services.startup.advanceShutdownPhase(
+    Services.startup.SHUTDOWN_PHASE_APPSHUTDOWNCONFIRMED
+  );
+  Services.startup.advanceShutdownPhase(
+    Services.startup.SHUTDOWN_PHASE_APPSHUTDOWNNETTEARDOWN
+  );
+  Services.startup.advanceShutdownPhase(
+    Services.startup.SHUTDOWN_PHASE_APPSHUTDOWNTEARDOWN
+  );
+  Services.startup.advanceShutdownPhase(
+    Services.startup.SHUTDOWN_PHASE_APPSHUTDOWN
+  );
 
   // finally, the xpcom-shutdown notification is handled by XPCOM itself.
 }

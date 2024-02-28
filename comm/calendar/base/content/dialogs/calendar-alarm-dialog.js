@@ -10,10 +10,21 @@
 
 /* import-globals-from ../item-editing/calendar-item-editing.js */
 
-var { PluralForm } = ChromeUtils.import("resource://gre/modules/PluralForm.jsm");
+var { PluralForm } = ChromeUtils.importESModule("resource://gre/modules/PluralForm.sys.mjs");
 var { cal } = ChromeUtils.import("resource:///modules/calendar/calUtils.jsm");
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-var { XPCOMUtils } = ChromeUtils.import("resource://gre/modules/XPCOMUtils.jsm");
+var { XPCOMUtils } = ChromeUtils.importESModule("resource://gre/modules/XPCOMUtils.sys.mjs");
+
+window.addEventListener("load", event => {
+  setupWindow();
+  window.arguments[0].wrappedJSObject.window_onLoad();
+});
+window.addEventListener("unload", finishWindow);
+window.addEventListener("focus", onFocusWindow);
+window.addEventListener("keypress", event => {
+  if (event.key == "Escape") {
+    window.close();
+  }
+});
 
 var gShutdownDetected = false;
 
@@ -48,7 +59,7 @@ XPCOMUtils.defineLazyGetter(this, "gReadOnlyNotification", () => {
 /**
  * Helper function to get the alarm service and cache it.
  *
- * @return The alarm service component
+ * @returns The alarm service component
  */
 function getAlarmService() {
   if (!("mAlarmService" in window)) {
@@ -247,7 +258,7 @@ function snoozeAllItems(aDurationMinutes) {
  * Receive a calIDuration object for a given number of minutes
  *
  * @param  {long}           aMinutes     The number of minutes
- * @return {calIDuration}
+ * @returns {calIDuration}
  */
 function getDuration(aMinutes) {
   const MINUTESINWEEK = 7 * 24 * 60;
@@ -267,8 +278,9 @@ function getDuration(aMinutes) {
 /**
  * Check whether the snooze period exceeds the current limitation of the AlarmService and prompt
  * the user with a message if so
+ *
  * @param   {calIDuration}   aDuration   The duration to snooze
- * @returns {Boolean}
+ * @returns {boolean}
  */
 function aboveSnoozeLimit(aDuration) {
   const LIMIT = Ci.calIAlarmService.MAX_SNOOZE_MONTHS;
@@ -303,7 +315,7 @@ function setupTitle() {
  *
  * @param aItem                 A calendar item for the comparison of the start date property
  * @param aWidgetItem           The alarm widget item for the start date comparison with the given calendar item
- * @return                      1 - if the calendar item starts before the calendar-alarm-widget
+ * @returns 1 - if the calendar item starts before the calendar-alarm-widget
  *                             -1 - if the calendar-alarm-widget starts before the calendar item
  *                              0 - otherwise
  */
@@ -426,11 +438,11 @@ function doReadOnlyChecks() {
       snoozeAllButton.label,
     ]);
     gReadOnlyNotification.appendNotification(
-      message,
       "calendar-readonly",
-      null,
-      gReadOnlyNotification.PRIORITY_WARNING_MEDIUM,
-      null,
+      {
+        label: message,
+        priority: gReadOnlyNotification.PRIORITY_WARNING_MEDIUM,
+      },
       null
     );
   } else if (notification && !countRO) {

@@ -25,6 +25,7 @@
 #include "nsString.h"
 #include "nsWeakReference.h"
 #include "nsHashPropertyBag.h"
+#include "nsMailChannel.h"
 
 class nsIMsgWindow;
 class nsIPrompt;
@@ -41,6 +42,7 @@ class nsICancelable;
 class nsMsgProtocol : public nsIStreamListener,
                       public nsIChannel,
                       public nsITransportEventSink,
+                      public nsMailChannel,
                       public nsHashPropertyBag {
  public:
   nsMsgProtocol(nsIURI* aURL);
@@ -130,7 +132,7 @@ class nsMsgProtocol : public nsIStreamListener,
                        nsCString& response);
   nsresult DoNtlmStep2(nsCString& commandResponse, nsCString& response);
 
-  nsresult DoGSSAPIStep1(const char* service, const char* username,
+  nsresult DoGSSAPIStep1(const nsACString& service, const char* username,
                          nsCString& response);
   nsresult DoGSSAPIStep2(nsCString& commandResponse, nsCString& response);
   // Output stream for writing commands to the socket
@@ -174,11 +176,6 @@ class nsMsgProtocol : public nsIStreamListener,
   nsCOMPtr<nsILoadInfo> m_loadInfo;
 
   nsString m_lastPasswordSent;  // used to prefill the password prompt
-
-  // private helper routine used by subclasses to quickly get a reference to the
-  // correct prompt dialog for a mailnews url.
-  nsresult GetPromptDialogFromUrl(nsIMsgMailNewsUrl* aMsgUrl,
-                                  nsIPrompt** aPromptDialog);
 
   // if a url isn't going to result in any content then we want to suppress
   // calls to OnStartRequest, OnDataAvailable and OnStopRequest

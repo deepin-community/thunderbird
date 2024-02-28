@@ -30,6 +30,7 @@
 #include "nsMsgKeySet.h"
 #include "nsMsgMessageFlags.h"
 #include "nsIMsgFilterPlugin.h"
+#include "mozilla/intl/Collator.h"
 
 // We declare strings for folder properties and events.
 // Properties:
@@ -67,8 +68,9 @@ extern const nsLiteralCString kFolderLoaded;
 extern const nsLiteralCString kNumNewBiffMessages;
 extern const nsLiteralCString kRenameCompleted;
 
+using mozilla::intl::Collator;
+
 class nsIMsgFolderCacheElement;
-class nsICollation;
 class nsMsgKeySetU;
 
 class nsMsgFolderService final : public nsIMsgFolderService {
@@ -112,6 +114,7 @@ class nsMsgDBFolder : public nsSupportsWeakReference,
   nsresult GetMsgPreviewTextFromStream(nsIMsgDBHdr* msgHdr,
                                        nsIInputStream* stream);
   nsresult HandleAutoCompactEvent(nsIMsgWindow* aMsgWindow);
+  static int gIsEnglishApp;
 
  protected:
   virtual ~nsMsgDBFolder();
@@ -143,13 +146,19 @@ class nsMsgDBFolder : public nsSupportsWeakReference,
   virtual nsresult GetDatabase() = 0;
   virtual nsresult SendFlagNotifications(nsIMsgDBHdr* item, uint32_t oldFlags,
                                          uint32_t newFlags);
+
+  // Overriden by IMAP to handle gmail hack.
+  virtual nsresult GetOfflineFileStream(nsMsgKey msgKey, uint64_t* offset,
+                                        uint32_t* size,
+                                        nsIInputStream** aFileStream);
+
   nsresult CheckWithNewMessagesStatus(bool messageAdded);
   void UpdateNewMessages();
   nsresult OnHdrAddedOrDeleted(nsIMsgDBHdr* hdrChanged, bool added);
   nsresult CreateFileForDB(const nsAString& userLeafName, nsIFile* baseDir,
                            nsIFile** dbFile);
 
-  nsresult GetFolderCacheKey(nsIFile** aFile, bool createDBIfMissing = false);
+  nsresult GetFolderCacheKey(nsIFile** aFile);
   nsresult GetFolderCacheElemFromFile(nsIFile* file,
                                       nsIMsgFolderCacheElement** cacheElement);
   nsresult AddDirectorySeparator(nsIFile* path);
@@ -164,12 +173,12 @@ class nsMsgDBFolder : public nsSupportsWeakReference,
   // logged in or c) the user logged in successfully.
   static bool PromptForMasterPasswordIfNecessary();
 
-  // offline support methods.
+  // Offline support methods. Used by IMAP and News folders, but not local
+  // folders.
   nsresult StartNewOfflineMessage();
   nsresult WriteStartOfNewLocalMessage();
-  nsresult EndNewOfflineMessage();
-  nsresult CompactOfflineStore(nsIMsgWindow* inWindow,
-                               nsIUrlListener* aUrlListener);
+  nsresult EndNewOfflineMessage(nsresult status);
+
   nsresult AutoCompact(nsIMsgWindow* aWindow);
   // this is a helper routine that ignores whether nsMsgMessageFlags::Offline is
   // set for the folder
@@ -182,7 +191,6 @@ class nsMsgDBFolder : public nsSupportsWeakReference,
 
   nsresult PerformBiffNotifications(
       void);  // if there are new, non spam messages, do biff
-  nsresult CloseDBIfFolderNotOpen();
 
   // Helper function for Move code to call to update the MRU and MRM time.
   void UpdateTimestamps(bool allowUndo);
@@ -212,11 +220,29 @@ class nsMsgDBFolder : public nsSupportsWeakReference,
   bool mGettingNewMessages;
   nsMsgKey mLastMessageLoaded;
 
+  /*
+   * Start of offline-message-writing vars.
+   * These track offline message writing for IMAP and News folders.
+   * But *not* for local folders, which do their own thing.
+   * They are set up by StartNewOfflineMessage() and cleaned up
+   * by EndNewOfflineMessage().
+   * IMAP folder also uses these vars when saving messages to disk.
+   */
+
+  // The header of the message currently being written.
   nsCOMPtr<nsIMsgDBHdr> m_offlineHeader;
   int32_t m_numOfflineMsgLines;
+  // Number of bytes added due to add X-Mozilla-* headers.
   int32_t m_bytesAddedToLocalMsg;
-  // this is currently used when we do a save as of an imap or news message..
+  // This is currently used when we do a save as of an imap or news message..
+  // Also used by IMAP/News offline messsage writing.
   nsCOMPtr<nsIOutputStream> m_tempMessageStream;
+  // The number of bytes written to m_tempMessageStream so far.
+  uint32_t m_tempMessageStreamBytesWritten;
+
+  /*
+   * End of offline message tracking vars
+   */
 
   nsCOMPtr<nsIMsgRetentionSettings> m_retentionSettings;
   nsCOMPtr<nsIMsgDownloadSettings> m_downloadSettings;
@@ -268,6 +294,7 @@ class nsMsgDBFolder : public nsSupportsWeakReference,
   bool mIsServerIsValid;
   bool mIsServer;
   nsString mName;
+  nsString mOriginalName;
   nsCOMPtr<nsIFile> mPath;
   nsCString mBaseMessageURI;  // The uri with the message scheme
 
@@ -288,7 +315,7 @@ class nsMsgDBFolder : public nsSupportsWeakReference,
 
   static nsString kLocalizedBrandShortName;
 
-  static nsICollation* gCollationKeyGenerator;
+  static mozilla::UniquePtr<mozilla::intl::Collator> gCollationKeyGenerator;
   static bool gInitializeStringsDone;
 
   // store of keys that have a processing flag set
@@ -332,8 +359,8 @@ class nsMsgKeySetU {
 
  protected:
   nsMsgKeySetU();
-  nsMsgKeySet* loKeySet;
-  nsMsgKeySet* hiKeySet;
+  RefPtr<nsMsgKeySet> loKeySet;
+  RefPtr<nsMsgKeySet> hiKeySet;
 };
 
 #endif

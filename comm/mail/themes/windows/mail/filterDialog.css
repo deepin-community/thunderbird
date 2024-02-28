@@ -28,7 +28,7 @@
   width: 11em;
 }
 
-.input-inline.search-value-textbox {
+.input-inline.search-value-input {
   padding-block: 3px;
 }
 
@@ -39,4 +39,8 @@
 
 .small-button + .small-button {
   margin-inline: 0 4px;
+}
+
+toolbarbutton[is="toolbarbutton-menu-button"] > toolbarbutton {
+  min-height: 22px;
 }

@@ -1,7 +1,8 @@
 // Copyright (c) 2017 The Rust Project Developers
+// Copyright (c) 2018-2020 The Rust Secure Code Working Group
 // Licensed under the MIT License.
 // Original license:
-// https://github.com/RustSec/platforms-crate/blob/ebbd3403243067ba3096f31684557285e352b639/LICENSE-MIT
+// https://github.com/rustsec/rustsec/blob/2a080f173ad9d8ac7fa260f0a3a6aebf0000de06/platforms/LICENSE-MIT
 //
 // Permission is hereby granted, free of charge, to any
 // person obtaining a copy of this software and associated
@@ -52,24 +53,40 @@ pub const ARCH: &str = "x86_64";
     target_arch = "x86_64"
 )))]
 /// `target_arch` when building this crate: unknown!
-pub const ARCH: &str = "unknown";
+pub const ARCH: &str = "Unknown";
 
 #[cfg(any(target_os = "macos", target_os = "windows"))]
 /// Returns Darwin kernel version for MacOS, or NT Kernel version for Windows
 pub fn get_os_version() -> String {
-    whatsys::kernel_version().unwrap_or_else(|| "unknown".to_owned())
+    whatsys::kernel_version().unwrap_or_else(|| "Unknown".to_owned())
 }
 
 #[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "windows")))]
-/// Returns "unknown" for platforms other than Linux, MacOS or Windows
+/// Returns "Unknown" for platforms other than Linux, MacOS or Windows
 pub fn get_os_version() -> String {
-    "unknown".to_owned()
+    "Unknown".to_owned()
 }
 
 #[cfg(target_os = "linux")]
 /// Returns Linux kernel version, in the format of <Major>.<Minor> e.g. 5.8
 pub fn get_os_version() -> String {
-    parse_linux_os_string(whatsys::kernel_version().unwrap_or_else(|| "unknown".to_owned()))
+    parse_linux_os_string(whatsys::kernel_version().unwrap_or_else(|| "Unknown".to_owned()))
+}
+
+#[cfg(target_os = "windows")]
+/// Returns the Windows build number, e.g. 22000
+pub fn get_windows_build_number() -> Option<i64> {
+    match whatsys::windows_build_number() {
+        // Cast to i64 to work with QuantityMetric type
+        Some(i) => Some(i as i64),
+        _ => None,
+    }
+}
+
+#[cfg(not(target_os = "windows"))]
+/// Returns None, for non-Windows operating systems
+pub fn get_windows_build_number() -> Option<i64> {
+    None
 }
 
 #[cfg(target_os = "linux")]

@@ -9,22 +9,14 @@ const { mailTestUtils } = ChromeUtils.import(
   "resource://testing-common/mailnews/MailTestUtils.jsm"
 );
 const { cal } = ChromeUtils.import("resource:///modules/calendar/calUtils.jsm");
-const { XPCOMUtils } = ChromeUtils.import("resource://gre/modules/XPCOMUtils.jsm");
 
 XPCOMUtils.defineLazyModuleGetters(this, {
   CalRecurrenceInfo: "resource:///modules/CalRecurrenceInfo.jsm",
   CalTodo: "resource:///modules/CalTodo.jsm",
 });
 
-let manager = cal.getCalendarManager();
-let _calendar = manager.createCalendar("memory", Services.io.newURI("moz-memory-calendar://"));
-_calendar.name = "Task Delete Test";
-manager.registerCalendar(_calendar);
-registerCleanupFunction(() => {
-  manager.unregisterCalendar(_calendar);
-});
-
-let calendar = cal.async.promisifyCalendar(_calendar);
+let calendar = CalendarTestUtils.createCalendar("Task Delete Test", "memory");
+registerCleanupFunction(() => CalendarTestUtils.removeCalendar(calendar));
 
 /**
  * Test ensures its possible to delete a task in the task view. Creates two task
@@ -45,8 +37,8 @@ add_task(async function testTaskDeletion() {
   await calendar.addItem(task2);
   await openTasksTab();
 
-  let tree = window.document.querySelector("#calendar-task-tree");
-  let radio = window.document.querySelector("#opt_next7days_filter");
+  let tree = document.querySelector("#calendar-task-tree");
+  let radio = document.querySelector("#opt_next7days_filter");
   let waitForRefresh = BrowserTestUtils.waitForEvent(tree, "refresh");
   EventUtils.synthesizeMouseAtCenter(radio, {});
   tree.refresh();
@@ -58,20 +50,20 @@ add_task(async function testTaskDeletion() {
   EventUtils.synthesizeKey("VK_DELETE");
 
   // Try and trigger a reflow
-  tree.height;
+  tree.getBoundingClientRect();
   tree.invalidate();
   await new Promise(r => setTimeout(r));
 
   await TestUtils.waitForCondition(() => {
-    tree = window.document.querySelector("#calendar-task-tree");
+    tree = document.querySelector("#calendar-task-tree");
     return tree.view.rowCount == 1;
   }, `task view displays ${tree.view.rowCount} tasks instead of 1`);
 
   let result = await calendar.getItem(task1.id);
-  Assert.equal(result.length, 0, "first task was deleted successfully");
+  Assert.ok(!result, "first task was deleted successfully");
 
   result = await calendar.getItem(task2.id);
-  Assert.equal(result.length, 1, "second task was not deleted");
+  Assert.ok(result, "second task was not deleted");
   await calendar.deleteItem(task2);
   await closeTasksTab();
 });
@@ -100,8 +92,8 @@ add_task(async function testRecurringTaskDeletion() {
 
   await openTasksTab();
 
-  let tree = window.document.querySelector("#calendar-task-tree");
-  let radio = window.document.querySelector("#opt_next7days_filter");
+  let tree = document.querySelector("#calendar-task-tree");
+  let radio = document.querySelector("#opt_next7days_filter");
   let waitForRefresh = BrowserTestUtils.waitForEvent(tree, "refresh");
   EventUtils.synthesizeMouseAtCenter(radio, {});
   tree.refresh();
@@ -126,16 +118,16 @@ add_task(async function testRecurringTaskDeletion() {
   await handleSingleDelete;
 
   // Try and trigger a reflow
-  tree.height;
+  tree.getBoundingClientRect();
   tree.invalidate();
   await new Promise(r => setTimeout(r));
 
   await TestUtils.waitForCondition(() => {
-    tree = window.document.querySelector("#calendar-task-tree");
+    tree = document.querySelector("#calendar-task-tree");
     return tree.view.rowCount == 3;
   }, `task view displays ${tree.view.rowCount} tasks instead of 3`);
 
-  repeatTask = (await calendar.getItem(repeatTask.id))[0];
+  repeatTask = await calendar.getItem(repeatTask.id);
 
   Assert.equal(
     repeatTask.recurrenceInfo.getOccurrences(
@@ -175,19 +167,19 @@ add_task(async function testRecurringTaskDeletion() {
   await handleAllDelete;
 
   // Try and trigger a reflow
-  tree.height;
+  tree.getBoundingClientRect();
   tree.invalidate();
   await new Promise(r => setTimeout(r));
 
   await TestUtils.waitForCondition(() => {
-    tree = window.document.querySelector("#calendar-task-tree");
+    tree = document.querySelector("#calendar-task-tree");
     return tree.view.rowCount == 1;
   }, `task view displays ${tree.view.rowCount} tasks instead of 1`);
 
-  repeatTask = (await calendar.getItem(repeatTask.id))[0];
+  repeatTask = await calendar.getItem(repeatTask.id);
   Assert.ok(!repeatTask, "all occurrences were removed");
 
   let result = await calendar.getItem(nonRepeatTask.id);
-  Assert.equal(result.length, 1, "non-recurring task was not deleted");
+  Assert.ok(result, "non-recurring task was not deleted");
   await closeTasksTab();
 });

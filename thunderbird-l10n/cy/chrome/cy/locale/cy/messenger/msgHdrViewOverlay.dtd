@@ -13,11 +13,11 @@
 <!ENTITY ccField4.label "Cc">
 <!ENTITY bccField4.label "Bcc">
 <!ENTITY newsgroupsField4.label "Grwpiau Newyddion">
-<!ENTITY followupToField4.label "Ymateb">
+<!ENTITY followupToField4.label "Ymateb i">
 <!ENTITY tagsHdr4.label "Tagiau">
 <!ENTITY dateField4.label "Dyddiad">
 <!ENTITY userAgentField4.label "Asiant defnyddiwr">
-<!ENTITY referencesField4.label "Cyfeiriadau">
+<!ENTITY referencesField4.label "Cyfeirnodau">
 <!ENTITY messageIdField4.label "Enw Neges">
 <!ENTITY inReplyToField4.label "Wrth ateb i">
 <!ENTITY originalWebsite4.label "Gwefan">
@@ -53,13 +53,13 @@
 <!ENTITY otherActionsButton.tooltip "Rhagor o weithredoedd">
 <!ENTITY otherActionsOpenConversation1.label "Agor mewn Sgwrs">
 <!ENTITY otherActionsOpenConversation1.accesskey "S">
-<!ENTITY otherActionsOpenInNewWindow1.label "Agor Ffenestr Newydd">
+<!ENTITY otherActionsOpenInNewWindow1.label "Agor mewn Ffenestr Newydd">
 <!ENTITY otherActionsOpenInNewWindow1.accesskey "F">
 <!ENTITY otherActionsOpenInNewTab1.label "Agor mewn Tab Newydd">
 <!ENTITY otherActionsOpenInNewTab1.accesskey "T">
 <!ENTITY markAsReadMenuItem1.label "Marcio wedi Darllen">
 <!ENTITY markAsReadMenuItem1.accesskey "D">
-<!ENTITY markAsUnreadMenuItem1.label "Marcio heb Ddarllen">
+<!ENTITY markAsUnreadMenuItem1.label "Marcio heb Darllen">
 <!ENTITY markAsUnreadMenuItem1.accesskey "D">
 <!ENTITY saveAsMenuItem1.label "Cadw fel…">
 <!ENTITY saveAsMenuItem1.accesskey "C">
@@ -81,20 +81,20 @@
 <!ENTITY detachAttachmentCmd.accesskey    "D">
 <!ENTITY deleteAttachmentCmd.label    "Dileu">
 <!ENTITY deleteAttachmentCmd.accesskey    "l">
-<!ENTITY openAllAttachmentsCmd.label    "Agor Popeth…">
+<!ENTITY openAllAttachmentsCmd.label    "Agor y Cyfan…">
 <!ENTITY openAllAttachmentsCmd.accesskey    "A">
-<!ENTITY saveAllAttachmentsCmd.label    "Cadw Popeth…">
-<!ENTITY saveAllAttachmentsCmd.accesskey    "P">
-<!ENTITY detachAllAttachmentsCmd.label    "Datod Popeth…">
+<!ENTITY saveAllAttachmentsCmd.label    "Cadw'r Cyfan…">
+<!ENTITY saveAllAttachmentsCmd.accesskey    "C">
+<!ENTITY detachAllAttachmentsCmd.label    "Datod y Cyfan…">
 <!ENTITY detachAllAttachmentsCmd.accesskey    "a">
-<!ENTITY deleteAllAttachmentsCmd.label    "Dileu Popeth…">
+<!ENTITY deleteAllAttachmentsCmd.label    "Dileu'r Cyfan…">
 <!ENTITY deleteAllAttachmentsCmd.accesskey    "i">
 
 <!ENTITY openAttachment.tooltip "Agor y ffeil atodol">
 
 <!ENTITY detachedAttachmentFolder.show.label        "Agor Ffolder Cynhwysol">
 <!ENTITY detachedAttachmentFolder.show.accesskey    "F">
-<!ENTITY detachedAttachmentFolder.showMac.label     "Dangos yn y Canfyddwr">
+<!ENTITY detachedAttachmentFolder.showMac.label     "Dangos yn Finder">
 <!ENTITY detachedAttachmentFolder.showMac.accesskey "C">
 
 <!-- Attachment toolbar items -->

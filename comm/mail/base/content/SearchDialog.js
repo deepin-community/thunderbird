@@ -2,29 +2,28 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-/* import-globals-from ../../../../toolkit/content/globalOverlay.js */
+/* import-globals-from ../../../mailnews/extensions/newsblog/newsblogOverlay.js */
 /* import-globals-from ../../../mailnews/search/content/searchTerm.js */
 /* import-globals-from folderDisplay.js */
-/* import-globals-from mailWindow.js */
-/* import-globals-from mailWindowOverlay.js */
-/* import-globals-from messageDisplay.js */
+/* import-globals-from globalOverlay.js */
 /* import-globals-from threadPane.js */
+
+/* globals nsMsgStatusFeedback */ // From mailWindow.js
 
 "use strict";
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 var { MailUtils } = ChromeUtils.import("resource:///modules/MailUtils.jsm");
-var { PluralForm } = ChromeUtils.import(
-  "resource://gre/modules/PluralForm.jsm"
+var { PluralForm } = ChromeUtils.importESModule(
+  "resource://gre/modules/PluralForm.sys.mjs"
 );
 var { TagUtils } = ChromeUtils.import("resource:///modules/TagUtils.jsm");
+
+var messenger;
+var msgWindow;
 
 var gCurrentFolder;
 
 var gFolderDisplay;
-// Although we don't display messages, we have a message display object to
-//  simplify our code.  It's just always disabled.
-var gMessageDisplay;
 
 var gFolderPicker;
 var gStatusFeedback;
@@ -39,6 +38,12 @@ var gSearchStopButton;
 
 // Should we try to search online?
 var gSearchOnline = false;
+
+window.addEventListener("load", searchOnLoad);
+window.addEventListener("unload", event => {
+  onSearchStop();
+  searchOnUnload();
+});
 
 // Controller object for search results thread pane
 var nsSearchResultsController = {
@@ -133,17 +138,6 @@ var nsSearchResultsController = {
 function UpdateMailSearch(caller) {
   document.commandDispatcher.updateCommands("mail-search");
 }
-/**
- * FolderDisplayWidget currently calls this function when the command updater
- *  notification for updateCommandStatus is called.  We don't have a toolbar,
- *  but our 'mail-search' command set serves the same purpose.
- */
-var UpdateMailToolbar = UpdateMailSearch;
-
-/**
- * No-op clear message pane function for FolderDisplayWidget.
- */
-function ClearMessagePane() {}
 
 function SetAdvancedSearchStatusText(aNumHits) {}
 
@@ -151,8 +145,8 @@ function SetAdvancedSearchStatusText(aNumHits) {}
  * Subclass the FolderDisplayWidget to deal with UI specific to the search
  *  window.
  */
-function SearchFolderDisplayWidget(aMessageDisplay) {
-  FolderDisplayWidget.call(this, /* no tab info */ null, aMessageDisplay);
+function SearchFolderDisplayWidget() {
+  FolderDisplayWidget.call(this);
 }
 
 SearchFolderDisplayWidget.prototype = {
@@ -166,11 +160,11 @@ SearchFolderDisplayWidget.prototype = {
       // Search button becomes the "stop" button
       gSearchStopButton.setAttribute(
         "label",
-        gSearchBundle.getString("labelForStopButton")
+        gSearchBundle.GetStringFromName("labelForStopButton")
       );
       gSearchStopButton.setAttribute(
         "accesskey",
-        gSearchBundle.getString("labelForStopButton.accesskey")
+        gSearchBundle.GetStringFromName("labelForStopButton.accesskey")
       );
 
       // update our toolbar equivalent
@@ -179,17 +173,17 @@ SearchFolderDisplayWidget.prototype = {
       gStatusFeedback._startMeteors();
       // tell the user that we're searching
       gStatusFeedback.showStatusString(
-        gSearchBundle.getString("searchingMessage")
+        gSearchBundle.GetStringFromName("searchingMessage")
       );
     } else {
       // Stop button resumes being the "search" button
       gSearchStopButton.setAttribute(
         "label",
-        gSearchBundle.getString("labelForSearchButton")
+        gSearchBundle.GetStringFromName("labelForSearchButton")
       );
       gSearchStopButton.setAttribute(
         "accesskey",
-        gSearchBundle.getString("labelForSearchButton.accesskey")
+        gSearchBundle.GetStringFromName("labelForSearchButton.accesskey")
       );
 
       // update our toolbar equivalent
@@ -218,11 +212,11 @@ SearchFolderDisplayWidget.prototype = {
     let statusMsg;
 
     if (rowCount == 0) {
-      statusMsg = gSearchBundle.getString("noMatchesFound");
+      statusMsg = gSearchBundle.GetStringFromName("noMatchesFound");
     } else {
       statusMsg = PluralForm.get(
         rowCount,
-        gSearchBundle.getString("matchesFound")
+        gSearchBundle.GetStringFromName("matchesFound")
       );
       statusMsg = statusMsg.replace("#1", rowCount);
     }
@@ -238,19 +232,20 @@ function searchOnLoad() {
   // eslint-disable-next-line no-global-assign
   messenger = Cc["@mozilla.org/messenger;1"].createInstance(Ci.nsIMessenger);
 
-  gSearchBundle = document.getElementById("bundle_search");
+  gSearchBundle = Services.strings.createBundle(
+    "chrome://messenger/locale/search.properties"
+  );
   gSearchStopButton.setAttribute(
     "label",
-    gSearchBundle.getString("labelForSearchButton")
+    gSearchBundle.GetStringFromName("labelForSearchButton")
   );
   gSearchStopButton.setAttribute(
     "accesskey",
-    gSearchBundle.getString("labelForSearchButton.accesskey")
+    gSearchBundle.GetStringFromName("labelForSearchButton.accesskey")
   );
 
-  gMessageDisplay = new NeverVisibleMessageDisplayWidget();
   // eslint-disable-next-line no-global-assign
-  gFolderDisplay = new SearchFolderDisplayWidget(gMessageDisplay);
+  gFolderDisplay = new SearchFolderDisplayWidget();
   gFolderDisplay.messenger = messenger;
   gFolderDisplay.msgWindow = msgWindow;
   gFolderDisplay.tree = document.getElementById("threadTree");
@@ -289,8 +284,7 @@ function searchOnUnload() {
   gFolderDisplay.close();
   top.controllers.removeController(nsSearchResultsController);
 
-  // release this early because msgWindow holds a weak reference
-  msgWindow.rootDocShell = null;
+  msgWindow.closeWindow();
 }
 
 function initializeSearchWindowWidgets() {
@@ -333,14 +327,16 @@ function updateSearchFolderPicker(folder) {
   // if the folder does not support online search.
 
   // Any offlineSupportLevel > 0 is an online server like IMAP or news.
-  if (gCurrentFolder.server.offlineSupportLevel && !Services.io.offline) {
+  if (gCurrentFolder?.server.offlineSupportLevel && !Services.io.offline) {
     searchOnline.hidden = false;
     searchOnline.disabled = false;
   } else {
     searchOnline.hidden = true;
     searchOnline.disabled = true;
   }
-  setSearchScope(GetScopeForFolder(gCurrentFolder));
+  if (gCurrentFolder) {
+    setSearchScope(GetScopeForFolder(gCurrentFolder));
+  }
 }
 
 function updateSearchLocalSystem() {
@@ -357,7 +353,7 @@ function onEnterInSearchTerm() {
   // if searching, stop and then start again
   if (
     gSearchStopButton.getAttribute("label") ==
-    gSearchBundle.getString("labelForSearchButton")
+    gSearchBundle.GetStringFromName("labelForSearchButton")
   ) {
     onSearch();
   } else {
@@ -407,7 +403,7 @@ function getSearchTerms() {
 }
 
 /**
- * @return the list of folders the search should cover.
+ * @returns the list of folders the search should cover.
  */
 function getSearchFolders() {
   let searchFolders = [];
@@ -416,8 +412,9 @@ function getSearchFolders() {
     searchFolders.push(gCurrentFolder);
   }
 
-  var searchSubfolders = document.getElementById("checkSearchSubFolders")
-    .checked;
+  var searchSubfolders = document.getElementById(
+    "checkSearchSubFolders"
+  ).checked;
   if (
     gCurrentFolder &&
     (searchSubfolders || gCurrentFolder.isServer || gCurrentFolder.noSelect)
@@ -550,7 +547,10 @@ function goUpdateSearchItems(commandset) {
 
 // used to toggle functionality for Search/Stop button.
 function onSearchButton(event) {
-  if (event.target.label == gSearchBundle.getString("labelForSearchButton")) {
+  if (
+    event.target.label ==
+    gSearchBundle.GetStringFromName("labelForSearchButton")
+  ) {
     onSearch();
   } else {
     onSearchStop();
@@ -565,7 +565,7 @@ function MsgDeleteSelectedMessages(aCommandType) {
 /**
  * Move selected messages to the destination folder
  *
- * @param destFolder {nsIMsgFolder}  destination folder
+ * @param destFolder {nsIMsgFolder} - destination folder
  */
 function MoveMessageInSearch(destFolder) {
   gFolderDisplay.hintAboutToDeleteMessages();
@@ -582,8 +582,9 @@ function OpenInFolder() {
 function saveAsVirtualFolder() {
   var searchFolderURIs = gCurrentFolder.URI;
 
-  var searchSubfolders = document.getElementById("checkSearchSubFolders")
-    .checked;
+  var searchSubfolders = document.getElementById(
+    "checkSearchSubFolders"
+  ).checked;
   if (
     gCurrentFolder &&
     (searchSubfolders || gCurrentFolder.isServer || gCurrentFolder.noSelect)
@@ -600,12 +601,50 @@ function saveAsVirtualFolder() {
   window.openDialog(
     "chrome://messenger/content/virtualFolderProperties.xhtml",
     "",
-    "chrome,titlebar,modal,centerscreen",
+    "chrome,titlebar,modal,centerscreen,resizable=yes",
     {
       folder: window.arguments[0].folder,
       searchTerms: getSearchTerms(),
       searchFolderURIs,
       searchOnline: doOnlineSearch,
     }
+  );
+}
+
+function MsgOpenSelectedMessages() {
+  // Toggle message body (feed summary) and content-base url in message pane or
+  // load in browser, per pref, otherwise open summary or web page in new window
+  // or tab, per that pref.
+  if (
+    gFolderDisplay.treeSelection &&
+    gFolderDisplay.treeSelection.count == 1 &&
+    gFolderDisplay.selectedMessageIsFeed
+  ) {
+    let msgHdr = gFolderDisplay.selectedMessage;
+    if (
+      document.documentElement.getAttribute("windowtype") == "mail:3pane" &&
+      FeedMessageHandler.onOpenPref ==
+        FeedMessageHandler.kOpenToggleInMessagePane
+    ) {
+      let showSummary = FeedMessageHandler.shouldShowSummary(msgHdr, true);
+      FeedMessageHandler.setContent(msgHdr, showSummary);
+      return;
+    }
+    if (
+      FeedMessageHandler.onOpenPref == FeedMessageHandler.kOpenLoadInBrowser
+    ) {
+      setTimeout(FeedMessageHandler.loadWebPage, 20, msgHdr, { browser: true });
+      return;
+    }
+  }
+
+  // This is somewhat evil. If we're in a 3pane window, we'd have a tabmail
+  // element and would pass it in here, ensuring that if we open tabs, we use
+  // this tabmail to open them. If we aren't, then we wouldn't, so
+  // displayMessages would look for a 3pane window and open tabs there.
+  MailUtils.displayMessages(
+    gFolderDisplay.selectedMessages,
+    gFolderDisplay.view,
+    document.getElementById("tabmail")
   );
 }

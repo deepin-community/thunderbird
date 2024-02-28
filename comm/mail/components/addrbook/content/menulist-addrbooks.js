@@ -13,13 +13,11 @@ if (!customElements.get("menulist")) {
   const { MailServices } = ChromeUtils.import(
     "resource:///modules/MailServices.jsm"
   );
-  const { Services } = ChromeUtils.import(
-    "resource://gre/modules/Services.jsm"
-  );
   /**
    * MozMenulistAddrbooks is a menulist widget that is automatically
    * populated with the complete address book list.
-   * @extends {MozMenuList}
+   *
+   * @augments {MozMenuList}
    */
   class MozMenulistAddrbooks extends customElements.get("menulist") {
     connectedCallback() {
@@ -37,11 +35,36 @@ if (!customElements.get("menulist")) {
       this._rebuild();
 
       // Store as a member of `this` so there's a strong reference.
-      this.addressBookListener = {
+      this._addressBookListener = {
         QueryInterface: ChromeUtils.generateQI([
           "nsIObserver",
           "nsISupportsWeakReference",
         ]),
+
+        _notifications: [
+          "addrbook-directory-created",
+          "addrbook-directory-updated",
+          "addrbook-directory-deleted",
+          "addrbook-reloaded",
+        ],
+
+        init() {
+          for (let topic of this._notifications) {
+            Services.obs.addObserver(this, topic, true);
+          }
+          window.addEventListener("unload", this);
+        },
+
+        cleanUp() {
+          for (let topic of this._notifications) {
+            Services.obs.removeObserver(this, topic);
+          }
+          window.removeEventListener("unload", this);
+        },
+
+        handleEvent(event) {
+          this.cleanUp();
+        },
 
         observe: (subject, topic, data) => {
           // Test-only reload of the address book manager.
@@ -103,14 +126,7 @@ if (!customElements.get("menulist")) {
         },
       };
 
-      for (let topic of [
-        "addrbook-directory-created",
-        "addrbook-directory-updated",
-        "addrbook-directory-deleted",
-        "addrbook-reloaded",
-      ]) {
-        Services.obs.addObserver(this.addressBookListener, topic, true);
-      }
+      this._addressBookListener.init();
     }
 
     /**
@@ -126,6 +142,7 @@ if (!customElements.get("menulist")) {
 
     disconnectedCallback() {
       super.disconnectedCallback();
+      this._addressBookListener.cleanUp();
       this._teardown();
     }
 
@@ -161,8 +178,10 @@ if (!customElements.get("menulist")) {
         // Insert a menuitem representing All Addressbooks.
         let allABLabel = this.getAttribute("alladdressbooks");
         if (allABLabel == "true") {
-          let bundle = document.getElementById("bundle_addressBook");
-          allABLabel = bundle.getString("allAddressBooks");
+          let bundle = Services.strings.createBundle(
+            "chrome://messenger/locale/addressbook/addressBook.properties"
+          );
+          allABLabel = bundle.GetStringFromName("allAddressBooks");
         }
 
         this._directories.unshift(null);
@@ -170,7 +189,7 @@ if (!customElements.get("menulist")) {
         listItem.setAttribute("class", "menuitem-iconic abMenuItem");
         listItem.setAttribute(
           "image",
-          "chrome://messenger/skin/icons/address.svg"
+          "chrome://messenger/skin/icons/new/compact/address-book.svg"
         );
       }
 
@@ -189,22 +208,22 @@ if (!customElements.get("menulist")) {
         if (ab.isMailList) {
           listItem.setAttribute(
             "image",
-            "chrome://messenger/skin/icons/ablist.svg"
+            "chrome://messenger/skin/icons/new/compact/user-list.svg"
           );
         } else if (ab.isRemote && ab.isSecure) {
           listItem.setAttribute(
             "image",
-            "chrome://messenger/skin/icons/globe-secure.svg"
+            "chrome://messenger/skin/icons/new/compact/globe-secure.svg"
           );
         } else if (ab.isRemote) {
           listItem.setAttribute(
             "image",
-            "chrome://messenger/skin/icons/globe.svg"
+            "chrome://messenger/skin/icons/new/compact/globe.svg"
           );
         } else {
           listItem.setAttribute(
             "image",
-            "chrome://messenger/skin/icons/address.svg"
+            "chrome://messenger/skin/icons/new/compact/address-book.svg"
           );
         }
       }

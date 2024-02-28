@@ -7,15 +7,22 @@ const EXPORTED_SYMBOLS = ["SQLiteDirectory"];
 const { AddrBookDirectory } = ChromeUtils.import(
   "resource:///modules/AddrBookDirectory.jsm"
 );
-const { XPCOMUtils } = ChromeUtils.import(
-  "resource://gre/modules/XPCOMUtils.jsm"
+const { XPCOMUtils } = ChromeUtils.importESModule(
+  "resource://gre/modules/XPCOMUtils.sys.mjs"
 );
 
-XPCOMUtils.defineLazyModuleGetters(this, {
-  AsyncShutdown: "resource://gre/modules/AsyncShutdown.jsm",
-  FileUtils: "resource://gre/modules/FileUtils.jsm",
+const lazy = {};
+
+const { AsyncShutdown } = ChromeUtils.importESModule(
+  "resource://gre/modules/AsyncShutdown.sys.mjs"
+);
+
+ChromeUtils.defineESModuleGetters(lazy, {
+  FileUtils: "resource://gre/modules/FileUtils.sys.mjs",
+});
+
+XPCOMUtils.defineLazyModuleGetters(lazy, {
   newUID: "resource:///modules/AddrBookUtils.jsm",
-  Services: "resource://gre/modules/Services.jsm",
 });
 
 var log = console.createInstance({
@@ -36,7 +43,7 @@ var connections = new Map();
  * the database schema if necessary.
  */
 function openConnectionTo(file) {
-  const CURRENT_VERSION = 3;
+  const CURRENT_VERSION = 4;
 
   let connection = connections.get(file.path);
   if (!connection) {
@@ -79,8 +86,12 @@ function openConnectionTo(file) {
       // Falls through.
       case 2:
         connection.executeSimpleSQL("DROP TABLE IF EXISTS cards");
-        // The lists table may have a localId column we no longer use, but
-        // since SQLite can't drop columns it's not worth effort to remove it.
+      // The lists table may have a localId column we no longer use, but
+      // since SQLite can't drop columns it's not worth effort to remove it.
+      // Falls through.
+      case 3:
+        // This version exists only to create an automatic backup before cards
+        // are transitioned to vCard.
         connection.schemaVersion = CURRENT_VERSION;
         break;
     }
@@ -163,7 +174,7 @@ class SQLiteDirectory extends AddrBookDirectory {
 
     // Make sure we always have a file. If a file is not created, the
     // filename may be accidentally reused.
-    let file = FileUtils.getFile("ProfD", [fileName]);
+    let file = lazy.FileUtils.getFile("ProfD", [fileName]);
     if (!file.exists()) {
       file.create(Ci.nsIFile.NORMAL_FILE_TYPE, 0o644);
     }
@@ -173,6 +184,8 @@ class SQLiteDirectory extends AddrBookDirectory {
     super.init(uri);
 
     directories.set(fileName, this);
+    // Create the DB connection here already, to let init() throw on corrupt SQLite files.
+    this._dbConnection;
   }
   async cleanUp() {
     await super.cleanUp();
@@ -186,7 +199,7 @@ class SQLiteDirectory extends AddrBookDirectory {
   }
 
   get _dbConnection() {
-    this._file = FileUtils.getFile("ProfD", [this.fileName]);
+    this._file = lazy.FileUtils.getFile("ProfD", [this.fileName]);
     let connection = openConnectionTo(this._file);
 
     // SQLite cache size can be set by the cacheSize preference, in KiB.
@@ -268,52 +281,35 @@ class SQLiteDirectory extends AddrBookDirectory {
     propertyStatement.finalize();
     return properties;
   }
-  saveCardProperties(card) {
-    let cachedCard;
-    if (this.hasOwnProperty("cards")) {
-      cachedCard = this.cards.get(card.UID);
-      cachedCard.clear();
-    }
+  saveCardProperties(uid, properties) {
+    try {
+      this._dbConnection.beginTransaction();
+      let deleteStatement = this._dbConnection.createStatement(
+        "DELETE FROM properties WHERE card = :card"
+      );
+      deleteStatement.params.card = uid;
+      deleteStatement.execute();
+      let insertStatement = this._dbConnection.createStatement(
+        "INSERT INTO properties VALUES (:card, :name, :value)"
+      );
 
-    this._dbConnection.beginTransaction();
-    let deleteStatement = this._dbConnection.createStatement(
-      "DELETE FROM properties WHERE card = :card"
-    );
-    deleteStatement.params.card = card.UID;
-    deleteStatement.execute();
-    let insertStatement = this._dbConnection.createStatement(
-      "INSERT INTO properties VALUES (:card, :name, :value)"
-    );
-    let saveProp = function(name, value) {
-      insertStatement.params.card = card.UID;
-      insertStatement.params.name = name;
-      insertStatement.params.value = value;
-      insertStatement.execute();
-      insertStatement.reset();
-
-      if (cachedCard) {
-        cachedCard.set(name, value);
+      for (let [name, value] of properties) {
+        if (value !== null && value !== undefined && value !== "") {
+          insertStatement.params.card = uid;
+          insertStatement.params.name = name;
+          insertStatement.params.value = value;
+          insertStatement.execute();
+          insertStatement.reset();
+        }
       }
-    };
 
-    for (let { name, value } of card.properties) {
-      if (
-        name != "LastModifiedDate" &&
-        value !== null &&
-        value !== undefined &&
-        value !== ""
-      ) {
-        saveProp(name, value);
-      }
+      this._dbConnection.commitTransaction();
+      deleteStatement.finalize();
+      insertStatement.finalize();
+    } catch (ex) {
+      this._dbConnection.rollbackTransaction();
+      throw ex;
     }
-    // Always set the last modified date.
-    let now = "" + Math.floor(Date.now() / 1000);
-    card.setProperty("LastModifiedDate", now);
-    saveProp("LastModifiedDate", now);
-
-    this._dbConnection.commitTransaction();
-    deleteStatement.finalize();
-    insertStatement.finalize();
   }
   deleteCard(uid) {
     let deleteStatement = this._dbConnection.createStatement(
@@ -361,7 +357,7 @@ class SQLiteDirectory extends AddrBookDirectory {
       "DELETE FROM list_cards WHERE list NOT IN (SELECT DISTINCT uid FROM lists)"
     );
   }
-  async _bulkAddCards(cards) {
+  async bulkAddCards(cards) {
     if (cards.length == 0) {
       return;
     }
@@ -376,28 +372,17 @@ class SQLiteDirectory extends AddrBookDirectory {
       if (!uid || usedUIDs.has(uid)) {
         // A card cannot have the same UID as one that already exists.
         // Assign a new UID to avoid losing data.
-        uid = newUID();
+        uid = lazy.newUID();
       }
       usedUIDs.add(uid);
 
       let cachedCard;
-      if (this.hasOwnProperty("lists")) {
+      if (this.hasOwnProperty("cards")) {
         cachedCard = new Map();
         this.cards.set(uid, cachedCard);
       }
 
-      for (let { name, value } of card.properties) {
-        if (
-          [
-            "DbRowID",
-            "LowercasePrimaryEmail",
-            "LowercaseSecondEmail",
-            "RecordKey",
-            "UID",
-          ].includes(name)
-        ) {
-          continue;
-        }
+      for (let [name, value] of this.prepareToSaveCard(card)) {
         let propertiesParams = propertiesArray.newBindingParams();
         propertiesParams.bindByName("card", uid);
         propertiesParams.bindByName("name", name);
@@ -442,6 +427,15 @@ class SQLiteDirectory extends AddrBookDirectory {
 
   /* nsIAbDirectory */
 
+  get childCardCount() {
+    let countStatement = this._dbConnection.createStatement(
+      "SELECT COUNT(DISTINCT card) AS card_count FROM properties"
+    );
+    countStatement.executeStep();
+    let count = countStatement.row.card_count;
+    countStatement.finalize();
+    return count;
+  }
   getCardFromProperty(property, value, caseSensitive) {
     let sql = caseSensitive
       ? "SELECT card FROM properties WHERE name = :name AND value = :value LIMIT 1"

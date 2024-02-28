@@ -42,7 +42,7 @@ newsgroups-label = Diskusijne skupiny
 newsgroups-description = { -brand-short-name } wam zmóžnja, so ze wšěmi diskusijnymi skupinami zwjazać, kotrež chceće.
 
 import-title = Z druheho programa importować
-import-paragraph = { -brand-short-name } wam zmóžnja,  e-mejlowe powěsće, zapiski adresnikow, kanalowe abonementy, nastajenja a/abo filtry z druhich e-mejlowych programow a zwučenych formatow adresnikow importować.
+import-paragraph2 = { -brand-short-name } wam zmóžnja,  e-mejlowe powěsće, zapiski adresnikow, kanalowe abonementy, nastajenja a/abo filtry z druhich e-mejlowych programow a zwučenych formatow adresnikow importować.
 
 import-label = Importować
     .aria-label = Daty z druhich programow importować

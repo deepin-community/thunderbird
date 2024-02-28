@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, [Ribose Inc](https://www.ribose.com).
+ * Copyright (c) 2017-2021 [Ribose Inc](https://www.ribose.com).
  * Copyright (c) 2009 The NetBSD Foundation, Inc.
  * All rights reserved.
  *
@@ -49,48 +49,58 @@
 #include <errno.h>
 
 #include "fficli.h"
+#include "str-utils.h"
 #include "logging.h"
 
-#ifndef RNP_USE_STD_REGEX
-#include <regex.h>
-#else
-#include <regex>
-#endif
-
-static const char *rnp_prog_name = NULL;
-
-static const char *usage = "-h, --help OR\n"
-                           "\t--encrypt [--output=file] [options] files... OR\n"
-                           "\t-c, --symmetric [--output=file] [options] files...OR\n"
-                           "\t--decrypt [--output=file] [options] files... OR\n"
-                           "\t--sign [--detach] [--hash=alg] [--output=file]\n"
-                           "\t\t[options] files... OR\n"
-                           "\t--verify [options] files... OR\n"
-                           "\t--cat [--output=file] [options] files... OR\n"
-                           "\t--clearsign [--output=file] [options] files... OR\n"
-                           "\t--list-packets [options] OR\n"
-                           "\t--dearmor [--output=file] file OR\n"
-                           "\t--enarmor=<msg|pubkey|seckey|sign> OR\n"
-                           "\t--list-packets [--json] [--grips] [--mpi] [--raw] OR\n"
-                           "\t\t[--output=file] file OR\n"
-                           "\t--version\n"
-                           "where options are:\n"
-                           "\t[-r, --recipient] AND/OR\n"
-                           "\t[--passwords] AND/OR\n"
-                           "\t[--armor] AND/OR\n"
-                           "\t[--cipher=<ciphername>] AND/OR\n"
-                           "\t[--zip, --zlib, --bzip, -z 0..9] AND/OR\n"
-                           "\t[--aead[=EAX, OCB]] AND/OR\n"
-                           "\t[--aead-chunk-bits=0..56] AND/OR\n"
-                           "\t[--coredumps] AND/OR\n"
-                           "\t[--homedir=<homedir>] AND/OR\n"
-                           "\t[-f, --keyfile=<path to key] AND/OR\n"
-                           "\t[--keyring=<keyring>] AND/OR\n"
-                           "\t[--keystore-format=<format>] AND/OR\n"
-                           "\t[--numtries=<attempts>] AND/OR\n"
-                           "\t[-u, --userid=<userid>] AND/OR\n"
-                           "\t[--maxmemalloc=<number of bytes>] AND/OR\n"
-                           "\t[--verbose]\n";
+static const char *usage =
+  "Sign, verify, encrypt, decrypt, inspect OpenPGP data.\n"
+  "Usage: rnp --command [options] [files]\n"
+  "Commands:\n"
+  "  -h, --help           This help message.\n"
+  "  -V, --version        Print RNP version information.\n"
+  "  -e, --encrypt        Encrypt data using the public key(s).\n"
+  "    -r, --recipient    Specify recipient's key via uid/keyid/fingerprint.\n"
+  "    --cipher name      Specify symmetric cipher, used for encryption.\n"
+  "    --aead[=EAX, OCB]  Use AEAD for encryption.\n"
+  "    -z 0..9            Set the compression level.\n"
+  "    --[zip,zlib,bzip]  Use the corresponding compression algorithm.\n"
+  "    --armor            Apply ASCII armor to the encryption/signing output.\n"
+  "    --no-wrap          Do not wrap the output in a literal data packet.\n"
+  "  -c, --symmetric      Encrypt data using the password(s).\n"
+  "    --passwords num    Encrypt to the specified number of passwords.\n"
+  "  -s, --sign           Sign data. May be combined with encryption.\n"
+  "    --detach           Produce detached signature.\n"
+  "    -u, --userid       Specify signing key(s) via uid/keyid/fingerprint.\n"
+  "    --hash             Specify hash algorithm, used during signing.\n"
+  "    --allow-weak-hash  Allow usage of a weak hash algorithm.\n"
+  "  --clearsign          Cleartext-sign data.\n"
+  "  -d, --decrypt        Decrypt and output data, verifying signatures.\n"
+  "  -v, --verify         Verify signatures, without outputting data.\n"
+  "    --source           Specify source for the detached signature.\n"
+  "  --dearmor            Strip ASCII armor from the data, outputting binary.\n"
+  "  --enarmor            Add ASCII armor to the data.\n"
+  "  --list-packets       List OpenPGP packets from the input.\n"
+  "    --json             Use JSON output instead of human-readable.\n"
+  "    --grips            Dump key fingerprints and grips.\n"
+  "    --mpi              Dump MPI values from packets.\n"
+  "    --raw              Dump raw packet contents as well.\n"
+  "\n"
+  "Other options:\n"
+  "  --homedir path       Override home directory (default is ~/.rnp/).\n"
+  "  -f, --keyfile        Load key(s) only from the file specified.\n"
+  "  --output [file, -]   Write data to the specified file or stdout.\n"
+  "  --overwrite          Overwrite output file without a prompt.\n"
+  "  --password           Password used during operation.\n"
+  "  --pass-fd num        Read password(s) from the file descriptor.\n"
+  "  --s2k-iterations     Set the number of iterations for the S2K process.\n"
+  "  --s2k-msec           Calculate S2K iterations value based on a provided time in "
+  "milliseconds.\n"
+  "  --notty              Do not output anything to the TTY.\n"
+  "  --current-time       Override system's time.\n"
+  "  --set-filename       Override file name, stored inside of OpenPGP message.\n"
+  "\n"
+  "See man page for a detailed listing and explanation.\n"
+  "\n";
 
 enum optdefs {
     /* Commands as they are get via CLI */
@@ -119,9 +129,9 @@ enum optdefs {
     OPT_HOMEDIR,
     OPT_DETACHED,
     OPT_HASH_ALG,
+    OPT_ALLOW_WEAK_HASH,
     OPT_OUTPUT,
     OPT_RESULTS,
-    OPT_VERBOSE,
     OPT_COREDUMPS,
     OPT_PASSWDFD,
     OPT_PASSWD,
@@ -142,6 +152,14 @@ enum optdefs {
     OPT_GRIPS,
     OPT_MPIS,
     OPT_RAW,
+    OPT_NOTTY,
+    OPT_SOURCE,
+    OPT_NOWRAP,
+    OPT_CURTIME,
+    OPT_SETFNAME,
+    OPT_ALLOW_HIDDEN,
+    OPT_S2K_ITER,
+    OPT_S2K_MSEC,
 
     /* debug */
     OPT_DEBUG
@@ -156,14 +174,10 @@ static struct option options[] = {
   {"sign", no_argument, NULL, CMD_SIGN},
   {"clearsign", no_argument, NULL, CMD_CLEARSIGN},
   {"verify", no_argument, NULL, CMD_VERIFY},
-  {"cat", no_argument, NULL, CMD_VERIFY_CAT},
-  {"vericat", no_argument, NULL, CMD_VERIFY_CAT},
   {"verify-cat", no_argument, NULL, CMD_VERIFY_CAT},
-  {"verify-show", no_argument, NULL, CMD_VERIFY_CAT},
-  {"verifyshow", no_argument, NULL, CMD_VERIFY_CAT},
   {"symmetric", no_argument, NULL, CMD_SYM_ENCRYPT},
   {"dearmor", no_argument, NULL, CMD_DEARMOR},
-  {"enarmor", required_argument, NULL, CMD_ENARMOR},
+  {"enarmor", optional_argument, NULL, CMD_ENARMOR},
   /* file listing commands */
   {"list-packets", no_argument, NULL, CMD_LIST_PACKETS},
   /* debugging commands */
@@ -183,10 +197,7 @@ static struct option options[] = {
   {"armour", no_argument, NULL, OPT_ARMOR},
   {"detach", no_argument, NULL, OPT_DETACHED},
   {"detached", no_argument, NULL, OPT_DETACHED},
-  {"hash-alg", required_argument, NULL, OPT_HASH_ALG},
   {"hash", required_argument, NULL, OPT_HASH_ALG},
-  {"algorithm", required_argument, NULL, OPT_HASH_ALG},
-  {"verbose", no_argument, NULL, OPT_VERBOSE},
   {"pass-fd", required_argument, NULL, OPT_PASSWDFD},
   {"password", required_argument, NULL, OPT_PASSWD},
   {"passwords", required_argument, NULL, OPT_PASSWORDS},
@@ -196,9 +207,7 @@ static struct option options[] = {
   {"expiration", required_argument, NULL, OPT_EXPIRATION},
   {"expiry", required_argument, NULL, OPT_EXPIRATION},
   {"cipher", required_argument, NULL, OPT_CIPHER},
-  {"num-tries", required_argument, NULL, OPT_NUMTRIES},
   {"numtries", required_argument, NULL, OPT_NUMTRIES},
-  {"attempts", required_argument, NULL, OPT_NUMTRIES},
   {"zip", no_argument, NULL, OPT_ZALG_ZIP},
   {"zlib", no_argument, NULL, OPT_ZALG_ZLIB},
   {"bzip", no_argument, NULL, OPT_ZALG_BZIP},
@@ -210,24 +219,25 @@ static struct option options[] = {
   {"grips", no_argument, NULL, OPT_GRIPS},
   {"mpi", no_argument, NULL, OPT_MPIS},
   {"raw", no_argument, NULL, OPT_RAW},
+  {"notty", no_argument, NULL, OPT_NOTTY},
+  {"source", required_argument, NULL, OPT_SOURCE},
+  {"no-wrap", no_argument, NULL, OPT_NOWRAP},
+  {"current-time", required_argument, NULL, OPT_CURTIME},
+  {"set-filename", required_argument, NULL, OPT_SETFNAME},
+  {"allow-hidden", no_argument, NULL, OPT_ALLOW_HIDDEN},
+  {"s2k-iterations", required_argument, NULL, OPT_S2K_ITER},
+  {"s2k-msec", required_argument, NULL, OPT_S2K_MSEC},
+  {"allow-weak-hash", no_argument, NULL, OPT_ALLOW_WEAK_HASH},
 
   {NULL, 0, NULL, 0},
 };
-
-static void
-print_praise(void)
-{
-    ERR_MSG("%s\nAll bug reports, praise and chocolate, please, to:\n%s",
-            PACKAGE_STRING,
-            PACKAGE_BUGREPORT);
-}
 
 /* print a usage message */
 static void
 print_usage(const char *usagemsg)
 {
-    print_praise();
-    ERR_MSG("Usage: %s %s", rnp_prog_name, usagemsg);
+    cli_rnp_print_praise();
+    puts(usagemsg);
 }
 
 /* do a command once for a specified config */
@@ -236,7 +246,7 @@ rnp_cmd(cli_rnp_t *rnp)
 {
     bool ret = false;
 
-    switch (cli_rnp_cfg(*rnp).get_int(CFG_COMMAND)) {
+    switch (rnp->cfg().get_int(CFG_COMMAND)) {
     case CMD_PROTECT:
         ret = cli_rnp_protect_file(rnp);
         break;
@@ -253,7 +263,7 @@ rnp_cmd(cli_rnp_t *rnp)
         ret = cli_rnp_armor_file(rnp);
         break;
     case CMD_VERSION:
-        print_praise();
+        cli_rnp_print_praise();
         ret = true;
         break;
     default:
@@ -287,7 +297,7 @@ setcmd(rnp_cfg &cfg, int cmd, const char *arg)
         break;
     case CMD_CLEARSIGN:
         cfg.set_bool(CFG_CLEARTEXT, true);
-    /* FALLTHROUGH */
+        [[fallthrough]];
     case CMD_SIGN:
         cfg.set_bool(CFG_NEEDSSECKEY, true);
         cfg.set_bool(CFG_SIGN_NEEDED, true);
@@ -304,7 +314,7 @@ setcmd(rnp_cfg &cfg, int cmd, const char *arg)
     case CMD_VERIFY:
         /* single verify will discard output, decrypt will not */
         cfg.set_bool(CFG_NO_OUTPUT, true);
-    /* FALLTHROUGH */
+        [[fallthrough]];
     case CMD_VERIFY_CAT:
         newcmd = CMD_PROCESS;
         break;
@@ -315,22 +325,18 @@ setcmd(rnp_cfg &cfg, int cmd, const char *arg)
         cfg.set_bool(CFG_KEYSTORE_DISABLED, true);
         break;
     case CMD_ENARMOR: {
-        std::string msgt = "";
-
-        if (arg) {
-            msgt = arg;
-            if (msgt == "msg") {
-                msgt = "message";
-            } else if (msgt == "pubkey") {
-                msgt = "public key";
-            } else if (msgt == "seckey") {
-                msgt = "secret key";
-            } else if (msgt == "sign") {
-                msgt = "signature";
-            } else {
-                ERR_MSG("Wrong enarmor argument: %s", arg);
-                return false;
-            }
+        std::string msgt = arg ? arg : "";
+        if (msgt.empty() || (msgt == "msg")) {
+            msgt = "message";
+        } else if (msgt == "pubkey") {
+            msgt = "public key";
+        } else if (msgt == "seckey") {
+            msgt = "secret key";
+        } else if (msgt == "sign") {
+            msgt = "signature";
+        } else {
+            ERR_MSG("Wrong enarmor argument: %s", arg);
+            return false;
         }
 
         if (!msgt.empty()) {
@@ -345,6 +351,11 @@ setcmd(rnp_cfg &cfg, int cmd, const char *arg)
     default:
         newcmd = CMD_HELP;
         break;
+    }
+
+    if (cfg.has(CFG_COMMAND) && cfg.get_int(CFG_COMMAND) != newcmd) {
+        ERR_MSG("Conflicting commands!");
+        return false;
     }
 
     cfg.set_int(CFG_COMMAND, newcmd);
@@ -372,27 +383,18 @@ setoption(rnp_cfg &cfg, int val, const char *arg)
         return setcmd(cfg, val, arg);
     /* options */
     case OPT_COREDUMPS:
+#ifdef _WIN32
+        ERR_MSG("warning: --coredumps doesn't make sense on windows systems.");
+#endif
         cfg.set_bool(CFG_COREDUMPS, true);
         return true;
     case OPT_KEY_STORE_FORMAT:
-        if (!arg) {
-            ERR_MSG("No keyring format argument provided");
-            return false;
-        }
         cfg.set_str(CFG_KEYSTOREFMT, arg);
         return true;
     case OPT_USERID:
-        if (!arg) {
-            ERR_MSG("No userid argument provided");
-            return false;
-        }
         cfg.add_str(CFG_SIGNERS, arg);
         return true;
     case OPT_RECIPIENT:
-        if (!arg) {
-            ERR_MSG("No recipient argument provided");
-            return false;
-        }
         cfg.add_str(CFG_RECIPIENTS, arg);
         return true;
     case OPT_ARMOR:
@@ -401,58 +403,27 @@ setoption(rnp_cfg &cfg, int val, const char *arg)
     case OPT_DETACHED:
         cfg.set_bool(CFG_DETACHED, true);
         return true;
-    case OPT_VERBOSE:
-        cfg.set_int(CFG_VERBOSE, cfg.get_int(CFG_VERBOSE) + 1);
-        return true;
     case OPT_HOMEDIR:
-        if (!arg) {
-            ERR_MSG("No home directory argument provided");
-            return false;
-        }
         cfg.set_str(CFG_HOMEDIR, arg);
         return true;
     case OPT_KEYFILE:
-        if (!arg) {
-            ERR_MSG("No keyfile argument provided");
-            return false;
-        }
         cfg.set_str(CFG_KEYFILE, arg);
         cfg.set_bool(CFG_KEYSTORE_DISABLED, true);
         return true;
-    case OPT_HASH_ALG: {
-        if (!arg) {
-            ERR_MSG("No hash algorithm argument provided");
-            return false;
-        }
-        bool supported = false;
-        if (rnp_supports_feature(RNP_FEATURE_HASH_ALG, arg, &supported) || !supported) {
-            ERR_MSG("Unsupported hash algorithm: %s", arg);
-            return false;
-        }
-        cfg.set_str(CFG_HASH, arg);
+    case OPT_HASH_ALG:
+        return cli_rnp_set_hash(cfg, arg);
+    case OPT_ALLOW_WEAK_HASH:
+        cfg.set_bool(CFG_WEAK_HASH, true);
         return true;
-    }
     case OPT_PASSWDFD:
-        if (!arg) {
-            ERR_MSG("No pass-fd argument provided");
-            return false;
-        }
         cfg.set_str(CFG_PASSFD, arg);
         return true;
     case OPT_PASSWD:
-        if (!arg) {
-            ERR_MSG("No password argument provided");
-            return false;
-        }
         cfg.set_str(CFG_PASSWD, arg);
         return true;
     case OPT_PASSWORDS: {
-        if (!arg) {
-            ERR_MSG("You must provide a number with --passwords option");
-            return false;
-        }
-        int count = atoi(arg);
-        if (count <= 0) {
+        int count = 0;
+        if (!rnp::str_to_int(arg, count) || (count <= 0)) {
             ERR_MSG("Incorrect value for --passwords option: %s", arg);
             return false;
         }
@@ -462,17 +433,9 @@ setoption(rnp_cfg &cfg, int val, const char *arg)
         return true;
     }
     case OPT_OUTPUT:
-        if (!arg) {
-            ERR_MSG("No output filename argument provided");
-            return false;
-        }
         cfg.set_str(CFG_OUTFILE, arg);
         return true;
     case OPT_RESULTS:
-        if (!arg) {
-            ERR_MSG("No output filename argument provided");
-            return false;
-        }
         cfg.set_str(CFG_RESULTS, arg);
         return true;
     case OPT_EXPIRATION:
@@ -481,19 +444,8 @@ setoption(rnp_cfg &cfg, int val, const char *arg)
     case OPT_CREATION:
         cfg.set_str(CFG_CREATION, arg);
         return true;
-    case OPT_CIPHER: {
-        if (!arg) {
-            ERR_MSG("No encryption algorithm argument provided");
-            return false;
-        }
-        bool supported = false;
-        if (rnp_supports_feature(RNP_FEATURE_SYMM_ALG, arg, &supported) || !supported) {
-            ERR_MSG("Warning, unsupported encryption algorithm: %s", arg);
-            arg = DEFAULT_SYMM_ALG;
-        }
-        cfg.set_str(CFG_CIPHER, arg);
-        return true;
-    }
+    case OPT_CIPHER:
+        return cli_rnp_set_cipher(cfg, arg);
     case OPT_NUMTRIES:
         cfg.set_str(CFG_NUMTRIES, arg);
         return true;
@@ -507,28 +459,22 @@ setoption(rnp_cfg &cfg, int val, const char *arg)
         cfg.set_str(CFG_ZALG, "BZip2");
         return true;
     case OPT_AEAD: {
-        const char *alg = NULL;
         std::string argstr = arg ? arg : "";
-        if (argstr.empty() || (argstr == "1") || rnp_casecmp(argstr, "eax")) {
-            alg = "EAX";
-        } else if ((argstr == "2") || rnp_casecmp(argstr, "ocb")) {
-            alg = "OCB";
+        if ((argstr == "1") || rnp::str_case_eq(argstr, "eax")) {
+            argstr = "EAX";
+        } else if (argstr.empty() || (argstr == "2") || rnp::str_case_eq(argstr, "ocb")) {
+            argstr = "OCB";
         } else {
-            ERR_MSG("Wrong AEAD algorithm: %s", arg);
+            ERR_MSG("Wrong AEAD algorithm: %s", argstr.c_str());
             return false;
         }
-        cfg.set_str(CFG_AEAD, alg);
+        cfg.set_str(CFG_AEAD, argstr);
         return true;
     }
     case OPT_AEAD_CHUNK: {
-        if (!arg) {
-            ERR_MSG("Option aead-chunk-bits requires parameter");
-            return false;
-        }
-
-        int bits = atoi(arg);
-        if ((bits < 0) || (bits > 56)) {
-            ERR_MSG("Wrong argument value %s for aead-chunk-bits", arg);
+        int bits = 0;
+        if (!rnp::str_to_int(arg, bits) || (bits < 0) || (bits > 16)) {
+            ERR_MSG("Wrong argument value %s for aead-chunk-bits, must be 0..16.", arg);
             return false;
         }
         cfg.set_int(CFG_AEAD_CHUNK, bits);
@@ -549,8 +495,46 @@ setoption(rnp_cfg &cfg, int val, const char *arg)
     case OPT_RAW:
         cfg.set_bool(CFG_RAW, true);
         return true;
+    case OPT_NOTTY:
+        cfg.set_bool(CFG_NOTTY, true);
+        return true;
+    case OPT_SOURCE:
+        cfg.set_str(CFG_SOURCE, arg);
+        return true;
+    case OPT_NOWRAP:
+        cfg.set_bool(CFG_NOWRAP, true);
+        cfg.set_int(CFG_ZLEVEL, 0);
+        return true;
+    case OPT_CURTIME:
+        cfg.set_str(CFG_CURTIME, arg);
+        return true;
+    case OPT_SETFNAME:
+        cfg.set_str(CFG_SETFNAME, arg);
+        return true;
+    case OPT_ALLOW_HIDDEN:
+        cfg.set_bool(CFG_ALLOW_HIDDEN, true);
+        return true;
+    case OPT_S2K_ITER: {
+        int iterations = 0;
+        if (!rnp::str_to_int(arg, iterations) || !iterations) {
+            ERR_MSG("Wrong iterations value: %s", arg);
+            return false;
+        }
+        cfg.set_int(CFG_S2K_ITER, iterations);
+        return true;
+    }
+    case OPT_S2K_MSEC: {
+        int msec = 0;
+        if (!rnp::str_to_int(arg, msec) || !msec) {
+            ERR_MSG("Invalid s2k msec value: %s", arg);
+            return false;
+        }
+        cfg.set_int(CFG_S2K_MSEC, msec);
+        return true;
+    }
     case OPT_DEBUG:
-        return rnp_enable_debug(arg);
+        ERR_MSG("Option --debug is deprecated, ignoring.");
+        return true;
     default:
         return setcmd(cfg, CMD_HELP, arg);
     }
@@ -558,63 +542,58 @@ setoption(rnp_cfg &cfg, int val, const char *arg)
     return false;
 }
 
-/* we have -o option=value -- parse, and process */
 static bool
-parse_option(rnp_cfg &cfg, const char *s)
+set_short_option(rnp_cfg &cfg, int ch, const char *arg)
 {
-#ifndef RNP_USE_STD_REGEX
-    static regex_t opt;
-    struct option *op;
-    static int     compiled;
-    regmatch_t     matches[10];
-    char           option[128];
-    char           value[128];
-
-    if (!compiled) {
-        compiled = 1;
-        if (regcomp(&opt, "([^=]{1,128})(=(.*))?", REG_EXTENDED) != 0) {
-            ERR_MSG("Can't compile regex");
-            return 0;
-        }
-    }
-    if (regexec(&opt, s, 10, matches, 0) == 0) {
-        snprintf(option,
-                 sizeof(option),
-                 "%.*s",
-                 (int) (matches[1].rm_eo - matches[1].rm_so),
-                 &s[matches[1].rm_so]);
-        if (matches[2].rm_so > 0) {
-            snprintf(value,
-                     sizeof(value),
-                     "%.*s",
-                     (int) (matches[3].rm_eo - matches[3].rm_so),
-                     &s[matches[3].rm_so]);
+    switch (ch) {
+    case 'V':
+        return setcmd(cfg, CMD_VERSION, arg);
+    case 'd':
+        return setcmd(cfg, CMD_DECRYPT, arg);
+    case 'e':
+        return setcmd(cfg, CMD_ENCRYPT, arg);
+    case 'c':
+        return setcmd(cfg, CMD_SYM_ENCRYPT, arg);
+    case 's':
+        return setcmd(cfg, CMD_SIGN, arg);
+    case 'v':
+        return setcmd(cfg, CMD_VERIFY, arg);
+    case 'r':
+        if (!strlen(optarg)) {
+            ERR_MSG("Recipient should not be empty");
         } else {
-            value[0] = 0x0;
+            cfg.add_str(CFG_RECIPIENTS, optarg);
         }
-        for (op = options; op->name; op++) {
-            if (strcmp(op->name, option) == 0)
-                return setoption(cfg, op->val, value);
+        break;
+    case 'u':
+        if (!optarg) {
+            ERR_MSG("No userid argument provided");
+            return false;
         }
+        cfg.add_str(CFG_SIGNERS, optarg);
+        break;
+    case 'z':
+        if ((strlen(optarg) != 1) || (optarg[0] < '0') || (optarg[0] > '9')) {
+            ERR_MSG("Bad compression level: %s. Should be 0..9", optarg);
+        } else {
+            cfg.set_int(CFG_ZLEVEL, optarg[0] - '0');
+        }
+        break;
+    case 'f':
+        if (!optarg) {
+            ERR_MSG("No keyfile argument provided");
+            return false;
+        }
+        cfg.set_str(CFG_KEYFILE, optarg);
+        cfg.set_bool(CFG_KEYSTORE_DISABLED, true);
+        break;
+    case 'h':
+        [[fallthrough]];
+    default:
+        return setcmd(cfg, CMD_HELP, optarg);
     }
-#else
-    static std::regex re("([^=]{1,128})(=(.*))?", std::regex_constants::extended);
-    std::string       input = s;
-    std::smatch       result;
 
-    if (std::regex_match(input, result, re)) {
-        std::string option = result[1];
-        std::string value;
-        if (result.size() >= 4) {
-            value = result[3];
-        }
-        for (struct option *op = options; op->name; op++) {
-            if (strcmp(op->name, option.c_str()) == 0)
-                return setoption(cfg, op->val, value.c_str());
-        }
-    }
-#endif
-    return 0;
+    return true;
 }
 
 #ifndef RNP_RUN_TESTS
@@ -626,166 +605,91 @@ int
 rnp_main(int argc, char **argv)
 #endif
 {
-    cli_rnp_t rnp = {};
-    rnp_cfg   cfg;
-    int       optindex;
-    int       ret = EXIT_ERROR;
-    int       ch;
-    bool      disable_ks = false;
-
-    rnp_prog_name = argv[0];
-
     if (argc < 2) {
         print_usage(usage);
         return EXIT_ERROR;
     }
 
+    cli_rnp_t rnp = {};
 #if !defined(RNP_RUN_TESTS) && defined(_WIN32)
-    bool args_are_substituted = false;
     try {
-        args_are_substituted = rnp_win_substitute_cmdline_args(&argc, &argv);
+        rnp.substitute_args(&argc, &argv);
     } catch (std::exception &ex) {
         RNP_LOG("Error converting arguments ('%s')", ex.what());
         return EXIT_ERROR;
     }
 #endif
 
+    rnp_cfg cfg;
     cfg.load_defaults();
-    optindex = 0;
 
     /* TODO: These options should be set after initialising the context. */
-    while ((ch = getopt_long(argc, argv, "S:Vdeco:r:su:vz:f:", options, &optindex)) != -1) {
-        if (ch >= CMD_ENCRYPT) {
-            /* getopt_long returns 0 for long options */
-            if (!setoption(cfg, options[optindex].val, optarg)) {
-                goto finish;
-            }
-        } else {
-            int cmd = 0;
-            switch (ch) {
-            case 'V':
-                cmd = CMD_VERSION;
-                break;
-            case 'd':
-                cmd = CMD_DECRYPT;
-                break;
-            case 'e':
-                cmd = CMD_ENCRYPT;
-                break;
-            case 'c':
-                cmd = CMD_SYM_ENCRYPT;
-                break;
-            case 's':
-                cmd = CMD_SIGN;
-                break;
-            case 'v':
-                cmd = CMD_VERIFY;
-                break;
-            case 'o':
-                if (!parse_option(cfg, optarg)) {
-                    ERR_MSG("Bad option");
-                    goto finish;
-                }
-                break;
-            case 'r':
-                if (strlen(optarg) < 1) {
-                    ERR_MSG("Recipient should not be empty");
-                } else {
-                    cfg.add_str(CFG_RECIPIENTS, optarg);
-                }
-                break;
-            case 'u':
-                if (!optarg) {
-                    ERR_MSG("No userid argument provided");
-                    goto finish;
-                }
-                cfg.add_str(CFG_SIGNERS, optarg);
-                break;
-            case 'z':
-                if ((strlen(optarg) != 1) || (optarg[0] < '0') || (optarg[0] > '9')) {
-                    ERR_MSG("Bad compression level: %s. Should be 0..9", optarg);
-                } else {
-                    cfg.set_int(CFG_ZLEVEL, optarg[0] - '0');
-                }
-                break;
-            case 'f':
-                if (!optarg) {
-                    ERR_MSG("No keyfile argument provided");
-                    goto finish;
-                }
-                cfg.set_str(CFG_KEYFILE, optarg);
-                cfg.set_bool(CFG_KEYSTORE_DISABLED, true);
-                break;
-            default:
-                cmd = CMD_HELP;
-                break;
-            }
+    int optindex = 0;
+    int ch;
+    while ((ch = getopt_long(argc, argv, "S:Vdecr:su:vz:f:h", options, &optindex)) != -1) {
+        /* Check for unsupported command/option */
+        if (ch == '?') {
+            print_usage(usage);
+            return EXIT_FAILURE;
+        }
 
-            if (cmd && !setcmd(cfg, cmd, optarg)) {
-                goto finish;
-            }
+        bool res = ch >= CMD_ENCRYPT ? setoption(cfg, options[optindex].val, optarg) :
+                                       set_short_option(cfg, ch, optarg);
+        if (!res) {
+            return EXIT_ERROR;
         }
     }
 
     switch (cfg.get_int(CFG_COMMAND)) {
     case CMD_HELP:
         print_usage(usage);
-        ret = EXIT_SUCCESS;
-        goto finish;
+        return EXIT_SUCCESS;
     case CMD_VERSION:
-        print_praise();
-        ret = EXIT_SUCCESS;
-        goto finish;
+        cli_rnp_print_praise();
+        return EXIT_SUCCESS;
     default:;
     }
 
     if (!cli_cfg_set_keystore_info(cfg)) {
         ERR_MSG("fatal: cannot set keystore info");
-        goto finish;
+        return EXIT_ERROR;
     }
 
-    if (!cli_rnp_init(&rnp, cfg)) {
+    if (!rnp.init(cfg)) {
         ERR_MSG("fatal: cannot initialise");
-        goto finish;
+        return EXIT_ERROR;
     }
 
-    disable_ks = cli_rnp_cfg(rnp).get_bool(CFG_KEYSTORE_DISABLED);
-    if (!disable_ks &&
-        !cli_rnp_load_keyrings(&rnp, cli_rnp_cfg(rnp).get_bool(CFG_NEEDSSECKEY))) {
+    if (!cli_rnp_check_weak_hash(&rnp)) {
+        ERR_MSG("Weak hash algorithm detected. Pass --allow-weak-hash option if you really "
+                "want to use it.");
+        return EXIT_ERROR;
+    }
+
+    bool disable_ks = rnp.cfg().get_bool(CFG_KEYSTORE_DISABLED);
+    if (!disable_ks && !rnp.load_keyrings(rnp.cfg().get_bool(CFG_NEEDSSECKEY))) {
         ERR_MSG("fatal: failed to load keys");
-        goto finish;
+        return EXIT_ERROR;
     }
 
     /* load the keyfile if any */
-    if (disable_ks && !cli_rnp_cfg(rnp).get_str(CFG_KEYFILE).empty() &&
-        !cli_rnp_add_key(&rnp)) {
+    if (disable_ks && !rnp.cfg().get_str(CFG_KEYFILE).empty() && !cli_rnp_add_key(&rnp)) {
         ERR_MSG("fatal: failed to load key(s) from the file");
-        goto finish;
+        return EXIT_ERROR;
     }
 
     if (!cli_rnp_setup(&rnp)) {
-        goto finish;
+        return EXIT_ERROR;
     }
 
     /* now do the required action for each of the command line args */
-    ret = EXIT_SUCCESS;
     if (optind == argc) {
-        if (!rnp_cmd(&rnp))
-            ret = EXIT_FAILURE;
-    } else {
-        for (int i = optind; i < argc; i++) {
-            cli_rnp_cfg(rnp).set_str(CFG_INFILE, argv[i]);
-            if (!rnp_cmd(&rnp)) {
-                ret = EXIT_FAILURE;
-            }
-        }
+        return cli_rnp_t::ret_code(rnp_cmd(&rnp));
     }
-finish:
-    cli_rnp_end(&rnp);
-#if !defined(RNP_RUN_TESTS) && defined(_WIN32)
-    if (args_are_substituted) {
-        rnp_win_clear_args(argc, argv);
+    bool success = true;
+    for (int i = optind; i < argc; i++) {
+        rnp.cfg().set_str(CFG_INFILE, argv[i]);
+        success = success && rnp_cmd(&rnp);
     }
-#endif
-    return ret;
+    return cli_rnp_t::ret_code(success);
 }

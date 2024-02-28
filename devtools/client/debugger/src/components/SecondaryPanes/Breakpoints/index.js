@@ -3,7 +3,7 @@
  * file, You can obtain one at <http://mozilla.org/MPL/2.0/>. */
 
 import React, { Component } from "react";
-import classnames from "classnames";
+import PropTypes from "prop-types";
 import { connect } from "../../../utils/connect";
 
 import ExceptionOption from "./ExceptionOption";
@@ -15,16 +15,30 @@ import actions from "../../../actions";
 import { getSelectedLocation } from "../../../utils/selected-location";
 import { createHeadlessEditor } from "../../../utils/editor/create-editor";
 
-import {
-  makeBreakpointId,
-  sortSelectedBreakpoints,
-} from "../../../utils/breakpoint";
+import { makeBreakpointId } from "../../../utils/breakpoint";
 
-import { getSelectedSource, getBreakpointSources } from "../../../selectors";
+import {
+  getSelectedSource,
+  getBreakpointSources,
+  getBlackBoxRanges,
+} from "../../../selectors";
+
+const classnames = require("devtools/client/shared/classnames.js");
 
 import "./Breakpoints.css";
 
 class Breakpoints extends Component {
+  static get propTypes() {
+    return {
+      breakpointSources: PropTypes.array.isRequired,
+      pauseOnExceptions: PropTypes.func.isRequired,
+      selectedSource: PropTypes.object,
+      shouldPauseOnCaughtExceptions: PropTypes.bool.isRequired,
+      shouldPauseOnExceptions: PropTypes.bool.isRequired,
+      blackboxedRanges: PropTypes.array.isRequired,
+    };
+  }
+
   componentWillUnmount() {
     this.removeEditor();
   }
@@ -52,7 +66,7 @@ class Breakpoints extends Component {
       pauseOnExceptions,
     } = this.props;
 
-    const isEmpty = breakpointSources.length == 0;
+    const isEmpty = !breakpointSources.length;
 
     return (
       <div
@@ -82,32 +96,28 @@ class Breakpoints extends Component {
   }
 
   renderBreakpoints() {
-    const { breakpointSources, selectedSource } = this.props;
+    const { breakpointSources, selectedSource, blackboxedRanges } = this.props;
     if (!breakpointSources.length) {
       return null;
     }
 
     const editor = this.getEditor();
-    const sources = [...breakpointSources.map(({ source }) => source)];
+    const sources = breakpointSources.map(({ source }) => source);
 
     return (
       <div className="pane breakpoints-list">
         {breakpointSources.map(({ source, breakpoints }) => {
-          const sortedBreakpoints = sortSelectedBreakpoints(
-            breakpoints,
-            selectedSource
-          );
-
           return [
             <BreakpointHeading
               key={source.id}
               source={source}
               sources={sources}
             />,
-            ...sortedBreakpoints.map(breakpoint => (
+            breakpoints.map(breakpoint => (
               <Breakpoint
                 breakpoint={breakpoint}
                 source={source}
+                blackboxedRangesForSource={blackboxedRanges[source.url]}
                 selectedSource={selectedSource}
                 editor={editor}
                 key={makeBreakpointId(
@@ -134,6 +144,7 @@ class Breakpoints extends Component {
 const mapStateToProps = state => ({
   breakpointSources: getBreakpointSources(state),
   selectedSource: getSelectedSource(state),
+  blackboxedRanges: getBlackBoxRanges(state),
 });
 
 export default connect(mapStateToProps, {

@@ -6,9 +6,8 @@
 
 var EXPORTED_SYMBOLS = ["PopupNotifications"];
 
-const { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-const { PromiseUtils } = ChromeUtils.import(
-  "resource://gre/modules/PromiseUtils.jsm"
+const { PromiseUtils } = ChromeUtils.importESModule(
+  "resource://gre/modules/PromiseUtils.sys.mjs"
 );
 
 const NOTIFICATION_EVENT_DISMISSED = "dismissed";
@@ -151,6 +150,7 @@ Notification.prototype = {
 /**
  * The PopupNotifications object manages popup notifications for a given browser
  * window.
+ *
  * @param tabbrowser
  *        window's TabBrowser. Used to observe tab switching events and
  *        for determining the active browser element.
@@ -177,7 +177,7 @@ function PopupNotifications(tabbrowser, panel, iconBox, options = {}) {
   if (!tabbrowser) {
     throw new Error("Invalid tabbrowser");
   }
-  if (iconBox && ChromeUtils.getClassName(iconBox) != "XULElement") {
+  if (iconBox && ChromeUtils.getClassName(iconBox) != "HTMLDivElement") {
     throw new Error("Invalid iconBox");
   }
   if (ChromeUtils.getClassName(panel) != "XULPopupElement") {
@@ -285,6 +285,7 @@ PopupNotifications.prototype = {
 
   /**
    * Retrieve a Notification object associated with the browser/ID pair.
+   *
    * @param id
    *        The Notification ID to search for.
    * @param browser
@@ -300,6 +301,7 @@ PopupNotifications.prototype = {
 
   /**
    * Adds a new popup notification.
+   *
    * @param browser
    *        The <xul:browser> element associated with the notification. Must not
    *        be null.
@@ -526,6 +528,7 @@ PopupNotifications.prototype = {
 
   /**
    * Removes a Notification.
+   *
    * @param notification
    *        The Notification object to remove.
    */
@@ -559,7 +562,7 @@ PopupNotifications.prototype = {
         this.nextDismissReason = TELEMETRY_STAT_DISMISSAL_LEAVE_PAGE;
         // setTimeout(..., 0) needed, otherwise openPopup from "activate" event
         // handler results in the popup being hidden again for some reason...
-        this.window.setTimeout(function() {
+        this.window.setTimeout(function () {
           self._update();
         }, 0);
         break;
@@ -692,7 +695,7 @@ PopupNotifications.prototype = {
   _refreshPanel(notificationsToShow) {
     this._clearPanel();
 
-    notificationsToShow.forEach(function(n) {
+    notificationsToShow.forEach(function (n) {
       let doc = this.window.document;
 
       // Append "-notification" to the ID to try to avoid ID conflicts with other stuff
@@ -796,7 +799,7 @@ PopupNotifications.prototype = {
           }
           popupnotification.setAttribute("origin", uri);
         } catch (e) {
-          Cu.reportError(e);
+          console.error(e);
           popupnotification.removeAttribute("origin");
         }
       } else {
@@ -958,7 +961,7 @@ PopupNotifications.prototype = {
     }
 
     if (this.isPanelOpen && this._currentAnchorElement == anchorElement) {
-      notificationsToShow.forEach(function(n) {
+      notificationsToShow.forEach(function (n) {
         this._fireCallback(n, NOTIFICATION_EVENT_SHOWN);
       }, this);
 
@@ -991,7 +994,7 @@ PopupNotifications.prototype = {
         this.panel.removeAttribute("noautohide");
       }
 
-      notificationsToShow.forEach(function(n) {
+      notificationsToShow.forEach(function (n) {
         // Record that the notification was actually displayed on screen.
         // Notifications that were opened a second time or that were originally
         // shown with "options.dismissed" will be recorded in a separate bucket.
@@ -1022,7 +1025,7 @@ PopupNotifications.prototype = {
           true
         );
       }
-      this._popupshownListener = function(e) {
+      this._popupshownListener = function (e) {
         target.removeEventListener(
           "popupshown",
           this._popupshownListener,
@@ -1030,7 +1033,7 @@ PopupNotifications.prototype = {
         );
         this._popupshownListener = null;
 
-        notificationsToShow.forEach(function(n) {
+        notificationsToShow.forEach(function (n) {
           this._fireCallback(n, NOTIFICATION_EVENT_SHOWN);
         }, this);
         // These notifications are used by tests to know when all the processing
@@ -1044,7 +1047,7 @@ PopupNotifications.prototype = {
       this._popupshownListener = this._popupshownListener.bind(this);
       target.addEventListener("popupshown", this._popupshownListener, true);
 
-      this.panel.openPopup(anchorElement, "bottomcenter topleft", 0, 0);
+      this.panel.openPopup(anchorElement, "after_end", 0, 0, true);
     });
   },
 
@@ -1102,7 +1105,7 @@ PopupNotifications.prototype = {
 
     if (haveNotifications) {
       // Also filter out notifications that are for a different anchor.
-      notificationsToShow = notificationsToShow.filter(function(n) {
+      notificationsToShow = notificationsToShow.filter(function (n) {
         return anchors.has(n.anchorElement);
       });
 
@@ -1299,7 +1302,7 @@ PopupNotifications.prototype = {
     // Mark notifications anchored to this anchor as un-dismissed
     browser = browser || this.tabbrowser.selectedBrowser;
     let notifications = this._getNotificationsForBrowser(browser);
-    notifications.forEach(function(n) {
+    notifications.forEach(function (n) {
       if (n.anchorElement == anchor) {
         n.dismissed = false;
       }
@@ -1317,7 +1320,7 @@ PopupNotifications.prototype = {
     let other = otherBrowser.ownerGlobal.PopupNotifications;
     if (!other) {
       if (ourNotifications.length > 0) {
-        Cu.reportError(
+        console.error(
           "unable to swap notifications: otherBrowser doesn't support notifications"
         );
       }
@@ -1366,7 +1369,7 @@ PopupNotifications.prototype = {
         return n.options.eventCallback.call(n, event, ...args);
       }
     } catch (error) {
-      Cu.reportError(error);
+      console.error(error);
     }
     return undefined;
   },
@@ -1553,7 +1556,7 @@ PopupNotifications.prototype = {
           source,
         });
       } catch (error) {
-        Cu.reportError(error);
+        console.error(error);
       }
 
       if (action.dismiss) {
@@ -1585,7 +1588,7 @@ PopupNotifications.prototype = {
         source: "menucommand",
       });
     } catch (error) {
-      Cu.reportError(error);
+      console.error(error);
     }
 
     if (target.action.dismiss) {

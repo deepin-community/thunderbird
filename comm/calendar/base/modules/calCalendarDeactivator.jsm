@@ -4,7 +4,6 @@
 
 const EXPORTED_SYMBOLS = ["calendarDeactivator"];
 
-const { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 const { cal } = ChromeUtils.import("resource:///modules/calendar/calUtils.jsm");
 
 /**
@@ -30,10 +29,9 @@ var calendarDeactivator = {
   QueryInterface: ChromeUtils.generateQI(["calICalendarManagerObserver", "calIObserver"]),
 
   initializeDeactivator() {
-    let manager = cal.getCalendarManager();
-    this.calendars = new Set(manager.getCalendars());
-    manager.addObserver(this);
-    manager.addCalendarObserver(this);
+    this.calendars = new Set(cal.manager.getCalendars());
+    cal.manager.addObserver(this);
+    cal.manager.addCalendarObserver(this);
     this.isCalendarActivated = this.checkCalendarsEnabled();
   },
 
@@ -60,7 +58,7 @@ var calendarDeactivator = {
   /**
    * Check the enabled state of all of the user's calendars.
    *
-   * @return {boolean} True if any calendars are enabled, false if all are disabled.
+   * @returns {boolean} True if any calendars are enabled, false if all are disabled.
    */
   checkCalendarsEnabled() {
     for (let calendar of this.calendars) {
@@ -103,10 +101,9 @@ var calendarDeactivator = {
    * and tasks tabs when calendar functionality is deactivated.
    *
    * @param {ChromeWindow} window - A ChromeWindow object.
-   * @param {boolean} calendarIsActivated - Whether any calendars are enabled.
+   * @param {boolean} isEnabled - Whether any calendars are enabled.
    */
-  refreshNotificationBoxes(window, calendarIsActivated) {
-    let value = "calendarDeactivated";
+  refreshNotificationBoxes(window, isEnabled) {
     let notificationboxes = [
       [
         window.calendarTabType.modes.calendar.notificationbox,
@@ -118,20 +115,21 @@ var calendarDeactivator = {
       ],
     ];
 
-    for (let [notificationbox, messageName] of notificationboxes) {
+    let value = "calendarDeactivated";
+    for (let [notificationbox, l10nId] of notificationboxes) {
       let existingNotification = notificationbox.getNotificationWithValue(value);
 
-      if (calendarIsActivated) {
+      if (isEnabled) {
         notificationbox.removeNotification(existingNotification);
       } else if (!existingNotification) {
-        let priority = notificationbox.PRIORITY_WARNING_MEDIUM;
-
-        // Use Fluent's preferred async declarative, DOMLocalization API.
-        let messageFragment = window.document.createDocumentFragment();
-        let message = window.document.createElement("span");
-        window.document.l10n.setAttributes(message, messageName);
-        messageFragment.appendChild(message);
-        notificationbox.appendNotification(messageFragment, value, null, priority, null);
+        notificationbox.appendNotification(
+          value,
+          {
+            label: { "l10n-id": l10nId },
+            priority: notificationbox.PRIORITY_WARNING_MEDIUM,
+          },
+          null
+        );
       }
     }
   },

@@ -4,10 +4,12 @@
 
 #define VECS_PER_SPECIFIC_BRUSH 2
 
-#include shared,prim_shared,brush,gradient_shared
+#include shared,prim_shared,brush,gpu_buffer,gradient_shared
 
-flat varying float v_start_offset;
-flat varying vec2 v_scale_dir;
+// Start offset. Packed in to vector to work around bug 1630356.
+flat varying mediump vec2 v_start_offset;
+
+flat varying mediump vec2 v_scale_dir;
 
 #ifdef WR_VERTEX_SHADER
 
@@ -57,7 +59,7 @@ void brush_vs(
 
     // Normalize UV and offsets to 0..1 scale.
     v_scale_dir = dir / dot(dir, dir);
-    v_start_offset = dot(start_point, v_scale_dir);
+    v_start_offset.x = dot(start_point, v_scale_dir);
     v_scale_dir *= v_repeated_size;
 }
 #endif
@@ -65,7 +67,7 @@ void brush_vs(
 #ifdef WR_FRAGMENT_SHADER
 float get_gradient_offset(vec2 pos) {
     // Project position onto a direction vector to compute offset.
-    return dot(pos, v_scale_dir) - v_start_offset;
+    return dot(pos, v_scale_dir) - v_start_offset.x;
 }
 
 Fragment brush_fs() {
@@ -80,22 +82,13 @@ Fragment brush_fs() {
 
 #ifdef SWGL_DRAW_SPAN
 void swgl_drawSpanRGBA8() {
-    int address = swgl_validateGradient(sGpuCache, get_gpu_cache_uv(v_gradient_address), int(GRADIENT_ENTRIES + 2.0));
+    int address = swgl_validateGradient(sGpuBuffer, get_gpu_buffer_uv(v_gradient_address.x), int(GRADIENT_ENTRIES + 2.0));
     if (address < 0) {
         return;
     }
-    #ifndef WR_FEATURE_ALPHA_PASS
-        swgl_commitLinearGradientRGBA8(sGpuCache, address, GRADIENT_ENTRIES, v_gradient_repeat != 0.0,
-                                       get_gradient_offset(v_pos));
-    #else
-        while (swgl_SpanLength > 0) {
-            float offset = get_gradient_offset(compute_repeated_pos());
-            if (v_gradient_repeat != 0.0) offset = fract(offset);
-            float entry = clamp_gradient_entry(offset);
-            swgl_commitGradientRGBA8(sGpuCache, address, entry);
-            v_pos += swgl_interpStep(v_pos);
-        }
-    #endif
+
+    swgl_commitLinearGradientRGBA8(sGpuBuffer, address, GRADIENT_ENTRIES, true, v_gradient_repeat.x != 0.0,
+                                   v_pos, v_scale_dir, v_start_offset.x);
 }
 #endif
 

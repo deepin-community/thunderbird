@@ -60,10 +60,10 @@
 #include "utils.h"
 
 static const char *
-pgp_sa_to_botan_string(pgp_symm_alg_t alg)
+pgp_sa_to_botan_string(int alg, bool silent = false)
 {
     switch (alg) {
-#if defined(BOTAN_HAS_IDEA)
+#if defined(BOTAN_HAS_IDEA) && defined(ENABLE_IDEA)
     case PGP_SA_IDEA:
         return "IDEA";
 #endif
@@ -73,12 +73,12 @@ pgp_sa_to_botan_string(pgp_symm_alg_t alg)
         return "TripleDES";
 #endif
 
-#if defined(BOTAN_HAS_CAST)
+#if defined(BOTAN_HAS_CAST) && defined(ENABLE_CAST5)
     case PGP_SA_CAST5:
         return "CAST-128";
 #endif
 
-#if defined(BOTAN_HAS_BLOWFISH)
+#if defined(BOTAN_HAS_BLOWFISH) && defined(ENABLE_BLOWFISH)
     case PGP_SA_BLOWFISH:
         return "Blowfish";
 #endif
@@ -92,12 +92,12 @@ pgp_sa_to_botan_string(pgp_symm_alg_t alg)
         return "AES-256";
 #endif
 
-#if defined(BOTAN_HAS_SM4)
+#if defined(BOTAN_HAS_SM4) && defined(ENABLE_SM2)
     case PGP_SA_SM4:
         return "SM4";
 #endif
 
-#if defined(BOTAN_HAS_TWOFISH)
+#if defined(BOTAN_HAS_TWOFISH) && defined(ENABLE_TWOFISH)
     case PGP_SA_TWOFISH:
         return "Twofish";
 #endif
@@ -111,14 +111,15 @@ pgp_sa_to_botan_string(pgp_symm_alg_t alg)
         return "Camellia-256";
 #endif
 
-    case PGP_SA_PLAINTEXT:
-        return NULL; // ???
     default:
-        RNP_LOG("Unsupported PGP symmetric alg %d", (int) alg);
+        if (!silent) {
+            RNP_LOG("Unsupported symmetric algorithm %d", alg);
+        }
         return NULL;
     }
 }
 
+#if defined(ENABLE_AEAD)
 static bool
 pgp_aead_to_botan_string(pgp_symm_alg_t ealg, pgp_aead_alg_t aalg, char *buf, size_t len)
 {
@@ -152,6 +153,7 @@ pgp_aead_to_botan_string(pgp_symm_alg_t ealg, pgp_aead_alg_t aalg, char *buf, si
 
     return true;
 }
+#endif
 
 bool
 pgp_cipher_cfb_start(pgp_crypt_t *  crypt,
@@ -162,8 +164,7 @@ pgp_cipher_cfb_start(pgp_crypt_t *  crypt,
     memset(crypt, 0x0, sizeof(*crypt));
 
     const char *cipher_name = pgp_sa_to_botan_string(alg);
-    if (cipher_name == NULL) {
-        RNP_LOG("Unsupported algorithm: %d", alg);
+    if (!cipher_name) {
         return false;
     }
 
@@ -396,7 +397,6 @@ pgp_block_size(pgp_symm_alg_t alg)
     case PGP_SA_CAST5:
     case PGP_SA_BLOWFISH:
         return 8;
-
     case PGP_SA_AES_128:
     case PGP_SA_AES_192:
     case PGP_SA_AES_256:
@@ -406,9 +406,7 @@ pgp_block_size(pgp_symm_alg_t alg)
     case PGP_SA_CAMELLIA_256:
     case PGP_SA_SM4:
         return 16;
-
     default:
-        RNP_DLOG("Unknown PGP symmetric alg %d", (int) alg);
         return 0;
     }
 }
@@ -445,23 +443,13 @@ pgp_key_size(pgp_symm_alg_t alg)
     }
 }
 
-/**
-\ingroup HighLevel_Supported
-\brief Is this Symmetric Algorithm supported?
-\param alg Symmetric Algorithm to check
-\return 1 if supported; else 0
-*/
 bool
-pgp_is_sa_supported(pgp_symm_alg_t alg)
+pgp_is_sa_supported(int alg, bool silent)
 {
-    const char *cipher_name = pgp_sa_to_botan_string(alg);
-    if (cipher_name != NULL)
-        return true;
-
-    RNP_LOG("Warning: cipher %d not supported", (int) alg);
-    return false;
+    return pgp_sa_to_botan_string(alg, silent);
 }
 
+#if defined(ENABLE_AEAD)
 bool
 pgp_cipher_aead_init(pgp_crypt_t *  crypt,
                      pgp_symm_alg_t ealg,
@@ -509,6 +497,7 @@ pgp_cipher_aead_granularity(pgp_crypt_t *crypt)
 {
     return crypt->aead.granularity;
 }
+#endif
 
 size_t
 pgp_cipher_aead_nonce_len(pgp_aead_alg_t aalg)
@@ -535,6 +524,7 @@ pgp_cipher_aead_tag_len(pgp_aead_alg_t aalg)
     }
 }
 
+#if defined(ENABLE_AEAD)
 bool
 pgp_cipher_aead_set_ad(pgp_crypt_t *crypt, const uint8_t *ad, size_t len)
 {
@@ -655,3 +645,4 @@ pgp_cipher_aead_nonce(pgp_aead_alg_t aalg, const uint8_t *iv, uint8_t *nonce, si
         return 0;
     }
 }
+#endif // ENABLE_AEAD

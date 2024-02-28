@@ -9,8 +9,6 @@
 # so please be careful and get review from a Testing :: Marionette peer
 # before you make any changes to this file.
 
-from __future__ import absolute_import
-
 
 thunderbird_prefs = {
     # Disable application updates
@@ -76,5 +74,4 @@ thunderbird_prefs = {
     "messenger.account.account1.firstConnectionState": 1,
     "messenger.account.account1.name": "mozmilltest@irc.mozilla.invalid",
     "messenger.account.account1.prpl": "prpl-irc",
-    "messenger.accounts": "account1",
 }

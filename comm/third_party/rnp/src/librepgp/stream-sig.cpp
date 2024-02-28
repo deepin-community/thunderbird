@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2020, [Ribose Inc](https://www.ribose.com).
+ * Copyright (c) 2018-2022, [Ribose Inc](https://www.ribose.com).
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without modification,
@@ -45,166 +45,33 @@
 
 #include <time.h>
 
-bool
-signature_set_embedded_sig(pgp_signature_t *sig, pgp_signature_t *esig)
+void
+signature_hash_key(const pgp_key_pkt_t &key, rnp::Hash &hash)
 {
-    pgp_sig_subpkt_t *subpkt = NULL;
-    pgp_dest_t        memdst = {};
-    pgp_source_t      memsrc = {};
-    size_t            len = 0;
-    bool              res = false;
-
-    if (init_mem_dest(&memdst, NULL, 0)) {
-        RNP_LOG("alloc failed");
-        return false;
-    }
-    try {
-        esig->write(memdst);
-    } catch (const std::exception &e) {
-        RNP_LOG("failed to write signature: %s", e.what());
-        goto finish;
-    }
-    if (init_mem_src(&memsrc, mem_dest_get_memory(&memdst), memdst.writeb, false)) {
-        RNP_LOG("failed to init mem src");
-        goto finish;
-    }
-    if (!stream_read_pkt_len(&memsrc, &len)) {
-        RNP_LOG("wrong pkt len");
-        goto finish;
-    }
-
-    try {
-        subpkt = &sig->add_subpkt(PGP_SIG_SUBPKT_EMBEDDED_SIGNATURE, len, true);
-        subpkt->hashed = false;
-        if (!src_read_eq(&memsrc, subpkt->data, len)) {
-            RNP_LOG("failed to read back signature");
-            goto finish;
-        }
-        subpkt->fields.sig = new pgp_signature_t(*esig);
-        subpkt->parsed = true;
-        res = true;
-    } catch (const std::exception &e) {
-        RNP_LOG("%s", e.what());
-    }
-finish:
-    if (!res && subpkt) {
-        sig->remove_subpkt(subpkt);
-    }
-    src_close(&memsrc);
-    dst_close(&memdst, true);
-    return res;
-}
-
-bool
-signature_add_notation_data(pgp_signature_t *sig,
-                            bool             readable,
-                            const char *     name,
-                            const char *     value)
-{
-    size_t nlen = strlen(name);
-    size_t vlen = strlen(value);
-
-    if ((nlen > 0xffff) || (vlen > 0xffff)) {
-        RNP_LOG("wrong length");
-        return false;
-    }
-
-    try {
-        pgp_sig_subpkt_t &subpkt =
-          sig->add_subpkt(PGP_SIG_SUBPKT_NOTATION_DATA, 8 + nlen + vlen, false);
-        subpkt.hashed = true;
-        if (readable) {
-            subpkt.data[0] = 0x80;
-            subpkt.fields.notation.flags[0] = 0x80;
-        }
-        write_uint16(subpkt.data + 4, nlen);
-        memcpy(subpkt.data + 6, name, nlen);
-        write_uint16(subpkt.data + 6 + nlen, vlen);
-        memcpy(subpkt.data + 8 + nlen, value, vlen);
-        return subpkt.parse();
-    } catch (const std::exception &e) {
-        RNP_LOG("%s", e.what());
-        return false;
-    }
-}
-
-bool
-signature_fill_hashed_data(pgp_signature_t *sig)
-{
-    /* we don't have a need to write v2-v3 signatures */
-    if ((sig->version < PGP_V2) || (sig->version > PGP_V4)) {
-        RNP_LOG("don't know version %d", (int) sig->version);
-        return false;
-    }
-    try {
-        pgp_packet_body_t hbody(PGP_PKT_RESERVED);
-        if (sig->version < PGP_V4) {
-            hbody.add_byte(sig->type());
-            hbody.add_uint32(sig->creation_time);
-        } else {
-            hbody.add_byte(sig->version);
-            hbody.add_byte(sig->type());
-            hbody.add_byte(sig->palg);
-            hbody.add_byte(sig->halg);
-            hbody.add_subpackets(*sig, true);
-        }
-
-        free(sig->hashed_data);
-        sig->hashed_data = (uint8_t *) malloc(hbody.size());
-        if (!sig->hashed_data) {
-            RNP_LOG("allocation failed");
-            return false;
-        }
-        memcpy(sig->hashed_data, hbody.data(), hbody.size());
-        sig->hashed_len = hbody.size();
-        return true;
-    } catch (const std::exception &e) {
-        RNP_LOG("%s", e.what());
-        return false;
-    }
-}
-
-bool
-signature_hash_key(const pgp_key_pkt_t *key, pgp_hash_t *hash)
-{
-    if (!key || !hash) {
-        RNP_LOG("null key or hash");
-        return false;
-    }
-
     uint8_t hdr[3] = {0x99, 0x00, 0x00};
-    if (key->hashed_data) {
-        write_uint16(hdr + 1, key->hashed_len);
-        return !pgp_hash_add(hash, hdr, 3) &&
-               !pgp_hash_add(hash, key->hashed_data, key->hashed_len);
+    if (key.hashed_data) {
+        write_uint16(hdr + 1, key.hashed_len);
+        hash.add(hdr, 3);
+        hash.add(key.hashed_data, key.hashed_len);
+        return;
     }
 
     /* call self recursively if hashed data is not filled, to overcome const restriction */
-    try {
-        pgp_key_pkt_t keycp(*key, true);
-        keycp.fill_hashed_data();
-        return signature_hash_key(&keycp, hash);
-    } catch (const std::exception &e) {
-        RNP_LOG("%s", e.what());
-        return false;
-    }
+    pgp_key_pkt_t keycp(key, true);
+    keycp.fill_hashed_data();
+    signature_hash_key(keycp, hash);
 }
 
-bool
-signature_hash_userid(const pgp_userid_pkt_t *uid, pgp_hash_t *hash, pgp_version_t sigver)
+void
+signature_hash_userid(const pgp_userid_pkt_t &uid, rnp::Hash &hash, pgp_version_t sigver)
 {
-    uint8_t hdr[5] = {0};
-
-    if (!uid || !hash) {
-        RNP_LOG("null uid or hash");
-        return false;
-    }
-
     if (sigver < PGP_V4) {
-        return !pgp_hash_add(hash, uid->uid, uid->uid_len);
+        hash.add(uid.uid, uid.uid_len);
+        return;
     }
 
-    switch (uid->tag) {
+    uint8_t hdr[5] = {0};
+    switch (uid.tag) {
     case PGP_PKT_USER_ID:
         hdr[0] = 0xB4;
         break;
@@ -213,317 +80,77 @@ signature_hash_userid(const pgp_userid_pkt_t *uid, pgp_hash_t *hash, pgp_version
         break;
     default:
         RNP_LOG("wrong uid");
-        return false;
+        throw rnp::rnp_exception(RNP_ERROR_BAD_PARAMETERS);
     }
-    STORE32BE(hdr + 1, uid->uid_len);
-
-    return !pgp_hash_add(hash, hdr, 5) && !pgp_hash_add(hash, uid->uid, uid->uid_len);
+    STORE32BE(hdr + 1, uid.uid_len);
+    hash.add(hdr, 5);
+    hash.add(uid.uid, uid.uid_len);
 }
 
-bool
-signature_hash_signature(pgp_signature_t *sig, pgp_hash_t *hash)
+std::unique_ptr<rnp::Hash>
+signature_hash_certification(const pgp_signature_t & sig,
+                             const pgp_key_pkt_t &   key,
+                             const pgp_userid_pkt_t &userid)
 {
-    uint8_t hdr[5] = {0x88, 0x00, 0x00, 0x00, 0x00};
-
-    if (!sig || !hash) {
-        RNP_LOG("null sig or hash");
-        return false;
-    }
-
-    if (!sig->hashed_data) {
-        RNP_LOG("hashed data not filled");
-        return false;
-    }
-
-    STORE32BE(hdr + 1, sig->hashed_len);
-    return !pgp_hash_add(hash, hdr, 5) &&
-           !pgp_hash_add(hash, sig->hashed_data, sig->hashed_len);
+    auto hash = signature_init(key.material, sig.halg);
+    signature_hash_key(key, *hash);
+    signature_hash_userid(userid, *hash, sig.version);
+    return hash;
 }
 
-bool
-signature_hash_certification(const pgp_signature_t * sig,
-                             const pgp_key_pkt_t *   key,
-                             const pgp_userid_pkt_t *userid,
-                             pgp_hash_t *            hash)
+std::unique_ptr<rnp::Hash>
+signature_hash_binding(const pgp_signature_t &sig,
+                       const pgp_key_pkt_t &  key,
+                       const pgp_key_pkt_t &  subkey)
 {
-    bool res = false;
-
-    if (signature_init(&key->material, sig->halg, hash) != RNP_SUCCESS) {
-        return false;
-    }
-
-    res = signature_hash_key(key, hash) && signature_hash_userid(userid, hash, sig->version);
-
-    if (!res) {
-        pgp_hash_finish(hash, NULL);
-    }
-
-    return res;
+    auto hash = signature_init(key.material, sig.halg);
+    signature_hash_key(key, *hash);
+    signature_hash_key(subkey, *hash);
+    return hash;
 }
 
-bool
-signature_hash_binding(const pgp_signature_t *sig,
-                       const pgp_key_pkt_t *  key,
-                       const pgp_key_pkt_t *  subkey,
-                       pgp_hash_t *           hash)
+std::unique_ptr<rnp::Hash>
+signature_hash_direct(const pgp_signature_t &sig, const pgp_key_pkt_t &key)
 {
-    bool res = false;
-
-    if (signature_init(&key->material, sig->halg, hash) != RNP_SUCCESS) {
-        return false;
-    }
-
-    res = signature_hash_key(key, hash) && signature_hash_key(subkey, hash);
-
-    if (!res) {
-        pgp_hash_finish(hash, NULL);
-    }
-
-    return res;
-}
-
-bool
-signature_hash_direct(const pgp_signature_t *sig, const pgp_key_pkt_t *key, pgp_hash_t *hash)
-{
-    bool res = false;
-
-    if (signature_init(&key->material, sig->halg, hash) != RNP_SUCCESS) {
-        return false;
-    }
-
-    res = signature_hash_key(key, hash);
-
-    if (!res) {
-        pgp_hash_finish(hash, NULL);
-    }
-
-    return res;
+    auto hash = signature_init(key.material, sig.halg);
+    signature_hash_key(key, *hash);
+    return hash;
 }
 
 rnp_result_t
-signature_check(pgp_signature_info_t *sinfo, pgp_hash_t *hash)
+process_pgp_signatures(pgp_source_t &src, pgp_signature_list_t &sigs)
 {
-    uint32_t     now;
-    uint32_t     create, expiry, kcreate;
-    rnp_result_t ret = RNP_ERROR_SIGNATURE_INVALID;
-
-    sinfo->no_signer = !sinfo->signer;
-    sinfo->valid = false;
-    sinfo->expired = false;
-
-    if (!sinfo->sig) {
-        ret = RNP_ERROR_NULL_POINTER;
-        goto finish;
-    }
-
-    if (!sinfo->signer) {
-        ret = RNP_ERROR_NO_SUITABLE_KEY;
-        goto finish;
-    }
-
-    /* Validate signature itself */
-    if (sinfo->signer_valid || sinfo->signer->valid_at(sinfo->sig->creation())) {
-        sinfo->valid = !signature_validate(sinfo->sig, &sinfo->signer->material(), hash);
-    } else {
-        sinfo->valid = false;
-        RNP_LOG("invalid or untrusted key");
-    }
-
-    /* Check signature's expiration time */
-    now = time(NULL);
-    create = sinfo->sig->creation();
-    expiry = sinfo->sig->expiration();
-    if (create > now) {
-        /* signature created later then now */
-        RNP_LOG("signature created %d seconds in future", (int) (create - now));
-        sinfo->expired = true;
-    }
-    if (create && expiry && (create + expiry < now)) {
-        /* signature expired */
-        RNP_LOG("signature expired");
-        sinfo->expired = true;
-    }
-
-    /* check key creation time vs signature creation */
-    kcreate = sinfo->signer->creation();
-    if (kcreate > create) {
-        RNP_LOG("key is newer than signature");
-        sinfo->valid = false;
-    }
-
-    /* check whether key was not expired when sig created */
-    if (!sinfo->ignore_expiry && sinfo->signer->expiration() &&
-        (kcreate + sinfo->signer->expiration() < create)) {
-        RNP_LOG("signature made after key expiration");
-        sinfo->valid = false;
-    }
-
-    /* Check signer's fingerprint */
-    if (sinfo->sig->has_keyfp() && (sinfo->sig->keyfp() != sinfo->signer->fp())) {
-        RNP_LOG("issuer fingerprint doesn't match signer's one");
-        sinfo->valid = false;
-    }
-
-    if (sinfo->expired && sinfo->valid) {
-        ret = RNP_ERROR_SIGNATURE_EXPIRED;
-    } else {
-        ret = sinfo->valid ? RNP_SUCCESS : RNP_ERROR_SIGNATURE_INVALID;
-    }
-finish:
-    pgp_hash_finish(hash, NULL);
-    return ret;
-}
-
-rnp_result_t
-signature_check_certification(pgp_signature_info_t *  sinfo,
-                              const pgp_key_pkt_t *   key,
-                              const pgp_userid_pkt_t *uid)
-{
-    pgp_hash_t hash = {};
-
-    if (!signature_hash_certification(sinfo->sig, key, uid, &hash)) {
-        return RNP_ERROR_BAD_FORMAT;
-    }
-
-    return signature_check(sinfo, &hash);
-}
-
-rnp_result_t
-signature_check_binding(pgp_signature_info_t *sinfo,
-                        const pgp_key_pkt_t * key,
-                        const pgp_key_t *     subkey)
-{
-    pgp_hash_t   hash = {};
-    rnp_result_t res = RNP_ERROR_SIGNATURE_INVALID;
-
-    if (!signature_hash_binding(sinfo->sig, key, &subkey->pkt(), &hash)) {
-        return RNP_ERROR_BAD_FORMAT;
-    }
-
-    res = signature_check(sinfo, &hash);
-    if (res || !(sinfo->sig->key_flags() & PGP_KF_SIGN)) {
-        return res;
-    }
-
-    /* check primary key binding signature if any */
-    res = RNP_ERROR_SIGNATURE_INVALID;
-    sinfo->valid = false;
-    pgp_sig_subpkt_t *subpkt =
-      sinfo->sig->get_subpkt(PGP_SIG_SUBPKT_EMBEDDED_SIGNATURE, false);
-    if (!subpkt) {
-        RNP_LOG("error! no primary key binding signature");
-        return res;
-    }
-    if (!subpkt->parsed) {
-        RNP_LOG("invalid embedded signature subpacket");
-        return res;
-    }
-    if (subpkt->fields.sig->type() != PGP_SIG_PRIMARY) {
-        RNP_LOG("invalid primary key binding signature");
-        return res;
-    }
-    if (subpkt->fields.sig->version < PGP_V4) {
-        RNP_LOG("invalid primary key binding signature version");
-        return res;
-    }
-
-    if (!signature_hash_binding(subpkt->fields.sig, key, &subkey->pkt(), &hash)) {
-        return RNP_ERROR_BAD_FORMAT;
-    }
-    pgp_signature_info_t bindinfo = {};
-    bindinfo.sig = subpkt->fields.sig;
-    bindinfo.signer = subkey;
-    bindinfo.signer_valid = true;
-    bindinfo.ignore_expiry = true;
-    res = signature_check(&bindinfo, &hash);
-    sinfo->valid = !res;
-    return res;
-}
-
-rnp_result_t
-signature_check_direct(pgp_signature_info_t *sinfo, const pgp_key_pkt_t *key)
-{
-    pgp_hash_t hash = {};
-
-    if (!signature_hash_direct(sinfo->sig, key, &hash)) {
-        return RNP_ERROR_BAD_FORMAT;
-    }
-
-    return signature_check(sinfo, &hash);
-}
-
-rnp_result_t
-signature_check_subkey_revocation(pgp_signature_info_t *sinfo,
-                                  const pgp_key_pkt_t * key,
-                                  const pgp_key_pkt_t * subkey)
-{
-    pgp_hash_t hash = {};
-
-    if (!signature_hash_binding(sinfo->sig, key, subkey, &hash)) {
-        return RNP_ERROR_BAD_FORMAT;
-    }
-
-    return signature_check(sinfo, &hash);
-}
-
-rnp_result_t
-process_pgp_signatures(pgp_source_t *src, pgp_signature_list_t &sigs)
-{
-    bool          armored = false;
-    pgp_source_t  armorsrc = {0};
-    pgp_source_t *origsrc = src;
-    rnp_result_t  ret = RNP_ERROR_GENERIC;
-
     sigs.clear();
-    /* check whether signatures are armored */
-armoredpass:
-    if (is_armored_source(src)) {
-        if ((ret = init_armored_src(&armorsrc, src))) {
-            RNP_LOG("failed to parse armored data");
-            goto finish;
-        }
-        armored = true;
-        src = &armorsrc;
-    }
-
+    /* Allow binary or armored input, including multiple armored messages */
+    rnp::ArmoredSource armor(
+      src, rnp::ArmoredSource::AllowBinary | rnp::ArmoredSource::AllowMultiple);
     /* read sequence of OpenPGP signatures */
-    while (!src_eof(src) && !src_error(src)) {
-        int ptag = stream_pkt_type(src);
-
+    while (!armor.error()) {
+        if (armor.eof() && armor.multiple()) {
+            armor.restart();
+        }
+        if (armor.eof()) {
+            break;
+        }
+        int ptag = stream_pkt_type(armor.src());
         if (ptag != PGP_PKT_SIGNATURE) {
             RNP_LOG("wrong signature tag: %d", ptag);
-            ret = RNP_ERROR_BAD_FORMAT;
-            goto finish;
+            sigs.clear();
+            return RNP_ERROR_BAD_FORMAT;
         }
 
-        try {
-            sigs.emplace_back();
-            if ((ret = sigs.back().parse(*src))) {
-                goto finish;
-            }
-        } catch (const std::exception &e) {
-            RNP_LOG("%s", e.what());
-            ret = RNP_ERROR_OUT_OF_MEMORY;
-            goto finish;
+        sigs.emplace_back();
+        rnp_result_t ret = sigs.back().parse(armor.src());
+        if (ret) {
+            sigs.clear();
+            return ret;
         }
     }
-
-    /* file may have multiple armored keys */
-    if (armored && !src_eof(origsrc) && is_armored_source(origsrc)) {
-        src_close(&armorsrc);
-        armored = false;
-        src = origsrc;
-        goto armoredpass;
-    }
-    ret = RNP_SUCCESS;
-finish:
-    if (armored) {
-        src_close(&armorsrc);
-    }
-    if (ret) {
+    if (armor.error()) {
         sigs.clear();
+        return RNP_ERROR_READ;
     }
-    return ret;
+    return RNP_SUCCESS;
 }
 
 pgp_sig_subpkt_t::pgp_sig_subpkt_t(const pgp_sig_subpkt_t &src)
@@ -667,14 +294,14 @@ pgp_sig_subpkt_t::parse()
     case PGP_SIG_SUBPKT_NOTATION_DATA:
         if ((oklen = len >= 8)) {
             memcpy(fields.notation.flags, data, 4);
+            fields.notation.human = fields.notation.flags[0] & 0x80;
             fields.notation.nlen = read_uint16(&data[4]);
             fields.notation.vlen = read_uint16(&data[6]);
-
             if (len != 8 + fields.notation.nlen + fields.notation.vlen) {
                 oklen = false;
             } else {
-                fields.notation.name = (const char *) &data[8];
-                fields.notation.value = (const char *) &data[8 + fields.notation.nlen];
+                fields.notation.name = data + 8;
+                fields.notation.value = fields.notation.name + fields.notation.nlen;
             }
         }
         break;
@@ -935,18 +562,13 @@ pgp_signature_t::~pgp_signature_t()
 pgp_sig_id_t
 pgp_signature_t::get_id() const
 {
-    pgp_hash_t hash = {};
-    if (!pgp_hash_create(&hash, PGP_HASH_SHA1)) {
-        RNP_LOG("bad sha1 alloc");
-        throw rnp::rnp_exception(RNP_ERROR_BAD_STATE);
-    }
-
-    pgp_hash_add(&hash, hashed_data, hashed_len);
-    pgp_hash_add(&hash, material_buf, material_len);
-    pgp_sig_id_t res;
+    auto hash = rnp::Hash::create(PGP_HASH_SHA1);
+    hash->add(hashed_data, hashed_len);
+    hash->add(material_buf, material_len);
+    pgp_sig_id_t res = {0};
     static_assert(std::tuple_size<decltype(res)>::value == PGP_SHA1_HASH_SIZE,
                   "pgp_sig_id_t size mismatch");
-    pgp_hash_finish(&hash, res.data());
+    hash->finish(res.data());
     return res;
 }
 
@@ -1003,7 +625,7 @@ pgp_signature_t::has_keyid() const
 }
 
 pgp_key_id_t
-pgp_signature_t::keyid() const
+pgp_signature_t::keyid() const noexcept
 {
     /* version 3 uses signature field */
     if (version < PGP_V4) {
@@ -1011,7 +633,7 @@ pgp_signature_t::keyid() const
     }
 
     /* version 4 and up use subpackets */
-    pgp_key_id_t res;
+    pgp_key_id_t res{};
     static_assert(std::tuple_size<decltype(res)>::value == PGP_KEY_ID_SIZE,
                   "pgp_key_id_t size mismatch");
 
@@ -1026,7 +648,7 @@ pgp_signature_t::keyid() const
                PGP_KEY_ID_SIZE);
         return res;
     }
-    throw rnp::rnp_exception(RNP_ERROR_BAD_PARAMETERS);
+    return res;
 }
 
 void
@@ -1058,15 +680,15 @@ pgp_signature_t::has_keyfp() const
 }
 
 pgp_fingerprint_t
-pgp_signature_t::keyfp() const
+pgp_signature_t::keyfp() const noexcept
 {
+    pgp_fingerprint_t res{};
     if (version < PGP_V4) {
-        throw rnp::rnp_exception(RNP_ERROR_BAD_STATE);
+        return res;
     }
     const pgp_sig_subpkt_t *subpkt = get_subpkt(PGP_SIG_SUBPKT_ISSUER_FPR);
-    pgp_fingerprint_t       res;
     if (!subpkt || (subpkt->fields.issuer_fp.len > sizeof(res.fingerprint))) {
-        throw rnp::rnp_exception(RNP_ERROR_BAD_STATE);
+        return res;
     }
     res.length = subpkt->fields.issuer_fp.len;
     memcpy(res.fingerprint, subpkt->fields.issuer_fp.fp, subpkt->fields.issuer_fp.len);
@@ -1418,6 +1040,59 @@ pgp_signature_t::set_signer_uid(const std::string &uid)
     subpkt.parsed = true;
 }
 
+void
+pgp_signature_t::add_notation(const std::string &         name,
+                              const std::vector<uint8_t> &value,
+                              bool                        human,
+                              bool                        critical)
+{
+    auto nlen = name.size();
+    auto vlen = value.size();
+    if ((nlen > 0xffff) || (vlen > 0xffff)) {
+        RNP_LOG("wrong length");
+        throw rnp::rnp_exception(RNP_ERROR_BAD_PARAMETERS);
+    }
+
+    auto &subpkt = add_subpkt(PGP_SIG_SUBPKT_NOTATION_DATA, 8 + nlen + vlen, false);
+    subpkt.hashed = true;
+    subpkt.critical = critical;
+    if (human) {
+        subpkt.data[0] = 0x80;
+    }
+    write_uint16(subpkt.data + 4, nlen);
+    write_uint16(subpkt.data + 6, vlen);
+    memcpy(subpkt.data + 8, name.data(), nlen);
+    memcpy(subpkt.data + 8 + nlen, value.data(), vlen);
+    if (!subpkt.parse()) {
+        throw rnp::rnp_exception(RNP_ERROR_BAD_STATE);
+    }
+}
+
+void
+pgp_signature_t::add_notation(const std::string &name, const std::string &value, bool critical)
+{
+    add_notation(name, std::vector<uint8_t>(value.begin(), value.end()), true, critical);
+}
+
+void
+pgp_signature_t::set_embedded_sig(const pgp_signature_t &esig)
+{
+    pgp_rawpacket_t   esigpkt(esig);
+    rnp::MemorySource mem(esigpkt.raw);
+    size_t            len = 0;
+    stream_read_pkt_len(&mem.src(), &len);
+    if (!len || (len > 0xffff) || (len >= esigpkt.raw.size())) {
+        RNP_LOG("wrong pkt len");
+        throw rnp::rnp_exception(RNP_ERROR_BAD_STATE);
+    }
+    pgp_sig_subpkt_t &subpkt = add_subpkt(PGP_SIG_SUBPKT_EMBEDDED_SIGNATURE, len, true);
+    subpkt.hashed = false;
+    size_t skip = esigpkt.raw.size() - len;
+    memcpy(subpkt.data, esigpkt.raw.data() + skip, len);
+    subpkt.fields.sig = new pgp_signature_t(esig);
+    subpkt.parsed = true;
+}
+
 pgp_sig_subpkt_t &
 pgp_signature_t::add_subpkt(pgp_sig_subpacket_type_t type, size_t datalen, bool reuse)
 {
@@ -1504,12 +1179,18 @@ pgp_signature_t::parse_v3(pgp_packet_body_t &pkt)
     return RNP_SUCCESS;
 }
 
+#define MAX_SUBPACKETS 64
+
 bool
 pgp_signature_t::parse_subpackets(uint8_t *buf, size_t len, bool hashed)
 {
     bool res = true;
 
     while (len > 0) {
+        if (subpkts.size() >= MAX_SUBPACKETS) {
+            RNP_LOG("too many signature subpackets");
+            return false;
+        }
         if (len < 2) {
             RNP_LOG("got single byte %d", (int) *buf);
             return false;
@@ -1536,8 +1217,8 @@ pgp_signature_t::parse_subpackets(uint8_t *buf, size_t len, bool hashed)
         }
 
         if (splen < 1) {
-            RNP_LOG("got subpacket with 0 length, skipping");
-            continue;
+            RNP_LOG("got subpacket with 0 length");
+            return false;
         }
 
         /* subpacket data */
@@ -1712,7 +1393,7 @@ pgp_signature_t::parse_material(pgp_signature_material_t &material) const
         if (version < PGP_V4) {
             RNP_LOG("Warning! v3 EdDSA signature.");
         }
-        /* FALLTHROUGH */
+        [[fallthrough]];
     case PGP_PKA_ECDSA:
     case PGP_PKA_SM2:
     case PGP_PKA_ECDH:
@@ -1804,4 +1485,73 @@ pgp_signature_t::write_material(const pgp_signature_material_t &material)
     }
     memcpy(material_buf, pktbody.data(), pktbody.size());
     material_len = pktbody.size();
+}
+
+void
+pgp_signature_t::fill_hashed_data()
+{
+    /* we don't have a need to write v2-v3 signatures */
+    if ((version < PGP_V2) || (version > PGP_V4)) {
+        RNP_LOG("don't know version %d", (int) version);
+        throw rnp::rnp_exception(RNP_ERROR_BAD_PARAMETERS);
+    }
+    pgp_packet_body_t hbody(PGP_PKT_RESERVED);
+    if (version < PGP_V4) {
+        hbody.add_byte(type());
+        hbody.add_uint32(creation_time);
+    } else {
+        hbody.add_byte(version);
+        hbody.add_byte(type());
+        hbody.add_byte(palg);
+        hbody.add_byte(halg);
+        hbody.add_subpackets(*this, true);
+    }
+
+    free(hashed_data);
+    hashed_data = (uint8_t *) malloc(hbody.size());
+    if (!hashed_data) {
+        RNP_LOG("allocation failed");
+        throw std::bad_alloc();
+    }
+    memcpy(hashed_data, hbody.data(), hbody.size());
+    hashed_len = hbody.size();
+}
+
+void
+rnp_selfsig_cert_info_t::populate(pgp_userid_pkt_t &uid, pgp_signature_t &sig)
+{
+    /* populate signature */
+    sig.set_type(PGP_CERT_POSITIVE);
+    if (key_expiration) {
+        sig.set_key_expiration(key_expiration);
+    }
+    if (key_flags) {
+        sig.set_key_flags(key_flags);
+    }
+    if (primary) {
+        sig.set_primary_uid(true);
+    }
+    if (!prefs.symm_algs.empty()) {
+        sig.set_preferred_symm_algs(prefs.symm_algs);
+    }
+    if (!prefs.hash_algs.empty()) {
+        sig.set_preferred_hash_algs(prefs.hash_algs);
+    }
+    if (!prefs.z_algs.empty()) {
+        sig.set_preferred_z_algs(prefs.z_algs);
+    }
+    if (!prefs.ks_prefs.empty()) {
+        sig.set_key_server_prefs(prefs.ks_prefs[0]);
+    }
+    if (!prefs.key_server.empty()) {
+        sig.set_key_server(prefs.key_server);
+    }
+    /* populate uid */
+    uid.tag = PGP_PKT_USER_ID;
+    uid.uid_len = userid.size();
+    if (!(uid.uid = (uint8_t *) malloc(uid.uid_len))) {
+        RNP_LOG("alloc failed");
+        throw rnp::rnp_exception(RNP_ERROR_OUT_OF_MEMORY);
+    }
+    memcpy(uid.uid, userid.data(), uid.uid_len);
 }

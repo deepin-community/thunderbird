@@ -14,22 +14,16 @@ connection-dns-over-https-url-custom =
     .accesskey = O
     .tooltiptext = Fier jo foarkars-URL yn foar DNS oer HTTPS
 connection-dns-over-https-custom-label = Oanpast
-connection-dialog-window =
+connection-dialog-window2 =
     .title = Ferbiningsynstellingen
-    .style =
-        { PLATFORM() ->
-            [macos] width: 44em !important
-           *[other] width: 49em !important
-        }
-connection-disable-extension =
-    .label = Utwreiding útskeakelje
+connection-dialog-title = Ferbiningsynstellingen
 disable-extension-button = Utwreiding útskeakelje
 # Variables:
 #   $name (String) - The extension that is controlling the proxy settings.
 #
 # The extension-icon is the extension's icon, or a fallback image. It should be
 # purely decoration for the actual extension name, with alt="".
-proxy-settings-controlled-by-extension = In útwreiding, <img data-l10n-name="extension-icon" alt="" />{ $name }, hat behear oer hoe't { -brand-short-name } ferbining makket mei it ynternet.
+proxy-settings-controlled-by-extension = In útwreiding, <img data-l10n-name="extension-icon" alt="" />{ $name }, hat behear oer hoe’t { -brand-short-name } ferbining makket mei it ynternet.
 connection-proxy-legend = Proxy’s foar tagong ta it ynternet konfigurearje
 proxy-type-no =
     .label = Gjin proxy

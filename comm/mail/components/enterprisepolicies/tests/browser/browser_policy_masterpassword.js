@@ -3,8 +3,8 @@
 
 "use strict";
 
-let { LoginTestUtils } = ChromeUtils.import(
-  "resource://testing-common/LoginTestUtils.jsm"
+let { LoginTestUtils } = ChromeUtils.importESModule(
+  "resource://testing-common/LoginTestUtils.sys.mjs"
 );
 
 // Test that once a password is set, you can't unset it
@@ -15,23 +15,29 @@ add_task(async function test_policy_masterpassword_set() {
     },
   });
 
-  LoginTestUtils.masterPassword.enable();
+  LoginTestUtils.primaryPassword.enable();
 
   window.openPreferencesTab("panePrivacy");
-  await BrowserTestUtils.browserLoaded(window.gPrefTab.browser);
-  let { contentDocument, contentWindow } = window.gPrefTab.browser;
-  await new Promise(resolve => contentWindow.setTimeout(resolve));
+  await BrowserTestUtils.browserLoaded(
+    window.preferencesTabType.tab.browser,
+    undefined,
+    url => url.startsWith("about:preferences")
+  );
+  let { contentDocument } = window.preferencesTabType.tab.browser;
+  await TestUtils.waitForCondition(() =>
+    contentDocument.getElementById("useMasterPassword")
+  );
 
   is(
     contentDocument.getElementById("useMasterPassword").disabled,
     true,
-    "Master Password checkbox should be disabled"
+    "Primary Password checkbox should be disabled"
   );
 
   let tabmail = document.getElementById("tabmail");
-  tabmail.closeTab(window.gPrefTab);
+  tabmail.closeTab(window.preferencesTabType.tab);
 
-  LoginTestUtils.masterPassword.disable();
+  LoginTestUtils.primaryPassword.disable();
 });
 
 // Test that password can't be removed in changemp.xhtml
@@ -42,7 +48,7 @@ add_task(async function test_policy_nochangemp() {
     },
   });
 
-  LoginTestUtils.masterPassword.enable();
+  LoginTestUtils.primaryPassword.enable();
 
   let changeMPWindow = window.openDialog(
     "chrome://mozapps/content/preferences/changemp.xhtml",
@@ -58,7 +64,7 @@ add_task(async function test_policy_nochangemp() {
   );
 
   changeMPWindow.document.getElementById("oldpw").value =
-    LoginTestUtils.masterPassword.masterPassword;
+    LoginTestUtils.primaryPassword.masterPassword;
 
   is(
     changeMPWindow.document.getElementById("changemp").getButton("accept")
@@ -69,7 +75,7 @@ add_task(async function test_policy_nochangemp() {
 
   await BrowserTestUtils.closeWindow(changeMPWindow);
 
-  LoginTestUtils.masterPassword.disable();
+  LoginTestUtils.primaryPassword.disable();
 });
 
 // Test that admin message shows

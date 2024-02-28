@@ -1,29 +1,28 @@
 {
   "langpack_id": "id",
   "manifest_version": 2,
-  "applications": {
+  "browser_specific_settings": {
     "gecko": {
       "id": "langpack-id@thunderbird.mozilla.org",
-      "strict_min_version": "91.0",
-      "strict_max_version": "91.*"
+      "strict_min_version": "115.0",
+      "strict_max_version": "115.*"
     }
   },
-  "name": "Bahasa Indonesia (ID) Language Pack",
-  "description": "Language pack for Thunderbird for id",
-  "version": "91.0buildid20211101223011",
+  "name": "Language: Indonesia (Indonesian)",
+  "description": "Thunderbird Language Pack for Indonesia (id) – Indonesian",
+  "version": "115.8.20240216.174500",
   "languages": {
     "id": {
-      "version": "20211016021002",
+      "version": "20240216183734",
       "chrome_resources": {
         "alerts": "chrome/id/locale/id/alerts/",
         "autoconfig": "chrome/id/locale/id/autoconfig/",
-        "branding": "chrome/id/locale/id/branding/",
+        "branding": "chrome/id/locale/branding/",
         "calendar": "chrome/id/locale/id/calendar/",
         "chat": "chrome/id/locale/id/chat/",
         "communicator": "chrome/id/locale/id/communicator/",
         "devtools": "chrome/id/locale/id/devtools/client/",
         "devtools-shared": "chrome/id/locale/id/devtools/shared/",
-        "devtools-startup": "chrome/id/locale/id/devtools/startup/",
         "global": "chrome/id/locale/id/global/",
         "global-platform": {
           "macosx": "chrome/id/locale/id/global-platform/mac/",

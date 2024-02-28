@@ -9,12 +9,14 @@
 /* import-globals-from calendar-identity-utils.js */
 
 var { cal } = ChromeUtils.import("resource:///modules/calendar/calUtils.jsm");
-var { PluralForm } = ChromeUtils.import("resource://gre/modules/PluralForm.jsm");
+var { PluralForm } = ChromeUtils.importESModule("resource://gre/modules/PluralForm.sys.mjs");
 
 /**
  * The calendar to modify, is retrieved from window.arguments[0].calendar
  */
 var gCalendar;
+
+window.addEventListener("DOMContentLoaded", onLoad);
 
 /**
  * Called when the calendar properties dialog gets opened. When opening the
@@ -37,7 +39,7 @@ function onLoad() {
     calColor = alphaHex[1];
   }
 
-  if (args.canDisable) {
+  if (args.canDisable && !gCalendar.getProperty("force-disabled")) {
     document.documentElement.setAttribute("canDisable", "true");
   } else {
     document.getElementById("calendar-enabled-checkbox").hidden = true;
@@ -90,16 +92,13 @@ function onLoad() {
 
   // Set up the disabled checkbox
   let calendarDisabled = false;
-  if (gCalendar.getProperty("force-disabled") && !args.canDisable) {
+  if (gCalendar.getProperty("force-disabled")) {
     document.getElementById("force-disabled-description").removeAttribute("hidden");
     document.getElementById("calendar-enabled-checkbox").setAttribute("disabled", "true");
   } else {
     calendarDisabled = gCalendar.getProperty("disabled");
     document.getElementById("calendar-enabled-checkbox").checked = !calendarDisabled;
-    document
-      .querySelector("dialog")
-      .getButton("extra1")
-      .setAttribute("hidden", "true");
+    document.querySelector("dialog").getButton("extra1").setAttribute("hidden", "true");
   }
   setupEnabledCheckbox();
 
@@ -110,8 +109,6 @@ function onLoad() {
 
   let notificationsSetting = document.getElementById("calendar-notifications-setting");
   notificationsSetting.value = gCalendar.getProperty("notifications.times");
-
-  sizeToContent();
 }
 
 /**
@@ -175,7 +172,6 @@ document.addEventListener("dialogaccept", () => onAcceptDialog());
 function onChangeIdentity(aEvent) {
   notifyOnIdentitySelection(gCalendar);
   updateForceEmailSchedulingControl();
-  sizeToContent();
 }
 
 /**
@@ -194,9 +190,7 @@ function setupEnabledCheckbox() {
  * shown unless the provider for the calendar is missing (i.e force-disabled)
  */
 document.addEventListener("dialogextra1", () => {
-  let calmgr = cal.getCalendarManager();
-
-  calmgr.unregisterCalendar(gCalendar);
+  cal.manager.unregisterCalendar(gCalendar);
   window.close();
 });
 

@@ -5,11 +5,15 @@
 // chat/content/imAccountOptionsHelper.js
 /* globals accountOptionsHelper */
 
-var { Services } = ChromeUtils.import("resource:///modules/imServices.jsm");
+var { IMServices } = ChromeUtils.importESModule(
+  "resource:///modules/IMServices.sys.mjs"
+);
 var { MailServices } = ChromeUtils.import(
   "resource:///modules/MailServices.jsm"
 );
-var { ChatIcons } = ChromeUtils.import("resource:///modules/chatIcons.jsm");
+var { ChatIcons } = ChromeUtils.importESModule(
+  "resource:///modules/chatIcons.sys.mjs"
+);
 
 var PREF_EXTENSIONS_GETMOREPROTOCOLSURL = "extensions.getMoreProtocolsURL";
 
@@ -44,19 +48,19 @@ var accountWizard = {
     );
 
     // Ensure the im core is initialized before we get a list of protocols.
-    Services.core.init();
+    IMServices.core.init();
 
     accountWizard.setGetMoreProtocols();
 
     var protoList = document.getElementById("protolist");
-    var protos = Services.core.getProtocols();
+    var protos = IMServices.core.getProtocols();
     protos.sort((a, b) => {
       if (a.name < b.name) {
         return -1;
       }
       return a.name > b.name ? 1 : 0;
     });
-    protos.forEach(function(proto) {
+    protos.forEach(function (proto) {
       let image = document.createElement("img");
       image.setAttribute("src", ChatIcons.getProtocolIconURI(proto));
       image.setAttribute("alt", "");
@@ -73,7 +77,7 @@ var accountWizard = {
     });
 
     // there is a strange selection bug without this timeout
-    setTimeout(function() {
+    setTimeout(function () {
       protoList.selectedIndex = 0;
     }, 0);
 
@@ -144,7 +148,7 @@ var accountWizard = {
       return;
     }
     for (const box of this.userNameBoxes) {
-      if (box instanceof Element) {
+      if (Element.isInstance(box)) {
         box.value = splitValues.shift();
       }
     }
@@ -154,7 +158,7 @@ var accountWizard = {
   selectProtocol() {
     var protoList = document.getElementById("protolist");
     var id = protoList.selectedItem.value;
-    this.proto = Services.core.getProtocolById(id);
+    this.proto = IMServices.core.getProtocolById(id);
   },
 
   /**
@@ -166,7 +170,7 @@ var accountWizard = {
    *   append the new elements to.
    * @param {string} [aDefaultValue] - The initial value for the username.
    *
-   * @return {HTMLInputElement} - The newly created username input.
+   * @returns {HTMLInputElement} - The newly created username input.
    */
   insertUsernameField(aName, aLabel, grid, aDefaultValue) {
     var label = document.createXULElement("label");
@@ -230,6 +234,7 @@ var accountWizard = {
     while (grid.hasChildNodes()) {
       grid.lastChild.remove();
     }
+    this.userNameBoxes = undefined;
 
     var splits = this.proto.getUsernameSplit();
 
@@ -290,11 +295,8 @@ var accountWizard = {
     document.getElementById("protoSpecificGroupbox").hidden = !haveOptions;
     if (haveOptions) {
       var bundle = document.getElementById("accountsBundle");
-      document.getElementById(
-        "protoSpecificCaption"
-      ).textContent = bundle.getFormattedString("protoOptions", [
-        this.proto.name,
-      ]);
+      document.getElementById("protoSpecificCaption").textContent =
+        bundle.getFormattedString("protoOptions", [this.proto.name]);
     }
   },
 
@@ -400,7 +402,7 @@ var accountWizard = {
   },
 
   createAccount() {
-    var acc = Services.accounts.createAccount(this.username, this.proto.id);
+    var acc = IMServices.accounts.createAccount(this.username, this.proto.id);
     if (!this.proto.noPassword && this.password) {
       acc.password = this.password;
     }
@@ -518,3 +520,7 @@ var accountWizard = {
       .loadURI(Services.io.newURI(aURL));
   },
 };
+
+window.addEventListener("load", event => {
+  accountWizard.onload();
+});

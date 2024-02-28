@@ -7,7 +7,7 @@ Subject: Appdata: Adding some German translations
  1 file changed, 17 insertions(+)
 
 diff --git a/comm/mail/branding/thunderbird/net.thunderbird.Thunderbird.appdata.xml b/comm/mail/branding/thunderbird/net.thunderbird.Thunderbird.appdata.xml
-index 7df0197..1614b72 100644
+index 30397d1..d31e2dd 100644
 --- a/comm/mail/branding/thunderbird/net.thunderbird.Thunderbird.appdata.xml
 +++ b/comm/mail/branding/thunderbird/net.thunderbird.Thunderbird.appdata.xml
 @@ -3,7 +3,9 @@

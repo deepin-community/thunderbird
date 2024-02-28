@@ -11,14 +11,13 @@
 
 #include <algorithm>
 
+#include "js/PropertyAndElement.h"  // JS_HasProperty, JS_HasPropertyById
+
 /***************************************************************************/
 
-inline void XPCJSRuntime::AddVariantRoot(XPCTraceableVariant* variant) {
-  variant->AddToRootSet(&mVariantRoots);
-}
-
-inline void XPCJSRuntime::AddWrappedJSRoot(nsXPCWrappedJS* wrappedJS) {
-  wrappedJS->AddToRootSet(&mWrappedJSRoots);
+inline void XPCJSRuntime::AddSubjectToFinalizationWJS(
+    nsXPCWrappedJS* wrappedJS) {
+  mSubjectToFinalizationWJS.insertBack(wrappedJS);
 }
 
 /***************************************************************************/

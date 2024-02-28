@@ -3,9 +3,12 @@
    - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
 
 <!ENTITY e2eTitle.label "הצפנה מקצה לקצה">
+<!ENTITY e2eLearnMore.label "מידע נוסף">
 
 
+<!ENTITY e2eTechPref.description "טכנולוגיית הצפנה מועדפת:">
 
+<!ENTITY encryptionCert2.message "אישור אבטחה אישי להצפנה:">
 <!ENTITY digitalSign.certificate.button "בחירה…">
 <!ENTITY digitalSign.certificate.accesskey "ב">
 <!ENTITY digitalSign.certificate_clear.button "מחיקה">
@@ -15,41 +18,30 @@
 <!ENTITY encryption.certificate_clear.button "מחיקה">
 <!ENTITY encryption.certificate_clear.accesskey "ק">
 <!ENTITY signingGroupTitle.label "חתימה דיגיטלית">
-<!ENTITY signMessage.accesskey "ד">
+<!ENTITY signingCert2.message "אישור אבטחה אישי לחתימה דיגיטלית:">
 
+<!ENTITY sendingDefaults.label "הגדרות ברירת מחדל לשליחת הודעות">
 
+<!ENTITY technologyAutomatic.label "בחירה באופן אוטומטי על סמך מפתחות או אישורים זמינים">
 
+<!ENTITY certificates2.label "S/MIME">
+<!ENTITY manageCerts3.label "ניהול אישורי S/MIME">
+<!ENTITY manageCerts3.accesskey "נ">
+<!ENTITY manageDevices2.label "התקני אבטחה של S/MIME">
+<!ENTITY manageDevices2.accesskey "ה">
 
+<!ENTITY technologySMIME.label "להעדיף S/MIME">
+<!ENTITY technologyOpenPGP.label "להעדיף OpenPGP">
 
+<!ENTITY openpgpKeys.label "OpenPGP">
 
 <!-- Strings for the cert picker dialog -->
 <!ENTITY certPicker.title "בחירת אישור">
 <!ENTITY certPicker.info  "אישור:">
 <!ENTITY certPicker.detailsLabel "פרטי האישור הנבחר:">
 
+<!ENTITY openpgpKey.message "מפתח אישי להצפנה וחתימה דיגיטלית:">
+<!ENTITY openpgpKey.button "הגדרת מפתח אישי…">
+<!ENTITY openpgpKey.accesskey "ג">
 
-<!ENTITY e2eLearnMore.label "Learn more">
 <!ENTITY e2eEnc.description "Without end-to-end encryption the contents of messages are easily exposed to your email provider and to mass surveillance.">
-<!ENTITY e2eeReqWarning.description "If you require encryption, to send a message you must have the public key or certificate of every recipient.">
-<!ENTITY e2eSigning.description "A digital signature allows recipients to verify the message was sent by you, and that the content has not been changed.">
-<!ENTITY e2eTechPref.description "Preferred encryption technology:">
-<!ENTITY doNotEncrypt.label "Do not enable encryption by default">
-<!ENTITY doNotEncrypt.accesskey "N">
-<!ENTITY requireEncryptMessage.label "Require encryption by default">
-<!ENTITY requireEncryptMessage.accesskey "u">
-<!ENTITY encryptionCert2.message "Personal certificate for encryption:">
-<!ENTITY signMessage2.label "Add my digital signature by default">
-<!ENTITY signingCert2.message "Personal certificate for digital signing:">
-<!ENTITY sendingDefaults.label "Default settings for sending messages">
-<!ENTITY technologyAutomatic.label "Select automatically based on available keys or certificates">
-<!ENTITY certificates2.label "S/MIME">
-<!ENTITY manageCerts3.label "Manage S/MIME Certificates">
-<!ENTITY manageCerts3.accesskey "M">
-<!ENTITY manageDevices2.label "S/MIME Security Devices">
-<!ENTITY manageDevices2.accesskey "y">
-<!ENTITY technologySMIME.label "Prefer S/MIME">
-<!ENTITY technologyOpenPGP.label "Prefer OpenPGP">
-<!ENTITY openpgpKeys.label "OpenPGP">
-<!ENTITY openpgpKey.message "Personal key for encryption and digital signing:">
-<!ENTITY openpgpKey.button "Set Personal Key…">
-<!ENTITY openpgpKey.accesskey "o">

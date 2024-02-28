@@ -74,16 +74,6 @@ function networksGetDefaults()
         displayName:  "libera.chat",
         servers: [{hostname: "irc.libera.chat", port:6697, isSecure: true},
                   {hostname: "irc.libera.chat", port:6667}]};
-    networks["freenode"] = {
-        displayName:  "freenode",
-        servers: [{hostname: "chat.freenode.net", port:6667},
-                  {hostname: "chat.freenode.net", port:6697, isSecure: true},
-                  {hostname: "chat.freenode.net", port:7000, isSecure: true},
-                  // XXX irc.freenode.net is only here until we can link servers
-                  // to networks without them being in the network's server list
-                  {hostname: "irc.freenode.net", port:6667},
-                  {hostname: "irc.freenode.net", port:6697, isSecure: true},
-                  {hostname: "irc.freenode.net", port:7000, isSecure: true}]};
    networks["slashnet"] = {
         displayName:  "slashnet",
         servers: [{hostname: "irc.slashnet.org", port:6667}]};
@@ -120,6 +110,11 @@ function networksGetDefaults()
     networks["hispano"] = {
         displayName:  "hispano",
         servers: [{hostname: "irc.irc-hispano.org", port: 6667}]};
+    networks["freenode"] = {
+        displayName:  "freenode",
+        servers: [{hostname: "chat.freenode.net", port:6697, isSecure: true},
+                  {hostname: "chat.freenode.net", port:7000, isSecure: true},
+                  {hostname: "chat.freenode.net", port:6667}]};
 
     for (var name in networks)
         networks[name].name = name;
@@ -140,7 +135,8 @@ function networksToNetworkList()
         if (net.temporary)
             continue;
 
-        let listNet = { name: name, displayName: name, servers: [] };
+        let listNet = { name: net.canonicalName, displayName: net.unicodeName,
+                        servers: [] };
 
         // Populate server list (no merging here).
         for (let i = 0; i < net.serverList.length; i++)
@@ -150,7 +146,7 @@ function networksToNetworkList()
                              isSecure: serv.isSecure };
             listNet.servers.push(listServ);
         }
-        networkList[name] = listNet;
+        networkList[net.canonicalName] = listNet;
     }
 
     return networkList;
@@ -164,11 +160,11 @@ function networksSyncFromList(networkList)
         let listNet = networkList[name];
 
         // Create new network object if necessary.
-        if (!(name in client.networks))
+        if (!client.getNetwork(name))
             client.addNetwork(name, []);
 
         // Get network object and make sure server list is empty.
-        let net = client.networks[name];
+        let net = client.getNetwork(name);
         net.clearServerList();
 
         // Update server list.
@@ -179,7 +175,7 @@ function networksSyncFromList(networkList)
                 listServ.isSecure = false;
 
             // NOTE: this must match the name given by CIRCServer.
-            var servName = listServ.hostname + ":" + listServ.port;
+            let servName = ":" + listServ.hostname + ":" + listServ.port;
 
             if (!(servName in net.servers))
             {
@@ -196,10 +192,11 @@ function networksSyncFromList(networkList)
     for (let name in client.networks)
     {
         // Skip temporary networks, as they don't matter.
-        if (client.networks[name].temporary)
+        let net = client.networks[name];
+        if (net.temporary)
             continue;
-        if (!(name in networkList))
-            client.removeNetwork(name);
+        if (!(net.canonicalName in networkList))
+            client.removeNetwork(net.canonicalName);
     }
 }
 
@@ -213,4 +210,19 @@ function networksSaveList(networkList)
         networksLoader.serialize(Object.values(networkList));
         networksLoader.close();
     }
+}
+
+function networkHasSecure(serverList)
+{
+    // Test to see if the network has a secure server.
+    let hasSecure = false;
+    for (let s in serverList)
+    {
+        if (serverList[s].isSecure)
+        {
+            hasSecure = true;
+            break;
+        }
+    }
+    return hasSecure;
 }

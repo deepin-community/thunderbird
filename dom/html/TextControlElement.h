@@ -26,16 +26,16 @@ class TextEditor;
  * This abstract class is used for the text control frame to get the editor and
  * selection controller objects, and some helper properties.
  */
-class TextControlElement : public nsGenericHTMLFormElementWithState {
+class TextControlElement : public nsGenericHTMLFormControlElementWithState {
  public:
   TextControlElement(already_AddRefed<dom::NodeInfo>&& aNodeInfo,
                      dom::FromParser aFromParser, FormControlType aType)
-      : nsGenericHTMLFormElementWithState(std::move(aNodeInfo), aFromParser,
-                                          aType){};
+      : nsGenericHTMLFormControlElementWithState(std::move(aNodeInfo),
+                                                 aFromParser, aType){};
 
   NS_DECL_ISUPPORTS_INHERITED
-  NS_DECL_CYCLE_COLLECTION_CLASS_INHERITED(TextControlElement,
-                                           nsGenericHTMLFormElementWithState)
+  NS_DECL_CYCLE_COLLECTION_CLASS_INHERITED(
+      TextControlElement, nsGenericHTMLFormControlElementWithState)
 
   bool IsTextControlElement() const final { return true; }
 
@@ -44,7 +44,7 @@ class TextControlElement : public nsGenericHTMLFormElementWithState {
   /**
    * Tell the control that value has been deliberately changed (or not).
    */
-  virtual nsresult SetValueChanged(bool changed) = 0;
+  virtual void SetValueChanged(bool) = 0;
 
   /**
    * Find out whether this is a single line text control.  (text or password)
@@ -182,8 +182,16 @@ class TextControlElement : public nsGenericHTMLFormElementWithState {
 
   /**
    * Callback called whenever the value is changed.
+   *
+   * aKnownNewValue can be used to avoid value lookups if present (might be
+   * null, if the caller doesn't know the specific value that got set).
    */
-  virtual void OnValueChanged(ValueChangeKind) = 0;
+  virtual void OnValueChanged(ValueChangeKind, bool aNewValueEmpty,
+                              const nsAString* aKnownNewValue) = 0;
+
+  void OnValueChanged(ValueChangeKind aKind, const nsAString& aNewValue) {
+    return OnValueChanged(aKind, aNewValue.IsEmpty(), &aNewValue);
+  }
 
   /**
    * Helpers for value manipulation from SetRangeText.
@@ -220,6 +228,14 @@ class TextControlElement : public nsGenericHTMLFormElementWithState {
 
  protected:
   virtual ~TextControlElement() = default;
+
+  // The focusability state of this form control.  eUnfocusable means that it
+  // shouldn't be focused at all, eInactiveWindow means it's in an inactive
+  // window, eActiveWindow means it's in an active window.
+  enum class FocusTristate { eUnfocusable, eInactiveWindow, eActiveWindow };
+
+  // Get our focus state.
+  FocusTristate FocusState();
 };
 
 }  // namespace mozilla

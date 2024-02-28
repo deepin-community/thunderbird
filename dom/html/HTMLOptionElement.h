@@ -11,8 +11,7 @@
 #include "nsGenericHTMLElement.h"
 #include "mozilla/dom/HTMLFormElement.h"
 
-namespace mozilla {
-namespace dom {
+namespace mozilla::dom {
 
 class HTMLSelectElement;
 
@@ -38,17 +37,14 @@ class HTMLOptionElement final : public nsGenericHTMLElement {
 
   void SetSelectedChanged(bool aValue) { mSelectedChanged = aValue; }
 
-  virtual nsChangeHint GetAttributeChangeHint(const nsAtom* aAttribute,
-                                              int32_t aModType) const override;
+  nsChangeHint GetAttributeChangeHint(const nsAtom* aAttribute,
+                                      int32_t aModType) const override;
 
-  virtual nsresult BeforeSetAttr(int32_t aNamespaceID, nsAtom* aName,
-                                 const nsAttrValueOrString* aValue,
-                                 bool aNotify) override;
-  virtual nsresult AfterSetAttr(int32_t aNameSpaceID, nsAtom* aName,
-                                const nsAttrValue* aValue,
-                                const nsAttrValue* aOldValue,
-                                nsIPrincipal* aSubjectPrincipal,
-                                bool aNotify) override;
+  void BeforeSetAttr(int32_t aNamespaceID, nsAtom* aName,
+                     const nsAttrValue* aValue, bool aNotify) override;
+  void AfterSetAttr(int32_t aNameSpaceID, nsAtom* aName,
+                    const nsAttrValue* aValue, const nsAttrValue* aOldValue,
+                    nsIPrincipal* aSubjectPrincipal, bool aNotify) override;
 
   void SetSelectedInternal(bool aValue, bool aNotify);
 
@@ -65,13 +61,13 @@ class HTMLOptionElement final : public nsGenericHTMLElement {
    */
   void UpdateDisabledState(bool aNotify);
 
-  virtual nsresult BindToTree(BindContext&, nsINode& aParent) override;
-  virtual void UnbindFromTree(bool aNullParent = true) override;
+  nsresult BindToTree(BindContext&, nsINode& aParent) override;
+  void UnbindFromTree(bool aNullParent = true) override;
 
   // nsIContent
-  virtual EventStates IntrinsicState() const override;
+  ElementState IntrinsicState() const override;
 
-  virtual nsresult Clone(dom::NodeInfo*, nsINode** aResult) const override;
+  nsresult Clone(dom::NodeInfo*, nsINode** aResult) const override;
 
   nsresult CopyInnerTo(mozilla::dom::Element* aDest);
 
@@ -90,7 +86,7 @@ class HTMLOptionElement final : public nsGenericHTMLElement {
     }
   }
 
-  void GetLabel(DOMString& aLabel) {
+  void GetLabel(nsAString& aLabel) {
     if (!GetAttr(kNameSpaceID_None, nsGkAtoms::label, aLabel)) {
       GetText(aLabel);
     }
@@ -123,8 +119,7 @@ class HTMLOptionElement final : public nsGenericHTMLElement {
  protected:
   virtual ~HTMLOptionElement();
 
-  virtual JSObject* WrapNode(JSContext* aCx,
-                             JS::Handle<JSObject*> aGivenProto) override;
+  JSObject* WrapNode(JSContext*, JS::Handle<JSObject*> aGivenProto) override;
 
   /**
    * Get the select content element that contains this option, this
@@ -141,7 +136,6 @@ class HTMLOptionElement final : public nsGenericHTMLElement {
   bool mIsInSetDefaultSelected;
 };
 
-}  // namespace dom
-}  // namespace mozilla
+}  // namespace mozilla::dom
 
 #endif  // mozilla_dom_HTMLOptionElement_h__

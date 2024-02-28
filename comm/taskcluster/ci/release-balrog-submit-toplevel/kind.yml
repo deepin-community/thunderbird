@@ -2,14 +2,13 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 ---
-loader: taskgraph.loader.transform:loader
+loader: gecko_taskgraph.loader.transform:loader
 
 transforms:
-    - taskgraph.transforms.release:run_on_releases
-    - taskgraph.transforms.release_deps:transforms
-    - taskgraph.transforms.scriptworker:add_balrog_scopes
-    - taskgraph.transforms.balrog_toplevel:transforms
-    - taskgraph.transforms.task:transforms
+    - gecko_taskgraph.transforms.release_deps:transforms
+    - gecko_taskgraph.transforms.scriptworker:add_balrog_scopes
+    - gecko_taskgraph.transforms.balrog_toplevel:transforms
+    - gecko_taskgraph.transforms.task:transforms
 
 job-defaults:
     run-on-projects: []  # to make sure this never runs in CI
@@ -39,12 +38,12 @@ jobs:
             channel-names:
                 by-release-type:
                     beta: ["beta", "beta-localtest", "beta-cdntest"]
-                    release: ["release", "release-localtest", "release-cdntest", "release-localtest-next", "release-cdntest-next"]
+                    release: ["release", "release-localtest", "release-cdntest", "release-localtest-next"]
                     default: []
             rules-to-update:
                 by-release-type:
                     beta: ["thunderbird-beta-cdntest", "thunderbird-beta-localtest"]
-                    release: ["thunderbird-release91-cdntest", "thunderbird-release91-localtest"]
+                    release: ["thunderbird-release115-cdntest", "thunderbird-release115-localtest", "thunderbird-release115-localtest-next"]
                     default: []
             platforms: ["linux", "linux64", "macosx64", "win32", "win64"]
         treeherder:

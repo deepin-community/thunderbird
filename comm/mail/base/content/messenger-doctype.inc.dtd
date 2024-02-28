@@ -12,16 +12,10 @@
 %chatDTD;
 <!ENTITY % customizeToolbarDTD SYSTEM "chrome://messenger/locale/customizeToolbar.dtd">
 %customizeToolbarDTD;
-<!ENTITY % textcontextDTD SYSTEM "chrome://global/locale/textcontext.dtd">
-%textcontextDTD;
 <!ENTITY % tabMailDTD SYSTEM "chrome://messenger/locale/tabmail.dtd" >
 %tabMailDTD;
-<!ENTITY % quickFilterBarDTD SYSTEM "chrome://messenger/locale/quickFilterBar.dtd">
-%quickFilterBarDTD;
 <!ENTITY % utilityDTD SYSTEM "chrome://communicator/locale/utilityOverlay.dtd">
 %utilityDTD;
-<!ENTITY % editContactOverlayDTD SYSTEM "chrome://messenger/locale/editContactOverlay.dtd">
-%editContactOverlayDTD;
 <!ENTITY % msgViewPickerDTD SYSTEM "chrome://messenger/locale/msgViewPickerOverlay.dtd" >
 %msgViewPickerDTD;
 <!ENTITY % baseMenuOverlayDTD SYSTEM "chrome://messenger/locale/baseMenuOverlay.dtd">
@@ -42,8 +36,6 @@
 %lightningDTD;
 <!ENTITY % lightningToolbarDTD SYSTEM "chrome://lightning/locale/lightning-toolbar.dtd" >
 %lightningToolbarDTD;
-<!ENTITY % globalDTD SYSTEM "chrome://global/locale/global.dtd" >
-%globalDTD;
 <!ENTITY % mailOverlayDTD SYSTEM "chrome://messenger/locale/mailOverlay.dtd">
 %mailOverlayDTD;
 <!ENTITY % smimeDTD SYSTEM "chrome://messenger-smime/locale/msgReadSecurityInfo.dtd">

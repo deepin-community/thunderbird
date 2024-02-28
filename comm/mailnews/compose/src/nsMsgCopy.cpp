@@ -13,7 +13,6 @@
 #include "mozilla/MemoryReporting.h"
 #include "mozilla/RefCountType.h"
 #include "mozilla/RefPtr.h"
-#include "nsMsgBaseCID.h"
 #include "nsMsgFolderFlags.h"
 #include "nsMsgMessageFlags.h"
 #include "nsIMsgFolder.h"
@@ -118,6 +117,8 @@ nsMsgCopy::nsMsgCopy() {
   mFile = nullptr;
   mMode = nsIMsgSend::nsMsgDeliverNow;
   mSavePref = nullptr;
+  mIsDraft = false;
+  mMsgFlags = nsMsgMessageFlags::Read;
 }
 
 nsMsgCopy::~nsMsgCopy() { PR_Free(mSavePref); }
@@ -129,6 +130,7 @@ nsMsgCopy::StartCopyOperation(nsIMsgIdentity* aUserIdentity, nsIFile* aFile,
                               nsIMsgDBHdr* aMsgToReplace) {
   nsCOMPtr<nsIMsgFolder> dstFolder;
   bool isDraft = false;
+  uint32_t msgFlags = nsMsgMessageFlags::Read;
   bool waitForUrl = false;
   nsresult rv;
 
@@ -147,6 +149,8 @@ nsMsgCopy::StartCopyOperation(nsIMsgIdentity* aUserIdentity, nsIFile* aFile,
     rv = GetUnsentMessagesFolder(aUserIdentity, getter_AddRefs(dstFolder),
                                  &waitForUrl);
     isDraft = false;
+    // Do not mark outgoing messages as read.
+    msgFlags = 0;
     if (!dstFolder || NS_FAILED(rv)) {
       return NS_MSG_UNABLE_TO_SEND_LATER;
     }
@@ -154,18 +158,24 @@ nsMsgCopy::StartCopyOperation(nsIMsgIdentity* aUserIdentity, nsIFile* aFile,
   {
     rv = GetDraftsFolder(aUserIdentity, getter_AddRefs(dstFolder), &waitForUrl);
     isDraft = true;
+    // Do not mark drafts as read.
+    msgFlags = 0;
     if (!dstFolder || NS_FAILED(rv)) return NS_MSG_UNABLE_TO_SAVE_DRAFT;
   } else if (aMode ==
              nsIMsgSend::nsMsgSaveAsTemplate)  // SaveAsTemplate (Templates)
   {
     rv = GetTemplatesFolder(aUserIdentity, getter_AddRefs(dstFolder),
                             &waitForUrl);
+    // Mark saved templates as read.
     isDraft = false;
+    msgFlags = nsMsgMessageFlags::Read;
     if (!dstFolder || NS_FAILED(rv)) return NS_MSG_UNABLE_TO_SAVE_TEMPLATE;
   } else  // SaveInSentFolder (Sent) -  nsMsgDeliverNow or nsMsgSendUnsent
   {
     rv = GetSentFolder(aUserIdentity, getter_AddRefs(dstFolder), &waitForUrl);
+    // Mark send messages as read.
     isDraft = false;
+    msgFlags = nsMsgMessageFlags::Read;
     if (!dstFolder || NS_FAILED(rv)) return NS_MSG_COULDNT_OPEN_FCC_FOLDER;
   }
 
@@ -183,9 +193,10 @@ nsMsgCopy::StartCopyOperation(nsIMsgIdentity* aUserIdentity, nsIFile* aFile,
   mMsgToReplace = aMsgToReplace;
   mIsDraft = isDraft;
   mMsgSendObj = aMsgSendObj;
+  mMsgFlags = msgFlags;
   if (!waitForUrl) {
     // cache info needed for DoCopy and call DoCopy when OnStopUrl is called.
-    rv = DoCopy(aFile, dstFolder, aMsgToReplace, isDraft, msgWindow,
+    rv = DoCopy(aFile, dstFolder, aMsgToReplace, isDraft, msgFlags, msgWindow,
                 aMsgSendObj);
     // N.B. "this" may be deleted when this call returns.
   }
@@ -194,7 +205,8 @@ nsMsgCopy::StartCopyOperation(nsIMsgIdentity* aUserIdentity, nsIFile* aFile,
 
 nsresult nsMsgCopy::DoCopy(nsIFile* aDiskFile, nsIMsgFolder* dstFolder,
                            nsIMsgDBHdr* aMsgToReplace, bool aIsDraft,
-                           nsIMsgWindow* msgWindow, nsIMsgSend* aMsgSendObj) {
+                           uint32_t aMsgFlags, nsIMsgWindow* msgWindow,
+                           nsIMsgSend* aMsgSendObj) {
   nsresult rv = NS_OK;
 
   // Check sanity
@@ -211,7 +223,7 @@ nsresult nsMsgCopy::DoCopy(nsIFile* aDiskFile, nsIMsgFolder* dstFolder,
     if (aIsDraft) {
       nsCOMPtr<nsIMsgImapMailFolder> imapFolder = do_QueryInterface(dstFolder);
       nsCOMPtr<nsIMsgAccountManager> accountManager =
-          do_GetService(NS_MSGACCOUNTMANAGER_CONTRACTID, &rv);
+          do_GetService("@mozilla.org/messenger/account-manager;1", &rv);
       if (NS_FAILED(rv)) return rv;
       bool shutdownInProgress = false;
       rv = accountManager->GetShutdownInProgress(&shutdownInProgress);
@@ -224,13 +236,12 @@ nsresult nsMsgCopy::DoCopy(nsIFile* aDiskFile, nsIMsgFolder* dstFolder,
       }
     }
     nsCOMPtr<nsIMsgCopyService> copyService =
-        do_GetService(NS_MSGCOPYSERVICE_CONTRACTID, &rv);
+        do_GetService("@mozilla.org/messenger/messagecopyservice;1", &rv);
     NS_ENSURE_SUCCESS(rv, rv);
 
     rv = copyService->CopyFileMessage(aDiskFile, dstFolder, aMsgToReplace,
-                                      aIsDraft,
-                                      aIsDraft ? 0 : nsMsgMessageFlags::Read,
-                                      EmptyCString(), copyListener, msgWindow);
+                                      aIsDraft, aMsgFlags, EmptyCString(),
+                                      copyListener, msgWindow);
     // copyListener->mCopyInProgress can only be set when we are in the
     // middle of the shutdown process
     while (copyListener->mCopyInProgress) {
@@ -259,7 +270,7 @@ NS_IMETHODIMP
 nsMsgCopy::OnStopRunningUrl(nsIURI* aUrl, nsresult aExitCode) {
   nsresult rv = aExitCode;
   if (NS_SUCCEEDED(aExitCode)) {
-    rv = DoCopy(mFile, mDstFolder, mMsgToReplace, mIsDraft, nullptr,
+    rv = DoCopy(mFile, mDstFolder, mMsgToReplace, mIsDraft, mMsgFlags, nullptr,
                 mMsgSendObj);
   }
   return rv;
@@ -379,7 +390,7 @@ nsresult LocateMessageFolder(nsIMsgIdentity* userIdentity,
 
     // get the account manager
     nsCOMPtr<nsIMsgAccountManager> accountManager =
-        do_GetService(NS_MSGACCOUNTMANAGER_CONTRACTID, &rv);
+        do_GetService("@mozilla.org/messenger/account-manager;1", &rv);
     NS_ENSURE_SUCCESS(rv, rv);
 
     // If any folder will do, go look for one.

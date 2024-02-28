@@ -48,7 +48,7 @@ const TEST_URL =
   "</head>" +
   '<body><div style="background:orange; width:1000px; height:1000px"></div></body>';
 
-addRDMTask(TEST_URL, async function({ ui, manager }) {
+addRDMTask(TEST_URL, async function ({ ui, manager }) {
   // Turn on the prefs that force overlay scrollbars to always be visible.
   await SpecialPowers.pushPrefEnv({
     set: [["layout.testing.overlay-scrollbars.always-visible", true]],
@@ -74,9 +74,7 @@ addRDMTask(TEST_URL, async function({ ui, manager }) {
     await setViewportSizeAndAwaitReflow(ui, manager, 600, 300);
 
     // Reload the window.
-    const reload = waitForViewportLoad(ui);
-    browser.reload();
-    await reload;
+    await reloadBrowser();
 
     // Go back to the initial size and take another snapshot.
     await setViewportSizeAndAwaitReflow(ui, manager, 300, 600);

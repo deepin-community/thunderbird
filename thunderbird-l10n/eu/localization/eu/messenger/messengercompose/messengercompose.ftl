@@ -3,7 +3,25 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 
-# Addressing widget
+## Send Format
+
+compose-send-format-menu =
+    .label = Formatua bidaltzen
+    .accesskey = F
+compose-send-auto-menu-item =
+    .label = Automatikoa
+    .accesskey = A
+compose-send-both-menu-item =
+    .label = Biak HTML eta testu laua
+    .accesskey = B
+compose-send-html-menu-item =
+    .label = HTML bakarrik
+    .accesskey = H
+compose-send-plain-menu-item =
+    .label = Testu laua bakarrik
+    .accesskey = T
+
+## Addressing widget
 
 #   $type (String) - the type of the addressing row
 remove-address-row-button =
@@ -30,6 +48,13 @@ pill-tooltip-not-in-address-book = { $email } ez dago zure helbide liburuan
 pill-action-edit =
     .label = Editatu helbidea
     .accesskey = E
+#   $type (String) - the type of the addressing row, e.g. Cc, Bcc, etc.
+pill-action-select-all-sibling-pills =
+    .label = Aukeratu { $type } motako helbide guztiak
+    .accesskey = m
+pill-action-select-all-pills =
+    .label = Aukeratu helbide guztiak
+    .accesskey = A
 pill-action-move-to =
     .label = Eraman hona
     .accesskey = m
@@ -43,7 +68,7 @@ pill-action-expand-list =
     .label = Zabaldu zerrenda
     .accesskey = Z
 
-# Attachment widget
+## Attachment widget
 
 ctrl-cmd-shift-pretty-prefix =
     { PLATFORM() ->
@@ -59,9 +84,6 @@ menuitem-toggle-attachment-pane =
 toolbar-button-add-attachment =
     .label = Erantsi
     .tooltiptext = Gehitu eranskina ({ ctrl-cmd-shift-pretty-prefix }{ trigger-attachment-picker-key })
-add-attachment-notification-reminder =
-    .label = Gehitu eranskina…
-    .tooltiptext = { toolbar-button-add-attachment.tooltiptext }
 add-attachment-notification-reminder2 =
     .label = Gehitu eranskina…
     .accesskey = e
@@ -74,11 +96,28 @@ context-menuitem-attach-files =
     .label = Erantsi fitxategia(k)…
     .accesskey = r
     .acceltext = { ctrl-cmd-shift-pretty-prefix }{ trigger-attachment-picker-key }
+# Note: Do not translate the term 'vCard'.
+context-menuitem-attach-vcard =
+    .label = Nire vCard
+    .accesskey = C
+context-menuitem-attach-openpgp-key =
+    .label = Nire OpenPGP gako publikoa
+    .accesskey = g
+#   $count (Number) - the number of attachments in the attachment bucket
+attachment-bucket-count-value =
+    { $count ->
+        [1] Eranskina
+        [one] Eranskin { $count }
+       *[other] { $count } eranskin
+    }
+attachment-area-show =
+    .title = Erakutsi eranskinen panela ({ ctrl-cmd-shift-pretty-prefix }{ toggle-attachment-pane-key })
+attachment-area-hide =
+    .title = Gorde eranskinen panela ({ ctrl-cmd-shift-pretty-prefix }{ toggle-attachment-pane-key })
 
-expand-attachment-pane-tooltip =
-    .tooltiptext = Erakutsi eranskinen panela ({ ctrl-cmd-shift-pretty-prefix }{ toggle-attachment-pane-key })
-collapse-attachment-pane-tooltip =
-    .tooltiptext = Gorde eranskinen panela ({ ctrl-cmd-shift-pretty-prefix }{ toggle-attachment-pane-key })
+## Variables:
+## $count (Number) - Number of files being dropped onto the composer.
+
 drop-file-label-attachment =
     { $count ->
         [one] Gehitu eranskina bezala
@@ -90,7 +129,7 @@ drop-file-label-inline =
        *[other] Erakutsi barnekoak
     }
 
-# Reorder Attachment Panel
+## Reorder Attachment Panel
 
 move-attachment-first-panel-button =
     .label = Mugi lehenera
@@ -104,47 +143,83 @@ button-return-receipt =
     .label = Hartu-agiria
     .tooltiptext = Eskatu hartu-agiria mezu honetarako
 
-# Encryption
+## Encryption
 
-message-to-be-signed-icon =
-    .alt = Sinatu mezua
-message-to-be-encrypted-icon =
-    .alt = Zifratu mezua
+encryption-menu =
+    .label = Segurtasuna
+    .accesskey = S
+encryption-toggle =
+    .label = Zifratu
+    .tooltiptext = Erabili muturretik muturrerako zifraketa mezu honetan
+encryption-options-openpgp =
+    .label = OpenPGP
+    .tooltiptext = Erakutsi edo aldatu OpenPGP zifratze ezarpenak
+encryption-options-smime =
+    .label = S/MIME
+    .tooltiptext = Erakutsi edo aldatu S/MIME zifratze ezarpenak
+signing-toggle =
+    .label = sinatu
+    .tooltiptext = Erabili sinadura digitala mezu honetan
+menu-openpgp =
+    .label = OpenPGP
+    .accesskey = O
+menu-smime =
+    .label = S/MIME
+    .accesskey = S
+menu-encrypt =
+    .label = Zifratu
+    .accesskey = Z
+menu-encrypt-subject =
+    .label = Zifratu gaia
+    .accesskey = i
+menu-sign =
+    .label = Digitalki sinatu
+    .accesskey = D
+menu-manage-keys =
+    .label = Gako laguntzailea
+    .accesskey = g
+menu-view-certificates =
+    .label = Erakutsi hartzaileen ziurtagiriak
+    .accesskey = h
+menu-open-key-manager =
+    .label = Gako kudeatzailea
+    .accesskey = k
+# Variables:
+# $addr (String) - Email address with key issues.
+openpgp-key-issue-notification-single = Muturretik muturrerako zifratzeak { $addr }(e)n gako arazoak konpontzea eskatzen du.
+# Variables:
+# $count (Number) - Number of recipients with key issues.
+openpgp-key-issue-notification-multi =
+    { $count ->
+        [one] Muturretik muturrerako zifratzeak hartzaile { $count }-en gako arazoa konpontzea eskatzen du.
+       *[other] Muturretik muturrerako zifratzeak { $count } hartzaileen gako arazoak konpontzea eskatzen du.
+    }
+# Variables:
+# $addr (String) - mail address with certificate issues.
+smime-cert-issue-notification-single = Muturretik muturrerako zifratzeak { $addr }(e)n ziurtagiri arazoak konpontzea eskatzen du.
+# Variables:
+# $count (Number) - Number of recipients with certificate issues.
+smime-cert-issue-notification-multi =
+    { $count ->
+        [one] Muturretik muturrerako zifratzeak hartzaile { $count }-en ziurtagiri arazoak konpontzea eskatzen du.
+       *[other] Muturretik muturrerako zifratzeak { $count } hartzaileen ziurtagiri arazoak konpontzea eskatzen du.
+    }
+key-notification-disable-encryption =
+    .label = Ez zifratu
+    .accesskey = E
+    .tooltiptext = desgaitu muturretik muturrerako zifratzea
+key-notification-resolve =
+    .label = Ebatzi…
+    .accesskey = E
+    .tooltiptext = Ireki OpenPGP gako laguntzailea
+can-encrypt-smime-notification = S/MIME muturretik muturrera zifratzea posible da.
+can-encrypt-openpgp-notification = OpenPGP muturretik muturrera zifratzea posible da.
+can-e2e-encrypt-button =
+    .label = Zifratu
+    .accesskey = Z
 
-# Addressing Area
+## Addressing Area
 
-to-compose-address-row-label =
-    .value = Nori
-#   $key (String) - the shortcut key for this field
-to-compose-show-address-row-menuitem =
-    .label = { to-compose-address-row-label.value } eremua
-    .accesskey = N
-    .acceltext = { ctrl-cmd-shift-pretty-prefix }{ $key }
-to-compose-show-address-row-label =
-    .value = { to-compose-address-row-label.value }
-    .tooltiptext = Erakutsi { to-compose-address-row-label.value } eremua { to-compose-show-address-row-menuitem.acceltext }
-cc-compose-address-row-label =
-    .value = Cc
-#   $key (String) - the shortcut key for this field
-cc-compose-show-address-row-menuitem =
-    .label = { cc-compose-address-row-label.value } eremua
-    .accesskey = C
-    .acceltext = { ctrl-cmd-shift-pretty-prefix }{ $key }
-cc-compose-show-address-row-label =
-    .value = { cc-compose-address-row-label.value }
-    .tooltiptext = Erakutsi { cc-compose-address-row-label.value } eremua { cc-compose-show-address-row-menuitem.acceltext }
-bcc-compose-address-row-label =
-    .value = Bcc
-#   $key (String) - the shortcut key for this field
-bcc-compose-show-address-row-menuitem =
-    .label = { bcc-compose-address-row-label.value } eremua
-    .accesskey = B
-    .acceltext = { ctrl-cmd-shift-pretty-prefix }{ $key }
-bcc-compose-show-address-row-label =
-    .value = { bcc-compose-address-row-label.value }
-    .tooltiptext = Erakutsi { bcc-compose-address-row-label.value } eremua { bcc-compose-show-address-row-menuitem.acceltext }
-#   $count (Number) - the count of addresses in the "To" and "Cc" fields.
-many-public-recipients-info = Nori eta Ccko { $count } hartzailek besteen helbideak ikusiko dituzte. Hartzaileak erakustea saihestu dezakezu Bcc erabiliz.
 to-address-row-label =
     .value = Nori
 #   $key (String) - the shortcut key for this field
@@ -192,10 +267,11 @@ show-bcc-row-button = Bcc
     .title = Erakutsi Bcc eremua ({ ctrl-cmd-shift-pretty-prefix }{ $key })
 extra-address-rows-menu-button =
     .title = Beste helbide eremuak erakusteko
-#   $count (Number) - the count of addresses in the "To" and "Cc" fields.
-many-public-recipients-notice =
+# Variables:
+# $count (Number) - the count of addresses in the "To" and "Cc" fields.
+public-recipients-notice-multi =
     { $count ->
-        [one] Zure mezuak hartzaile publikoa du. Hartzaileak erakustea saihestu dezakezu Bcc erabiliz.
+        [one] Nori eta Ccko { $count } hartzaileak besteen helbideak ikusiko ditu. Hartzaileak erakustea saihestu dezakezu Bcc erabiliz.
        *[other] Nori eta Ccko { $count } hartzailek besteen helbideak ikusiko dituzte. Hartzaileak erakustea saihestu dezakezu Bcc erabiliz.
     }
 many-public-recipients-bcc =
@@ -221,6 +297,7 @@ many-public-recipients-prompt-send = Jarraitu hala ere
 compose-missing-identity-warning = Ez da aurkitu identitate bakarra bat datorrena Nork helbidearekin. Mezua uneko Nork eremuaz eta { $identity } identitatearen ezarpenekin bidaliko da.
 encrypted-bcc-warning = Mezu zifratua bidaltzean, Bcc hartzaileak ez daude erabat gordeta. Hartzaile guztiek hauek identifikatzeko gai dira.
 encrypted-bcc-ignore-button = Ulertua
+auto-disable-e2ee-warning = Mezu honetarako muturretik muturrerako zifratzea automatikoki desgaitu zen.
 
 ## Editing
 
@@ -229,3 +306,104 @@ encrypted-bcc-ignore-button = Ulertua
 
 compose-tool-button-remove-text-styling =
     .tooltiptext = Kendu testu estiloak
+
+## Filelink
+
+# A text used in a tooltip of Filelink attachments, whose account has been
+# removed or is unknown.
+cloud-file-unknown-account-tooltip = Igota Filelink kontu ezezagun batera.
+
+# Placeholder file
+
+# Title for the html placeholder file.
+# $filename - name of the file
+cloud-file-placeholder-title = { $filename } - Filelink eranskina
+# A text describing that the file was attached as a Filelink and can be downloaded
+# from the link shown below.
+# $filename - name of the file
+cloud-file-placeholder-intro = { $filename } fitxategia Filelink erara erantsi da. Azpiko loturatik jaitsi daiteke.
+
+# Template
+
+# A line of text describing how many uploaded files have been appended to this
+# message. Emphasis should be on sharing as opposed to attaching. This item is
+# used as a header to a list, hence the colon.
+# Variables:
+# $count (Number) - Number of files.
+cloud-file-count-header =
+    { $count ->
+        [one] Fitxategi { $count } lotu dut posta honetara:
+       *[other] { $count } fitxategi lotu ditut posta honetara:
+    }
+# A text used in a footer, instructing the reader where to find additional
+# information about the used service provider.
+# $link (string) - html a-tag for a link pointing to the web page of the provider
+cloud-file-service-provider-footer-single = Ikasi gehiago { $link }i buruz.
+# A text used in a footer, instructing the reader where to find additional
+# information about the used service providers. Links for the used providers are
+# split into a comma separated list of the first n-1 providers and a single entry
+# at the end.
+# $firstLinks (string) - comma separated list of html a-tags pointing to web pages
+#                        of the first n-1 used providers
+# $lastLink (string) - html a-tag pointing the web page of the n-th used provider
+cloud-file-service-provider-footer-multiple = Ikasi gehiago hauei buruz { $firstLinks } eta { $lastLink }.
+# Tooltip for an icon, indicating that the link is protected by a password.
+cloud-file-tooltip-password-protected-link = Pasahitzaz babestutako lotura
+# Used in a list of stats about a specific file
+# Service - the used service provider to host the file (Filelink Service: BOX.com)
+# Size - the size of the file (Size: 4.2 MB)
+# Link - the link to the file (Link: https://some.provider.com)
+# Expiry Date - stating the date the link will expire (Expiry Date: 12.12.2022)
+# Download Limit - stating the maximum allowed downloads, before the link becomes invalid
+#                  (Download Limit: 6)
+cloud-file-template-service-name = Filelink zerbitzua:
+cloud-file-template-size = Tamaina:
+cloud-file-template-link = Lotura:
+cloud-file-template-password-protected-link = Pasahitzaz babestutako lotura:
+cloud-file-template-expiry-date = Iraungitze data:
+cloud-file-template-download-limit = Deskargatzeko limitea:
+
+# Messages
+
+cloud-file-connection-error-title = Konexio errorea
+# Variables:
+# $provider (string) - name of the online storage service that reported the error
+cloud-file-connection-error = { -brand-short-name } lineaz kanpo dago. Ezin da konektatu { $provider }(e)kin.
+# Variables:
+# $provider (string) - name of the online storage service that reported the error
+# $filename (string) - name of the file that was uploaded and caused the error
+cloud-file-upload-error-with-custom-message-title = { $filename } { $provider }(e)ra igotzeak huts egin du.
+cloud-file-rename-error-title = Errorea izena aldatzean
+# Variables:
+# $provider (string) - name of the online storage service that reported the error
+# $filename (string) - name of the file that was renamed and caused the error
+cloud-file-rename-error = Arazo bat gertatu da { $filename } berrizendatzean { $provider }(e)n.
+# Variables:
+# $provider (string) - name of the online storage service that reported the error
+# $filename (string) - name of the file that was renamed and caused the error
+cloud-file-rename-error-with-custom-message-title = { $filename } { $provider }(e)n berrizendatzeak huts egin du.
+# Variables:
+# $provider (string) - name of the online storage service that reported the error
+cloud-file-rename-not-supported = { $provider } ezin du jada igota daude fitxategiak berrizendatu.
+cloud-file-attachment-error-title = Filelink eranste errorea
+# Variables:
+# $filename (string) - name of the file that was renamed and caused the error
+cloud-file-attachment-error = Huts egin du eguneratzea { $filename } eranskina Filelinken, fitxategi lokala mugitu edo ezabatu delako.
+cloud-file-account-error-title = Filelink kontuan errorea
+# Variables:
+# $filename (string) - name of the file that was renamed and caused the error
+cloud-file-account-error = Huts egin du eguneratzea { $filename } eranskina Filelinken, Filelink kontua ezabatu delako.
+
+## Link Preview
+
+link-preview-title = Estekaren aurrebista
+link-preview-description = { -brand-short-name }kapsulatutako aurrebistak gehitu ditzake estekak itsastean.
+link-preview-autoadd = Automatikoki gehitu esteka aurrebistak posible denean
+link-preview-replace-now = Gehitu esteka aurrebista esteka honentzat?
+link-preview-yes-replace = Bai
+
+## Dictionary selection popup
+
+spell-add-dictionaries =
+    .label = Gehitu hiztegiak…
+    .accesskey = h

@@ -21,11 +21,24 @@ about-addressbook-toolbar-import =
 
 ## Books
 
+all-address-books-row =
+    .title = Wšykne adresniki
 all-address-books = Wšykne adresniki
+# Variables:
+# $name (String) - The name of the selected book/list.
+# $count (Number) - The number of contacts in the selected book/list.
+about-addressbook-card-count = Cełkowne kontakty w { $name }: { $count }
+# Variables:
+# $count (Number) - The number of contacts in all address books.
+about-addressbook-card-count-all = Cełkowne kontakty we wšych adresnikach: { $count }
 about-addressbook-books-context-properties =
     .label = Kakosći
+about-addressbook-books-context-edit-list =
+    .label = Lisćinu wobźěłaś
 about-addressbook-books-context-synchronize =
     .label = Synchronizěrowaś
+about-addressbook-books-context-edit =
+    .label = Wobźěłaś
 about-addressbook-books-context-print =
     .label = Śišćaś…
 about-addressbook-books-context-export =
@@ -53,8 +66,8 @@ about-addressbook-search =
     .placeholder = { $name } pśepytaś
 about-addressbook-search-all =
     .placeholder = Wšykne adresniki pśepytaś
-about-addressbook-sort-button =
-    .title = Lisćinowy pórěd změniś
+about-addressbook-sort-button2 =
+    .title = Pokazowańske nastajenja nalicyś
 about-addressbook-name-format-display =
     .label = Zwobraznjeńske mě
 about-addressbook-name-format-firstlast =
@@ -69,6 +82,76 @@ about-addressbook-sort-email-ascending =
     .label = Pó e-mailowej adresy sortěrowaś (A > Z)
 about-addressbook-sort-email-descending =
     .label = Pó e-mailowej adresy sortěrowaś (Z > A)
+about-addressbook-horizontal-layout =
+    .label = Do horicontalnego wugótowanja pśešaltowaś
+about-addressbook-vertical-layout =
+    .label = Do wertikalnego wugótowanja pśešaltowaś
+about-addressbook-table-layout =
+    .label = Tabelowe wugótowanje
+
+## Card column headers
+## Each string is listed here twice, and the values should match.
+
+about-addressbook-column-header-generatedname = Mě
+about-addressbook-column-label-generatedname =
+    .label = { about-addressbook-column-header-generatedname }
+about-addressbook-column-header-emailaddresses = E-mailowe adrese
+about-addressbook-column-label-emailaddresses =
+    .label = { about-addressbook-column-header-emailaddresses }
+about-addressbook-column-header-phonenumbers = Telefonowe numery
+about-addressbook-column-label-phonenumbers =
+    .label = { about-addressbook-column-header-phonenumbers }
+about-addressbook-column-header-addresses = Adrese
+about-addressbook-column-label-addresses =
+    .label = { about-addressbook-column-header-addresses }
+about-addressbook-column-header-title = Titel
+about-addressbook-column-label-title =
+    .label = { about-addressbook-column-header-title }
+about-addressbook-column-header-department = Wótźělenje
+about-addressbook-column-label-department =
+    .label = { about-addressbook-column-header-department }
+about-addressbook-column-header-organization = Organizacija
+about-addressbook-column-label-organization =
+    .label = { about-addressbook-column-header-organization }
+about-addressbook-column-header-addrbook = Adresnik
+about-addressbook-column-label-addrbook =
+    .label = { about-addressbook-column-header-addrbook }
+about-addressbook-column-header-generatedname2 = Mě
+    .title = Pó mjenju sortěrowaś
+about-addressbook-column-label-generatedname2 =
+    .label = Mě
+about-addressbook-column-header-emailaddresses2 = E-mailowe adrese
+    .title = Pó e-mailowych adresach sortěrowaś
+about-addressbook-column-label-emailaddresses2 =
+    .label = E-mailowe adrese
+about-addressbook-column-header-nickname2 = Pśimě
+    .title = Pó pśimjenju sortěrowaś
+about-addressbook-column-label-nickname2 =
+    .label = Pśimě
+about-addressbook-column-header-phonenumbers2 = Telefonowe numery
+    .title = Pó telefonowych numerach sortěrowaś
+about-addressbook-column-label-phonenumbers2 =
+    .label = Telefonowe numery
+about-addressbook-column-header-addresses2 = Adrese
+    .title = Pó adresach sortěrowaś
+about-addressbook-column-label-addresses2 =
+    .label = Adrese
+about-addressbook-column-header-title2 = Titel
+    .title = Pó titelu sortěrowaś
+about-addressbook-column-label-title2 =
+    .label = Titel
+about-addressbook-column-header-department2 = Wótźělenje
+    .title = Pó wóźelenju sortěrowaś
+about-addressbook-column-label-department2 =
+    .label = Wótźělenje
+about-addressbook-column-header-organization2 = Organizacija
+    .title = Pó organizaciji sortěrowaś
+about-addressbook-column-label-organization2 =
+    .label = Organizacija
+about-addressbook-column-header-addrbook2 = Adresnik
+    .title = Pó adresniku sortěrowaś
+about-addressbook-column-label-addrbook2 =
+    .label = Adresnik
 about-addressbook-cards-context-write =
     .label = Pisaś
 about-addressbook-confirm-delete-mixed-title = Kontakty a lisćiny wulašowaś
@@ -115,6 +198,20 @@ about-addressbook-confirm-remove-contacts =
        *[other] Cośo napšawdu toś te { $count } kontaktow z { $list } wótwónoźeś?
     }
 # Variables:
+# $name (String) - The name of the contact to be removed.
+# $list (String) - The name of the list that contacts will be removed from.
+about-addressbook-confirm-remove-contacts-single = Cośo napšawdu { $name } z { $list } wótwónoźeś?
+# Variables:
+# $count (Number) - The number of contacts to be removed.
+# $list (String) - The name of the list that contacts will be removed from.
+about-addressbook-confirm-remove-contacts-multi =
+    { $count ->
+        [one] Cośo napšawdu toś ten { $count } kontakt z { $list } wótwónoźeś?
+        [two] Cośo napšawdu toś tej { $count } kontakta z { $list } wótwónoźeś?
+        [few] Cośo napšawdu toś te { $count } kontakty z { $list } wótwónoźeś?
+       *[other] Cośo napšawdu toś te { $count } kontaktow z { $list } wótwónoźeś?
+    }
+# Variables:
 # $count (Number) - The number of contacts to be deleted.
 about-addressbook-confirm-delete-contacts-title =
     { $count ->
@@ -133,16 +230,116 @@ about-addressbook-confirm-delete-contacts =
         [few] Cośo napšawdu toś te { $count } kontakty wulašowaś?
        *[other] Cośo napšawdu toś te { $count } kontaktow wulašowaś?
     }
+# Variables:
+# $name (String) - The name of the contact to be deleted.
+about-addressbook-confirm-delete-contacts-single = Cośo toś kontakt { $name } napšawdu lašowaś?
+# Variables:
+# $count (Number) - The number of contacts to be deleted.
+about-addressbook-confirm-delete-contacts-multi =
+    { $count ->
+        [one] Cośo napšawdu toś ten { $count } kontakt wulašowaś?
+        [two] Cośo napšawdu toś tej { $count } kontakta wulašowaś?
+        [few] Cośo napšawdu toś te { $count } kontakty wulašowaś?
+       *[other] Cośo napšawdu toś te { $count } kontaktow wulašowaś?
+    }
+
+## Card list placeholder
+## Shown when there are no cards in the list
+
+about-addressbook-placeholder-empty-book = Žedne kontakty k dispoziciji
+about-addressbook-placeholder-new-contact = Nowy kontakt
+about-addressbook-placeholder-search-only = Toś ten adresnik kontakty jano pó pytanju pokazujo
+about-addressbook-placeholder-searching = Pyta se…
+about-addressbook-placeholder-no-search-results = Žedne kontakty namakane
 
 ## Details
 
+# Variables:
+# $count (Number) - The number of selected items (will never be fewer than two)
+about-addressbook-selection-mixed-header = Licba wubranych kontaktow a lisćinow: { $count }
+# Variables:
+# $count (Number) - The number of selected contacts
+about-addressbook-selection-contacts-header = Licba wubranych kontaktow: { $count }
+# Variables:
+# $count (Number) - The number of selected lists
+about-addressbook-selection-lists-header = Licba wubranych lisćinow: { $count }
+# Variables:
+# $count (Number) - The number of selected items (will never be fewer than 2).
+about-addressbook-selection-mixed-header2 =
+    { $count ->
+        [one] { $count } wubrany zapisk adresnika
+        [two] { $count } wubranej zapiska adresnika
+        [few] { $count } wubrane zapiski adresnika
+       *[other] { $count } wubranych zapiskow adresnika
+    }
+# Variables:
+# $count (Number) - The number of selected contacts
+about-addressbook-selection-contacts-header2 =
+    { $count ->
+        [one] { $count } wubrany kontakt
+        [two] { $count } wubranej kontakta
+        [few] { $count } wubrane kontakty
+       *[other] { $count } wubranych kontaktow
+    }
+# Variables:
+# $count (Number) - The number of selected lists
+about-addressbook-selection-lists-header2 =
+    { $count ->
+        [one] { $count } wubrana lisćina
+        [two] { $count } wubranej lisćinje
+        [few] { $count } wubrane lisćiny
+       *[other] { $count } wubranych lisćinow
+    }
+about-addressbook-details-edit-photo =
+    .title = Kontaktowe foto wobźěłaś
+about-addressbook-new-contact-header = Nowy kontakt
+about-addressbook-prefer-display-name = Zwobraznjone mě nad hłowu powěsći lubjej wužywaś
+about-addressbook-write-action-button = Pisaś
+about-addressbook-event-action-button = Tšojenje
+about-addressbook-search-action-button = Pytaś
+about-addressbook-new-list-action-button = Nowa lisćina
 about-addressbook-begin-edit-contact-button = Wobźěłaś
+about-addressbook-delete-edit-contact-button = Lašowaś
 about-addressbook-cancel-edit-contact-button = Pśetergnuś
 about-addressbook-save-edit-contact-button = Składowaś
+about-addressbook-add-contact-to = Pśidaś do:
 about-addressbook-details-email-addresses-header = E-mailowe adrese
 about-addressbook-details-phone-numbers-header = Telefonowe numery
-about-addressbook-details-home-address-header = Priwatna adresa
-about-addressbook-details-work-address-header = Słužbna adresa
+about-addressbook-details-addresses-header = Adrese
+about-addressbook-details-notes-header = Pokaze
+about-addressbook-details-impp-header = Pósrědnjanje powěsćow ned
+about-addressbook-details-websites-header = Websedła
 about-addressbook-details-other-info-header = Druge informacije
-about-addressbook-prompt-to-save-title = Změny składowaś?
-about-addressbook-prompt-to-save = Cośo swóje změny składowaś?
+about-addressbook-entry-type-work = Słužbny telefon
+about-addressbook-entry-type-home = Startowy bok
+about-addressbook-entry-type-fax = Faks
+# Or "Mobile"
+about-addressbook-entry-type-cell = Mobilny telefon
+about-addressbook-entry-type-pager = Pager
+about-addressbook-entry-name-birthday = Narodny źeń
+about-addressbook-entry-name-anniversary = Wrośenica
+about-addressbook-entry-name-title = Titel
+about-addressbook-entry-name-role = Rola
+about-addressbook-entry-name-organization = Organizacija
+about-addressbook-entry-name-website = Websedło
+about-addressbook-entry-name-time-zone = Casowa cona
+about-addressbook-entry-name-custom1 = Swójske 1
+about-addressbook-entry-name-custom2 = Swójske 2
+about-addressbook-entry-name-custom3 = Swójske 3
+about-addressbook-entry-name-custom4 = Swójske 4
+about-addressbook-unsaved-changes-prompt-title = Njeskłaźone změny
+about-addressbook-unsaved-changes-prompt = Cośo swóje změny składowaś, nježli až wobźěłowański naglěd spušćaśo?
+
+# Photo dialog
+
+about-addressbook-photo-drop-target = Pušććo abo zasajźćo how foto abo klikniśo, aby dataju wubrał.
+about-addressbook-photo-drop-loading = Foto se zacytujo …
+about-addressbook-photo-drop-error = Foto njedajo se zacytaś.
+about-addressbook-photo-filepicker-title = Wobrazowu dataju wubraś
+about-addressbook-photo-discard = Eksistěrujuce foto zachyśiś
+about-addressbook-photo-cancel = Pśetergnuś
+about-addressbook-photo-save = Składowaś
+
+# Keyboard shortcuts
+
+about-addressbook-new-contact-key = N

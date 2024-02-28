@@ -10,11 +10,8 @@
 
 "use strict";
 
-var {
-  close_compose_window,
-  get_msg_source,
-  open_compose_with_reply,
-} = ChromeUtils.import("resource://testing-common/mozmill/ComposeHelpers.jsm");
+var { close_compose_window, get_msg_source, open_compose_with_reply } =
+  ChromeUtils.import("resource://testing-common/mozmill/ComposeHelpers.jsm");
 var {
   be_in_folder,
   get_special_folder,
@@ -31,16 +28,14 @@ var { close_window } = ChromeUtils.import(
   "resource://testing-common/mozmill/WindowHelpers.jsm"
 );
 
-var { FileUtils } = ChromeUtils.import("resource://gre/modules/FileUtils.jsm");
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 var { MailServices } = ChromeUtils.import(
   "resource:///modules/MailServices.jsm"
 );
 
 var gDrafts;
 
-add_task(function setupModule(module) {
-  gDrafts = get_special_folder(Ci.nsMsgFolderFlags.Drafts, true);
+add_setup(async function () {
+  gDrafts = await get_special_folder(Ci.nsMsgFolderFlags.Drafts, true);
 
   Services.prefs.setBoolPref("mail.identity.id1.compose_html", true);
 });
@@ -52,7 +47,7 @@ add_task(async function test_multipart_alternative() {
     Ci.nsIX509Cert.CA_CERT
   );
   smimeUtils_loadCertificateAndKey(
-    new FileUtils.File(getTestFilePath("data/Bob.p12"))
+    new FileUtils.File(getTestFilePath("data/Bob.p12"), "nss")
   );
 
   let msgc = await open_message_from_file(
@@ -76,9 +71,9 @@ add_task(async function test_multipart_alternative() {
   close_compose_window(cwc);
 
   // Now check the message content in the drafts folder.
-  be_in_folder(gDrafts);
+  await be_in_folder(gDrafts);
   let message = select_click_row(0);
-  let messageContent = get_msg_source(message);
+  let messageContent = await get_msg_source(message);
 
   // Check for a single line that contains text and make sure there is a
   // space at the end for a flowed reply.
@@ -91,6 +86,15 @@ add_task(async function test_multipart_alternative() {
   press_delete();
 });
 
-registerCleanupFunction(function teardownModule() {
+registerCleanupFunction(function () {
   Services.prefs.clearUserPref("mail.identity.id1.compose_html");
+
+  // Some tests that open new windows don't return focus to the main window
+  // in a way that satisfies mochitest, and the test times out.
+  Services.focus.focusedWindow = window;
+  // Focus an element in the main window, then blur it again to avoid it
+  // hijacking keypresses.
+  let mainWindowElement = document.getElementById("button-appmenu");
+  mainWindowElement.focus();
+  mainWindowElement.blur();
 });

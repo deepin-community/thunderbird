@@ -2,21 +2,36 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-/* exported onLoad, onUnload, updatePartStat, browseDocument, reply */
+/* exported reply */
 
 /* global MozElements */
 
-/* import-globals-from ../../src/calApplicationUtils.js */
 /* import-globals-from calendar-dialog-utils.js */
 
 var { cal } = ChromeUtils.import("resource:///modules/calendar/calUtils.jsm");
-var { XPCOMUtils } = ChromeUtils.import("resource://gre/modules/XPCOMUtils.jsm");
+var { XPCOMUtils } = ChromeUtils.importESModule("resource://gre/modules/XPCOMUtils.sys.mjs");
+
+ChromeUtils.defineESModuleGetters(this, {
+  SelectionUtils: "resource://gre/modules/SelectionUtils.sys.mjs",
+});
 
 XPCOMUtils.defineLazyGetter(this, "gStatusNotification", () => {
-  return new MozElements.NotificationBox(element => {
-    document.getElementById("status-notifications").append(element);
+  return new MozElements.NotificationBox(async element => {
+    let box = document.getElementById("status-notifications");
+    // Fix window size after the notification animation is done.
+    box.addEventListener(
+      "transitionend",
+      () => {
+        window.sizeToContent();
+      },
+      { once: true }
+    );
+    box.append(element);
   });
 });
+
+window.addEventListener("load", onLoad);
+window.addEventListener("unload", onUnload);
 
 /**
  * Sets up the summary dialog, setting all needed fields on the dialog from the
@@ -32,7 +47,7 @@ async function onLoad() {
 
   document.title = item.title;
 
-  // set the dialog-id to enable the right window-icon to be loaded.
+  // set the dialog-id to enable the right CSS to be used.
   if (item.isEvent()) {
     setDialogId(dialog, "calendar-event-summary-dialog");
   } else if (item.isTodo()) {
@@ -46,8 +61,8 @@ async function onLoad() {
   window.readOnly = itemSummary.readOnly;
   let calendar = itemSummary.calendar;
 
-  if (!window.readOnly && calendar?.supportsScheduling) {
-    let attendee = calendar.getSchedulingSupport().getInvitedAttendee(item);
+  if (!window.readOnly) {
+    let attendee = cal.itip.getInvitedAttendee(item, calendar);
     if (attendee) {
       // if this is an unresponded invitation, preset our default alarm values:
       if (!item.getAlarms().length && attendee.participationStatus == "NEEDS-ACTION") {
@@ -119,6 +134,7 @@ function reply(aResponseMode, aPartStat) {
 /**
  * Stores the event in the calendar, sends a notification if requested and
  * closes the dialog.
+ *
  * @param {string} aResponseMode - a literal of one of the response modes defined
  *                                 in calIItipItem (like 'NONE')
  */
@@ -166,26 +182,16 @@ function updateToolbar() {
     let msg = cal.l10n.getString("calendar-event-dialog", msgStr[partStat]);
 
     gStatusNotification.appendNotification(
-      msg,
       "statusNotification",
-      null,
-      gStatusNotification.PRIORITY_INFO_MEDIUM
+      {
+        label: msg,
+        priority: gStatusNotification.PRIORITY_INFO_MEDIUM,
+      },
+      null
     );
   } else {
     gStatusNotification.removeAllNotifications();
   }
-}
-
-/**
- * Browse the item's attached URL.
- *
- * XXX This function is broken, should be fixed in bug 471967
- */
-function browseDocument() {
-  let args = window.arguments[0];
-  let item = args.calendarEvent;
-  let url = item.getProperty("URL");
-  launchBrowser(url);
 }
 
 /**
@@ -220,6 +226,12 @@ function updateDialogButtons(item) {
     // Show the edit button menu for repeating events.
     let menuButton = document.getElementById("calendar-summary-dialog-edit-menu-button");
     menuButton.hidden = false;
+
+    // Pressing the "enter" key will display the occurrence menu.
+    document.getElementById("calendar-summary-dialog-edit-menu-button").focus();
+    document.addEventListener("dialogaccept", evt => {
+      evt.preventDefault();
+    });
   } else {
     // Show the single edit button for non-repeating events.
     document.addEventListener("dialogaccept", () => {
@@ -268,6 +280,7 @@ function onEditAllOccurrences() {
 
 /**
  * Switch to the "modify" mode dialog so the user can make changes to the event.
+ *
  * @param {calIItemBase} item
  */
 function useEditDialog(item) {
@@ -275,4 +288,94 @@ function useEditDialog(item) {
     window.opener.modifyEventWithDialog(item, false);
   });
   window.close();
+}
+
+/**
+ * Initializes the context menu used for the attendees area.
+ *
+ * @param {Event} event
+ */
+function onAttendeeContextMenu(event) {
+  let copyMenu = document.getElementById("attendee-popup-copy-menu");
+  let item = window.arguments[0].calendarEvent;
+
+  let attId =
+    event.target.getAttribute("attendeeid") || event.target.parentNode.getAttribute("attendeeid");
+  let attendee = item.getAttendees().find(att => att.id == attId);
+
+  if (!attendee) {
+    copyMenu.hidden = true;
+    return;
+  }
+
+  let id = attendee.toString();
+  let idMenuItem = document.getElementById("attendee-popup-copy-menu-id");
+  idMenuItem.setAttribute("label", id);
+  idMenuItem.hidden = false;
+
+  let name = attendee.commonName;
+  let nameMenuItem = document.getElementById("attendee-popup-copy-menu-common-name");
+  if (name && name != id) {
+    nameMenuItem.setAttribute("label", name);
+    nameMenuItem.hidden = false;
+  } else {
+    nameMenuItem.hidden = true;
+  }
+
+  copyMenu.hidden = false;
+}
+
+/**
+ * Initializes the context menu used for the event description area in the
+ * event summary.
+ *
+ * @param {Event} event
+ */
+function openDescriptionContextMenu(event) {
+  const popup = document.getElementById("description-popup");
+  const link = event.target.closest("a") ? event.target.closest("a").getAttribute("href") : null;
+  const linkText = event.target.closest("a") ? event.target.closest("a").text : null;
+  const copyLinkTextMenuItem = document.getElementById("description-context-menu-copy-link-text");
+  const copyLinkLocationMenuItem = document.getElementById(
+    "description-context-menu-copy-link-location"
+  );
+  const selectionCollapsed = SelectionUtils.getSelectionDetails(window).docSelectionIsCollapsed;
+
+  // Hide copy command if there is no text selected.
+  popup.querySelector('[command="cmd_copy"]').hidden = selectionCollapsed;
+
+  copyLinkLocationMenuItem.hidden = !link;
+  copyLinkTextMenuItem.hidden = !link;
+  popup.querySelector("#calendar-summary-description-context-menuseparator").hidden =
+    selectionCollapsed && !link;
+  copyLinkTextMenuItem.setAttribute("text", linkText);
+
+  popup.openPopupAtScreen(event.screenX, event.screenY, true, event);
+  event.preventDefault();
+}
+
+/**
+ * Copies the link text in a calender event description
+ * @param {Event} event
+ */
+async function copyLinkTextToClipboard(event) {
+  return navigator.clipboard.writeText(event.target.getAttribute("text"));
+}
+
+/**
+ * Copies the label value of a menuitem to the clipboard.
+ */
+async function copyLabelToClipboard(event) {
+  return navigator.clipboard.writeText(event.target.getAttribute("label"));
+}
+
+/**
+ * Brings up the compose window to send an e-mail to all attendees.
+ */
+function sendMailToAttendees() {
+  let item = window.arguments[0].calendarEvent;
+  let toList = cal.email.createRecipientList(item.getAttendees());
+  let emailSubject = cal.l10n.getString("calendar-event-dialog", "emailSubjectReply", [item.title]);
+  let identity = item.calendar.getProperty("imip.identity");
+  cal.email.sendTo(toList, emailSubject, null, identity);
 }

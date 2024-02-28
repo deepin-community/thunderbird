@@ -35,6 +35,7 @@ if is_asm_enabled
     checkasm_sources = files(
         'checkasm/checkasm.c',
         'checkasm/msac.c',
+        'checkasm/refmvs.c',
     )
 
     checkasm_tmpl_sources = files(
@@ -53,11 +54,12 @@ if is_asm_enabled
             'checkasm_bitdepth_@0@'.format(bitdepth),
             checkasm_tmpl_sources,
             include_directories: dav1d_inc_dirs,
-            c_args: ['-DBITDEPTH=@0@'.format(bitdepth), stackalign_flag],
+            dependencies : [stdatomic_dependencies],
+            c_args: ['-DBITDEPTH=@0@'.format(bitdepth)],
             install: false,
             build_by_default: false,
         )
-        checkasm_bitdepth_objs += checkasm_bitdepth_lib.extract_all_objects()
+        checkasm_bitdepth_objs += checkasm_bitdepth_lib.extract_all_objects(recursive: true)
     endforeach
 
     checkasm_asm_objs = []
@@ -86,7 +88,6 @@ if is_asm_enabled
             ],
 
         include_directories: dav1d_inc_dirs,
-        c_args: [stackalign_flag, stackrealign_flag],
         build_by_default: false,
         dependencies : [
             thread_dependency,

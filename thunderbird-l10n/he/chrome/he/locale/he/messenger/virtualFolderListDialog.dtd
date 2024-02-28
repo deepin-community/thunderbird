@@ -4,10 +4,5 @@
 
 <!ENTITY virtualFolderListTitle.title        "בחר תיקייה(ות)">
 <!ENTITY virtualFolderDesc.label       "בחר את התיקיות לחיפוש:">
-
-
-
-
-
-<!ENTITY folderName.label "Folder name">
-<!ENTITY folderSearch.label "Search">
+<!ENTITY folderName.label "שם התיקייה">
+<!ENTITY folderSearch.label "חיפוש">

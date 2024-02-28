@@ -8,7 +8,6 @@
 
 /* global GetEnigmailSvc, EnigRevokeKey */
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 var { MailServices } = ChromeUtils.import(
   "resource:///modules/MailServices.jsm"
 );
@@ -19,14 +18,8 @@ var { EnigmailCore } = ChromeUtils.import(
 var { EnigmailStreams } = ChromeUtils.import(
   "chrome://openpgp/content/modules/streams.jsm"
 );
-var { EnigmailClipboard } = ChromeUtils.import(
-  "chrome://openpgp/content/modules/clipboard.jsm"
-);
 var { EnigmailFuncs } = ChromeUtils.import(
   "chrome://openpgp/content/modules/funcs.jsm"
-);
-var { EnigmailStdlib } = ChromeUtils.import(
-  "chrome://openpgp/content/modules/stdlib.jsm"
 );
 var { EnigmailWindows } = ChromeUtils.import(
   "chrome://openpgp/content/modules/windows.jsm"
@@ -46,9 +39,6 @@ var { KeyLookupHelper } = ChromeUtils.import(
 var { EnigmailTrust } = ChromeUtils.import(
   "chrome://openpgp/content/modules/trust.jsm"
 );
-var { EnigmailFiles } = ChromeUtils.import(
-  "chrome://openpgp/content/modules/files.jsm"
-);
 var { PgpSqliteDb2 } = ChromeUtils.import(
   "chrome://openpgp/content/modules/sqliteDb.jsm"
 );
@@ -66,6 +56,9 @@ var { EnigmailConstants } = ChromeUtils.import(
 );
 var { EnigmailDialog } = ChromeUtils.import(
   "chrome://openpgp/content/modules/dialog.jsm"
+);
+var { EnigmailKeyserverURIs } = ChromeUtils.import(
+  "chrome://openpgp/content/modules/keyserverUris.jsm"
 );
 
 const ENIG_KEY_EXPIRED = "e";
@@ -127,8 +120,7 @@ function enigmailKeyManagerLoad() {
   });
 
   gUserList.addEventListener("click", onListClick, true);
-  document.l10n.setAttributes(
-    document.getElementById("statusText"),
+  document.getElementById("statusText").value = l10n.formatValueSync(
     "key-man-loading-keys"
   );
   document.getElementById("progressBar").style.visibility = "visible";
@@ -162,7 +154,7 @@ function loadkeyList() {
   sortTree();
   gKeyListView.applyFilter(0);
   document.getElementById("pleaseWait").hidePopup();
-  document.getElementById("statusText").value = " ";
+  document.getElementById("statusText").value = "";
   document.getElementById("progressBar").style.visibility = "collapse";
 }
 
@@ -271,6 +263,8 @@ function enigmailKeyMenu() {
     }
   }
 
+  let singleSecretSelected = keyList.length == 1 && haveSecretForAll;
+
   // Make the selected key count available to translations.
   for (let el of document.querySelectorAll(".enigmail-bulk-key-operation")) {
     el.setAttribute(
@@ -280,16 +274,27 @@ function enigmailKeyMenu() {
   }
 
   document.getElementById("backupSecretKey").disabled = !haveSecretForAll;
+  document.getElementById("uploadToServer").disabled = !singleSecretSelected;
 
   document.getElementById("revokeKey").disabled =
     keyList.length != 1 || !gKeyList[keyList[0]].secretAvailable;
   document.getElementById("ctxRevokeKey").hidden =
     keyList.length != 1 || !gKeyList[keyList[0]].secretAvailable;
 
-  document.getElementById("importFromClipbrd").disabled = !enigGetClipboard();
+  document.getElementById("importFromClipbrd").disabled =
+    !Services.clipboard.hasDataMatchingFlavors(
+      ["text/plain"],
+      Ci.nsIClipboard.kGlobalClipboard
+    );
+
+  for (let item of document.querySelectorAll(
+    ".requires-single-key-selection"
+  )) {
+    item.disabled = keyList.length != 1;
+  }
 
   for (let item of document.querySelectorAll(".requires-key-selection")) {
-    item.disabled = keyList.length != 1;
+    item.disabled = keyList.length == 0;
   }
 
   // Disable the "Generate key" menu item if no mail account is available.
@@ -349,7 +354,7 @@ function enigmailKeyDetails(keyId = null) {
   }
 }
 
-function enigmailDeleteKey() {
+async function enigmailDeleteKey() {
   var keyList = getSelectedKeys();
   var deleteSecret = false;
 
@@ -412,26 +417,16 @@ function enigmailDeleteKey() {
   const cApi = EnigmailCryptoAPI();
   for (let j in keyList) {
     let fpr = gKeyList[keyList[j]].fpr;
-    cApi.sync(cApi.deleteKey(fpr, deleteSecret));
-    cApi.sync(PgpSqliteDb2.deleteAcceptance(fpr));
+    await cApi.deleteKey(fpr, deleteSecret);
+    await PgpSqliteDb2.deleteAcceptance(fpr);
   }
   clearKeyCache();
+  gUserList.view.selection.clearSelection();
 }
 
-function enigCreateKeyMsg() {
+async function enigCreateKeyMsg() {
   var keyList = getSelectedKeyIds();
-  var tmpDir = EnigmailFiles.getTempDir();
-  var tmpFile;
-  try {
-    tmpFile = Cc["@mozilla.org/file/local;1"].createInstance(Ci.nsIFile);
-    tmpFile.initWithPath(tmpDir);
-    if (!(tmpFile.isDirectory() && tmpFile.isWritable())) {
-      document.l10n.formatValue("no-temp-dir").then(value => {
-        EnigmailDialog.alert(window, value);
-      });
-      return;
-    }
-  } catch (ex) {}
+  var tmpFile = Services.dirsvc.get("TmpD", Ci.nsIFile);
   tmpFile.append("key.asc");
   tmpFile.createUnique(Ci.nsIFile.NORMAL_FILE_TYPE, 0o600);
 
@@ -444,9 +439,10 @@ function enigCreateKeyMsg() {
     keyIdArray.push("0x" + id);
   }
 
-  EnigmailKeyRing.extractKey(
-    false,
-    keyIdArray,
+  await EnigmailKeyRing.extractPublicKeys(
+    keyIdArray, // full
+    null,
+    null,
     tmpFile,
     exitCodeObj,
     errorMsgObj
@@ -495,14 +491,14 @@ function enigCreateKeyMsg() {
 async function enigmailRevokeKey() {
   var keyList = getSelectedKeys();
   let keyInfo = gKeyList[keyList[0]];
-  EnigRevokeKey(keyInfo, function(success) {
+  EnigRevokeKey(keyInfo, function (success) {
     if (success) {
       refreshKeys();
     }
   });
 }
 
-function enigmailExportKeys(which) {
+async function enigmailExportKeys(which) {
   let exportSecretKey = which == "secret";
   var keyList = getSelectedKeys();
   var defaultFileName;
@@ -526,7 +522,7 @@ function enigmailExportKeys(which) {
   if (exportSecretKey) {
     var fprArray = [];
     for (let id of keyList) {
-      fprArray.push("0x" + gKeyList[id].fpr);
+      fprArray.push(gKeyList[id].fpr);
     }
     EnigmailKeyRing.backupSecretKeysInteractive(
       window,
@@ -539,7 +535,7 @@ function enigmailExportKeys(which) {
     for (let id of keyList2) {
       keyIdArray.push("0x" + id);
     }
-    EnigmailKeyRing.exportPublicKeysInteractive(
+    await EnigmailKeyRing.exportPublicKeysInteractive(
       window,
       defaultFileName,
       keyIdArray
@@ -547,37 +543,7 @@ function enigmailExportKeys(which) {
   }
 }
 
-/*
-function enigmailManageUids() {
-  var keyList = getSelectedKeys();
-  var inputObj = {
-    keyId: gKeyList[keyList[0]].keyId,
-    ownKey: gKeyList[keyList[0]].secretAvailable,
-  };
-  var resultObj = {
-    refresh: false,
-  };
-  window.openDialog(
-    "chrome://openpgp/content/ui/enigmailManageUidDlg.xhtml",
-    "",
-    "dialog,modal,centerscreen,resizable=yes",
-    inputObj,
-    resultObj
-  );
-  if (resultObj.refresh) {
-    refreshKeys();
-  }
-}
-*/
-
-function enigGetClipboard() {
-  return EnigmailClipboard.getClipboardContent(
-    window,
-    Ci.nsIClipboard.kGlobalClipboard
-  );
-}
-
-function enigmailImportFromClipbrd() {
+async function enigmailImportFromClipbrd() {
   if (
     !EnigmailDialog.confirmDlg(
       window,
@@ -588,9 +554,9 @@ function enigmailImportFromClipbrd() {
     return;
   }
 
-  var cBoardContent = enigGetClipboard();
+  let cBoardContent = await navigator.clipboard.readText();
   var errorMsgObj = {};
-  var preview = EnigmailKey.getKeyListFromKeyBlock(
+  var preview = await EnigmailKey.getKeyListFromKeyBlock(
     cBoardContent,
     errorMsgObj,
     true,
@@ -618,12 +584,10 @@ function enigmailImportFromClipbrd() {
         null,
         false,
         [],
-        false,
         true,
-        null,
         outParam.acceptance
       );
-      var keyList = preview.map(function(a) {
+      var keyList = preview.map(function (a) {
         return a.id;
       });
       EnigmailDialog.keyImportDlg(window, keyList);
@@ -639,22 +603,22 @@ function enigmailImportFromClipbrd() {
 /**
  * Places the fingerprint of each selected key onto the keyboard.
  */
-function copyOpenPGPFingerPrints() {
+async function copyOpenPGPFingerPrints() {
   let fprs = getSelectedKeys()
     .map(idx => gKeyList[idx].fpr)
     .join("\n");
-  EnigmailClipboard.setClipboardContent(fprs);
+  return navigator.clipboard.writeText(fprs);
 }
 
 /**
  * Places the key id of each key selected onto the clipboard.
  */
-function copyOpenPGPKeyIds() {
+async function copyOpenPGPKeyIds() {
   let ids = getSelectedKeyIds();
-  EnigmailClipboard.setClipboardContent(ids.map(id => `0x${id}`).join("\n"));
+  return navigator.clipboard.writeText(ids.map(id => `0x${id}`).join("\n"));
 }
 
-function enigmailCopyToClipbrd() {
+async function enigmailCopyToClipbrd() {
   var keyList = getSelectedKeyIds();
   if (keyList.length === 0) {
     document.l10n.formatValue("no-key-selected").then(value => {
@@ -670,9 +634,10 @@ function enigmailCopyToClipbrd() {
     keyIdArray.push("0x" + id);
   }
 
-  var keyData = EnigmailKeyRing.extractKey(
-    0,
-    keyIdArray,
+  let keyData = await EnigmailKeyRing.extractPublicKeys(
+    keyIdArray, // full
+    null,
+    null,
     null,
     exitCodeObj,
     errorMsgObj
@@ -683,29 +648,32 @@ function enigmailCopyToClipbrd() {
     });
     return;
   }
-  if (EnigmailClipboard.setClipboardContent(keyData)) {
-    EnigmailLog.DEBUG(
-      "enigmailKeyManager.js: enigmailImportFromClipbrd: set clipboard data\n"
-    );
-    l10n.formatValue("copy-to-clipbrd-ok").then(value => {
-      EnigmailDialog.info(window, value);
+  navigator.clipboard
+    .writeText(keyData)
+    .then(() => {
+      l10n.formatValue("copy-to-clipbrd-ok").then(value => {
+        EnigmailDialog.info(window, value);
+      });
+    })
+    .catch(err => {
+      l10n.formatValue("copy-to-clipbrd-failed").then(value => {
+        EnigmailDialog.alert(window, value);
+      });
     });
-  } else {
-    l10n.formatValue("copy-to-clipbrd-failed").then(value => {
-      EnigmailDialog.alert(window, value);
-    });
-  }
 }
 
-function enigmailSearchKey() {
+async function enigmailSearchKey() {
   var result = {
     value: "",
   };
   if (
-    !EnigmailDialog.promptValue(
+    !Services.prompt.prompt(
       window,
+      l10n.formatValueSync("enig-prompt"),
       l10n.formatValueSync("openpgp-key-man-discover-prompt"),
-      result
+      result,
+      "",
+      {}
     )
   ) {
     return;
@@ -715,18 +683,18 @@ function enigmailSearchKey() {
 
   let imported = false;
   if (EnigmailFuncs.stringLooksLikeEmailAddress(result.value)) {
-    imported = KeyLookupHelper.lookupAndImportByEmail(
+    imported = await KeyLookupHelper.lookupAndImportByEmail(
+      "interactive-import",
       window,
       result.value,
-      true,
-      null
+      true
     );
   } else {
-    imported = KeyLookupHelper.lookupAndImportByKeyID(
+    imported = await KeyLookupHelper.lookupAndImportByKeyID(
+      "interactive-import",
       window,
       result.value,
-      true,
-      null
+      true
     );
   }
 
@@ -735,22 +703,27 @@ function enigmailSearchKey() {
   }
 }
 
-/*
-function enigmailUploadKeys() {
-  accessKeyServer(EnigmailConstants.UPLOAD_KEY, enigmailUploadKeysCb);
-}
-
-function enigmailUploadKeysCb(exitCode, errorMsg, msgBox) {
-  if (msgBox) {
-    if (exitCode !== 0) {
-      EnigmailDialog.alert(window, "Sending of keys failed" + "\n" + errorMsg);
-    }
-  } else {
-    return exitCode === 0 ? "Key(s) sent successfully" : "Sending of keys failed";
+async function enigmailUploadKey() {
+  // Always upload to the first configured keyserver with a supported protocol.
+  let selKeyList = getSelectedKeys();
+  if (selKeyList.length != 1) {
+    return;
   }
-  return "";
+
+  let keyId = gKeyList[selKeyList[0]].keyId;
+  let ks = EnigmailKeyserverURIs.getUploadKeyServer();
+
+  let ok = await EnigmailKeyServer.upload(keyId, ks);
+  document.l10n
+    .formatValue(ok ? "openpgp-key-publish-ok" : "openpgp-key-publish-fail", {
+      keyserver: ks,
+    })
+    .then(value => {
+      EnigmailDialog.alert(window, value);
+    });
 }
 
+/*
 function enigmailUploadToWkd() {
   let selKeyList = getSelectedKeys();
   let keyList = [];
@@ -784,256 +757,96 @@ function enigmailUploadToWkd() {
 }
 */
 
-/*
-function enigmailReceiveKey() {
-  accessKeyServer(EnigmailConstants.DOWNLOAD_KEY, enigmailReceiveKeyCb);
-}
-*/
-
-function userAcceptsWarning(warningMessage) {
-  if (!Services.prefs.getBoolPref("temp.openpgp.warnRefreshAll")) {
-    return true;
-  }
-
-  let checkedObj = {};
-
-  let confirm =
-    EnigmailDialog.msgBox(
-      window,
-      {
-        msgtext: warningMessage,
-        checkboxLabel: l10n.formatValueSync("dlg-no-prompt"),
-        button1: l10n.formatValueSync("dlg-button-continue"),
-        cancelButton: ":cancel",
-        iconType: EnigmailConstants.ICONTYPE_QUESTION,
-        dialogTitle: l10n.formatValueSync("enig-confirm"),
-      },
-      checkedObj
-    ) === 0;
-
-  if (checkedObj.value) {
-    Services.prefs.setBoolCharPref("temp.openpgp.warnRefreshAll", false);
-  }
-  return confirm;
-}
-
-/*
-function userAcceptsRefreshWarning() {
-  if (Services.prefs.getBoolPref("temp.openpgp.keyRefreshOn") === true) {
-    return userAcceptsWarning("Warning: Your keys are currently being refreshed in the background as safely as possible.\nRefreshing all your keys at once will unnecessarily reveal information about you.\nDo you really want to do this?");
-  }
-  return userAcceptsWarning("XXXrefreshKey.warn");
-}
-
-function enigmailRefreshAllKeys() {
-  if (userAcceptsRefreshWarning() === true) {
-    accessKeyServer(EnigmailConstants.REFRESH_KEY, enigmailReceiveKeyCb);
-  }
-}
-*/
-
-/*
-// Iterate through contact emails and download them
-function enigmailDowloadContactKeysEngine() {
-  let abManager = Cc["@mozilla.org/abmanager;1"].getService(Ci.nsIAbManager);
-  let emails = [];
-
-  for (let addressBook of abManager.directories) {
-    if (addressBook instanceof Ci.nsIAbDirectory) {
-      // or nsIAbItem or nsIAbCollection
-      // ask for confirmation for each address book:
-      var doIt = EnigmailDialog.confirmDlg(
-        window,
-        "Import contacts from address book '%S'?".replace("%S, addressBook.dirName),
-        "&Yes",
-        "XXXdlg.button.skip"
-      );
-      if (!doIt) {
-        continue; // SKIP this address book
-      }
-
-      for (let card of addressBook.childCards) {
-        try {
-          let email = card.getPropertyAsAString("PrimaryEmail");
-          if (email && email.includes("@")) {
-            emails.push(email);
-          }
-        } catch (e) {}
-
-        try {
-          let email = card.getPropertyAsAString("SecondEmail");
-          if (email && email.includes("@")) {
-            emails.push(email);
-          }
-        } catch (e) {}
-      }
-    }
-  }
-
-  // list of emails might be emoty here, in which case we do nothing
-  if (emails.length <= 0) {
-    return;
-  }
-
-  // sort the e-mail array
-  emails.sort();
-
-  //remove duplicates
-  var i = 0;
-  while (i < emails.length - 1) {
-    if (emails[i] == emails[i + 1]) {
-      emails.splice(i, 1);
-    } else {
-      i = i + 1;
-    }
-  }
-
-  var inputObj = {
-    searchList: emails,
-    autoKeyServer: Services.prefs.getBoolPref("temp.openpgp.autoKeyServerSelection")
-      ? Services.prefs.getCharPref("temp.openpgp.keyserver").split(/[ ,;]/g)[0]
-      : null,
-  };
-  var resultObj = {};
-
-  EnigmailWindows.downloadKeys(window, inputObj, resultObj);
-
-  if (resultObj.importedKeys > 0) {
-    refreshKeys();
-  }
-}
-
-function enigmailDownloadContactKeys() {
-  var doIt = EnigmailDialog.confirmBoolPref(
-    window,
-    "XXXdownloadContactsKeys.warn",
-    "temp.openpgp.warnDownloadContactKeys",
-    "XXXdlg.button.continue",
-    "XXXdlg.button.cancel"
-  );
-
-  if (doIt) {
-    enigmailDowloadContactKeysEngine();
-  }
-}
-*/
-
-function displayResult(arrayOfMsgText) {
-  EnigmailDialog.info(window, arrayOfMsgText.join("\n"));
-}
-
-/*
-function enigmailReceiveKeyCb(exitCode, errorMsg, msgBox) {
-  EnigmailLog.DEBUG("enigmailKeyManager.js: enigmailReceiveKeyCb\n");
-  if (msgBox) {
-    if (exitCode === 0) {
-      refreshKeys();
-      EnigmailEvents.dispatchEvent(displayResult, 100, [
-        "Key(s) updated successfully",
-        errorMsg,
-      ]);
-    } else {
-      EnigmailEvents.dispatchEvent(displayResult, 100, [
-        "Downloading of keys failed",
-        errorMsg,
-      ]);
-    }
-  } else {
-    return exitCode === 0 ? "Key(s) updated successfully" : "Downloading of keys failed";
-  }
-  return "";
-}
-*/
-
 function enigmailImportKeysFromUrl() {
-  var value = {
+  var result = {
     value: "",
   };
   if (
-    EnigmailDialog.promptValue(
+    !Services.prompt.prompt(
       window,
+      l10n.formatValueSync("enig-prompt"),
       l10n.formatValueSync("import-from-url"),
-      value
+      result,
+      "",
+      {}
     )
   ) {
-    var p = new Promise(function(resolve, reject) {
-      var cbFunc = async function(data) {
-        EnigmailLog.DEBUG("enigmailImportKeysFromUrl: _cbFunc()\n");
-        var errorMsgObj = {};
-
-        var preview = EnigmailKey.getKeyListFromKeyBlock(
-          data,
-          errorMsgObj,
-          true,
-          true,
-          false
-        );
-        // should we allow importing secret keys?
-        if (preview && preview.length > 0) {
-          let confirmImport = false;
-          let outParam = {};
-          confirmImport = EnigmailDialog.confirmPubkeyImport(
-            window,
-            preview,
-            outParam
-          );
-          if (confirmImport) {
-            EnigmailKeyRing.importKey(
-              window,
-              false,
-              data,
-              false,
-              "",
-              errorMsgObj,
-              null,
-              false,
-              [],
-              false,
-              true,
-              null,
-              outParam.acceptance
-            );
-            errorMsgObj.preview = preview;
-            resolve(errorMsgObj);
-          }
-        } else {
-          EnigmailDialog.alert(
-            window,
-            await document.l10n.formatValue("preview-failed")
-          );
-        }
-      };
-
-      try {
-        var bufferListener = EnigmailStreams.newStringStreamListener(cbFunc);
-        var ioServ = Services.io;
-        var msgUri = ioServ.newURI(value.value);
-
-        var channel = EnigmailStreams.createChannel(msgUri);
-        channel.asyncOpen(bufferListener, msgUri);
-      } catch (ex) {
-        var err = {
-          value: ex,
-        };
-        reject(err);
-      }
-    });
-
-    p.then(function(errorMsgObj) {
-      var keyList = errorMsgObj.preview.map(function(a) {
-        return a.id;
-      });
-      EnigmailDialog.keyImportDlg(window, keyList);
-      refreshKeys();
-    }).catch(async function(reason) {
-      EnigmailDialog.alert(
-        window,
-        await document.l10n.formatValue("general-error", {
-          reason: reason.value,
-        })
-      );
-    });
+    return;
   }
+  var p = new Promise(function (resolve, reject) {
+    var cbFunc = async function (data) {
+      EnigmailLog.DEBUG("enigmailImportKeysFromUrl: _cbFunc()\n");
+      var errorMsgObj = {};
+
+      var preview = await EnigmailKey.getKeyListFromKeyBlock(
+        data,
+        errorMsgObj,
+        true,
+        true,
+        false
+      );
+      // should we allow importing secret keys?
+      if (preview && preview.length > 0) {
+        let confirmImport = false;
+        let outParam = {};
+        confirmImport = EnigmailDialog.confirmPubkeyImport(
+          window,
+          preview,
+          outParam
+        );
+        if (confirmImport) {
+          EnigmailKeyRing.importKey(
+            window,
+            false,
+            data,
+            false,
+            "",
+            errorMsgObj,
+            null,
+            false,
+            [],
+            true,
+            outParam.acceptance
+          );
+          errorMsgObj.preview = preview;
+          resolve(errorMsgObj);
+        }
+      } else {
+        EnigmailDialog.alert(
+          window,
+          await document.l10n.formatValue("preview-failed")
+        );
+      }
+    };
+
+    try {
+      var bufferListener = EnigmailStreams.newStringStreamListener(cbFunc);
+      var msgUri = Services.io.newURI(result.value.trim());
+
+      var channel = EnigmailStreams.createChannel(msgUri);
+      channel.asyncOpen(bufferListener, msgUri);
+    } catch (ex) {
+      var err = {
+        value: ex,
+      };
+      reject(err);
+    }
+  });
+
+  p.then(function (errorMsgObj) {
+    var keyList = errorMsgObj.preview.map(function (a) {
+      return a.id;
+    });
+    EnigmailDialog.keyImportDlg(window, keyList);
+    refreshKeys();
+  }).catch(async function (reason) {
+    EnigmailDialog.alert(
+      window,
+      await document.l10n.formatValue("general-error", {
+        reason: reason.value,
+      })
+    );
+  });
 }
 
 function initiateAcKeyTransfer() {
@@ -1061,121 +874,6 @@ function determineHiddenKeys(keyObj, showInvalidKeys, showOthersKeys) {
   }
 
   return show;
-}
-
-//
-// ----- keyserver related functionality ----
-//
-function accessKeyServer(accessType, callbackFunc) {
-  const ioService = Services.io;
-  if (ioService && ioService.offline) {
-    document.l10n.formatValue("need-online").then(value => {
-      EnigmailDialog.alert(window, value);
-    });
-    return;
-  }
-
-  let inputObj = {};
-  let resultObj = {};
-  let selKeyList = getSelectedKeys();
-  let keyList = [];
-  for (let i = 0; i < selKeyList.length; i++) {
-    keyList.push(gKeyList[selKeyList[i]]);
-  }
-
-  if (accessType !== EnigmailConstants.REFRESH_KEY && selKeyList.length === 0) {
-    if (
-      EnigmailDialog.confirmDlg(
-        window,
-        l10n.formatValueSync("refresh-all-question"),
-        l10n.formatValueSync("key-man-button-refresh-all")
-      )
-    ) {
-      accessType = EnigmailConstants.DOWNLOAD_KEY;
-      EnigmailDialog.alertPref(
-        window,
-        l10n.formatValueSync("refresh-key-warn"),
-        "warnRefreshAll"
-      );
-    } else {
-      return;
-    }
-  }
-
-  let keyServer = Services.prefs.getBoolPref(
-    "temp.openpgp.autoKeyServerSelection"
-  )
-    ? Services.prefs.getCharPref("temp.openpgp.keyserver").split(/[ ,;]/g)[0]
-    : null;
-  if (!keyServer) {
-    switch (accessType) {
-      case EnigmailConstants.REFRESH_KEY:
-        inputObj.upload = false;
-        inputObj.keyId = "All keys";
-        break;
-      case EnigmailConstants.DOWNLOAD_KEY:
-        inputObj.upload = false;
-        inputObj.keyId = keyList
-          .map(k => {
-            try {
-              return EnigmailFuncs.stripEmail(k.userId);
-            } catch (x) {
-              return "0x" + k.fpr;
-            }
-          })
-          .join(", ");
-        break;
-      case EnigmailConstants.UPLOAD_KEY:
-        inputObj.upload = true;
-        inputObj.keyId = keyList
-          .map(k => {
-            try {
-              return EnigmailFuncs.stripEmail(k.userId);
-            } catch (x) {
-              return "0x" + k.fpr;
-            }
-          })
-          .join(", ");
-        break;
-      default:
-        inputObj.upload = true;
-        inputObj.keyId = "";
-    }
-
-    window.openDialog(
-      "chrome://openpgp/content/ui/enigmailKeyserverDlg.xhtml",
-      "",
-      "dialog,modal,centerscreen",
-      inputObj,
-      resultObj
-    );
-    keyServer = resultObj.value;
-  }
-
-  if (keyServer.length === 0) {
-    return;
-  }
-
-  if (accessType !== EnigmailConstants.REFRESH_KEY) {
-    inputObj.keyServer = keyServer;
-    inputObj.accessType = accessType;
-    inputObj.keyId = keyList.map(k => {
-      return "0x" + k.fpr;
-    });
-    window.openDialog(
-      "chrome://openpgp/content/ui/enigRetrieveProgress.xhtml",
-      "",
-      "dialog,modal,centerscreen",
-      inputObj,
-      resultObj
-    );
-
-    if (resultObj.result) {
-      callbackFunc(resultObj.exitCode, resultObj.errorMsg, false);
-    }
-  } else {
-    EnigmailKeyServer.refresh(keyServer);
-  }
 }
 
 function getSortDirection() {
@@ -1220,6 +918,8 @@ function getSortColumn() {
       return "userid";
     case "keyCol":
       return "keyid";
+    case "createdCol":
+      return "created";
     case "expCol":
       return "expiry";
     case "fprCol":
@@ -1236,13 +936,6 @@ function getSortColumn() {
  *   the import or create screen as requested by the user.
  */
 function openKeyWizard(isImport = false) {
-  // Bug 1638153: The rootTreeItem object has been removed after 78. We need to
-  // the availability of "browsingContext" to use the right DOM window in 79+.
-  let w =
-    "browsingContext" in window
-      ? window.browsingContext.topChromeWindow
-      : window.docShell.rootTreeItem.domWindow;
-
   let args = {
     gSubDialog: null,
     cancelCallback: clearKeyCache,
@@ -1254,7 +947,7 @@ function openKeyWizard(isImport = false) {
     isImport,
   };
 
-  w.openDialog(
+  window.browsingContext.topChromeWindow.openDialog(
     "chrome://openpgp/content/ui/keyWizard.xhtml",
     "enigmail:KeyWizard",
     "dialog,modal,centerscreen,resizable",
@@ -1368,6 +1061,8 @@ var gKeyListView = {
             return keyObj.userId;
           case "keyCol":
             return `0x${keyObj.keyId}`;
+          case "createdCol":
+            return keyObj.created;
           case "expCol":
             return keyObj.effectiveExpiry;
           case "fprCol":
@@ -1516,14 +1211,17 @@ var gKeyListView = {
    * @param keyNum:  Number - index of key in gKeyList
    * @param realRow: Number - index of row in keyViewList (i.e. without filter)
    *
-   * @return Number: number of UIDs added
+   * @returns Number: number of UIDs added
    */
   appendUids(uidType, keyNum, realRow, parentRow) {
     let keyObj = gKeyList[keyNum];
     let uidAdded = 0;
 
-    for (let i = 1; i < keyObj.userIds.length; i++) {
+    for (let i = 0; i < keyObj.userIds.length; i++) {
       if (keyObj.userIds[i].type === uidType) {
+        if (keyObj.userIds[i].userId == keyObj.userId) {
+          continue;
+        }
         ++uidAdded;
         this.keyViewList.splice(realRow + uidAdded, 0, {
           rowType: uidType,
@@ -1563,7 +1261,7 @@ var gKeyListView = {
   /**
    * If no search term is entered, decide which keys to display
    *
-   * @return array of keyNums (= display some keys) or null (= display ALL keys)
+   * @returns array of keyNums (= display some keys) or null (= display ALL keys)
    */
   showOrHideAllKeys() {
     var showInvalidKeys = gShowInvalidKeys.getAttribute("checked") == "true";
@@ -1588,7 +1286,7 @@ var gKeyListView = {
   /**
    * Search for keys that match filter criteria
    *
-   * @return array of keyNums (= display some keys) or null (= display ALL keys)
+   * @returns array of keyNums (= display some keys) or null (= display ALL keys)
    */
   getFilteredKeys() {
     let searchTxt = gSearchInput.value;
@@ -1715,7 +1413,6 @@ var gKeyListView = {
   /**
    * Re-calculate the row count and instruct the view to update
    */
-
   adjustRowCount(newRowCount, selectedRow) {
     if (this.rowCount === newRowCount) {
       gUserList.invalidate();
@@ -1731,10 +1428,8 @@ var gKeyListView = {
    * Determine the row object from the a filtered row number
    *
    * @param row: Number - row number of displayed (=filtered) list
-   *
-   * @return Object: keyViewList entry of corresponding row
+   * @returns Object: keyViewList entry of corresponding row
    */
-
   getFilteredRow(row) {
     let r = this.keyFilterList[row];
     if (r !== undefined) {

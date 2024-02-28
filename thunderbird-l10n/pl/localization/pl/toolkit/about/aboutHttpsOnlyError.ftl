@@ -3,7 +3,7 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 about-httpsonly-title-alert = Ostrzeżenie trybu używania wyłącznie protokołu HTTPS
-about-httpsonly-title-connection-not-available = Zabezpieczone połączenie jest niedostępne
+about-httpsonly-title-site-not-available = Zabezpieczona witryna jest niedostępna
 
 # Variables:
 #   $websiteUrl (String) - Url of the website that failed to load. Example: www.example.com
@@ -20,6 +20,10 @@ about-httpsonly-link-learn-more = Więcej informacji…
 ## Suggestion Box that only shows up if a secure connection to www can be established
 ## Variables:
 ##   $websiteUrl (String) - Url of the website that can be securely loded with these alternatives. Example: example.com
+
+## Suggestion Box that only shows up if a secure connection to www can be established
+## Variables:
+##   $websiteUrl (String) - Url of the website that can be securely loaded with these alternatives. Example: example.com
 
 about-httpsonly-suggestion-box-header = Możliwy zamiennik
 about-httpsonly-suggestion-box-www-text = Dostępna jest zabezpieczona wersja strony <em>www.{ $websiteUrl }</em>. Można ją otworzyć zamiast <em>{ $websiteUrl }</em>.

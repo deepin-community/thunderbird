@@ -2,20 +2,42 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
+toolbar-context-menu-menu-bar =
+    .toolbarname = Barra de menú
+    .accesskey = m
 
 ## Tools Menu
 
-# Since v89 we dropped the platforms distinction between Options or Preferences
-# and consolidated everything with Preferences.
-menu-tools-preferences =
-    .label = Preferencias
-    .accesskey = P
+menu-tools-settings =
+    .label = Ajustes
+    .accesskey = e
 menu-addons-and-themes =
     .label = Complementos y temas
     .accesskey = a
 
 ## Help Menu
 
+menu-help-help-title =
+    .label = Ayuda
+    .accesskey = y
+menu-help-get-help =
+    .label = Obtener ayuda
+    .accesskey = y
+menu-help-explore-features =
+    .label = Explorar funciones
+    .accesskey = f
+menu-help-shortcuts =
+    .label = Atajos de teclado
+    .accesskey = j
+menu-help-get-involved =
+    .label = Involúcrese
+    .accesskey = v
+menu-help-donation =
+    .label = Haga una donación
+    .accesskey = d
+menu-help-share-feedback =
+    .label = Compartir ideas y opiniones
+    .accesskey = S
 menu-help-enter-troubleshoot-mode =
     .label = Modo de resolución de problemas…
     .accesskey = b
@@ -25,6 +47,29 @@ menu-help-exit-troubleshoot-mode =
 menu-help-more-troubleshooting-info =
     .label = Más información para solucionar problemas
     .accesskey = M
+menu-help-troubleshooting-info =
+    .label = Información para resolver problemas
+    .accesskey = I
+menu-help-about-product =
+    .label = Acerca de { -brand-short-name }
+    .accesskey = A
+# These menu-quit strings are only used on Windows and Linux.
+menu-quit =
+    .label =
+        { PLATFORM() ->
+            [windows] Salir
+           *[other] Salir
+        }
+    .accesskey =
+        { PLATFORM() ->
+            [windows] S
+           *[other] S
+        }
+# This menu-quit-mac string is only used on macOS.
+menu-quit-mac =
+    .label = Salir de { -brand-shorter-name }
+quit-app-shortcut =
+    .key = Q
 
 ## Mail Toolbar
 
@@ -47,8 +92,29 @@ menu-view-repair-text-encoding =
     .label = Reparar codificación de texto
     .accesskey = c
 
+## View / Folders
+
+menu-view-folders-toggle-header =
+    .label = Encabezado de vista de carpetas
+    .accesskey = z
+
 ## View / Layout
 
+menu-view-toggle-thread-pane-header =
+    .label = Encabezado de la lista de mensajes
+    .accesskey = z
+menu-font-size-label =
+    .label = Tamaño de letra
+    .accesskey = o
+menuitem-font-size-enlarge =
+    .label = Aumentar tamaño del texto
+    .accesskey = u
+menuitem-font-size-reduce =
+    .label = Reducir tamaño del texto
+    .accesskey = d
+menuitem-font-size-reset =
+    .label = Restablecer tamaño del texto
+    .accesskey = R
 mail-uidensity-label =
     .label = Densidad
     .accesskey = D
@@ -61,6 +127,15 @@ mail-uidensity-normal =
 mail-uidensity-touch =
     .label = Táctil
     .accesskey = T
+mail-uidensity-default =
+    .label = Predeterminado
+    .accesskey = D
+mail-uidensity-relaxed =
+    .label = Relajado
+    .accesskey = R
+menu-spaces-toolbar-button =
+    .label = Barra de herramientas de Espacios
+    .accesskey = S
 
 ## File
 

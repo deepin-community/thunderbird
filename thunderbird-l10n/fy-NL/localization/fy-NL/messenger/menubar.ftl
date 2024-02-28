@@ -2,20 +2,42 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
+toolbar-context-menu-menu-bar =
+    .toolbarname = Menubalke
+    .accesskey = M
 
 ## Tools Menu
 
-# Since v89 we dropped the platforms distinction between Options or Preferences
-# and consolidated everything with Preferences.
-menu-tools-preferences =
-    .label = Foarkarren
-    .accesskey = F
+menu-tools-settings =
+    .label = Ynstellingen
+    .accesskey = e
 menu-addons-and-themes =
     .label = Add-ons en tema’s
     .accesskey = A
 
 ## Help Menu
 
+menu-help-help-title =
+    .label = Help
+    .accesskey = H
+menu-help-get-help =
+    .label = Help krije
+    .accesskey = H
+menu-help-explore-features =
+    .label = Funksjes ferkenne
+    .accesskey = F
+menu-help-shortcuts =
+    .label = Fluchtoetsen
+    .accesskey = F
+menu-help-get-involved =
+    .label = Meiwurkje
+    .accesskey = M
+menu-help-donation =
+    .label = In donaasje dwaan
+    .accesskey = d
+menu-help-share-feedback =
+    .label = Ideeën en kommentaar diele
+    .accesskey = I
 menu-help-enter-troubleshoot-mode =
     .label = Probleemoplossingsmodus…
     .accesskey = P
@@ -25,6 +47,29 @@ menu-help-exit-troubleshoot-mode =
 menu-help-more-troubleshooting-info =
     .label = Mear probleemoplossingsynformaasje
     .accesskey = M
+menu-help-troubleshooting-info =
+    .label = Probleemoplossingsynformaasje
+    .accesskey = y
+menu-help-about-product =
+    .label = Oer { -brand-short-name }
+    .accesskey = O
+# These menu-quit strings are only used on Windows and Linux.
+menu-quit =
+    .label =
+        { PLATFORM() ->
+            [windows] Ofslute
+           *[other] Ofslute
+        }
+    .accesskey =
+        { PLATFORM() ->
+            [windows] f
+           *[other] f
+        }
+# This menu-quit-mac string is only used on macOS.
+menu-quit-mac =
+    .label = { -brand-shorter-name } ôfslute
+quit-app-shortcut =
+    .key = f
 
 ## Mail Toolbar
 
@@ -47,8 +92,29 @@ menu-view-repair-text-encoding =
     .label = Tekstkodearring reparearje
     .accesskey = r
 
+## View / Folders
+
+menu-view-folders-toggle-header =
+    .label = Koptekst Mappepaniel
+    .accesskey = M
+
 ## View / Layout
 
+menu-view-toggle-thread-pane-header =
+    .label = Koptekst berjochtelist
+    .accesskey = K
+menu-font-size-label =
+    .label = Lettergrutte
+    .accesskey = u
+menuitem-font-size-enlarge =
+    .label = Lettergrutte fergrutsje
+    .accesskey = f
+menuitem-font-size-reduce =
+    .label = Lettergrutte ferlytse
+    .accesskey = l
+menuitem-font-size-reset =
+    .label = Lettergrutte opnij ynstelle
+    .accesskey = n
 mail-uidensity-label =
     .label = Tichtens
     .accesskey = T
@@ -61,6 +127,15 @@ mail-uidensity-normal =
 mail-uidensity-touch =
     .label = Oanraking
     .accesskey = O
+mail-uidensity-default =
+    .label = Standert
+    .accesskey = S
+mail-uidensity-relaxed =
+    .label = Untspand
+    .accesskey = p
+menu-spaces-toolbar-button =
+    .label = Taakbalke
+    .accesskey = T
 
 ## File
 

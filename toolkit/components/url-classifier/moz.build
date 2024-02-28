@@ -15,6 +15,7 @@ XPIDL_SOURCES += [
     "nsIUrlClassifierHashCompleter.idl",
     "nsIUrlClassifierInfo.idl",
     "nsIUrlClassifierPrefixSet.idl",
+    "nsIUrlClassifierRemoteSettingsService.idl",
     "nsIUrlClassifierStreamUpdater.idl",
     "nsIUrlClassifierUtils.idl",
     "nsIUrlListManager.idl",
@@ -54,10 +55,11 @@ SOURCES += [
 ]
 
 EXTRA_JS_MODULES += [
-    "SafeBrowsing.jsm",
-    "UrlClassifierHashCompleter.jsm",
-    "UrlClassifierLib.jsm",
-    "UrlClassifierListManager.jsm",
+    "SafeBrowsing.sys.mjs",
+    "UrlClassifierHashCompleter.sys.mjs",
+    "UrlClassifierLib.sys.mjs",
+    "UrlClassifierListManager.sys.mjs",
+    "UrlClassifierRemoteSettingsService.sys.mjs",
 ]
 
 XPCOM_MANIFESTS += [
@@ -82,9 +84,8 @@ LOCAL_INCLUDES += [
 
 CXXFLAGS += CONFIG["SQLITE_CFLAGS"]
 
-if CONFIG["CC_TYPE"] in ("clang", "gcc"):
-    CXXFLAGS += ["-Wno-error=shadow"]
-    # Suppress warnings in third-party code.
+# Suppress warnings in third-party code.
+if CONFIG["CC_TYPE"] == "gcc":
     CXXFLAGS += [
         "-Wno-maybe-uninitialized",
     ]

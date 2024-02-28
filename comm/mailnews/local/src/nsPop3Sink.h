@@ -43,10 +43,7 @@ class nsPop3Sink : public nsIPop3Sink {
   virtual ~nsPop3Sink();
   nsresult WriteLineToMailbox(const nsACString& buffer);
   nsresult ReleaseFolderLock();
-  nsresult HandleTempDownloadFailed(nsIMsgWindow* msgWindow);
 
-  bool m_authed;
-  nsCString m_accountUrl;
   uint32_t m_biffState;
   int32_t m_numNewMessages;
   int32_t m_numNewMessagesInFolder;
@@ -62,8 +59,6 @@ class nsPop3Sink : public nsIPop3Sink {
   nsCOMPtr<nsIMsgPluggableStore> m_msgStore;
   bool m_uidlDownload;
   bool m_buildMessageUri;
-  bool m_downloadingToTempFile;
-  nsCOMPtr<nsIFile> m_tmpDownloadFile;
   nsCOMPtr<nsIMsgWindow> m_window;
   nsCString m_messageUri;
   nsCString m_baseMessageUri;

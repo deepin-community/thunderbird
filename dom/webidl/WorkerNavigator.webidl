@@ -12,6 +12,7 @@ WorkerNavigator includes NavigatorLanguage;
 WorkerNavigator includes NavigatorOnLine;
 WorkerNavigator includes NavigatorConcurrentHardware;
 WorkerNavigator includes NavigatorStorage;
+WorkerNavigator includes GlobalPrivacyControl;
 
 // http://wicg.github.io/netinfo/#extensions-to-the-navigator-interface
 [Exposed=Worker]
@@ -26,3 +27,9 @@ partial interface WorkerNavigator {
   [SameObject, Func="mozilla::dom::MediaCapabilities::Enabled"]
   readonly attribute MediaCapabilities mediaCapabilities;
 };
+
+// https://wicg.github.io/web-locks/#navigator-mixins
+WorkerNavigator includes NavigatorLocks;
+
+// https://gpuweb.github.io/gpuweb/#navigator-gpu
+WorkerNavigator includes GPUProvider;

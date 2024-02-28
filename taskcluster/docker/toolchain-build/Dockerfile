@@ -18,7 +18,9 @@ RUN apt-get update && \
       automake \
       bison \
       build-essential \
+      cabextract \
       curl \
+      clang-13 \
       cmake \
       flex \
       gawk \
@@ -27,9 +29,16 @@ RUN apt-get update && \
       gnupg \
       jq \
       libbz2-dev \
+      libexpat1-dev \
+      libffi-dev \
+      libncursesw5-dev \
+      libsqlite3-dev \
       libssl-dev \
       libtool \
       libucl-dev \
+      libxml2-dev \
+      lld-13 \
+      msitools \
       ninja-build \
       openssh-client \
       p7zip-full \
@@ -37,7 +46,8 @@ RUN apt-get update && \
       procps \
       python3-distutils-extra \
       python3-requests \
-      python3-pytoml \
+      python3-toml \
+      scons \
       subversion \
       tar \
       unzip \

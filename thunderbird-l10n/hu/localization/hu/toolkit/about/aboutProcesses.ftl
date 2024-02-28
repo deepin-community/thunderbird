@@ -50,6 +50,7 @@ about-processes-socket-process = Hálózat ({ $pid })
 about-processes-remote-sandbox-broker-process = Távoli homokozóbróker ({ $pid })
 about-processes-fork-server-process = Fork kiszolgáló ({ $pid })
 about-processes-preallocated-process = Előre kiosztott ({ $pid })
+about-processes-utility-process = Segédprogram ({ $pid })
 # Unknown process names
 # Variables:
 #    $pid (String) The process id of this process, assigned by the OS.
@@ -62,11 +63,10 @@ about-processes-unknown-process = Egyéb: { $type } ({ $pid })
 ##    $origin (String) The domain name for this process.
 
 about-processes-web-isolated-process = { $origin } ({ $pid })
-about-processes-web-large-allocation-process = { $origin } ({ $pid }, nagy)
+about-processes-web-serviceworker = { $origin } ({ $pid }, serviceworker)
 about-processes-with-coop-coep-process = { $origin } ({ $pid }, eredet szerint elkülönítve)
-about-processes-web-isolated-process-private = { $origin } – Privát ({ $pid })
-about-processes-web-large-allocation-process-private = { $origin } – Privát ({ $pid }, nagy)
-about-processes-with-coop-coep-process-private = { $origin } – Privát ({ $pid }, eredet szerint elkülönítve)
+about-processes-web-isolated-process-private = { $origin } – privát ({ $pid })
+about-processes-with-coop-coep-process-private = { $origin } – privát ({ $pid }, eredet szerint elkülönítve)
 
 ## Details within processes
 
@@ -117,6 +117,18 @@ about-processes-frame-name-one = Részkeret: { $url }
 #   $shortUrl (String) The shared prefix for the subframes in the group.
 about-processes-frame-name-many = Részkeretek ({ $number }): { $shortUrl }
 
+## Utility process actor names
+
+about-processes-utility-actor-unknown = Ismeretlen szereplő
+about-processes-utility-actor-audio-decoder-generic = Általános hangdekóder
+about-processes-utility-actor-audio-decoder-applemedia = Apple Media hangdekóder
+about-processes-utility-actor-audio-decoder-wmf = Windows Media Framework hangdekóder
+about-processes-utility-actor-mf-media-engine = Windows Media Foundation Media Engine CDM
+# "Oracle" refers to an internal Firefox process and should be kept in English
+about-processes-utility-actor-js-oracle = JavaScript Oracle
+about-processes-utility-actor-windows-utils = Windowsos segédprogramok
+about-processes-utility-actor-windows-file-dialog = Windowsos fájlválasztó párbeszédablak
+
 ## Displaying CPU (percentage and total)
 ## Variables:
 ##    $percent (Number) The percentage of CPU used by the process or thread.
@@ -131,9 +143,13 @@ about-processes-cpu = { NUMBER($percent, maximumSignificantDigits: 2, style: "pe
     .title = Teljes processzoridő: { NUMBER($total, maximumFractionDigits: 0) } { $unit }
 # Special case: data is not available yet.
 about-processes-cpu-user-and-kernel-not-ready = (mérés folyamatban)
+# Special case: process or thread is almost idle (using less than 0.1% of a CPU core).
+# This case only occurs on Windows where the precision of the CPU times is low.
+about-processes-cpu-almost-idle = < 0,1%
+    .title = Teljes CPU-idő: { NUMBER($total, maximumFractionDigits: 0) }{ $unit }
 # Special case: process or thread is currently idle.
-about-processes-cpu-idle = tétlen
-    .title = Teljes processzoridő: { NUMBER($total, maximumFractionDigits: 0) } { $unit }
+about-processes-cpu-fully-idle = tétlen
+    .title = Teljes CPU-idő: { NUMBER($total, maximumFractionDigits: 0) }{ $unit }
 
 ## Displaying Memory (total and delta)
 ## Variables:

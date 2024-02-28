@@ -22,10 +22,13 @@
     removed/renamed later on -->
 
 
+<!ENTITY buttons.create.label "Стварыць каляндар">
+
+<!ENTITY buttons.find.label "Знайсці календары">
 
 
 
-
+<!ENTITY calendartype.label "Тып календара:">
 
 
 
@@ -33,15 +36,12 @@
 <!ENTITY finishpage.shortdescription  "Calendar Created" >
 <!ENTITY finishpage.longdescription   "Your calendar has been created." >
 <!ENTITY sourcetabs.other.label  "Other">
-<!ENTITY buttons.create.label "Create Calendar">
 <!ENTITY buttons.create.accesskey "r">
-<!ENTITY buttons.find.label "Find Calendars">
 <!ENTITY buttons.find.accesskey "F">
 <!ENTITY buttons.back.label "Back">
 <!ENTITY buttons.back.accesskey "B">
 <!ENTITY buttons.subscribe.label "Subscribe">
 <!ENTITY buttons.subscribe.accesskey "S">
-<!ENTITY calendartype.label "Calendar Type:">
 <!ENTITY location.label "Location:">
 <!ENTITY location.placeholder "URL or host name of the calendar server">
 <!ENTITY network.nocredentials.label "This location doesn't require credentials">

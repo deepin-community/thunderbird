@@ -1,12 +1,9 @@
-/* -*- Mode: Java; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*-
- * This Source Code Form is subject to the terms of the Mozilla Public
+/* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 /* import-globals-from am-prefs.js */
 /* import-globals-from ../../content/retention.js */
-
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 
 var gIncomingServer;
 var gServerType;
@@ -216,9 +213,8 @@ function onAutosyncNotDownload() {
   // This function is called when the autosync version of offline.notDownload
   // is changed it simply copies the new checkbox value over to the element
   // driving the preference.
-  document.getElementById(
-    "offline.notDownload"
-  ).checked = document.getElementById("autosyncNotDownload").checked;
+  document.getElementById("offline.notDownload").checked =
+    document.getElementById("autosyncNotDownload").checked;
   onCheckItem1("offline.notDownloadMin", "offline.notDownload");
 }
 
@@ -294,16 +290,13 @@ function onSave() {
     gIncomingServer.retentionSettings
   );
 
-  retentionSettings.daysToKeepBodies = document.getElementById(
-    "nntp.removeBodyMin"
-  ).value;
-  retentionSettings.cleanupBodiesByDays = document.getElementById(
-    "nntp.removeBody"
-  ).checked;
+  retentionSettings.daysToKeepBodies =
+    document.getElementById("nntp.removeBodyMin").value;
+  retentionSettings.cleanupBodiesByDays =
+    document.getElementById("nntp.removeBody").checked;
 
-  downloadSettings.downloadByDate = document.getElementById(
-    "nntp.downloadMsg"
-  ).checked;
+  downloadSettings.downloadByDate =
+    document.getElementById("nntp.downloadMsg").checked;
   downloadSettings.downloadUnreadOnly = document.getElementById(
     "nntp.notDownloadRead"
   ).checked;
@@ -316,9 +309,8 @@ function onSave() {
 
   if (gImapIncomingServer) {
     // Set the pref on the incomingserver, and set the flag on all folders.
-    gImapIncomingServer.offlineDownload = document.getElementById(
-      "offline.folders"
-    ).checked;
+    gImapIncomingServer.offlineDownload =
+      document.getElementById("offline.folders").checked;
   }
 }
 
@@ -421,7 +413,7 @@ function restoreOfflineFolders(offlineFolderMap) {
  * Checks if the user selected a permanent removal of messages from a server
  * listed in the confirmfor attribute and warns about it.
  *
- * @param aRadio  The radiogroup element containing the retention options.
+ * @param {Element} aRadio - The radiogroup element containing the retention options.
  */
 function warnServerRemove(aRadio) {
   let confirmFor = aRadio.getAttribute("confirmfor");

@@ -4,7 +4,7 @@
 
 "use strict";
 
-define(function(require, exports, module) {
+define(function (require, exports, module) {
   const { render } = require("devtools/client/shared/vendor/react-dom");
   const { createFactories } = require("devtools/client/shared/react-utils");
   const { MainTabbedArea } = createFactories(
@@ -16,6 +16,7 @@ define(function(require, exports, module) {
   const AUTO_EXPAND_MAX_LEVEL = 7;
 
   let prettyURL;
+  let theApp;
 
   // Application state object.
   const input = {
@@ -32,12 +33,12 @@ define(function(require, exports, module) {
    * available for the JSON viewer.
    */
   input.actions = {
-    onCopyJson: function() {
+    onCopyJson() {
       const text = input.prettified ? input.jsonPretty : input.jsonText;
       copyString(text.textContent);
     },
 
-    onSaveJson: function() {
+    onSaveJson() {
       if (input.prettified && !prettyURL) {
         prettyURL = URL.createObjectURL(
           new window.Blob([input.jsonPretty.textContent])
@@ -46,7 +47,7 @@ define(function(require, exports, module) {
       dispatchEvent("save", input.prettified ? prettyURL : null);
     },
 
-    onCopyHeaders: function() {
+    onCopyHeaders() {
       let value = "";
       const isWinNT =
         document.documentElement.getAttribute("platform") === "win";
@@ -69,11 +70,11 @@ define(function(require, exports, module) {
       copyString(value);
     },
 
-    onSearch: function(value) {
+    onSearch(value) {
       theApp.setState({ searchFilter: value });
     },
 
-    onPrettify: function(data) {
+    onPrettify(data) {
       if (input.json instanceof Error) {
         // Cannot prettify invalid JSON
         return;
@@ -90,12 +91,12 @@ define(function(require, exports, module) {
       input.prettified = !input.prettified;
     },
 
-    onCollapse: function(data) {
+    onCollapse(data) {
       input.expandedNodes.clear();
       theApp.forceUpdate();
     },
 
-    onExpand: function(data) {
+    onExpand(data) {
       input.expandedNodes = TreeViewClass.getExpandedNodes(input.json);
       theApp.setState({ expandedNodes: input.expandedNodes });
     },
@@ -151,8 +152,9 @@ define(function(require, exports, module) {
         document.addEventListener("DOMContentLoaded", resolve, { once: true });
       })
         .then(parseJSON)
-        .then(() => {
+        .then(async () => {
           // Now update the state and switch to the JSON tab.
+          await appIsReady;
           theApp.setState({
             activeTab: 0,
             json: input.json,
@@ -181,16 +183,21 @@ define(function(require, exports, module) {
     return undefined;
   })();
 
-  const theApp = render(MainTabbedArea(input), content);
+  const appIsReady = new Promise(resolve => {
+    render(MainTabbedArea(input), content, function () {
+      theApp = this;
+      resolve();
 
-  // Send readyState change notification event to the window. Can be useful for
-  // tests as well as extensions.
-  JSONView.readyState = "interactive";
-  window.dispatchEvent(new CustomEvent("AppReadyStateChange"));
+      // Send readyState change notification event to the window. Can be useful for
+      // tests as well as extensions.
+      JSONView.readyState = "interactive";
+      window.dispatchEvent(new CustomEvent("AppReadyStateChange"));
 
-  promise.then(() => {
-    // Another readyState change notification event.
-    JSONView.readyState = "complete";
-    window.dispatchEvent(new CustomEvent("AppReadyStateChange"));
+      promise.then(() => {
+        // Another readyState change notification event.
+        JSONView.readyState = "complete";
+        window.dispatchEvent(new CustomEvent("AppReadyStateChange"));
+      });
+    });
   });
 });

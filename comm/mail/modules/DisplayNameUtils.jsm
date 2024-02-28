@@ -4,7 +4,6 @@
 
 const EXPORTED_SYMBOLS = ["DisplayNameUtils"];
 
-const { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 const { MailServices } = ChromeUtils.import(
   "resource:///modules/MailServices.jsm"
 );
@@ -12,38 +11,12 @@ const { MailServices } = ChromeUtils.import(
 var DisplayNameUtils = {
   formatDisplayName,
   formatDisplayNameList,
-  getCardForEmail,
 };
 
 // XXX: Maybe the strings for this file should go in a separate bundle?
 var gMessengerBundle = Services.strings.createBundle(
   "chrome://messenger/locale/messenger.properties"
 );
-
-/**
- * Returns an object with two properties, .book and .card. If the email address
- * is found in the address books, then the book will contain an nsIAbDirectory,
- * and card will contain an nsIAbCard. If the email address is not found, both
- * items will contain null.
- *
- * @param aEmailAddress The address to look for.
- * @return An object with two properties, .book and .card.
- */
-function getCardForEmail(aEmailAddress) {
-  // Email address is searched for in any of the address books that support
-  // the cardForEmailAddress function.
-  // Future expansion could be to domain matches
-  for (let book of MailServices.ab.directories) {
-    try {
-      let card = book.cardForEmailAddress(aEmailAddress);
-      if (card) {
-        return { book, card };
-      }
-    } catch (ex) {}
-  }
-
-  return { book: null, card: null };
-}
 
 function _getIdentityForAddress(aEmailAddress) {
   let emailAddress = aEmailAddress.toLowerCase();
@@ -64,36 +37,38 @@ function _getIdentityForAddress(aEmailAddress) {
  * appropriate name can be made (e.g. there is no card for this address),
  * returns |null|.
  *
- * @param aEmailAddress      The email address to format.
- * @param aHeaderDisplayName The display name from the header, if any
- *                           (unused, maintained for add-ons, previously used
- *                           as a fallback).
- * @param aContext           The field being formatted (e.g. "to", "from").
- * @param aCard              The address book card, if any.
- * @return The formatted display name, or null.
+ * @param {string} emailAddress - The email address to format.
+ * @param {string} headerDisplayName - The display name from the header, if any.
+ * @param {string} context - The field being formatted (e.g. "to", "from").
+ * @returns The formatted display name, or null.
  */
-function formatDisplayName(aEmailAddress, aHeaderDisplayName, aContext, aCard) {
-  var displayName = null;
-  var identity = _getIdentityForAddress(aEmailAddress);
-  var card = aCard || getCardForEmail(aEmailAddress).card;
+function formatDisplayName(emailAddress, headerDisplayName, context) {
+  let displayName = null;
+  let identity = _getIdentityForAddress(emailAddress);
+  let card = MailServices.ab.cardForEmailAddress(emailAddress);
 
   // If this address is one of the user's identities...
   if (identity) {
-    // ...pick a localized version of the word "Me" appropriate to this
-    // specific header; fall back to the version used by the "to" header
-    // if nothing else is available.
-    try {
-      displayName = gMessengerBundle.GetStringFromName(
-        "header" + aContext + "FieldMe"
-      );
-    } catch (e) {
-      displayName = gMessengerBundle.GetStringFromName("headertoFieldMe");
-    }
-
-    // Make sure we have an unambiguous name if there are multiple identities
-    if (MailServices.accounts.allIdentities.length > 1) {
+    if (
+      MailServices.accounts.allIdentities.length == 1 &&
+      (!headerDisplayName || identity.fullName == headerDisplayName)
+    ) {
+      // ...pick a localized version of the word "Me" appropriate to this
+      // specific header; fall back to the version used by the "to" header
+      // if nothing else is available.
+      try {
+        displayName = gMessengerBundle.GetStringFromName(
+          `header${context}FieldMe`
+        );
+      } catch (e) {
+        displayName = gMessengerBundle.GetStringFromName("headertoFieldMe");
+      }
+    } else {
+      // Use the full address. It's not the expected name, maybe a customized
+      //  one the user sent, or one the sender got wrong, or we have multiple
+      // identities making the "Me" short string ambiguous.
       displayName = MailServices.headerParser
-        .makeMailboxObject(displayName, identity.email)
+        .makeMailboxObject(headerDisplayName, emailAddress)
         .toString();
     }
   }
@@ -107,7 +82,7 @@ function formatDisplayName(aEmailAddress, aHeaderDisplayName, aContext, aCard) {
       displayName = card.displayName || null;
     }
 
-    // Note: aHeaderDisplayName is not used as a fallback as confusion could be
+    // Note: headerDisplayName is not used as a fallback as confusion could be
     // caused by a collected address using an e-mail address as display name.
   }
 
@@ -121,7 +96,7 @@ function formatDisplayName(aEmailAddress, aHeaderDisplayName, aContext, aCard) {
  *
  * @param aHeaderValue  The decoded header value (e.g. mime2DecodedAuthor).
  * @param aContext      The context of the header field (e.g. "to", "from").
- * @return The formatted display name.
+ * @returns The formatted display name.
  */
 function formatDisplayNameList(aHeaderValue, aContext) {
   let addresses = MailServices.headerParser.parseDecodedHeader(aHeaderValue);

@@ -5,19 +5,23 @@ root:
     - type: scroll-frame
       bounds: [0, 0, 500, 200]
       content-size: [500, 500]
+      clip-to-frame: true
       id: 2
       items:
       - type: rect
         bounds: [0, 0, 500, 200]
         color: white
+        clip-chain: [2]
     - type: clip
+      id: 3
       bounds: [0, 0, 500, 200]
-      items:
-      - type: rect
-        bounds: [0, 0, 500, 200]
-        color: white
+    - type: rect
+      bounds: [0, 0, 500, 200]
+      color: white
+      clip-chain: [3]
     - text: "The sun has frightened off the night!"
       origin: 20 40
       size: 20
       font: "FreeSans.ttf"
-      clip-and-scroll: [2, 2]
+      spatial-id: 2
+      clip-chain: [2]

@@ -7,14 +7,14 @@
  * Tests that the slow request indicator is visible for slow requests.
  */
 
-add_task(async function() {
+add_task(async function () {
   // The script sjs_slow-script-server.sjs takes about 2s which is
   // definately above the slow threshold set here.
   const SLOW_THRESHOLD = 450;
 
   Services.prefs.setIntPref("devtools.netmonitor.audits.slow", SLOW_THRESHOLD);
 
-  const { monitor, tab } = await initNetMonitor(SLOW_REQUESTS_URL, {
+  const { monitor } = await initNetMonitor(SLOW_REQUESTS_URL, {
     requestCount: 2,
   });
   info("Starting test... ");
@@ -24,7 +24,7 @@ add_task(async function() {
   store.dispatch(Actions.batchEnable(false));
 
   const wait = waitForNetworkEvents(monitor, 2);
-  tab.linkedBrowser.reload();
+  await reloadBrowser();
   await wait;
 
   const requestList = document.querySelectorAll(

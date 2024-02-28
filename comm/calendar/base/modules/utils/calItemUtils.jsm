@@ -2,8 +2,6 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this file,
  * You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-
 var { cal } = ChromeUtils.import("resource:///modules/calendar/calHashedArray.jsm");
 
 /*
@@ -16,13 +14,13 @@ var { cal } = ChromeUtils.import("resource:///modules/calendar/calHashedArray.js
 const EXPORTED_SYMBOLS = ["calitem"];
 
 var calitem = {
-  ItemDiff: (function() {
+  ItemDiff: (function () {
     /**
      * Given two sets of items, find out which items were added, changed or
      * removed.
      *
-     * The general flow is to first use load/load1 methods to load the engine with
-     * the first set of items, then use difference/difference1 to load the set of
+     * The general flow is to first use load method to load the engine with
+     * the first set of items, then use difference to load the set of
      * items to diff against. Afterwards, call the complete method to tell the
      * engine that no more items are coming.
      *
@@ -62,15 +60,6 @@ var calitem = {
       },
 
       /**
-       * Load the difference engine with one item, see load.
-       *
-       * @param item      The item to load
-       */
-      load1(item) {
-        this.load([item]);
-      },
-
-      /**
        * Loads an array of items. This step cannot be executed
        * after calling the difference methods.
        *
@@ -84,15 +73,6 @@ var calitem = {
         }
 
         this.state = this.STATE_LOADING;
-      },
-
-      /**
-       * Calculates the difference for the passed item, see difference.
-       *
-       * @param item      The item to calculate difference with
-       */
-      difference1(item) {
-        this.difference([item]);
       },
 
       /**
@@ -152,31 +132,31 @@ var calitem = {
         this.state = this.STATE_COMPLETED;
       },
 
-      /** @return a HashedArray containing the new version of the modified items */
+      /** @returns a HashedArray containing the new version of the modified items */
       get modifiedItems() {
         this._expectState(this.STATE_COMPLETED, "get modifiedItems");
         return this.mModifiedItems;
       },
 
-      /** @return a HashedArray containing the old version of the modified items */
+      /** @returns a HashedArray containing the old version of the modified items */
       get modifiedOldItems() {
         this._expectState(this.STATE_COMPLETED, "get modifiedOldItems");
         return this.mModifiedOldItems;
       },
 
-      /** @return a HashedArray containing added items */
+      /** @returns a HashedArray containing added items */
       get addedItems() {
         this._expectState(this.STATE_COMPLETED, "get addedItems");
         return this.mAddedItems;
       },
 
-      /** @return a HashedArray containing deleted items */
+      /** @returns a HashedArray containing deleted items */
       get deletedItems() {
         this._expectState(this.STATE_COMPLETED, "get deletedItems");
         return this.mDeletedItems;
       },
 
-      /** @return the number of loaded items */
+      /** @returns the number of loaded items */
       get count() {
         return Object.keys(this.mInitialItems).length;
       },
@@ -201,7 +181,7 @@ var calitem = {
    *
    * @param aCalendar the calendar
    * @param aItem the item either a task or an event
-   * @return true or false
+   * @returns true or false
    */
   isItemSupported(aItem, aCalendar) {
     if (aItem.isTodo()) {
@@ -423,7 +403,7 @@ var calitem = {
      * @param aIgnoreProps      (optional) An array of parameters to ignore.
      * @param aIgnoreParams     (optional) An object describing which parameters to
      *                                     ignore.
-     * @return                  True, if items match.
+     * @returns True, if items match.
      */
   compareContent(aFirstItem, aSecondItem, aIgnoreProps, aIgnoreParams) {
     let ignoreProps = arr2hash(
@@ -526,7 +506,7 @@ var calitem = {
    *
    * @param aOldItem             The Item to be modified
    * @param aNewDate             The date at which the new item is going to start
-   * @return                     The modified item
+   * @returns The modified item
    */
   moveToDate(aOldItem, aNewDate) {
     let newItem = aOldItem.clone();
@@ -591,7 +571,6 @@ var calitem = {
    */
   setStaticProps(aIcalComponent) {
     // Throw for an invalid parameter
-    aIcalComponent = cal.wrapInstance(aIcalComponent, Ci.calIIcalComponent);
     if (!aIcalComponent) {
       throw Components.Exception("", Cr.NS_ERROR_INVALID_ARG);
     }
@@ -631,7 +610,7 @@ var calitem = {
    *
    * @param aItem         The Item to be modified
    * @param aIsDate       True or false indicating the new value of 'isDate'
-   * @return              The modified item
+   * @returns The modified item
    */
   setToAllDay(aItem, aIsDate) {
     let start = aItem[cal.dtz.startDateProp(aItem)];
@@ -658,7 +637,7 @@ var calitem = {
    * completed, overdue, duetoday, inprogress, future
    *
    * @param aTask     The task to check.
-   * @return          The progress atom.
+   * @returns The progress atom.
    */
   getProgressAtom(aTask) {
     let nowdate = new Date();

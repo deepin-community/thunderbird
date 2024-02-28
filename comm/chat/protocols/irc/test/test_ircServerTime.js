@@ -1,16 +1,15 @@
 /* Any copyright is dedicated to the Public Domain.
  * http://creativecommons.org/publicdomain/zero/1.0/ */
 
-var { tagServerTime } = ChromeUtils.import(
-  "resource:///modules/ircServerTime.jsm"
+var { tagServerTime } = ChromeUtils.importESModule(
+  "resource:///modules/ircServerTime.sys.mjs"
 );
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-
-var irc = {};
-Services.scriptloader.loadSubScript("resource:///modules/irc.jsm", irc);
+var { ircMessage } = ChromeUtils.importESModule(
+  "resource:///modules/ircAccount.sys.mjs"
+);
 
 function getTags(aRawMsg) {
-  const { tags } = irc.ircMessage(aRawMsg, "doesnt@matter");
+  const { tags } = ircMessage(aRawMsg, "does.not@matter");
 
   return tags;
 }

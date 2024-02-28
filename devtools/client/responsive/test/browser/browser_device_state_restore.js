@@ -10,24 +10,33 @@ const DEFAULT_DPPX = window.devicePixelRatio;
 
 /* eslint-disable max-len */
 const TEST_DEVICE = {
-  name: "Apple iPhone 6s",
+  name: "iPhone 6/7/8",
   width: 375,
   height: 667,
   pixelRatio: 2,
   userAgent:
-    "Mozilla/5.0 (iPhone; CPU iPhone OS 8_0 like Mac OS X) AppleWebKit/600.1.3 (KHTML, like Gecko) Version/8.0 Mobile/12A4345d Safari/600.1.4",
+    "Mozilla/5.0 (iPhone; CPU iPhone OS 11_0 like Mac OS X) AppleWebKit/604.1.38 (KHTML, like Gecko) Version/11.0 Mobile/15A372 Safari/604.1",
   touch: true,
   firefoxOS: false,
-  os: "ios",
+  os: "iOS",
   featured: true,
 };
 /* eslint-enable max-len */
 
-const Types = require("devtools/client/responsive/types");
+// Add the device to the list
+const {
+  updatePreferredDevices,
+} = require("resource://devtools/client/responsive/actions/devices.js");
+updatePreferredDevices({
+  added: [TEST_DEVICE.name],
+  removed: [],
+});
+
+const Types = require("resource://devtools/client/responsive/types.js");
 
 addRDMTask(
   TEST_URL,
-  async function({ ui }) {
+  async function ({ ui }) {
     const { store } = ui.toolWindow;
 
     reloadOnUAChange(true);
@@ -48,9 +57,9 @@ addRDMTask(
     await testTouchEventsOverride(ui, false);
 
     info("Select a device");
-    const reloaded = waitForViewportLoad(ui);
+    const waitForReload = await watchForDevToolsReload(ui.getViewportBrowser());
     await selectDevice(ui, TEST_DEVICE.name);
-    await reloaded;
+    await waitForReload();
     await waitForViewportResizeTo(ui, TEST_DEVICE.width, TEST_DEVICE.height);
 
     info("Checking the RDM device state.");
@@ -64,12 +73,20 @@ addRDMTask(
   { waitForDeviceList: true }
 );
 
-addRDMTask(
+addRDMTaskWithPreAndPost(
   TEST_URL,
-  async function({ ui }) {
-    const { store } = ui.toolWindow;
-
+  function rdmPreTask({ browser }) {
     reloadOnUAChange(true);
+  },
+  async function ({ ui }) {
+    // Note: This code might be racy. Call watchForDevToolsReload as early as
+    // possible to catch the reload that will happen on RDM startup.
+    // We cannot easily call watchForDevToolsReload in the preTask because it
+    // needs RDM to be already started. Otherwise it will not find any devtools
+    // UI to wait for.
+    const waitForReload = await watchForDevToolsReload(ui.getViewportBrowser());
+
+    const { store } = ui.toolWindow;
 
     info(
       "Reopening RDM and checking that the previous device state is restored."
@@ -84,7 +101,7 @@ addRDMTask(
         state.devices.listState == Types.loadableState.LOADED
     );
     await waitForViewportResizeTo(ui, TEST_DEVICE.width, TEST_DEVICE.height);
-    await waitForViewportLoad(ui);
+    await waitForReload();
 
     info("Checking the restored RDM state.");
     testViewportDeviceMenuLabel(ui, TEST_DEVICE.name);
@@ -98,12 +115,13 @@ addRDMTask(
 
     reloadOnUAChange(false);
   },
+  function rdmPostTask({ browser }) {},
   { waitForDeviceList: true }
 );
 
 addRDMTask(
   TEST_URL,
-  async function({ ui }) {
+  async function ({ ui }) {
     const { store } = ui.toolWindow;
 
     reloadOnUAChange(true);
@@ -121,7 +139,8 @@ addRDMTask(
         state.devices.listState == Types.loadableState.LOADED
     );
     await waitForViewportResizeTo(ui, TEST_DEVICE.height, TEST_DEVICE.width);
-    await waitForViewportLoad(ui);
+    const waitForReload = await watchForDevToolsReload(ui.getViewportBrowser());
+    await waitForReload();
 
     info("Checking the restored RDM state.");
     testViewportDeviceMenuLabel(ui, TEST_DEVICE.name);

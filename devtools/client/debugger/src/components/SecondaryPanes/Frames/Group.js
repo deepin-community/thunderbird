@@ -4,7 +4,6 @@
 
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-import classNames from "classnames";
 
 import { getLibraryFromUrl } from "../../../utils/pause/frames";
 
@@ -17,13 +16,15 @@ import "./Group.css";
 import Badge from "../../shared/Badge";
 import FrameIndent from "./FrameIndent";
 
+const classnames = require("devtools/client/shared/classnames.js");
+
 function FrameLocation({ frame, expanded }) {
   const library = frame.library || getLibraryFromUrl(frame);
   if (!library) {
     return null;
   }
 
-  const arrowClassName = classNames("arrow", { expanded });
+  const arrowClassName = classnames("arrow", { expanded });
   return (
     <span className="group-description">
       <AccessibleImage className={arrowClassName} />
@@ -33,12 +34,36 @@ function FrameLocation({ frame, expanded }) {
   );
 }
 
+FrameLocation.propTypes = {
+  expanded: PropTypes.any.isRequired,
+  frame: PropTypes.object.isRequired,
+};
+
 FrameLocation.displayName = "FrameLocation";
 
 export default class Group extends Component {
   constructor(...args) {
     super(...args);
     this.state = { expanded: false };
+  }
+
+  static get propTypes() {
+    return {
+      copyStackTrace: PropTypes.func.isRequired,
+      cx: PropTypes.object,
+      disableContextMenu: PropTypes.bool.isRequired,
+      displayFullUrl: PropTypes.bool.isRequired,
+      frameworkGroupingOn: PropTypes.bool.isRequired,
+      getFrameTitle: PropTypes.func,
+      group: PropTypes.array.isRequired,
+      panel: PropTypes.oneOf(["debugger", "webconsole"]).isRequired,
+      restart: PropTypes.func,
+      selectFrame: PropTypes.func.isRequired,
+      selectLocation: PropTypes.func,
+      selectedFrame: PropTypes.object,
+      toggleBlackBox: PropTypes.func,
+      toggleFrameworkGrouping: PropTypes.func.isRequired,
+    };
   }
 
   get isSelectable() {
@@ -139,7 +164,7 @@ export default class Group extends Component {
       <div
         role="listitem"
         key={frame.id}
-        className={classNames("group")}
+        className="group"
         onClick={this.toggleFrames}
         tabIndex={0}
         title={title}
@@ -158,7 +183,7 @@ export default class Group extends Component {
     const { disableContextMenu } = this.props;
     return (
       <div
-        className={classNames("frames-group", { expanded })}
+        className={classnames("frames-group", { expanded })}
         onContextMenu={disableContextMenu ? null : e => this.onContextMenu(e)}
       >
         {this.renderDescription()}

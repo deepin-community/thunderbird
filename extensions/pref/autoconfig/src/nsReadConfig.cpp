@@ -26,6 +26,10 @@
 #include "nspr.h"
 #include "nsXULAppAPI.h"
 
+#if defined(MOZ_WIDGET_GTK)
+#  include "mozilla/WidgetUtilsGtk.h"
+#endif  // defined(MOZ_WIDGET_GTK)
+
 using namespace mozilla;
 
 extern bool sandboxEnabled;
@@ -39,7 +43,7 @@ static nsresult DisplayError(void) {
   nsresult rv;
 
   nsCOMPtr<nsIPromptService> promptService =
-      do_GetService("@mozilla.org/embedcomp/prompt-service;1");
+      do_GetService("@mozilla.org/prompter;1");
   if (!promptService) return NS_ERROR_FAILURE;
 
   nsCOMPtr<nsIStringBundleService> bundleService =
@@ -212,8 +216,9 @@ nsresult nsReadConfig::readConfigFile() {
     // .cfg to the filename by checking this post reading of the cfg file
     // this value can be set within the cfg file adding a level of security.
 
-    if (PL_strncmp(lockFileName.get(), lockVendor.get(), fileNameLen - 4) != 0)
+    if (strncmp(lockFileName.get(), lockVendor.get(), fileNameLen - 4) != 0) {
       return NS_ERROR_FAILURE;
+    }
   }
 
   // get the value of the autoconfig url
@@ -242,7 +247,16 @@ nsresult nsReadConfig::openAndEvaluateJSFile(const char* aFileName,
   nsCOMPtr<nsIInputStream> inStr;
   if (isBinDir) {
     nsCOMPtr<nsIFile> jsFile;
-    rv = NS_GetSpecialDirectory(NS_GRE_DIR, getter_AddRefs(jsFile));
+#if defined(MOZ_WIDGET_GTK)
+    if (!mozilla::widget::IsRunningUnderFlatpakOrSnap()) {
+#endif  // defined(MOZ_WIDGET_GTK)
+      rv = NS_GetSpecialDirectory(NS_GRE_DIR, getter_AddRefs(jsFile));
+#if defined(MOZ_WIDGET_GTK)
+    } else {
+      rv = NS_GetSpecialDirectory(NS_OS_SYSTEM_CONFIG_DIR,
+                                  getter_AddRefs(jsFile));
+    }
+#endif  // defined(MOZ_WIDGET_GTK)
     if (NS_FAILED(rv)) return rv;
 
     rv = jsFile->AppendNative(nsDependentCString(aFileName));

@@ -47,12 +47,12 @@ newsgroups-label = Grupos de noticias
 newsgroups-description = { -brand-short-name } le permite conectarte a todos los grupos de noticias que desee.
 
 import-title = Importar desde otro programa
-import-paragraph = { -brand-short-name } le permite importar mensajes de correo, entradas de la libreta de direcciones, suscripciones de canales, preferencias y/o filtros de otros programas de correo y formatos comunes de libreta de direcciones.
+import-paragraph2 = { -brand-short-name } le permite importar mensajes de correo, entradas de la libreta de direcciones, suscripciones de canales, configuración y/o filtros de otros programas de correo y formatos comunes de libreta de direcciones.
 
 import-label = Importar
     .aria-label = Importar datos de otros programas
 
-about-paragraph = Thunderbird es el lider en clientes de correo electrónico y calendario para todas las plataformas de código abierto, gratuito, tanto para el uso empresarial como el personal. Queremos mantenerlo seguro y que sea aun mejor. Una donación nos va a permitir contratar desarrolladores, pagar por la infraestructura y continuar mejorando.
+about-paragraph = Thunderbird es el lider en clientes de correo electrónico y calendario para todas las plataformas de código abierto, gratuito, tanto para el uso empresarial como el personal. Queremos mantenerlo seguro y que sea aún mejor. Una donación nos va a permitir contratar desarrolladores, pagar por la infraestructura y continuar mejorando.
 
 about-paragraph-consider-donation = <strong>¡Thunderbird está financiado por usuarios como usted! Si le gusta Thunderbird, por favor considere hacer una donación</strong> La mejor manera de asegurar su supervivencia es <a class="more" href="%(donate)s">donando.</a>
 

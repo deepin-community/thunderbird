@@ -5,7 +5,7 @@
 LOCALE_TOPDIR=$(commtopsrcdir)
 LOCALE_RELATIVEDIR=mail/locales
 
-include $(moztopsrcdir)/config/config.mk
+include $(topsrcdir)/config/config.mk
 
 SUBMAKEFILES += \
 	$(DEPTH)/$(MOZ_BRANDING_DIRECTORY)/Makefile \
@@ -27,20 +27,12 @@ ifdef NIGHTLY_BUILD
 export EN_US_BINARY_URL ?= https://archive.mozilla.org/pub/thunderbird/nightly/latest-comm-central
 endif
 
-L10N_PREF_JS_EXPORTS = $(call MERGE_FILE,all-l10n.js)
-L10N_PREF_JS_EXPORTS_PATH = $(FINAL_TARGET)/$(PREF_DIR)
-L10N_PREF_JS_EXPORTS_FLAGS = $(PREF_PPFLAGS) --silence-missing-directive-warnings
-PP_TARGETS += L10N_PREF_JS_EXPORTS
-
-ifeq (cocoa,$(MOZ_WIDGET_TOOLKIT))
+ifneq (,$(filter cocoa,$(MOZ_WIDGET_TOOLKIT)))
 MOZ_PKG_MAC_DSSTORE=$(ABS_DIST)/branding/dsstore
 MOZ_PKG_MAC_BACKGROUND=$(ABS_DIST)/branding/background.png
 MOZ_PKG_MAC_ICON=$(ABS_DIST)/branding/disk.icns
 MOZ_PKG_MAC_EXTRA=--symlink '/Applications:/ '
 endif
-
-MOZ_SFX_PACKAGE=$(commtopsrcdir)/other-licenses/7zstub/thunderbird/7zSD.sfx
-MOZ_INSTALLER_PATH=$(commtopsrcdir)/mail/installer/windows
 
 NON_OMNIJAR_FILES = defaults/messenger/mailViews.dat
 
@@ -48,15 +40,22 @@ NON_OMNIJAR_FILES = defaults/messenger/mailViews.dat
 # be included in langpack xpis.
 DIST_SUBDIRS = $(DIST_SUBDIR)
 
-include $(moztopsrcdir)/config/rules.mk
+include $(topsrcdir)/config/rules.mk
 
-include $(moztopsrcdir)/toolkit/locales/l10n.mk
+include $(topsrcdir)/toolkit/locales/l10n.mk
+
+ifeq ($(VCS_CHECKOUT_TYPE),hg)
+L10N_CO = $(PYTHON3) $(topsrcdir)/comm/python/l10n/l10n_clone/l10n_clone.py $(AB_CD) $(L10NBASEDIR)
+else
+L10N_CO = $(error You need to use hg)
+endif
 
 l10n-%: AB_CD=$*
 l10n-%:
 # merge if we're not en-US. Conditional function because
 # we need the current value of AB_CD.
 	$(if $(filter en-US,$(AB_CD)),, @$(MAKE) merge-$*)
+	$(if $(filter en-US,$(AB_CD)),, @$(MAKE) post-merge-$*)
 	$(NSINSTALL) -D $(DIST)/install
 	@$(MAKE) -C $(DEPTH)/toolkit/locales l10n-$*  XPI_ROOT_APPID='$(XPI_ROOT_APPID)'
 	@$(MAKE) -C $(DEPTH)/devtools/client/locales AB_CD=$* XPI_NAME=locale-$* XPI_ROOT_APPID='$(XPI_ROOT_APPID)'
@@ -64,10 +63,12 @@ l10n-%:
 	@$(MAKE) -C ../../chat/locales AB_CD=$* XPI_NAME=locale-$*
 	@$(MAKE) -C ../../calendar/locales AB_CD=$* XPI_NAME=locale-$*
 	@$(MAKE) -C $(DEPTH)/extensions/spellcheck/locales AB_CD=$* XPI_NAME=locale-$*
-	@$(MAKE) l10n AB_CD=$* XPI_NAME=locale-$* PREF_DIR=defaults/pref
+	@$(MAKE) l10n AB_CD=$* XPI_NAME=locale-$* PREF_DIR=$(PREF_DIR)
 	@$(MAKE) multilocale.txt-$* AB_CD=$* XPI_NAME=locale-$*
 	@$(MAKE) -C $(DEPTH)/$(MOZ_BRANDING_DIRECTORY)/locales AB_CD=$* XPI_NAME=locale-$*
 
+post-merge-%:
+	$(PYTHON3) $(MOZILLA_DIR)/mach tb-add-missing-ftls --merge $(BASE_MERGE) $*
 
 package-win32-installer: $(SUBMAKEFILES)
 	$(MAKE) -C ../installer/windows CONFIG_DIR=l10ngen ZIP_IN='$(ZIP_OUT)' installer
@@ -94,74 +95,13 @@ ifeq (WINNT,$(OS_ARCH))
 endif
 	@echo 'repackaging done'
 
-ifdef MOZ_UPDATER
-misc:: $(call MERGE_FILE,updater/updater.ini) $(call mkdir_deps,$(DIST)/bin)
-ifeq ($(OS_ARCH),WINNT)
-	cat $< $(srcdir)/../installer/windows/nsis/updater_append.ini | \
-	  sed -e 's/^InfoText=/Info=/' -e 's/^TitleText=/Title=/' | \
-	  sed -e 's/%MOZ_APP_DISPLAYNAME%/$(MOZ_APP_DISPLAYNAME)/' > \
-	  $(FINAL_TARGET)/updater.ini
-else
-	cat $< | \
-	  sed -e 's/^InfoText=/Info=/' -e 's/^TitleText=/Title=/' | \
-	  sed -e 's/%MOZ_APP_DISPLAYNAME%/$(MOZ_APP_DISPLAYNAME)/' > \
-	  $(FINAL_TARGET)/updater.ini
-endif
-endif
-
 ident:
 	@printf 'comm_revision '
-	@$(PYTHON3) $(moztopsrcdir)/config/printconfigsetting.py \
+	@$(PYTHON3) $(topsrcdir)/config/printconfigsetting.py \
 	    '$(STAGEDIST)/application.ini' App SourceStamp
 	@printf 'moz_revision '
-	@$(PYTHON3) $(moztopsrcdir)/config/printconfigsetting.py \
+	@$(PYTHON3) $(topsrcdir)/config/printconfigsetting.py \
 	    '$(STAGEDIST)/platform.ini' Build SourceStamp
 	@printf 'buildid '
-	@$(PYTHON3) $(moztopsrcdir)/config/printconfigsetting.py \
+	@$(PYTHON3) $(topsrcdir)/config/printconfigsetting.py \
 	    '$(STAGEDIST)/application.ini' App BuildID
-
-#These make targets call prepare-repackages by setting different UPLOAD_DIR
-prepare-upload-latest-%:
-	@$(MAKE) prepare-repackages-$* UPLOAD_DIR=$(DIST)/upload/latest
-
-prepare-upload-dated-%:
-	@$(MAKE) prepare-repackages-$* UPLOAD_DIR=$(DIST)/upload/`date "+%Y-%m-%d-%H"`-$(MOZ_PKG_APPNAME)$(MOZ_APP_VERSION)-l10n
-
-# This target will generate a UPLOAD_DIR folder with
-# l10n repackages in the way that we offer l10n nightlies
-#  1) the package/binary
-#  2) the langpack xpi
-#  3) the installer (on windows)
-# To set the paths those packages should end up, override the following vars:
-# PKG_PATH, PKG_LANGPACK_PATH, PKG_INST_PATH
-prepare-repackages-%:
-ifndef UPLOAD_DIR
-	$(error UPLOAD_DIR not defined)
-endif
-	$(NSINSTALL) -D $(UPLOAD_DIR)
-	$(NSINSTALL) -D $(UPLOAD_DIR)/$(PKG_LANGPACK_PATH)
-# Move the langpack
-	mv $(DIST)/$(PKG_LANGPACK_PATH)$(PKG_LANGPACK_BASENAME).xpi \
-	   $(UPLOAD_DIR)/$(PKG_LANGPACK_PATH)$(PKG_LANGPACK_BASENAME).xpi
-# Move the repackage
-	mv "$(DIST)/$(PACKAGE)" \
-	   "$(UPLOAD_DIR)/$(PACKAGE)"
-# Move the windows installer
-ifeq (WINNT, $(OS_ARCH))
-	mv "$(DIST)/$(PKG_INST_PATH)$(PKG_INST_BASENAME).exe" \
-	   "$(UPLOAD_DIR)/$(PKG_INST_PATH)$(PKG_INST_BASENAME).exe"
-endif
-# Set the permissions that the folders will have in ftp once uploaded
-	chmod -vR 775 $(UPLOAD_DIR)
-
-# test target, depends on make package
-# try to repack x-test, with just toolkit/defines.inc being there
-l10n-check:: INNER_UNMAKE_PACKAGE=true
-l10n-check::
-	$(RM) -rf x-test
-	$(NSINSTALL) -D x-test/toolkit
-	echo '#define MOZ_LANG_TITLE Just testing' > x-test/toolkit/defines.inc
-	$(MAKE) installers-x-test L10NBASEDIR='$(PWD)' \
-	    ZIP_IN='$(ZIP_IN)' MOZ_SIMPLE_PACKAGE_NAME=
-	$(PYTHON3) $(topsrcdir)/toolkit/mozapps/installer/unpack.py $(DIST)/l10n-stage/$(MOZ_PKG_DIR)$(_RESPATH)
-	cd $(DIST)/l10n-stage && test $$(cat $(MOZ_PKG_DIR)$(_RESPATH)/update.locale) = x-test

@@ -2,11 +2,12 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 var { MailServices } = ChromeUtils.import(
   "resource:///modules/MailServices.jsm"
 );
-var { ctypes } = ChromeUtils.import("resource:///modules/ctypes.jsm");
+var { ctypes } = ChromeUtils.importESModule(
+  "resource://gre/modules/ctypes.sys.mjs"
+);
 var { localAccountUtils } = ChromeUtils.import(
   "resource://testing-common/mailnews/LocalAccountUtils.jsm"
 );
@@ -18,7 +19,7 @@ do_get_profile();
 var { nsMailServer } = ChromeUtils.import(
   "resource://testing-common/mailnews/Maild.jsm"
 );
-var { smtpDaemon, SMTP_RFC2821_handler } = ChromeUtils.import(
+var { SmtpDaemon, SMTP_RFC2821_handler } = ChromeUtils.import(
   "resource://testing-common/mailnews/Smtpd.jsm"
 );
 
@@ -28,11 +29,11 @@ var POP3_PORT = 1024 + 121;
 // Setup the daemon and server
 function setupServerDaemon(handler) {
   if (!handler) {
-    handler = function(d) {
+    handler = function (d) {
       return new SMTP_RFC2821_handler(d);
     };
   }
-  let daemon = new smtpDaemon();
+  let daemon = new SmtpDaemon();
   let server = new nsMailServer(handler, daemon);
   return [daemon, server];
 }

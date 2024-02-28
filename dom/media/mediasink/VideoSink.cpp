@@ -21,7 +21,9 @@
 #include "mozilla/StaticPrefs_browser.h"
 #include "mozilla/StaticPrefs_media.h"
 
-extern mozilla::LazyLogModule gMediaDecoderLog;
+namespace mozilla {
+extern LazyLogModule gMediaDecoderLog;
+}
 
 #undef FMT
 
@@ -46,7 +48,7 @@ static void SetImageToGreenPixel(PlanarYCbCrImage* aImage) {
   data.mCbChannel = greenPixel + 1;
   data.mCrChannel = greenPixel + 2;
   data.mYStride = data.mCbCrStride = 1;
-  data.mPicSize = data.mYSize = data.mCbCrSize = gfx::IntSize(1, 1);
+  data.mPictureRect = gfx::IntRect(0, 0, 1, 1);
   data.mYUVColorSpace = gfx::YUVColorSpace::BT601;
   aImage->CopyData(data);
 }
@@ -113,7 +115,7 @@ media::TimeUnit VideoSink::GetEndTime(TrackType aType) const {
   return media::TimeUnit::Zero();
 }
 
-media::TimeUnit VideoSink::GetPosition(TimeStamp* aTimeStamp) const {
+media::TimeUnit VideoSink::GetPosition(TimeStamp* aTimeStamp) {
   AssertOwnerThread();
   return mAudioSink->GetPosition(aTimeStamp);
 }
@@ -124,6 +126,14 @@ bool VideoSink::HasUnplayedFrames(TrackType aType) const {
              "Not implemented for non audio tracks.");
 
   return mAudioSink->HasUnplayedFrames(aType);
+}
+
+media::TimeUnit VideoSink::UnplayedDuration(TrackType aType) const {
+  AssertOwnerThread();
+  MOZ_ASSERT(aType == TrackInfo::kAudioTrack,
+             "Not implemented for non audio tracks.");
+
+  return mAudioSink->UnplayedDuration(aType);
 }
 
 void VideoSink::SetPlaybackRate(double aPlaybackRate) {
@@ -285,6 +295,10 @@ bool VideoSink::IsPlaying() const {
   AssertOwnerThread();
 
   return mAudioSink->IsPlaying();
+}
+
+const AudioDeviceInfo* VideoSink::AudioDevice() const {
+  return mAudioSink->AudioDevice();
 }
 
 void VideoSink::Shutdown() {
@@ -458,13 +472,15 @@ void VideoSink::RenderVideoFrames(int32_t aMaxFrames, int64_t aClockTime,
     img->mFrameID = frame->mFrameID;
     img->mProducerID = mProducerID;
 
-    VSINK_LOG_V("playing video frame %" PRId64 " (id=%x) (vq-queued=%zu)",
+    VSINK_LOG_V("playing video frame %" PRId64
+                " (id=%x, vq-queued=%zu, clock=%" PRId64 ")",
                 frame->mTime.ToMicroseconds(), frame->mFrameID,
-                VideoQueue().GetSize());
+                VideoQueue().GetSize(), aClockTime);
     if (!wasSent) {
       PROFILER_MARKER("PlayVideo", MEDIA_PLAYBACK, {}, MediaSampleMarker,
                       frame->mTime.ToMicroseconds(),
-                      frame->GetEndTime().ToMicroseconds());
+                      frame->GetEndTime().ToMicroseconds(),
+                      VideoQueue().GetSize());
     }
   }
 
@@ -503,9 +519,35 @@ void VideoSink::UpdateRenderedVideoFrames() {
       VSINK_LOG_V("discarding video frame mTime=%" PRId64
                   " clock_time=%" PRId64,
                   frame->mTime.ToMicroseconds(), clockTime.ToMicroseconds());
-      PROFILER_MARKER("DiscardVideo", MEDIA_PLAYBACK, {}, MediaSampleMarker,
-                      frame->mTime.ToMicroseconds(),
-                      frame->GetEndTime().ToMicroseconds());
+
+      struct VideoSinkDroppedFrameMarker {
+        static constexpr Span<const char> MarkerTypeName() {
+          return MakeStringSpan("VideoSinkDroppedFrame");
+        }
+        static void StreamJSONMarkerData(
+            baseprofiler::SpliceableJSONWriter& aWriter,
+            int64_t aSampleStartTimeUs, int64_t aSampleEndTimeUs,
+            int64_t aClockTimeUs) {
+          aWriter.IntProperty("sampleStartTimeUs", aSampleStartTimeUs);
+          aWriter.IntProperty("sampleEndTimeUs", aSampleEndTimeUs);
+          aWriter.IntProperty("clockTimeUs", aClockTimeUs);
+        }
+        static MarkerSchema MarkerTypeDisplay() {
+          using MS = MarkerSchema;
+          MS schema{MS::Location::MarkerChart, MS::Location::MarkerTable};
+          schema.AddKeyLabelFormat("sampleStartTimeUs", "Sample start time",
+                                   MS::Format::Microseconds);
+          schema.AddKeyLabelFormat("sampleEndTimeUs", "Sample end time",
+                                   MS::Format::Microseconds);
+          schema.AddKeyLabelFormat("clockTimeUs", "Audio clock time",
+                                   MS::Format::Microseconds);
+          return schema;
+        }
+      };
+      profiler_add_marker(
+          "VideoSinkDroppedFrame", geckoprofiler::category::MEDIA_PLAYBACK, {},
+          VideoSinkDroppedFrameMarker{}, frame->mTime.ToMicroseconds(),
+          frame->GetEndTime().ToMicroseconds(), clockTime.ToMicroseconds());
     }
   }
 
@@ -656,4 +698,9 @@ bool VideoSink::InitializeBlankImage() {
   SetImageToGreenPixel(mBlankImage->AsPlanarYCbCrImage());
   return true;
 }
+
+void VideoSink::EnableTreatAudioUnderrunAsSilence(bool aEnabled) {
+  mAudioSink->EnableTreatAudioUnderrunAsSilence(aEnabled);
+}
+
 }  // namespace mozilla

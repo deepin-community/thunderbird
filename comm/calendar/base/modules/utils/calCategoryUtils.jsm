@@ -2,39 +2,38 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-
-ChromeUtils.defineModuleGetter(this, "cal", "resource:///modules/calendar/calUtils.jsm");
-
-/*
+/**
  * Helpers for reading and writing calendar categories
  */
 
 // NOTE: This module should not be loaded directly, it is available when
 // including calUtils.jsm under the cal.category namespace.
 
-const EXPORTED_SYMBOLS = ["calcategory"]; /* exported calcategory */
+const EXPORTED_SYMBOLS = ["calcategory"];
+
+const lazy = {};
+ChromeUtils.defineModuleGetter(lazy, "cal", "resource:///modules/calendar/calUtils.jsm");
 
 var calcategory = {
   /**
    * Sets up the default categories from the localized string
    *
-   * @return      The default set of categories as a comma separated string.
+   * @returns The default set of categories as a comma separated string.
    */
   setupDefaultCategories() {
     let defaultBranch = Services.prefs.getDefaultBranch("");
 
     // First, set up the category names
-    let categories = cal.l10n.getString("categories", "categories2");
+    let categories = lazy.cal.l10n.getString("categories", "categories2");
     defaultBranch.setStringPref("calendar.categories.names", categories);
 
     // Now, initialize the category default colors
     let categoryArray = calcategory.stringToArray(categories);
     for (let category of categoryArray) {
-      let prefName = cal.view.formatStringForCSSRule(category);
+      let prefName = lazy.cal.view.formatStringForCSSRule(category);
       defaultBranch.setStringPref(
         "calendar.category.color." + prefName,
-        cal.view.hashColor(category)
+        lazy.cal.view.hashColor(category)
       );
     }
 
@@ -46,7 +45,7 @@ var calcategory = {
    * Get array of category names from preferences or locale default,
    * unescaping any commas in each category name.
    *
-   * @return                      array of category names
+   * @returns array of category names
    */
   fromPrefs() {
     let categories = Services.prefs.getStringPref("calendar.categories.names", null);
@@ -67,7 +66,7 @@ var calcategory = {
    *
    * @param aCategoriesPrefValue  string from "calendar.categories.names" pref,
    *                                which may contain escaped commas (\,) in names.
-   * @return                      list of category names
+   * @returns list of category names
    */
   stringToArray(aCategories) {
     if (!aCategories) {

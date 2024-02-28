@@ -10,6 +10,7 @@ SOURCES += [
 ]
 
 OS_LIBS += [
+    "advapi32",
     "ole32",
     "shell32",
 ]
@@ -18,6 +19,3 @@ RCINCLUDE = "WSEnable.rc"
 
 # This isn't XPCOM code, but it wants to use STL so disable STL wrappers
 DisableStlWrapping()
-
-if CONFIG["CC_TYPE"] == "clang-cl":
-    AllowCompilerWarnings()  # workaround for bug 1090497 / bug 1481326

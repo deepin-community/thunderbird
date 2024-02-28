@@ -4,17 +4,16 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 /* import-globals-from ../../../../toolkit/content/contentAreaUtils.js */
-/* import-globals-from mailWindow.js */
 /* import-globals-from utilityOverlay.js */
-/* import-globals-from phishingDetector.js */
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-var { PlacesUtils } = ChromeUtils.import(
-  "resource://gre/modules/PlacesUtils.jsm"
+/* globals getMessagePaneBrowser */ // From aboutMessage.js
+
+var { XPCOMUtils } = ChromeUtils.importESModule(
+  "resource://gre/modules/XPCOMUtils.sys.mjs"
 );
-var { XPCOMUtils } = ChromeUtils.import(
-  "resource://gre/modules/XPCOMUtils.jsm"
-);
+XPCOMUtils.defineLazyModuleGetters(this, {
+  PhishingDetector: "resource:///modules/PhishingDetector.jsm",
+});
 XPCOMUtils.defineLazyPreferenceGetter(
   this,
   "alternativeAddonSearchUrl",
@@ -33,7 +32,7 @@ XPCOMUtils.defineLazyPreferenceGetter(
  * If the clicked element was a HTMLInputElement or HTMLButtonElement
  * we return the form action.
  *
- * @return [href, linkText] the url and the text for the link being clicked.
+ * @returns [href, linkText] the url and the text for the link being clicked.
  */
 function hRefForClickEvent(aEvent, aDontCheckInputElement) {
   let target =
@@ -42,7 +41,7 @@ function hRefForClickEvent(aEvent, aDontCheckInputElement) {
       : aEvent.target;
 
   if (
-    target instanceof HTMLImageElement &&
+    HTMLImageElement.isInstance(target) &&
     target.hasAttribute("overflowing")
   ) {
     // Click on zoomed image.
@@ -52,9 +51,9 @@ function hRefForClickEvent(aEvent, aDontCheckInputElement) {
   let href = null;
   let linkText = null;
   if (
-    target instanceof HTMLAnchorElement ||
-    target instanceof HTMLAreaElement ||
-    target instanceof HTMLLinkElement
+    HTMLAnchorElement.isInstance(target) ||
+    HTMLAreaElement.isInstance(target) ||
+    HTMLLinkElement.isInstance(target)
   ) {
     if (target.hasAttribute("href")) {
       href = target.href;
@@ -62,7 +61,8 @@ function hRefForClickEvent(aEvent, aDontCheckInputElement) {
     }
   } else if (
     !aDontCheckInputElement &&
-    (target instanceof HTMLInputElement || target instanceof HTMLButtonElement)
+    (HTMLInputElement.isInstance(target) ||
+      HTMLButtonElement.isInstance(target))
   ) {
     if (target.form && target.form.action) {
       href = target.form.action;
@@ -70,7 +70,7 @@ function hRefForClickEvent(aEvent, aDontCheckInputElement) {
   } else {
     // We may be nested inside of a link node.
     let linkNode = aEvent.target;
-    while (linkNode && !(linkNode instanceof HTMLAnchorElement)) {
+    while (linkNode && !HTMLAnchorElement.isInstance(linkNode)) {
       linkNode = linkNode.parentNode;
     }
 
@@ -82,32 +82,12 @@ function hRefForClickEvent(aEvent, aDontCheckInputElement) {
   return [href, linkText];
 }
 
-function messagePaneOnResize(aEvent) {
-  // Scale any overflowing images, exclude http content.
-  let browser = getBrowser();
-  let doc = browser && browser.contentDocument ? browser.contentDocument : null;
-  if (!doc || doc.URL.startsWith("http") || !doc.images) {
-    return;
-  }
-
-  for (let img of doc.images) {
-    if (
-      img.clientWidth - doc.body.offsetWidth >= 0 &&
-      (img.clientWidth <= img.naturalWidth || !img.naturalWidth)
-    ) {
-      img.setAttribute("overflowing", true);
-    } else {
-      img.removeAttribute("overflowing");
-    }
-  }
-}
-
 /**
  * Check whether the click target's or its ancestor's href
  * points to an anchor on the page.
  *
  * @param HTMLElement aTargetNode - the element node.
- * @return                        - true if link pointing to anchor.
+ * @returns - true if link pointing to anchor.
  */
 function isLinkToAnchorOnPage(aTargetNode) {
   let url = aTargetNode.ownerDocument.URL;
@@ -116,7 +96,7 @@ function isLinkToAnchorOnPage(aTargetNode) {
   }
 
   let linkNode = aTargetNode;
-  while (linkNode && !(linkNode instanceof HTMLAnchorElement)) {
+  while (linkNode && !HTMLAnchorElement.isInstance(linkNode)) {
     linkNode = linkNode.parentNode;
   }
 
@@ -154,7 +134,7 @@ function contentAreaClick(aEvent) {
   if (!href && !aEvent.button) {
     // Is this an image that we might want to scale?
 
-    if (target instanceof HTMLImageElement) {
+    if (HTMLImageElement.isInstance(target)) {
       // Make sure it loaded successfully. No action if not or a broken link.
       var req = target.getRequest(Ci.nsIImageLoadingContent.CURRENT_REQUEST);
       if (!req || req.imageStatus & Ci.imgIRequest.STATUS_ERROR) {
@@ -206,7 +186,8 @@ function contentAreaClick(aEvent) {
   aEvent.preventDefault();
 
   // Let the phishing detector check the link.
-  let urlPhishCheckResult = gPhishingDetector.warnOnSuspiciousLinkClick(
+  let urlPhishCheckResult = PhishingDetector.warnOnSuspiciousLinkClick(
+    window,
     href,
     linkText
   );
@@ -222,86 +203,4 @@ function contentAreaClick(aEvent) {
 
   openLinkExternally(href);
   return true;
-}
-
-/**
- * Forces a url to open in an external application according to the protocol
- * service settings.
- *
- * @param url  A url string or an nsIURI containing the url to open.
- */
-function openLinkExternally(url) {
-  let uri = url;
-  if (!(uri instanceof Ci.nsIURI)) {
-    uri = Services.io.newURI(url);
-  }
-
-  // This can fail if there is a problem with the places database.
-  PlacesUtils.history
-    .insert({
-      url, // accepts both string and nsIURI
-      visits: [
-        {
-          date: new Date(),
-        },
-      ],
-    })
-    .catch(Cu.reportError);
-
-  Cc["@mozilla.org/uriloader/external-protocol-service;1"]
-    .getService(Ci.nsIExternalProtocolService)
-    .loadURI(uri);
-}
-
-/**
- * Compatibility to Firefox, used for example by devtools to open links. Defer
- * this to the external browser, if it is not add-on related.
- */
-function openWebLinkIn(url, where, params) {
-  if (
-    (url.startsWith(canonicalAddonServerUrl) && where == "tab") ||
-    (url.startsWith(alternativeAddonSearchUrl) && where == "tab")
-  ) {
-    document.getElementById("tabmail").openTab("contentTab", { url });
-    return;
-  }
-
-  if (!params) {
-    params = {};
-  }
-
-  if (!params.triggeringPrincipal) {
-    params.triggeringPrincipal = Services.scriptSecurityManager.createNullPrincipal(
-      {}
-    );
-  }
-
-  openUILinkIn(url, where, params);
-}
-
-function openUILinkIn(url, where, options) {
-  openLinkExternally(url);
-}
-
-function openTrustedLinkIn(url, where, aParams) {
-  var params = aParams;
-
-  if (!params) {
-    params = {};
-  }
-
-  if (
-    url.startsWith("about:certificate") ||
-    (url.startsWith(canonicalAddonServerUrl) && where == "tab") ||
-    (url.startsWith(alternativeAddonSearchUrl) && where == "tab")
-  ) {
-    document.getElementById("tabmail").openTab("contentTab", { url });
-    return;
-  }
-
-  if (!params.triggeringPrincipal) {
-    params.triggeringPrincipal = Services.scriptSecurityManager.getSystemPrincipal();
-  }
-
-  openUILinkIn(url, where, params);
 }

@@ -4,12 +4,11 @@ if (typeof gDEPTH == "undefined") {
   var gDEPTH = "../../../../";
 }
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 var { MailServices } = ChromeUtils.import(
   "resource:///modules/MailServices.jsm"
 );
-var { XPCOMUtils } = ChromeUtils.import(
-  "resource://gre/modules/XPCOMUtils.jsm"
+var { XPCOMUtils } = ChromeUtils.importESModule(
+  "resource://gre/modules/XPCOMUtils.sys.mjs"
 );
 var { mailTestUtils } = ChromeUtils.import(
   "resource://testing-common/mailnews/MailTestUtils.jsm"
@@ -27,8 +26,8 @@ var { PromiseTestUtils } = ChromeUtils.import(
 var CC = Components.Constructor;
 
 // WebApps.jsm called by ProxyAutoConfig (PAC) requires a valid nsIXULAppInfo.
-var { getAppInfo, newAppInfo, updateAppInfo } = ChromeUtils.import(
-  "resource://testing-common/AppInfo.jsm"
+var { getAppInfo, newAppInfo, updateAppInfo } = ChromeUtils.importESModule(
+  "resource://testing-common/AppInfo.sys.mjs"
 );
 updateAppInfo();
 
@@ -44,24 +43,34 @@ var {
   fsDebugRecv,
   fsDebugRecvSend,
 } = ChromeUtils.import("resource://testing-common/mailnews/Maild.jsm");
-var imapd = {};
-ChromeUtils.import("resource://testing-common/mailnews/Imapd.jsm", imapd);
-var { imapDaemon, imapMessage } = imapd;
+
+var {
+  ImapDaemon,
+  ImapMessage,
+  configurations,
+  IMAP_RFC3501_handler,
+  mixinExtension,
+  IMAP_RFC2197_extension,
+  IMAP_RFC2342_extension,
+  IMAP_RFC3348_extension,
+  IMAP_RFC4315_extension,
+  IMAP_RFC5258_extension,
+  IMAP_RFC2195_extension,
+} = ChromeUtils.import("resource://testing-common/mailnews/Imapd.jsm");
 var { AuthPLAIN, AuthLOGIN, AuthCRAM } = ChromeUtils.import(
   "resource://testing-common/mailnews/Auth.jsm"
 );
+var { SmtpDaemon, SMTP_RFC2821_handler } = ChromeUtils.import(
+  "resource://testing-common/mailnews/Smtpd.jsm"
+);
 
 function makeServer(daemon, infoString, otherProps) {
-  if (infoString in imapd.configurations) {
-    return makeServer(
-      daemon,
-      imapd.configurations[infoString].join(","),
-      otherProps
-    );
+  if (infoString in configurations) {
+    return makeServer(daemon, configurations[infoString].join(","), otherProps);
   }
 
   function createHandler(d) {
-    var handler = new imapd.IMAP_RFC3501_handler(d);
+    var handler = new IMAP_RFC3501_handler(d);
     if (!infoString) {
       infoString = "RFC2195";
     }
@@ -69,7 +78,30 @@ function makeServer(daemon, infoString, otherProps) {
     var parts = infoString.split(/ *, */);
     for (var part of parts) {
       if (part.startsWith("RFC")) {
-        imapd.mixinExtension(handler, imapd["IMAP_" + part + "_extension"]);
+        let ext;
+        switch (part) {
+          case "RFC2197":
+            ext = IMAP_RFC2197_extension;
+            break;
+          case "RFC2342":
+            ext = IMAP_RFC2342_extension;
+            break;
+          case "RFC3348":
+            ext = IMAP_RFC3348_extension;
+            break;
+          case "RFC4315":
+            ext = IMAP_RFC4315_extension;
+            break;
+          case "RFC5258":
+            ext = IMAP_RFC5258_extension;
+            break;
+          case "RFC2195":
+            ext = IMAP_RFC2195_extension;
+            break;
+          default:
+            throw new Error("Unknown extension: " + part);
+        }
+        mixinExtension(handler, ext);
       }
     }
     if (otherProps) {
@@ -122,14 +154,17 @@ function do_check_transaction(fromServer, expected, withParams) {
     }
     if (withParams) {
       realTransaction.push(line.substr(components[0].length + 1));
-    } else if (components[1] == "authenticate") {
+    } else if (components[1].toUpperCase() == "AUTHENTICATE") {
       realTransaction.push(components[1] + " " + components[2].toUpperCase());
     } else {
       realTransaction.push(components[1]);
     }
   }
 
-  Assert.equal(realTransaction.join(", "), expected.join(", "));
+  Assert.equal(
+    realTransaction.join(", ").toUpperCase(),
+    expected.join(", ").toUpperCase()
+  );
 }
 
 /**
@@ -142,10 +177,25 @@ function addImapMessage() {
   let dataUri = Services.io.newURI(
     "data:text/plain;base64," + btoa(messages[0].toMessageString())
   );
-  let imapMsg = new imapMessage(dataUri.spec, IMAPPump.mailbox.uidnext++, []);
+  let imapMsg = new ImapMessage(dataUri.spec, IMAPPump.mailbox.uidnext++, []);
   IMAPPump.mailbox.addMessage(imapMsg);
 }
 
-registerCleanupFunction(function() {
+registerCleanupFunction(function () {
   load(gDEPTH + "mailnews/resources/mailShutdown.js");
 });
+
+// Setup the SMTP daemon and server
+function setupSmtpServerDaemon(handler) {
+  if (!handler) {
+    handler = function (d) {
+      return new SMTP_RFC2821_handler(d);
+    };
+  }
+  var server = new nsMailServer(handler, new SmtpDaemon());
+  return server;
+}
+
+// profile-after-change is not triggered in xpcshell tests, manually run the
+// getService to load the correct imap modules.
+Cc["@mozilla.org/messenger/imap-module-loader;1"].getService();

@@ -4,20 +4,21 @@
 
 "use strict";
 
-const { XPCOMUtils } = ChromeUtils.import(
-  "resource://gre/modules/XPCOMUtils.jsm"
+const { XPCOMUtils } = ChromeUtils.importESModule(
+  "resource://gre/modules/XPCOMUtils.sys.mjs"
 );
-const { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 
 var EXPORTED_SYMBOLS = ["SiteDataManager"];
 
-XPCOMUtils.defineLazyGetter(this, "gStringBundle", function() {
+const lazy = {};
+
+XPCOMUtils.defineLazyGetter(lazy, "gStringBundle", function () {
   return Services.strings.createBundle(
     "chrome://browser/locale/siteData.properties"
   );
 });
 
-XPCOMUtils.defineLazyGetter(this, "gBrandBundle", function() {
+XPCOMUtils.defineLazyGetter(lazy, "gBrandBundle", function () {
   return Services.strings.createBundle(
     "chrome://branding/locale/brand.properties"
   );
@@ -33,6 +34,7 @@ var SiteDataManager = {
   //     quota storage).
   //   - persisted: the persistent-storage status.
   //   - quotaUsage: the usage of indexedDB and localStorage.
+  //   - containersData: a map containing cookiesBlocked,lastAccessed and quotaUsage by userContextID.
   _sites: new Map(),
 
   _getCacheSizeObserver: null,
@@ -113,6 +115,23 @@ var SiteDataManager = {
     return site;
   },
 
+  _getOrInsertContainersData(site, userContextId) {
+    if (!site.containersData) {
+      site.containersData = new Map();
+    }
+
+    let containerData = site.containersData.get(userContextId);
+    if (!containerData) {
+      containerData = {
+        cookiesBlocked: 0,
+        lastAccessed: new Date(0),
+        quotaUsage: 0,
+      };
+      site.containersData.set(userContextId, containerData);
+    }
+    return containerData;
+  },
+
   /**
    * Retrieves the amount of space currently used by disk cache.
    *
@@ -164,9 +183,10 @@ var SiteDataManager = {
               // An non-persistent-storage site with 0 byte quota usage is redundant for us so skip it.
               continue;
             }
-            let principal = Services.scriptSecurityManager.createContentPrincipalFromOrigin(
-              item.origin
-            );
+            let principal =
+              Services.scriptSecurityManager.createContentPrincipalFromOrigin(
+                item.origin
+              );
             if (principal.schemeIs("http") || principal.schemeIs("https")) {
               // Group dom storage by first party. If an entry is partitioned
               // the first party site will be in the partitionKey, instead of
@@ -177,7 +197,7 @@ var SiteDataManager = {
                   principal.originAttributes.partitionKey
                 );
               } catch (e) {
-                Cu.reportError(e);
+                console.error(e);
               }
               let site = this._getOrInsertSite(
                 pkBaseDomain || principal.baseDomain
@@ -194,6 +214,17 @@ var SiteDataManager = {
               }
               if (site.lastAccessed < item.lastAccessed) {
                 site.lastAccessed = item.lastAccessed;
+              }
+              if (Number.isInteger(principal.userContextId)) {
+                let containerData = this._getOrInsertContainersData(
+                  site,
+                  principal.userContextId
+                );
+                containerData.quotaUsage = item.usage;
+                let itemTime = item.lastAccessed / 1000;
+                if (containerData.lastAccessed.getTime() < itemTime) {
+                  containerData.lastAccessed.setTime(itemTime);
+                }
               }
               site.principals.push(principal);
               site.quotaUsage += item.usage;
@@ -224,7 +255,7 @@ var SiteDataManager = {
           cookie.originAttributes.partitionKey
         );
       } catch (e) {
-        Cu.reportError(e);
+        console.error(e);
       }
       let baseDomainOrHost =
         pkBaseDomain || this.getBaseDomainFromHost(cookie.rawHost);
@@ -233,6 +264,17 @@ var SiteDataManager = {
         entryUpdatedCallback(baseDomainOrHost, site);
       }
       site.cookies.push(cookie);
+      if (Number.isInteger(cookie.originAttributes.userContextId)) {
+        let containerData = this._getOrInsertContainersData(
+          site,
+          cookie.originAttributes.userContextId
+        );
+        containerData.cookiesBlocked += 1;
+        let cookieTime = cookie.lastAccessed / 1000;
+        if (containerData.lastAccessed.getTime() < cookieTime) {
+          containerData.lastAccessed.setTime(cookieTime);
+        }
+      }
       if (site.lastAccessed < cookie.lastAccessed) {
         site.lastAccessed = cookie.lastAccessed;
       }
@@ -274,9 +316,10 @@ var SiteDataManager = {
             continue;
           }
 
-          let principal = Services.scriptSecurityManager.createContentPrincipalFromOrigin(
-            item.origin
-          );
+          let principal =
+            Services.scriptSecurityManager.createContentPrincipalFromOrigin(
+              item.origin
+            );
           if (principal.asciiHost == asciiHost) {
             resolve(true);
             return;
@@ -330,6 +373,7 @@ var SiteDataManager = {
       baseDomain: site.baseDomainOrHost,
       cookies: site.cookies,
       usage: site.quotaUsage,
+      containersData: site.containersData,
       persisted: site.persisted,
       lastAccessed: new Date(site.lastAccessed / 1000),
     }));
@@ -358,6 +402,7 @@ var SiteDataManager = {
       baseDomain: site.baseDomainOrHost,
       cookies: site.cookies,
       usage: site.quotaUsage,
+      containersData: site.containersData,
       persisted: site.persisted,
       lastAccessed: new Date(site.lastAccessed / 1000),
     };
@@ -396,9 +441,10 @@ var SiteDataManager = {
         new Promise(resolve => {
           // We are clearing *All* across OAs so need to ensure a principal without suffix here,
           // or the call of `clearStoragesForPrincipal` would fail.
-          principal = Services.scriptSecurityManager.createContentPrincipalFromOrigin(
-            originNoSuffix
-          );
+          principal =
+            Services.scriptSecurityManager.createContentPrincipalFromOrigin(
+              originNoSuffix
+            );
           let request = this._qms.clearStoragesForPrincipal(
             principal,
             null,
@@ -468,11 +514,10 @@ var SiteDataManager = {
       const kFlags =
         Ci.nsIClearDataService.CLEAR_COOKIES |
         Ci.nsIClearDataService.CLEAR_DOM_STORAGES |
-        Ci.nsIClearDataService.CLEAR_SECURITY_SETTINGS |
         Ci.nsIClearDataService.CLEAR_EME |
         Ci.nsIClearDataService.CLEAR_ALL_CACHES;
       promises.push(
-        new Promise(function(resolve) {
+        new Promise(function (resolve) {
           const { clearData } = Services;
           if (domainOrHost) {
             // First try to clear by base domain for aDomainOrHost. If we can't
@@ -544,16 +589,19 @@ var SiteDataManager = {
       return args.allowed;
     }
 
-    let brandName = gBrandBundle.GetStringFromName("brandShortName");
+    let brandName = lazy.gBrandBundle.GetStringFromName("brandShortName");
     let flags =
       Services.prompt.BUTTON_TITLE_IS_STRING * Services.prompt.BUTTON_POS_0 +
       Services.prompt.BUTTON_TITLE_CANCEL * Services.prompt.BUTTON_POS_1 +
       Services.prompt.BUTTON_POS_0_DEFAULT;
-    let title = gStringBundle.GetStringFromName("clearSiteDataPromptTitle");
-    let text = gStringBundle.formatStringFromName("clearSiteDataPromptText", [
-      brandName,
-    ]);
-    let btn0Label = gStringBundle.GetStringFromName("clearSiteDataNow");
+    let title = lazy.gStringBundle.GetStringFromName(
+      "clearSiteDataPromptTitle"
+    );
+    let text = lazy.gStringBundle.formatStringFromName(
+      "clearSiteDataPromptText",
+      [brandName]
+    );
+    let btn0Label = lazy.gStringBundle.GetStringFromName("clearSiteDataNow");
 
     let result = Services.prompt.confirmEx(
       win,
@@ -585,7 +633,7 @@ var SiteDataManager = {
    * @returns a Promise that resolves when the data is cleared.
    */
   removeCache() {
-    return new Promise(function(resolve) {
+    return new Promise(function (resolve) {
       Services.clearData.deleteData(
         Ci.nsIClearDataService.CLEAR_ALL_CACHES,
         resolve
@@ -600,11 +648,11 @@ var SiteDataManager = {
    * @returns a Promise that resolves when the data is cleared.
    */
   async removeSiteData() {
-    await new Promise(function(resolve) {
+    await new Promise(function (resolve) {
       Services.clearData.deleteData(
         Ci.nsIClearDataService.CLEAR_COOKIES |
           Ci.nsIClearDataService.CLEAR_DOM_STORAGES |
-          Ci.nsIClearDataService.CLEAR_SECURITY_SETTINGS |
+          Ci.nsIClearDataService.CLEAR_HSTS |
           Ci.nsIClearDataService.CLEAR_EME,
         resolve
       );

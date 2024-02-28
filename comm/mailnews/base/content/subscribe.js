@@ -2,7 +2,7 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-/* import-globals-from ../../../mail/base/content/mailWindow.js */
+/* globals msgWindow, nsMsgStatusFeedback */ // From mailWindow.js
 
 var { MailUtils } = ChromeUtils.import("resource:///modules/MailUtils.jsm");
 
@@ -18,6 +18,9 @@ var gStatusFeedback;
 var gSearchView = null;
 var gSearchTree = null;
 var gSubscribeBundle;
+
+window.addEventListener("DOMContentLoaded", SubscribeOnLoad);
+window.addEventListener("unload", SubscribeOnUnload);
 
 document.addEventListener("dialogaccept", subscribeOK);
 document.addEventListener("dialogcancel", subscribeCancel);
@@ -97,18 +100,11 @@ function SetUpTree(forceToServer, getOnlyNew) {
     // Since there is no text, switch to the Subscription view.
     toggleSubscriptionView(false);
 
-    if (!gSubscribableServer.subscribeListener) {
-      gSubscribeTree.view = gSubscribableServer.folderView;
-      gSubscribableServer.subscribeListener = MySubscribeListener;
-    }
+    gSubscribeTree.view = gSubscribableServer.folderView;
+    gSubscribableServer.subscribeListener = MySubscribeListener;
 
-    var currentListTab = document.getElementById("currentListTab");
-    if (currentListTab.selected) {
-      document.getElementById("newGroupsTab").disabled = true;
-    } else {
-      currentListTab.disabled = true;
-    }
-
+    document.getElementById("currentListTab").disabled = true;
+    document.getElementById("newGroupsTab").disabled = true;
     document.getElementById("refreshButton").disabled = true;
 
     gStatusFeedback._startMeteors();
@@ -126,7 +122,7 @@ function SetUpTree(forceToServer, getOnlyNew) {
         gSubscribeBundle.getString("offlineState")
       );
     } else {
-      Cu.reportError("Failed to populate subscribe tree: " + e);
+      console.error("Failed to populate subscribe tree: " + e);
       gStatusFeedback.setStatusString(
         gSubscribeBundle.getString("errorPopulating")
       );
@@ -141,6 +137,8 @@ function SubscribeOnUnload() {
   } catch (ex) {
     dump("Failed to remove the subscribe tree: " + ex + "\n");
   }
+
+  msgWindow.closeWindow();
 }
 
 function EnableSearchUI() {
@@ -340,6 +338,8 @@ function SetSubscribeState(state) {
     if (inSearchMode) {
       // Force a repaint.
       InvalidateSearchTree();
+    } else {
+      gSubscribeTree.invalidate();
     }
   } catch (ex) {
     dump("SetSubscribedState failed:  " + ex + "\n");
@@ -423,7 +423,7 @@ function InvalidateSearchTree() {
 /**
  * Toggle the tree panel in the dialog between search view and subscribe view.
  *
- * @param {Boolean} toggle - If true, show the search view else show the
+ * @param {boolean} toggle - If true, show the search view else show the
  *  subscribe view.
  */
 function toggleSubscriptionView(toggle) {

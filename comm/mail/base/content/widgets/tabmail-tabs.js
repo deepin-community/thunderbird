@@ -8,13 +8,14 @@
 
 // Wrap in a block to prevent leaking to window scope.
 {
-  const { Services } = ChromeUtils.import(
-    "resource://gre/modules/Services.jsm"
+  const { XPCOMUtils } = ChromeUtils.importESModule(
+    "resource://gre/modules/XPCOMUtils.sys.mjs"
   );
 
   /**
    * The MozTabs widget holds all the tabs for the main tab UI.
-   * @extends {MozTabs}
+   *
+   * @augments {MozTabs}
    */
   class MozTabmailTabs extends customElements.get("tabs") {
     constructor() {
@@ -91,42 +92,6 @@
         let dt = event.dataTransfer;
 
         if (dt.mozItemCount == 0) {
-          return;
-        }
-
-        if (
-          dt.mozGetDataAt("text/toolbarwrapper-id/messengerWindow", 0) != null
-        ) {
-          event.preventDefault();
-          event.stopPropagation();
-
-          // Dispatch event to the toolbar
-          let evt = document.createEvent("DragEvent");
-          evt.initDragEvent(
-            "dragover",
-            true,
-            true,
-            window,
-            0,
-            0,
-            0,
-            0,
-            0,
-            false,
-            false,
-            false,
-            false,
-            0,
-            null,
-            event.dataTransfer
-          );
-
-          if (this.mToolbar.firstElementChild) {
-            this.mToolbar.firstElementChild.dispatchEvent(evt);
-          } else {
-            this.mToolbar.dispatchEvent(evt);
-          }
-
           return;
         }
 
@@ -271,46 +236,6 @@
           return;
         }
 
-        // If we're dragging a toolbar button, let's prepend the tabs toolbar
-        // with that button, and then bail out.
-        let buttonId = dt.mozGetDataAt(
-          "text/toolbarwrapper-id/messengerWindow",
-          0
-        );
-
-        if (buttonId != null) {
-          event.preventDefault();
-          event.stopPropagation();
-
-          let evt = document.createEvent("DragEvent");
-          evt.initDragEvent(
-            "drop",
-            true,
-            true,
-            window,
-            0,
-            0,
-            0,
-            0,
-            0,
-            false,
-            false,
-            false,
-            false,
-            0,
-            null,
-            event.dataTransfer
-          );
-
-          if (this.mToolbar.firstElementChild) {
-            this.mToolbar.firstElementChild.dispatchEvent(evt);
-          } else {
-            this.mToolbar.dispatchEvent(evt);
-          }
-
-          return;
-        }
-
         let draggedTab = dt.mozGetDataAt("application/x-moz-tabmail-tab", 0);
 
         if (!draggedTab) {
@@ -349,9 +274,10 @@
             return;
           }
 
-          draggedTab = this.tabmail.tabContainer.allTabs[
-            this.tabmail.tabContainer.allTabs.length - 1
-          ];
+          draggedTab =
+            this.tabmail.tabContainer.allTabs[
+              this.tabmail.tabContainer.allTabs.length - 1
+            ];
         }
 
         let idx = this._getDropIndex(event);
@@ -410,7 +336,7 @@
         this.tabmail.replaceTabWithWindow(draggedTab);
       });
 
-      this.addEventListener("dragexit", event => {
+      this.addEventListener("dragleave", event => {
         this._dragTime = 0;
 
         this._tabDropIndicator.hidden = true;
@@ -429,8 +355,6 @@
       this.arrowScrollboxWidth = 0;
 
       this.arrowScrollbox = this.querySelector("arrowscrollbox");
-
-      this.mToolbar = document.getElementById(this.getAttribute("tabtoolbar"));
 
       this.mCollapseToolbar = document.getElementById(
         this.getAttribute("collapsetoolbar")
@@ -452,12 +376,6 @@
 
       this._dragTime = 0;
 
-      this.mTabMinWidth = 100;
-
-      this.mTabMaxWidth = 250;
-
-      this.mTabClipWidth = 140;
-
       this._mAutoHide = false;
 
       this.mAllTabsButton = document.getElementById(
@@ -474,66 +392,11 @@
       this._animateDelay = 25;
 
       this._animatePercents = [
-        1.0,
-        0.85,
-        0.8,
-        0.75,
-        0.71,
-        0.68,
-        0.65,
-        0.62,
-        0.59,
-        0.57,
-        0.54,
-        0.52,
-        0.5,
-        0.47,
-        0.45,
-        0.44,
-        0.42,
-        0.4,
-        0.38,
-        0.37,
-        0.35,
-        0.34,
-        0.32,
-        0.31,
-        0.3,
-        0.29,
-        0.28,
-        0.27,
-        0.26,
-        0.25,
-        0.24,
-        0.23,
-        0.23,
-        0.22,
-        0.22,
-        0.21,
-        0.21,
-        0.21,
-        0.2,
-        0.2,
-        0.2,
-        0.2,
-        0.2,
-        0.2,
-        0.2,
-        0.2,
-        0.19,
-        0.19,
-        0.19,
-        0.18,
-        0.18,
-        0.17,
-        0.17,
-        0.16,
-        0.15,
-        0.14,
-        0.13,
-        0.11,
-        0.09,
-        0.06,
+        1.0, 0.85, 0.8, 0.75, 0.71, 0.68, 0.65, 0.62, 0.59, 0.57, 0.54, 0.52,
+        0.5, 0.47, 0.45, 0.44, 0.42, 0.4, 0.38, 0.37, 0.35, 0.34, 0.32, 0.31,
+        0.3, 0.29, 0.28, 0.27, 0.26, 0.25, 0.24, 0.23, 0.23, 0.22, 0.22, 0.21,
+        0.21, 0.21, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.19, 0.19, 0.19,
+        0.18, 0.18, 0.17, 0.17, 0.16, 0.15, 0.14, 0.13, 0.11, 0.09, 0.06,
       ];
 
       this.mTabMinWidth = Services.prefs.getIntPref("mail.tabs.tabMinWidth");
@@ -543,10 +406,9 @@
 
       if (this.mAutoHide) {
         this.mCollapseToolbar.collapsed = true;
+        document.documentElement.setAttribute("tabbarhidden", "true");
       }
 
-      this.arrowScrollbox.firstElementChild.minWidth = this.mTabMinWidth;
-      this.arrowScrollbox.firstElementChild.maxWidth = this.mTabMaxWidth;
       this._updateCloseButtons();
 
       Services.prefs.addObserver("mail.tabs.", this._prefObserver);
@@ -577,6 +439,27 @@
       this.addEventListener("TabSelect", event => {
         this._handleTabSelect();
       });
+      XPCOMUtils.defineLazyPreferenceGetter(
+        this,
+        "_tabMinWidthPref",
+        "mail.tabs.tabMinWidth",
+        null,
+        (pref, prevValue, newValue) => (this._tabMinWidth = newValue),
+        newValue => {
+          const LIMIT = 50;
+          return Math.max(newValue, LIMIT);
+        }
+      );
+      this._tabMinWidth = this._tabMinWidthPref;
+
+      XPCOMUtils.defineLazyPreferenceGetter(
+        this,
+        "_tabMaxWidthPref",
+        "mail.tabs.tabMaxWidth",
+        null,
+        (pref, prevValue, newValue) => (this._tabMaxWidth = newValue)
+      );
+      this._tabMaxWidth = this._tabMaxWidthPref;
     }
 
     get tabbox() {
@@ -645,8 +528,8 @@
     }
 
     _updateCloseButtons() {
-      let width = this.arrowScrollbox.firstElementChild.getBoundingClientRect()
-        .width;
+      let width =
+        this.arrowScrollbox.firstElementChild.getBoundingClientRect().width;
       // 0 width is an invalid value and indicates
       // an item without display, so ignore.
       if (width > this.mTabClipWidth || width == 0) {
@@ -812,6 +695,13 @@
       }
 
       return tabs.length;
+    }
+
+    set _tabMinWidth(val) {
+      this.arrowScrollbox.style.setProperty("--tab-min-width", `${val}px`);
+    }
+    set _tabMaxWidth(val) {
+      this.arrowScrollbox.style.setProperty("--tab-max-width", `${val}px`);
     }
 
     disconnectedCallback() {

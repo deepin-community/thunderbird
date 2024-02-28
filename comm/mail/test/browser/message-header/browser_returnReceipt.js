@@ -14,6 +14,7 @@ var {
   be_in_folder,
   create_folder,
   create_message,
+  get_about_message,
   mc,
   select_click_row,
 } = ChromeUtils.import(
@@ -28,26 +29,26 @@ var folder;
 var kBoxId = "mail-notification-top";
 var kNotificationValue = "mdnRequested";
 
-add_task(function setupModule(module) {
-  folder = create_folder("ReturnReceiptTest");
+add_setup(async function () {
+  folder = await create_folder("ReturnReceiptTest");
 
   // Create a message that requests a return receipt.
   let msg0 = create_message({
     from: ["Ake", "ake@example.com"],
     clobberHeaders: { "Disposition-Notification-To": "ake@example.com" },
   });
-  add_message_to_folder(folder, msg0);
+  await add_message_to_folder([folder], msg0);
 
   // ... and one that doesn't request a return receipt.
   let msg1 = create_message();
-  add_message_to_folder(folder, msg1);
+  await add_message_to_folder([folder], msg1);
 
   // Create a message that requests a return receipt to a different address.
   let msg2 = create_message({
     from: ["Mimi", "me@example.org"],
     clobberHeaders: { "Disposition-Notification-To": "other@example.com" },
   });
-  add_message_to_folder(folder, msg2);
+  await add_message_to_folder([folder], msg2);
 
   // Create a message that requests a return receipt to different addresses.
   let msg3 = create_message({
@@ -56,14 +57,14 @@ add_task(function setupModule(module) {
       "Disposition-Notification-To": "ex1@example.com, ex2@example.com",
     },
   });
-  add_message_to_folder(folder, msg3);
+  await add_message_to_folder([folder], msg3);
 
   // Create a message that requests a return receipt using non-standard header.
   let msg4 = create_message({
     from: ["Ake", "ake@example.com"],
     clobberHeaders: { "Return-Receipt-To": "ake@example.com" },
   });
-  add_message_to_folder(folder, msg4);
+  await add_message_to_folder([folder], msg4);
 
   // Create a message that requests a return receipt to a different address
   // using non-standard header.
@@ -71,7 +72,7 @@ add_task(function setupModule(module) {
     from: ["Mimi", "me@example.org"],
     clobberHeaders: { "Return-Receipt-To": "other@example.com" },
   });
-  add_message_to_folder(folder, msg5);
+  await add_message_to_folder([folder], msg5);
 
   // Create a message that requests a return receipt to different addresses
   // using non-standard header.
@@ -79,12 +80,13 @@ add_task(function setupModule(module) {
     from: ["Bobby", "bob@example.org"],
     clobberHeaders: { "Return-Receipt-To": "ex1@example.com, ex2@example.com" },
   });
-  add_message_to_folder(folder, msg6);
+  await add_message_to_folder([folder], msg6);
+
+  await be_in_folder(folder);
 });
 
 /** Utility to select a message. */
 function gotoMsg(row) {
-  be_in_folder(folder);
   let curMessage = select_click_row(row);
   assert_selected_and_displayed(mc, curMessage);
 }
@@ -93,14 +95,19 @@ function gotoMsg(row) {
  * Utility to make sure the MDN bar is shown / not shown.
  */
 function assert_mdn_shown(shouldShow) {
-  assert_notification_displayed(mc, kBoxId, kNotificationValue, shouldShow);
+  assert_notification_displayed(
+    get_about_message(),
+    kBoxId,
+    kNotificationValue,
+    shouldShow
+  );
 }
 
 /**
  * Utility function to make sure the notification contains a certain text.
  */
 function assert_mdn_text_contains(text, shouldContain) {
-  let nb = mc.window.document.getElementById(kBoxId);
+  let nb = get_about_message().document.getElementById(kBoxId);
   let box = nb.querySelector(".notificationbox-stack")._notificationBox;
   let notificationText = box.currentNotification.messageText.textContent;
   if (shouldContain && !notificationText.includes(text)) {
@@ -126,6 +133,7 @@ function assert_mdn_text_contains(text, shouldContain) {
  * and Return-Receipt-To isn't set.
  */
 add_task(function test_no_mdn_for_normal_msgs() {
+  gotoMsg(0); // TODO this shouldn't be needed but the selection goes to 0 on focus.
   gotoMsg(1); // This message doesn't request a return receipt.
   assert_mdn_shown(false);
 });

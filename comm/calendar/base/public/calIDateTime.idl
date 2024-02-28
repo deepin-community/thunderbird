@@ -158,6 +158,11 @@ interface calIDateTime : nsISupports
   AUTF8String toString();
 
   /**
+   * Returns a string representation of this instance suitable for JSON.
+   */
+  AUTF8String toJSON();
+
+  /**
    * Return a new calIDateTime instance that's the result of
    * converting this one into the given timezone.  Valid values
    * for aTimezone are the same as the timezone field.  If
@@ -220,13 +225,4 @@ interface calIDateTime : nsISupports
    * appropriate and sets the timezone to either UTC or floating.
    */
   attribute ACString icalString;
-};
-
-/** Libical specific interfaces */
-
-[ptr] native icaltimetypeptr(struct icaltimetype);
-[builtinclass,scriptable,uuid(04139dff-a6f0-446d-9aec-2062df887ef2)]
-interface calIDateTimeLibical : calIDateTime
-{
-  [noscript,notxpcom] void toIcalTime(in icaltimetypeptr itt);
 };

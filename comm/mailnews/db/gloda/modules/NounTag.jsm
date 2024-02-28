@@ -9,6 +9,9 @@ const { MailServices } = ChromeUtils.import(
 );
 
 const { Gloda } = ChromeUtils.import("resource:///modules/gloda/Gloda.jsm");
+const { GlodaConstants } = ChromeUtils.import(
+  "resource:///modules/gloda/GlodaConstants.jsm"
+);
 
 /**
  * @namespace Tag noun provider.
@@ -24,6 +27,7 @@ var TagNoun = {
   _tagList: null,
 
   _init() {
+    // This reference can be substituted for testing purposes.
     this._msgTagService = MailServices.tags;
     this._updateTagMap();
   },
@@ -90,4 +94,4 @@ var TagNoun = {
 };
 
 TagNoun._init();
-Gloda.defineNoun(TagNoun, Gloda.NOUN_TAG);
+Gloda.defineNoun(TagNoun, GlodaConstants.NOUN_TAG);

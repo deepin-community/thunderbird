@@ -14,15 +14,9 @@ connection-dns-over-https-url-custom =
     .accesskey = C
     .tooltiptext = 輸入您想要用來解析 DNS over HTTPS 的網址
 connection-dns-over-https-custom-label = 自訂
-connection-dialog-window =
+connection-dialog-window2 =
     .title = 連線設定
-    .style =
-        { PLATFORM() ->
-            [macos] width: 44em !important
-           *[other] width: 49em !important
-        }
-connection-disable-extension =
-    .label = 停用擴充套件
+connection-dialog-title = 連線設定
 disable-extension-button = 停用擴充套件
 # Variables:
 #   $name (String) - The extension that is controlling the proxy settings.

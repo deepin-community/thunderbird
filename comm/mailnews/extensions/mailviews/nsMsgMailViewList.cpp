@@ -8,12 +8,11 @@
 #include "nsIMsgFilterService.h"
 #include "nsIMsgMailSession.h"
 #include "nsIMsgSearchTerm.h"
-#include "nsMsgBaseCID.h"
 #include "nsAppDirectoryServiceDefs.h"
 #include "nsDirectoryServiceUtils.h"
 #include "nsIFile.h"
 #include "nsComponentManagerUtils.h"
-#include "mozilla/Services.h"
+#include "mozilla/Components.h"
 #include "nsIMsgFilter.h"
 
 #define kDefaultViewPeopleIKnow "People I Know"
@@ -48,7 +47,7 @@ NS_IMETHODIMP nsMsgMailView::GetPrettyName(char16_t** aMailViewName) {
   nsresult rv = NS_OK;
   if (!mBundle) {
     nsCOMPtr<nsIStringBundleService> bundleService =
-        mozilla::services::GetStringBundleService();
+        mozilla::components::StringBundle::Service();
     NS_ENSURE_TRUE(bundleService, NS_ERROR_UNEXPECTED);
     bundleService->CreateBundle(
         "chrome://messenger/locale/mailviews.properties",
@@ -204,7 +203,7 @@ nsresult nsMsgMailViewList::LoadMailViews() {
       NS_GetSpecialDirectory(NS_APP_USER_PROFILE_50_DIR, getter_AddRefs(file));
   NS_ENSURE_SUCCESS(rv, rv);
 
-  rv = file->AppendNative(nsDependentCString("mailViews.dat"));
+  rv = file->AppendNative("mailViews.dat"_ns);
 
   // if the file doesn't exist, we should try to get it from the defaults
   // directory and copy it over
@@ -212,13 +211,13 @@ nsresult nsMsgMailViewList::LoadMailViews() {
   file->Exists(&exists);
   if (!exists) {
     nsCOMPtr<nsIMsgMailSession> mailSession =
-        do_GetService(NS_MSGMAILSESSION_CONTRACTID, &rv);
+        do_GetService("@mozilla.org/messenger/services/session;1", &rv);
     NS_ENSURE_SUCCESS(rv, rv);
     nsCOMPtr<nsIFile> defaultMessagesFile;
     nsCOMPtr<nsIFile> profileDir;
     rv = mailSession->GetDataFilesDir("messenger",
                                       getter_AddRefs(defaultMessagesFile));
-    rv = defaultMessagesFile->AppendNative(nsDependentCString("mailViews.dat"));
+    rv = defaultMessagesFile->AppendNative("mailViews.dat"_ns);
 
     // get the profile directory
     rv = NS_GetSpecialDirectory(NS_APP_USER_PROFILE_50_DIR,
@@ -234,7 +233,7 @@ nsresult nsMsgMailViewList::LoadMailViews() {
   // a data structure we wish to give to our consumers.
 
   nsCOMPtr<nsIMsgFilterService> filterService =
-      do_GetService(NS_MSGFILTERSERVICE_CONTRACTID, &rv);
+      do_GetService("@mozilla.org/messenger/services/filters;1", &rv);
   nsCOMPtr<nsIMsgFilterList> mfilterList;
 
   rv = filterService->OpenFilterList(file, nullptr, nullptr,

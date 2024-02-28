@@ -6,8 +6,7 @@ import {
   isOriginalId,
   isGeneratedId,
   originalToGeneratedId,
-} from "devtools-source-map";
-import { uniqBy, zip } from "lodash";
+} from "devtools/client/shared/source-map-loader/index";
 
 import {
   getSource,
@@ -19,21 +18,27 @@ import {
 import { makeBreakpointId } from "../../utils/breakpoint";
 import { memoizeableAction } from "../../utils/memoizableAction";
 import { fulfilled } from "../../utils/async-value";
-import { loadSourceActorBreakpointColumns } from "../source-actors";
+import {
+  debuggerToSourceMapLocation,
+  sourceMapToDebuggerLocation,
+  createLocation,
+} from "../../utils/location";
 
-async function mapLocations(generatedLocations, { sourceMaps }) {
-  if (generatedLocations.length == 0) {
+async function mapLocations(generatedLocations, { getState, sourceMapLoader }) {
+  if (!generatedLocations.length) {
     return [];
   }
 
-  const originalLocations = await sourceMaps.getOriginalLocations(
-    generatedLocations
+  const originalLocations = await sourceMapLoader.getOriginalLocations(
+    generatedLocations.map(debuggerToSourceMapLocation)
   );
-
-  return zip(
-    originalLocations,
-    generatedLocations
-  ).map(([location, generatedLocation]) => ({ location, generatedLocation }));
+  return originalLocations.map((location, index) => ({
+    // If location is null, this particular location doesn't map to any original source.
+    location: location
+      ? sourceMapToDebuggerLocation(getState(), location)
+      : generatedLocations[index],
+    generatedLocation: generatedLocations[index],
+  }));
 }
 
 // Filter out positions, that are not in the original source Id
@@ -44,22 +49,39 @@ function filterBySource(positions, sourceId) {
   return positions.filter(position => position.location.sourceId == sourceId);
 }
 
+/**
+ * Merge positions that refer to duplicated positions.
+ * Some sourcemaped positions might refer to the exact same source/line/column triple.
+ *
+ * @param {Array<{location, generatedLocation}>} positions: List of possible breakable positions
+ * @returns {Array<{location, generatedLocation}>} A new, filtered array.
+ */
 function filterByUniqLocation(positions) {
-  return uniqBy(positions, ({ location }) => makeBreakpointId(location));
+  const handledBreakpointIds = new Set();
+  return positions.filter(({ location }) => {
+    const breakpointId = makeBreakpointId(location);
+    if (handledBreakpointIds.has(breakpointId)) {
+      return false;
+    }
+
+    handledBreakpointIds.add(breakpointId);
+    return true;
+  });
 }
 
 function convertToList(results, source) {
-  const { id, url } = source;
   const positions = [];
 
   for (const line in results) {
     for (const column of results[line]) {
-      positions.push({
-        line: Number(line),
-        column,
-        sourceId: id,
-        sourceUrl: url,
-      });
+      positions.push(
+        createLocation({
+          line: Number(line),
+          column,
+          source,
+          sourceUrl: source.url,
+        })
+      );
     }
   }
 
@@ -88,22 +110,16 @@ function groupByLine(results, sourceId, line) {
   return positions;
 }
 
-async function _setBreakpointPositions(cx, sourceId, line, thunkArgs) {
-  const { client, dispatch, getState, sourceMaps } = thunkArgs;
-  let generatedSource = getSource(getState(), sourceId);
-  if (!generatedSource) {
-    return;
-  }
-
+async function _setBreakpointPositions(cx, location, thunkArgs) {
+  const { client, dispatch, getState, sourceMapLoader } = thunkArgs;
   const results = {};
-  if (isOriginalId(sourceId)) {
-    // Explicitly typing ranges is required to work around the following issue
-    // https://github.com/facebook/flow/issues/5294
-    const ranges = await sourceMaps.getGeneratedRangesForOriginal(
-      sourceId,
+  let generatedSource = location.source;
+  if (isOriginalId(location.sourceId)) {
+    const ranges = await sourceMapLoader.getGeneratedRangesForOriginal(
+      location.sourceId,
       true
     );
-    const generatedSourceId = originalToGeneratedId(sourceId);
+    const generatedSourceId = originalToGeneratedId(location.sourceId);
     generatedSource = getSourceFromId(getState(), generatedSourceId);
 
     // Note: While looping here may not look ideal, in the vast majority of
@@ -121,7 +137,7 @@ async function _setBreakpointPositions(cx, sourceId, line, thunkArgs) {
       }
 
       const actorBps = await Promise.all(
-        getSourceActorsForSource(getState(), generatedSource.id).map(actor =>
+        getSourceActorsForSource(getState(), generatedSourceId).map(actor =>
           client.getSourceActorBreakpointPositions(actor, range)
         )
       );
@@ -139,13 +155,23 @@ async function _setBreakpointPositions(cx, sourceId, line, thunkArgs) {
       }
     }
   } else {
+    const { line } = location;
     if (typeof line !== "number") {
       throw new Error("Line is required for generated sources");
     }
 
     const actorColumns = await Promise.all(
-      getSourceActorsForSource(getState(), generatedSource.id).map(actor =>
-        dispatch(loadSourceActorBreakpointColumns({ id: actor.id, line, cx }))
+      getSourceActorsForSource(getState(), location.sourceId).map(
+        async actor => {
+          const positions = await client.getSourceActorBreakpointPositions(
+            actor,
+            {
+              start: { line: line, column: 0 },
+              end: { line: line + 1, column: 0 },
+            }
+          );
+          return positions[line] || [];
+        }
       )
     );
 
@@ -157,12 +183,12 @@ async function _setBreakpointPositions(cx, sourceId, line, thunkArgs) {
   let positions = convertToList(results, generatedSource);
   positions = await mapLocations(positions, thunkArgs);
 
-  positions = filterBySource(positions, sourceId);
+  positions = filterBySource(positions, location.sourceId);
   positions = filterByUniqLocation(positions);
-  positions = groupByLine(positions, sourceId, line);
+  positions = groupByLine(positions, location.sourceId, location.line);
 
-  const source = getSource(getState(), sourceId);
-  // NOTE: it's possible that the source was removed during a navigate
+  const source = getSource(getState(), location.sourceId);
+  // NOTE: it's possible that the source was removed during a navigation
   if (!source) {
     return;
   }
@@ -188,16 +214,46 @@ function generatedSourceActorKey(state, sourceId) {
   return [sourceId, ...actors].join(":");
 }
 
+/**
+ * This method will force retrieving the breakable positions for a given source, on a given line.
+ * If this data has already been computed, it will returned the cached data.
+ *
+ * For original sources, this will query the SourceMap worker.
+ * For generated sources, this will query the DevTools server and the related source actors.
+ *
+ * @param Object options
+ *        Dictionary object with many arguments:
+ * @param String options.sourceId
+ *        The source we want to fetch breakable positions
+ * @param Number options.line
+ *        The line we want to know which columns are breakable.
+ *        (note that this seems to be optional for original sources)
+ * @return Array<Object>
+ *         The list of all breakable positions, each object of this array will be like this:
+ *         {
+ *           line: Number
+ *           column: Number
+ *           sourceId: String
+ *           sourceUrl: String
+ *         }
+ */
 export const setBreakpointPositions = memoizeableAction(
   "setBreakpointPositions",
   {
-    getValue: ({ sourceId, line }, { getState }) => {
-      const positions = getBreakpointPositionsForSource(getState(), sourceId);
+    getValue: ({ location }, { getState }) => {
+      const positions = getBreakpointPositionsForSource(
+        getState(),
+        location.sourceId
+      );
       if (!positions) {
         return null;
       }
 
-      if (isGeneratedId(sourceId) && line && !positions[line]) {
+      if (
+        isGeneratedId(location.sourceId) &&
+        location.line &&
+        !positions[location.line]
+      ) {
         // We always return the full position dataset, but if a given line is
         // not available, we treat the whole set as loading.
         return null;
@@ -205,11 +261,13 @@ export const setBreakpointPositions = memoizeableAction(
 
       return fulfilled(positions);
     },
-    createKey({ sourceId, line }, { getState }) {
-      const key = generatedSourceActorKey(getState(), sourceId);
-      return isGeneratedId(sourceId) && line ? `${key}-${line}` : key;
+    createKey({ location }, { getState }) {
+      const key = generatedSourceActorKey(getState(), location.sourceId);
+      return isGeneratedId(location.sourceId) && location.line
+        ? `${key}-${location.line}`
+        : key;
     },
-    action: async ({ cx, sourceId, line }, thunkArgs) =>
-      _setBreakpointPositions(cx, sourceId, line, thunkArgs),
+    action: async ({ cx, location }, thunkArgs) =>
+      _setBreakpointPositions(cx, location, thunkArgs),
   }
 );

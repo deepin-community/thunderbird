@@ -3,7 +3,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 const { cal } = ChromeUtils.import("resource:///modules/calendar/calUtils.jsm");
-const { XPCOMUtils } = ChromeUtils.import("resource://gre/modules/XPCOMUtils.jsm");
+
 const { mailTestUtils } = ChromeUtils.import(
   "resource://testing-common/mailnews/MailTestUtils.jsm"
 );
@@ -19,13 +19,11 @@ XPCOMUtils.defineLazyModuleGetters(this, {
  */
 add_task(async function testOpenEvent() {
   let uri = Services.io.newURI("moz-memory-calendar://");
-  let manager = cal.getCalendarManager();
-  let calendar = manager.createCalendar("memory", uri);
-  let calendarProxy = cal.async.promisifyCalendar(calendar);
+  let calendar = cal.manager.createCalendar("memory", uri);
 
   calendar.name = "Unifinder Test";
-  manager.registerCalendar(calendar);
-  registerCleanupFunction(() => manager.removeCalendar(calendar));
+  cal.manager.registerCalendar(calendar);
+  registerCleanupFunction(() => cal.manager.removeCalendar(calendar));
 
   let now = cal.dtz.now();
 
@@ -59,7 +57,7 @@ add_task(async function testOpenEvent() {
   }
 
   for (let event of [noRepeatEvent, repeatEvent]) {
-    await calendarProxy.addItem(event);
+    await calendar.addItem(event);
 
     let dialogWindowPromise = CalendarTestUtils.waitForEventDialog();
     let tree = document.querySelector("#unifinder-search-results-tree");
@@ -73,6 +71,6 @@ add_task(async function testOpenEvent() {
     );
 
     await BrowserTestUtils.closeWindow(dialogWindow);
-    await calendarProxy.deleteItem(event);
+    await calendar.deleteItem(event);
   }
 });

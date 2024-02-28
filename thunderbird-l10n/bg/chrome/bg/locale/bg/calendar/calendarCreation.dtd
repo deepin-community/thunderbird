@@ -24,29 +24,28 @@
 <!-- Below are new strings for the revised new calendar dialog. The above strings should be
     removed/renamed later on -->
 
+<!ENTITY sourcetabs.other.label  "Друго">
 
+<!ENTITY buttons.create.label "Създаване на нов календар">
+<!ENTITY buttons.create.accesskey "к">
 
+<!ENTITY buttons.find.label "Намиране на календар">
+<!ENTITY buttons.find.accesskey "Н">
 
+<!ENTITY buttons.back.label "Назад">
+<!ENTITY buttons.back.accesskey "З">
 
+<!ENTITY buttons.subscribe.label "Абониране">
+<!ENTITY buttons.subscribe.accesskey "А">
 
+<!ENTITY calendartype.label "Тип календар:">
 <!ENTITY location.label "Местоположение:">
+<!ENTITY location.placeholder "URL или име на хост на сървъра на календара">
 
+<!ENTITY network.nocredentials.label "Това местоположение не изисква идентификационни данни">
+<!ENTITY network.loading.description "Моля, изчакайте, докато вашите календари бъдат открити.">
+<!ENTITY network.notfound.description "Няма календари на това място. Моля, проверете настройките си.">
+<!ENTITY network.authfail.description "Идентификационните данни, които сте въвели, не бяха приети. Моля, проверете настройките си.">
 
-
-<!ENTITY sourcetabs.other.label  "Other">
-<!ENTITY buttons.create.label "Create Calendar">
-<!ENTITY buttons.create.accesskey "r">
-<!ENTITY buttons.find.label "Find Calendars">
-<!ENTITY buttons.find.accesskey "F">
-<!ENTITY buttons.back.label "Back">
-<!ENTITY buttons.back.accesskey "B">
-<!ENTITY buttons.subscribe.label "Subscribe">
-<!ENTITY buttons.subscribe.accesskey "S">
-<!ENTITY calendartype.label "Calendar Type:">
-<!ENTITY location.placeholder "URL or host name of the calendar server">
-<!ENTITY network.nocredentials.label "This location doesn't require credentials">
-<!ENTITY network.loading.description "Please wait while your calendars are being discovered.">
-<!ENTITY network.notfound.description "Could not find calendars at this location. Please check your settings.">
-<!ENTITY network.authfail.description "The credentials you have entered were not accepted. Please check your settings.">
-<!ENTITY network.subscribe.single.description "Please select the calendars you would like to subscribe to.">
-<!ENTITY network.subscribe.multiple.description "Multiple calendar types are available for this location. Please select the calendar type, then mark the calendars you would like to subscribe to.">
+<!ENTITY network.subscribe.single.description "Моля, изберете календарите, за които искате да се абонирате.">
+<!ENTITY network.subscribe.multiple.description "За това местоположение са налични множество типове календари. Моля, изберете типа календар, след което маркирайте календарите, за които искате да се абонирате.">

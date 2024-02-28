@@ -5,9 +5,10 @@
 var EXPORTED_SYMBOLS = ["CalAlarmService"];
 
 var { cal } = ChromeUtils.import("resource:///modules/calendar/calUtils.jsm");
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-var { PromiseUtils } = ChromeUtils.import("resource://gre/modules/PromiseUtils.jsm");
-var { XPCOMUtils } = ChromeUtils.import("resource://gre/modules/XPCOMUtils.jsm");
+var { XPCOMUtils } = ChromeUtils.importESModule("resource://gre/modules/XPCOMUtils.sys.mjs");
+
+const lazy = {};
+ChromeUtils.defineModuleGetter(lazy, "CalDateTime", "resource:///modules/CalDateTime.jsm");
 
 var kHoursBetweenUpdates = 6;
 
@@ -26,6 +27,53 @@ function newTimerWithCallback(aCallback, aDelay, aRepeating) {
   return timer;
 }
 
+/**
+ * Keeps track of seemingly immutable items with alarms that we can't dismiss.
+ * Some servers quietly discard our modifications to repeating events which will
+ * cause dismissed alarms to re-appear if we do not keep track.
+ *
+ * We track the items by their "hashId" property storing it in the calendar
+ * property "alarms.ignored".
+ */
+const IgnoredAlarmsStore = {
+  /**
+   * @type {number}
+   */
+  maxItemsPerCalendar: 1500,
+
+  _getCache(item) {
+    return item.calendar.getProperty("alarms.ignored")?.split(",") || [];
+  },
+
+  /**
+   * Adds an item to the store. No alarms will be created for this item again.
+   *
+   * @param {calIItemBase} item
+   */
+  add(item) {
+    let cache = this._getCache(item);
+    let id = item.parentItem.hashId;
+    if (!cache.includes(id)) {
+      if (cache.length >= this.maxItemsPerCalendar) {
+        cache[0] = id;
+      } else {
+        cache.push(id);
+      }
+    }
+    item.calendar.setProperty("alarms.ignored", cache.join(","));
+  },
+
+  /**
+   * Returns true if the item's hashId is in the store.
+   *
+   * @param {calIItemBase} item
+   * @returns {boolean}
+   */
+  has(item) {
+    return this._getCache(item).includes(item.parentItem.hashId);
+  },
+};
+
 function CalAlarmService() {
   this.wrappedJSObject = this;
 
@@ -39,7 +87,7 @@ function CalAlarmService() {
     "gNotificationsTimes",
     "calendar.notifications.times",
     "",
-    () => this.initAlarms(cal.getCalendarManager().getCalendars())
+    () => this.initAlarms(cal.manager.getCalendars())
   );
 
   this.calendarObserver = {
@@ -116,6 +164,7 @@ function CalAlarmService() {
       // there may still be dangling items (-> alarm dialog),
       // dismissing those alarms may write data...
       this.alarmService.unobserveCalendar(aCalendar);
+      delete this.alarmService.mLoadedCalendars[aCalendar.id];
     },
     onCalendarDeleting(aCalendar) {
       this.alarmService.unobserveCalendar(aCalendar);
@@ -179,7 +228,7 @@ CalAlarmService.prototype = {
     this.mTimezone = aTimezone;
   },
 
-  snoozeAlarm(aItem, aAlarm, aDuration) {
+  async snoozeAlarm(aItem, aAlarm, aDuration) {
     // Right now we only support snoozing all alarms for the given item for
     // aDuration.
 
@@ -194,25 +243,31 @@ CalAlarmService.prototype = {
     alarmTime = alarmTime.clone();
     alarmTime.addDuration(aDuration);
 
-    if (aItem.parentItem == aItem) {
-      newEvent.setProperty("X-MOZ-SNOOZE-TIME", alarmTime.icalString);
-    } else {
+    let propName = "X-MOZ-SNOOZE-TIME";
+    if (aItem.parentItem != aItem) {
       // This is the *really* hard case where we've snoozed a single
       // instance of a recurring event.  We need to not only know that
       // there was a snooze, but also which occurrence was snoozed.  Part
       // of me just wants to create a local db of snoozes here...
-      newEvent.setProperty(
-        "X-MOZ-SNOOZE-TIME-" + aItem.recurrenceId.nativeTime,
-        alarmTime.icalString
-      );
+      propName = "X-MOZ-SNOOZE-TIME-" + aItem.recurrenceId.nativeTime;
     }
+    newEvent.setProperty(propName, alarmTime.icalString);
+
     // calling modifyItem will cause us to get the right callback
     // and update the alarm properly
-    return newEvent.calendar.modifyItem(newEvent, aItem.parentItem, null);
+    let modifiedItem = await newEvent.calendar.modifyItem(newEvent, aItem.parentItem);
+
+    if (modifiedItem.getProperty(propName) == alarmTime.icalString) {
+      return;
+    }
+
+    // The server did not persist our changes for some reason.
+    // Include the item in the ignored list so we skip displaying alarms for
+    // this item in the future.
+    IgnoredAlarmsStore.add(aItem);
   },
 
-  dismissAlarm(aItem, aAlarm) {
-    let rv;
+  async dismissAlarm(aItem, aAlarm) {
     if (cal.acl.isCalendarWritable(aItem.calendar) && cal.acl.userCanModifyItem(aItem)) {
       let now = nowUTC();
       // We want the parent item, otherwise we're going to accidentally
@@ -228,16 +283,23 @@ CalAlarmService.prototype = {
       } else {
         newParent.deleteProperty("X-MOZ-SNOOZE-TIME");
       }
-      rv = newParent.calendar.modifyItem(newParent, oldParent, null);
-    } else {
-      // if the calendar of the item is r/o, we simple remove the alarm
-      // from the list without modifying the item, so this works like
-      // effectively dismissing from a user's pov, since the alarm neither
-      // popups again in the current user session nor will be added after
-      // next restart, since it is missed then already
-      this.removeAlarmsForItem(aItem);
+
+      let modifiedItem = await newParent.calendar.modifyItem(newParent, oldParent);
+      if (modifiedItem.alarmLastAck && now.compare(modifiedItem.alarmLastAck) == 0) {
+        return;
+      }
+
+      // The server did not persist our changes for some reason.
+      // Include the item in the ignored list so we skip displaying alarms for
+      // this item in the future.
+      IgnoredAlarmsStore.add(aItem);
     }
-    return rv;
+    // if the calendar of the item is r/o, we simple remove the alarm
+    // from the list without modifying the item, so this works like
+    // effectively dismissing from a user's pov, since the alarm neither
+    // popups again in the current user session nor will be added after
+    // next restart, since it is missed then already
+    this.removeAlarmsForItem(aItem);
   },
 
   addObserver(aObserver) {
@@ -262,9 +324,9 @@ CalAlarmService.prototype = {
     // Tell people that we're alive so they can start monitoring alarms.
     Services.obs.notifyObservers(null, "alarm-service-startup");
 
-    cal.getCalendarManager().addObserver(this.calendarManagerObserver);
+    cal.manager.addObserver(this.calendarManagerObserver);
 
-    for (let calendar of cal.getCalendarManager().getCalendars()) {
+    for (let calendar of cal.manager.getCalendars()) {
       this.observeCalendar(calendar);
     }
 
@@ -294,7 +356,7 @@ CalAlarmService.prototype = {
         end.hour += kHoursBetweenUpdates;
         this.alarmService.mRangeEnd = end.getInTimezone(cal.dtz.UTC);
 
-        this.alarmService.findAlarms(cal.getCalendarManager().getCalendars(), start, until);
+        this.alarmService.findAlarms(cal.manager.getCalendars(), start, until);
       },
     };
     timerCallback.notify();
@@ -317,11 +379,10 @@ CalAlarmService.prototype = {
       this.mUpdateTimer = null;
     }
 
-    let calmgr = cal.getCalendarManager();
-    calmgr.removeObserver(this.calendarManagerObserver);
+    cal.manager.removeObserver(this.calendarManagerObserver);
 
     // Stop observing all calendars. This will also clear the timers.
-    for (let calendar of calmgr.getCalendars()) {
+    for (let calendar of cal.manager.getCalendars()) {
       this.unobserveCalendar(calendar);
     }
 
@@ -345,8 +406,9 @@ CalAlarmService.prototype = {
   },
 
   addAlarmsForItem(aItem) {
-    if (aItem.isTodo() && aItem.isCompleted) {
-      // If this is a task and it is completed, don't add the alarm.
+    if ((aItem.isTodo() && aItem.isCompleted) || IgnoredAlarmsStore.has(aItem)) {
+      // If this is a task and it is completed or the id is in the ignored list,
+      // don't add the alarm.
       return;
     }
 
@@ -380,7 +442,11 @@ CalAlarmService.prototype = {
         );
       }
 
-      if (snoozeDate && !(snoozeDate instanceof Ci.calIDateTime)) {
+      if (
+        snoozeDate &&
+        !(snoozeDate instanceof lazy.CalDateTime) &&
+        !(snoozeDate instanceof Ci.calIDateTime)
+      ) {
         snoozeDate = cal.createDateTime(snoozeDate);
       }
 
@@ -445,6 +511,7 @@ CalAlarmService.prototype = {
 
   /**
    * Get the timeouts before notifications are fired for an item.
+   *
    * @param {calIItemBase} item - A calendar item instance.
    * @returns {number[]} Timeouts of notifications in milliseconds in ascending order.
    */
@@ -499,6 +566,7 @@ CalAlarmService.prototype = {
 
   /**
    * Set up notification timers for an item.
+   *
    * @param {calIItemBase} item - A calendar item instance.
    */
   addNotificationForItem(item) {
@@ -523,6 +591,7 @@ CalAlarmService.prototype = {
 
   /**
    * Remove notification timers for an item.
+   *
    * @param {calIItemBase} item - A calendar item instance.
    */
   removeNotificationForItem(item) {
@@ -547,6 +616,7 @@ CalAlarmService.prototype = {
 
   /**
    * Remove the first notification timers for an item to release some memory.
+   *
    * @param {calIItemBase} item - A calendar item instance.
    */
   removeFiredNotificationTimer(item) {
@@ -660,74 +730,55 @@ CalAlarmService.prototype = {
     }
   },
 
-  findAlarms(aCalendars, aStart, aUntil) {
-    let getListener = {
-      QueryInterface: ChromeUtils.generateQI(["calIOperationListener"]),
-      alarmService: this,
-      addRemovePromise: PromiseUtils.defer(),
-      batchCount: 0,
-      results: false,
-      onOperationComplete(aCalendar, aStatus, aOperationType, aId, aDetail) {
-        this.addRemovePromise.promise.then(
-          aValue => {
-            // calendar has been loaded, so until now, onLoad events can be ignored:
-            this.alarmService.mLoadedCalendars[aCalendar.id] = true;
-
-            // notify observers that the alarms for the calendar have been loaded
-            this.alarmService.mObservers.notify("onAlarmsLoaded", [aCalendar]);
-          },
-          aReason => {
-            Cu.reportError("Promise was rejected: " + aReason);
-            this.alarmService.mLoadedCalendars[aCalendar.id] = true;
-            this.alarmService.mObservers.notify("onAlarmsLoaded", [aCalendar]);
-          }
-        );
-
-        // if no results were returned we still need to resolve the promise
-        if (!this.results) {
-          this.addRemovePromise.resolve();
-        }
-      },
-      onGetResult(aCalendar, aStatus, aItemType, aDetail, aItems) {
-        let promise = this.addRemovePromise;
-        this.batchCount++;
-        this.results = true;
-
-        cal.iterate.forEach(
-          aItems,
-          item => {
-            try {
-              this.alarmService.removeAlarmsForItem(item);
-              this.alarmService.addAlarmsForItem(item);
-            } catch (ex) {
-              promise.reject(ex);
-            }
-          },
-          () => {
-            if (--this.batchCount <= 0) {
-              promise.resolve();
-            }
-          }
-        );
-      },
-    };
-
+  async findAlarms(aCalendars, aStart, aUntil) {
     const calICalendar = Ci.calICalendar;
     let filter =
       calICalendar.ITEM_FILTER_COMPLETED_ALL |
       calICalendar.ITEM_FILTER_CLASS_OCCURRENCES |
       calICalendar.ITEM_FILTER_TYPE_ALL;
 
-    for (let calendar of aCalendars) {
-      // assuming that suppressAlarms does not change anymore until refresh:
-      if (!calendar.getProperty("suppressAlarms") && !calendar.getProperty("disabled")) {
+    await Promise.all(
+      aCalendars.map(async calendar => {
+        if (calendar.getProperty("suppressAlarms") && calendar.getProperty("disabled")) {
+          this.mLoadedCalendars[calendar.id] = true;
+          this.mObservers.notify("onAlarmsLoaded", [calendar]);
+          return;
+        }
+
+        // Assuming that suppressAlarms does not change anymore until next refresh.
         this.mLoadedCalendars[calendar.id] = false;
-        calendar.getItems(filter, 0, aStart, aUntil, getListener);
-      } else {
+
+        for await (let items of cal.iterate.streamValues(
+          calendar.getItems(filter, 0, aStart, aUntil)
+        )) {
+          await new Promise((resolve, reject) => {
+            cal.iterate.forEach(
+              items,
+              item => {
+                try {
+                  this.removeAlarmsForItem(item);
+                  this.addAlarmsForItem(item);
+                } catch (e) {
+                  console.error("Promise was rejected: " + e);
+                  this.mLoadedCalendars[calendar.id] = true;
+                  this.mObservers.notify("onAlarmsLoaded", [calendar]);
+                  reject(e);
+                }
+              },
+              () => {
+                resolve();
+              }
+            );
+          });
+        }
+
+        // The calendar has been loaded, so until now, onLoad events can be ignored.
         this.mLoadedCalendars[calendar.id] = true;
+
+        // Notify observers that the alarms for the calendar have been loaded.
         this.mObservers.notify("onAlarmsLoaded", [calendar]);
-      }
-    }
+      })
+    );
   },
 
   initAlarms(aCalendars) {
@@ -766,10 +817,7 @@ CalAlarmService.prototype = {
       // we need to exclude calendars which failed to load explicitly to
       // prevent the alaram dialog to stay opened after dismissing all
       // alarms if there is a network calendar that failed to load
-      let currentStatus = cal
-        .getCalendarManager()
-        .getCalendarById(calId)
-        .getProperty("currentStatus");
+      let currentStatus = cal.manager.getCalendarById(calId).getProperty("currentStatus");
       if (!this.mLoadedCalendars[calId] && Components.isSuccessCode(currentStatus)) {
         return true;
       }

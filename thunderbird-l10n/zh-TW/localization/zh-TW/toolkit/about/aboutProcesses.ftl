@@ -49,6 +49,7 @@ about-processes-socket-process = 網路（{ $pid }）
 about-processes-remote-sandbox-broker-process = 遠端沙盒溝通工具（{ $pid }）
 about-processes-fork-server-process = Fork 伺服器（{ $pid }）
 about-processes-preallocated-process = 預先分配（{ $pid }）
+about-processes-utility-process = 小工具（{ $pid }）
 # Unknown process names
 # Variables:
 #    $pid (String) The process id of this process, assigned by the OS.
@@ -61,10 +62,9 @@ about-processes-unknown-process = 其他: { $type }（{ $pid }）
 ##    $origin (String) The domain name for this process.
 
 about-processes-web-isolated-process = { $origin }（{ $pid }）
-about-processes-web-large-allocation-process = { $origin }（{ $pid }，大型）
+about-processes-web-serviceworker = { $origin }（{ $pid }, serviceworker）
 about-processes-with-coop-coep-process = { $origin }（{ $pid }，隔離跨來源）
 about-processes-web-isolated-process-private = { $origin } — 隱私（{ $pid }）
-about-processes-web-large-allocation-process-private = { $origin } — 隱私（{ $pid }，大型）
 about-processes-with-coop-coep-process-private = { $origin } — 隱私（{ $pid }，隔離跨來源）
 
 ## Details within processes
@@ -114,6 +114,18 @@ about-processes-frame-name-one = 子畫框: { $url }
 #   $shortUrl (String) The shared prefix for the subframes in the group.
 about-processes-frame-name-many = 子畫框（{ $number }）: { $shortUrl }
 
+## Utility process actor names
+
+about-processes-utility-actor-unknown = 未知執行者
+about-processes-utility-actor-audio-decoder-generic = 通用音訊解碼器
+about-processes-utility-actor-audio-decoder-applemedia = Apple Media 音訊解碼器
+about-processes-utility-actor-audio-decoder-wmf = Windows Media Framework 音訊解碼器
+about-processes-utility-actor-mf-media-engine = Windows Media Foundation Media Engine CDM
+# "Oracle" refers to an internal Firefox process and should be kept in English
+about-processes-utility-actor-js-oracle = JavaScript Oracle
+about-processes-utility-actor-windows-utils = Windows Utils
+about-processes-utility-actor-windows-file-dialog = Windows 檔案對話框
+
 ## Displaying CPU (percentage and total)
 ## Variables:
 ##    $percent (Number) The percentage of CPU used by the process or thread.
@@ -128,9 +140,13 @@ about-processes-cpu = { NUMBER($percent, maximumSignificantDigits: 2, style: "pe
     .title = 總 CPU 時間: { NUMBER($total, maximumFractionDigits: 0) }{ $unit }
 # Special case: data is not available yet.
 about-processes-cpu-user-and-kernel-not-ready = （測量中）
+# Special case: process or thread is almost idle (using less than 0.1% of a CPU core).
+# This case only occurs on Windows where the precision of the CPU times is low.
+about-processes-cpu-almost-idle = < 0.1%
+    .title = 總 CPU 時間: { NUMBER($total, maximumFractionDigits: 0) }{ $unit }
 # Special case: process or thread is currently idle.
-about-processes-cpu-idle = 閒置
-    .title = 總 CPU 時間: { NUMBER($total, maximumFractionDigits: 2) }{ $unit }
+about-processes-cpu-fully-idle = 閒置
+    .title = 總 CPU 時間: { NUMBER($total, maximumFractionDigits: 0) }{ $unit }
 
 ## Displaying Memory (total and delta)
 ## Variables:

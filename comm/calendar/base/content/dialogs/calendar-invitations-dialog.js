@@ -2,16 +2,12 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-/* exported onLoad, onUnload */
-
-/* globals invitationsText, MozXULElement, MozElements */ // From calendar-invitations-dialog.xhtml.
+/* globals MozXULElement, MozElements */ // From calendar-invitations-dialog.xhtml.
 
 var { cal } = ChromeUtils.import("resource:///modules/calendar/calUtils.jsm");
 
 // Wrap in a block to prevent leaking to window scope.
 {
-  const { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-
   class MozCalendarInvitationsRichlistitem extends MozElements.MozRichlistitem {
     constructor() {
       super();
@@ -209,66 +205,62 @@ var { cal } = ChromeUtils.import("resource:///modules/calendar/calUtils.jsm");
   });
 }
 
+window.addEventListener("DOMContentLoaded", onLoad);
+window.addEventListener("unload", onUnload);
+
 /**
  * Sets up the invitations dialog from the window arguments, retrieves the
  * invitations from the invitations manager.
  */
-function onLoad() {
-  let operationListener = {
-    QueryInterface: ChromeUtils.generateQI(["calIOperationListener"]),
-    onOperationComplete(aCalendar, aStatus, aOperationType, aId, aDetail) {
-      let updatingBox = document.getElementById("updating-box");
-      updatingBox.setAttribute("hidden", "true");
-      let richListBox = document.getElementById("invitations-listbox");
-      if (richListBox.getRowCount() > 0) {
-        richListBox.selectedIndex = 0;
-      } else {
-        let noInvitationsBox = document.getElementById("noinvitations-box");
-        noInvitationsBox.removeAttribute("hidden");
-      }
-    },
-    onGetResult(aCalendar, aStatus, aItemType, aDetail, aItems) {
-      if (!Components.isSuccessCode(aStatus)) {
-        return;
-      }
-      document.title = invitationsText + " (" + aItems.length + ")";
-      let updatingBox = document.getElementById("updating-box");
-      updatingBox.setAttribute("hidden", "true");
-      let richListBox = document.getElementById("invitations-listbox");
-      for (let item of aItems) {
-        let newNode = document.createXULElement("richlistitem", {
-          is: "calendar-invitations-richlistitem",
-        });
-        richListBox.appendChild(newNode);
-        newNode.calendarItem = item;
-      }
-    },
-  };
-
+async function onLoad() {
+  let title = document.title;
   let updatingBox = document.getElementById("updating-box");
   updatingBox.removeAttribute("hidden");
-
-  let args = window.arguments[0];
-  args.invitationsManager.getInvitations(operationListener, args.onLoadOperationListener);
-
   opener.setCursor("auto");
+
+  let { invitationsManager } = window.arguments[0];
+  let items = await cal.iterate.mapStream(invitationsManager.getInvitations(), chunk => {
+    document.title = title + " (" + chunk.length + ")";
+    let updatingBox = document.getElementById("updating-box");
+    updatingBox.setAttribute("hidden", "true");
+    let richListBox = document.getElementById("invitations-listbox");
+    for (let item of chunk) {
+      let newNode = document.createXULElement("richlistitem", {
+        is: "calendar-invitations-richlistitem",
+      });
+      richListBox.appendChild(newNode);
+      newNode.calendarItem = item;
+    }
+  });
+
+  invitationsManager.toggleInvitationsPanel(items);
+  updatingBox.setAttribute("hidden", "true");
+
+  let richListBox = document.getElementById("invitations-listbox");
+  if (richListBox.getRowCount() > 0) {
+    richListBox.selectedIndex = 0;
+  } else {
+    let noInvitationsBox = document.getElementById("noinvitations-box");
+    noInvitationsBox.removeAttribute("hidden");
+  }
 }
 
 /**
  * Cleans up the invitations dialog, cancels pending requests.
  */
-function onUnload() {
+async function onUnload() {
   let args = window.arguments[0];
-  args.requestManager.cancelPendingRequests();
+  return args.invitationsManager.cancelPendingRequests();
 }
 
 /**
  * Handler function to be called when the accept button is pressed.
  */
-document.addEventListener("dialogaccept", () => {
+document.addEventListener("dialogaccept", async () => {
   let args = window.arguments[0];
   fillJobQueue(args.queue);
-  args.invitationsManager.processJobQueue(args.queue, args.finishedCallBack);
+  await args.invitationsManager.processJobQueue(args.queue);
+  args.finishedCallBack();
 });
 
 /**
@@ -276,9 +268,7 @@ document.addEventListener("dialogaccept", () => {
  */
 document.addEventListener("dialogcancel", () => {
   let args = window.arguments[0];
-  if (args.finishedCallBack) {
-    args.finishedCallBack();
-  }
+  args.finishedCallBack();
 });
 
 /**

@@ -24,8 +24,6 @@
 <!ENTITY moveToNewWindow.accesskey "B">
 <!ENTITY newVirtualFolderCmd.label "Dossier virtuel…">
 <!ENTITY newVirtualFolderCmd.accesskey "v">
-<!ENTITY newOtherAccountsCmd.label "Autres comptes…">
-<!ENTITY newOtherAccountsCmd.accesskey "m">
 <!ENTITY newCreateEmailAccountCmd.label "Obtenir un nouveau compte courrier…">
 <!ENTITY newCreateEmailAccountCmd.accesskey "b">
 <!ENTITY newExistingEmailAccountCmd.label "Compte courrier existant…">
@@ -48,8 +46,6 @@
 <!ENTITY openMessageFileCmd.accesskey "O">
 <!ENTITY saveAsMenu.label "Enregistrer comme">
 <!ENTITY saveAsMenu.accesskey "s">
-<!ENTITY saveAsFileCmd.label "Fichier">
-<!ENTITY saveAsFileCmd.accesskey "F">
 <!ENTITY saveAsFileCmd.key "s">
 <!ENTITY saveAsTemplateCmd.label "Modèle">
 <!ENTITY saveAsTemplateCmd.accesskey "M">
@@ -280,7 +276,7 @@
 <!ENTITY findAgainCmd.key2 "VK_F3">
 <!ENTITY findPrevCmd.key "g">
 <!ENTITY findPrevCmd.key2 "VK_F3">
-<!ENTITY searchMailCmd.label "Rechercher dans le courrier">
+<!ENTITY searchMailCmd.label "Rechercher dans les messages…">
 <!ENTITY searchMailCmd.accesskey "c">
 <!ENTITY searchMailCmd.key "f">
 <!ENTITY glodaSearchCmd.label "Recherche globale…">
@@ -320,7 +316,6 @@
 <!ENTITY goBackCmd.commandKey "[">
 <!ENTITY goChatCmd.label "Messagerie instantanée">
 <!ENTITY goChatCmd.accesskey "s">
-<!ENTITY goChatCmd2.key "H">
 <!ENTITY prevStarredMsgCmd.label "Message suivi">
 <!ENTITY prevStarredMsgCmd.accesskey "v">
 <!ENTITY folderMenu.label "Dossier">
@@ -881,9 +876,9 @@
 <!ENTITY SubscribeToNewsgroup.accesskey "N">
 <!ENTITY SendMessageTo.label "Envoyer un message à">
 <!ENTITY SendMessageTo.accesskey "y">
-<!ENTITY CopyEmailAddress.label "Copier l’adresse électronique">
+<!ENTITY CopyEmailAddress.label "Copier l’adresse e-mail">
 <!ENTITY CopyEmailAddress.accesskey "C">
-<!ENTITY CopyNameAndEmailAddress.label "Copier le nom et l’adresse électronique">
+<!ENTITY CopyNameAndEmailAddress.label "Copier le nom et l’adresse e-mail">
 <!ENTITY CopyNameAndEmailAddress.accesskey "l">
 <!ENTITY CopyNewsgroupName.label "Copier le nom du groupe de discussion">
 <!ENTITY CopyNewsgroupName.accesskey "g">
@@ -891,7 +886,7 @@
 <!ENTITY CopyNewsgroupURL.accesskey "d">
 <!ENTITY CreateFilterFrom.label "Créer un filtre…">
 <!ENTITY CreateFilterFrom.accesskey "f">
-<!ENTITY reportPhishingURL.label "Signaler un courrier frauduleux">
+<!ENTITY reportPhishingURL.label "Signaler un message frauduleux">
 <!ENTITY reportPhishingURL.accesskey "S">
 
 <!-- Spell checker context menu items -->
@@ -907,7 +902,7 @@
 <!ENTITY copyLinkCmd.accesskey "n">
 <!ENTITY copyImageAllCmd.label "Copier l’image">
 <!ENTITY copyImageAllCmd.accesskey "m">
-<!ENTITY copyEmailCmd.label "Copier l’adresse électronique">
+<!ENTITY copyEmailCmd.label "Copier l’adresse e-mail">
 <!ENTITY copyEmailCmd.accesskey "e">
 <!ENTITY stopCmd.label "Arrêter">
 <!ENTITY stopCmd.accesskey "r">

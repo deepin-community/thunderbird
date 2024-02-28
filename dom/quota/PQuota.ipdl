@@ -57,6 +57,12 @@ struct InitializeTemporaryOriginParams
   PrincipalInfo principalInfo;
 };
 
+struct GetFullOriginMetadataParams
+{
+  PersistenceType persistenceType;
+  PrincipalInfo principalInfo;
+};
+
 struct AllUsageParams
 {
   bool getAll;
@@ -99,6 +105,10 @@ struct ClearDataParams
   OriginAttributesPattern pattern;
 };
 
+struct ClearPrivateBrowsingParams
+{
+};
+
 struct ClearAllParams
 {
 };
@@ -135,9 +145,11 @@ union RequestParams
   InitTemporaryStorageParams;
   InitializePersistentOriginParams;
   InitializeTemporaryOriginParams;
+  GetFullOriginMetadataParams;
   ClearOriginParams;
   ResetOriginParams;
   ClearDataParams;
+  ClearPrivateBrowsingParams;
   ClearAllParams;
   ResetAllParams;
   PersistedParams;
@@ -146,6 +158,7 @@ union RequestParams
   ListOriginsParams;
 };
 
+[ManualDealloc, ChildImpl=virtual, ParentImpl=virtual]
 protocol PQuota
 {
   manager PBackground;

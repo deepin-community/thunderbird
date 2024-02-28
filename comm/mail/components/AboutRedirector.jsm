@@ -4,8 +4,6 @@
 
 var EXPORTED_SYMBOLS = ["AboutRedirector"];
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-
 function AboutRedirector() {}
 AboutRedirector.prototype = {
   QueryInterface: ChromeUtils.generateQI(["nsIAboutModule"]),
@@ -48,9 +46,30 @@ AboutRedirector.prototype = {
       url: "chrome://messenger/content/accountcreation/accountSetup.xhtml",
       flags: Ci.nsIAboutModule.ALLOW_SCRIPT,
     },
+    accountprovisioner: {
+      url: "chrome://messenger/content/newmailaccount/accountProvisioner.xhtml",
+      flags: Ci.nsIAboutModule.ALLOW_SCRIPT,
+    },
     addressbook: {
       url: "chrome://messenger/content/addressbook/aboutAddressBook.xhtml",
       flags: Ci.nsIAboutModule.ALLOW_SCRIPT,
+    },
+    "3pane": {
+      url: "chrome://messenger/content/about3Pane.xhtml",
+      flags: Ci.nsIAboutModule.ALLOW_SCRIPT,
+    },
+    message: {
+      url: "chrome://messenger/content/aboutMessage.xhtml",
+      flags: Ci.nsIAboutModule.ALLOW_SCRIPT,
+    },
+    import: {
+      url: "chrome://messenger/content/aboutImport.xhtml",
+      flags: Ci.nsIAboutModule.ALLOW_SCRIPT,
+    },
+    profiling: {
+      url: "chrome://devtools/content/performance-new/aboutprofiling/index.xhtml",
+      flags:
+        Ci.nsIAboutModule.ALLOW_SCRIPT | Ci.nsIAboutModule.IS_SECURE_CHROME_UI,
     },
   },
 

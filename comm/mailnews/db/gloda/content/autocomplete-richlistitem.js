@@ -8,9 +8,6 @@
 
 // Wrap in a block to prevent leaking to window scope.
 {
-  const { Services } = ChromeUtils.import(
-    "resource://gre/modules/Services.jsm"
-  );
   const gGlodaCompleteStrings = Services.strings.createBundle(
     "chrome://messenger/locale/glodaComplete.properties"
   );
@@ -20,7 +17,7 @@
    * abstract base class for all the gloda autocomplete items.
    *
    * @abstract
-   * @extends {MozElements.MozRichlistitem}
+   * @augments {MozElements.MozRichlistitem}
    */
   class MozGlodacompleteBaseRichlistitem extends MozElements.MozRichlistitem {
     connectedCallback() {
@@ -62,7 +59,7 @@
       }
 
       // Sort the regions by start position then end position.
-      regions = regions.sort(function(a, b) {
+      regions = regions.sort(function (a, b) {
         let start = a[0] - b[0];
         return start == 0 ? a[1] - b[1] : start;
       });
@@ -210,7 +207,7 @@
    * The MozGlodaContactChunkRichlistitem widget displays an autocomplete item with
    * contact chunk: e.g. image, name and description of the contact.
    *
-   * @extends MozGlodacompleteBaseRichlistitem
+   * @augments MozGlodacompleteBaseRichlistitem
    */
   class MozGlodaContactChunkRichlistitem extends MozGlodacompleteBaseRichlistitem {
     static get inheritedAttributes() {
@@ -230,7 +227,6 @@
       this.setAttribute("is", "gloda-contact-chunk-richlistitem");
       this.appendChild(
         MozXULElement.parseXULToFragment(`
-          <image class="ac-type-picture"></image>
           <vbox>
             <hbox>
               <hbox class="ac-title"
@@ -249,7 +245,6 @@
               </hbox>
               <label class="ac-ellipsis-after ac-url-text"
                      hidden="true"></label>
-              <image class="ac-type-icon"></image>
             </hbox>
           </vbox>
         `)
@@ -271,15 +266,11 @@
       this._identityOverflowEllipsis.value = ellipsis;
       this._nameOverflowEllipsis.value = ellipsis;
 
-      this._typeImage = this.querySelector(".ac-type-icon");
-
       this._identityBox = this.querySelector(".ac-url");
       this._identity = this.querySelector("description.ac-url-text");
 
       this._nameBox = this.querySelector(".ac-title");
       this._name = this.querySelector("description.ac-comment");
-
-      this._picture = this.querySelector(".ac-type-picture");
 
       this._adjustAcItem();
 
@@ -299,9 +290,6 @@
       }
 
       let identity = contact.identities[0];
-
-      // I guess we should get the picture size from CSS or something?
-      this._picture.src = identity.pictureURL(32);
 
       // Emphasize the matching search terms for the description.
       this._setUpDescription(this._name, contact.name);
@@ -336,7 +324,7 @@
    * The MozGlodaFulltextAllRichlistitem widget displays an autocomplete full text of
    * all the items: e.g. full text explanation of the item.
    *
-   * @extends MozGlodacompleteBaseRichlistitem
+   * @augments MozGlodacompleteBaseRichlistitem
    */
   class MozGlodaFulltextAllRichlistitem extends MozGlodacompleteBaseRichlistitem {
     connectedCallback() {
@@ -378,7 +366,7 @@
    * The MozGlodaFulltextAllRichlistitem widget displays an autocomplete full text
    * of single item: e.g. full text explanation of the item.
    *
-   * @extends MozGlodacompleteBaseRichlistitem
+   * @augments MozGlodacompleteBaseRichlistitem
    */
   class MozGlodaFulltextSingleRichlistitem extends MozGlodacompleteBaseRichlistitem {
     connectedCallback() {
@@ -424,7 +412,7 @@
    * The MozGlodaMultiRichlistitem widget displays an autocomplete description of multiple
    * type items: e.g. explanation of the items.
    *
-   * @extends MozGlodacompleteBaseRichlistitem
+   * @augments MozGlodacompleteBaseRichlistitem
    */
   class MozGlodaMultiRichlistitem extends MozGlodacompleteBaseRichlistitem {
     connectedCallback() {
@@ -493,7 +481,7 @@
    * The MozGlodaSingleIdentityRichlistitem widget displays an autocomplete item with
    * single identity: e.g. image, name and description of the item.
    *
-   * @extends MozGlodacompleteBaseRichlistitem
+   * @augments MozGlodacompleteBaseRichlistitem
    */
   class MozGlodaSingleIdentityRichlistitem extends MozGlodacompleteBaseRichlistitem {
     static get inheritedAttributes() {
@@ -515,7 +503,6 @@
       this.appendChild(
         MozXULElement.parseXULToFragment(`
           <hbox class="gloda-single-identity">
-            <image class="picture"></image>
             <vbox>
               <hbox>
                 <hbox class="ac-title"
@@ -535,7 +522,6 @@
                 </hbox>
                 <label class="ac-ellipsis-after ac-url-text"
                        hidden="true"></label>
-                <image class="ac-type-icon"></image>
               </hbox>
             </vbox>
           </hbox>
@@ -558,15 +544,11 @@
       this._identityOverflowEllipsis.value = ellipsis;
       this._nameOverflowEllipsis.value = ellipsis;
 
-      this._typeImage = this.querySelector(".ac-type-icon");
-
       this._identityBox = this.querySelector(".ac-url");
       this._identity = this.querySelector("description.ac-url-text");
 
       this._nameBox = this.querySelector(".ac-title");
       this._name = this.querySelector("description.ac-comment");
-
-      this._picture = this.querySelector(".picture");
 
       this._adjustAcItem();
 
@@ -584,9 +566,6 @@
       if (identity == null) {
         return;
       }
-
-      // I guess we should get the picture size from CSS or something?
-      this._picture.src = identity.pictureURL(32);
 
       // Emphasize the matching search terms for the description.
       this._setUpDescription(this._name, identity.contact.name);
@@ -625,7 +604,7 @@
    * The MozGlodaSingleTagRichlistitem widget displays an autocomplete item with
    * single tag: e.g. explanation of the item.
    *
-   * @extends MozGlodacompleteBaseRichlistitem
+   * @augments MozGlodacompleteBaseRichlistitem
    */
   class MozGlodaSingleTagRichlistitem extends MozGlodacompleteBaseRichlistitem {
     connectedCallback() {

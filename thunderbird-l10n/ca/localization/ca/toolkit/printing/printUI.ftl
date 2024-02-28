@@ -13,6 +13,9 @@ printui-sheets-count =
        *[other] { $sheetCount } fulls de paper
     }
 printui-page-range-all = Tot
+printui-page-range-current = Actual
+printui-page-range-odd = Senar
+printui-page-range-even = Parell
 printui-page-range-custom = Personalitzat
 printui-page-range-label = Pàgines
 printui-page-range-picker =

@@ -82,7 +82,7 @@ WINBASEAPI BOOL WINAPI QueryPerformanceFrequency(LARGE_INTEGER* lpFrequency);
 
 #define FALLTHROUGH [[fallthrough]]
 
-#ifdef MOZILLA_CLIENT
+#if defined(MOZILLA_CLIENT) && defined(MOZ_CLANG_PLUGIN)
 #  define IMPLICIT __attribute__((annotate("moz_implicit")))
 #else
 #  define IMPLICIT
@@ -222,6 +222,13 @@ struct VertexAttrib {
   int vertex_buffer = 0;
   char* buf = nullptr;  // XXX: this can easily dangle
   size_t buf_size = 0;  // this will let us bounds check
+
+  // Mark the buffer as invalid so we don't accidentally use stale data.
+  void disable() {
+    enabled = false;
+    buf = nullptr;
+    buf_size = 0;
+  }
 };
 
 static int bytes_for_internal_format(GLenum internal_format) {
@@ -249,6 +256,8 @@ static int bytes_for_internal_format(GLenum internal_format) {
       return 2;
     case GL_R16:
       return 2;
+    case GL_RG16:
+      return 4;
     default:
       debugf("internal format: %x\n", internal_format);
       assert(0);
@@ -272,6 +281,8 @@ static TextureFormat gl_format_to_texture_format(int type) {
       return TextureFormat::RG8;
     case GL_R16:
       return TextureFormat::R16;
+    case GL_RG16:
+      return TextureFormat::RG16;
     case GL_RGB_RAW_422_APPLE:
       return TextureFormat::YUV422;
     default:
@@ -289,10 +300,11 @@ struct Buffer {
   size_t size = 0;
   size_t capacity = 0;
 
+  // Returns true if re-allocation succeeded, false otherwise...
   bool allocate(size_t new_size) {
     // If the size remains unchanged, don't allocate anything.
     if (new_size == size) {
-      return false;
+      return true;
     }
     // If the new size is within the existing capacity of the buffer, just
     // reuse the existing buffer.
@@ -442,10 +454,12 @@ struct Texture {
   }
 
   int bpp() const { return buf_bpp; }
-  void set_bpp() { buf_bpp = bytes_for_internal_format(internal_format); }
+  int compute_bpp() const { return bytes_for_internal_format(internal_format); }
 
   size_t stride() const { return buf_stride; }
-  void set_stride() { buf_stride = aligned_stride(buf_bpp * width); }
+  size_t compute_stride(int bpp, int width) const {
+    return aligned_stride(bpp * width);
+  }
 
   // Set an external backing buffer of this texture.
   void set_buffer(void* new_buf, size_t new_stride) {
@@ -454,16 +468,17 @@ struct Texture {
     // is aligned to the smaller of either the BPP or word-size. We need to at
     // least be able to sample data from within a row and sample whole pixels
     // of smaller formats without risking unaligned access.
-    set_bpp();
-    set_stride();
-    assert(new_stride >= size_t(bpp() * width) &&
-           new_stride % min(bpp(), sizeof(uint32_t)) == 0);
+    int new_bpp = compute_bpp();
+    assert(new_stride >= size_t(new_bpp * width) &&
+           new_stride % min(new_bpp, sizeof(uint32_t)) == 0);
 
     buf = (char*)new_buf;
     buf_size = 0;
+    buf_bpp = new_bpp;
     buf_stride = new_stride;
   }
 
+  // Returns true if re-allocation succeeded, false otherwise...
   bool allocate(bool force = false, int min_width = 0, int min_height = 0) {
     assert(!locked);  // Locked textures shouldn't be reallocated
     // If we get here, some GL API call that invalidates the texture was used.
@@ -472,13 +487,13 @@ struct Texture {
     // Check if there is either no buffer currently or if we forced validation
     // of the buffer size because some dimension might have changed.
     if ((!buf || force) && should_free()) {
-      // Initialize the buffer's BPP and stride, since they may have changed.
-      set_bpp();
-      set_stride();
+      // Compute the buffer's BPP and stride, since they may have changed.
+      int new_bpp = compute_bpp();
+      size_t new_stride = compute_stride(new_bpp, width);
       // Compute new size based on the maximum potential stride, rather than
       // the current stride, to hopefully avoid reallocations when size would
       // otherwise change too much...
-      size_t max_stride = max(buf_stride, aligned_stride(buf_bpp * min_width));
+      size_t max_stride = compute_stride(new_bpp, max(width, min_width));
       size_t size = max_stride * max(height, min_height);
       if ((!buf && size > 0) || size > buf_size) {
         // Allocate with a SIMD register-sized tail of padding at the end so we
@@ -495,18 +510,21 @@ struct Texture {
                 : 0;
         char* new_buf = (char*)realloc(buf, size + padding);
         assert(new_buf);
-        if (new_buf) {
-          // Successfully reallocated the buffer, so go ahead and set it.
-          buf = new_buf;
-          buf_size = size;
-          return true;
+        if (!new_buf) {
+          // Allocation failed, so ensure we don't leave stale buffer state.
+          cleanup();
+          return false;
         }
-        // Allocation failed, so ensure we don't leave stale buffer state.
-        cleanup();
+        // Successfully reallocated the buffer, so go ahead and set it.
+        buf = new_buf;
+        buf_size = size;
       }
+      // Set the BPP and stride in case they changed.
+      buf_bpp = new_bpp;
+      buf_stride = new_stride;
     }
-    // Nothing changed...
-    return false;
+    // Allocation succeeded or nothing changed...
+    return true;
   }
 
   void cleanup() {
@@ -737,6 +755,8 @@ struct Context {
   ObjectStore<Renderbuffer> renderbuffers;
   ObjectStore<Shader> shaders;
   ObjectStore<Program> programs;
+
+  GLenum last_error = GL_NO_ERROR;
 
   IntRect viewport = {0, 0, 0, 0};
 
@@ -975,7 +995,8 @@ template <typename T>
 void load_attrib(T& attrib, VertexAttrib& va, uint32_t start, int instance,
                  int count) {
   typedef decltype(force_scalar(attrib)) scalar_type;
-  if (!va.enabled) {
+  // If no buffer is available, just use a zero default.
+  if (!va.buf_size) {
     attrib = T(scalar_type{0});
   } else if (va.divisor != 0) {
     char* src = (char*)va.buf + va.stride * instance + va.offset;
@@ -1024,7 +1045,8 @@ template <typename T>
 void load_flat_attrib(T& attrib, VertexAttrib& va, uint32_t start, int instance,
                       int count) {
   typedef decltype(force_scalar(attrib)) scalar_type;
-  if (!va.enabled) {
+  // If no buffer is available, just use a zero default.
+  if (!va.buf_size) {
     attrib = T{0};
     return;
   }
@@ -1100,7 +1122,16 @@ void Disable(GLenum cap) {
   }
 }
 
-GLenum GetError() { return GL_NO_ERROR; }
+// Report the last error generated and clear the error status.
+GLenum GetError() {
+  GLenum error = ctx->last_error;
+  ctx->last_error = GL_NO_ERROR;
+  return error;
+}
+
+// Sets the error status to out-of-memory to indicate that a buffer
+// or texture re-allocation failed.
+static void out_of_memory() { ctx->last_error = GL_OUT_OF_MEMORY; }
 
 static const char* const extensions[] = {
     "GL_ARB_blend_func_extended",
@@ -1150,6 +1181,12 @@ void GetIntegerv(GLenum pname, GLint* params) {
       break;
     case GL_MINOR_VERSION:
       params[0] = 2;
+      break;
+    case GL_MIN_PROGRAM_TEXEL_OFFSET:
+      params[0] = 0;
+      break;
+    case GL_MAX_PROGRAM_TEXEL_OFFSET:
+      params[0] = MAX_TEXEL_OFFSET;
       break;
     default:
       debugf("unhandled glGetIntegerv parameter %x\n", pname);
@@ -1680,7 +1717,9 @@ static void set_tex_storage(Texture& t, GLenum external_format, GLsizei width,
     t.set_buffer(buf, stride);
   }
   t.disable_delayed_clear();
-  t.allocate(changed, min_width, min_height);
+  if (!t.allocate(changed, min_width, min_height)) {
+    out_of_memory();
+  }
   // If we have a buffer that needs format conversion, then do that now.
   if (buf && should_free) {
     convert_copy(external_format, internal_format, (uint8_t*)t.buf, t.stride(),
@@ -1714,6 +1753,8 @@ GLenum internal_format_for_data(GLenum format, GLenum ty) {
     return GL_RGB_RAW_422_APPLE;
   } else if (format == GL_RED && ty == GL_UNSIGNED_SHORT) {
     return GL_R16;
+  } else if (format == GL_RG && ty == GL_UNSIGNED_SHORT) {
+    return GL_RG16;
   } else {
     debugf("unknown internal format for format %x, type %x\n", format, ty);
     assert(false);
@@ -1949,7 +1990,7 @@ void DisableVertexAttribArray(GLuint index) {
   if (va.enabled) {
     ctx->validate_vertex_array = true;
   }
-  va.enabled = false;
+  va.disable();
 }
 
 void VertexAttribDivisor(GLuint index, GLuint divisor) {
@@ -1966,7 +2007,10 @@ void VertexAttribDivisor(GLuint index, GLuint divisor) {
 void BufferData(GLenum target, GLsizeiptr size, void* data,
                 UNUSED GLenum usage) {
   Buffer& b = ctx->buffers[ctx->get_binding(target)];
-  if (b.allocate(size)) {
+  if (size != b.size) {
+    if (!b.allocate(size)) {
+      out_of_memory();
+    }
     ctx->validate_vertex_array = true;
   }
   if (data && b.buf && size <= b.size) {
@@ -2793,7 +2837,7 @@ void DestroyContext(Context* c) {
   delete c;
 }
 
-size_t ReportMemory(Context *ctx, size_t (*size_of_op)(void*)) {
+size_t ReportMemory(Context* ctx, size_t (*size_of_op)(const void*)) {
   size_t size = 0;
   if (ctx) {
     for (auto& t : ctx->textures) {

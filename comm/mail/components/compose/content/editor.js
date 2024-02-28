@@ -1,19 +1,14 @@
-/* -*- Mode: Java; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-/* import-globals-from ../../../../../toolkit/content/globalOverlay.js */
 /* import-globals-from ../../../../../toolkit/content/viewZoomOverlay.js */
+/* import-globals-from ../../../base/content/globalOverlay.js */
 /* import-globals-from ComposerCommands.js */
 /* import-globals-from editorUtilities.js */
 
-var { GetNextUntitledValue } = ChromeUtils.import(
-  "resource:///modules/editorUtilities.jsm"
-);
-var { Async } = ChromeUtils.import("resource://services-common/async.js");
-var { AppConstants } = ChromeUtils.import(
-  "resource://gre/modules/AppConstants.jsm"
+var { AppConstants } = ChromeUtils.importESModule(
+  "resource://gre/modules/AppConstants.sys.mjs"
 );
 
 /* Main Composer window UI control */
@@ -38,8 +33,7 @@ const kDisplayModeTabIDS = [
   "SourceModeButton",
   "PreviewModeButton",
 ];
-const kNormalStyleSheet =
-  "chrome://messenger/content/messengercompose/EditorContent.css";
+const kNormalStyleSheet = "chrome://messenger/skin/shared/editorContent.css";
 const kContentEditableStyleSheet = "resource://gre/res/contenteditable.css";
 
 var kTextMimeType = "text/plain";
@@ -93,8 +87,6 @@ var gFontSizeNames = [
   "xx-large",
 ];
 
-var nsIFilePicker = Ci.nsIFilePicker;
-
 var kUseCssPref = "editor.use_css";
 var kCRInParagraphsPref = "editor.CR_creates_new_p";
 
@@ -146,21 +138,21 @@ var gEditorDocumentObserver = {
           commandManager.getCommandState(aTopic, gContentWindow, params);
           var errorStringId = 0;
           var editorStatus = params.getLongValue("state_data");
-          if (!editor && editorStatus == nsIEditingSession.eEditorOK) {
+          if (!editor && editorStatus == Ci.nsIEditingSession.eEditorOK) {
             dump(
               "\n ****** NO EDITOR BUT NO EDITOR ERROR REPORTED ******* \n\n"
             );
-            editorStatus = nsIEditingSession.eEditorErrorUnknown;
+            editorStatus = Ci.nsIEditingSession.eEditorErrorUnknown;
           }
 
           switch (editorStatus) {
-            case nsIEditingSession.eEditorErrorCantEditFramesets:
+            case Ci.nsIEditingSession.eEditorErrorCantEditFramesets:
               errorStringId = "CantEditFramesetMsg";
               break;
-            case nsIEditingSession.eEditorErrorCantEditMimeType:
+            case Ci.nsIEditingSession.eEditorErrorCantEditMimeType:
               errorStringId = "CantEditMimeTypeMsg";
               break;
-            case nsIEditingSession.eEditorErrorUnknown:
+            case Ci.nsIEditingSession.eEditorErrorUnknown:
               errorStringId = "CantEditDocumentMsg";
               break;
             // Note that for "eEditorErrorFileNotFound,
@@ -183,8 +175,8 @@ var gEditorDocumentObserver = {
           window.InsertCharWindow = null;
         }
 
-        let domWindowUtils = GetCurrentEditorElement().contentWindow
-          .windowUtils;
+        let domWindowUtils =
+          GetCurrentEditorElement().contentWindow.windowUtils;
         // And extra styles for showing anchors, table borders, smileys, etc.
         domWindowUtils.loadSheetUsingURIString(
           kNormalStyleSheet,
@@ -245,9 +237,13 @@ function EditorLoadUrl(url) {
     if (url) {
       let loadURIOptions = {
         loadFlags: Ci.nsIWebNavigation.LOAD_FLAGS_BYPASS_CACHE,
-        triggeringPrincipal: Services.scriptSecurityManager.getSystemPrincipal(),
+        triggeringPrincipal:
+          Services.scriptSecurityManager.getSystemPrincipal(),
       };
-      GetCurrentEditorElement().webNavigation.loadURI(url, loadURIOptions);
+      GetCurrentEditorElement().webNavigation.fixupAndLoadURIString(
+        url,
+        loadURIOptions
+      );
     }
   } catch (e) {
     dump(" EditorLoadUrl failed: " + e + "\n");
@@ -1380,7 +1376,7 @@ function UpdateWindowTitle() {
   try {
     var filename = "";
     var windowTitle = "";
-    var title = GetDocumentTitle();
+    var title = document.title;
 
     // Append just the 'leaf' filename to the Doc. Title for the window caption
     var docUrl = GetDocumentUrl();
@@ -1396,14 +1392,7 @@ function UpdateWindowTitle() {
       SaveRecentFilesPrefs(title, fileType);
     }
 
-    // Set window title with " - Composer" or " - Text Editor" appended.
-    var appWin = document.documentElement;
-
-    document.title =
-      (title || filename || window.gUntitledString) +
-      windowTitle +
-      appWin.getAttribute("titlemenuseparator") +
-      appWin.getAttribute("titlemodifier");
+    document.title = (title || filename) + windowTitle;
   } catch (e) {
     dump(e);
   }
@@ -1667,16 +1656,16 @@ function GetAlignmentString() {
   if (mixedObj.value) {
     return "mixed";
   }
-  if (alignObj.value == nsIHTMLEditor.eLeft) {
+  if (alignObj.value == Ci.nsIHTMLEditor.eLeft) {
     return "left";
   }
-  if (alignObj.value == nsIHTMLEditor.eCenter) {
+  if (alignObj.value == Ci.nsIHTMLEditor.eCenter) {
     return "center";
   }
-  if (alignObj.value == nsIHTMLEditor.eRight) {
+  if (alignObj.value == Ci.nsIHTMLEditor.eRight) {
     return "right";
   }
-  if (alignObj.value == nsIHTMLEditor.eJustify) {
+  if (alignObj.value == Ci.nsIHTMLEditor.eJustify) {
     return "justify";
   }
 

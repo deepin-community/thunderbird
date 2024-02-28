@@ -1,29 +1,28 @@
 {
   "langpack_id": "he",
   "manifest_version": 2,
-  "applications": {
+  "browser_specific_settings": {
     "gecko": {
       "id": "langpack-he@thunderbird.mozilla.org",
-      "strict_min_version": "91.0",
-      "strict_max_version": "91.*"
+      "strict_min_version": "115.0",
+      "strict_max_version": "115.*"
     }
   },
-  "name": "Hebrew (IL) Language Pack",
-  "description": "Language pack for Thunderbird for he",
-  "version": "91.0buildid20211101223011",
+  "name": "Language: עברית (Hebrew)",
+  "description": "Thunderbird Language Pack for עברית (he) – Hebrew",
+  "version": "115.8.20240216.174500",
   "languages": {
     "he": {
-      "version": "20211013081943",
+      "version": "20240216183731",
       "chrome_resources": {
         "alerts": "chrome/he/locale/he/alerts/",
         "autoconfig": "chrome/he/locale/he/autoconfig/",
-        "branding": "chrome/he/locale/he/branding/",
+        "branding": "chrome/he/locale/branding/",
         "calendar": "chrome/he/locale/he/calendar/",
         "chat": "chrome/he/locale/he/chat/",
         "communicator": "chrome/he/locale/he/communicator/",
         "devtools": "chrome/he/locale/he/devtools/client/",
         "devtools-shared": "chrome/he/locale/he/devtools/shared/",
-        "devtools-startup": "chrome/he/locale/he/devtools/startup/",
         "global": "chrome/he/locale/he/global/",
         "global-platform": {
           "macosx": "chrome/he/locale/he/global-platform/mac/",

@@ -8,11 +8,8 @@
 
 "use strict";
 
-var {
-  close_compose_window,
-  get_compose_body,
-  open_compose_with_reply,
-} = ChromeUtils.import("resource://testing-common/mozmill/ComposeHelpers.jsm");
+var { close_compose_window, get_compose_body, open_compose_with_reply } =
+  ChromeUtils.import("resource://testing-common/mozmill/ComposeHelpers.jsm");
 var {
   add_message_to_folder,
   assert_selected_and_displayed,
@@ -25,13 +22,12 @@ var {
   "resource://testing-common/mozmill/FolderDisplayHelpers.jsm"
 );
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-
 var sig = "roses are red";
 var folder;
 
-add_task(function setupModule(module) {
-  folder = create_folder("SigStripTest");
+add_setup(async function () {
+  folder = await create_folder("SigStripTest");
+  registerCleanupFunction(() => folder.deleteSelf(null));
 
   let msg = create_message({
     subject: "msg with signature; format=flowed",
@@ -46,7 +42,7 @@ add_task(function setupModule(module) {
       format: "flowed",
     },
   });
-  add_message_to_folder(folder, msg);
+  await add_message_to_folder([folder], msg);
   let msg2 = create_message({
     subject: "msg with signature; format not flowed",
     body: {
@@ -60,44 +56,45 @@ add_task(function setupModule(module) {
       format: "",
     },
   });
-  add_message_to_folder(folder, msg2);
+  await add_message_to_folder([folder], msg2);
 });
 
 /** Test sig strip true for format flowed. */
-add_task(function test_sig_strip_true_ff() {
+add_task(async function test_sig_strip_true_ff() {
   Services.prefs.setBoolPref("mail.strip_sig_on_reply", true);
-  check_sig_strip_works(0, true);
+  await check_sig_strip_works(0, true);
   Services.prefs.clearUserPref("mail.strip_sig_on_reply");
 });
 
 /** Test sig strip false for format flowed. */
-add_task(function test_sig_strip_false_ff() {
+add_task(async function test_sig_strip_false_ff() {
   Services.prefs.setBoolPref("mail.strip_sig_on_reply", false);
-  check_sig_strip_works(0, false);
+  await check_sig_strip_works(0, false);
   Services.prefs.clearUserPref("mail.strip_sig_on_reply");
 });
 
 /** Test sig strip true for non-format flowed. */
-add_task(function test_sig_strip_true_nonff() {
+add_task(async function test_sig_strip_true_nonff() {
   Services.prefs.setBoolPref("mail.strip_sig_on_reply", true);
-  check_sig_strip_works(1, true);
+  await check_sig_strip_works(1, true);
   Services.prefs.clearUserPref("mail.strip_sig_on_reply");
 });
 
 /** Test sig strip false for non-format flowed. */
-add_task(function test_sig_strip_false_nonff() {
+add_task(async function test_sig_strip_false_nonff() {
   Services.prefs.setBoolPref("mail.strip_sig_on_reply", false);
-  check_sig_strip_works(1, false);
+  await check_sig_strip_works(1, false);
   Services.prefs.clearUserPref("mail.strip_sig_on_reply");
 });
 
 /**
  * Helper function to check signature stripping works as it should.
+ *
  * @param aRow the row index of the message to test
  * @param aShouldStrip true if the signature should be stripped
  */
-function check_sig_strip_works(aRow, aShouldStrip) {
-  be_in_folder(folder);
+async function check_sig_strip_works(aRow, aShouldStrip) {
+  await be_in_folder(folder);
   let msg = select_click_row(aRow);
   assert_selected_and_displayed(mc, msg);
 

@@ -5,7 +5,6 @@
 var { MailServices } = ChromeUtils.import(
   "resource:///modules/MailServices.jsm"
 );
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 var utils = ChromeUtils.import("resource://testing-common/mozmill/utils.jsm");
 
 registerCleanupFunction(() => {
@@ -32,17 +31,16 @@ registerCleanupFunction(() => {
       MailServices.ab.deleteAddressBook(book.URI);
     }
   }
-});
 
-function waitForSaveOperation(cwc) {
-  utils.waitFor(
-    () => !cwc.window.gSaveOperationInProgress && !cwc.window.gWindowLock,
-    "Saving of draft did not finish"
-  );
-}
+  Services.focus.focusedWindow = window;
+  let mailButton = document.getElementById("mailButton");
+  mailButton.focus();
+  mailButton.blur();
+});
 
 /**
  * Get the body part of an MIME message.
+ *
  * @param {string} content - The message content.
  * @returns {string}
  */
@@ -62,10 +60,6 @@ async function chooseIdentity(win, identityKey) {
   );
   await shownPromise;
   let hiddenPromise = BrowserTestUtils.waitForEvent(popup, "popuphidden");
-  EventUtils.synthesizeMouseAtCenter(
-    popup.querySelector(`[identitykey="${identityKey}"]`),
-    {},
-    win
-  );
+  popup.activateItem(popup.querySelector(`[identitykey="${identityKey}"]`));
   await hiddenPromise;
 }

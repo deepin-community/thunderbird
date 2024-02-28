@@ -5,15 +5,14 @@
 # You can obtain one at http://mozilla.org/MPL/2.0/.
 # ***** END LICENSE BLOCK *****
 
-from __future__ import absolute_import
 import copy
-import json
-import time
 import glob
+import json
 import os
-import sys
 import posixpath
 import subprocess
+import sys
+import time
 
 # load modules from parent dir
 sys.path.insert(1, os.path.dirname(sys.path[0]))
@@ -72,7 +71,6 @@ class AndroidProfileRun(TestingMixin, BaseScript, MozbaseMixin, AndroidMixin):
         super(AndroidProfileRun, self).__init__(
             config_options=self.config_options,
             all_actions=[
-                "setup-avds",
                 "download",
                 "create-virtualenv",
                 "start-emulator",
@@ -103,7 +101,10 @@ class AndroidProfileRun(TestingMixin, BaseScript, MozbaseMixin, AndroidMixin):
         dirs["abs_test_install_dir"] = os.path.join(abs_dirs["abs_src_dir"], "testing")
         dirs["abs_xre_dir"] = os.path.join(abs_dirs["abs_work_dir"], "hostutils")
         dirs["abs_blob_upload_dir"] = "/builds/worker/artifacts/blobber_upload_dir"
-        dirs["abs_avds_dir"] = os.path.join(abs_dirs["abs_work_dir"], ".android")
+        work_dir = os.environ.get("MOZ_FETCHES_DIR") or abs_dirs["abs_work_dir"]
+        dirs["abs_sdk_dir"] = os.path.join(work_dir, "android-sdk-linux")
+        dirs["abs_avds_dir"] = os.path.join(work_dir, "android-device")
+        dirs["abs_bundletool_path"] = os.path.join(work_dir, "bundletool.jar")
 
         for key in dirs.keys():
             if key not in abs_dirs:
@@ -141,18 +142,18 @@ class AndroidProfileRun(TestingMixin, BaseScript, MozbaseMixin, AndroidMixin):
         assert (
             self.installer_path is not None
         ), "Either add installer_path to the config or use --installer-path."
-        self.install_apk(self.installer_path)
+        self.install_android_app(self.installer_path)
         self.info("Finished installing apps for %s" % self.device_serial)
 
     def run_tests(self):
         """
         Generate the PGO profile data
         """
+        from marionette_driver.marionette import Marionette
+        from mozdevice import ADBDeviceFactory, ADBTimeoutError
         from mozhttpd import MozHttpd
         from mozprofile import Preferences
-        from mozdevice import ADBDeviceFactory, ADBTimeoutError
         from six import string_types
-        from marionette_driver.marionette import Marionette
 
         app = self.query_package_name()
 
@@ -265,7 +266,6 @@ class AndroidProfileRun(TestingMixin, BaseScript, MozbaseMixin, AndroidMixin):
             driver.set_context("chrome")
             driver.execute_script(
                 """
-                Components.utils.import("resource://gre/modules/Services.jsm");
                 let cancelQuit = Components.classes["@mozilla.org/supports-PRBool;1"]
                     .createInstance(Components.interfaces.nsISupportsPRBool);
                 Services.obs.notifyObservers(cancelQuit, "quit-application-requested", null);
@@ -274,7 +274,6 @@ class AndroidProfileRun(TestingMixin, BaseScript, MozbaseMixin, AndroidMixin):
             )
             driver.execute_script(
                 """
-                Components.utils.import("resource://gre/modules/Services.jsm");
                 Services.startup.quit(Ci.nsIAppStartup.eAttemptQuit)
             """
             )

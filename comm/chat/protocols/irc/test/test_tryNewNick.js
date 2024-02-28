@@ -1,9 +1,12 @@
 /* Any copyright is dedicated to the Public Domain.
  * http://creativecommons.org/publicdomain/zero/1.0/ */
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-var irc = {};
-Services.scriptloader.loadSubScript("resource:///modules/irc.jsm", irc);
+var { ircProtocol } = ChromeUtils.importESModule(
+  "resource:///modules/irc.sys.mjs"
+);
+var { ircAccount } = ChromeUtils.importESModule(
+  "resource:///modules/ircAccount.sys.mjs"
+);
 
 var fakeProto = {
   id: "fake-proto",
@@ -11,8 +14,8 @@ var fakeProto = {
   _getOptionDefault(aOption) {
     return this.options[aOption];
   },
-  usernameSplits: irc.ircProtocol.prototype.usernameSplits,
-  splitUsername: irc.ircProtocol.prototype.splitUsername,
+  usernameSplits: ircProtocol.prototype.usernameSplits,
+  splitUsername: ircProtocol.prototype.splitUsername,
 };
 
 function test_tryNewNick() {
@@ -33,10 +36,10 @@ function test_tryNewNick() {
     clo1kep09: "clo1kep10",
   };
 
-  let account = new irc.ircAccount(fakeProto, {
+  let account = new ircAccount(fakeProto, {
     name: "clokep@instantbird.org",
   });
-  account.LOG = function(aStr) {};
+  account.LOG = function (aStr) {};
   account.normalize = aStr => aStr;
 
   for (let currentNick in testData) {
@@ -76,10 +79,10 @@ function test_maxLength() {
     ["a10000000", "a00000000"],
   ];
 
-  let account = new irc.ircAccount(fakeProto, {
+  let account = new ircAccount(fakeProto, {
     name: "clokep@instantbird.org",
   });
-  account.LOG = function(aStr) {};
+  account.LOG = function (aStr) {};
   account._sentNickname = "abcdefghi";
   account.normalize = aStr => aStr;
 
@@ -109,16 +112,16 @@ function test_altNicks() {
     "clokep[": [" clokep ,\n clokep111,,,\tclokep[, clokep_", "clokep_"],
   };
 
-  let account = new irc.ircAccount(fakeProto, {
+  let account = new ircAccount(fakeProto, {
     name: "clokep@instantbird.org",
   });
-  account.LOG = function(aStr) {};
+  account.LOG = function (aStr) {};
   account.normalize = aStr => aStr;
 
   for (let currentNick in testData) {
     // Only one pref is touched in here, override the default to return
     // what this test needs.
-    account.getString = function(aStr) {
+    account.getString = function (aStr) {
       let data = testData[currentNick][0];
       if (Array.isArray(data)) {
         return data.join(",");

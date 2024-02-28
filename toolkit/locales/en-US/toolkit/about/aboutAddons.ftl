@@ -8,11 +8,19 @@ search-header =
     .placeholder = Search addons.mozilla.org
     .searchbuttonlabel = Search
 
-search-header-shortcut =
-    .key = f
+## Variables
+##   $domain - Domain name where add-ons are available (e.g. addons.mozilla.org)
 
 list-empty-get-extensions-message =
     Get extensions and themes on <a data-l10n-name="get-extensions">{ $domain }</a>
+
+list-empty-get-dictionaries-message =
+    Get dictionaries on <a data-l10n-name="get-extensions">{ $domain }</a>
+
+list-empty-get-language-packs-message =
+    Get language packs on <a data-l10n-name="get-extensions">{ $domain }</a>
+
+##
 
 list-empty-installed =
     .value = You don’t have any add-ons of this type installed
@@ -48,6 +56,9 @@ detail-version =
 
 detail-last-updated =
     .label = Last Updated
+
+addon-detail-description-expand = Show more
+addon-detail-description-collapse = Show less
 
 detail-contributions-description = The developer of this add-on asks that you help support its continued development by making a small contribution.
 
@@ -185,6 +196,13 @@ addon-category-available-updates-title =
 addon-category-recent-updates = Recent Updates
 addon-category-recent-updates-title =
     .title = Recent Updates
+addon-category-sitepermission = Site Permissions
+addon-category-sitepermission-title =
+    .title = Site Permissions
+# String displayed in about:addons in the Site Permissions section
+# Variables:
+#  $host (string) - DNS host name for which the webextension enables permissions
+addon-sitepermission-host = Site Permissions for { $host }
 
 ## These are global warnings
 
@@ -270,6 +288,8 @@ shortcuts-duplicate-warning-message = { $shortcut } is being used as a shortcut 
 #   $addon (string) - Name of the add-on
 shortcuts-exists = Already in use by { $addon }
 
+# Variables:
+#   $numberToShow (number) - Number of other elements available to show
 shortcuts-card-expand-button =
     { $numberToShow ->
         *[other] Show { $numberToShow } More
@@ -314,6 +334,7 @@ install-theme-button = Install Theme
 # the detailed add-on view is opened, from where the add-on can be managed.
 manage-addon-button = Manage
 find-more-addons = Find more add-ons
+find-more-themes = Find more themes
 
 # This is a label for the button to open the "more options" menu, it is only
 # used for screen readers.
@@ -345,7 +366,7 @@ extension-enabled-heading = Enabled
 extension-disabled-heading = Disabled
 
 theme-enabled-heading = Enabled
-theme-disabled-heading = Disabled
+theme-disabled-heading2 = Saved Themes
 
 plugin-enabled-heading = Enabled
 plugin-disabled-heading = Disabled
@@ -355,6 +376,9 @@ dictionary-disabled-heading = Disabled
 
 locale-enabled-heading = Enabled
 locale-disabled-heading = Disabled
+
+sitepermission-enabled-heading = Enabled
+sitepermission-disabled-heading = Disabled
 
 always-activate-button = Always Activate
 never-activate-button = Never Activate
@@ -443,6 +467,10 @@ addon-permissions-learnmore = Learn more about permissions
 recommended-extensions-heading = Recommended Extensions
 recommended-themes-heading = Recommended Themes
 
+# Variables:
+#   $hostname (string) - Host where the permissions are granted
+addon-sitepermissions-required = Grants the following capabilities to <span data-l10n-name="hostname">{ $hostname }</span>:
+
 # A recommendation for the Firefox Color theme shown at the bottom of the theme
 # list view. The "Firefox Color" name itself should not be translated.
 recommended-theme-1 = Feeling creative? <a data-l10n-name="link">Build your own theme with Firefox Color.</a>
@@ -455,6 +483,7 @@ plugin-heading = Manage Your Plugins
 dictionary-heading = Manage Your Dictionaries
 locale-heading = Manage Your Languages
 updates-heading = Manage Your Updates
+sitepermission-heading = Manage Your Site Permissions
 discover-heading = Personalize Your { -brand-short-name }
 shortcuts-heading = Manage Extension Shortcuts
 
@@ -464,3 +493,26 @@ addons-heading-search-input =
 
 addon-page-options-button =
     .title = Tools for all add-ons
+
+## Detail notifications
+## Variables:
+##   $name (string) - Name of the add-on.
+
+# Variables:
+#   $version (string) - Application version.
+details-notification-incompatible = { $name } is incompatible with { -brand-short-name } { $version }.
+details-notification-incompatible-link = More Information
+
+details-notification-unsigned-and-disabled = { $name } could not be verified for use in { -brand-short-name } and has been disabled.
+details-notification-unsigned-and-disabled-link = More Information
+
+details-notification-unsigned = { $name } could not be verified for use in { -brand-short-name }. Proceed with caution.
+details-notification-unsigned-link = More Information
+
+details-notification-blocked = { $name } has been disabled due to security or stability issues.
+details-notification-blocked-link = More Information
+
+details-notification-softblocked = { $name } is known to cause security or stability issues.
+details-notification-softblocked-link = More Information
+
+details-notification-gmp-pending = { $name } will be installed shortly.

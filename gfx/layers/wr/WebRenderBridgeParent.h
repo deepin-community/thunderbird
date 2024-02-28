@@ -15,7 +15,6 @@
 #include "mozilla/DataMutex.h"
 #include "mozilla/layers/CompositableTransactionParent.h"
 #include "mozilla/layers/CompositorVsyncSchedulerOwner.h"
-#include "mozilla/layers/LayerManager.h"
 #include "mozilla/layers/PWebRenderBridgeParent.h"
 #include "mozilla/HashTable.h"
 #include "mozilla/Maybe.h"
@@ -24,6 +23,7 @@
 #include "mozilla/webrender/WebRenderTypes.h"
 #include "mozilla/webrender/WebRenderAPI.h"
 #include "nsTArrayForwardDeclare.h"
+#include "WindowRenderer.h"
 
 namespace mozilla {
 
@@ -64,7 +64,7 @@ struct CompositorAnimationIdsForEpoch {
 class WebRenderBridgeParent final : public PWebRenderBridgeParent,
                                     public CompositorVsyncSchedulerOwner,
                                     public CompositableParentManager,
-                                    public layers::FrameRecorder {
+                                    public FrameRecorder {
  public:
   WebRenderBridgeParent(CompositorBridgeParentBase* aCompositorBridge,
                         const wr::PipelineId& aPipelineId,
@@ -91,8 +91,8 @@ class WebRenderBridgeParent final : public PWebRenderBridgeParent,
 
   void UpdateQualitySettings();
   void UpdateDebugFlags();
-  void UpdateMultithreading();
-  void UpdateBatchingParameters();
+  void UpdateParameters();
+  void UpdateBoolParameters();
   void UpdateProfilerUI();
 
   mozilla::ipc::IPCResult RecvEnsureConnected(
@@ -118,7 +118,7 @@ class WebRenderBridgeParent final : public PWebRenderBridgeParent,
       const uint64_t& aFwdTransactionId, const TransactionId& aTransactionId,
       const bool& aContainsSVGGroup, const VsyncId& aVsyncId,
       const TimeStamp& aVsyncStartTime, const TimeStamp& aRefreshStartTime,
-      const TimeStamp& aTxnStartTime, const nsCString& aTxnURL,
+      const TimeStamp& aTxnStartTime, const nsACString& aTxnURL,
       const TimeStamp& aFwdTime,
       nsTArray<CompositionPayload>&& aPayloads) override;
   mozilla::ipc::IPCResult RecvEmptyTransaction(
@@ -127,25 +127,28 @@ class WebRenderBridgeParent final : public PWebRenderBridgeParent,
       nsTArray<OpDestroy>&& aToDestroy, const uint64_t& aFwdTransactionId,
       const TransactionId& aTransactionId, const VsyncId& aVsyncId,
       const TimeStamp& aVsyncStartTime, const TimeStamp& aRefreshStartTime,
-      const TimeStamp& aTxnStartTime, const nsCString& aTxnURL,
+      const TimeStamp& aTxnStartTime, const nsACString& aTxnURL,
       const TimeStamp& aFwdTime,
       nsTArray<CompositionPayload>&& aPayloads) override;
   mozilla::ipc::IPCResult RecvSetFocusTarget(
       const FocusTarget& aFocusTarget) override;
   mozilla::ipc::IPCResult RecvParentCommands(
+      const wr::IdNamespace& aIdNamespace,
       nsTArray<WebRenderParentCommand>&& commands) override;
-  mozilla::ipc::IPCResult RecvGetSnapshot(PTextureParent* aTexture,
+  mozilla::ipc::IPCResult RecvGetSnapshot(NotNull<PTextureParent*> aTexture,
                                           bool* aNeedsYFlip) override;
 
   mozilla::ipc::IPCResult RecvSetLayersObserverEpoch(
       const LayersObserverEpoch& aChildEpoch) override;
 
   mozilla::ipc::IPCResult RecvClearCachedResources() override;
+  mozilla::ipc::IPCResult RecvClearAnimationResources() override;
   mozilla::ipc::IPCResult RecvInvalidateRenderedFrame() override;
-  mozilla::ipc::IPCResult RecvScheduleComposite() override;
+  mozilla::ipc::IPCResult RecvScheduleComposite(
+      const wr::RenderReasons& aReasons) override;
   mozilla::ipc::IPCResult RecvCapture() override;
   mozilla::ipc::IPCResult RecvStartCaptureSequence(
-      const nsCString& path, const uint32_t& aFlags) override;
+      const nsACString& path, const uint32_t& aFlags) override;
   mozilla::ipc::IPCResult RecvStopCaptureSequence() override;
   mozilla::ipc::IPCResult RecvSyncWithCompositor() override;
 
@@ -171,6 +174,8 @@ class WebRenderBridgeParent final : public PWebRenderBridgeParent,
 
   void ActorDestroy(ActorDestroyReason aWhy) override;
 
+  mozilla::ipc::IPCResult RecvSetDefaultClearColor(
+      const uint32_t& aColor) override;
   void SetClearColor(const gfx::DeviceColor& aColor);
 
   void Pause();
@@ -181,13 +186,15 @@ class WebRenderBridgeParent final : public PWebRenderBridgeParent,
   // CompositorVsyncSchedulerOwner
   bool IsPendingComposite() override { return false; }
   void FinishPendingComposite() override {}
-  void CompositeToTarget(VsyncId aId, gfx::DrawTarget* aTarget,
+  void CompositeToTarget(VsyncId aId, wr::RenderReasons aReasons,
+                         gfx::DrawTarget* aTarget,
                          const gfx::IntRect* aRect = nullptr) override;
   TimeDuration GetVsyncInterval() const override;
 
   // CompositableParentManager
   bool IsSameProcess() const override;
   base::ProcessId GetChildProcessId() override;
+  dom::ContentParentId GetContentId() override;
   void NotifyNotUsed(PTextureParent* aTexture,
                      uint64_t aTransactionId) override;
   void SendAsyncMessage(
@@ -199,7 +206,7 @@ class WebRenderBridgeParent final : public PWebRenderBridgeParent,
       const wr::Epoch& aWrEpoch, TransactionId aTransactionId,
       bool aContainsSVGGroup, const VsyncId& aVsyncId,
       const TimeStamp& aVsyncStartTime, const TimeStamp& aRefreshStartTime,
-      const TimeStamp& aTxnStartTime, const nsCString& aTxnURL,
+      const TimeStamp& aTxnStartTime, const nsACString& aTxnURL,
       const TimeStamp& aFwdTime, const bool aIsFirstPaint,
       nsTArray<CompositionPayload>&& aPayloads,
       const bool aUseForTelemetry = true);
@@ -213,7 +220,7 @@ class WebRenderBridgeParent final : public PWebRenderBridgeParent,
   void NotifySceneBuiltForEpoch(const wr::Epoch& aEpoch,
                                 const TimeStamp& aEndTime);
 
-  void CompositeIfNeeded();
+  void RetrySkippedComposite();
 
   TextureFactoryIdentifier GetTextureFactoryIdentifier();
 
@@ -239,7 +246,7 @@ class WebRenderBridgeParent final : public PWebRenderBridgeParent,
     return aFontKey.mNamespace == mIdNamespace;
   }
 
-  void FlushRendering(bool aWaitForPresent = true);
+  void FlushRendering(wr::RenderReasons aReasons, bool aWaitForPresent = true);
 
   /**
    * Schedule generating WebRender frame definitely at next composite timing.
@@ -252,7 +259,7 @@ class WebRenderBridgeParent final : public PWebRenderBridgeParent,
    * Call CompositorVsyncScheduler::ScheduleComposition() directly, if we just
    * want to trigger AsyncImagePipelines update checks.
    */
-  void ScheduleGenerateFrame();
+  void ScheduleGenerateFrame(wr::RenderReasons aReason);
 
   /**
    * Invalidate rendered frame.
@@ -260,7 +267,7 @@ class WebRenderBridgeParent final : public PWebRenderBridgeParent,
    * WebRender could skip frame rendering if there is no update.
    * This function is used to force invalidating even when there is no update.
    */
-  void InvalidateRenderedFrame();
+  void InvalidateRenderedFrame(wr::RenderReasons aReasons);
 
   /**
    * Schedule forced frame rendering at next composite timing.
@@ -268,7 +275,7 @@ class WebRenderBridgeParent final : public PWebRenderBridgeParent,
    * WebRender could skip frame rendering if there is no update.
    * This function is used to force rendering even when there is no update.
    */
-  void ScheduleForcedGenerateFrame();
+  void ScheduleForcedGenerateFrame(wr::RenderReasons aReasons);
 
   void NotifyDidSceneBuild(RefPtr<const wr::WebRenderPipelineInfo> aInfo);
 
@@ -284,13 +291,6 @@ class WebRenderBridgeParent final : public PWebRenderBridgeParent,
 
   void BeginRecording(const TimeStamp& aRecordingStart);
 
-  /**
-   * Write the frames collected since the call to BeginRecording to disk.
-   *
-   * If there is not currently a recorder, this is a no-op.
-   */
-  RefPtr<wr::WebRenderAPI::WriteCollectedFramesPromise> WriteCollectedFrames();
-
 #if defined(MOZ_WIDGET_ANDROID)
   /**
    * Request a screengrab for android
@@ -299,13 +299,9 @@ class WebRenderBridgeParent final : public PWebRenderBridgeParent,
   void MaybeCaptureScreenPixels();
 #endif
   /**
-   * Return the frames collected since the call to BeginRecording encoded
-   * as data URIs.
-   *
-   * If there is not currently a recorder, this is a no-op and the promise will
-   * be rejected.
+   * Stop recording and the frames collected since the call to BeginRecording
    */
-  RefPtr<wr::WebRenderAPI::GetCollectedFramesPromise> GetCollectedFrames();
+  RefPtr<wr::WebRenderAPI::EndRecordingPromise> EndRecording();
 
   void DisableNativeCompositor();
   void AddPendingScrollPayload(CompositionPayload& aPayload,
@@ -315,6 +311,8 @@ class WebRenderBridgeParent final : public PWebRenderBridgeParent,
       const VsyncId& aCompositeStartId);
 
   RefPtr<WebRenderBridgeParentRef> GetWebRenderBridgeParentRef();
+
+  void FlushPendingWrTransactionEventsWithWait();
 
  private:
   class ScheduleSharedSurfaceRelease;
@@ -330,7 +328,8 @@ class WebRenderBridgeParent final : public PWebRenderBridgeParent,
                               bool aValidTransaction,
                               bool aObserveLayersUpdate);
 
-  bool SetDisplayList(const LayoutDeviceRect& aRect, ipc::ByteBuf&& aDL,
+  bool SetDisplayList(const LayoutDeviceRect& aRect, ipc::ByteBuf&& aDLItems,
+                      ipc::ByteBuf&& aDLCache, ipc::ByteBuf&& aSpatialTreeDL,
                       const wr::BuiltDisplayListDescriptor& aDLDesc,
                       const nsTArray<OpUpdateResource>& aResourceUpdates,
                       const nsTArray<RefCountedShmem>& aSmallShmems,
@@ -349,13 +348,6 @@ class WebRenderBridgeParent final : public PWebRenderBridgeParent,
                        const nsTArray<RefCountedShmem>& aSmallShmems,
                        const nsTArray<ipc::Shmem>& aLargeShmems,
                        wr::TransactionBuilder& aUpdates);
-  void AddPrivateExternalImage(wr::ExternalImageId aExtId, wr::ImageKey aKey,
-                               wr::ImageDescriptor aDesc,
-                               wr::TransactionBuilder& aResources);
-  void UpdatePrivateExternalImage(wr::ExternalImageId aExtId, wr::ImageKey aKey,
-                                  const wr::ImageDescriptor& aDesc,
-                                  const ImageIntRect& aDirtyRect,
-                                  wr::TransactionBuilder& aResources);
   bool AddSharedExternalImage(wr::ExternalImageId aExtId, wr::ImageKey aKey,
                               wr::TransactionBuilder& aResources);
   bool UpdateSharedExternalImage(
@@ -363,7 +355,8 @@ class WebRenderBridgeParent final : public PWebRenderBridgeParent,
       const ImageIntRect& aDirtyRect, wr::TransactionBuilder& aResources,
       UniquePtr<ScheduleSharedSurfaceRelease>& aScheduleRelease);
   void ObserveSharedSurfaceRelease(
-      const nsTArray<wr::ExternalImageKeyPair>& aPairs);
+      const nsTArray<wr::ExternalImageKeyPair>& aPairs,
+      const bool& aFromCheckpoint);
 
   bool PushExternalImageForTexture(wr::ExternalImageId aExtId,
                                    wr::ImageKey aKey, TextureHost* aTexture,
@@ -372,7 +365,7 @@ class WebRenderBridgeParent final : public PWebRenderBridgeParent,
 
   void AddPipelineIdForCompositable(const wr::PipelineId& aPipelineIds,
                                     const CompositableHandle& aHandle,
-                                    const bool& aAsync,
+                                    const CompositableHandleOwner& aOwner,
                                     wr::TransactionBuilder& aTxn,
                                     wr::TransactionBuilder& aTxnForImageBridge);
   void RemovePipelineIdForCompositable(const wr::PipelineId& aPipelineId,
@@ -410,10 +403,11 @@ class WebRenderBridgeParent final : public PWebRenderBridgeParent,
   void RollbackWrEpoch();
 
   void FlushSceneBuilds();
-  void FlushFrameGeneration();
+  void FlushFrameGeneration(wr::RenderReasons aReasons);
   void FlushFramePresentation();
 
-  void MaybeGenerateFrame(VsyncId aId, bool aForceGenerateFrame);
+  void MaybeGenerateFrame(VsyncId aId, bool aForceGenerateFrame,
+                          wr::RenderReasons aReasons);
 
   VsyncId GetVsyncIdForEpoch(const wr::Epoch& aEpoch) {
     for (auto& id : mPendingTransactionIds) {
@@ -431,7 +425,7 @@ class WebRenderBridgeParent final : public PWebRenderBridgeParent,
                          const TimeStamp& aVsyncStartTime,
                          const TimeStamp& aRefreshStartTime,
                          const TimeStamp& aTxnStartTime,
-                         const nsCString& aTxnURL, const TimeStamp& aFwdTime,
+                         const nsACString& aTxnURL, const TimeStamp& aFwdTime,
                          const bool aIsFirstPaint, const bool aUseForTelemetry,
                          nsTArray<CompositionPayload>&& aPayloads)
         : mEpoch(aEpoch),
@@ -500,6 +494,9 @@ class WebRenderBridgeParent final : public PWebRenderBridgeParent,
 #if defined(MOZ_WIDGET_ANDROID)
   UiCompositorControllerParent* mScreenPixelsTarget;
 #endif
+  uint32_t mBoolParameterBits;
+  uint16_t mBlobTileSize;
+  wr::RenderReasons mSkippedCompositeReasons;
   bool mDestroyed;
   bool mReceivedDisplayList;
   bool mIsFirstPaint;

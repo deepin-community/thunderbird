@@ -4,7 +4,7 @@
 
 #include "nsISupports.idl"
 
-[builtinclass, uuid(d989cb03-e446-4086-b9e6-46842cb97bd5)]
+[uuid(d989cb03-e446-4086-b9e6-46842cb97bd5)]
 interface nsIHttpAuthenticatorCallback : nsISupports
 {
   /**
@@ -21,11 +21,10 @@ interface nsIHttpAuthenticatorCallback : nsISupports
    * @param aContinuationState
    *        Modified continuation state to be passed to caller
    */
-  void onCredsGenerated(in string aCreds,
+  void onCredsGenerated(in ACString aCreds,
                         in unsigned long aFlags,
                         in nsresult aResult,
                         in nsISupports aSessionsState,
                         in nsISupports aContinuationState);
 
 };
-

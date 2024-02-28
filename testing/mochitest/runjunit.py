@@ -2,14 +2,11 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-from __future__ import absolute_import, print_function
-
 import argparse
 import os
 import posixpath
 import re
 import shutil
-import six
 import sys
 import tempfile
 import traceback
@@ -18,8 +15,9 @@ import mozcrash
 import mozinfo
 import mozlog
 import moznetwork
+import six
 from mozdevice import ADBDeviceFactory, ADBError, ADBTimeoutError
-from mozprofile import Profile, DEFAULT_PORTS
+from mozprofile import DEFAULT_PORTS, Profile
 from mozprofile.cli import parse_preferences
 from mozprofile.permissions import ServerLocations
 from runtests import MochitestDesktop, update_mozinfo
@@ -27,11 +25,9 @@ from runtests import MochitestDesktop, update_mozinfo
 here = os.path.abspath(os.path.dirname(__file__))
 
 try:
-    from mozbuild.base import (
-        MozbuildObject,
-        MachCommandConditions as conditions,
-    )
     from mach.util import UserError
+    from mozbuild.base import MachCommandConditions as conditions
+    from mozbuild.base import MozbuildObject
 
     build_obj = MozbuildObject.from_environment(cwd=here)
 except ImportError:
@@ -52,6 +48,8 @@ class JUnitTestRunner(MochitestDesktop):
     def __init__(self, log, options):
         self.log = log
         self.verbose = False
+        self.http3Server = None
+        self.dohServer = None
         if (
             options.log_tbpl_level == "debug"
             or options.log_mach_level == "debug"
@@ -130,10 +128,12 @@ class JUnitTestRunner(MochitestDesktop):
         self.options.webServer = self.options.remoteWebServer
         self.options.webSocketPort = "9988"
         self.options.httpdPath = None
+        self.options.http3ServerPath = None
         self.options.keep_open = False
         self.options.pidFile = ""
         self.options.subsuite = None
         self.options.xrePath = None
+        self.options.useHttp3Server = False
         if build_obj and "MOZ_HOST_BIN" in os.environ:
             self.options.xrePath = os.environ["MOZ_HOST_BIN"]
             if not self.options.utilityPath:
@@ -156,6 +156,16 @@ class JUnitTestRunner(MochitestDesktop):
 
         # Set preferences
         self.merge_base_profiles(self.options, "geckoview-junit")
+
+        if self.options.web_content_isolation_strategy is not None:
+            self.options.extra_prefs.append(
+                "fission.webContentIsolationStrategy=%s"
+                % self.options.web_content_isolation_strategy
+            )
+        self.options.extra_prefs.append("fission.autostart=true")
+        if self.options.disable_fission:
+            self.options.extra_prefs.pop()
+            self.options.extra_prefs.append("fission.autostart=false")
         prefs = parse_preferences(self.options.extra_prefs)
         self.profile.set_preferences(prefs)
 
@@ -238,12 +248,15 @@ class JUnitTestRunner(MochitestDesktop):
         env["R_LOG_VERBOSE"] = "1"
         env["R_LOG_LEVEL"] = "6"
         env["R_LOG_DESTINATION"] = "stderr"
-        if self.options.enable_webrender:
-            env["MOZ_WEBRENDER"] = "1"
+        # webrender needs gfx.webrender.all=true, gtest doesn't use prefs
+        env["MOZ_WEBRENDER"] = "1"
+        # FIXME: When android switches to using Fission by default,
+        # MOZ_FORCE_DISABLE_FISSION will need to be configured correctly.
+        if self.options.disable_fission:
+            env["MOZ_FORCE_DISABLE_FISSION"] = "1"
         else:
-            env["MOZ_WEBRENDER"] = "0"
-        if self.options.enable_fission:
             env["MOZ_FORCE_ENABLE_FISSION"] = "1"
+
         # Add additional env variables
         for [key, value] in [p.split("=", 1) for p in self.options.add_env]:
             env[key] = value
@@ -289,7 +302,9 @@ class JUnitTestRunner(MochitestDesktop):
         self.pass_count = 0
         self.fail_count = 0
         self.todo_count = 0
+        self.total_count = 0
         self.runs = 0
+        self.seen_last_test = False
 
         def callback(line):
             # Output callback: Parse the raw junit log messages, translating into
@@ -305,6 +320,12 @@ class JUnitTestRunner(MochitestDesktop):
             match = re.match(r"INSTRUMENTATION_STATUS:\s*test=(.*)", line)
             if match:
                 self.test_name = match.group(1)
+            match = re.match(r"INSTRUMENTATION_STATUS:\s*numtests=(.*)", line)
+            if match:
+                self.total_count = int(match.group(1))
+            match = re.match(r"INSTRUMENTATION_STATUS:\s*current=(.*)", line)
+            if match:
+                self.current_test_id = int(match.group(1))
             match = re.match(r"INSTRUMENTATION_STATUS:\s*stack=(.*)", line)
             if match:
                 self.exception_message = match.group(1)
@@ -319,8 +340,13 @@ class JUnitTestRunner(MochitestDesktop):
             match = re.match(r"INSTRUMENTATION_STATUS_CODE:\s*([+-]?\d+)", line)
             if match:
                 status = match.group(1)
-                full_name = "%s.%s" % (self.class_name, self.test_name)
+                full_name = "%s#%s" % (self.class_name, self.test_name)
                 if full_name == self.current_full_name:
+                    # A crash in the test harness might cause us to ignore tests,
+                    # so we double check that we've actually ran all the tests
+                    if self.total_count == self.current_test_id:
+                        self.seen_last_test = True
+
                     if status == "0":
                         message = ""
                         status = "PASS"
@@ -372,6 +398,8 @@ class JUnitTestRunner(MochitestDesktop):
         self.log.suite_start(["geckoview-junit"])
         try:
             self.device.grant_runtime_permissions(self.options.app)
+            self.device.add_change_device_settings(self.options.app)
+            self.device.add_mock_location(self.options.app)
             cmd = self.build_command_line(
                 test_filters_file=test_filters_file, test_filters=test_filters
             )
@@ -380,6 +408,7 @@ class JUnitTestRunner(MochitestDesktop):
                 self.exception_message = ""
                 self.test_name = ""
                 self.current_full_name = ""
+                self.current_test_id = 0
                 self.runs += 1
                 self.log.info("launching %s" % cmd)
                 p = self.device.shell(
@@ -393,6 +422,11 @@ class JUnitTestRunner(MochitestDesktop):
             self.log.info("Passed: %d" % self.pass_count)
             self.log.info("Failed: %d" % self.fail_count)
             self.log.info("Todo: %d" % self.todo_count)
+            if not self.seen_last_test:
+                self.log.error(
+                    "TEST-UNEXPECTED-FAIL | runjunit.py | "
+                    "Some tests did not run (probably due to a crash in the harness)"
+                )
         finally:
             self.log.suite_end()
 
@@ -486,8 +520,8 @@ class JunitArgumentParser(argparse.ArgumentParser):
             action="store",
             type=int,
             dest="max_time",
-            default="2400",
-            help="Max time in seconds to wait for tests (default 2400s).",
+            default="3000",
+            help="Max time in seconds to wait for tests (default 3000s).",
         )
         self.add_argument(
             "--runner",
@@ -554,18 +588,18 @@ class JunitArgumentParser(argparse.ArgumentParser):
             help="If collecting code coverage, save the report file in this dir.",
         )
         self.add_argument(
-            "--enable-webrender",
+            "--disable-fission",
             action="store_true",
-            dest="enable_webrender",
+            dest="disable_fission",
             default=False,
-            help="Enable the WebRender compositor in Gecko.",
+            help="Run the tests without Fission (site isolation) enabled.",
         )
         self.add_argument(
-            "--enable-fission",
-            action="store_true",
-            dest="enable_fission",
-            default=False,
-            help="Run the tests with Fission (site isolation) enabled.",
+            "--web-content-isolation-strategy",
+            type=int,
+            dest="web_content_isolation_strategy",
+            help="Strategy used to determine whether or not a particular site should load into "
+            "a webIsolated content process, see fission.webContentIsolationStrategy.",
         )
         self.add_argument(
             "--repeat",

@@ -1,12 +1,12 @@
 const baseURL = getRootDirectory(gTestPath).replace(
   "chrome://mochitests/content",
-  "http://example.com"
+  "https://example.com"
 );
 
 const childURL = `${baseURL}empty.html`;
 const parentURL = `${baseURL}empty_parent.html`;
 
-add_task(async function setup() {
+add_setup(async function () {
   await SpecialPowers.pushPrefEnv({
     set: [["dom.input_events.canSuspendInBCG.enabled", true]],
   });
@@ -41,7 +41,7 @@ async function checkInputManagerStatus(openChildInSameBCG) {
   await SpecialPowers.spawn(
     xhrTab.linkedBrowser.browsingContext,
     [openChildInSameBCG, childURL],
-    async function(sameBCG, url) {
+    async function (sameBCG, url) {
       if (sameBCG) {
         content.open(url);
       } else {

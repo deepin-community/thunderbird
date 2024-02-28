@@ -4,8 +4,11 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 EXPORTS += [
+    "HeaderReader.h",
+    "LineReader.h",
     "nsImapMoveCoalescer.h",
     "nsMailAuthModule.h",
+    "nsMailChannel.h",
     "nsMailDirServiceDefs.h",
     "nsMsgCompressIStream.h",
     "nsMsgCompressOStream.h",
@@ -22,25 +25,21 @@ EXPORTS += [
     "nsMsgTxn.h",
     "nsMsgUtils.h",
     "nsNewMailnewsURI.h",
-]
-
-EXPORTS.mozilla.mailnews += [
-    "ServiceList.h",
-    "Services.h",
+    "nsQuarantinedOutputStream.h",
+    "UrlListener.h",
 ]
 
 SOURCES += [
     "MailNewsDLF.cpp",
     "MailnewsLoadContextInfo.cpp",
     "nsCidProtocolHandler.cpp",
-    "nsCommonModule.cpp",
     "nsCopyMessageStreamListener.cpp",
     "nsImapMoveCoalescer.cpp",
     "nsMailAuthModule.cpp",
+    "nsMailChannel.cpp",
     "nsMailDirProvider.cpp",
     "nsMessenger.cpp",
     "nsMessengerBootstrap.cpp",
-    "nsMessengerContentHandler.cpp",
     "nsMsgAccount.cpp",
     "nsMsgAccountManager.cpp",
     "nsMsgBiffManager.cpp",
@@ -53,7 +52,6 @@ SOURCES += [
     "nsMsgEnumerator.cpp",
     "nsMsgFileStream.cpp",
     "nsMsgFolderCache.cpp",
-    "nsMsgFolderCacheElement.cpp",
     "nsMsgFolderCompactor.cpp",
     "nsMsgFolderNotificationService.cpp",
     "nsMsgGroupThread.cpp",
@@ -82,11 +80,12 @@ SOURCES += [
     "nsMsgXFViewThread.cpp",
     "nsMsgXFVirtualFolderDBView.cpp",
     "nsNewMailnewsURI.cpp",
+    "nsQuarantinedOutputStream.cpp",
     "nsSpamSettings.cpp",
     "nsStatusBarBiffManager.cpp",
     "nsStopwatch.cpp",
     "nsSubscribableServer.cpp",
-    "Services.cpp",
+    "UrlListener.cpp",
 ]
 
 if CONFIG["OS_ARCH"] == "WINNT":
@@ -110,20 +109,24 @@ EXTRA_JS_MODULES += [
     "ABQueryUtils.jsm",
     "converterWorker.js",
     "FolderLookupService.jsm",
-    "folderUtils.jsm",
+    "FolderUtils.jsm",
     "hostnameUtils.jsm",
-    "JsTreeSelection.jsm",
     "JXON.jsm",
+    "LineReader.jsm",
     "MailAuthenticator.jsm",
+    "MailChannel.sys.mjs",
     "MailCryptoUtils.jsm",
-    "MailNewsCommandLineHandler.jsm",
     "MailnewsMigrator.jsm",
     "MailNotificationManager.jsm",
     "MailNotificationService.jsm",
     "MailServices.jsm",
     "mailstoreConverter.jsm",
+    "MailStringUtils.jsm",
     "MsgAsyncPrompter.jsm",
     "MsgDBCacheManager.jsm",
+    "MsgIncomingServer.jsm",
+    "MsgKeySet.jsm",
+    "MsgProtocolInfo.sys.mjs",
     "OAuth2.jsm",
     "OAuth2Module.jsm",
     "OAuth2Providers.jsm",
@@ -131,9 +134,15 @@ EXTRA_JS_MODULES += [
     "VirtualFolderWrapper.jsm",
     "WinUnreadBadge.jsm",
 ]
+
+USE_LIBS += [
+    "jsoncpp",
+]
+
 LOCAL_INCLUDES += [
-    "/%s/dom/base" % CONFIG["mozreltopsrcdir"],
-    "/%s/netwerk/base" % CONFIG["mozreltopsrcdir"],
+    "/dom/base",
+    "/netwerk/base",
+    "/toolkit/components/jsoncpp/include",
 ]
 
 include("/ipc/chromium/chromium-config.mozbuild")

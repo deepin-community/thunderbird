@@ -10,13 +10,15 @@
 ## These are short descriptions for individual policies, to be displayed
 ## in the documentation section in about:policies.
 
-policy-3rdparty = Beliedsrigels ynstelle dy't troch WebExtensions tagong hawwe fia chrome.storage.managed.
+policy-3rdparty = Beliedsrigels ynstelle dy’t troch WebExtensions tagong hawwe fia chrome.storage.managed.
 
 policy-AppAutoUpdate = Automatyske applikaasjefernijing yn- of útskeakelje.
 
+policy-AppUpdatePin = Foarkomme dat { -brand-short-name } fernijd wurdt foarby de opjûne ferzje.
+
 policy-AppUpdateURL = Oanpaste app-fernijings-URL ynstelle.
 
-policy-Authentication = Yntegrearre ferifikaasje konfigurearje foar websiden dy't it stypje.
+policy-Authentication = Yntegrearre ferifikaasje konfigurearje foar websiden dy’t it stypje.
 
 policy-BackgroundAppUpdate2 = Eftergrûnfernijingen yn- of útskeakelje.
 
@@ -130,7 +132,7 @@ policy-Preferences = De wearde foar in subset fan foarkarren ynstelle en beskoat
 
 policy-PrimaryPassword = In haadwachtwurd fereaskje of foarkomme.
 
-policy-PromptForDownloadLocation = Freegje wêr't downloade bestannen bewarre wurde moatte.
+policy-PromptForDownloadLocation = Freegje wêr’t downloade bestannen bewarre wurde moatte.
 
 policy-Proxy = Proxyynstellingen konfigurearje.
 

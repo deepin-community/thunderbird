@@ -1,29 +1,28 @@
 {
   "langpack_id": "ca",
   "manifest_version": 2,
-  "applications": {
+  "browser_specific_settings": {
     "gecko": {
       "id": "langpack-ca@thunderbird.mozilla.org",
-      "strict_min_version": "91.0",
-      "strict_max_version": "91.*"
+      "strict_min_version": "115.0",
+      "strict_max_version": "115.*"
     }
   },
-  "name": "Català Language Pack",
-  "description": "Language pack for Thunderbird for ca",
-  "version": "91.0buildid20211101223011",
+  "name": "Language: Català (Catalan)",
+  "description": "Thunderbird Language Pack for Català (ca) – Catalan",
+  "version": "115.8.20240216.174500",
   "languages": {
     "ca": {
-      "version": "20211011130252",
+      "version": "20240216183624",
       "chrome_resources": {
         "alerts": "chrome/ca/locale/ca/alerts/",
         "autoconfig": "chrome/ca/locale/ca/autoconfig/",
-        "branding": "chrome/ca/locale/ca/branding/",
+        "branding": "chrome/ca/locale/branding/",
         "calendar": "chrome/ca/locale/ca/calendar/",
         "chat": "chrome/ca/locale/ca/chat/",
         "communicator": "chrome/ca/locale/ca/communicator/",
         "devtools": "chrome/ca/locale/ca/devtools/client/",
         "devtools-shared": "chrome/ca/locale/ca/devtools/shared/",
-        "devtools-startup": "chrome/ca/locale/ca/devtools/startup/",
         "global": "chrome/ca/locale/ca/global/",
         "global-platform": {
           "macosx": "chrome/ca/locale/ca/global-platform/mac/",

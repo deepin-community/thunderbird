@@ -13,7 +13,7 @@ var {
   assert_folder_mode,
   assert_folder_tree_view_row_count,
   be_in_folder,
-  make_new_sets_in_folder,
+  make_message_sets_in_folders,
   mc,
 } = ChromeUtils.import(
   "resource://testing-common/mozmill/FolderDisplayHelpers.jsm"
@@ -23,12 +23,12 @@ var { MailServices } = ChromeUtils.import(
   "resource:///modules/MailServices.jsm"
 );
 
-add_task(function setupModule(module) {
+add_setup(function () {
   assert_folder_mode("all");
   assert_folder_tree_view_row_count(7);
 });
 
-add_task(function test_folder_names_in_recent_view_mode() {
+add_task(async function test_folder_names_in_recent_view_mode() {
   // We need 2 local accounts that have pristine folders with
   // unmodified times, so that it does not influence the
   // list of Recent folders. So clear out the most-recently-used time.
@@ -66,14 +66,14 @@ add_task(function test_folder_names_in_recent_view_mode() {
   assert_folder_tree_view_row_count(10);
 
   // Create some messages in the folders to make them recently used.
-  make_new_sets_in_folder(fUnique, [{ count: 1 }]);
-  be_in_folder(fUnique);
-  make_new_sets_in_folder(fDup1, [{ count: 1 }]);
-  be_in_folder(fDup1);
-  make_new_sets_in_folder(fDup2, [{ count: 2 }]);
-  be_in_folder(fDup2);
-  make_new_sets_in_folder(fDup3, [{ count: 3 }]);
-  be_in_folder(fDup3);
+  await make_message_sets_in_folders([fUnique], [{ count: 1 }]);
+  await be_in_folder(fUnique);
+  await make_message_sets_in_folders([fDup1], [{ count: 1 }]);
+  await be_in_folder(fDup1);
+  await make_message_sets_in_folders([fDup2], [{ count: 2 }]);
+  await be_in_folder(fDup2);
+  await make_message_sets_in_folders([fDup3], [{ count: 3 }]);
+  await be_in_folder(fDup3);
 
   // Enable the recent folder view.
   mc.window.gFolderTreeView.activeModes = "recent";
@@ -92,13 +92,13 @@ add_task(function test_folder_names_in_recent_view_mode() {
   assert_folder_tree_view_row_count(5);
 
   // Remove our folders to clean up.
-  rootFolder1.propagateDelete(fUnique, true, null);
-  rootFolder1.propagateDelete(fDup1, true, null);
-  rootFolder2.propagateDelete(fDup2, true, null);
-  rootFolder2.propagateDelete(fDup3, true, null);
+  rootFolder1.propagateDelete(fUnique, true);
+  rootFolder1.propagateDelete(fDup1, true);
+  rootFolder2.propagateDelete(fDup2, true);
+  rootFolder2.propagateDelete(fDup3, true);
 });
 
-registerCleanupFunction(function teardownModule() {
+registerCleanupFunction(function () {
   // Hide the recent folders view enabled in the previous test. The activeModes
   // setter should take care of restoring the "all" view and prevent and empty
   // Folder pane.

@@ -19,6 +19,17 @@ XPIDL_SOURCES += [
     "nsIAbLDAPReplicationService.idl",
     "nsIAbLDIFService.idl",
     "nsIAbManager.idl",
+    "nsILDAPBERElement.idl",
+    "nsILDAPBERValue.idl",
+    "nsILDAPConnection.idl",
+    "nsILDAPControl.idl",
+    "nsILDAPErrors.idl",
+    "nsILDAPMessage.idl",
+    "nsILDAPMessageListener.idl",
+    "nsILDAPModification.idl",
+    "nsILDAPOperation.idl",
+    "nsILDAPService.idl",
+    "nsILDAPURL.idl",
     "nsIMsgVCardService.idl",
 ]
 
@@ -27,8 +38,11 @@ if CONFIG["OS_ARCH"] == "WINNT" and CONFIG["MOZ_MAPI_SUPPORT"]:
         "nsIAbOutlookInterface.idl",
     ]
 
+if CONFIG["MOZ_PREF_EXTENSIONS"]:
+    XPIDL_SOURCES += [
+        "nsILDAPSyncQuery.idl",
+    ]
+
 XPIDL_MODULE = "addrbook"
 
-EXPORTS += [
-    "nsAbBaseCID.h",
-]
+EXPORTS += []

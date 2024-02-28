@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, [Ribose Inc](https://www.ribose.com).
+ * Copyright (c) 2018-2022, [Ribose Inc](https://www.ribose.com).
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,18 +27,16 @@
 #ifndef RNP_SIGNATURES_H_
 #define RNP_SIGNATURES_H_
 
-#include "types.h"
-#include "crypto/hash.h"
+#include "crypto/hash.hpp"
 
 /**
- * Initialize a signature computation.
+ * @brief Initialize a signature computation.
  * @param key the key that will be used to sign or verify
  * @param hash_alg the digest algo to be used
- * @param hash digest context that will be initialized
+ * @param hash digest object that will be initialized
  */
-rnp_result_t signature_init(const pgp_key_material_t *key,
-                            pgp_hash_alg_t            hash_alg,
-                            pgp_hash_t *              hash);
+std::unique_ptr<rnp::Hash> signature_init(const pgp_key_material_t &key,
+                                          pgp_hash_alg_t            hash_alg);
 
 /**
  * @brief Calculate signature with pre-populated hash
@@ -47,12 +45,11 @@ rnp_result_t signature_init(const pgp_key_material_t *key,
  * @param hash pre-populated with signed data hash context. It is finalized and destroyed
  *             during the execution. Signature fields and trailer are hashed in this function.
  * @param rng random number generator
- * @return RNP_SUCCESS if signature was successfully calculated or error code otherwise
  */
-rnp_result_t signature_calculate(pgp_signature_t *         sig,
-                                 const pgp_key_material_t *seckey,
-                                 pgp_hash_t *              hash,
-                                 rng_t *                   rng);
+void signature_calculate(pgp_signature_t &     sig,
+                         pgp_key_material_t &  seckey,
+                         rnp::Hash &           hash,
+                         rnp::SecurityContext &ctx);
 
 /**
  * @brief Validate a signature with pre-populated hash. This method just checks correspondence
@@ -60,12 +57,13 @@ rnp_result_t signature_calculate(pgp_signature_t *         sig,
  *        checked for validity.
  * @param sig signature to validate
  * @param key public key material of the verifying key
- * @param hash pre-populated with signed data hash context. It is finalized and destroyed
+ * @param hash pre-populated with signed data hash context. It is finalized
  *             during the execution. Signature fields and trailer are hashed in this function.
  * @return RNP_SUCCESS if signature was successfully validated or error code otherwise.
  */
-rnp_result_t signature_validate(const pgp_signature_t *   sig,
-                                const pgp_key_material_t *key,
-                                pgp_hash_t *              hash);
+rnp_result_t signature_validate(const pgp_signature_t &     sig,
+                                const pgp_key_material_t &  key,
+                                rnp::Hash &                 hash,
+                                const rnp::SecurityContext &ctx);
 
 #endif

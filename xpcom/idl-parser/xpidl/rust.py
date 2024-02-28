@@ -34,10 +34,9 @@
 # and when possible we should avoid doing so. We don't generate bindings for
 # these methods here currently.
 
-from __future__ import absolute_import
-
 import os.path
 import re
+
 from xpidl import xpidl
 
 
@@ -446,6 +445,21 @@ pub struct %(name)s {
     ///
     /// XPCOM interfaces in general are not safe to send across threads.
     __nosync: ::std::marker::PhantomData<::std::rc::Rc<u8>>,
+
+    // Make the rust compiler aware that there might be interior mutability
+    // in what actually implements the interface. This works around UB
+    // introduced by
+    // https://github.com/llvm/llvm-project/commit/01859da84bad95fd51d6a03b08b60c660e642a4f
+    // that a rust lint would make blatantly obvious, but doesn't exist.
+    // (See https://github.com/rust-lang/rust/issues/111229).
+    // This prevents optimizations, but those optimizations weren't available
+    // before rustc switched to LLVM 16, and they now cause problems because
+    // of the UB.
+    // Until there's a lint available to find all our UB, it's simpler to
+    // avoid the UB in the first place, at the cost of preventing optimizations
+    // in places that don't cause UB. But again, those optimizations weren't
+    // available before.
+    __maybe_interior_mutability: ::std::cell::UnsafeCell<[u8; 0]>,
 }
 
 // Implementing XpCom for an interface exposes its IID, which allows for easy
@@ -514,7 +528,7 @@ vtable_entry_tmpl = """\
 
 const_wrapper_tmpl = """\
 %(docs)s
-pub const %(name)s: i64 = %(val)s;
+pub const %(name)s: %(type)s = %(val)s;
 """
 
 
@@ -609,6 +623,7 @@ def write_interface(iface, fd):
                 const_wrapper_tmpl
                 % {
                     "docs": doccomments(member.doccomments),
+                    "type": member.realtype.rustType("in"),
                     "name": member.name,
                     "val": member.getValue(),
                 }

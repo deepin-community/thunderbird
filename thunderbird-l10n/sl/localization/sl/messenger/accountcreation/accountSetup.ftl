@@ -11,6 +11,7 @@ account-setup-description = Za uporabo svojega trenutnega e-poštnega naslova vn
 account-setup-secondary-description = { -brand-product-name } bo samodejno poiskal delujoče in priporočene nastavitve za strežnik.
 account-setup-success-title = Račun uspešno ustvarjen
 account-setup-success-description = Zdaj lahko uporabljate ta račun s { -brand-short-name(sklon: "orodnik") }.
+account-setup-success-secondary-description = Uporabniško izkušnjo si lahko še izboljšate s priključitvijo povezanih storitev in z nastavitvijo naprednih nastavitev računa.
 
 ## Form fields
 
@@ -22,7 +23,7 @@ account-setup-name-input =
 account-setup-name-info-icon =
     .title = Vaše ime, s katerim se predstavljate
 account-setup-name-warning-icon =
-    .title = { account-setup-name-warning }
+    .title = Vnesite svoje ime
 account-setup-email-label = E-poštni naslov
     .accesskey = E
 account-setup-email-input =
@@ -30,14 +31,12 @@ account-setup-email-input =
 account-setup-email-info-icon =
     .title = Vaš obstoječi e-poštni naslov
 account-setup-email-warning-icon =
-    .title = { account-setup-email-warning }
+    .title = Neveljaven e-poštni naslov
 account-setup-password-label = Geslo
     .accesskey = G
     .title = Neobvezno, uporabljeno bo samo za preveritev veljavnosti uporabniškega imena
 account-provisioner-button = Pridobite nov e-poštni naslov
     .accesskey = n
-account-setup-password-toggle =
-    .title = Pokaži/skrij geslo
 account-setup-password-toggle-show =
     .title = Pokaži geslo kot čisto besedilo
 account-setup-password-toggle-hide =
@@ -49,6 +48,9 @@ account-setup-exchange-label = Vaša prijava
 #   YOURDOMAIN refers to the Windows domain in ActiveDirectory. yourusername refers to the user's account name in Windows.
 account-setup-exchange-input =
     .placeholder = VAŠADOMENA\vašeuporabniškoime
+#   Domain refers to the Windows domain in ActiveDirectory. We mean the user's login in Windows at the local corporate network.
+account-setup-exchange-info-icon =
+    .title = Domenska prijava
 
 ## Action buttons
 
@@ -122,21 +124,14 @@ account-setup-results-area-title =
         [few] Razpoložljive nastavitve
        *[other] Razpoložljive nastavitve
     }
-# Note: IMAP is the name of a protocol.
-account-setup-result-imap = IMAP
 account-setup-result-imap-description = E-pošta in mape naj se sinhronizirajo s strežnikom
-# Note: POP3 is the name of a protocol.
-account-setup-result-pop = POP3
 account-setup-result-pop-description = E-pošta in mape naj bodo shranjene na računalniku
-# Note: Exchange is the name of a product.
-account-setup-result-exchange = Exchange
 # Note: Exchange, Office365 are the name of products.
 account-setup-result-exchange2-description = Uporabi strežnik Microsoft Exchange ali storitve v oblaku Office365
 account-setup-incoming-title = Dohodni
 account-setup-outgoing-title = Odhodni
 account-setup-username-title = Uporabniško ime
 account-setup-exchange-title = Strežnik
-account-setup-result-smtp = SMTP
 account-setup-result-no-encryption = Brez šifriranja
 account-setup-result-ssl = SSL/TLS
 account-setup-result-starttls = STARTTLS
@@ -152,16 +147,14 @@ account-setup-result-username-different = Dohodni: { $incoming }, odhodni: { $ou
 account-setup-credentials-incomplete = Overitev ni uspela. Ali so vnesene poverilnice napačne ali pa je za prijavo zahtevano ločeno uporabniško ime. To uporabniško ime je običajno vaša prijava za domeno sistema Windows z ali brez domene (npr. janeznovak ali AD\\janeznovak).
 account-setup-credentials-wrong = Overitev ni uspela. Preverite uporabniško ime in geslo
 account-setup-find-settings-failed = { -brand-short-name } ni uspel najti nastavitev za vaš e-poštni račun
-account-setup-exchange-config-unverifiable = Nastavitve ni bilo mogoče preveriti. Če sta uporabniško ime in geslo pravilni, je verjetno, da je skrbnik strežnika onemogočil izbrano nastavitev za vaš račun. Poskusite izbrati drug protokol.
+account-setup-exchange-config-unverifiable = Nastavitve ni bilo mogoče preveriti. Če sta uporabniško ime in geslo pravilna, je skrbnik strežnika verjetno onemogočil izbrano nastavitev za vaš račun. Poskusite izbrati drug protokol.
+account-setup-provisioner-error = Pri nastavljanju vašega novega računa v { -brand-short-name(sklon: "mestnik") } je prišlo do napake. Poskusite ga nastaviti ročno s svojimi poverilnicami.
 
 ## Manual configuration area
 
 account-setup-manual-config-title = Nastavitve strežnika
 account-setup-incoming-server-legend = Dohodni strežnik
 account-setup-protocol-label = Protokol:
-protocol-imap-option = { account-setup-result-imap }
-protocol-pop-option = { account-setup-result-pop }
-protocol-exchange-option = { account-setup-result-exchange }
 account-setup-hostname-label = Ime gostitelja:
 account-setup-port-label = Vrata:
     .title = Za samodejno zaznavo nastavite številko vrat na 0
@@ -230,7 +223,7 @@ account-setup-confirm-advanced-description = To pogovorno okno se bo zaprlo in u
 ## Addon installation section
 
 account-setup-addon-install-title = Namesti
-account-setup-addon-install-intro = Dodatek tretjega ponudnika vam lahko omogoči dostop do vašega e-poštnega računa na tem strežniku:
+account-setup-addon-install-intro = Dostop do e-poštnega računa na tem strežniku si lahko omogočite z dodatkom tretjega ponudnika:
 account-setup-addon-no-protocol = Ta e-poštni strežnik žal ne podpira odprtih protokolov. { account-setup-addon-install-intro }
 
 ## Success view
@@ -244,6 +237,7 @@ account-setup-address-book-ldap-button = Poveži z imenikom LDAP
 account-setup-calendar-button = Poveži z oddaljenim koledarjem
 account-setup-linked-services-title = Povežite povezane storitve
 account-setup-linked-services-description = { -brand-short-name } je zaznal druge storitve, povezane z vašim e-poštnim računom.
+account-setup-no-linked-description = Nastavite ostale storitve, da kar najbolje izkoristite { -brand-short-name }.
 # Variables:
 # $count (Number) - The number of address books found during autoconfig.
 account-setup-found-address-books-description =
@@ -289,6 +283,8 @@ account-setup-calendar-name-input =
 account-setup-calendar-color-label = Barva
 account-setup-calendar-refresh-label = Osveži
 account-setup-calendar-refresh-manual = Ročno
+# Variables:
+# $count (Number) - Number of minutes in the calendar refresh interval.
 account-setup-calendar-refresh-interval =
     { $count ->
         [one] Vsako minuto

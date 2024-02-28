@@ -14,6 +14,7 @@ var utils = ChromeUtils.import("resource://testing-common/mozmill/utils.jsm");
 var {
   close_compose_window,
   open_compose_with_reply,
+  save_compose_message,
   wait_for_compose_window,
 } = ChromeUtils.import("resource://testing-common/mozmill/ComposeHelpers.jsm");
 var {
@@ -22,6 +23,8 @@ var {
   be_in_folder,
   create_message,
   get_special_folder,
+  get_about_message,
+  make_display_unthreaded,
   mc,
   press_delete,
   select_click_row,
@@ -38,16 +41,17 @@ var { plan_for_new_window } = ChromeUtils.import(
   "resource://testing-common/mozmill/WindowHelpers.jsm"
 );
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 var { MailServices } = ChromeUtils.import(
   "resource:///modules/MailServices.jsm"
 );
 var { MimeParser } = ChromeUtils.import("resource:///modules/mimeParser.jsm");
 
+let aboutMessage = get_about_message();
+
 var gDrafts;
 
-add_task(function setupModule(module) {
-  gDrafts = get_special_folder(Ci.nsMsgFolderFlags.Drafts, true);
+add_setup(async function () {
+  gDrafts = await get_special_folder(Ci.nsMsgFolderFlags.Drafts, true);
 });
 
 /**
@@ -55,15 +59,12 @@ add_task(function setupModule(module) {
  *
  * @param aMsgHdr: nsIMsgDBHdr object whose text body will be read
  * @param aGetText: if true, return header objects. if false, return body data.
- * @return Map(partnum -> message headers)
+ * @returns Map(partnum -> message headers)
  */
 function getMsgHeaders(aMsgHdr, aGetText = false) {
   let msgFolder = aMsgHdr.folder;
   let msgUri = msgFolder.getUriForMsg(aMsgHdr);
 
-  let messenger = Cc["@mozilla.org/messenger;1"].createInstance(
-    Ci.nsIMessenger
-  );
   let handler = {
     _done: false,
     _data: new Map(),
@@ -82,9 +83,15 @@ function getMsgHeaders(aMsgHdr, aGetText = false) {
   let streamListener = MimeParser.makeStreamListenerParser(handler, {
     strformat: "unicode",
   });
-  messenger
-    .messageServiceFromURI(msgUri)
-    .streamMessage(msgUri, streamListener, null, null, false, "", false);
+  MailServices.messageServiceFromURI(msgUri).streamMessage(
+    msgUri,
+    streamListener,
+    null,
+    null,
+    false,
+    "",
+    false
+  );
   utils.waitFor(() => handler._done);
   return aGetText ? handler._text : handler._data;
 }
@@ -93,27 +100,28 @@ function getMsgHeaders(aMsgHdr, aGetText = false) {
  * Test that if we reply to a message in an invalid charset, we don't try to compose
  * in that charset. Instead, we should be using UTF-8.
  */
-add_task(function test_wrong_reply_charset() {
+add_task(async function test_wrong_reply_charset() {
   let folder = gDrafts;
   let msg0 = create_message({
     bodyPart: new SyntheticPartLeaf("Some text", {
       charset: "invalid-charset",
     }),
   });
-  add_message_to_folder(folder, msg0);
-  be_in_folder(folder);
+  await add_message_to_folder([folder], msg0);
+  await be_in_folder(folder);
+  // Make the folder unthreaded for easier message selection.
+  make_display_unthreaded();
+
   let msg = select_click_row(0);
   assert_selected_and_displayed(mc, msg);
   Assert.equal(getMsgHeaders(msg).get("").charset, "invalid-charset");
 
   let rwc = open_compose_with_reply();
-  // Ctrl+S = save as draft.
-  EventUtils.synthesizeKey(
-    "s",
-    { shiftKey: false, accelKey: true },
-    rwc.window
+  await save_compose_message(rwc.window);
+  await TestUtils.waitForCondition(
+    () => folder.getTotalMessages(false) == 2,
+    "message saved to drafts folder"
   );
-  waitForSaveOperation(rwc);
   close_compose_window(rwc);
 
   let draftMsg = select_click_row(1);
@@ -124,65 +132,66 @@ add_task(function test_wrong_reply_charset() {
   msg = select_click_row(0);
 
   // Wait for the notification with the Edit button.
-  wait_for_notification_to_show(mc, "mail-notification-top", "draftMsgContent");
+  wait_for_notification_to_show(
+    aboutMessage,
+    "mail-notification-top",
+    "draftMsgContent"
+  );
 
   plan_for_new_window("msgcompose");
 
-  let box = get_notification(mc, "mail-notification-top", "draftMsgContent");
-  // Click on the "Edit" button in the draft notification.
-  EventUtils.synthesizeMouseAtCenter(box.buttonContainer.firstElementChild, {});
-  rwc = wait_for_compose_window();
-  EventUtils.synthesizeKey(
-    "s",
-    { shiftKey: false, accelKey: true },
-    rwc.window
+  let box = get_notification(
+    aboutMessage,
+    "mail-notification-top",
+    "draftMsgContent"
   );
-  waitForSaveOperation(rwc);
+  // Click on the "Edit" button in the draft notification.
+  EventUtils.synthesizeMouseAtCenter(
+    box.buttonContainer.firstElementChild,
+    {},
+    aboutMessage
+  );
+  rwc = wait_for_compose_window();
+  await save_compose_message(rwc.window);
   close_compose_window(rwc);
   msg = select_click_row(0);
-  Assert.equal(getMsgHeaders(msg).get("").charset, "UTF-8");
+  await TestUtils.waitForCondition(
+    () => getMsgHeaders(msg).get("").charset == "UTF-8",
+    "The charset matches"
+  );
   press_delete(mc); // Delete message
 });
 
 /**
  * Test that replying to bad charsets don't screw up the existing text.
  */
-add_task(function test_no_mojibake() {
+add_task(async function test_no_mojibake() {
   let folder = gDrafts;
   let nonASCII = "ケツァルコアトル";
   let UTF7 = "+MLEwxDChMOswszCiMMgw6w-";
   let msg0 = create_message({
     bodyPart: new SyntheticPartLeaf(UTF7, { charset: "utf-7" }),
   });
-  add_message_to_folder(folder, msg0);
-  be_in_folder(folder);
+  await add_message_to_folder([folder], msg0);
+  await be_in_folder(folder);
   let msg = select_click_row(0);
   assert_selected_and_displayed(mc, msg);
-  Assert.equal(getMsgHeaders(msg).get("").charset, "utf-7");
-  Assert.equal(
-    getMsgHeaders(msg, true)
-      .get("")
-      .trim(),
-    nonASCII
+  await TestUtils.waitForCondition(
+    () => getMsgHeaders(msg).get("").charset == "utf-7",
+    "message charset correctly set"
   );
+  Assert.equal(getMsgHeaders(msg, true).get("").trim(), nonASCII);
 
   let rwc = open_compose_with_reply();
-  // Ctrl+S = save as draft.
-  EventUtils.synthesizeKey(
-    "s",
-    { shiftKey: false, accelKey: true },
-    rwc.window
+  await save_compose_message(rwc.window);
+  await TestUtils.waitForCondition(
+    () => folder.getTotalMessages(false) == 2,
+    "message saved to drafts folder"
   );
-  waitForSaveOperation(rwc);
   close_compose_window(rwc);
 
   let draftMsg = select_click_row(1);
-  Assert.equal(
-    getMsgHeaders(draftMsg)
-      .get("")
-      .charset.toUpperCase(),
-    "UTF-8"
-  );
+  Assert.equal(getMsgHeaders(draftMsg).get("").charset.toUpperCase(), "UTF-8");
   let text = getMsgHeaders(draftMsg, true).get("");
   // Delete message first before throwing so subsequent tests are not affected.
   press_delete(mc);
@@ -194,32 +203,29 @@ add_task(function test_no_mojibake() {
   msg = select_click_row(0);
 
   // Wait for the notification with the Edit button.
-  wait_for_notification_to_show(mc, "mail-notification-top", "draftMsgContent");
+  wait_for_notification_to_show(
+    aboutMessage,
+    "mail-notification-top",
+    "draftMsgContent"
+  );
 
   plan_for_new_window("msgcompose");
-  let box = get_notification(mc, "mail-notification-top", "draftMsgContent");
-  // Click on the "Edit" button in the draft notification.
-  EventUtils.synthesizeMouseAtCenter(box.buttonContainer.firstElementChild, {});
-  rwc = wait_for_compose_window();
-  EventUtils.synthesizeKey(
-    "s",
-    { shiftKey: false, accelKey: true },
-    rwc.window
+  let box = get_notification(
+    aboutMessage,
+    "mail-notification-top",
+    "draftMsgContent"
   );
-  waitForSaveOperation(rwc);
+  // Click on the "Edit" button in the draft notification.
+  EventUtils.synthesizeMouseAtCenter(
+    box.buttonContainer.firstElementChild,
+    {},
+    aboutMessage
+  );
+  rwc = wait_for_compose_window();
+  await save_compose_message(rwc.window);
   close_compose_window(rwc);
   msg = select_click_row(0);
-  Assert.equal(
-    getMsgHeaders(msg)
-      .get("")
-      .charset.toUpperCase(),
-    "UTF-8"
-  );
-  Assert.equal(
-    getMsgHeaders(msg, true)
-      .get("")
-      .trim(),
-    nonASCII
-  );
+  Assert.equal(getMsgHeaders(msg).get("").charset.toUpperCase(), "UTF-8");
+  Assert.equal(getMsgHeaders(msg, true).get("").trim(), nonASCII);
   press_delete(mc); // Delete message
 });

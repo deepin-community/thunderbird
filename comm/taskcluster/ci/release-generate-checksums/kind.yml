@@ -2,25 +2,25 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 ---
-loader: taskgraph.loader.transform:loader
+loader: gecko_taskgraph.loader.transform:loader
 
 kind-dependencies:
     - beetmover-source
     - post-beetmover-checksums-dummy
 
 transforms:
-    - taskgraph.transforms.build:transforms
-    - taskgraph.transforms.release_deps:transforms
-    - taskgraph.transforms.release_generate_checksums:transforms
-    - taskgraph.transforms.job:transforms
-    - taskgraph.transforms.task:transforms
+    - gecko_taskgraph.transforms.build:transforms
+    - gecko_taskgraph.transforms.release_deps:transforms
+    - gecko_taskgraph.transforms.release_generate_checksums:transforms
+    - gecko_taskgraph.transforms.job:transforms
+    - gecko_taskgraph.transforms.task:transforms
 
 job-defaults:
     name: generate-checksums
     description: generates checksums
     run-on-projects: []  # to make sure this never runs as part of CI
     shipping-phase: promote
-    worker-type: b-linux
+    worker-type: b-linux-gcp
     worker:
         max-run-time: 1200
         artifacts:
@@ -64,9 +64,9 @@ jobs:
                 by-release-level:
                     production:
                         stage_product: "thunderbird"
-                        bucket_name: "net-mozaws-prod-delivery-archive"
+                        bucket_name: "moz-fx-productdelivery-pr-38b5-productdelivery"
                     staging:
                         stage_product: "thunderbird"
-                        bucket_name: "net-mozaws-stage-delivery-archive"
+                        bucket_name: "moz-fx-productdelivery-no-7d6a-productdelivery"
         treeherder:
             platform: thunderbird-release/opt

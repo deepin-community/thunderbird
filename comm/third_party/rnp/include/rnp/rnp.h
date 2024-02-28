@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2017-2020 Ribose Inc.
+ * Copyright (c) 2017-2021 Ribose Inc.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -45,6 +45,9 @@ typedef uint32_t rnp_result_t;
 #define RNP_KEY_EXPORT_SECRET (1U << 2)
 #define RNP_KEY_EXPORT_SUBKEYS (1U << 3)
 
+/* Export base64-encoded autocrypt key instead of binary */
+#define RNP_KEY_EXPORT_BASE64 (1U << 9)
+
 #define RNP_KEY_REMOVE_PUBLIC (1U << 0)
 #define RNP_KEY_REMOVE_SECRET (1U << 1)
 #define RNP_KEY_REMOVE_SUBKEYS (1U << 2)
@@ -78,6 +81,7 @@ typedef uint32_t rnp_result_t;
 #define RNP_LOAD_SAVE_SECRET_KEYS (1U << 1)
 #define RNP_LOAD_SAVE_PERMISSIVE (1U << 8)
 #define RNP_LOAD_SAVE_SINGLE (1U << 9)
+#define RNP_LOAD_SAVE_BASE64 (1U << 10)
 
 /**
  * Flags for the rnp_key_remove_signatures
@@ -106,6 +110,33 @@ typedef uint32_t rnp_result_t;
  */
 #define RNP_USER_ID (1U)
 #define RNP_USER_ATTR (2U)
+
+/**
+ * Predefined feature security levels
+ */
+#define RNP_SECURITY_PROHIBITED (0U)
+#define RNP_SECURITY_INSECURE (1U)
+#define RNP_SECURITY_DEFAULT (2U)
+
+/**
+ * Flags for feature security rules.
+ */
+#define RNP_SECURITY_OVERRIDE (1U << 0)
+#define RNP_SECURITY_VERIFY_KEY (1U << 1)
+#define RNP_SECURITY_VERIFY_DATA (1U << 2)
+#define RNP_SECURITY_REMOVE_ALL (1U << 16)
+
+/**
+ * Encryption flags
+ */
+#define RNP_ENCRYPT_NOWRAP (1U << 0)
+
+/**
+ * Decryption/verification flags
+ */
+#define RNP_VERIFY_IGNORE_SIGS_ON_DECRYPT (1U << 0)
+#define RNP_VERIFY_REQUIRE_ALL_SIGS (1U << 1)
+#define RNP_VERIFY_ALLOW_HIDDEN_RECIPIENT (1U << 2)
 
 /**
  * Return a constant string describing the result code
@@ -158,26 +189,29 @@ RNP_API uint32_t rnp_version_patch(uint32_t version);
  *  This function is only useful for non-releases. For releases,
  *  it will return 0.
  *
- *  The intended usage is to provide a form of versioning for the master
+ *  The intended usage is to provide a form of versioning for the main
  *  branch.
  *
  *  @return the unix timestamp of the last commit, or 0 if unavailable
  **/
 RNP_API uint64_t rnp_version_commit_timestamp();
 
-/** Enable debugging for the specified source file. Use 'all' or NULL as parameter to
- *  enable debug for all sources.
- *  Note: this must be only used during development since may print out confidential data.
+#ifndef RNP_NO_DEPRECATED
+/** @brief This function is deprecated and should not be used anymore. It would just silently
+ *         return RNP_SUCCESS.
  *
  * @param file name of the sourcer file. Use 'all' to enable debug for all code.
- */
-RNP_API rnp_result_t rnp_enable_debug(const char *file);
-
-/**
- * @brief Disable previously enabled debug for all files.
  *
  */
-RNP_API rnp_result_t rnp_disable_debug();
+RNP_API RNP_DEPRECATED rnp_result_t rnp_enable_debug(const char *file);
+
+/**
+ * @brief This function is deprecated and should not be used anymore. It would just silently
+ *        return RNP_SUCCESS.
+ *
+ */
+RNP_API RNP_DEPRECATED rnp_result_t rnp_disable_debug();
+#endif
 
 /*
  * Opaque structures
@@ -278,6 +312,10 @@ typedef bool (*rnp_password_cb)(rnp_ffi_t        ffi,
  *  to verify a signature, the signer's keyid may be used first to request the key.
  *  If that is not successful, the signer's fingerprint (if available) may be used.
  *
+ *  Please note that there is a special case with 'hidden' recipient, with all-zero keyid. In
+ *  this case implementation should load all available secret keys for the decryption attempt
+ *  (or do nothing, in this case decryption to the hidden recipient would fail).
+ *
  *  Situations in which this callback would be used include:
  *   - When decrypting data that includes a public-key encrypted session key,
  *     and the key is not found in the keyrings.
@@ -338,6 +376,17 @@ RNP_API rnp_result_t rnp_ffi_create(rnp_ffi_t * ffi,
 RNP_API rnp_result_t rnp_ffi_destroy(rnp_ffi_t ffi);
 
 RNP_API rnp_result_t rnp_ffi_set_log_fd(rnp_ffi_t ffi, int fd);
+
+/**
+ * @brief Set key provider callback. This callback would be called in case when required public
+ *        or secret key is not loaded to the keyrings.
+ *
+ * @param ffi initialized ffi object, cannot be NULL.
+ * @param getkeycb callback function. See rnp_get_key_cb documentation for details.
+ * @param getkeycb_ctx implementation-specific context, which would be passed to the getkeycb
+ *                      on invocation.
+ * @return RNP_SUCCESS on success, or any other value on error.
+ */
 RNP_API rnp_result_t rnp_ffi_set_key_provider(rnp_ffi_t      ffi,
                                               rnp_get_key_cb getkeycb,
                                               void *         getkeycb_ctx);
@@ -350,23 +399,24 @@ RNP_API rnp_result_t rnp_ffi_set_pass_provider(rnp_ffi_t       ffi,
 /** retrieve the default homedir (example: /home/user/.rnp)
  *
  * @param homedir pointer that will be set to the homedir path.
- *        The caller should free this with rnp_buffer_free.
+ *        The caller should free this with rnp_buffer_destroy.
  * @return RNP_SUCCESS on success, or any other value on error
  */
 RNP_API rnp_result_t rnp_get_default_homedir(char **homedir);
 
-/** try to detect the formats and paths of the homedir keyrings
- *
+/** Try to detect the formats and paths of the homedir keyrings.
  * @param homedir the path to the home directory (example: /home/user/.rnp)
  * @param pub_format pointer that will be set to the format of the public keyring.
- *        The caller should free this with rnp_buffer_free.
+ *        The caller should free this with rnp_buffer_destroy.
+ *        Note: this and below may be set to NULL in case of no known format is found.
  * @param pub_path pointer that will be set to the path to the public keyring.
- *        The caller should free this with rnp_buffer_free.
+ *        The caller should free this with rnp_buffer_destroy.
  * @param sec_format pointer that will be set to the format of the secret keyring.
- *        The caller should free this with rnp_buffer_free.
+ *        The caller should free this with rnp_buffer_destroy.
  * @param sec_path pointer that will be set to the path to the secret keyring.
- *        The caller should free this with rnp_buffer_free.
- * @return RNP_SUCCESS on success, or any other value on error
+ *        The caller should free this with rnp_buffer_destroy.
+ * @return RNP_SUCCESS on success (even if no known format was found), or any other value on
+ *         error.
  */
 RNP_API rnp_result_t rnp_detect_homedir_info(
   const char *homedir, char **pub_format, char **pub_path, char **sec_format, char **sec_path);
@@ -376,7 +426,7 @@ RNP_API rnp_result_t rnp_detect_homedir_info(
  * @param buf the key data, must not be NULL
  * @param buf_len the size of the buffer, must be > 0
  * @param format pointer that will be set to the format of the keyring.
- *        Must not be NULL. The caller should free this with rnp_buffer_free.
+ *        Must not be NULL. The caller should free this with rnp_buffer_destroy.
  * @return RNP_SUCCESS on success, or any other value on error
  */
 RNP_API rnp_result_t rnp_detect_key_format(const uint8_t buf[], size_t buf_len, char **format);
@@ -415,6 +465,113 @@ RNP_API rnp_result_t rnp_supports_feature(const char *type, const char *name, bo
 RNP_API rnp_result_t rnp_supported_features(const char *type, char **result);
 
 /**
+ * @brief Add new security rule to the FFI. Security rules allows to override default algorithm
+ *        security settings by disabling them or marking as insecure. After creation of FFI
+ *        object default rules are added, however caller may add more strict rules or
+ *        completely overwrite rule table by calling rnp_remove_security_rule().
+ *        Note: key signature validation status is cached, so rules should be changed before
+ *        keyrings are loaded or keyring should be reloaded after updating rules.
+ *
+ * @param ffi initialized FFI object.
+ * @param type type of the feature, cannot be NULL. Currently only RNP_FEATURE_HASH_ALG is
+ *             supported.
+ * @param name name of the feature, i.e. SHA1, MD5. The same values are used in
+ *             rnp_supports_feature()/rnp_supported_features().
+ * @param flags additional flags. Following ones currently supported:
+ *              - RNP_SECURITY_OVERRIDE : override all other rules for the specified feature.
+ *                May be used to temporarily enable or disable some feature value (e.g., to
+ *                enable verification of SHA1 or MD5 signature), and then revert changes via
+ *                rnp_remove_security_rule().
+ *              - RNP_SECURITY_VERIFY_KEY : limit rule only to the key signature verification.
+ *              - RNP_SECURITY_VERIFY_DATA : limit rule only to the data signature
+ *                verification.
+ *              Note: by default rule applies to all possible usages.
+ *
+ * @param from timestamp, from when the rule is active. Objects that have creation time (like
+ *             signatures) are matched with the closest rules from the past, unless there is
+ *             a rule with an override flag. For instance, given a single rule with algorithm
+ *             'MD5', level 'insecure' and timestamp '2012-01-01', all signatures made before
+ *             2012-01-01 using the MD5 hash algorithm are considered to be at the default
+ *             security level (i.e., valid),  whereas all signatures made after 2021-01-01 will
+ *             be marked as 'insecure' (i.e., invalid).
+ * @param level security level of the rule. Currently the following ones are defined:
+ *              - RNP_SECURITY_PROHIBITED : feature (for instance, MD5 algorithm) is completely
+ *                disabled, so no processing can be done. In terms of signature check, that
+ *                would mean the check will fail right after the hashing begins.
+ *                Note: Currently it works in the same way as RNP_SECURITY_INSECURE.
+ *              - RNP_SECURITY_INSECURE : feature (for instance, SHA1 algorithm) is marked as
+ *                insecure. So even valid signatures, produced later than `from`, will be
+ *                marked as invalid.
+ *              - RNP_SECURITY_DEFAULT : feature is secure enough. Default value when there are
+ *                no other rules for feature.
+ *
+ * @return RNP_SUCCESS or any other value on error.
+ */
+RNP_API rnp_result_t rnp_add_security_rule(rnp_ffi_t   ffi,
+                                           const char *type,
+                                           const char *name,
+                                           uint32_t    flags,
+                                           uint64_t    from,
+                                           uint32_t    level);
+
+/**
+ * @brief Get security rule applicable for the corresponding feature value and timestamp.
+ *        Note: if there is no matching rule, it will fall back to the default security level
+ *        with empty flags and `from`.
+ *
+ * @param ffi initialized FFI object.
+ * @param type feature type to search for. Only RNP_FEATURE_HASH_ALG is supported right now.
+ * @param name feature name, i.e. SHA1 or so on.
+ * @param time timestamp for which feature should be checked.
+ * @param flags if non-NULL then rule's flags will be put here. In this case *flags must be
+ *              initialized to the desired usage limitation:
+ *               - 0 to look up for any usage (this is also assumed if flags parameter is
+ *                 NULL).
+ *               - RNP_SECURITY_VERIFY_KEY, RNP_SECURITY_VERIFY_DATA and so on to look up for
+ *                 the specific usage. Please note that constants cannot be ORed here, only
+ *                 single one must be present.
+ * @param from if non-NULL then rule's from time will be put here.
+ * @param level cannot be NULL. Security level will be stored here.
+ * @return RNP_SUCCESS or any other value on error.
+ */
+RNP_API rnp_result_t rnp_get_security_rule(rnp_ffi_t   ffi,
+                                           const char *type,
+                                           const char *name,
+                                           uint64_t    time,
+                                           uint32_t *  flags,
+                                           uint64_t *  from,
+                                           uint32_t *  level);
+
+/**
+ * @brief Remove security rule(s), matching the parameters.
+ *        Note: use this with caution, as this may also clear default security rules, so
+ *        all affected features would be considered of the default security level.
+ *
+ * @param ffi populated FFI structure, cannot be NULL.
+ * @param type type of the feature. If NULL, then all of the rules will be cleared.
+ * @param name name of the feature. If NULL, then all rules of the type will be cleared.
+ * @param level security level of the rule.
+ * @param flags additional flags, following are defined at the moment:
+ *          - RNP_SECURITY_OVERRIDE : rule should match this flag
+ *          - RNP_SECURITY_VERIFY_KEY, RNP_SECURITY_VERIFY_DATA : rule should match these flags
+ *            (can be ORed together)
+ *          - RNP_SECURITY_REMOVE_ALL : remove all rules for type and name.
+ * @param from timestamp, for when the rule should be removed. Ignored if
+ *             RNP_SECURITY_REMOVE_ALL_FROM is specified.
+ * @param removed if non-NULL then number of removed rules will be stored here.
+ * @return RNP_SUCCESS on success or any other value on error. Please note that if no rules are
+ *         matched, execution will be marked as successful. Use the `removed` parameter to
+ *         check for this case.
+ */
+RNP_API rnp_result_t rnp_remove_security_rule(rnp_ffi_t   ffi,
+                                              const char *type,
+                                              const char *name,
+                                              uint32_t    level,
+                                              uint32_t    flags,
+                                              uint64_t    from,
+                                              size_t *    removed);
+
+/**
  * @brief Request password via configured FFI's callback
  *
  * @param ffi initialized FFI structure
@@ -431,6 +588,20 @@ RNP_API rnp_result_t rnp_request_password(rnp_ffi_t        ffi,
                                           rnp_key_handle_t key,
                                           const char *     context,
                                           char **          password);
+
+/**
+ * @brief Set timestamp, used in all operations instead of system's time. These operations
+ *        include key/signature generation (this timestamp will be used as signature/key
+ *        creation date), verification of the keys and signatures (this timestamp will be used
+ *        as 'current' time).
+ *        Please note, that exactly this timestamp will be used during the whole ffi lifetime.
+ *
+ * @param ffi initialized FFI structure
+ * @param time non-zero timestamp to be used. Zero value restores original behaviour and uses
+ *             system's time.
+ * @return RNP_SUCCESS or other value on error.
+ */
+RNP_API rnp_result_t rnp_set_timestamp(rnp_ffi_t ffi, uint64_t time);
 
 /** load keys
  *
@@ -468,6 +639,8 @@ RNP_API rnp_result_t rnp_unload_keys(rnp_ffi_t ffi, uint32_t flags);
  *              erroneous first key on the stream RNP_SUCCESS will be returned, but results
  *              will include an empty array. Also RNP_ERROR_EOF will be returned if the last
  *              key was read.
+ *              RNP_LOAD_SAVE_BASE64 should set to allow import of base64-encoded keys (i.e.
+ *              autocrypt ones). By default only binary and OpenPGP-armored keys are allowed.
  * @param results if not NULL then after the successful execution will contain JSON with
  *                information about new and updated keys. You must free it using the
  *                rnp_buffer_destroy() function.
@@ -594,8 +767,8 @@ RNP_API rnp_result_t rnp_generate_key_sm2(rnp_ffi_t         ffi,
                                           rnp_key_handle_t *key);
 
 /**
- * @brief Shortcut for quick key generation. While it is used in other shortcut functions for
- *        key generation
+ * @brief Shortcut for quick key generation. It is used in other shortcut functions for
+ *        key generation (rnp_generate_key_*).
  *
  * @param ffi
  * @param key_alg string with primary key algorithm. Cannot be NULL.
@@ -609,6 +782,8 @@ RNP_API rnp_result_t rnp_generate_key_sm2(rnp_ffi_t         ffi,
  * @param sub_curve Subkey curve name. Must be non-NULL only with EC-based subkey algorithm,
  *               otherwise error will be returned.
  * @param userid String with userid. Cannot be NULL.
+ * @param password String with password which would be used to protect the key and subkey.
+ *                 If NULL then key will be stored in cleartext (unencrypted).
  * @param key if non-NULL, then handle of the primary key will be stored here on success.
  *            Caller must destroy it with rnp_key_handle_destroy() call.
  * @return RNP_SUCCESS or error code instead.
@@ -878,7 +1053,7 @@ RNP_API rnp_result_t rnp_op_generate_execute(rnp_op_generate_t op);
  */
 RNP_API rnp_result_t rnp_op_generate_get_key(rnp_op_generate_t op, rnp_key_handle_t *handle);
 
-/** Free resources associated with signing operation.
+/** Free resources associated with key generation operation.
  *
  *  @param op opaque key generation context. Must be successfully initialized with one of the
  *         rnp_op_generate_*_create functions.
@@ -903,7 +1078,8 @@ RNP_API rnp_result_t rnp_key_export(rnp_key_handle_t key, rnp_output_t output, u
  * @param subkey subkey to export. May be NULL to pick the first suitable.
  * @param uid userid to export. May be NULL if key has only one uid.
  * @param output the stream to write to
- * @param flags additional flags, must be 0 for now.
+ * @param flags additional flags. Currently only RNP_KEY_EXPORT_BASE64 is supported. Enabling
+ *              it would export key base64-encoded instead of binary.
  * @return RNP_SUCCESS on success, or any other value if failed.
  */
 RNP_API rnp_result_t rnp_key_export_autocrypt(rnp_key_handle_t key,
@@ -920,7 +1096,7 @@ RNP_API rnp_result_t rnp_key_export_autocrypt(rnp_key_handle_t key,
  *            searched for the authorized to issue revocation signature secret key. If secret
  *            key is locked then password will be asked via password provider.
  * @param output signature contents will be saved here.
- * @param flags currently must be 0.
+ * @param flags must be RNP_KEY_EXPORT_ARMORED or 0.
  * @param hash hash algorithm used to calculate signature. Pass NULL for default algorithm
  *             selection.
  * @param code reason for revocation code. Possible values: 'no', 'superseded', 'compromised',
@@ -956,6 +1132,37 @@ RNP_API rnp_result_t rnp_key_revoke(rnp_key_handle_t key,
                                     const char *     hash,
                                     const char *     code,
                                     const char *     reason);
+
+/**
+ * @brief Check whether Curve25519 secret key's bits are correctly set, i.e. 3 least
+ *        significant bits are zero and key is exactly 255 bits in size. See RFC 7748, section
+ *        5 for the details. RNP interpreted RFC requirements in the way that Curve25519 secret
+ *        key is random 32-byte string, which bits are correctly tweaked afterwards within
+ *        secret key operation. However, for compatibility reasons, it would be more correct to
+ *        store/transfer secret key with bits already tweaked.
+ *
+ *        Note: this operation requires unlocked secret key, so make sure to call
+ *        rnp_key_lock() afterwards.
+ *
+ * @param key key handle, cannot be NULL. Must be ECDH Curve25519 unlocked secret key.
+ * @param result true will be stored here if secret key's low/high bits are not correctly set.
+ *               In this case you may need to call `rnp_key_25519_bits_tweak()` on it to set
+ *               bits to correct values so exported secret key will be compatible with
+ *               implementations which do not tweak these bits automatically.
+ * @return RNP_SUCCESS or error code if failed.
+ */
+RNP_API rnp_result_t rnp_key_25519_bits_tweaked(rnp_key_handle_t key, bool *result);
+
+/**
+ * @brief Make sure Curve25519 secret key's least significant and most significant bits are
+ *        correctly set, see rnp_key_25519_bits_tweaked() documentation for the details.
+ *        Note: this operation requires unprotected secret key since it would modify secret
+ *        key's data, so make sure to call rnp_key_protect() afterwards.
+ *
+ * @param key key handle, cannot be NULL. Must be ECDH Curve25519 unprotected secret key.
+ * @return RNP_SUCCESS or error code if failed.
+ */
+RNP_API rnp_result_t rnp_key_25519_bits_tweak(rnp_key_handle_t key);
 
 /** remove a key from keyring(s)
  *  Note: you need to call rnp_save_keys() to write updated keyring(s) out.
@@ -1227,6 +1434,15 @@ RNP_API rnp_result_t rnp_signature_get_hash_alg(rnp_signature_handle_t sig, char
  */
 RNP_API rnp_result_t rnp_signature_get_creation(rnp_signature_handle_t sig, uint32_t *create);
 
+/** Get the signature expiration time as number of seconds after creation time
+ *
+ * @param sig signature handle.
+ * @param expires on success result will be stored here. Cannot be NULL.
+ * @return RNP_SUCCESS or error code if failed.
+ */
+RNP_API rnp_result_t rnp_signature_get_expiration(rnp_signature_handle_t sig,
+                                                  uint32_t *             expires);
+
 /** Get signer's key id from the signature.
  *  Note: if key id is not available from the signature then NULL value will
  *        be stored to result.
@@ -1236,6 +1452,16 @@ RNP_API rnp_result_t rnp_signature_get_creation(rnp_signature_handle_t sig, uint
  * @return RNP_SUCCESS or error code if failed.
  */
 RNP_API rnp_result_t rnp_signature_get_keyid(rnp_signature_handle_t sig, char **result);
+
+/** Get signer's key fingerprint from the signature.
+ *  Note: if key fingerprint is not available from the signature then NULL value will
+ *        be stored to result.
+ * @param sig signature handle
+ * @param result hex-encoded key fp will be stored here. Cannot be NULL. You must free it
+ *               later on using the rnp_buffer_destroy() function.
+ * @return RNP_SUCCESS or error code if failed.
+ */
+RNP_API rnp_result_t rnp_signature_get_key_fprint(rnp_signature_handle_t sig, char **result);
 
 /** Get signing key handle, if available.
  *  Note: if signing key is not available then NULL will be stored in key.
@@ -1291,6 +1517,18 @@ RNP_API rnp_result_t rnp_signature_packet_to_json(rnp_signature_handle_t sig,
  * @return RNP_SUCCESS if signature was successfully deleted, or any other value on error.
  */
 RNP_API rnp_result_t rnp_signature_remove(rnp_key_handle_t key, rnp_signature_handle_t sig);
+
+/**
+ * @brief Export a signature.
+ *
+ * @param sig signature handle, cannot be NULL.
+ * @param output destination of the data stream.
+ * @param flags must be RNP_KEY_EXPORT_ARMORED or 0.
+ * @return RNP_SUCCESS or error code if failed.
+ */
+RNP_API rnp_result_t rnp_signature_export(rnp_signature_handle_t sig,
+                                          rnp_output_t           output,
+                                          uint32_t               flags);
 
 /** Free signature handle.
  *
@@ -1478,11 +1716,12 @@ RNP_API rnp_result_t rnp_key_get_primary_grip(rnp_key_handle_t key, char **grip)
 /**
  * @brief Get primary's key fingerprint for the subkey, if available.
  *
- * @param key key handle, should not be NULL
+ * @param key subkey handle, should not be NULL
  * @param grip pointer to the NULL-terminated string with hex-encoded key fingerprint or NULL
  *             will be stored here, depending whether primary key is available or not. You must
  *             free it later using rnp_buffer_destroy function.
- * @return RNP_SUCCESS or error code on failure.
+ * @return RNP_SUCCESS on success, RNP_BAD_PARAMETERS if not a subkey, or other error code
+ *         on failure.
  */
 RNP_API rnp_result_t rnp_key_get_primary_fprint(rnp_key_handle_t key, char **fprint);
 
@@ -1603,6 +1842,18 @@ RNP_API rnp_result_t rnp_key_is_compromised(rnp_key_handle_t key, bool *result);
  * @return RNP_SUCCESS or error code on failure.
  */
 RNP_API rnp_result_t rnp_key_is_retired(rnp_key_handle_t key, bool *result);
+
+/**
+ * @brief Check whether key is expired.
+ *        Note: while expired key cannot be used to generate new signatures or encrypt to, it
+ *        still could be used to check older signatures/decrypt previously encrypted data.
+ *
+ * @param key key handle, should not be NULL.
+ * @param result on success result will be stored here. True means that key is expired and is
+ *               not usable and false otherwise.
+ * @return RNP_SUCCESS or error code on failure.
+ */
+RNP_API rnp_result_t rnp_key_is_expired(rnp_key_handle_t key, bool *result);
 
 /** check if a key is currently locked
  *
@@ -1881,7 +2132,7 @@ RNP_API rnp_result_t rnp_op_sign_cleartext_create(rnp_op_sign_t *op,
  *  @param op pointer to opaque signing context
  *  @param ffi
  *  @param input stream with data to be signed. Could not be NULL.
- *  @param output stream to write results to. Could not be NULL.
+ *  @param signature stream to write results to. Could not be NULL.
  *  @return RNP_SUCCESS or error code if failed
  */
 RNP_API rnp_result_t rnp_op_sign_detached_create(rnp_op_sign_t *op,
@@ -1961,7 +2212,9 @@ RNP_API rnp_result_t rnp_op_sign_set_hash(rnp_op_sign_t op, const char *hash);
 /** @brief Set signature creation time. By default current time is used.
  *  @param op opaque signing context. Must be successfully initialized with one of the
  *         rnp_op_sign_*_create functions.
- *  @param create creation time in seconds since Jan, 1 1970 UTC
+ *  @param create creation time in seconds since Jan, 1 1970 UTC. 32 bit unsigned integer
+ *                datatype is used here instead of 64 bit (like modern timestamps do) because
+ *                in OpenPGP messages times are stored as 32-bit unsigned integers.
  *  @return RNP_SUCCESS or error code if failed
  */
 RNP_API rnp_result_t rnp_op_sign_set_creation_time(rnp_op_sign_t op, uint32_t create);
@@ -1986,7 +2239,9 @@ RNP_API rnp_result_t rnp_op_sign_set_file_name(rnp_op_sign_t op, const char *fil
 
 /** @brief Set input's file modification date. Makes sense only for embedded signature.
  *  @param op opaque signing context. Must be initialized with rnp_op_sign_create function
- *  @param mtime modification time in seconds since Jan, 1 1970 UTC.
+ *  @param mtime modification time in seconds since Jan, 1 1970 UTC. 32 bit unsigned integer
+ *               datatype is used here instead of 64 bit (like modern timestamps do) because
+ *               in OpenPGP messages times are stored as 32-bit unsigned integers.
  *  @return RNP_SUCCESS or error code if failed
  */
 RNP_API rnp_result_t rnp_op_sign_set_file_mtime(rnp_op_sign_t op, uint32_t mtime);
@@ -2009,8 +2264,9 @@ RNP_API rnp_result_t rnp_op_sign_destroy(rnp_op_sign_t op);
 /* Verification */
 
 /** @brief Create verification operation context. This method should be used for embedded
- *         signatures or cleartext signed data. For detached verification corresponding
- *         function should be used.
+ *         signatures, cleartext signed data and encrypted (and possibly signed) data.
+ *         For the detached signature verification the function rnp_op_verify_detached_create()
+ *         should be used.
  *  @param op pointer to opaque verification context
  *  @param ffi
  *  @param input stream with signed data. Could not be NULL.
@@ -2035,12 +2291,37 @@ RNP_API rnp_result_t rnp_op_verify_detached_create(rnp_op_verify_t *op,
                                                    rnp_input_t      input,
                                                    rnp_input_t      signature);
 
+/**
+ * @brief Set additional flags which control data verification/decryption process.
+ *
+ * @param op pointer to opaque verification context.
+ * @param flags verification flags. OR-ed combination of RNP_VERIFY_* values.
+ *              Following flags are supported:
+ *              RNP_VERIFY_IGNORE_SIGS_ON_DECRYPT - ignore invalid signatures for the encrypted
+ *                and signed data. If this flag is set then rnp_op_verify_execute() call will
+ *                succeed and output data even if all signatures are invalid or issued by the
+ *                unknown key(s).
+ *              RNP_VERIFY_REQUIRE_ALL_SIGS - require that all signatures (if any) must be
+ *                valid for successful run of rnp_op_verify_execute().
+ *              RNP_VERIFY_ALLOW_HIDDEN_RECIPIENT - allow hidden recipient during the
+ *                decryption.
+ *
+ *              Note: all flags are set at once, if some flag is not present in the subsequent
+ *              call then it will be unset.
+ * @return RNP_SUCCESS or error code if failed
+ */
+RNP_API rnp_result_t rnp_op_verify_set_flags(rnp_op_verify_t op, uint32_t flags);
+
 /** @brief Execute previously initialized verification operation.
  *  @param op opaque verification context. Must be successfully initialized.
- *  @return RNP_SUCCESS if data was processed successfully and all signatures are valid.
- *          Otherwise error code is returned. After rnp_op_verify_execute()
- *          rnp_op_verify_get_* functions may be used to query information about the
- *          signature(s).
+ *  @return RNP_SUCCESS if data was processed successfully and output may be used. By default
+ *          this means at least one valid signature for the signed data, or successfully
+ *          decrypted data if no signatures are present.
+ *          This behaviour may be overriden via rnp_op_verify_set_flags() call.
+ *
+ *          To check number of signatures and their verification status use functions
+ *          rnp_op_verify_get_signature_count() and rnp_op_verify_get_signature_at().
+ *          To check data encryption status use function rnp_op_verify_get_protection_info().
  */
 RNP_API rnp_result_t rnp_op_verify_execute(rnp_op_verify_t op);
 
@@ -2064,8 +2345,8 @@ RNP_API rnp_result_t rnp_op_verify_get_signature_at(rnp_op_verify_t            o
  *         embedded signature verification.
  *  @param op opaque verification context. Must be initialized and have execute() called on it.
  *  @param filename pointer to the filename. On success caller is responsible for freeing it
- *                  via the rnp_buffer_free function call. May be NULL if this information is
- *                  not needed.
+ *                  via the rnp_buffer_destroy function call. May be NULL if this information
+ *                  is not needed.
  *  @param mtime file modification time will be stored here on success. May be NULL.
  *  @return RNP_SUCCESS if call succeeded.
  */
@@ -2078,15 +2359,15 @@ RNP_API rnp_result_t rnp_op_verify_get_file_info(rnp_op_verify_t op,
  *
  * @param op opaque verification context. Must be initialized and have execute() called on it.
  * @param mode on success string with mode will be stored here. Caller is responsible for
- *             freeing it using the rnp_buffer_free() call. May be NULL if information is not
- * needed. Currently defined values are as following:
+ *             freeing it using the rnp_buffer_destroy() call. May be NULL if information is
+ *             not needed. Currently defined values are as following:
  *             - none : message was not protected/encrypted
  *             - cfb : message was encrypted in CFB mode without the MDC
  *             - cfb-mdc : message was encrypted in CFB mode and protected with MDC
  *             - aead-ocb : message was encrypted in AEAD-OCB mode
  *             - aead-eax : message was encrypted in AEAD-EAX mode
  * @param cipher symmetric cipher, used for data encryption. May be NULL if information is not
- *               needed. Must be freed by rnp_buffer_free() call.
+ *               needed. Must be freed by rnp_buffer_destroy() call.
  * @param valid true if message integrity protection was used (i.e. MDC or AEAD), and it was
  *              validated successfully. Otherwise (even for raw cfb mode) will be false. May be
  *              NULL if information is not needed.
@@ -2255,6 +2536,7 @@ RNP_API rnp_result_t rnp_op_verify_destroy(rnp_op_verify_t op);
  *          RNP_ERROR_SIGNATURE_EXPIRED : signature is valid but expired
  *          RNP_ERROR_KEY_NOT_FOUND : public key to verify signature was not available
  *          RNP_ERROR_SIGNATURE_INVALID : data or signature was modified
+ *          RNP_ERROR_SIGNATURE_UNKNOWN : signature has unknown format
  */
 RNP_API rnp_result_t rnp_op_verify_signature_get_status(rnp_op_verify_signature_t sig);
 
@@ -2263,8 +2545,7 @@ RNP_API rnp_result_t rnp_op_verify_signature_get_status(rnp_op_verify_signature_
  *
  * @param sig verified signature context, cannot be NULL.
  * @param handle signature handle will be stored here on success. You must free it after use
- * with
- *            the rnp_signature_handle_destroy() function.
+ *        with the rnp_signature_handle_destroy() function.
  * @return RNP_SUCCESS or error code if failed.
  */
 RNP_API rnp_result_t rnp_op_verify_signature_get_handle(rnp_op_verify_signature_t sig,
@@ -2273,7 +2554,7 @@ RNP_API rnp_result_t rnp_op_verify_signature_get_handle(rnp_op_verify_signature_
 /** @brief Get hash function used to calculate signature
  *  @param sig opaque signature context obtained via rnp_op_verify_get_signature_at call.
  *  @param hash pointer to string with hash algorithm name will be put here on success.
- *              Caller is responsible for freeing it with rnp_buffer_free
+ *              Caller is responsible for freeing it with rnp_buffer_destroy
  *  @return RNP_SUCCESS or error code otherwise
  */
 RNP_API rnp_result_t rnp_op_verify_signature_get_hash(rnp_op_verify_signature_t sig,
@@ -2320,9 +2601,18 @@ RNP_API void rnp_buffer_clear(void *ptr, size_t size);
  * @param input pointer to the input opaque structure
  * @param path path of the file to read from
  * @return RNP_SUCCESS if operation succeeded and input struct is ready to read, or error code
- * otherwise
+ *         otherwise
  */
 RNP_API rnp_result_t rnp_input_from_path(rnp_input_t *input, const char *path);
+
+/**
+ * @brief Initialize input struct to read from the stdin
+ *
+ * @param input pointer to the input opaque structure
+ * @return RNP_SUCCESS if operation succeeded and input struct is ready to read, or error code
+ *         otherwise
+ */
+RNP_API rnp_result_t rnp_input_from_stdin(rnp_input_t *input);
 
 /**
  * @brief Initialize input struct to read from memory
@@ -2369,7 +2659,7 @@ RNP_API rnp_result_t rnp_input_destroy(rnp_input_t input);
  * @param output pointer to the opaque output structure.
  * @param path path to the file.
  * @return RNP_SUCCESS if file was opened successfully and ready for writing or error code
- * otherwise.
+ *         otherwise.
  */
 RNP_API rnp_result_t rnp_output_to_path(rnp_output_t *output, const char *path);
 
@@ -2389,6 +2679,15 @@ RNP_API rnp_result_t rnp_output_to_path(rnp_output_t *output, const char *path);
 RNP_API rnp_result_t rnp_output_to_file(rnp_output_t *output,
                                         const char *  path,
                                         uint32_t      flags);
+
+/**
+ * @brief Initialize structure to write to the stdout.
+ *
+ * @param output pointer to the opaque output structure. After use you must free it using the
+ *               rnp_output_destroy() function.
+ * @return RNP_SUCCESS if output was initialized successfully or error code otherwise.
+ */
+RNP_API rnp_result_t rnp_output_to_stdout(rnp_output_t *output);
 
 /**
  * @brief Initialize output structure to write to the memory.
@@ -2595,17 +2894,17 @@ RNP_API rnp_result_t rnp_op_encrypt_set_cipher(rnp_op_encrypt_t op, const char *
  *
  * @param op opaque encrypting context. Must be allocated and initialized.
  * @param alg NULL-terminated AEAD algorithm name. Use "None" to disable AEAD, or "EAX", "OCB"
- * to use the corresponding algorithm.
+ *            to use the corresponding algorithm.
  * @return RNP_SUCCESS or error code if failed
  */
 RNP_API rnp_result_t rnp_op_encrypt_set_aead(rnp_op_encrypt_t op, const char *alg);
 
 /**
- * @brief set chunk length for AEAD mode via number of chunk size bits (refer OpenPGP
- * specificationf for the details).
+ * @brief set chunk length for AEAD mode via number of chunk size bits (refer to the OpenPGP
+ *        specification for the details).
  *
  * @param op opaque encrypting context. Must be allocated and initialized.
- * @param bits number of bits, currently it must be between 0 to 56.
+ * @param bits number of bits, currently it must be from 0 to 16.
  * @return RNP_SUCCESS or error code if failed
  */
 RNP_API rnp_result_t rnp_op_encrypt_set_aead_bits(rnp_op_encrypt_t op, int bits);
@@ -2625,6 +2924,19 @@ RNP_API rnp_result_t rnp_op_encrypt_set_compression(rnp_op_encrypt_t op,
                                                     int              level);
 
 /**
+ * @brief Set additional encryption flags.
+ *
+ * @param op opaque encrypting context. Must be allocated and initialized.
+ * @param flags encryption flags. ORed combination of RNP_ENCRYPT_* values.
+ *              Following flags are supported:
+ *              RNP_ENCRYPT_NOWRAP - do not wrap the data in a literal data packet. This
+ *              would allow to encrypt already signed data.
+ *
+ * @return RNP_SUCESS or error code if failed.
+ */
+RNP_API rnp_result_t rnp_op_encrypt_set_flags(rnp_op_encrypt_t op, uint32_t flags);
+
+/**
  * @brief set the internally stored file name for the data being encrypted
  *
  * @param op opaque encrypted context. Must be allocated and initialized
@@ -2638,7 +2950,9 @@ RNP_API rnp_result_t rnp_op_encrypt_set_file_name(rnp_op_encrypt_t op, const cha
  * @brief set the internally stored file modification date for the data being encrypted
  *
  * @param op opaque encrypted context. Must be allocated and initialized
- * @param mtime time in seconds since Jan, 1 1970.
+ * @param mtime time in seconds since Jan, 1 1970. 32 bit unsigned integer datatype is used
+ *              here instead of 64 bit (like modern timestamps do) because in OpenPGP messages
+ *              times are stored as 32-bit unsigned integers.
  * @return RNP_SUCCESS on success, or any other value on error
  */
 RNP_API rnp_result_t rnp_op_encrypt_set_file_mtime(rnp_op_encrypt_t op, uint32_t mtime);
@@ -2646,6 +2960,19 @@ RNP_API rnp_result_t rnp_op_encrypt_set_file_mtime(rnp_op_encrypt_t op, uint32_t
 RNP_API rnp_result_t rnp_op_encrypt_execute(rnp_op_encrypt_t op);
 RNP_API rnp_result_t rnp_op_encrypt_destroy(rnp_op_encrypt_t op);
 
+/**
+ * @brief Decrypt encrypted data in input and write it to the output on success.
+ *        If data is additionally signed then signatures are ignored.
+ *        For more control over the decryption process see functions rnp_op_verify_create() and
+ *        rnp_op_verify_execute(), which allows to verify signatures as well as decrypt data
+ *        and retrieve encryption-related information.
+ *
+ * @param ffi initialized FFI object. Cannot be NULL.
+ * @param input source with encrypted data. Cannot be NULL.
+ * @param output on success decrypted data will be written here. Cannot be NULL.
+ * @return RNP_SUCCESS if data was successfully decrypted and written to the output, or any
+ *         other value on error.
+ */
 RNP_API rnp_result_t rnp_decrypt(rnp_ffi_t ffi, rnp_input_t input, rnp_output_t output);
 
 /** retrieve the raw data for a public key
@@ -2691,7 +3018,7 @@ RNP_API rnp_result_t rnp_key_to_json(rnp_key_handle_t handle, uint32_t flags, ch
  *
  *  @param ffi
  *  @param it pointer that will be set to the created iterator
- *  @param identifier_type the type of identifier ("userid", "keyid", "grip")
+ *  @param identifier_type the type of identifier ("userid", "keyid", "grip", "fingerprint")
  *  @return RNP_SUCCESS on success, or any other value on error
  */
 RNP_API rnp_result_t rnp_identifier_iterator_create(rnp_ffi_t                  ffi,
@@ -2732,6 +3059,21 @@ RNP_API rnp_result_t rnp_output_pipe(rnp_input_t input, rnp_output_t output);
  *  @return RNP_SUCCESS on success, or any other value on error
  */
 RNP_API rnp_result_t rnp_output_armor_set_line_length(rnp_output_t output, size_t llen);
+
+/**
+ * @brief Return cryptographic backend library name.
+ *
+ * @return Backend name string. Currently supported
+ * backends are "Botan" and "OpenSSL".
+ */
+RNP_API const char *rnp_backend_string();
+
+/**
+ * @brief Return cryptographic backend library version.
+ *
+ * @return Version string.
+ */
+RNP_API const char *rnp_backend_version();
 
 #if defined(__cplusplus)
 }

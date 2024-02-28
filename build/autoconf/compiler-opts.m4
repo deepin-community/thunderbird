@@ -60,9 +60,6 @@ AC_DEFUN([MOZ_COMPILER_OPTS],
 [
   MOZ_DEBUGGING_OPTS
   MOZ_RTTI
-if test "$CLANG_CXX"; then
-    _WARNINGS_CXXFLAGS="${_WARNINGS_CXXFLAGS} -Wno-unknown-warning-option"
-fi
 
 if test "$GNU_CC"; then
     if test -z "$DEVELOPER_OPTIONS"; then
@@ -109,7 +106,16 @@ dnl ========================================================
 dnl = Automatically remove dead symbols
 dnl ========================================================
 
-if test "$GNU_CC" -a "$GCC_USE_GNU_LD" -a -z "$DEVELOPER_OPTIONS" -a -z "$MOZ_PROFILE_GENERATE"; then
+SANCOV=
+if test -n "$LIBFUZZER"; then
+    case "$LIBFUZZER_FLAGS" in
+    *-fsanitize-coverage*|*-fsanitize=fuzzer*)
+        SANCOV=1
+        ;;
+    esac
+fi
+
+if test "$GNU_CC" -a "$GCC_USE_GNU_LD" -a -z "$DEVELOPER_OPTIONS" -a -z "$MOZ_PROFILE_GENERATE" -a -z "$SANCOV"; then
     if test -n "$MOZ_DEBUG_FLAGS"; then
         dnl See bug 670659
         AC_CACHE_CHECK([whether removing dead symbols breaks debugging],
@@ -140,7 +146,15 @@ if test "$GNU_CC" -a "$GCC_USE_GNU_LD" -a -z "$DEVELOPER_OPTIONS" -a -z "$MOZ_PR
 fi
 
 if test "$GNU_CC$CLANG_CC"; then
-    MOZ_PROGRAM_LDFLAGS="$MOZ_PROGRAM_LDFLAGS -pie"
+    case "${OS_TARGET}" in
+    Darwin|WASI)
+        # It's the default on those targets, and clang complains about -pie
+        # being unused if passed.
+        ;;
+    *)
+        MOZ_PROGRAM_LDFLAGS="$MOZ_PROGRAM_LDFLAGS -pie"
+        ;;
+    esac
 fi
 
 AC_SUBST(MOZ_PROGRAM_LDFLAGS)

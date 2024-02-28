@@ -11,19 +11,19 @@
 
 #include "mozilla/RefPtr.h"
 #include "mozilla/TypedEnumBits.h"
+#include "nsCSSPropertyID.h"
 #include "nsCoord.h"
 #include "X11UndefineNone.h"
 
-struct RawServoFontFaceRule;
-
 namespace mozilla {
+struct StyleLockedFontFaceRule;
 enum class StyleOrigin : uint8_t;
 struct LangGroupFontPrefs;
 }  // namespace mozilla
 
 // used for associating origin with specific @font-face rules
 struct nsFontFaceRuleContainer {
-  RefPtr<RawServoFontFaceRule> mRule;
+  RefPtr<mozilla::StyleLockedFontFaceRule> mRule;
   mozilla::StyleOrigin mOrigin;
 };
 
@@ -74,6 +74,8 @@ enum class UpdateAnimationsTasks : uint8_t {
   EffectProperties = 1 << 2,
   CascadeResults = 1 << 3,
   DisplayChangedFromNone = 1 << 4,
+  ScrollTimelines = 1 << 5,
+  ViewTimelines = 1 << 6,
 };
 
 MOZ_MAKE_ENUM_CLASS_BITWISE_OPERATORS(UpdateAnimationsTasks)
@@ -140,8 +142,9 @@ class ServoStyleSetSizes {
 // A callback that can be sent via FFI which will be invoked _right before_
 // being mutated, and at most once.
 struct DeclarationBlockMutationClosure {
-  // The callback function. The argument is `data`.
-  void (*function)(void*) = nullptr;
+  // The callback function. The first argument is `data`, the second is the
+  // property id that changed.
+  void (*function)(void*, nsCSSPropertyID) = nullptr;
   void* data = nullptr;
 };
 

@@ -13,17 +13,10 @@
 #include "XULTabAccessible.h"
 #include "HTMLFormControlAccessible.h"
 
-#include "nsDeckFrame.h"
-#include "nsObjCExceptions.h"
+#include "nsCocoaUtils.h"
+#include "mozilla/FloatingPoint.h"
 
 using namespace mozilla::a11y;
-
-enum CheckboxValue {
-  // these constants correspond to the values in the OS
-  kUnchecked = 0,
-  kChecked = 1,
-  kMixed = 2
-};
 
 @implementation mozButtonAccessible
 
@@ -126,32 +119,39 @@ enum CheckboxValue {
 @implementation mozPaneAccessible
 
 - (NSArray*)moxChildren {
-  if (!mGeckoAccessible.AsAccessible()) return nil;
-
-  nsDeckFrame* deckFrame =
-      do_QueryFrame(mGeckoAccessible.AsAccessible()->GetFrame());
-  nsIFrame* selectedFrame = deckFrame ? deckFrame->GetSelectedBox() : nullptr;
-
-  LocalAccessible* selectedAcc = nullptr;
-  if (selectedFrame) {
-    nsINode* node = selectedFrame->GetContent();
-    selectedAcc =
-        mGeckoAccessible.AsAccessible()->Document()->GetAccessible(node);
+  // By default, all tab panels are exposed in the a11y tree
+  // even if the tab they represent isn't the active tab. To
+  // prevent VoiceOver from navigating background tab content,
+  // only expose the tab panel that is currently on screen.
+  for (mozAccessible* child in [super moxChildren]) {
+    if (!([child state] & states::OFFSCREEN)) {
+      return [NSArray arrayWithObject:GetObjectOrRepresentedView(child)];
+    }
   }
-
-  if (selectedAcc) {
-    mozAccessible* curNative = GetNativeFromGeckoAccessible(selectedAcc);
-    if (curNative)
-      return
-          [NSArray arrayWithObjects:GetObjectOrRepresentedView(curNative), nil];
-  }
-
-  return nil;
+  MOZ_ASSERT_UNREACHABLE("We have no on screen tab content?");
+  return @[];
 }
 
 @end
 
 @implementation mozIncrementableAccessible
+
+- (id)moxValue {
+  return [NSNumber numberWithDouble:mGeckoAccessible->CurValue()];
+}
+
+- (NSString*)moxValueDescription {
+  nsAutoString valueDesc;
+  mGeckoAccessible->Value(valueDesc);
+  return nsCocoaUtils::ToNSString(valueDesc);
+}
+- (id)moxMinValue {
+  return [NSNumber numberWithDouble:mGeckoAccessible->MinValue()];
+}
+
+- (id)moxMaxValue {
+  return [NSNumber numberWithDouble:mGeckoAccessible->MaxValue()];
+}
 
 - (void)moxSetValue:(id)value {
   [self setValue:([value doubleValue])];
@@ -163,6 +163,21 @@ enum CheckboxValue {
 
 - (void)moxPerformDecrement {
   [self changeValueBySteps:-1];
+}
+
+- (NSString*)moxOrientation {
+  RefPtr<AccAttributes> attributes = mGeckoAccessible->Attributes();
+  if (attributes) {
+    nsAutoString result;
+    attributes->GetAttribute(nsGkAtoms::aria_orientation, result);
+    if (result.Equals(u"horizontal"_ns)) {
+      return NSAccessibilityHorizontalOrientationValue;
+    } else if (result.Equals(u"vertical"_ns)) {
+      return NSAccessibilityVerticalOrientationValue;
+    }
+  }
+
+  return NSAccessibilityUnknownOrientationValue;
 }
 
 - (void)handleAccessibleEvent:(uint32_t)eventType {
@@ -187,43 +202,27 @@ enum CheckboxValue {
  *    amount by which to increment/decrement the current value.
  */
 - (void)changeValueBySteps:(int)factor {
-  MOZ_ASSERT(!mGeckoAccessible.IsNull(), "mGeckoAccessible is null");
+  MOZ_ASSERT(mGeckoAccessible, "mGeckoAccessible is null");
 
-  if (LocalAccessible* acc = mGeckoAccessible.AsAccessible()) {
-    double newValue = acc->CurValue() + (acc->Step() * factor);
-    [self setValue:(newValue)];
-  } else {
-    RemoteAccessible* proxy = mGeckoAccessible.AsProxy();
-    double newValue = proxy->CurValue() + (proxy->Step() * factor);
-    [self setValue:(newValue)];
-  }
+  double newValue =
+      mGeckoAccessible->CurValue() + (mGeckoAccessible->Step() * factor);
+  [self setValue:(newValue)];
 }
 
 /*
  * Updates the accessible's current value to the specified value
  */
 - (void)setValue:(double)value {
-  MOZ_ASSERT(!mGeckoAccessible.IsNull(), "mGeckoAccessible is null");
+  MOZ_ASSERT(mGeckoAccessible, "mGeckoAccessible is null");
+  mGeckoAccessible->SetCurValue(value);
+}
 
-  if (LocalAccessible* acc = mGeckoAccessible.AsAccessible()) {
-    double min = acc->MinValue();
-    double max = acc->MaxValue();
-    // Because min and max are not required attributes, we first check
-    // if the value is undefined. If this check fails,
-    // the value is defined, and we verify our new value falls
-    // within the bound (inclusive).
-    if ((IsNaN(min) || value >= min) && (IsNaN(max) || value <= max)) {
-      acc->SetCurValue(value);
-    }
-  } else {
-    RemoteAccessible* proxy = mGeckoAccessible.AsProxy();
-    double min = proxy->MinValue();
-    double max = proxy->MaxValue();
-    // As above, check if the value is within bounds.
-    if ((IsNaN(min) || value >= min) && (IsNaN(max) || value <= max)) {
-      proxy->SetCurValue(value);
-    }
-  }
+@end
+
+@implementation mozDatePickerAccessible
+
+- (NSString*)moxTitle {
+  return utils::LocalizedString(u"dateField"_ns);
 }
 
 @end

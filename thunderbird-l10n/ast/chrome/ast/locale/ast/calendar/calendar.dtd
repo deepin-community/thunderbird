@@ -13,7 +13,6 @@
 
 <!ENTITY calendar.today.button.label          "Today">
 <!ENTITY calendar.tomorrow.button.label       "Tomorrow">
-<!ENTITY calendar.upcoming.button.label       "Upcoming">
 
 <!ENTITY calendar.events.filter.all.label "All Events">
 <!ENTITY calendar.events.filter.today.label "Today's Events">
@@ -59,38 +58,9 @@
 <!ENTITY calendar.today.button.tooltip          "Go to Today" >
 <!ENTITY calendar.todaypane.button.tooltip      "Show Today Pane" >
 
-<!ENTITY calendar.day.button.tooltip            "Switch to day view" >
-<!ENTITY calendar.week.button.tooltip           "Switch to week view" >
-<!ENTITY calendar.month.button.tooltip          "Switch to month view" >
-<!ENTITY calendar.multiweek.button.tooltip      "Switch to multiweek view" >
-
-<!ENTITY calendar.nextday.label                 "Next Day" >
-<!ENTITY calendar.prevday.label                 "Previous Day" >
-<!ENTITY calendar.nextday.accesskey             "x" >
-<!ENTITY calendar.prevday.accesskey             "s" >
-<!ENTITY calendar.nextweek.label                "Next Week" >
-<!ENTITY calendar.prevweek.label                "Previous Week" >
-<!ENTITY calendar.nextweek.accesskey            "x" >
-<!ENTITY calendar.prevweek.accesskey            "s" >
-<!ENTITY calendar.nextmonth.label               "Next Month" >
-<!ENTITY calendar.prevmonth.label               "Previous Month" >
-<!ENTITY calendar.nextmonth.accesskey           "x" >
-<!ENTITY calendar.prevmonth.accesskey           "s" >
-
-<!ENTITY calendar.navigation.nextday.tooltip    "One Day Forward" >
-<!ENTITY calendar.navigation.prevday.tooltip    "One Day Back" >
-<!ENTITY calendar.navigation.nextweek.tooltip   "One Week Forward" >
-<!ENTITY calendar.navigation.prevweek.tooltip   "One Week Back" >
-<!ENTITY calendar.navigation.nextmonth.tooltip  "One Month Forward" >
-<!ENTITY calendar.navigation.prevmonth.tooltip  "One Month Back" >
-
 <!ENTITY calendar.newevent.button.label         "New Event" >
 <!ENTITY calendar.newtask.button.label          "New Task" >
 
-<!ENTITY calendar.day.button.label              "Day" >
-<!ENTITY calendar.week.button.label             "Week" >
-<!ENTITY calendar.month.button.label            "Month" >
-<!ENTITY calendar.multiweek.button.label        "Multiweek" >
 <!ENTITY calendar.onlyworkday.checkbox.label    "Workweek days only" >
 <!ENTITY calendar.onlyworkday.checkbox.accesskey  "r" >
 <!ENTITY calendar.displaytodos.checkbox.label   "Tasks in View" >
@@ -275,8 +245,6 @@
 <!ENTITY calendar.context.removeserver.accesskey       "R">
 <!ENTITY calendar.context.unsubscribeserver.label      "Unsubscribe Calendar…">
 <!ENTITY calendar.context.unsubscribeserver.accesskey  "U">
-<!ENTITY calendar.context.synccalendars.label          "Synchronize Calendars">
-<!ENTITY calendar.context.synccalendars.accesskey      "S">
 <!ENTITY calendar.context.publish.label                "Publish Calendar…">
 <!ENTITY calendar.context.publish.accesskey            "b">
 <!ENTITY calendar.context.export.label                 "Export Calendar…">
@@ -369,8 +337,6 @@
 <!ENTITY calendar.publish.url.label                 "Publishing URL">
 <!ENTITY calendar.publish.publish.button      "Publish">
 <!ENTITY calendar.publish.close.button      "Close">
-
-<!ENTITY calendar.publish.example.url.description   "Something like http://www.myserver.com/webdav/test.ics">
 
 <!-- Select Calendar Dialog -->
 <!ENTITY calendar.select.dialog.title    "Select Calendar">

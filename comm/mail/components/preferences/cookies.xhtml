@@ -1,9 +1,7 @@
 <?xml version="1.0"?>
-
-# -*- Mode: Java; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*-
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
+<!-- This Source Code Form is subject to the terms of the Mozilla Public
+   - License, v. 2.0. If a copy of the MPL was not distributed with this
+   - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
 
 <?xml-stylesheet href="chrome://global/skin/global.css"?>
 <?xml-stylesheet href="chrome://messenger/skin/input-fields.css"?>
@@ -14,13 +12,12 @@
         class="windowDialog"
         xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul"
         xmlns:html="http://www.w3.org/1999/xhtml"
-        data-l10n-id="cookies-window-dialog"
-        data-l10n-attrs="style"
+        data-l10n-id="cookies-window-dialog2"
         onload="gCookiesWindow.init();"
         onunload="gCookiesWindow.uninit();"
         persist="width height">
 
-  <script src="chrome://global/content/globalOverlay.js"/>
+  <script src="chrome://messenger/content/globalOverlay.js"/>
   <script src="chrome://global/content/editMenuOverlay.js"/>
   <script src="chrome://messenger/content/preferences/cookies.js"/>
 
@@ -56,12 +53,12 @@
           onselect="gCookiesWindow.onCookieSelected();"
           hidecolumnpicker="true" seltype="single">
       <treecols>
-        <treecol id="domainCol" data-l10n-id="treecol-site-header" flex="2"
+        <treecol id="domainCol" data-l10n-id="treecol-site-header"
                  primary="true"
                  persist="width"
                  onclick="gCookiesWindow.sort('rawHost');"/>
         <splitter class="tree-splitter"/>
-        <treecol id="nameCol" data-l10n-id="treecol-name-header" flex="1"
+        <treecol id="nameCol" data-l10n-id="treecol-name-header"
                  persist="width"
                  onclick="gCookiesWindow.sort('name');"/>
       </treecols>

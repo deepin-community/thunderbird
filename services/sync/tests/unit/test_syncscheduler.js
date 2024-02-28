@@ -1,28 +1,32 @@
 /* Any copyright is dedicated to the Public Domain.
    http://creativecommons.org/publicdomain/zero/1.0/ */
 
-const { FxAccounts } = ChromeUtils.import(
-  "resource://gre/modules/FxAccounts.jsm"
+const { FxAccounts } = ChromeUtils.importESModule(
+  "resource://gre/modules/FxAccounts.sys.mjs"
 );
-const { SyncAuthManager } = ChromeUtils.import(
-  "resource://services-sync/sync_auth.js"
+const { SyncAuthManager } = ChromeUtils.importESModule(
+  "resource://services-sync/sync_auth.sys.mjs"
 );
-const { SyncScheduler } = ChromeUtils.import(
-  "resource://services-sync/policies.js"
+const { SyncScheduler } = ChromeUtils.importESModule(
+  "resource://services-sync/policies.sys.mjs"
 );
-const { Service } = ChromeUtils.import("resource://services-sync/service.js");
-const { Status } = ChromeUtils.import("resource://services-sync/status.js");
+const { Service } = ChromeUtils.importESModule(
+  "resource://services-sync/service.sys.mjs"
+);
+const { Status } = ChromeUtils.importESModule(
+  "resource://services-sync/status.sys.mjs"
+);
 
 function CatapultEngine() {
   SyncEngine.call(this, "Catapult", Service);
 }
 CatapultEngine.prototype = {
-  __proto__: SyncEngine.prototype,
   exception: null, // tests fill this in
   async _sync() {
     throw this.exception;
   },
 };
+Object.setPrototypeOf(CatapultEngine.prototype, SyncEngine.prototype);
 
 var scheduler = new SyncScheduler(Service);
 let clientsEngine;
@@ -192,7 +196,6 @@ add_task(async function test_sync_skipped_low_score_no_resync() {
   }
 
   SkipEngine.prototype = {
-    __proto__: SyncEngine.prototype,
     _sync() {
       do_throw("Should have been skipped");
     },
@@ -200,6 +203,7 @@ add_task(async function test_sync_skipped_low_score_no_resync() {
       return true;
     },
   };
+  Object.setPrototypeOf(SkipEngine.prototype, SyncEngine.prototype);
   await Service.engineManager.register(SkipEngine);
 
   let engine = Service.engineManager.get("skip");
@@ -279,13 +283,13 @@ add_task(async function test_masterpassword_locked_retry_interval() {
   let rescheduleInterval = false;
 
   let oldScheduleAtInterval = SyncScheduler.prototype.scheduleAtInterval;
-  SyncScheduler.prototype.scheduleAtInterval = function(interval) {
+  SyncScheduler.prototype.scheduleAtInterval = function (interval) {
     rescheduleInterval = true;
     Assert.equal(interval, MASTER_PASSWORD_LOCKED_RETRY_INTERVAL);
   };
 
   let oldVerifyLogin = Service.verifyLogin;
-  Service.verifyLogin = async function() {
+  Service.verifyLogin = async function () {
     Status.login = MASTER_PASSWORD_LOCKED;
     return false;
   };
@@ -568,7 +572,7 @@ add_task(async function test_autoconnect_nextSync_past() {
   let server = await sync_httpd_setup();
   await setUp(server);
 
-  scheduler.delayedAutoConnect(0);
+  scheduler.autoConnect();
   await promiseObserved;
   await cleanUpAndGo(server);
 });
@@ -589,7 +593,7 @@ add_task(async function test_autoconnect_nextSync_future() {
   Svc.Obs.add("weave:service:login:start", onLoginStart);
 
   await configureIdentity({ username: "johndoe@mozilla.com" });
-  scheduler.delayedAutoConnect(0);
+  scheduler.autoConnect();
   await promiseZeroTimer();
 
   Assert.equal(scheduler.nextSync, expectedSync);
@@ -631,7 +635,7 @@ add_task(async function test_autoconnect_mp_locked() {
   // MASTER_PASSWORD_LOCKED and hence MASTER_PASSWORD_LOCKED_RETRY_INTERVAL.
   let promiseObserved = promiseOneObserver("weave:service:login:error");
 
-  scheduler.delayedAutoConnect(0);
+  scheduler.autoConnect();
   await promiseObserved;
 
   await Async.promiseYield();
@@ -658,7 +662,7 @@ add_task(async function test_no_autoconnect_during_wizard() {
   }
   Svc.Obs.add("weave:service:login:start", onLoginStart);
 
-  scheduler.delayedAutoConnect(0);
+  scheduler.autoConnect(0);
   await promiseZeroTimer();
   Svc.Obs.remove("weave:service:login:start", onLoginStart);
   await cleanUpAndGo(server);
@@ -674,32 +678,13 @@ add_task(async function test_no_autoconnect_status_not_ok() {
   }
   Svc.Obs.add("weave:service:login:start", onLoginStart);
 
-  scheduler.delayedAutoConnect(0);
+  scheduler.autoConnect();
   await promiseZeroTimer();
   Svc.Obs.remove("weave:service:login:start", onLoginStart);
 
   Assert.equal(Status.service, CLIENT_NOT_CONFIGURED);
   Assert.equal(Status.login, LOGIN_FAILED_NO_USERNAME);
 
-  await cleanUpAndGo(server);
-});
-
-add_task(async function test_autoconnectDelay_pref() {
-  enableValidationPrefs();
-
-  let promiseObserved = promiseOneObserver("weave:service:sync:finish");
-
-  Svc.Prefs.set("autoconnectDelay", 1);
-
-  let server = await sync_httpd_setup();
-  await setUp(server);
-
-  Svc.Obs.notify("weave:service:ready");
-
-  // autoconnectDelay pref is multiplied by 1000.
-  Assert.equal(scheduler._autoTimer.delay, 1000);
-  Assert.equal(Status.service, STATUS_OK);
-  await promiseObserved;
   await cleanUpAndGo(server);
 });
 

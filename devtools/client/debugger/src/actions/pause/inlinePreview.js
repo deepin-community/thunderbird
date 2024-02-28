@@ -2,7 +2,6 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at <http://mozilla.org/MPL/2.0/>. */
 
-import { sortBy } from "lodash";
 import {
   getOriginalFrameScope,
   getGeneratedFrameScope,
@@ -26,16 +25,16 @@ function getLocalScopeLevels(originalAstScopes) {
 }
 
 export function generateInlinePreview(cx, frame) {
-  return async function({ dispatch, getState, parser, client }) {
+  return async function ({ dispatch, getState, parserWorker, client }) {
     if (!frame || !features.inlinePreview) {
-      return;
+      return null;
     }
 
     const { thread } = cx;
 
     // Avoid regenerating inline previews when we already have preview data
     if (getInlinePreviews(getState(), thread, frame.id)) {
-      return;
+      return null;
     }
 
     const originalFrameScopes = getOriginalFrameScope(
@@ -54,20 +53,24 @@ export function generateInlinePreview(cx, frame) {
     let scopes = originalFrameScopes?.scope || generatedFrameScopes?.scope;
 
     if (!scopes || !scopes.bindings) {
-      return;
+      return null;
     }
 
     // It's important to use selectedLocation, because we don't know
     // if we'll be viewing the original or generated frame location
     const selectedLocation = getSelectedLocation(getState());
     if (!selectedLocation) {
-      return;
+      return null;
     }
 
-    const originalAstScopes = await parser.getScopes(selectedLocation);
+    if (!parserWorker.isLocationSupported(selectedLocation)) {
+      return null;
+    }
+
+    const originalAstScopes = await parserWorker.getScopes(selectedLocation);
     validateThreadContext(getState(), cx);
     if (!originalAstScopes) {
-      return;
+      return null;
     }
 
     const allPreviews = [];
@@ -118,17 +121,26 @@ export function generateInlinePreview(cx, frame) {
       scopes = scopes.parent;
     }
 
-    const previews = {};
-    const sortedPreviews = sortBy(allPreviews, ["line", "column"]);
+    // Sort previews by line and column so they're displayed in the right order in the editor
+    allPreviews.sort((previewA, previewB) => {
+      if (previewA.line < previewB.line) {
+        return -1;
+      }
+      if (previewA.line > previewB.line) {
+        return 1;
+      }
+      // If we have the same line number
+      return previewA.column < previewB.column ? -1 : 1;
+    });
 
-    sortedPreviews.forEach(preview => {
+    const previews = {};
+    for (const preview of allPreviews) {
       const { line } = preview;
       if (!previews[line]) {
-        previews[line] = [preview];
-      } else {
-        previews[line].push(preview);
+        previews[line] = [];
       }
-    });
+      previews[line].push(preview);
+    }
 
     return dispatch({
       type: "ADD_INLINE_PREVIEW",

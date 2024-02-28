@@ -10,13 +10,10 @@
 
 var utils = ChromeUtils.import("resource://testing-common/mozmill/utils.jsm");
 
-var {
-  create_contact,
-  create_mailing_list,
-  load_contacts_into_address_book,
-} = ChromeUtils.import(
-  "resource://testing-common/mozmill/AddressBookHelpers.jsm"
-);
+var { create_contact, create_mailing_list, load_contacts_into_address_book } =
+  ChromeUtils.import(
+    "resource://testing-common/mozmill/AddressBookHelpers.jsm"
+  );
 var {
   be_in_folder,
   click_tree_row,
@@ -33,30 +30,30 @@ var {
   open_compose_new_mail,
   setup_msg_contents,
 } = ChromeUtils.import("resource://testing-common/mozmill/ComposeHelpers.jsm");
-var { wait_for_frame_load } = ChromeUtils.import(
-  "resource://testing-common/mozmill/WindowHelpers.jsm"
-);
+var { plan_for_modal_dialog, wait_for_frame_load, wait_for_modal_dialog } =
+  ChromeUtils.import("resource://testing-common/mozmill/WindowHelpers.jsm");
 
-var { AppConstants } = ChromeUtils.import(
-  "resource://gre/modules/AppConstants.jsm"
-);
 var { MailServices } = ChromeUtils.import(
   "resource:///modules/MailServices.jsm"
 );
 
 var account = null;
 
-add_task(function setupModule(module) {
+add_setup(async function () {
   // Ensure we're in the tinderbox account as that has the right identities set
   // up for this test.
-  let server = MailServices.accounts.FindServer(
+  let server = MailServices.accounts.findServer(
     "tinderbox",
     FAKE_SERVER_HOSTNAME,
     "pop3"
   );
   account = MailServices.accounts.FindAccountForServer(server);
-  let inbox = get_special_folder(Ci.nsMsgFolderFlags.Inbox, false, server);
-  be_in_folder(inbox);
+  let inbox = await get_special_folder(
+    Ci.nsMsgFolderFlags.Inbox,
+    false,
+    server
+  );
+  await be_in_folder(inbox);
 });
 
 /**
@@ -66,17 +63,40 @@ add_task(function setupModule(module) {
  * @param aEnabled  The expected state of the commands.
  */
 function check_send_commands_state(aCwc, aEnabled) {
-  Assert.equal(aCwc.e("cmd_sendButton").hasAttribute("disabled"), !aEnabled);
-  Assert.equal(aCwc.e("cmd_sendNow").hasAttribute("disabled"), !aEnabled);
-  Assert.equal(aCwc.e("cmd_sendWithCheck").hasAttribute("disabled"), !aEnabled);
-  Assert.equal(aCwc.e("cmd_sendLater").hasAttribute("disabled"), !aEnabled);
+  Assert.equal(
+    aCwc.window.document
+      .getElementById("cmd_sendButton")
+      .hasAttribute("disabled"),
+    !aEnabled
+  );
+  Assert.equal(
+    aCwc.window.document.getElementById("cmd_sendNow").hasAttribute("disabled"),
+    !aEnabled
+  );
+  Assert.equal(
+    aCwc.window.document
+      .getElementById("cmd_sendWithCheck")
+      .hasAttribute("disabled"),
+    !aEnabled
+  );
+  Assert.equal(
+    aCwc.window.document
+      .getElementById("cmd_sendLater")
+      .hasAttribute("disabled"),
+    !aEnabled
+  );
 
   // The toolbar buttons and menuitems should be linked to these commands
   // thus inheriting the enabled state. Check that on the Send button
   // and Send Now menuitem.
-  Assert.equal(aCwc.e("button-send").getAttribute("command"), "cmd_sendButton");
   Assert.equal(
-    aCwc.e("menu-item-send-now").getAttribute("command"),
+    aCwc.window.document.getElementById("button-send").getAttribute("command"),
+    "cmd_sendButton"
+  );
+  Assert.equal(
+    aCwc.window.document
+      .getElementById("menu-item-send-now")
+      .getAttribute("command"),
     "cmd_sendNow"
   );
 }
@@ -88,7 +108,10 @@ function check_send_commands_state(aCwc, aEnabled) {
  */
 add_task(async function test_send_enabled_manual_address() {
   let cwc = open_compose_new_mail(); // compose controller
-  let panel = cwc.e("extraRecipientsPanel"); // extra recipients panel
+  let menu = cwc.window.document.getElementById("extraAddressRowsMenu"); // extra recipients menu
+  let menuButton = cwc.window.document.getElementById(
+    "extraAddressRowsMenuButton"
+  );
 
   // On an empty window, Send must be disabled.
   check_send_commands_state(cwc, false);
@@ -99,9 +122,12 @@ add_task(async function test_send_enabled_manual_address() {
 
   // When the addressee is not in To, Cc, Bcc or Newsgroup, disable Send again.
   clear_recipients(cwc);
-  cwc.click(cwc.e("extraRecipientsLabel"));
-  await wait_for_popup_to_open(panel);
-  cwc.click(cwc.e("addr_reply"));
+  EventUtils.synthesizeMouseAtCenter(menuButton, {}, menuButton.ownerGlobal);
+  await new Promise(resolve => setTimeout(resolve));
+  await wait_for_popup_to_open(menu);
+  menu.activateItem(
+    cwc.window.document.getElementById("addr_replyShowAddressRowMenuItem")
+  );
   setup_msg_contents(cwc, " recipient@fake.invalid ", "", "", "replyAddrInput");
   check_send_commands_state(cwc, false);
 
@@ -114,11 +140,20 @@ add_task(async function test_send_enabled_manual_address() {
   setup_msg_contents(cwc, " recipient@", "", "");
   check_send_commands_state(cwc, false);
 
-  cwc.click(cwc.e("addr_cc"));
+  let ccShow = cwc.window.document.getElementById(
+    "addr_ccShowAddressRowButton"
+  );
+  EventUtils.synthesizeMouseAtCenter(ccShow, {}, ccShow.ownerGlobal);
+  await new Promise(resolve => setTimeout(resolve));
   check_send_commands_state(cwc, false);
 
   // Select the newly generated pill.
-  cwc.click(get_first_pill(cwc));
+  EventUtils.synthesizeMouseAtCenter(
+    get_first_pill(cwc),
+    {},
+    get_first_pill(cwc).ownerGlobal
+  );
+  await new Promise(resolve => setTimeout(resolve));
   // Delete the selected pill.
   EventUtils.synthesizeKey("VK_DELETE", {}, cwc.window);
   // Confirm the address row is now empty.
@@ -155,15 +190,19 @@ add_task(async function test_send_enabled_manual_address() {
   clear_recipients(cwc);
   check_send_commands_state(cwc, false);
 
-  // Show the extraRecipientsLabel in order to trigger the opening og the
-  // extraRecipientsPanel.
-  cwc.e("extraRecipientsLabel").removeAttribute("collapsed");
-  cwc.click(cwc.e("extraRecipientsLabel"));
-  await wait_for_popup_to_open(panel);
+  // Hack to reveal the newsgroup button.
+  let newsgroupsButton = cwc.window.document.getElementById(
+    "addr_newsgroupsShowAddressRowButton"
+  );
+  newsgroupsButton.hidden = false;
+  EventUtils.synthesizeMouseAtCenter(
+    newsgroupsButton,
+    {},
+    newsgroupsButton.ownerGlobal
+  );
+  await new Promise(resolve => setTimeout(resolve));
 
   // - some string as a newsgroup
-  cwc.e("addr_newsgroups").removeAttribute("collapsed");
-  cwc.click(cwc.e("addr_newsgroups"));
   setup_msg_contents(cwc, "newsgroup ", "", "", "newsgroupsAddrInput");
   check_send_commands_state(cwc, true);
 
@@ -210,7 +249,7 @@ add_task(async function test_send_enabled_prefilled_address_from_identity() {
   let cwc = open_compose_new_mail();
   check_send_commands_state(cwc, true);
 
-  let identityPicker = cwc.e("msgIdentity");
+  let identityPicker = cwc.window.document.getElementById("msgIdentity");
   Assert.equal(identityPicker.selectedIndex, 0);
 
   // Switch to the second identity that has no CC. Send should be disabled.
@@ -245,15 +284,16 @@ add_task(function test_send_enabled_address_contacts_sidebar() {
   check_send_commands_state(cwc, false);
 
   // Open Contacts sidebar and use our contact.
-  cwc.window.toggleAddressPicker();
+  // FIXME: Use UI to open contacts sidebar.
+  cwc.window.toggleContactsSidebar();
 
-  let sidebar = cwc.e("sidebar");
+  let contactsBrowser = cwc.window.document.getElementById("contactsBrowser");
   wait_for_frame_load(
-    sidebar,
+    contactsBrowser,
     "chrome://messenger/content/addressbook/abContactsPanel.xhtml?focus"
   );
 
-  let abTree = sidebar.contentDocument.getElementById("abResultsTree");
+  let abTree = contactsBrowser.contentDocument.getElementById("abResultsTree");
   // The results are loaded async so wait for the population of the tree.
   utils.waitFor(
     () => abTree.view.rowCount > 0,
@@ -261,11 +301,63 @@ add_task(function test_send_enabled_address_contacts_sidebar() {
   );
   click_tree_row(abTree, 0, cwc);
 
-  sidebar.contentDocument.getElementById("ccButton").click();
+  contactsBrowser.contentDocument.getElementById("ccButton").click();
 
   // The recipient is filled in, Send must be enabled.
   check_send_commands_state(cwc, true);
 
-  cwc.window.toggleAddressPicker();
+  // FIXME: Use UI to close contacts sidebar.
+  cwc.window.toggleContactsSidebar();
+  close_compose_window(cwc);
+});
+
+/**
+ * Tests that when editing a pill and clicking send while the edit is active
+ * the pill gets updated before the send of the email.
+ */
+add_task(async function test_update_pill_before_send() {
+  let cwc = open_compose_new_mail();
+
+  setup_msg_contents(cwc, "recipient@fake.invalid", "Subject", "");
+
+  let pill = get_first_pill(cwc);
+
+  // Edit the first pill.
+  // First, we need to get into the edit mode by clicking the pill twice.
+  EventUtils.synthesizeMouseAtCenter(pill, { clickCount: 1 }, cwc.window);
+  let clickPromise = BrowserTestUtils.waitForEvent(pill, "click");
+  // We do not want a double click, but two separate clicks.
+  EventUtils.synthesizeMouseAtCenter(pill, { clickCount: 1 }, cwc.window);
+  await clickPromise;
+
+  Assert.ok(!pill.querySelector("input").hidden);
+
+  // Set the pill which is in edit mode to an invalid email.
+  EventUtils.synthesizeKey("KEY_Home", { shiftKey: true }, cwc.window);
+  EventUtils.synthesizeKey("VK_BACK_SPACE", {}, cwc.window);
+  EventUtils.sendString("invalidEmail", cwc.window);
+
+  // Click send while the pill is in the edit mode and check the dialog title
+  // if the pill is updated we get an invalid recipient error. Otherwise the
+  // error would be an imap error because the email would still be sent to
+  // `recipient@fake.invalid`.
+  let dialogTitle;
+  plan_for_modal_dialog("commonDialogWindow", cwc => {
+    dialogTitle = cwc.window.document.getElementById("infoTitle").textContent;
+    cwc.window.document.querySelector("dialog").getButton("accept").click();
+  });
+  // Click the send button.
+  EventUtils.synthesizeMouseAtCenter(
+    cwc.window.document.getElementById("button-send"),
+    {},
+    cwc.window
+  );
+  wait_for_modal_dialog("commonDialogWindow");
+
+  Assert.ok(
+    dialogTitle.includes("Invalid Recipient Address"),
+    "The pill edit has been updated before sending the email"
+  );
+
   close_compose_window(cwc);
 });

@@ -9,10 +9,14 @@
 
 const TEST_ENGINE_NAME = "Test";
 
-add_task(async function setup() {
+add_setup(async function () {
   await SearchTestUtils.installSearchExtension({
     name: TEST_ENGINE_NAME,
     keyword: "@test",
+  });
+
+  await SpecialPowers.pushPrefEnv({
+    set: [["browser.urlbar.suggest.quickactions", false]],
   });
 
   registerCleanupFunction(async () => {
@@ -55,7 +59,7 @@ add_task(async function tokenAlias() {
 
   let result;
   while (gURLBar.searchMode?.engineName != TEST_ENGINE_NAME) {
-    EventUtils.synthesizeKey("KEY_ArrowDown", {}, window);
+    EventUtils.synthesizeKey("KEY_ArrowDown");
     let index = UrlbarTestUtils.getSelectedRowIndex(window);
     result = await UrlbarTestUtils.getDetailsOfResultAt(window, index);
     let expectedSearchMode = {
@@ -88,7 +92,7 @@ add_task(async function startTyping() {
     value: "@",
   });
   while (gURLBar.searchMode?.engineName != TEST_ENGINE_NAME) {
-    EventUtils.synthesizeKey("KEY_ArrowDown", {}, window);
+    EventUtils.synthesizeKey("KEY_ArrowDown");
   }
 
   await UrlbarTestUtils.assertSearchMode(window, {
@@ -123,7 +127,7 @@ add_task(async function topSites() {
   });
 
   // We previously verified that the first Top Site is a search shortcut.
-  EventUtils.synthesizeKey("KEY_ArrowDown", {}, window);
+  EventUtils.synthesizeKey("KEY_ArrowDown");
   let searchTopSite = await UrlbarTestUtils.getDetailsOfResultAt(window, 0);
   await UrlbarTestUtils.assertSearchMode(window, {
     engineName: searchTopSite.searchParams.engine,
@@ -141,7 +145,7 @@ add_task(async function closeView() {
   });
 
   while (gURLBar.searchMode?.engineName != TEST_ENGINE_NAME) {
-    EventUtils.synthesizeKey("KEY_ArrowDown", {}, window);
+    EventUtils.synthesizeKey("KEY_ArrowDown");
   }
   await UrlbarTestUtils.assertSearchMode(window, {
     engineName: TEST_ENGINE_NAME,
@@ -172,7 +176,7 @@ add_task(async function tabSwitch() {
   });
 
   while (gURLBar.searchMode?.engineName != TEST_ENGINE_NAME) {
-    EventUtils.synthesizeKey("KEY_ArrowDown", {}, window);
+    EventUtils.synthesizeKey("KEY_ArrowDown");
   }
   await UrlbarTestUtils.assertSearchMode(window, {
     engineName: TEST_ENGINE_NAME,
@@ -212,7 +216,7 @@ add_task(async function oneOff_downArrow() {
   EventUtils.synthesizeKey("KEY_ArrowDown");
 
   // Check for the one-off's search mode previews.
-  while (oneOffs.selectedButton != oneOffs.settingsButtonCompact) {
+  while (oneOffs.selectedButton != oneOffs.settingsButton) {
     await UrlbarTestUtils.assertSearchMode(
       window,
       getExpectedSearchMode(oneOffs.selectedButton)
@@ -223,7 +227,7 @@ add_task(async function oneOff_downArrow() {
   // Check that selecting the search settings button leaves search mode preview.
   Assert.equal(
     oneOffs.selectedButton,
-    oneOffs.settingsButtonCompact,
+    oneOffs.settingsButton,
     "The settings button is selected."
   );
   await UrlbarTestUtils.assertSearchMode(window, null);
@@ -340,7 +344,7 @@ add_task(async function fullSearchMode_oneOff_downArrow() {
   // Key down again. The first one-off should be selected.
   EventUtils.synthesizeKey("KEY_ArrowDown");
   // Check that we show the correct preview as we cycle through the one-offs.
-  while (oneOffs.selectedButton != oneOffs.settingsButtonCompact) {
+  while (oneOffs.selectedButton != oneOffs.settingsButton) {
     await UrlbarTestUtils.assertSearchMode(
       window,
       getExpectedSearchMode(oneOffs.selectedButton, true)

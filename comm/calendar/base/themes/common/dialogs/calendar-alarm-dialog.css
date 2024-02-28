@@ -33,7 +33,7 @@ richlistitem[is="calendar-alarm-widget-richlistitem"][selected="true"] .alarm-ti
 }
 
 richlistitem[is="calendar-alarm-widget-richlistitem"][selected="true"] .alarm-action-buttons {
-  display: -moz-box;
+  display: flex;
   color: var(--field-text-color);
 }
 
@@ -49,7 +49,15 @@ richlistitem[is="calendar-alarm-widget-richlistitem"][selected="true"] .alarm-re
 
 richlistitem[is="calendar-alarm-widget-richlistitem"][selected="true"] .additional-information-box,
 richlistitem[is="calendar-alarm-widget-richlistitem"][selected="true"] .action-buttons-box {
-  display: -moz-box;
+  display: flex;
+}
+
+.alarm-calendar-event {
+  overflow: hidden;
+}
+
+.alarm-location-description {
+  display: flex;
 }
 
 .alarm-details-label {
@@ -76,7 +84,7 @@ richlistitem[is="calendar-alarm-widget-richlistitem"]:not([selected="true"]) .al
 }
 
 .snooze-popup-button:hover {
-  background-color: var(--button-hover-bgcolor);
+  background-color: var(--button-hover-background-color);
 }
 
 .snooze-popup-ok-button {
@@ -94,21 +102,11 @@ richlistitem[is="calendar-alarm-widget-richlistitem"]:not([selected="true"]) .al
 .snooze-popup-button > .button-box {
   border: 0;
   padding: 0;
-  -moz-box-pack: center;
-  -moz-box-align: center;
+  justify-content: center;
+  align-items: center;
 }
 
 .snooze-popup-button:focus > .button-box {
   border: 1px dotted ThreeDDarkShadow;
   padding: 0;
 }
-
-:root[lwt-tree] #alarm-snooze-all-popup,
-:root[lwt-tree] menupopup[is="calendar-snooze-popup"] {
-  appearance: none;
-  border: 1px solid var(--box-border-color);
-  border-radius: var(--button-border-radius);
-  background-color: var(--box-background-color);
-  color: var(--box-text-color);
-}
-

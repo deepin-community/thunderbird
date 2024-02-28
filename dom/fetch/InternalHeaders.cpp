@@ -6,6 +6,7 @@
 
 #include "mozilla/dom/InternalHeaders.h"
 
+#include "FetchUtil.h"
 #include "mozilla/dom/FetchTypes.h"
 #include "mozilla/ErrorResult.h"
 
@@ -56,11 +57,11 @@ bool InternalHeaders::IsValidHeaderValue(const nsCString& aLowerName,
   }
 
   // Step 4
-  if (mGuard == HeadersGuardEnum::Request &&
-      IsForbiddenRequestHeader(aLowerName)) {
-    return false;
+  if (mGuard == HeadersGuardEnum::Request) {
+    if (IsForbiddenRequestHeader(aLowerName, aNormalizedValue)) {
+      return false;
+    }
   }
-
   // Step 5
   if (mGuard == HeadersGuardEnum::Request_no_cors) {
     nsAutoCString tempValue;
@@ -161,7 +162,9 @@ void InternalHeaders::Delete(const nsACString& aName, ErrorResult& aRv) {
   }
 
   // Step 3
-  if (IsForbiddenRequestHeader(lowerName)) {
+  nsAutoCString value;
+  GetInternal(lowerName, value, aRv);
+  if (IsForbiddenRequestHeader(lowerName, value)) {
     return;
   }
 
@@ -218,6 +221,14 @@ void InternalHeaders::GetInternal(const nsCString& aLowerName,
   // No value found, so return null to content
   if (!firstValueFound) {
     aValue.SetIsVoid(true);
+  }
+}
+
+void InternalHeaders::GetSetCookie(nsTArray<nsCString>& aValues) const {
+  for (uint32_t i = 0; i < mList.Length(); ++i) {
+    if (mList[i].mName.EqualsIgnoreCase("Set-Cookie")) {
+      aValues.AppendElement(mList[i].mValue);
+    }
   }
 }
 
@@ -381,9 +392,10 @@ bool InternalHeaders::IsImmutable(ErrorResult& aRv) const {
   return false;
 }
 
-bool InternalHeaders::IsForbiddenRequestHeader(const nsCString& aName) const {
+bool InternalHeaders::IsForbiddenRequestHeader(const nsCString& aName,
+                                               const nsACString& aValue) const {
   return mGuard == HeadersGuardEnum::Request &&
-         nsContentUtils::IsForbiddenRequestHeader(aName);
+         nsContentUtils::IsForbiddenRequestHeader(aName, aValue);
 }
 
 bool InternalHeaders::IsForbiddenRequestNoCorsHeader(
@@ -604,12 +616,16 @@ void InternalHeaders::MaybeSortList() {
   mSortedList.Clear();
   for (const Entry& entry : mList) {
     bool found = false;
-    for (Entry& sortedEntry : mSortedList) {
-      if (sortedEntry.mName.EqualsIgnoreCase(entry.mName.get())) {
-        sortedEntry.mValue += ", ";
-        sortedEntry.mValue += entry.mValue;
-        found = true;
-        break;
+
+    // We combine every header but Set-Cookie.
+    if (!entry.mName.EqualsIgnoreCase("Set-Cookie")) {
+      for (Entry& sortedEntry : mSortedList) {
+        if (sortedEntry.mName.EqualsIgnoreCase(entry.mName.get())) {
+          sortedEntry.mValue += ", ";
+          sortedEntry.mValue += entry.mValue;
+          found = true;
+          break;
+        }
       }
     }
 

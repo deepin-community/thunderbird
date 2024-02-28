@@ -4,20 +4,18 @@
 
 package org.mozilla.geckoview.test
 
-import org.mozilla.geckoview.test.rule.GeckoSessionTestRule.AssertCalled
-import org.mozilla.geckoview.test.rule.GeckoSessionTestRule.IgnoreCrash
-import org.mozilla.geckoview.test.util.Callbacks
-
 import androidx.annotation.AnyThread
-import androidx.test.filters.MediumTest
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import org.hamcrest.Matchers.*
+import androidx.test.filters.MediumTest
+import org.hamcrest.Matchers.* // ktlint-disable no-wildcard-imports
 import org.junit.Assume.assumeThat
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
-import org.mozilla.geckoview.*
-
+import org.mozilla.geckoview.* // ktlint-disable no-wildcard-imports
+import org.mozilla.geckoview.GeckoSession.ContentDelegate
+import org.mozilla.geckoview.test.rule.GeckoSessionTestRule.AssertCalled
+import org.mozilla.geckoview.test.rule.GeckoSessionTestRule.IgnoreCrash
 
 @RunWith(AndroidJUnit4::class)
 @MediumTest
@@ -37,7 +35,7 @@ class ContentDelegateMultipleSessionsTest : BaseSessionTest() {
         killAllContentProcesses()
 
         if (isMainSessionAlreadyOpen) {
-            mainSession.waitUntilCalled(object : Callbacks.ContentDelegate {
+            mainSession.waitUntilCalled(object : ContentDelegate {
                 @AssertCalled(count = 1)
                 override fun onKill(session: GeckoSession) {
                 }
@@ -55,7 +53,7 @@ class ContentDelegateMultipleSessionsTest : BaseSessionTest() {
 
         if (isExtensionProcessEnabled && numContentProcesses > 1) {
             // Extension process counts against the content process budget
-            --numContentProcesses 
+            --numContentProcesses
         }
 
         return numContentProcesses
@@ -93,7 +91,8 @@ class ContentDelegateMultipleSessionsTest : BaseSessionTest() {
     }
 
     @IgnoreCrash
-    @Test fun crashContentMultipleSessions() {
+    @Test
+    fun crashContentMultipleSessions() {
         // TODO: Bug 1673952
         assumeThat(sessionRule.env.isFission, equalTo(false))
 
@@ -108,7 +107,7 @@ class ContentDelegateMultipleSessionsTest : BaseSessionTest() {
         // ...but we use GeckoResult.allOf for waiting on the aggregated results
         val allCrashesFound = GeckoResult.allOf(mainSessionCrash, newSessionCrash)
 
-        sessionRule.delegateUntilTestEnd(object : Callbacks.ContentDelegate {
+        sessionRule.delegateUntilTestEnd(object : ContentDelegate {
             fun reportCrash(session: GeckoSession) {
                 if (session == mainSession) {
                     mainSessionCrash.complete(null)
@@ -116,6 +115,7 @@ class ContentDelegateMultipleSessionsTest : BaseSessionTest() {
                     newSessionCrash.complete(null)
                 }
             }
+
             // Slower devices may not catch crashes in a timely manner, so we check to see
             // if either `onKill` or `onCrash` is called
             override fun onCrash(session: GeckoSession) {
@@ -135,7 +135,8 @@ class ContentDelegateMultipleSessionsTest : BaseSessionTest() {
     }
 
     @IgnoreCrash
-    @Test fun killContentMultipleSessions() {
+    @Test
+    fun killContentMultipleSessions() {
         val newSession = getSecondGeckoSession()
 
         val mainSessionKilled = GeckoResult<Void>()
@@ -143,7 +144,7 @@ class ContentDelegateMultipleSessionsTest : BaseSessionTest() {
 
         val allKillEventsReceived = GeckoResult.allOf(mainSessionKilled, newSessionKilled)
 
-        sessionRule.delegateUntilTestEnd(object : Callbacks.ContentDelegate {
+        sessionRule.delegateUntilTestEnd(object : ContentDelegate {
             override fun onKill(session: GeckoSession) {
                 if (session == mainSession) {
                     mainSessionKilled.complete(null)

@@ -36,9 +36,9 @@
 <!ENTITY editMailingListContext.label       "Edita la llista">
 <!ENTITY editMailingListContext.accesskey   "E">
 
-<!ENTITY newContactAbContext.label          "Crea un contacte">
+<!ENTITY newContactAbContext.label          "Contacte nou">
 <!ENTITY newContactAbContext.accesskey      "c">
-<!ENTITY newListAbContext.label             "Crea una llista">
+<!ENTITY newListAbContext.label             "Llista nova">
 <!ENTITY newListAbContext.accesskey         "l">
 
 <!ENTITY toButton.label                     "Afegeix a A:">

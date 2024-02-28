@@ -1,29 +1,28 @@
 {
   "langpack_id": "ja",
   "manifest_version": 2,
-  "applications": {
+  "browser_specific_settings": {
     "gecko": {
       "id": "langpack-ja@thunderbird.mozilla.org",
-      "strict_min_version": "91.0",
-      "strict_max_version": "91.*"
+      "strict_min_version": "115.0",
+      "strict_max_version": "115.*"
     }
   },
-  "name": "Japanese Language Pack",
-  "description": "Language pack for Thunderbird for ja",
-  "version": "91.0buildid20211101223011",
+  "name": "Language: 日本語 (Japanese)",
+  "description": "Thunderbird Language Pack for 日本語 (ja) – Japanese",
+  "version": "115.8.20240216.174500",
   "languages": {
     "ja": {
-      "version": "20211011131328",
+      "version": "20240216183723",
       "chrome_resources": {
         "alerts": "chrome/ja/locale/ja/alerts/",
         "autoconfig": "chrome/ja/locale/ja/autoconfig/",
-        "branding": "chrome/ja/locale/ja/branding/",
+        "branding": "chrome/ja/locale/branding/",
         "calendar": "chrome/ja/locale/ja/calendar/",
         "chat": "chrome/ja/locale/ja/chat/",
         "communicator": "chrome/ja/locale/ja/communicator/",
         "devtools": "chrome/ja/locale/ja/devtools/client/",
         "devtools-shared": "chrome/ja/locale/ja/devtools/shared/",
-        "devtools-startup": "chrome/ja/locale/ja/devtools/startup/",
         "global": "chrome/ja/locale/ja/global/",
         "global-platform": {
           "macosx": "chrome/ja/locale/ja/global-platform/mac/",

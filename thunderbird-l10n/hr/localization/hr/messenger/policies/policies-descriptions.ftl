@@ -14,6 +14,8 @@ policy-3rdparty = Postavite pravila kojima će WebExtensions moći pristupiti pu
 
 policy-AppAutoUpdate = Omogući ili onemogući automatsko ažuriranje programa.
 
+policy-AppUpdatePin = Spriječite { -brand-short-name } da se ažurira izvan navedene inačice.
+
 policy-AppUpdateURL = Postavi prilagođeni URL za ažuriranje aplikacije.
 
 policy-Authentication = Konfigurirajte integriranu prijavu za web stranice koje ju podržavaju.

@@ -55,7 +55,6 @@ class nsMsgCompose : public nsIMsgCompose, public nsSupportsWeakReference {
                             mozilla::dom::Element* element);
   nsresult TagEmbeddedObjects(nsIEditor* aEditor);
 
-  nsCString mQuoteCharset;
   nsCString mOriginalMsgURI;  // used so we can mark message disposition flags
                               // after we send the message
 
@@ -67,11 +66,11 @@ class nsMsgCompose : public nsIMsgCompose, public nsSupportsWeakReference {
   bool CheckIncludeSignaturePrefs(nsIMsgIdentity* identity);
   // m_folderName to store the value of the saved drafts folder.
   nsCString m_folderName;
-  void InsertDivWrappedTextAtSelection(const nsAString& aText,
-                                       const nsAString& classStr);
+  MOZ_CAN_RUN_SCRIPT void InsertDivWrappedTextAtSelection(
+      const nsAString& aText, const nsAString& classStr);
 
  protected:
-  nsresult CreateMessage(const char* originalMsgURI, MSG_ComposeType type,
+  nsresult CreateMessage(const nsACString& originalMsgURI, MSG_ComposeType type,
                          nsIMsgCompFields* compFields);
   void CleanUpRecipients(nsString& recipients);
   nsresult GetABDirAndMailLists(const nsACString& aDirUri,
@@ -83,12 +82,19 @@ class nsMsgCompose : public nsIMsgCompose, public nsSupportsWeakReference {
                            nsTArray<nsMsgMailList>& mailListResolved,
                            nsTArray<nsMsgRecipient>& aListMembers);
   void TagConvertible(mozilla::dom::Element* node, int32_t* _retval);
-  void _NodeTreeConvertible(mozilla::dom::Element* node, int32_t* _retval);
-  nsresult MoveToAboveQuote(void);
-  nsresult MoveToBeginningOfDocument(void);
-  nsresult MoveToEndOfDocument(void);
+  MOZ_CAN_RUN_SCRIPT nsresult MoveToAboveQuote(void);
+  MOZ_CAN_RUN_SCRIPT nsresult MoveToBeginningOfDocument(void);
+  MOZ_CAN_RUN_SCRIPT nsresult MoveToEndOfDocument(void);
   nsresult ReplaceFileURLs(nsString& sigData);
   nsresult DataURLForFileURL(const nsAString& aFileURL, nsAString& aDataURL);
+
+  /**
+   * Given an nsIFile, attempts to read it into aString.
+   *
+   * Note: Use sparingly! This causes main-thread I/O, which causes jank and all
+   * other bad things.
+   */
+  static nsresult SlurpFileToString(nsIFile* aFile, nsACString& aString);
 
 // 3 = To, Cc, Bcc
 #define MAX_OF_RECIPIENT_ARRAY 3
@@ -122,8 +128,7 @@ class nsMsgCompose : public nsIMsgCompose, public nsSupportsWeakReference {
   nsCOMPtr<nsIMsgQuote> mQuote;
   bool mQuotingToFollow;  // Quoting indicator
   MSG_ComposeType mType;  // Message type
-  bool mCharsetOverride;
-  bool mAnswerDefaultCharset;
+  bool mAutodetectCharset;
   bool mDeleteDraft;
   nsMsgDispositionState mDraftDisposition;
   nsCOMPtr<nsIMsgDBHdr> mOrigMsgHdr;
@@ -134,11 +139,15 @@ class nsMsgCompose : public nsIMsgCompose, public nsSupportsWeakReference {
   nsTObserverArray<nsCOMPtr<nsIMsgComposeStateListener> > mStateListeners;
   nsTObserverArray<nsCOMPtr<nsIMsgSendListener> > mExternalSendListeners;
 
-  bool mInsertingQuotedContent;
+  bool mAllowRemoteContent;
   MSG_DeliverMode mDeliverMode;  // nsIMsgCompDeliverMode long.
 
   friend class QuotingOutputStreamListener;
   friend class nsMsgComposeSendListener;
+
+ private:
+  void DeleteTmpAttachments();
+  bool mTmpAttachmentsDeleted;
 };
 
 ////////////////////////////////////////////////////////////////////////////////////
@@ -148,11 +157,9 @@ class nsMsgCompose : public nsIMsgCompose, public nsSupportsWeakReference {
 class QuotingOutputStreamListener : public nsIMsgQuotingOutputStreamListener,
                                     public nsSupportsWeakReference {
  public:
-  QuotingOutputStreamListener(const char* originalMsgURI,
-                              nsIMsgDBHdr* origMsgHdr, bool quoteHeaders,
+  QuotingOutputStreamListener(nsIMsgDBHdr* origMsgHdr, bool quoteHeaders,
                               bool headersOnly, nsIMsgIdentity* identity,
-                              nsIMsgQuote* msgQuote, bool charsetFixed,
-                              bool quoteOriginal,
+                              nsIMsgQuote* msgQuote, bool quoteOriginal,
                               const nsACString& htmlToQuote);
 
   NS_DECL_ISUPPORTS
@@ -163,7 +170,8 @@ class QuotingOutputStreamListener : public nsIMsgQuotingOutputStreamListener,
   nsresult SetComposeObj(nsIMsgCompose* obj);
   nsresult ConvertToPlainText(bool formatflowed, bool formatted,
                               bool disallowBreaks);
-  nsresult InsertToCompose(nsIEditor* aEditor, bool aHTMLEditor);
+  MOZ_CAN_RUN_SCRIPT nsresult InsertToCompose(nsIEditor* aEditor,
+                                              bool aHTMLEditor);
   nsresult AppendToMsgBody(const nsCString& inStr);
 
  private:
@@ -174,7 +182,6 @@ class QuotingOutputStreamListener : public nsIMsgQuotingOutputStreamListener,
   nsString mSignature;
   bool mQuoteHeaders;
   bool mHeadersOnly;
-  bool mCharsetFixed;
   nsCOMPtr<nsIMsgQuote> mQuote;
   nsCOMPtr<nsIMimeHeaders> mHeaders;
   nsCOMPtr<nsIMsgIdentity> mIdentity;

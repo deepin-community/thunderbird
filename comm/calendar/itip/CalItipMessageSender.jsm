@@ -5,7 +5,6 @@
 const EXPORTED_SYMBOLS = ["CalItipMessageSender"];
 
 const { cal } = ChromeUtils.import("resource:///modules/calendar/calUtils.jsm");
-const { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 const { CalItipOutgoingMessage } = ChromeUtils.import(
   "resource:///modules/CalItipOutgoingMessage.jsm"
 );
@@ -24,8 +23,9 @@ class CalItipMessageSender {
    * @param {?calIItemBase} originalItem - The original invitation item before
    *  it is modified.
    *
-   * @param {?calIAttendee} invitedAttendee - For incomming invitations, this is
-   *  the attendee that was invited (corresponding to an installed identity).
+   * @param {?calIAttendee} invitedAttendee - For incoming invitations, this is
+   *   the attendee that was invited (corresponding to an installed identity).
+   *   For outgoing invitations, this should be `null`.
    */
   constructor(originalItem, invitedAttendee) {
     this.originalItem = originalItem;
@@ -40,13 +40,13 @@ class CalItipMessageSender {
   }
 
   /**
-   * Detects whether the passed invitation item has been modified from the
-   * original (attendees added/removed, item deleted etc.) thus requiring iTIP
-   * messages to be sent.
+   * Builds a list of iTIP messages to be sent as a result of operations on a
+   * calendar item, based on the current user's role and any modifications to
+   * the item.
    *
    * This method should be called before send().
    *
-   * @param {Number} opType - Type of operation - (e.g. ADD, MODIFY or DELETE)
+   * @param {number} opType - Type of operation - (e.g. ADD, MODIFY or DELETE)
    * @param {calIItemBase} item - The updated item.
    * @param {?object} extResponse - An object to provide additional
    *  parameters for sending itip messages as response mode, comments or a
@@ -59,7 +59,7 @@ class CalItipMessageSender {
    *
    * @returns {number} - The number of messages to be sent.
    */
-  detectChanges(opType, item, extResponse = null) {
+  buildOutgoingMessages(opType, item, extResponse = null) {
     let { originalItem, invitedAttendee } = this;
 
     // balance out parts of the modification vs delete confusion, deletion of occurrences
@@ -69,9 +69,13 @@ class CalItipMessageSender {
       if (originalItem.recurrenceId && !item.recurrenceId) {
         // sanity check: assure item doesn't refer to the master
         item = item.recurrenceInfo.getOccurrenceFor(originalItem.recurrenceId);
-        cal.ASSERT(item, "unexpected!");
         if (!item) {
           return this.pendingMessageCount;
+        }
+        // Use the calIAttendee instance from the occurrence in case there is a
+        // difference in participationStatus between it and the parent.
+        if (invitedAttendee) {
+          invitedAttendee = item.getAttendeeById(invitedAttendee.id);
         }
       }
 
@@ -143,8 +147,10 @@ class CalItipMessageSender {
       return this.pendingMessageCount;
     }
 
+    // If an "invited attendee" (i.e., the current user) is present, we assume
+    // that this is an incoming invite and that we should send only a REPLY if
+    // needed.
     if (invitedAttendee) {
-      // actually is an invitation copy, fix attendee list to send REPLY
       /* We check if the attendee id matches one of of the
        * userAddresses. If they aren't equal, it means that
        * someone is accepting invitations on behalf of an other user. */
@@ -155,9 +161,10 @@ class CalItipMessageSender {
           !cal.email.attendeeMatchesAddresses(invitedAttendee, userAddresses)
         ) {
           invitedAttendee = invitedAttendee.clone();
-          invitedAttendee.setProperty("SENT-BY", "mailto:" + userAddresses[0]);
+          invitedAttendee.setProperty("SENT-BY", cal.email.prependMailTo(userAddresses[0]));
         }
       }
+
       if (item.organizer) {
         let origInvitedAttendee = originalItem && originalItem.getAttendeeById(invitedAttendee.id);
 
@@ -194,7 +201,7 @@ class CalItipMessageSender {
             delegatorIds &&
             Services.prefs.getBoolPref("calendar.itip.notifyDelegatorOnReply", false)
           ) {
-            let getDelegator = function(aDelegatorId) {
+            let getDelegator = function (aDelegatorId) {
               let delegator = originalItem.getAttendeeById(aDelegatorId);
               if (delegator) {
                 replyTo.push(delegator);
@@ -243,8 +250,9 @@ class CalItipMessageSender {
     }
 
     if (opType == Ci.calIOperationListener.DELETE) {
+      let attendees = this.#filterOwnerFromAttendees(item.getAttendees(), item.calendar);
       this.pendingMessages.push(
-        new CalItipOutgoingMessage("CANCEL", item.getAttendees(), item, null, autoResponse)
+        new CalItipOutgoingMessage("CANCEL", attendees, item, null, autoResponse)
       );
       return this.pendingMessageCount;
     } // else ADD, MODIFY:
@@ -309,6 +317,7 @@ class CalItipMessageSender {
             attendee.rsvp = "TRUE";
             requestItem.addAttendee(attendee);
           }
+
           recipients.push(attendee);
         }
 
@@ -325,6 +334,11 @@ class CalItipMessageSender {
           recipients = addedAttendees;
         }
 
+        // Since this is a REQUEST, it is being sent from the event creator to
+        // attendees. We do not need to send a message to the creator, even
+        // though they may also be an attendee.
+        recipients = this.#filterOwnerFromAttendees(recipients, item.calendar);
+
         if (recipients.length > 0) {
           this.pendingMessages.push(
             new CalItipOutgoingMessage("REQUEST", recipients, requestItem, null, autoResponse)
@@ -340,6 +354,7 @@ class CalItipMessageSender {
       for (let att of canceledAttendees) {
         cancelItem.addAttendee(att);
       }
+      canceledAttendees = this.#filterOwnerFromAttendees(canceledAttendees, cancelItem.calendar);
       this.pendingMessages.push(
         new CalItipOutgoingMessage("CANCEL", canceledAttendees, cancelItem, null, autoResponse)
       );
@@ -349,15 +364,28 @@ class CalItipMessageSender {
 
   /**
    * Sends the iTIP message using the item's calendar transport. This method
-   * should be called after detectChanges().
+   * should be called after buildOutgoingMessages().
    *
    * @param {calIItipTransport} [transport] - An optional transport to use
    *  instead of the one provided by the item's calendar.
    *
-   * @return {boolean} - True, if the message could be sent.
+   * @returns {boolean} - True, if the message could be sent.
    */
   send(transport) {
     return this.pendingMessages.every(msg => msg.send(transport));
+  }
+
+  /**
+   * Filter out calendar owner from a list of event attendees to prevent the
+   * owner from receiving messages about changes they have made.
+   *
+   * @param {calIAttendee[]} attendees - The attendees.
+   * @param {calICalendar} calendar - The calendar the event belongs to.
+   * @returns {calIAttendee[]} the attendees with calendar owner removed.
+   */
+  #filterOwnerFromAttendees(attendees, calendar) {
+    const calendarEmail = cal.provider.getEmailIdentityOfCalendar(calendar)?.email;
+    return attendees.filter(attendee => cal.email.removeMailTo(attendee.id) != calendarEmail);
   }
 }
 
@@ -365,7 +393,7 @@ class CalItipMessageSender {
  * Strips user specific data, e.g. categories and alarm settings and returns the stripped item.
  *
  * @param {calIItemBase} item_ - The item to strip data from
- * @return {calIItemBase} - The stripped item
+ * @returns {calIItemBase} - The stripped item
  */
 function stripUserData(item_) {
   let item = item_.clone();

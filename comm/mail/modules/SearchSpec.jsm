@@ -7,7 +7,6 @@ const EXPORTED_SYMBOLS = ["SearchSpec"];
 const { MailServices } = ChromeUtils.import(
   "resource:///modules/MailServices.jsm"
 );
-const { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 
 /**
  * Wrapper abstraction around a view's search session.  This is basically a
@@ -114,7 +113,7 @@ SearchSpec.prototype = {
       owner.searching = true;
       this.owner._syntheticView.search(
         aDBView.QueryInterface(Ci.nsIMsgSearchNotify),
-        function() {
+        function () {
           owner.searching = false;
         }
       );
@@ -263,7 +262,7 @@ SearchSpec.prototype = {
     this.owner._applyViewChanges();
   },
   /**
-   * @return the view terms currently in effect.  Do not mutate this.
+   * @returns the view terms currently in effect.  Do not mutate this.
    */
   get viewTerms() {
     return this._viewTerms;
@@ -289,7 +288,7 @@ SearchSpec.prototype = {
     this.owner._applyViewChanges();
   },
   /**
-   * @return the Virtual folder terms currently in effect.  Do not mutate this.
+   * @returns the Virtual folder terms currently in effect.  Do not mutate this.
    */
   get virtualFolderTerms() {
     return this._virtualFolderTerms;
@@ -314,7 +313,7 @@ SearchSpec.prototype = {
     this.owner._applyViewChanges();
   },
   /**
-   * @return the user terms currently in effect as set via the |userTerms|
+   * @returns the user terms currently in effect as set via the |userTerms|
    *     attribute or via the |quickSearch| method.  Do not mutate this.
    */
   get userTerms() {
@@ -441,7 +440,7 @@ SearchSpec.prototype = {
                 onlineAvailable = customTerm.getAvailable(serverScope, term.op);
               } else {
                 // maybe an extension with a custom term was unloaded?
-                Cu.reportError(
+                console.error(
                   "Custom search term " + term.customId + " missing"
                 );
               }
@@ -515,7 +514,7 @@ SearchSpecListener.prototype = {
     // searching should already be true by the time this happens.  if it's not,
     //  it means some code is poking at the search session.  bad!
     if (!this.searchSpec.owner.searching) {
-      Cu.reportErrror("Search originated from unknown initiator! Confusion!");
+      console.error("Search originated from unknown initiator! Confusion!");
       this.searchSpec.owner.searching = true;
     }
   },

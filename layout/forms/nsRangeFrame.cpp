@@ -6,7 +6,8 @@
 
 #include "nsRangeFrame.h"
 
-#include "mozilla/EventStates.h"
+#include "ListMutationObserver.h"
+#include "mozilla/Assertions.h"
 #include "mozilla/PresShell.h"
 #include "mozilla/TouchEvents.h"
 
@@ -14,17 +15,23 @@
 #include "nsContentCreatorFunctions.h"
 #include "nsCSSPseudoElements.h"
 #include "nsCSSRendering.h"
+#include "nsDisplayList.h"
 #include "nsIContent.h"
+#include "nsLayoutUtils.h"
 #include "mozilla/dom/Document.h"
 #include "nsNameSpaceManager.h"
 #include "nsGkAtoms.h"
+#include "mozilla/dom/HTMLDataListElement.h"
 #include "mozilla/dom/HTMLInputElement.h"
+#include "mozilla/dom/HTMLOptionElement.h"
+#include "mozilla/dom/MutationEventBinding.h"
 #include "nsPresContext.h"
 #include "nsPresContextInlines.h"
 #include "nsNodeInfoManager.h"
 #include "mozilla/dom/Element.h"
 #include "mozilla/ServoStyleSet.h"
 #include "nsStyleConsts.h"
+#include "nsTArray.h"
 
 #ifdef ACCESSIBILITY
 #  include "nsAccessibilityService.h"
@@ -45,6 +52,14 @@ nsIFrame* NS_NewRangeFrame(PresShell* aPresShell, ComputedStyle* aStyle) {
 nsRangeFrame::nsRangeFrame(ComputedStyle* aStyle, nsPresContext* aPresContext)
     : nsContainerFrame(aStyle, aPresContext, kClassID) {}
 
+void nsRangeFrame::Init(nsIContent* aContent, nsContainerFrame* aParent,
+                        nsIFrame* aPrevInFlow) {
+  nsContainerFrame::Init(aContent, aParent, aPrevInFlow);
+  if (InputElement().HasAttr(nsGkAtoms::list_)) {
+    mListMutationObserver = new ListMutationObserver(*this);
+  }
+}
+
 nsRangeFrame::~nsRangeFrame() = default;
 
 NS_IMPL_FRAMEARENA_HELPERS(nsRangeFrame)
@@ -54,16 +69,18 @@ NS_QUERYFRAME_HEAD(nsRangeFrame)
   NS_QUERYFRAME_ENTRY(nsIAnonymousContentCreator)
 NS_QUERYFRAME_TAIL_INHERITING(nsContainerFrame)
 
-void nsRangeFrame::DestroyFrom(nsIFrame* aDestructRoot,
-                               PostDestroyData& aPostDestroyData) {
+void nsRangeFrame::Destroy(DestroyContext& aContext) {
   NS_ASSERTION(!GetPrevContinuation() && !GetNextContinuation(),
                "nsRangeFrame should not have continuations; if it does we "
                "need to call RegUnregAccessKey only for the first.");
 
-  aPostDestroyData.AddAnonymousContent(mTrackDiv.forget());
-  aPostDestroyData.AddAnonymousContent(mProgressDiv.forget());
-  aPostDestroyData.AddAnonymousContent(mThumbDiv.forget());
-  nsContainerFrame::DestroyFrom(aDestructRoot, aPostDestroyData);
+  if (mListMutationObserver) {
+    mListMutationObserver->Detach();
+  }
+  aContext.AddAnonymousContent(mTrackDiv.forget());
+  aContext.AddAnonymousContent(mProgressDiv.forget());
+  aContext.AddAnonymousContent(mThumbDiv.forget());
+  nsContainerFrame::Destroy(aContext);
 }
 
 nsresult nsRangeFrame::MakeAnonymousDiv(Element** aResult,
@@ -189,8 +206,6 @@ void nsRangeFrame::Reflow(nsPresContext* aPresContext,
   FinishAndStoreOverflow(&aDesiredSize);
 
   MOZ_ASSERT(aStatus.IsEmpty(), "This type of frame can't be split.");
-
-  NS_FRAME_SET_TRUNCATION(aStatus, aReflowInput, aDesiredSize);
 }
 
 void nsRangeFrame::ReflowAnonymousContent(nsPresContext* aPresContext,
@@ -308,28 +323,29 @@ a11y::AccType nsRangeFrame::AccessibleType() { return a11y::eHTMLRangeType; }
 #endif
 
 double nsRangeFrame::GetValueAsFractionOfRange() {
-  MOZ_ASSERT(mContent->IsHTMLElement(nsGkAtoms::input), "bad cast");
-  auto* input = static_cast<dom::HTMLInputElement*>(GetContent());
-  MOZ_ASSERT(input->ControlType() == FormControlType::InputRange);
+  return GetDoubleAsFractionOfRange(InputElement().GetValueAsDecimal());
+}
 
-  Decimal value = input->GetValueAsDecimal();
-  Decimal minimum = input->GetMinimum();
-  Decimal maximum = input->GetMaximum();
+double nsRangeFrame::GetDoubleAsFractionOfRange(const Decimal& aValue) {
+  auto& input = InputElement();
 
-  MOZ_ASSERT(value.isFinite() && minimum.isFinite() && maximum.isFinite(),
+  Decimal minimum = input.GetMinimum();
+  Decimal maximum = input.GetMaximum();
+
+  MOZ_ASSERT(aValue.isFinite() && minimum.isFinite() && maximum.isFinite(),
              "type=range should have a default maximum/minimum");
 
   if (maximum <= minimum) {
     // Avoid rounding triggering the assert by checking against an epsilon.
-    MOZ_ASSERT((value - minimum).abs().toDouble() <
+    MOZ_ASSERT((aValue - minimum).abs().toDouble() <
                    std::numeric_limits<float>::epsilon(),
                "Unsanitized value");
     return 0.0;
   }
 
-  MOZ_ASSERT(value >= minimum && value <= maximum, "Unsanitized value");
+  MOZ_ASSERT(aValue >= minimum && aValue <= maximum, "Unsanitized value");
 
-  return ((value - minimum) / (maximum - minimum)).toDouble();
+  return ((aValue - minimum) / (maximum - minimum)).toDouble();
 }
 
 Decimal nsRangeFrame::GetValueAtEventPoint(WidgetGUIEvent* aEvent) {
@@ -374,14 +390,11 @@ Decimal nsRangeFrame::GetValueAtEventPoint(WidgetGUIEvent* aEvent) {
 
   if (IsThemed()) {
     // We need to get the size of the thumb from the theme.
-    nsPresContext* presContext = PresContext();
-    bool notUsedCanOverride;
-    LayoutDeviceIntSize size;
-    presContext->Theme()->GetMinimumWidgetSize(presContext, this,
-                                               StyleAppearance::RangeThumb,
-                                               &size, &notUsedCanOverride);
-    thumbSize.width = presContext->DevPixelsToAppUnits(size.width);
-    thumbSize.height = presContext->DevPixelsToAppUnits(size.height);
+    nsPresContext* pc = PresContext();
+    LayoutDeviceIntSize size = pc->Theme()->GetMinimumWidgetSize(
+        pc, this, StyleAppearance::RangeThumb);
+    thumbSize =
+        LayoutDeviceIntSize::ToAppUnits(size, pc->AppUnitsPerDevPixel());
     // For GTK, GetMinimumWidgetSize returns zero for the thumb dimension
     // perpendicular to the orientation of the slider.  That's okay since we
     // only care about the dimension in the direction of the slider when using
@@ -450,13 +463,74 @@ void nsRangeFrame::UpdateForValueChange() {
   }
 
 #ifdef ACCESSIBILITY
-  if (nsAccessibilityService* accService =
-          PresShell::GetAccessibilityService()) {
+  if (nsAccessibilityService* accService = GetAccService()) {
     accService->RangeValueChanged(PresShell(), mContent);
   }
 #endif
 
   SchedulePaint();
+}
+
+nsTArray<Decimal> nsRangeFrame::TickMarks() {
+  nsTArray<Decimal> tickMarks;
+  auto& input = InputElement();
+  auto* list = input.GetList();
+  if (!list) {
+    return tickMarks;
+  }
+  auto min = input.GetMinimum();
+  auto max = input.GetMaximum();
+  auto* options = list->Options();
+  nsAutoString label;
+  for (uint32_t i = 0; i < options->Length(); ++i) {
+    auto* item = options->Item(i);
+    auto* option = HTMLOptionElement::FromNode(item);
+    MOZ_ASSERT(option);
+    if (option->Disabled()) {
+      continue;
+    }
+    nsAutoString str;
+    option->GetValue(str);
+    auto tickMark = HTMLInputElement::StringToDecimal(str);
+    if (tickMark.isNaN() || tickMark < min || tickMark > max ||
+        input.ValueIsStepMismatch(tickMark)) {
+      continue;
+    }
+    tickMarks.AppendElement(tickMark);
+  }
+  tickMarks.Sort();
+  return tickMarks;
+}
+
+Decimal nsRangeFrame::NearestTickMark(const Decimal& aValue) {
+  auto tickMarks = TickMarks();
+  if (tickMarks.IsEmpty() || aValue.isNaN()) {
+    return Decimal::nan();
+  }
+  size_t index;
+  if (BinarySearch(tickMarks, 0, tickMarks.Length(), aValue, &index)) {
+    return tickMarks[index];
+  }
+  if (index == tickMarks.Length()) {
+    return tickMarks.LastElement();
+  }
+  if (index == 0) {
+    return tickMarks[0];
+  }
+  const auto& smallerTickMark = tickMarks[index - 1];
+  const auto& largerTickMark = tickMarks[index];
+  MOZ_ASSERT(smallerTickMark < aValue);
+  MOZ_ASSERT(largerTickMark > aValue);
+  return (aValue - smallerTickMark).abs() < (aValue - largerTickMark).abs()
+             ? smallerTickMark
+             : largerTickMark;
+}
+
+mozilla::dom::HTMLInputElement& nsRangeFrame::InputElement() const {
+  MOZ_ASSERT(mContent->IsHTMLElement(nsGkAtoms::input), "bad cast");
+  auto& input = *static_cast<dom::HTMLInputElement*>(GetContent());
+  MOZ_ASSERT(input.ControlType() == FormControlType::InputRange);
+  return input;
 }
 
 void nsRangeFrame::DoUpdateThumbPosition(nsIFrame* aThumbFrame,
@@ -572,8 +646,20 @@ nsresult nsRangeFrame::AttributeChanged(int32_t aNameSpaceID,
         UpdateForValueChange();
       }
     } else if (aAttribute == nsGkAtoms::orient) {
-      PresShell()->FrameNeedsReflow(this, IntrinsicDirty::Resize,
+      PresShell()->FrameNeedsReflow(this, IntrinsicDirty::None,
                                     NS_FRAME_IS_DIRTY);
+    } else if (aAttribute == nsGkAtoms::list_) {
+      const bool isRemoval = aModType == MutationEvent_Binding::REMOVAL;
+      if (mListMutationObserver) {
+        mListMutationObserver->Detach();
+        if (isRemoval) {
+          mListMutationObserver = nullptr;
+        } else {
+          mListMutationObserver->Attach();
+        }
+      } else if (!isRemoval) {
+        mListMutationObserver = new ListMutationObserver(*this, true);
+      }
     }
   }
 
@@ -583,11 +669,9 @@ nsresult nsRangeFrame::AttributeChanged(int32_t aNameSpaceID,
 nscoord nsRangeFrame::AutoCrossSize(Length aEm) {
   nscoord minCrossSize(0);
   if (IsThemed()) {
-    bool unused;
-    LayoutDeviceIntSize size;
     nsPresContext* pc = PresContext();
-    pc->Theme()->GetMinimumWidgetSize(pc, this, StyleAppearance::RangeThumb,
-                                      &size, &unused);
+    LayoutDeviceIntSize size = pc->Theme()->GetMinimumWidgetSize(
+        pc, this, StyleAppearance::RangeThumb);
     minCrossSize =
         pc->DevPixelsToAppUnits(IsHorizontal() ? size.height : size.width);
   }
@@ -670,9 +754,6 @@ double nsRangeFrame::GetValue() const {
       .toDouble();
 }
 
-#define STYLES_DISABLING_NATIVE_THEMING \
-  NS_AUTHOR_SPECIFIED_BORDER_OR_BACKGROUND | NS_AUTHOR_SPECIFIED_PADDING
-
 bool nsRangeFrame::ShouldUseNativeStyle() const {
   nsIFrame* trackFrame = mTrackDiv->GetPrimaryFrame();
   nsIFrame* progressFrame = mProgressDiv->GetPrimaryFrame();
@@ -680,12 +761,9 @@ bool nsRangeFrame::ShouldUseNativeStyle() const {
 
   return StyleDisplay()->EffectiveAppearance() == StyleAppearance::Range &&
          trackFrame &&
-         !PresContext()->HasAuthorSpecifiedRules(
-             trackFrame, STYLES_DISABLING_NATIVE_THEMING) &&
+         !trackFrame->Style()->HasAuthorSpecifiedBorderOrBackground() &&
          progressFrame &&
-         !PresContext()->HasAuthorSpecifiedRules(
-             progressFrame, STYLES_DISABLING_NATIVE_THEMING) &&
+         !progressFrame->Style()->HasAuthorSpecifiedBorderOrBackground() &&
          thumbFrame &&
-         !PresContext()->HasAuthorSpecifiedRules(
-             thumbFrame, STYLES_DISABLING_NATIVE_THEMING);
+         !thumbFrame->Style()->HasAuthorSpecifiedBorderOrBackground();
 }

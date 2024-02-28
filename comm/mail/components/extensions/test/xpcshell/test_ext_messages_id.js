@@ -4,8 +4,8 @@
 
 "use strict";
 
-var { ExtensionTestUtils } = ChromeUtils.import(
-  "resource://testing-common/ExtensionXPCShellUtils.jsm"
+var { ExtensionTestUtils } = ChromeUtils.importESModule(
+  "resource://testing-common/ExtensionXPCShellUtils.sys.mjs"
 );
 var subFolders;
 
@@ -247,7 +247,6 @@ add_task(
         false /* do not save */,
         true /* do not ask */
       );
-      console.log("REMOVED");
     });
 
     await extension.startup();

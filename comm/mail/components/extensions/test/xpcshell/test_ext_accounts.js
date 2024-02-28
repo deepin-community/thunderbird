@@ -4,8 +4,8 @@
 
 "use strict";
 
-var { ExtensionTestUtils } = ChromeUtils.import(
-  "resource://testing-common/ExtensionXPCShellUtils.jsm"
+var { ExtensionTestUtils } = ChromeUtils.importESModule(
+  "resource://testing-common/ExtensionXPCShellUtils.sys.mjs"
 );
 
 add_task(async function test_accounts() {
@@ -56,24 +56,45 @@ add_task(async function test_accounts() {
       let [account2Id, account2Name] = await window.sendMessage(
         "create account 2"
       );
+      // The new account is defined as default and should be returned first.
       let result2 = await browser.accounts.list();
       browser.test.assertEq(2, result2.length);
-      window.assertDeepEqual(result1[0], result2[1]);
       window.assertDeepEqual(
-        {
-          id: account2Id,
-          name: account2Name,
-          type: "imap",
-          folders: [
-            {
-              accountId: account2Id,
-              name: "Inbox",
-              path: "/INBOX",
-              type: "inbox",
-            },
-          ],
-        },
-        result2[0]
+        [
+          {
+            id: account2Id,
+            name: account2Name,
+            type: "imap",
+            folders: [
+              {
+                accountId: account2Id,
+                name: "Inbox",
+                path: "/INBOX",
+                type: "inbox",
+              },
+            ],
+          },
+          {
+            id: account1Id,
+            name: account1Name,
+            type: "none",
+            folders: [
+              {
+                accountId: account1Id,
+                name: "Trash",
+                path: "/Trash",
+                type: "trash",
+              },
+              {
+                accountId: account1Id,
+                name: "Outbox",
+                path: "/Unsent Messages",
+                type: "outbox",
+              },
+            ],
+          },
+        ],
+        result2
       );
 
       let result3 = await browser.accounts.get(account1Id);
@@ -106,8 +127,8 @@ add_task(async function test_accounts() {
             subFolders: [
               {
                 accountId: account1Id,
-                name: "%foo %test% 'bar'(!)+",
-                path: "/Trash/%foo %test% 'bar'(!)+",
+                name: "%foo.-~ %test% 'bar'(!)+",
+                path: "/Trash/%foo.-~ %test% 'bar'(!)+",
               },
               {
                 accountId: account1Id,
@@ -144,8 +165,8 @@ add_task(async function test_accounts() {
             subFolders: [
               {
                 accountId: account2Id,
-                name: "%foo %test% 'bar'(!)+",
-                path: "/INBOX/%foo %test% 'bar'(!)+",
+                name: "%foo.-~ %test% 'bar'(!)+",
+                path: "/INBOX/%foo.-~ %test% 'bar'(!)+",
               },
               {
                 accountId: account2Id,
@@ -202,15 +223,19 @@ add_task(async function test_accounts() {
 
   await extension.awaitMessage("create folders");
   let inbox1 = account1.incomingServer.rootFolder.subFolders[0];
-  // Test our code can handle characters that might be escaped.
-  inbox1.createSubfolder("%foo %test% 'bar'(!)+", null);
+  // According to the documentation of decodeURIComponent(), encodeURIComponent()
+  // does not escape -.!~*'(), while decodeURIComponent() does unescape them.
+  // Test our path-to-uri and uri-to-path functions can handle these special chars.
+  inbox1.createSubfolder("%foo.-~ %test% 'bar'(!)+", null);
   inbox1.createSubfolder("Ϟ", null); // Test our code can handle unicode.
 
   let inbox2 = account2.incomingServer.rootFolder.subFolders[0];
   inbox2.QueryInterface(Ci.nsIMsgImapMailFolder).hierarchyDelimiter = "/";
-  // Test our code can handle characters that might be escaped.
-  inbox2.createSubfolder("%foo %test% 'bar'(!)+", null);
-  await PromiseTestUtils.promiseFolderAdded("%foo %test% 'bar'(!)+");
+  // According to the documentation of decodeURIComponent(), encodeURIComponent()
+  // does not escape -.!~*'(), while decodeURIComponent() does unescape them.
+  // Test our path-to-uri and uri-to-path functions can handle these special chars.
+  inbox2.createSubfolder("%foo.-~ %test% 'bar'(!)+", null);
+  await PromiseTestUtils.promiseFolderAdded("%foo.-~ %test% 'bar'(!)+");
   inbox2.createSubfolder("Ϟ", null); // Test our code can handle unicode.
   await PromiseTestUtils.promiseFolderAdded("Ϟ");
 
@@ -805,4 +830,264 @@ add_task(async function test_identities_without_write_permissions() {
   await extension.unload();
 
   cleanUpAccount(account);
+});
+
+add_task(async function test_accounts_events() {
+  let account1 = createAccount();
+  addIdentity(account1, "id1@invalid");
+
+  let files = {
+    "background.js": async () => {
+      // Register event listener.
+      let onCreatedLog = [];
+      let onUpdatedLog = [];
+      let onDeletedLog = [];
+
+      let createListener = (id, created) => {
+        onCreatedLog.push({ id, created });
+      };
+      let updateListener = (id, changed) => {
+        onUpdatedLog.push({ id, changed });
+      };
+      let deleteListener = id => {
+        onDeletedLog.push(id);
+      };
+
+      await browser.accounts.onCreated.addListener(createListener);
+      await browser.accounts.onUpdated.addListener(updateListener);
+      await browser.accounts.onDeleted.addListener(deleteListener);
+
+      // Create accounts.
+      let imapAccountKey = await window.sendMessage("createAccount", {
+        type: "imap",
+        identity: "user@invalidImap",
+      });
+      let localAccountKey = await window.sendMessage("createAccount", {
+        type: "none",
+        identity: "user@invalidLocal",
+      });
+      let popAccountKey = await window.sendMessage("createAccount", {
+        type: "pop3",
+        identity: "user@invalidPop",
+      });
+
+      // Update account identities.
+      let accounts = await browser.accounts.list();
+      let imapAccount = accounts.find(a => a.id == imapAccountKey);
+      let localAccount = accounts.find(a => a.id == localAccountKey);
+      let popAccount = accounts.find(a => a.id == popAccountKey);
+
+      let id1 = await browser.identities.create(imapAccount.id, {
+        composeHtml: true,
+        email: "user1@inter.net",
+        name: "user1",
+      });
+      let id2 = await browser.identities.create(localAccount.id, {
+        composeHtml: false,
+        email: "user2@inter.net",
+        name: "user2",
+      });
+      let id3 = await browser.identities.create(popAccount.id, {
+        composeHtml: false,
+        email: "user3@inter.net",
+        name: "user3",
+      });
+
+      await browser.identities.setDefault(imapAccount.id, id1.id);
+      browser.test.assertEq(
+        id1.id,
+        (await browser.identities.getDefault(imapAccount.id)).id
+      );
+      await browser.identities.setDefault(localAccount.id, id2.id);
+      browser.test.assertEq(
+        id2.id,
+        (await browser.identities.getDefault(localAccount.id)).id
+      );
+      await browser.identities.setDefault(popAccount.id, id3.id);
+      browser.test.assertEq(
+        id3.id,
+        (await browser.identities.getDefault(popAccount.id)).id
+      );
+
+      // Update account names.
+      await window.sendMessage("updateAccountName", {
+        accountKey: imapAccountKey,
+        name: "Test1",
+      });
+      await window.sendMessage("updateAccountName", {
+        accountKey: localAccountKey,
+        name: "Test2",
+      });
+      await window.sendMessage("updateAccountName", {
+        accountKey: popAccountKey,
+        name: "Test3",
+      });
+
+      // Delete accounts.
+      await window.sendMessage("removeAccount", {
+        accountKey: imapAccountKey,
+      });
+      await window.sendMessage("removeAccount", {
+        accountKey: localAccountKey,
+      });
+      await window.sendMessage("removeAccount", {
+        accountKey: popAccountKey,
+      });
+
+      await browser.accounts.onCreated.removeListener(createListener);
+      await browser.accounts.onUpdated.removeListener(updateListener);
+      await browser.accounts.onDeleted.removeListener(deleteListener);
+
+      // Check event listeners.
+      browser.test.assertEq(3, onCreatedLog.length);
+      window.assertDeepEqual(
+        [
+          {
+            id: "account7",
+            created: {
+              id: "account7",
+              type: "imap",
+              identities: [],
+              name: "Mail for account7user@localhost",
+              folders: null,
+            },
+          },
+          {
+            id: "account8",
+            created: {
+              id: "account8",
+              type: "none",
+              identities: [],
+              name: "account8user on localhost",
+              folders: null,
+            },
+          },
+          {
+            id: "account9",
+            created: {
+              id: "account9",
+              type: "pop3",
+              identities: [],
+              name: "account9user on localhost",
+              folders: null,
+            },
+          },
+        ],
+        onCreatedLog,
+        "captured onCreated events are correct"
+      );
+      window.assertDeepEqual(
+        [
+          {
+            id: "account7",
+            changed: { id: "account7", name: "Mail for user@localhost" },
+          },
+          {
+            id: "account7",
+            changed: {
+              id: "account7",
+              defaultIdentity: { id: "id11" },
+            },
+          },
+          {
+            id: "account8",
+            changed: {
+              id: "account8",
+              defaultIdentity: { id: "id12" },
+            },
+          },
+          {
+            id: "account9",
+            changed: {
+              id: "account9",
+              defaultIdentity: { id: "id13" },
+            },
+          },
+          {
+            id: "account7",
+            changed: {
+              id: "account7",
+              defaultIdentity: { id: "id14" },
+            },
+          },
+          {
+            id: "account8",
+            changed: {
+              id: "account8",
+              defaultIdentity: { id: "id15" },
+            },
+          },
+          {
+            id: "account9",
+            changed: {
+              id: "account9",
+              defaultIdentity: { id: "id16" },
+            },
+          },
+          {
+            id: "account7",
+            changed: {
+              id: "account7",
+              name: "Test1",
+            },
+          },
+          {
+            id: "account8",
+            changed: {
+              id: "account8",
+              name: "Test2",
+            },
+          },
+          {
+            id: "account9",
+            changed: {
+              id: "account9",
+              name: "Test3",
+            },
+          },
+        ],
+        onUpdatedLog,
+        "captured onUpdated events are correct"
+      );
+      window.assertDeepEqual(
+        ["account7", "account8", "account9"],
+        onDeletedLog,
+        "captured onDeleted events are correct"
+      );
+
+      // eslint-disable-next-line mozilla/no-arbitrary-setTimeout
+      await new Promise(r => window.setTimeout(r, 250));
+      browser.test.notifyPass("finished");
+    },
+    "utils.js": await getUtilsJS(),
+  };
+  let extension = ExtensionTestUtils.loadExtension({
+    files,
+    manifest: {
+      background: { scripts: ["utils.js", "background.js"] },
+      permissions: ["accountsRead", "accountsIdentities"],
+    },
+  });
+
+  extension.onMessage("createAccount", details => {
+    let account = createAccount(details.type);
+    addIdentity(account, details.identity);
+    extension.sendMessage(account.key);
+  });
+  extension.onMessage("updateAccountName", details => {
+    let account = MailServices.accounts.getAccount(details.accountKey);
+    account.incomingServer.prettyName = details.name;
+    extension.sendMessage();
+  });
+  extension.onMessage("removeAccount", details => {
+    let account = MailServices.accounts.getAccount(details.accountKey);
+    cleanUpAccount(account);
+    extension.sendMessage();
+  });
+
+  await extension.startup();
+  await extension.awaitFinish("finished");
+  await extension.unload();
+
+  cleanUpAccount(account1);
 });

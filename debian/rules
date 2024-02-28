@@ -14,7 +14,6 @@ ifneq (,$(filter parallel=%,$(DEB_BUILD_OPTIONS)))
 endif
 
 THUNDERBIRD_VERSION=$(shell tail -1 comm/mail/config/version.txt)
-DEB_AUTO_UPDATE_AUTOCONF=2.13
 
 # build directory used for building the thunderbird-l10n files
 THUNDERBIRD_L10N_BUILDDIR=debian/thunderbird-l10n-build
@@ -41,6 +40,10 @@ $(call lazy,LDFLAGS,$$(call dpkg_buildflags,LDFLAGS))
 ifeq ($(DEB_BUILD_ARCH),armel)
 	CFLAGS += -D__ARM_PCS
 	LDFLAGS += -Wl,-z,muldefs
+endif
+ifeq ($(DEB_BUILD_ARCH),ppc64el)
+	# Work around upstream bug 1757271
+	CFLAGS += -DSQLITE_BYTEORDER=1234
 endif
 
 # Reduce memory usage of the linker at the expense of processing time
@@ -76,6 +79,8 @@ export DEB_BUILD_OPTIONS
 export SHELL=/bin/bash
 # Work around https://github.com/rust-lang/cargo/issues/7147
 export CARGO_HOME=$(CURDIR)/debian/.cargo
+export MOZBUILD_STATE_PATH = $(CURDIR)/debian/.mozbuild
+export MACH_BUILD_PYTHON_NATIVE_PACKAGE_SOURCE=system
 
 %:
 	dh $@
@@ -87,18 +92,14 @@ override_dh_auto_clean:
 	dh_auto_clean --builddirectory=obj-thunderbird
 	find -type f -name "*.pyc" -exec rm {} \;
 	rm -rf third_party/python/psutil/tmp
-	rm -f configure old-configure js/src/configure js/src/old-configure mozconfig.*
+	rm -f old-configure js/src/configure js/src/old-configure mozconfig.*
 	# needed for thunderbird-l10n
 	rm -rf $(THUNDERBIRD_L10N_BUILDDIR)
 	rm -rf $(CARGO_HOME)
+	rm -rf $(MOZBUILD_STATE_PATH)
 
 override_dh_auto_configure:
-	# run autoconf for all configure files
-	if [ "Z$(DEB_AUTO_UPDATE_AUTOCONF)" != Z ] || [ ! -e $(CURDIR)/configure ]; then \
-		cd $(CURDIR) && `which autoconf$(DEB_AUTO_UPDATE_AUTOCONF) || which autoconf`; fi
-	if [ "Z$(DEB_AUTO_UPDATE_AUTOCONF)" != Z ] || [ ! -e $(CURDIR)/js/src/configure ]; then \
-		cd $(CURDIR)/js/src && `which autoconf$(DEB_AUTO_UPDATE_AUTOCONF) || which autoconf`; fi
-	# copy the mozconfig files
+	# copy the mozconfig files in place
 	cp debian/mozconfig.* .
 	# Disable debug symbols when building on 32-bits machines, because
 	# a) the rust compiler can't deal with it in the available address
@@ -187,11 +188,15 @@ override_dh_builddeb:
 	fi
 
 override_dh_missing:
-	dh_missing -X usr/bin/thunderbird \
-	           -X usr/lib/thunderbird/Throbber-small.gif \
-	           -X usr/lib/thunderbird/crashreporter \
-	           -X usr/lib/thunderbird/minidump-analyzer \
-	           -X usr/lib/thunderbird/pingsender
+	dh_missing \
+	-X usr/bin/thunderbird \
+	-X usr/lib/thunderbird/crashreporter \
+	-X usr/lib/thunderbird/glxtest \
+	-X usr/lib/thunderbird/minidump-analyzer \
+	-X usr/lib/thunderbird/pingsender \
+	-X usr/lib/thunderbird/Throbber-small.gif \
+	-X usr/lib/thunderbird/vaapitest \
+	$(NULL)
 
 override_dh_dwz:
 	# Don't use dwz for now, it fails with:

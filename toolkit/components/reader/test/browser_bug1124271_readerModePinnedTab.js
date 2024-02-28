@@ -8,13 +8,13 @@ const PREF = "reader.parse-on-load.enabled";
 
 const TEST_PATH = getRootDirectory(gTestPath).replace(
   "chrome://mochitests/content",
-  "http://example.com"
+  "https://example.com"
 );
 
 var readerButton = document.getElementById("reader-mode-button");
 
-add_task(async function() {
-  registerCleanupFunction(function() {
+add_task(async function () {
+  registerCleanupFunction(function () {
     Services.prefs.clearUserPref(PREF);
     while (gBrowser.tabs.length > 1) {
       gBrowser.removeCurrentTab();

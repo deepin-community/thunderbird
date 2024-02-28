@@ -19,7 +19,7 @@ add_task(async function test_first_download_panel() {
   let oldPrefValue = Services.prefs.getBoolPref("browser.download.panel.shown");
   Services.prefs.setBoolPref("browser.download.panel.shown", false);
 
-  registerCleanupFunction(async function() {
+  registerCleanupFunction(async function () {
     // Clean up when the test finishes.
     await task_resetState();
 
@@ -49,10 +49,13 @@ add_task(async function test_first_download_panel() {
     "Should have recorded that the panel was opened on a download."
   );
 
+  await SpecialPowers.pushPrefEnv({
+    set: [["browser.download.alwaysOpenPanel", false]],
+  });
   // Next, make sure that if we start another download, we don't open the
   // panel automatically.
   let originalOnPopupShown = DownloadsPanel.onPopupShown;
-  DownloadsPanel.onPopupShown = function() {
+  DownloadsPanel.onPopupShown = function () {
     originalOnPopupShown.apply(this, arguments);
     ok(false, "Should not have opened the downloads panel.");
   };

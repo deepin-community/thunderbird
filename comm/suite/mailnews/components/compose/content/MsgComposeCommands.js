@@ -1,5 +1,5 @@
-/* -*- Mode: C++; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*-
- * This Source Code Form is subject to the terms of the Mozilla Public
+/* -*- indent-tabs-mode: nil; js-indent-level: 2 -*- */
+/* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
@@ -7,7 +7,7 @@ var {Services} = ChromeUtils.import("resource://gre/modules/Services.jsm");
 var {AppConstants} = ChromeUtils.import("resource://gre/modules/AppConstants.jsm");
 const {PluralForm} = ChromeUtils.import("resource://gre/modules/PluralForm.jsm");
 ChromeUtils.import("resource://gre/modules/InlineSpellChecker.jsm");
-const {allAccountsSorted} = ChromeUtils.import("resource:///modules/folderUtils.jsm");
+const {FolderUtils} = ChromeUtils.import("resource:///modules/FolderUtils.jsm");
 const {MailServices} = ChromeUtils.import("resource:///modules/MailServices.jsm");
 const { MailUtils } = ChromeUtils.import("resource:///modules/MailUtils.js");
 const { MimeParser } = ChromeUtils.import("resource:///modules/mimeParser.jsm");
@@ -200,6 +200,18 @@ var stateListener = {
       case Ci.nsIMsgCompType.ForwardInline:
         this.NotifyComposeBodyReadyForwardInline();
         break;
+
+      case Ci.nsIMsgCompType.EditTemplate:
+        defaultSaveOperation = "template";
+      case Ci.nsIMsgCompType.Draft:
+      case Ci.nsIMsgCompType.Template:
+      case Ci.nsIMsgCompType.Redirect:
+      case Ci.nsIMsgCompType.EditAsNew:
+        break;
+
+      default:
+        dump("Unexpected nsIMsgCompType in NotifyComposeBodyReady (" +
+             gComposeType + ")\n");
     }
 
     // Set the selected item in the identity list as needed, which will cause
@@ -2389,11 +2401,19 @@ function ComposeChangeLanguage(aLang)
     // Update spellchecker pref
     Services.prefs.setCharPref("spellchecker.dictionary", aLang);
 
-    // now check the document and the subject over again with the new dictionary
-    if (InlineSpellCheckerUI.enabled)
-    {
+    // Now check the document and the subject over again with the new
+    // dictionary.
+    if (InlineSpellCheckerUI.enabled) {
       InlineSpellCheckerUI.mInlineSpellChecker.spellCheckRange(null);
-      GetMsgSubjectElement().inputField.parentNode.spellCheckerUI.mInlineSpellChecker.spellCheckRange(null);
+
+      // Also force a recheck of the subject. The spell checker for the subject
+      // isn't always ready yet. Usually throws unless the subject was selected
+      // at least once. So don't auto-create it, hence pass 'false'.
+      let inlineSpellChecker =
+        GetMsgSubjectElement().editor.getInlineSpellChecker(false);
+      if (inlineSpellChecker) {
+        inlineSpellChecker.spellCheckRange(null);
+      }
     }
   }
 }
@@ -2434,7 +2454,7 @@ function ToggleAttachVCard(target)
 
 function FillIdentityList(menulist)
 {
-  var accounts = allAccountsSorted(true);
+  var accounts = FolderUtils.allAccountsSorted(true);
 
   for (let acc = 0; acc < accounts.length; acc++)
   {

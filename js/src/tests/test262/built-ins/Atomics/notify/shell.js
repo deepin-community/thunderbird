@@ -107,7 +107,7 @@ $262.agent.safeBroadcast = function(typedArray) {
     // want to ensure that this typedArray CAN be waited on and is shareable.
     Atomics.wait(temp, 0, Constructor === Int32Array ? 1 : BigInt(1));
   } catch (error) {
-    $ERROR(`${Constructor.name} cannot be used as a shared typed array. (${error})`);
+    throw new Test262Error(`${Constructor.name} cannot be used as a shared typed array. (${error})`);
   }
 
   $262.agent.broadcast(typedArray.buffer);
@@ -351,9 +351,14 @@ function $DETACHBUFFER(buffer) {
 description: |
     Test if a given function is a constructor function.
 defines: [isConstructor]
+features: [Reflect.construct]
 ---*/
 
 function isConstructor(f) {
+    if (typeof f !== "function") {
+      throw new Test262Error("isConstructor invoked with a non-function value");
+    }
+
     try {
         Reflect.construct(function(){}, [], f);
     } catch (e) {

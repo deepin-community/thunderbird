@@ -34,7 +34,8 @@ WebSocketFrame::WebSocketFrame(bool aFinBit, bool aRsvBit1, bool aRsvBit2,
                                uint32_t aMask, const nsCString& aPayload)
     : mData(PR_Now(), aFinBit, aRsvBit1, aRsvBit2, aRsvBit3, aOpCode, aMaskBit,
             aMask, aPayload) {
-  MOZ_ASSERT(OnSocketThread(), "not on socket thread");
+  // This could be called on the background thread when socket process is
+  // enabled.
   mData.mTimeStamp = PR_Now();
 }
 
@@ -72,9 +73,7 @@ WebSocketFrameData::WebSocketFrameData()
       mRsvBit1(false),
       mRsvBit2(false),
       mRsvBit3(false),
-      mMaskBit(false) {
-  MOZ_COUNT_CTOR(WebSocketFrameData);
-}
+      mMaskBit(false) {}
 
 WebSocketFrameData::WebSocketFrameData(DOMHighResTimeStamp aTimeStamp,
                                        bool aFinBit, bool aRsvBit1,
@@ -90,52 +89,32 @@ WebSocketFrameData::WebSocketFrameData(DOMHighResTimeStamp aTimeStamp,
       mMaskBit(aMaskBit),
       mOpCode(aOpCode),
       mMask(aMask),
-      mPayload(aPayload) {
-  MOZ_COUNT_CTOR(WebSocketFrameData);
+      mPayload(aPayload) {}
+
+void WebSocketFrameData::WriteIPCParams(IPC::MessageWriter* aWriter) const {
+  WriteParam(aWriter, mTimeStamp);
+  WriteParam(aWriter, mFinBit);
+  WriteParam(aWriter, mRsvBit1);
+  WriteParam(aWriter, mRsvBit2);
+  WriteParam(aWriter, mRsvBit3);
+  WriteParam(aWriter, mMaskBit);
+  WriteParam(aWriter, mOpCode);
+  WriteParam(aWriter, mMask);
+  WriteParam(aWriter, mPayload);
 }
 
-WebSocketFrameData::WebSocketFrameData(const WebSocketFrameData& aData)
-    : mTimeStamp(aData.mTimeStamp),
-      mFinBit(aData.mFinBit),
-      mRsvBit1(aData.mRsvBit1),
-      mRsvBit2(aData.mRsvBit2),
-      mRsvBit3(aData.mRsvBit3),
-      mMaskBit(aData.mMaskBit),
-      mOpCode(aData.mOpCode),
-      mMask(aData.mMask),
-      mPayload(aData.mPayload) {
-  MOZ_COUNT_CTOR(WebSocketFrameData);
-}
-
-WebSocketFrameData::~WebSocketFrameData() {
-  MOZ_COUNT_DTOR(WebSocketFrameData);
-}
-
-void WebSocketFrameData::WriteIPCParams(IPC::Message* aMessage) const {
-  WriteParam(aMessage, mTimeStamp);
-  WriteParam(aMessage, mFinBit);
-  WriteParam(aMessage, mRsvBit1);
-  WriteParam(aMessage, mRsvBit2);
-  WriteParam(aMessage, mRsvBit3);
-  WriteParam(aMessage, mMaskBit);
-  WriteParam(aMessage, mOpCode);
-  WriteParam(aMessage, mMask);
-  WriteParam(aMessage, mPayload);
-}
-
-bool WebSocketFrameData::ReadIPCParams(const IPC::Message* aMessage,
-                                       PickleIterator* aIter) {
-  if (!ReadParam(aMessage, aIter, &mTimeStamp)) {
+bool WebSocketFrameData::ReadIPCParams(IPC::MessageReader* aReader) {
+  if (!ReadParam(aReader, &mTimeStamp)) {
     return false;
   }
 
-#define ReadParamHelper(x)                   \
-  {                                          \
-    bool bit;                                \
-    if (!ReadParam(aMessage, aIter, &bit)) { \
-      return false;                          \
-    }                                        \
-    (x) = bit;                               \
+#define ReadParamHelper(x)           \
+  {                                  \
+    bool bit;                        \
+    if (!ReadParam(aReader, &bit)) { \
+      return false;                  \
+    }                                \
+    (x) = bit;                       \
   }
 
   ReadParamHelper(mFinBit);
@@ -146,9 +125,8 @@ bool WebSocketFrameData::ReadIPCParams(const IPC::Message* aMessage,
 
 #undef ReadParamHelper
 
-  return ReadParam(aMessage, aIter, &mOpCode) &&
-         ReadParam(aMessage, aIter, &mMask) &&
-         ReadParam(aMessage, aIter, &mPayload);
+  return ReadParam(aReader, &mOpCode) && ReadParam(aReader, &mMask) &&
+         ReadParam(aReader, &mPayload);
 }
 
 }  // namespace net

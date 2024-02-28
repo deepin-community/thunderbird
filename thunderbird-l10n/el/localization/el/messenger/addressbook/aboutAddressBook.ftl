@@ -21,11 +21,24 @@ about-addressbook-toolbar-import =
 
 ## Books
 
+all-address-books-row =
+    .title = Όλα τα ευρετήρια
 all-address-books = Όλα τα ευρετήρια
+# Variables:
+# $name (String) - The name of the selected book/list.
+# $count (Number) - The number of contacts in the selected book/list.
+about-addressbook-card-count = Σύνολο επαφών στο «{ $name }»: { $count }
+# Variables:
+# $count (Number) - The number of contacts in all address books.
+about-addressbook-card-count-all = Σύνολο επαφών σε όλα τα ευρετήρια: { $count }
 about-addressbook-books-context-properties =
     .label = Ιδιότητες
+about-addressbook-books-context-edit-list =
+    .label = Επεξεργασία λίστας
 about-addressbook-books-context-synchronize =
     .label = Συγχρονισμός
+about-addressbook-books-context-edit =
+    .label = Επεξεργασία
 about-addressbook-books-context-print =
     .label = Εκτύπωση…
 about-addressbook-books-context-export =
@@ -50,11 +63,11 @@ about-addressbook-confirm-remove-remote-book = Θέλετε σίγουρα να 
 # Variables:
 # $name (String) - Name of the address book that will be searched.
 about-addressbook-search =
-    .placeholder = Αναζήτηση για { $name }
+    .placeholder = Αναζήτηση σε { $name }
 about-addressbook-search-all =
-    .placeholder = Αναζήτηση όλων των βιβλίων διευθύνσεων
-about-addressbook-sort-button =
-    .title = Αλλαγή σειράς λίστας
+    .placeholder = Αναζήτηση σε όλα τα ευρετήρια
+about-addressbook-sort-button2 =
+    .title = Επιλογές εμφάνισης λίστας
 about-addressbook-name-format-display =
     .label = Εμφανιζόμενο όνομα
 about-addressbook-name-format-firstlast =
@@ -69,6 +82,48 @@ about-addressbook-sort-email-ascending =
     .label = Ταξινόμηση κατά διεύθυνση email (A > Z)
 about-addressbook-sort-email-descending =
     .label = Ταξινόμηση κατά διεύθυνση email (Z > A)
+about-addressbook-table-layout =
+    .label = Διάταξη πίνακα
+
+## Card column headers
+## Each string is listed here twice, and the values should match.
+
+about-addressbook-column-header-generatedname2 = Όνομα
+    .title = Ταξινόμηση κατά όνομα
+about-addressbook-column-label-generatedname2 =
+    .label = Όνομα
+about-addressbook-column-header-emailaddresses2 = Διευθύνσεις email
+    .title = Ταξινόμηση κατά διευθύνσεις email
+about-addressbook-column-label-emailaddresses2 =
+    .label = Διευθύνσεις email
+about-addressbook-column-header-nickname2 = Ψευδώνυμο
+    .title = Ταξινόμηση κατά ψευδώνυμο
+about-addressbook-column-label-nickname2 =
+    .label = Ψευδώνυμο
+about-addressbook-column-header-phonenumbers2 = Αριθμοί τηλεφώνου
+    .title = Ταξινόμηση κατά αριθμούς τηλεφώνου
+about-addressbook-column-label-phonenumbers2 =
+    .label = Αριθμοί τηλεφώνου
+about-addressbook-column-header-addresses2 = Διευθύνσεις
+    .title = Ταξινόμηση κατά διευθύνσεις
+about-addressbook-column-label-addresses2 =
+    .label = Διευθύνσεις
+about-addressbook-column-header-title2 = Τίτλος
+    .title = Ταξινόμηση κατά τίτλο
+about-addressbook-column-label-title2 =
+    .label = Τίτλος
+about-addressbook-column-header-department2 = Τμήμα
+    .title = Ταξινόμηση κατά τμήμα
+about-addressbook-column-label-department2 =
+    .label = Τμήμα
+about-addressbook-column-header-organization2 = Οργανισμός
+    .title = Ταξινόμηση κατά οργανισμό
+about-addressbook-column-label-organization2 =
+    .label = Οργανισμός
+about-addressbook-column-header-addrbook2 = Ευρετήριο
+    .title = Ταξινόμηση κατά ευρετήριο
+about-addressbook-column-label-addrbook2 =
+    .label = Ευρετήριο
 about-addressbook-cards-context-write =
     .label = Σύνταξη
 about-addressbook-confirm-delete-mixed-title = Διαγραφή επαφών και λιστών
@@ -98,13 +153,15 @@ about-addressbook-confirm-remove-contacts-title =
        *[other] Αφαίρεση επαφών
     }
 # Variables:
-# $count (Number) - The number of contacts to be removed.
-# $name (String) - The name of the contact to be removed, if $count is 1.
+# $name (String) - The name of the contact to be removed.
 # $list (String) - The name of the list that contacts will be removed from.
-about-addressbook-confirm-remove-contacts =
+about-addressbook-confirm-remove-contacts-single = Θέλετε σίγουρα να αφαιρέσετε τον/την { $name } από το «{ $list }»;
+# Variables:
+# $count (Number) - The number of contacts to be removed.
+# $list (String) - The name of the list that contacts will be removed from.
+about-addressbook-confirm-remove-contacts-multi =
     { $count ->
-        [one] Θέλετε σίγουρα να αφαιρέσετε την επαφή { $name } από τη λίστα { $list };
-       *[other] Θέλετε σίγουρα να αφαιρέσετε αυτές τις { $count } επαφές από τη λίστα { $list };
+       *[other] Θέλετε σίγουρα να αφαιρέσετε αυτές τις { $count } επαφές από το «{ $list }»;
     }
 # Variables:
 # $count (Number) - The number of contacts to be deleted.
@@ -114,21 +171,96 @@ about-addressbook-confirm-delete-contacts-title =
        *[other] Διαγραφή επαφών
     }
 # Variables:
+# $name (String) - The name of the contact to be deleted.
+about-addressbook-confirm-delete-contacts-single = Θέλετε σίγουρα να διαγράψετε την επαφή «{ $name }»;
+# Variables:
 # $count (Number) - The number of contacts to be deleted.
-# $name (String) - The name of the contact to be deleted, if $count is 1.
-about-addressbook-confirm-delete-contacts =
+about-addressbook-confirm-delete-contacts-multi =
     { $count ->
-        [one] Θέλετε σίγουρα να διαγράψετε την επαφή { $name };
        *[other] Θέλετε σίγουρα να διαγράψετε αυτές τις { $count } επαφές;
     }
 
+## Card list placeholder
+## Shown when there are no cards in the list
+
+about-addressbook-placeholder-empty-book = Καμία διαθέσιμη επαφή
+about-addressbook-placeholder-new-contact = Νέα επαφή
+about-addressbook-placeholder-search-only = Αυτό το ευρετήριο εμφανίζει επαφές μόνο μετά από αναζήτηση
+about-addressbook-placeholder-searching = Αναζήτηση…
+about-addressbook-placeholder-no-search-results = Δεν βρέθηκαν επαφές
+
 ## Details
 
+# Variables:
+# $count (Number) - The number of selected items (will never be fewer than 2).
+about-addressbook-selection-mixed-header2 =
+    { $count ->
+       *[other] { $count } επιλεγμένες καταχωρήσεις ευρετηρίου
+    }
+# Variables:
+# $count (Number) - The number of selected contacts
+about-addressbook-selection-contacts-header2 =
+    { $count ->
+        [one] { $count } επιλεγμένη επαφή
+       *[other] { $count } επιλεγμένες επαφές
+    }
+# Variables:
+# $count (Number) - The number of selected lists
+about-addressbook-selection-lists-header2 =
+    { $count ->
+        [one] { $count } επιλεγμένη λίστα
+       *[other] { $count } επιλεγμένες λίστες
+    }
+about-addressbook-details-edit-photo =
+    .title = Επεξεργασία φωτογραφίας επαφής
+about-addressbook-new-contact-header = Νέα επαφή
+about-addressbook-prefer-display-name = Να προτιμηθεί η εμφάνιση ονόματος στην κεφαλίδα του μηνύματος
+about-addressbook-write-action-button = Σύνταξη
+about-addressbook-event-action-button = Εκδήλωση
+about-addressbook-search-action-button = Αναζήτηση
+about-addressbook-new-list-action-button = Νέα λίστα
 about-addressbook-begin-edit-contact-button = Επεξεργασία
+about-addressbook-delete-edit-contact-button = Διαγραφή
 about-addressbook-cancel-edit-contact-button = Ακύρωση
 about-addressbook-save-edit-contact-button = Αποθήκευση
+about-addressbook-add-contact-to = Προσθήκη σε:
 about-addressbook-details-email-addresses-header = Διευθύνσεις email
 about-addressbook-details-phone-numbers-header = Αριθμοί τηλεφώνου
-about-addressbook-details-home-address-header = Διεύθυνση οικίας
-about-addressbook-details-work-address-header = Διεύθυνση εργασίας
+about-addressbook-details-addresses-header = Διευθύνσεις
+about-addressbook-details-notes-header = Σημειώσεις
+about-addressbook-details-impp-header = Άμεσα μηνύματα
+about-addressbook-details-websites-header = Ιστότοποι
 about-addressbook-details-other-info-header = Άλλες πληροφορίες
+about-addressbook-entry-type-work = Εργασία
+about-addressbook-entry-type-home = Οικία
+about-addressbook-entry-type-fax = Φαξ
+# Or "Mobile"
+about-addressbook-entry-type-cell = Κινητό
+about-addressbook-entry-type-pager = Βομβητής
+about-addressbook-entry-name-birthday = Γενέθλια
+about-addressbook-entry-name-anniversary = Επέτειος
+about-addressbook-entry-name-title = Τίτλος
+about-addressbook-entry-name-role = Ρόλος
+about-addressbook-entry-name-organization = Οργανισμός
+about-addressbook-entry-name-website = Ιστότοπος
+about-addressbook-entry-name-time-zone = Ζώνη ώρας
+about-addressbook-entry-name-custom1 = Προσαρμοσμένο 1
+about-addressbook-entry-name-custom2 = Προσαρμοσμένο 2
+about-addressbook-entry-name-custom3 = Προσαρμοσμένο 3
+about-addressbook-entry-name-custom4 = Προσαρμοσμένο 4
+about-addressbook-unsaved-changes-prompt-title = Μη αποθηκευμένες αλλαγές
+about-addressbook-unsaved-changes-prompt = Θέλετε να αποθηκεύσετε τις αλλαγές σας πριν αποχωρήσετε από την προβολή επεξεργασίας;
+
+# Photo dialog
+
+about-addressbook-photo-drop-target = Εναποθέστε ή επικολλήστε μια φωτογραφία εδώ ή κάντε κλικ για να επιλέξετε ένα αρχείο.
+about-addressbook-photo-drop-loading = Φόρτωση φωτογραφίας…
+about-addressbook-photo-drop-error = Αποτυχία φόρτωσης φωτογραφίας.
+about-addressbook-photo-filepicker-title = Επιλογή αρχείου εικόνας
+about-addressbook-photo-discard = Απόρριψη υπάρχουσας φωτογραφίας
+about-addressbook-photo-cancel = Ακύρωση
+about-addressbook-photo-save = Αποθήκευση
+
+# Keyboard shortcuts
+
+about-addressbook-new-contact-key = Ν

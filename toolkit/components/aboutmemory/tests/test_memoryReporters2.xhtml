@@ -28,7 +28,7 @@
   // Create some remote processes, and set up message-passing so that
   // we know when each child is fully initialized.
   let remotes = [];
-  SpecialPowers.pushPrefEnv({"set": [["dom.ipc.processCount", 3]]}, function() {
+  SpecialPowers.pushPrefEnv({"set": [["dom.ipc.processCount", 3]]}).then(function() {
     for (let i = 0; i < numToOpen; i++) {
       let w = remotes[i] = window.browsingContext.topChromeWindow.open("remote.xhtml", "", "chrome");
 
@@ -56,6 +56,13 @@
     let residents = {};
 
     let handleReport = function(aProcess, aPath, aKind, aUnits, aAmount, aDesc) {
+      if (aProcess.startsWith(`Utility `)) {
+        // The Utility process that runs the ORB JavaScript validator starts on first
+        // idle in the parent process. This makes it notoriously hard to know _if_ it
+        // actually has started. So we bail. See Bug 1813985.
+        return;
+      }
+
       if (aPath === "resident") {
         ok(100 * 1000 <= aAmount && aAmount <= 10 * 1000 * 1000 * 1000,
            "resident is reasonable");
@@ -89,7 +96,7 @@
         } else {
           ok(processes[i].startsWith("Browser (") || processes[i].startsWith("Web Content (") ||
              (processes[i].startsWith("Socket (") && socketProcessRunning)
-             || processes[i].startsWith("web ("),
+             || processes[i].startsWith("web (") || processes[i].startsWith("Utility ("),
              "correct non-empty process name prefix: " + processes[i]);
           numNonEmptyProcesses++;
         }

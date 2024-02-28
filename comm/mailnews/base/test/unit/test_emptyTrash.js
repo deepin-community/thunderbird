@@ -44,7 +44,7 @@ var copyListener = {
     // This can happen with a bunch of synchronous functions grouped together, and
     // can even cause tests to fail because they're still waiting for the listener
     // to return
-    do_timeout(0, function() {
+    do_timeout(0, function () {
       doTest(++gCurTestNum);
     });
   },
@@ -59,7 +59,7 @@ var urlListener = {
     // This can happen with a bunch of synchronous functions grouped together, and
     // can even cause tests to fail because they're still waiting for the listener
     // to return
-    do_timeout(0, function() {
+    do_timeout(0, function () {
       doTest(++gCurTestNum);
     });
   },
@@ -111,12 +111,12 @@ var gTestArray = [
     let gLocalTrashDB = gLocalTrashFolder.msgDatabase; // eslint-disable-line no-unused-vars
     gLocalTrashFolder.msgDatabase = null;
     // this is synchronous
-    gLocalTrashFolder.emptyTrash(null, null);
+    gLocalTrashFolder.emptyTrash(null);
     // check that the trash folder is 0 size, that the db has a 0 message count
     // and has no messages.
     Assert.equal(0, gLocalTrashFolder.filePath.fileSize);
     Assert.equal(0, gLocalTrashFolder.msgDatabase.dBFolderInfo.numMessages);
-    let msgs = [...gLocalTrashFolder.msgDatabase.EnumerateMessages()];
+    let msgs = [...gLocalTrashFolder.msgDatabase.enumerateMessages()];
     Assert.equal(0, msgs.length);
     urlListener.OnStopRunningUrl(null, 0);
   },
@@ -155,7 +155,7 @@ function doTest(test) {
 
     var testFn = gTestArray[test - 1];
     // Set a limit of three seconds; if the notifications haven't arrived by then there's a problem.
-    do_timeout(10000, function() {
+    do_timeout(10000, function () {
       if (gCurTestNum == test) {
         do_throw(
           "Notifications not received in 10000 ms for operation " + testFn.name

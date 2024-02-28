@@ -12,21 +12,23 @@
 interface RTCRtpReceiver {
   readonly attribute MediaStreamTrack   track;
   readonly attribute RTCDtlsTransport?  transport;
-  Promise<RTCStatsReport>               getStats();
-  [Pref="media.peerconnection.rtpsourcesapi.enabled"]
+  static RTCRtpCapabilities? getCapabilities(DOMString kind);
   sequence<RTCRtpContributingSource>    getContributingSources();
-  [Pref="media.peerconnection.rtpsourcesapi.enabled"]
   sequence<RTCRtpSynchronizationSource> getSynchronizationSources();
+  [NewObject]
+  Promise<RTCStatsReport>               getStats();
 
-  [ChromeOnly]
-  void mozAddRIDExtension(unsigned short extensionId);
-  [ChromeOnly]
-  void mozAddRIDFilter(DOMString rid);
   // test-only: for testing getContributingSources
   [ChromeOnly]
-  void mozInsertAudioLevelForContributingSource(unsigned long source,
-                                                DOMHighResTimeStamp timestamp,
-                                                unsigned long rtpTimestamp,
-                                                boolean hasLevel,
-                                                byte level);
+  undefined mozInsertAudioLevelForContributingSource(unsigned long source,
+                                                     DOMHighResTimeStamp timestamp,
+                                                     unsigned long rtpTimestamp,
+                                                     boolean hasLevel,
+                                                     byte level);
+};
+
+//https://w3c.github.io/webrtc-extensions/#rtcrtpreceiver-jitterbuffertarget-rtcrtpreceiver-interface
+partial interface RTCRtpReceiver {
+  [Throws]
+  attribute DOMHighResTimeStamp? jitterBufferTarget;
 };

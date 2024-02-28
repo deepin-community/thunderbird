@@ -5,14 +5,14 @@
 
 // Test the ResourceCommand API around THREAD_STATE
 
-const ResourceCommand = require("devtools/shared/commands/resource/resource-command");
+const ResourceCommand = require("resource://devtools/shared/commands/resource/resource-command.js");
 
 const BREAKPOINT_TEST_URL = URL_ROOT_SSL + "breakpoint_document.html";
 const REMOTE_IFRAME_URL =
   "https://example.org/document-builder.sjs?html=" +
   encodeURIComponent("<script>debugger;</script>");
 
-add_task(async function() {
+add_task(async function () {
   // Check hitting the "debugger;" statement before and after calling
   // watchResource(THREAD_TYPES). Both should break. First will
   // be a cached resource and second will be a live one.
@@ -43,14 +43,12 @@ async function checkBreakpointBeforeWatchResources() {
     tab
   );
 
-  // Attach the thread actor before running the debugger statement,
-  // so that it is correctly catched by the thread actor.
-  info("Attach the top level target");
-  await targetCommand.targetFront.attach();
-  // Init the Thread actor via attachAndInitThread in order to ensure
-  // memoizing the thread front and avoid attaching it twice
-  info("Attach the top level thread actor");
-  await targetCommand.targetFront.attachAndInitThread(targetCommand);
+  // Ensure that the target front is initialized early from TargetCommand.onTargetAvailable
+  // By the time `initResourceCommand` resolves, it should already be initialized.
+  info(
+    "Verify that TargetFront's initialized is resolved after having calling attachAndInitThread"
+  );
+  await targetCommand.targetFront.initialized;
 
   info("Run the 'debugger' statement");
   // Note that we do not wait for the resolution of spawn as it will be paused
@@ -269,9 +267,8 @@ async function checkPauseOnException() {
     "data:text/html,<meta charset=utf8><script>a.b.c.d</script>"
   );
 
-  const { client, resourceCommand, targetCommand } = await initResourceCommand(
-    tab
-  );
+  const { commands, resourceCommand, targetCommand } =
+    await initResourceCommand(tab);
 
   info("Call watchResources");
   const availableResources = [];
@@ -285,13 +282,12 @@ async function checkPauseOnException() {
     "Got no THREAD_STATE when calling watchResources"
   );
 
-  // treadFront is created and attached while calling watchResources
-  const { threadFront } = targetCommand.targetFront;
-  await threadFront.reconfigure({ pauseOnExceptions: true });
+  await commands.threadConfigurationCommand.updateConfiguration({
+    pauseOnExceptions: true,
+  });
 
   info("Reload the page, in order to trigger exception on load");
-  const reloaded = BrowserTestUtils.browserLoaded(tab.linkedBrowser);
-  tab.linkedBrowser.reload();
+  const reloaded = reloadBrowser();
 
   await waitFor(
     () => availableResources.length == 1,
@@ -313,11 +309,12 @@ async function checkPauseOnException() {
       // arguments: []
       where: {
         line: 1,
-        column: 0,
+        column: 27,
       },
     },
   });
 
+  const { threadFront } = targetCommand.targetFront;
   await threadFront.resume();
   info("Wait for page to finish reloading after resume");
   await reloaded;
@@ -332,7 +329,7 @@ async function checkPauseOnException() {
   assertResumedResource(resumed);
 
   targetCommand.destroy();
-  await client.close();
+  await commands.destroy();
 }
 
 async function checkSetBeforeWatch() {
@@ -346,9 +343,6 @@ async function checkSetBeforeWatch() {
     tab
   );
 
-  // Attach the target in order to create the thread actor
-  info("Attach the top level target");
-  await targetCommand.targetFront.attach();
   // Instantiate the thread front in order to be able to set a breakpoint before watching for thread state
   info("Attach the top level thread actor");
   await targetCommand.targetFront.attachAndInitThread(targetCommand);
@@ -450,7 +444,7 @@ async function checkDebuggerStatementInIframes() {
   SpecialPowers.spawn(
     gBrowser.selectedBrowser,
     [REMOTE_IFRAME_URL],
-    async function(url) {
+    async function (url) {
       const iframe = content.document.createElement("iframe");
       iframe.src = url;
       content.document.body.appendChild(iframe);
@@ -477,23 +471,23 @@ async function checkDebuggerStatementInIframes() {
       // arguments: []
       where: {
         line: 1,
-        column: 0,
+        column: 8,
       },
     },
   });
 
   const iframeTarget = threadState.targetFront;
-  if (isFissionEnabled()) {
+  if (isFissionEnabled() || isEveryFrameTargetEnabled()) {
     is(
       iframeTarget.url,
       REMOTE_IFRAME_URL,
-      "With fission, the pause is from the iframe's target"
+      "With fission/EFT, the pause is from the iframe's target"
     );
   } else {
     is(
       iframeTarget,
       targetCommand.targetFront,
-      "Without fission, the pause is from the top level target"
+      "Without fission/EFT, the pause is from the top level target"
     );
   }
   const { threadFront } = iframeTarget;

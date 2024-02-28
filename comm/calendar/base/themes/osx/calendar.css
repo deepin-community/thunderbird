@@ -5,7 +5,6 @@
 @import url(chrome://calendar/skin/shared/calendar.css);
 
 #calendarContent:-moz-lwtheme {
-  color: -moz-dialogText;
   text-shadow: none;
 }
 
@@ -19,10 +18,6 @@
   margin-inline-end: 8px;
 }
 
-#imip-view-toolbar {
-  --imip-button-background: #fff;
-}
-
 #calsidebar_splitter {
   border-inline-end: 1px solid var(--splitter-color);
   /* make only the splitter border visible */
@@ -31,7 +26,6 @@
 
 /* Calendar sidebar background in calendar and task mode. */
 #calSidebar {
-  background-color: Field;
   border-inline-end: 1px solid #8B8B8B;
   margin-inline-end: -3px !important;
 }
@@ -43,17 +37,13 @@
 }
 
 #calendar-status-todaypane-button > stack > .toolbarbutton-day-text {
-  margin-top: 4px;
+  margin-top: 5px;
   margin-inline-end: 0;
 }
 
 /* shift the today pane button label up by one pixel to center it */
 #calendar-status-todaypane-button > .toolbarbutton-text {
   margin: 0 6px 1px !important;
-}
-
-#calMinimonthBox {
-  margin-top: 3px;
 }
 
 .calendar-splitter[orient="vertical"] {

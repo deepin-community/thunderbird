@@ -4,11 +4,15 @@
 
 const EXPORTED_SYMBOLS = ["MessageArchiver"];
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 var { MailServices } = ChromeUtils.import(
   "resource:///modules/MailServices.jsm"
 );
-var { MailUtils } = ChromeUtils.import("resource:///modules/MailUtils.jsm");
+const lazy = {};
+ChromeUtils.defineModuleGetter(
+  lazy,
+  "MailUtils",
+  "resource:///modules/MailUtils.jsm"
+);
 
 function MessageArchiver() {
   this._batches = {};
@@ -16,10 +20,60 @@ function MessageArchiver() {
   this._dstFolderParent = null;
   this._dstFolderName = null;
 
-  this.folderDisplay = null;
   this.msgWindow = null;
   this.oncomplete = null;
 }
+
+/**
+ * The maximum number of messages to try to examine directly to determine if
+ * they can be archived; if we exceed this count, we'll try to approximate
+ * the answer by looking at the server's identities.  This is only here to
+ * let tests tweak the value.
+ */
+MessageArchiver.MAX_COUNT_FOR_CAN_ARCHIVE_CHECK = 100;
+MessageArchiver.canArchive = function (messages, isSingleFolder) {
+  if (messages.length == 0) {
+    return false;
+  }
+
+  // If we're looking at a single folder (i.e. not a cross-folder search), we
+  // can just check to see if all the identities for this folder/server have
+  // archives enabled (or disabled). This is way faster than checking every
+  // message. Note: this may be slightly inaccurate if the identity for a
+  // header is actually on another server.
+  if (
+    messages.length > MessageArchiver.MAX_COUNT_FOR_CAN_ARCHIVE_CHECK &&
+    isSingleFolder
+  ) {
+    let folder = messages[0].folder;
+    let folderIdentity = folder.customIdentity;
+    if (folderIdentity) {
+      return folderIdentity.archiveEnabled;
+    }
+
+    if (folder.server) {
+      let serverIdentities = MailServices.accounts.getIdentitiesForServer(
+        folder.server
+      );
+
+      // Do all identities have the same archiveEnabled setting?
+      if (serverIdentities.every(id => id.archiveEnabled)) {
+        return true;
+      }
+      if (serverIdentities.every(id => !id.archiveEnabled)) {
+        return false;
+      }
+      // If we get here it's a mixture, so have to examine all the messages.
+    }
+  }
+
+  // Either we've selected a small number of messages or we just can't
+  // fast-path the result; examine all the messages.
+  return messages.every(function (msg) {
+    let [identity] = lazy.MailUtils.getIdentityForHeader(msg);
+    return Boolean(identity && identity.archiveEnabled);
+  });
+};
 
 // Bad things happen if you have multiple archivers running on the same
 // messages (See Bug 1705824). We could probably make this more fine
@@ -38,9 +92,6 @@ MessageArchiver.prototype = {
     }
     gIsArchiving = true;
 
-    if (this.folderDisplay) {
-      this.folderDisplay.hintMassMoveStarting();
-    }
     for (let i = 0; i < aMsgHdrs.length; i++) {
       let msgHdr = aMsgHdrs[i];
 
@@ -56,7 +107,7 @@ MessageArchiver.prototype = {
       let archiveGranularity;
       let archiveKeepFolderStructure;
 
-      let [identity] = MailUtils.getIdentityForHeader(msgHdr);
+      let [identity] = lazy.MailUtils.getIdentityForHeader(msgHdr);
       if (!identity || msgHdr.folder.server.type == "rss") {
         // If no identity, or a server (RSS) which doesn't have an identity
         // and doesn't want the default unrelated identity value, figure
@@ -128,9 +179,6 @@ MessageArchiver.prototype = {
     }
     // All done!
     this._batches = null;
-    if (this.folderDisplay) {
-      this.folderDisplay.hintMassMoveCompleted();
-    }
     MailServices.mfn.removeListener(this);
 
     if (typeof this.oncomplete == "function") {
@@ -154,7 +202,7 @@ MessageArchiver.prototype = {
 
   onStopOperation(aResult) {
     if (!Components.isSuccessCode(aResult)) {
-      Cu.reportError("Archive filter failed: " + aResult);
+      console.error("Archive filter failed: " + aResult);
       // We don't want to effectively disable archiving because a filter
       // failed, so we'll continue after reporting the error.
     }
@@ -167,14 +215,14 @@ MessageArchiver.prototype = {
     let batch = this._currentBatch;
     let srcFolder = batch.srcFolder;
     let archiveFolderURI = batch.archiveFolderURI;
-    let archiveFolder = MailUtils.getOrCreateFolder(archiveFolderURI);
+    let archiveFolder = lazy.MailUtils.getOrCreateFolder(archiveFolderURI);
     let dstFolder = archiveFolder;
 
     let moveArray = [];
     // Don't move any items that the filter moves or deleted
     for (let item of batch.messages) {
       if (
-        srcFolder.msgDatabase.ContainsKey(item.messageKey) &&
+        srcFolder.msgDatabase.containsKey(item.messageKey) &&
         !(
           srcFolder.getProcessingFlags(item.messageKey) &
           Ci.nsMsgProcessingFlags.FilterToMove
@@ -217,7 +265,7 @@ MessageArchiver.prototype = {
 
     if (granularity >= Ci.nsIMsgIdentity.perYearArchiveFolders) {
       archiveFolderURI += "/" + batch.yearFolderName;
-      dstFolder = MailUtils.getOrCreateFolder(archiveFolderURI);
+      dstFolder = lazy.MailUtils.getOrCreateFolder(archiveFolderURI);
       if (!dstFolder.parent) {
         dstFolder.createStorageIfMissing(this);
         if (isAsync) {
@@ -228,7 +276,7 @@ MessageArchiver.prototype = {
     }
     if (granularity >= Ci.nsIMsgIdentity.perMonthArchiveFolders) {
       archiveFolderURI += "/" + batch.monthFolderName;
-      dstFolder = MailUtils.getOrCreateFolder(archiveFolderURI);
+      dstFolder = lazy.MailUtils.getOrCreateFolder(archiveFolderURI);
       if (!dstFolder.parent) {
         dstFolder.createStorageIfMissing(this);
         if (isAsync) {
@@ -247,7 +295,7 @@ MessageArchiver.prototype = {
       // excluding top-level INBOX folder
       let folderNames = [];
       let rootFolder = srcFolder.server.rootFolder;
-      let inboxFolder = MailUtils.getInboxFolder(srcFolder.server);
+      let inboxFolder = lazy.MailUtils.getInboxFolder(srcFolder.server);
       let folder = srcFolder;
       while (folder != rootFolder && folder != inboxFolder) {
         folderNames.unshift(folder.name);
@@ -297,7 +345,7 @@ MessageArchiver.prototype = {
     if (Components.isSuccessCode(exitCode)) {
       this.continueBatch();
     } else {
-      Cu.reportError("Archive failed to create folder: " + exitCode);
+      console.error("Archive failed to create folder: " + exitCode);
       this._batches = null;
       this.processNextBatch(); // for cleanup and exit
     }
@@ -315,7 +363,7 @@ MessageArchiver.prototype = {
       this.processNextBatch();
     } else {
       // stop on error
-      Cu.reportError("Archive failed to copy: " + aStatus);
+      console.error("Archive failed to copy: " + aStatus);
       this._batches = null;
       this.processNextBatch(); // for cleanup and exit
     }

@@ -4,6 +4,7 @@
 
 calendar-ics-file-window-2 =
     .title = นำเข้าเหตุการณ์และงานในปฏิทิน
+calendar-ics-file-window-title = นำเข้าเหตุการณ์และงานในปฏิทิน
 calendar-ics-file-dialog-import-event-button-label = นำเข้าเหตุการณ์
 calendar-ics-file-dialog-import-task-button-label = นำเข้างาน
 calendar-ics-file-dialog-2 =
@@ -18,6 +19,8 @@ calendar-ics-file-dialog-search-input =
     .placeholder = กรองรายการ…
 calendar-ics-file-dialog-sort-start-ascending =
     .label = เรียงตามวันเริ่ม (หัวถึงท้าย)
+calendar-ics-file-dialog-sort-start-descending =
+    .label = เรียงตามวันเริ่ม (ท้ายถึงหัว)
 # "A > Z" is used as a concise way to say "alphabetical order".
 # You may replace it with something appropriate to your language.
 calendar-ics-file-dialog-sort-title-ascending =

@@ -4,7 +4,6 @@
 
 const EXPORTED_SYMBOLS = ["MsgUtils"];
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 var { MailServices } = ChromeUtils.import(
   "resource:///modules/MailServices.jsm"
 );
@@ -74,7 +73,6 @@ var MsgUtils = {
   NS_ERROR_SMTP_PASSWORD_UNDEFINED: generateNSError(12584),
   NS_ERROR_SMTP_SEND_NOT_ALLOWED: generateNSError(12585),
   NS_ERROR_SMTP_TEMP_SIZE_EXCEEDED: generateNSError(12586),
-  NS_ERROR_SMTP_PERM_SIZE_EXCEEDED_1: generateNSError(12587),
   NS_ERROR_SMTP_PERM_SIZE_EXCEEDED_2: generateNSError(12588),
 
   NS_ERROR_SMTP_SEND_FAILED_UNKNOWN_SERVER: generateNSError(12589),
@@ -109,6 +107,7 @@ var MsgUtils = {
 
   /**
    * NS_IS_MSG_ERROR in msgCore.h.
+   *
    * @param {nsresult} err - The nsresult value.
    * @returns {boolean}
    */
@@ -122,9 +121,10 @@ var MsgUtils = {
   /**
    * Convert html to text to form a multipart/alternative message. The output
    * depends on preference.
+   *
    * @param {string} input - The HTML text to convert.
    * @param {boolean} formatFlowed - A flag to enable OutputFormatFlowed.
-   * @retuns {string}
+   * @returns {string}
    */
   convertToPlainText(input, formatFlowed) {
     let wrapWidth = Services.prefs.getIntPref("mailnews.wraplength", 72);
@@ -150,6 +150,7 @@ var MsgUtils = {
 
   /**
    * Get the list of default custom headers.
+   *
    * @param {nsIMsgIdentity} userIdentity - User identity.
    * @returns {{headerName: string, headerValue: string}[]}
    */
@@ -176,6 +177,7 @@ var MsgUtils = {
 
   /**
    * Get the fcc value.
+   *
    * @param {nsIMsgIdentity} userIdentity - The user identity.
    * @param {nsIMsgCompFields} compFields - The compose fields.
    * @param {string} originalMsgURI - The original message uri, can be null.
@@ -183,11 +185,7 @@ var MsgUtils = {
    * @returns {string}
    */
   getFcc(userIdentity, compFields, originalMsgURI, compType) {
-    // If the identity pref "fcc" is set to false, then we will not do
-    // any FCC operation!
-    if (!userIdentity.doFcc) {
-      return "";
-    }
+    // Check if the default fcc has been overridden.
     let fcc = "";
     let useDefaultFcc = true;
     if (compFields.fcc) {
@@ -198,9 +196,15 @@ var MsgUtils = {
         let folder = MailUtils.getExistingFolder(compFields.fcc);
         if (folder) {
           useDefaultFcc = false;
-          fcc = compFields.fcc.trim();
+          fcc = compFields.fcc;
         }
       }
+    }
+
+    // If the identity pref "fcc" is set to false, then we will not do the default
+    // FCC operation but still allow the override.
+    if (!userIdentity.doFcc) {
+      return fcc;
     }
 
     // We use default FCC setting if it's not set or was set to an invalid
@@ -222,10 +226,10 @@ var MsgUtils = {
       ) {
         let msgHdr;
         try {
-          msgHdr = Cc["@mozilla.org/messenger;1"]
-            .createInstance(Ci.nsIMessenger)
-            .messageServiceFromURI(originalMsgURI)
-            .messageURIToMsgHdr(originalMsgURI);
+          msgHdr =
+            MailServices.messageServiceFromURI(
+              originalMsgURI
+            ).messageURIToMsgHdr(originalMsgURI);
         } catch (e) {
           console.warn(
             `messageServiceFromURI failed for ${originalMsgURI}\n${e.stack}`
@@ -234,6 +238,7 @@ var MsgUtils = {
         if (msgHdr) {
           let folder = msgHdr.folder;
           if (
+            folder &&
             folder.canFileMessages &&
             folder.server &&
             folder.server.getCharValue("type") != "rss" &&
@@ -308,6 +313,7 @@ var MsgUtils = {
   /**
    * Get the Mail-Followup-To header value.
    * See bug #204339 and http://cr.yp.to/proto/replyto.html for details
+   *
    * @param {nsIMsgCompFields} compFields - The compose fields.
    * @param {nsIMsgIdentity} userIdentity - The user identity.
    * @returns {string}
@@ -327,13 +333,13 @@ var MsgUtils = {
     } else {
       recipients = compFields.cc;
     }
-    let recipientsDedup = MailServices.headerParser.removeDuplicateAddresses(
-      recipients
-    );
-    let recipientsWithoutMailList = MailServices.headerParser.removeDuplicateAddresses(
-      recipientsDedup,
-      mailLists
-    );
+    let recipientsDedup =
+      MailServices.headerParser.removeDuplicateAddresses(recipients);
+    let recipientsWithoutMailList =
+      MailServices.headerParser.removeDuplicateAddresses(
+        recipientsDedup,
+        mailLists
+      );
     if (recipientsDedup != recipientsWithoutMailList) {
       return recipients;
     }
@@ -343,6 +349,7 @@ var MsgUtils = {
   /**
    * Get the Mail-Reply-To header value.
    * See bug #204339 and http://cr.yp.to/proto/replyto.html for details
+   *
    * @param {nsIMsgCompFields} compFields - The compose fields.
    * @param {nsIMsgIdentity} userIdentity - The user identity.
    * @returns {string}
@@ -366,13 +373,13 @@ var MsgUtils = {
     } else {
       recipients = compFields.cc;
     }
-    let recipientsDedup = MailServices.headerParser.removeDuplicateAddresses(
-      recipients
-    );
-    let recipientsWithoutMailList = MailServices.headerParser.removeDuplicateAddresses(
-      recipientsDedup,
-      mailLists
-    );
+    let recipientsDedup =
+      MailServices.headerParser.removeDuplicateAddresses(recipients);
+    let recipientsWithoutMailList =
+      MailServices.headerParser.removeDuplicateAddresses(
+        recipientsDedup,
+        mailLists
+      );
     if (recipientsDedup != recipientsWithoutMailList) {
       return compFields.replyTo || compFields.from;
     }
@@ -381,6 +388,7 @@ var MsgUtils = {
 
   /**
    * Get the X-Mozilla-Draft-Info header value.
+   *
    * @param {nsIMsgCompFields} compFields - The compose fields.
    * @returns {string}
    */
@@ -412,18 +420,29 @@ var MsgUtils = {
 
   /**
    * Get the X-Mozilla-Cloud-Part header value.
+   *
    * @param {nsMsgDeliverMode} deliverMode - The deliver mode.
    * @param {nsIMsgAttachment} attachment - The cloud attachment.
    * @returns {string}
    */
   getXMozillaCloudPart(deliverMode, attachment) {
-    let value = `cloudFile; url=${attachment.contentLocation}`;
-    if (deliverMode == Ci.nsIMsgSend.nsMsgSaveAsDraft) {
-      value += `; provider=${attachment.cloudFileAccountKey}`;
-      value += `; file=${attachment.url}`;
+    let value = "";
+    if (attachment.sendViaCloud && attachment.contentLocation) {
+      value += `cloudFile; url=${attachment.contentLocation}`;
+
+      if (
+        (deliverMode == Ci.nsIMsgSend.nsMsgSaveAsDraft ||
+          deliverMode == Ci.nsIMsgSend.nsMsgSaveAsTemplate) &&
+        attachment.cloudFileAccountKey &&
+        attachment.cloudPartHeaderData
+      ) {
+        value += `; provider=${attachment.cloudFileAccountKey}`;
+        value += `; ${this.rfc2231ParamFolding(
+          "data",
+          attachment.cloudPartHeaderData
+        )}`;
+      }
     }
-    value += "; ";
-    value += this.rfc2231ParamFolding("name", attachment.name);
     return value;
   },
 
@@ -495,6 +514,7 @@ var MsgUtils = {
 
   /**
    * Get the Disposition-Notification-To header value.
+   *
    * @param {nsIMsgCompFields} compFields - The compose fields.
    * @param {nsMsgDeliverMode} deliverMode - The deliver mode.
    * @returns {{dnt: string, rrt: string}}
@@ -513,6 +533,7 @@ var MsgUtils = {
 
   /**
    * Get the Return-Receipt-To header value.
+   *
    * @param {nsIMsgCompFields} compFields - The compose fields.
    * @param {nsMsgDeliverMode} deliverMode - The deliver mode.
    * @returns {{dnt: string, rrt: string}}
@@ -531,6 +552,7 @@ var MsgUtils = {
 
   /**
    * Get the value of X-Priority header.
+   *
    * @param {string} rawPriority - Raw X-Priority content.
    * @returns {string}
    */
@@ -583,6 +605,7 @@ var MsgUtils = {
 
   /**
    * Get the References header value.
+   *
    * @param {string} references - Raw References header content.
    * @returns {string}
    */
@@ -610,6 +633,7 @@ var MsgUtils = {
 
   /**
    * Get the In-Reply-To header value.
+   *
    * @param {string} references - Raw References header content.
    * @returns {string}
    */
@@ -624,6 +648,7 @@ var MsgUtils = {
 
   /**
    * Get the value of Newsgroups and X-Mozilla-News-Host header.
+   *
    * @param {nsMsgDeliverMode} deliverMode - Message deliver mode.
    * @param {string} newsgroups - Raw newsgroups header content.
    * @returns {{newsgroups: string, newshost: string}}
@@ -662,6 +687,7 @@ var MsgUtils = {
 
   /**
    * Get the Content-Location header value.
+   *
    * @param {string} baseUrl - The base url of an HTML attachment.
    * @returns {string}
    */
@@ -688,42 +714,6 @@ var MsgUtils = {
       value += transformMap[char] || char;
     }
     return value;
-  },
-
-  /**
-   * Pick a charset according to content type and content.
-   * @param {string} contentType - The content type.
-   * @param {string} content - The content.
-   * @returns {string}
-   */
-  pickCharset(contentType, content) {
-    if (!contentType.startsWith("text")) {
-      return "";
-    }
-
-    // Check the BOM.
-    let charset = "";
-    if (content.length >= 2) {
-      let byte0 = content.charCodeAt(0);
-      let byte1 = content.charCodeAt(1);
-      let byte2 = content.charCodeAt(2);
-      if (byte0 == 0xfe && byte1 == 0xff) {
-        charset = "UTF-16BE";
-      } else if (byte0 == 0xff && byte1 == 0xfe) {
-        charset = "UTF-16LE";
-      } else if (byte0 == 0xef && byte1 == 0xbb && byte2 == 0xbf) {
-        charset = "UTF-8";
-      }
-    }
-    if (charset) {
-      return charset;
-    }
-
-    // Use mozilla::EncodingDetector.
-    let compUtils = Cc[
-      "@mozilla.org/messengercompose/computils;1"
-    ].createInstance(Ci.nsIMsgCompUtils);
-    return compUtils.detectCharset(content);
   },
 
   /**
@@ -763,6 +753,7 @@ var MsgUtils = {
 
   /**
    * Encode parameter value according to RFC 2047.
+   *
    * @param {string} value - The parameter value.
    * @returns {string}
    */
@@ -783,6 +774,7 @@ var MsgUtils = {
 
   /**
    * Encode parameter value according to RFC 2231.
+   *
    * @param {string} paramName - The parameter name.
    * @param {string} paramValue - The parameter value.
    * @returns {string}
@@ -884,6 +876,7 @@ var MsgUtils = {
 
   /**
    * Get the target message folder to copy to.
+   *
    * @param {nsIMsgIdentity} userIdentity - The user identity.
    * @param {nsMsgDeliverMode} deliverMode - The deliver mode.
    * @returns {string}
@@ -916,6 +909,7 @@ var MsgUtils = {
   /**
    * Get the error string name of an exit code. The name will corresponds to an
    * entry in composeMsgs.properties.
+   *
    * @param {nsresult} exitCode - Exit code of sending mail process.
    * @returns {string}
    */
@@ -950,8 +944,7 @@ var MsgUtils = {
       [this.NS_ERROR_STARTTLS_FAILED_EHLO_STARTTLS]: "startTlsFailed",
       [this.NS_ERROR_SMTP_PASSWORD_UNDEFINED]: "smtpPasswordUndefined",
       [this.NS_ERROR_SMTP_SEND_NOT_ALLOWED]: "smtpSendNotAllowed",
-      [this.NS_ERROR_SMTP_TEMP_SIZE_EXCEEDED]: "smtpTempSizeExceeded",
-      [this.NS_ERROR_SMTP_PERM_SIZE_EXCEEDED_1]: "smtpPermSizeExceeded1",
+      [this.NS_ERROR_SMTP_TEMP_SIZE_EXCEEDED]: "smtpTooManyRecipients",
       [this.NS_ERROR_SMTP_PERM_SIZE_EXCEEDED_2]: "smtpPermSizeExceeded2",
       [this.NS_ERROR_SMTP_SEND_FAILED_UNKNOWN_SERVER]:
         "smtpSendFailedUnknownServer",
@@ -978,10 +971,11 @@ var MsgUtils = {
 
   /**
    * Format the error message that will be shown to the user.
+   *
    * @param {nsIMsgIdentity} userIdentity - User identity.
    * @param {nsIStringBundle} composeBundle - Localized string bundle.
    * @param {string} errorName - The error name derived from an exit code.
-   * @retuns {string}
+   * @returns {string}
    */
   formatStringWithSMTPHostName(userIdentity, composeBundle, errorName) {
     let smtpServer = MailServices.smtp.getServerByIdentity(userIdentity);
@@ -991,6 +985,7 @@ var MsgUtils = {
 
   /**
    * Generate random alphanumeric string.
+   *
    * @param {number} size - The length of generated string.
    * @returns {string}
    */
@@ -1007,6 +1002,7 @@ var MsgUtils = {
 
   /**
    * Generate a content id to be used by embedded images.
+   *
    * @param {nsIMsgIdentity} userIdentity - User identity.
    * @param {number} partNum - The number of embedded MimePart.
    * @returns {string}
@@ -1020,6 +1016,7 @@ var MsgUtils = {
 
   /**
    * Pick a file name from the file URL.
+   *
    * @param {string} url - The file URL.
    * @returns {string}
    */
@@ -1031,7 +1028,7 @@ var MsgUtils = {
     if (/^data:/i.test(url)) {
       let matches = /filename=(.*);/.exec(url);
       if (matches && matches[1]) {
-        return matches[1];
+        return decodeURIComponent(matches[1]);
       }
       let mimeType = url.slice(5, url.indexOf(";"));
       let extname = "";

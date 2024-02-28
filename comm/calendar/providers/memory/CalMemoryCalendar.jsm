@@ -6,6 +6,10 @@ var EXPORTED_SYMBOLS = ["CalMemoryCalendar"];
 
 var { cal } = ChromeUtils.import("resource:///modules/calendar/calUtils.jsm");
 
+var { CalReadableStreamFactory } = ChromeUtils.import(
+  "resource:///modules/CalReadableStreamFactory.jsm"
+);
+
 var cICL = Ci.calIChangeLog;
 
 function CalMemoryCalendar() {
@@ -14,22 +18,16 @@ function CalMemoryCalendar() {
 }
 var calMemoryCalendarClassID = Components.ID("{bda0dd7f-0a2f-4fcf-ba08-5517e6fbf133}");
 var calMemoryCalendarInterfaces = [
-  Ci.calICalendar,
-  Ci.calISchedulingSupport,
-  Ci.calIOfflineStorage,
-  Ci.calISyncWriteCalendar,
-  Ci.calICalendarProvider,
+  "calICalendar",
+  "calISchedulingSupport",
+  "calIOfflineStorage",
+  "calISyncWriteCalendar",
+  "calICalendarProvider",
 ];
 CalMemoryCalendar.prototype = {
   __proto__: cal.provider.BaseClass.prototype,
   classID: calMemoryCalendarClassID,
-  QueryInterface: cal.generateQI([
-    "calICalendar",
-    "calISchedulingSupport",
-    "calIOfflineStorage",
-    "calISyncWriteCalendar",
-    "calICalendarProvider",
-  ]),
+  QueryInterface: cal.generateQI(calMemoryCalendarInterfaces),
   classInfo: cal.generateCI({
     classID: calMemoryCalendarClassID,
     contractID: "@mozilla.org/calendar/calendar;1?type=memory",
@@ -52,20 +50,13 @@ CalMemoryCalendar.prototype = {
   //
   // calICalendarProvider interface
   //
-  get prefChromeOverlay() {
-    return null;
-  },
 
   get displayName() {
     return cal.l10n.getCalString("memoryName");
   },
 
   get shortName() {
-    return this.displayName();
-  },
-
-  createCalendar() {
-    throw Components.Exception("", Cr.NS_ERROR_NOT_IMPLEMENTED);
+    return this.displayName;
   },
 
   deleteCalendar(calendar, listener) {
@@ -78,6 +69,13 @@ CalMemoryCalendar.prototype = {
     } catch (ex) {
       // Don't bail out if the listener fails
     }
+  },
+
+  detectCalendars() {
+    throw Components.Exception(
+      "CalMemoryCalendar does not implement detectCalendars",
+      Cr.NS_ERROR_NOT_IMPLEMENTED
+    );
   },
 
   mRelaxedMode: undefined,
@@ -118,14 +116,14 @@ CalMemoryCalendar.prototype = {
     return "memory";
   },
 
-  // void addItem( in calIItemBase aItem, in calIOperationListener aListener );
-  addItem(aItem, aListener) {
+  // Promise<calIItemBase> addItem(in calIItemBase aItem);
+  async addItem(aItem) {
     let newItem = aItem.clone();
-    return this.adoptItem(newItem, aListener);
+    return this.adoptItem(newItem);
   },
 
-  // void adoptItem( in calIItemBase aItem, in calIOperationListener aListener );
-  adoptItem(aItem, aListener) {
+  // Promise<calIItemBase> adoptItem(in calIItemBase aItem);
+  async adoptItem(aItem) {
     if (this.readOnly) {
       throw Ci.calIErrors.CAL_IS_READONLY;
     }
@@ -135,13 +133,15 @@ CalMemoryCalendar.prototype = {
 
     if (aItem.id == null) {
       this.notifyOperationComplete(
-        aListener,
+        null,
         Cr.NS_ERROR_FAILURE,
         Ci.calIOperationListener.ADD,
         aItem.id,
         "Can't set ID on non-mutable item to addItem"
       );
-      return;
+      return Promise.reject(
+        new Components.Exception("Can't set ID on non-mutable item to addItem", Cr.NS_ERROR_FAILURE)
+      );
     }
 
     // Lines below are commented because of the offline bug 380060, the
@@ -174,42 +174,35 @@ CalMemoryCalendar.prototype = {
     parentItem.makeImmutable();
     this.mItems[aItem.id] = parentItem;
 
-    // notify the listener
-    this.notifyOperationComplete(
-      aListener,
-      Cr.NS_OK,
-      Ci.calIOperationListener.ADD,
-      aItem.id,
-      aItem
-    );
     // notify observers
     this.mObservers.notify("onAddItem", [aItem]);
+
+    return aItem;
   },
 
-  // void modifyItem( in calIItemBase aNewItem, in calIItemBase aOldItem, in calIOperationListener aListener );
-  modifyItem(aNewItem, aOldItem, aListener) {
+  // Promise<calIItemBase> modifyItem(in calIItemBase aNewItem, in calIItemBase aOldItem)
+  async modifyItem(aNewItem, aOldItem) {
     if (this.readOnly) {
       throw Ci.calIErrors.CAL_IS_READONLY;
     }
     if (!aNewItem) {
-      throw Components.Exception("", Cr.NS_ERROR_INVALID_ARG);
+      throw Components.Exception("aNewItem must be set", Cr.NS_ERROR_INVALID_ARG);
     }
 
-    let self = this;
-    function reportError(errStr, errId) {
-      self.notifyOperationComplete(
-        aListener,
-        errId ? errId : Cr.NS_ERROR_FAILURE,
+    let reportError = (errStr, errId = Cr.NS_ERROR_FAILURE) => {
+      this.notifyOperationComplete(
+        null,
+        errId,
         Ci.calIOperationListener.MODIFY,
         aNewItem.id,
         errStr
       );
-      return null;
-    }
+      return Promise.reject(new Components.Exception(errStr, errId));
+    };
 
     if (!aNewItem.id) {
       // this is definitely an error
-      return reportError(null, "ID for modifyItem item is null");
+      return reportError("ID for modifyItem item is null");
     }
 
     let modifiedItem = aNewItem.parentItem.clone();
@@ -275,7 +268,7 @@ CalMemoryCalendar.prototype = {
     this.mItems[modifiedItem.id] = modifiedItem;
 
     this.notifyOperationComplete(
-      aListener,
+      null,
       Cr.NS_OK,
       Ci.calIOperationListener.MODIFY,
       modifiedItem.id,
@@ -284,111 +277,59 @@ CalMemoryCalendar.prototype = {
 
     // notify observers
     this.mObservers.notify("onModifyItem", [modifiedItem, aOldItem]);
-    return null;
+    return modifiedItem;
   },
 
-  // void deleteItem( in calIItemBase aItem, in calIOperationListener aListener );
-  deleteItem(aItem, aListener) {
+  // Promise<void> deleteItem(in calIItemBase item);
+  async deleteItem(item) {
+    let onError = async (message, exception) => {
+      this.notifyOperationComplete(
+        null,
+        exception,
+        Ci.calIOperationListener.DELETE,
+        item.id,
+        message
+      );
+      return Promise.reject(new Components.Exception(message, exception));
+    };
+
     if (this.readOnly) {
-      this.notifyOperationComplete(
-        aListener,
-        Ci.calIErrors.CAL_IS_READONLY,
-        Ci.calIOperationListener.DELETE,
-        aItem.id,
-        "Calendar is readonly"
-      );
-      return;
+      return onError("Calendar is readonly", Ci.calIErrors.CAL_IS_READONLY);
     }
-    if (aItem.id == null) {
-      this.notifyOperationComplete(
-        aListener,
-        Cr.NS_ERROR_FAILURE,
-        Ci.calIOperationListener.DELETE,
-        aItem.id,
-        "ID is null in deleteItem"
-      );
-      return;
+
+    if (item.id == null) {
+      return onError("ID is null in deleteItem", Cr.NS_ERROR_FAILURE);
     }
 
     let oldItem;
     if (this.relaxedMode) {
-      oldItem = aItem;
+      oldItem = item;
     } else {
-      oldItem = this.mItems[aItem.id];
-      if (oldItem.generation != aItem.generation) {
-        this.notifyOperationComplete(
-          aListener,
-          Cr.NS_ERROR_FAILURE,
-          Ci.calIOperationListener.DELETE,
-          aItem.id,
-          "generation mismatch in deleteItem"
-        );
-        return;
+      oldItem = this.mItems[item.id];
+      if (oldItem.generation != item.generation) {
+        return onError("generation mismatch in deleteItem", Cr.NS_ERROR_FAILURE);
       }
     }
 
-    delete this.mItems[aItem.id];
-    this.mMetaData.delete(aItem.id);
+    delete this.mItems[item.id];
+    this.mMetaData.delete(item.id);
 
-    this.notifyOperationComplete(
-      aListener,
-      Cr.NS_OK,
-      Ci.calIOperationListener.DELETE,
-      aItem.id,
-      aItem
-    );
+    this.notifyOperationComplete(null, Cr.NS_OK, Ci.calIOperationListener.DELETE, item.id, item);
     // notify observers
     this.mObservers.notify("onDeleteItem", [oldItem]);
+    return null;
   },
 
-  // void getItem( in string id, in calIOperationListener aListener );
-  getItem(aId, aListener) {
-    if (!aListener) {
-      return;
-    }
-
-    if (aId == null || this.mItems[aId] == null) {
-      // querying by id is a valid use case, even if no item is returned:
-      this.notifyOperationComplete(aListener, Cr.NS_OK, Ci.calIOperationListener.GET, aId, null);
-      return;
-    }
-
-    let item = this.mItems[aId];
-    let iid = null;
-
-    if (item.isEvent()) {
-      iid = Ci.calIEvent;
-    } else if (item.isTodo()) {
-      iid = Ci.calITodo;
-    } else {
-      this.notifyOperationComplete(
-        aListener,
-        Cr.NS_ERROR_FAILURE,
-        Ci.calIOperationListener.GET,
-        aId,
-        "Can't deduce item type based on QI"
-      );
-      return;
-    }
-
-    aListener.onGetResult(this.superCalendar, Cr.NS_OK, iid, null, [item]);
-
-    this.notifyOperationComplete(aListener, Cr.NS_OK, Ci.calIOperationListener.GET, aId, null);
+  // Promise<calIItemBase|null> getItem(in string id);
+  async getItem(aId) {
+    return this.mItems[aId] || null;
   },
 
-  // void getItems( in unsigned long aItemFilter, in unsigned long aCount,
-  //                in calIDateTime aRangeStart, in calIDateTime aRangeEnd,
-  //                in calIOperationListener aListener );
-  getItems(aItemFilter, aCount, aRangeStart, aRangeEnd, aListener) {
-    cal.postPone(() => {
-      this.getItems_(aItemFilter, aCount, aRangeStart, aRangeEnd, aListener);
-    });
-  },
-  getItems_(aItemFilter, aCount, aRangeStart, aRangeEnd, aListener) {
-    if (!aListener) {
-      return;
-    }
-
+  // ReadableStream<calIItemBase> getItems(in unsigned long itemFilter,
+  //                                       in unsigned long count,
+  //                                       in calIDateTime rangeStart,
+  //                                       in calIDateTime rangeEnd)
+  getItems(itemFilter, count, rangeStart, rangeEnd) {
     const calICalendar = Ci.calICalendar;
 
     let itemsFound = [];
@@ -398,7 +339,7 @@ CalMemoryCalendar.prototype = {
     //
 
     let wantUnrespondedInvitations =
-      (aItemFilter & calICalendar.ITEM_FILTER_REQUEST_NEEDS_ACTION) != 0;
+      (itemFilter & calICalendar.ITEM_FILTER_REQUEST_NEEDS_ACTION) != 0;
     let superCal;
     try {
       superCal = this.superCalendar.QueryInterface(Ci.calISchedulingSupport);
@@ -411,60 +352,41 @@ CalMemoryCalendar.prototype = {
     }
 
     // item base type
-    let wantEvents = (aItemFilter & calICalendar.ITEM_FILTER_TYPE_EVENT) != 0;
-    let wantTodos = (aItemFilter & calICalendar.ITEM_FILTER_TYPE_TODO) != 0;
+    let wantEvents = (itemFilter & calICalendar.ITEM_FILTER_TYPE_EVENT) != 0;
+    let wantTodos = (itemFilter & calICalendar.ITEM_FILTER_TYPE_TODO) != 0;
     if (!wantEvents && !wantTodos) {
       // bail.
-      this.notifyOperationComplete(
-        aListener,
-        Cr.NS_ERROR_FAILURE,
-        Ci.calIOperationListener.GET,
-        null,
-        "Bad aItemFilter passed to getItems"
-      );
-      return;
+      return CalReadableStreamFactory.createEmptyReadableStream();
     }
 
     // completed?
-    let itemCompletedFilter = (aItemFilter & calICalendar.ITEM_FILTER_COMPLETED_YES) != 0;
-    let itemNotCompletedFilter = (aItemFilter & calICalendar.ITEM_FILTER_COMPLETED_NO) != 0;
+    let itemCompletedFilter = (itemFilter & calICalendar.ITEM_FILTER_COMPLETED_YES) != 0;
+    let itemNotCompletedFilter = (itemFilter & calICalendar.ITEM_FILTER_COMPLETED_NO) != 0;
     function checkCompleted(item) {
       item.QueryInterface(Ci.calITodo);
       return item.isCompleted ? itemCompletedFilter : itemNotCompletedFilter;
     }
 
     // return occurrences?
-    let itemReturnOccurrences = (aItemFilter & calICalendar.ITEM_FILTER_CLASS_OCCURRENCES) != 0;
+    let itemReturnOccurrences = (itemFilter & calICalendar.ITEM_FILTER_CLASS_OCCURRENCES) != 0;
 
-    // figure out the return interface type
-    let typeIID = null;
-    if (itemReturnOccurrences) {
-      typeIID = Ci.calIItemBase;
-    } else if (wantEvents && wantTodos) {
-      typeIID = Ci.calIItemBase;
-    } else if (wantEvents) {
-      typeIID = Ci.calIEvent;
-    } else if (wantTodos) {
-      typeIID = Ci.calITodo;
-    }
-
-    aRangeStart = cal.dtz.ensureDateTime(aRangeStart);
-    aRangeEnd = cal.dtz.ensureDateTime(aRangeEnd);
-    let startTime = -0x7ffffffffffffdff;
-    if (aRangeStart) {
-      startTime = aRangeStart.nativeTime;
+    rangeStart = cal.dtz.ensureDateTime(rangeStart);
+    rangeEnd = cal.dtz.ensureDateTime(rangeEnd);
+    let startTime = -9223372036854775000;
+    if (rangeStart) {
+      startTime = rangeStart.nativeTime;
     }
 
     let requestedFlag = 0;
-    if ((aItemFilter & calICalendar.ITEM_FILTER_OFFLINE_CREATED) != 0) {
+    if ((itemFilter & calICalendar.ITEM_FILTER_OFFLINE_CREATED) != 0) {
       requestedFlag = cICL.OFFLINE_FLAG_CREATED_RECORD;
-    } else if ((aItemFilter & calICalendar.ITEM_FILTER_OFFLINE_MODIFIED) != 0) {
+    } else if ((itemFilter & calICalendar.ITEM_FILTER_OFFLINE_MODIFIED) != 0) {
       requestedFlag = cICL.OFFLINE_FLAG_MODIFIED_RECORD;
-    } else if ((aItemFilter & calICalendar.ITEM_FILTER_OFFLINE_DELETED) != 0) {
+    } else if ((itemFilter & calICalendar.ITEM_FILTER_OFFLINE_DELETED) != 0) {
       requestedFlag = cICL.OFFLINE_FLAG_DELETED_RECORD;
     }
 
-    let matchOffline = function(itemFlag, reqFlag) {
+    let matchOffline = function (itemFlag, reqFlag) {
       // Same as storage calendar sql query. For comparison:
       // reqFlag is :offline_journal (parameter),
       // itemFlag is offline_journal (field value)
@@ -480,64 +402,76 @@ CalMemoryCalendar.prototype = {
       );
     };
 
-    cal.iterate.forEach(
-      this.mItems,
-      ([id, item]) => {
-        let isEvent_ = item.isEvent();
-        if (isEvent_) {
-          if (!wantEvents) {
-            return cal.iterate.forEach.CONTINUE;
-          }
-        } else if (!wantTodos) {
-          return cal.iterate.forEach.CONTINUE;
-        }
+    let self = this;
+    return CalReadableStreamFactory.createBoundedReadableStream(
+      count,
+      CalReadableStreamFactory.defaultQueueSize,
+      {
+        async start(controller) {
+          return new Promise(resolve => {
+            cal.iterate.forEach(
+              self.mItems,
+              ([id, item]) => {
+                let isEvent_ = item.isEvent();
+                if (isEvent_) {
+                  if (!wantEvents) {
+                    return cal.iterate.forEach.CONTINUE;
+                  }
+                } else if (!wantTodos) {
+                  return cal.iterate.forEach.CONTINUE;
+                }
 
-        let hasItemFlag = item.id in this.mOfflineFlags;
-        let itemFlag = hasItemFlag ? this.mOfflineFlags[item.id] : 0;
+                let hasItemFlag = item.id in self.mOfflineFlags;
+                let itemFlag = hasItemFlag ? self.mOfflineFlags[item.id] : 0;
 
-        // If the offline flag doesn't match, skip the item
-        if (!matchOffline(itemFlag, requestedFlag)) {
-          return cal.iterate.forEach.CONTINUE;
-        }
+                // If the offline flag doesn't match, skip the item
+                if (!matchOffline(itemFlag, requestedFlag)) {
+                  return cal.iterate.forEach.CONTINUE;
+                }
 
-        if (itemReturnOccurrences && item.recurrenceInfo) {
-          if (item.recurrenceInfo.recurrenceEndDate < startTime) {
-            return cal.iterate.forEach.CONTINUE;
-          }
+                if (itemReturnOccurrences && item.recurrenceInfo) {
+                  if (item.recurrenceInfo.recurrenceEndDate < startTime) {
+                    return cal.iterate.forEach.CONTINUE;
+                  }
 
-          let startDate = aRangeStart;
-          if (!aRangeStart && item.isTodo()) {
-            startDate = item.entryDate;
-          }
-          let occurrences = item.recurrenceInfo.getOccurrences(
-            startDate,
-            aRangeEnd,
-            aCount ? aCount - itemsFound.length : 0
-          );
-          if (wantUnrespondedInvitations) {
-            occurrences = occurrences.filter(checkUnrespondedInvitation);
-          }
-          if (!isEvent_) {
-            occurrences = occurrences.filter(checkCompleted);
-          }
-          itemsFound = itemsFound.concat(occurrences);
-        } else if (
-          (!wantUnrespondedInvitations || checkUnrespondedInvitation(item)) &&
-          (isEvent_ || checkCompleted(item)) &&
-          cal.item.checkIfInRange(item, aRangeStart, aRangeEnd)
-        ) {
-          // This needs fixing for recurring items, e.g. DTSTART of parent may occur before aRangeStart.
-          // This will be changed with bug 416975.
-          itemsFound.push(item);
-        }
-        if (aCount && itemsFound.length >= aCount) {
-          return cal.iterate.forEach.BREAK;
-        }
-        return cal.iterate.forEach.CONTINUE;
-      },
-      () => {
-        aListener.onGetResult(this.superCalendar, Cr.NS_OK, typeIID, null, itemsFound);
-        this.notifyOperationComplete(aListener, Cr.NS_OK, Ci.calIOperationListener.GET, null, null);
+                  let startDate = rangeStart;
+                  if (!rangeStart && item.isTodo()) {
+                    startDate = item.entryDate;
+                  }
+                  let occurrences = item.recurrenceInfo.getOccurrences(
+                    startDate,
+                    rangeEnd,
+                    count ? count - itemsFound.length : 0
+                  );
+                  if (wantUnrespondedInvitations) {
+                    occurrences = occurrences.filter(checkUnrespondedInvitation);
+                  }
+                  if (!isEvent_) {
+                    occurrences = occurrences.filter(checkCompleted);
+                  }
+                  itemsFound = itemsFound.concat(occurrences);
+                } else if (
+                  (!wantUnrespondedInvitations || checkUnrespondedInvitation(item)) &&
+                  (isEvent_ || checkCompleted(item)) &&
+                  cal.item.checkIfInRange(item, rangeStart, rangeEnd)
+                ) {
+                  // This needs fixing for recurring items, e.g. DTSTART of parent may occur before rangeStart.
+                  // This will be changed with bug 416975.
+                  itemsFound.push(item);
+                }
+                if (controller.maxTotalItemsReached) {
+                  return cal.iterate.forEach.BREAK;
+                }
+                return cal.iterate.forEach.CONTINUE;
+              },
+              () => {
+                controller.enqueue(itemsFound);
+                controller.close();
+                resolve();
+              }
+            );
+          });
+        },
       }
     );
   },
@@ -545,18 +479,11 @@ CalMemoryCalendar.prototype = {
   //
   // calIOfflineStorage interface
   //
-  addOfflineItem(aItem, aListener) {
+  async addOfflineItem(aItem) {
     this.mOfflineFlags[aItem.id] = cICL.OFFLINE_FLAG_CREATED_RECORD;
-    this.notifyOperationComplete(
-      aListener,
-      Cr.NS_OK,
-      Ci.calIOperationListener.ADD,
-      aItem.id,
-      aItem
-    );
   },
 
-  modifyOfflineItem(aItem, aListener) {
+  async modifyOfflineItem(aItem) {
     let oldFlag = this.mOfflineFlags[aItem.id];
     if (
       oldFlag != cICL.OFFLINE_FLAG_CREATED_RECORD &&
@@ -565,16 +492,11 @@ CalMemoryCalendar.prototype = {
       this.mOfflineFlags[aItem.id] = cICL.OFFLINE_FLAG_MODIFIED_RECORD;
     }
 
-    this.notifyOperationComplete(
-      aListener,
-      Cr.NS_OK,
-      Ci.calIOperationListener.MODIFY,
-      aItem.id,
-      aItem
-    );
+    this.notifyOperationComplete(null, Cr.NS_OK, Ci.calIOperationListener.MODIFY, aItem.id, aItem);
+    return aItem;
   },
 
-  deleteOfflineItem(aItem, aListener) {
+  async deleteOfflineItem(aItem) {
     let oldFlag = this.mOfflineFlags[aItem.id];
     if (oldFlag == cICL.OFFLINE_FLAG_CREATED_RECORD) {
       delete this.mItems[aItem.id];
@@ -583,31 +505,16 @@ CalMemoryCalendar.prototype = {
       this.mOfflineFlags[aItem.id] = cICL.OFFLINE_FLAG_DELETED_RECORD;
     }
 
-    this.notifyOperationComplete(
-      aListener,
-      Cr.NS_OK,
-      Ci.calIOperationListener.DELETE,
-      aItem.id,
-      aItem
-    );
     // notify observers
     this.observers.notify("onDeleteItem", [aItem]);
   },
 
-  getItemOfflineFlag(aItem, aListener) {
-    let flag = aItem && aItem.id in this.mOfflineFlags ? this.mOfflineFlags[aItem.id] : null;
-    this.notifyOperationComplete(aListener, Cr.NS_OK, Ci.calIOperationListener.GET, null, flag);
+  async getItemOfflineFlag(aItem) {
+    return aItem && aItem.id in this.mOfflineFlags ? this.mOfflineFlags[aItem.id] : null;
   },
 
-  resetItemOfflineFlag(aItem, aListener) {
+  async resetItemOfflineFlag(aItem) {
     delete this.mOfflineFlags[aItem.id];
-    this.notifyOperationComplete(
-      aListener,
-      Cr.NS_OK,
-      Ci.calIOperationListener.MODIFY,
-      aItem.id,
-      aItem
-    );
   },
 
   //

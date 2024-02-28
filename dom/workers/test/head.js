@@ -3,8 +3,6 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 "use strict";
 
-const EXAMPLE_URL = "http://example.com/browser/dom/workers/test/";
-
 /**
  * Add a tab with given `url`. Returns a promise
  * that will be resolved when the tab finished loading.
@@ -56,8 +54,8 @@ function postMessageToWorkerInTab(tab, url, message) {
     (urlChild, messageChild) => {
       let worker = content._workers[urlChild];
       worker.postMessage(messageChild);
-      return new Promise(function(resolve) {
-        worker.onmessage = function(event) {
+      return new Promise(function (resolve) {
+        worker.onmessage = function (event) {
           worker.onmessage = null;
           resolve(event.data);
         };

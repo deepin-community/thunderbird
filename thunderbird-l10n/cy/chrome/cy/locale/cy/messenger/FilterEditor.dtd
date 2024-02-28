@@ -3,7 +3,6 @@
    - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
 
 <!ENTITY window.title "Rheolau Hidlo">
-<!ENTITY filterEditorDialog.dimensions "width: 100ch;">
 <!ENTITY filterName.label "Enw'r hidl:">
 <!ENTITY filterName.accesskey "E">
 
@@ -27,7 +26,6 @@
 <!ENTITY contextOutgoing.accesskey "n">
 <!ENTITY contextArchive.label "Archifo">
 <!ENTITY contextArchive.accesskey "A">
-
 <!ENTITY contextPeriodic.accesskey "e">
 
 <!ENTITY filterActionDesc.label "Gwneud hyn:">
@@ -42,7 +40,7 @@
 <!ENTITY forwardTo.label "Anfon Neges Ymlaen i">
 <!ENTITY replyWithTemplate.label "Ateb gyda Thempled">
 <!ENTITY markMessageRead.label "Marcio wedi Darllen">
-<!ENTITY markMessageUnread.label "Marcio Heb ei Ddarllen">
+<!ENTITY markMessageUnread.label "Marcio Heb ei Darllen">
 <!ENTITY markMessageStarred.label "Ychwanegu Seren">
 <!ENTITY setPriority.label "Gosod Blaenoriaeth i">
 <!ENTITY addTag.label "Tagio Neges">

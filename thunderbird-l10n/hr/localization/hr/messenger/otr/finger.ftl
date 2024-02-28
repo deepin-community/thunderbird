@@ -2,11 +2,9 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-otr-finger =
-    .buttonlabelaccept = Zatvori
-    .title = Prethodno viđeni neslužbeni digitalni otisci
+otr-finger-title = Prethodno viđeni OTR otisci prstiju
 
-finger-intro = Otisci prsta OTR ključa iz prethodnih potpuno kriptiranih razgovora.
+finger-intro = Otisci prsta OTR ključa iz prethodnih obostrano šifriranih razgovora.
 
 finger-screen-name =
     .label = Kontakt

@@ -10,7 +10,7 @@ const TEST_URI =
   "http://example.com/browser/devtools/client/webconsole/" +
   "test/browser/test-reopen-closed-tab.html";
 
-add_task(async function() {
+add_task(async function () {
   // If we persist log, the test might be successful even if only the first
   // error log is shown.
   pushPref("devtools.webconsole.persistlog", false);
@@ -22,7 +22,7 @@ add_task(async function() {
   await clearOutput(hud);
 
   expectUncaughtExceptionNoE10s();
-  await refreshTab();
+  await reloadBrowser();
   await waitForError(hud);
 
   // Close and reopen
@@ -33,13 +33,13 @@ add_task(async function() {
   hud = await openNewTabAndConsole(TEST_URI);
 
   expectUncaughtExceptionNoE10s();
-  await refreshTab();
+  await reloadBrowser();
   await waitForError(hud);
 });
 
 async function waitForError(hud) {
   info("Wait for error message");
-  await waitFor(() => findMessage(hud, "fooBug597756_error", ".message.error"));
+  await waitFor(() => findErrorMessage(hud, "fooBug597756_error"));
   ok(true, "error message displayed");
 }
 

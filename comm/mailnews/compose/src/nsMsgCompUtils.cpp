@@ -6,8 +6,9 @@
 #include "nsMsgCompUtils.h"
 #include "nsIPrefService.h"
 #include "nsIPrefBranch.h"
+#include "nsStringFwd.h"
 #include "prmem.h"
-#include "nsMsgSend.h"
+#include "nsIStringBundle.h"
 #include "nsIIOService.h"
 #include "nsIHttpProtocolHandler.h"
 #include "nsMailHeaders.h"
@@ -30,9 +31,8 @@
 #include "nsCRTGlue.h"
 #include <ctype.h>
 #include "mozilla/dom/Element.h"
-#include "mozilla/mailnews/Services.h"
 #include "mozilla/EncodingDetector.h"
-#include "mozilla/Services.h"
+#include "mozilla/Components.h"
 #include "mozilla/UniquePtr.h"
 #include "mozilla/Unused.h"
 #include "mozilla/ContentIterator.h"
@@ -42,6 +42,10 @@
 #include "nsIMutableArray.h"
 #include "nsIRandomGenerator.h"
 #include "nsID.h"
+
+void msg_generate_message_id(nsIMsgIdentity* identity,
+                             const nsACString& customHost,
+                             nsACString& messageID);
 
 NS_IMPL_ISUPPORTS(nsMsgCompUtils, nsIMsgCompUtils)
 
@@ -58,10 +62,12 @@ NS_IMETHODIMP nsMsgCompUtils::MimeMakeSeparator(const char* prefix,
 }
 
 NS_IMETHODIMP nsMsgCompUtils::MsgGenerateMessageId(nsIMsgIdentity* identity,
-                                                   char** _retval) {
+                                                   const nsACString& host,
+                                                   nsACString& messageID) {
+  // We don't check `host` because it's allowed to be a null pointer (which
+  // means we should ignore it for message ID generation).
   NS_ENSURE_ARG_POINTER(identity);
-  NS_ENSURE_ARG_POINTER(_retval);
-  *_retval = msg_generate_message_id(identity);
+  msg_generate_message_id(identity, host, messageID);
   return NS_OK;
 }
 
@@ -176,11 +182,6 @@ nsresult mime_sanity_check_fields(
 
   return mime_sanity_check_fields_recipients(to, cc, bcc, newsgroups);
 }
-
-//
-// Generate the message headers for the new RFC822 message
-//
-#define UA_PREF_PREFIX "general.useragent."
 
 // Helper macro for generating the X-Mozilla-Draft-Info header.
 #define APPEND_BOOL(method, param)         \
@@ -298,16 +299,44 @@ nsresult mime_generate_headers(nsIMsgCompFields* fields,
     finalHeaders->SetRawHeader(HEADER_X_MOZILLA_DRAFT_INFO, draftInfo);
   }
 
-  nsCOMPtr<nsIHttpProtocolHandler> pHTTPHandler =
-      do_GetService(NS_NETWORK_PROTOCOL_CONTRACTID_PREFIX "http", &rv);
-  if (NS_SUCCEEDED(rv) && pHTTPHandler) {
-    nsAutoCString userAgentString;
-    // Ignore error since we're testing the return value.
-    mozilla::Unused << pHTTPHandler->GetUserAgent(userAgentString);
+  bool sendUserAgent = false;
+  if (prefs) {
+    prefs->GetBoolPref("mailnews.headers.sendUserAgent", &sendUserAgent);
+  }
+  if (sendUserAgent) {
+    bool useMinimalUserAgent = false;
+    if (prefs) {
+      prefs->GetBoolPref("mailnews.headers.useMinimalUserAgent",
+                         &useMinimalUserAgent);
+    }
+    if (useMinimalUserAgent) {
+      nsCOMPtr<nsIStringBundleService> bundleService =
+          mozilla::components::StringBundle::Service();
+      if (bundleService) {
+        nsCOMPtr<nsIStringBundle> brandBundle;
+        rv = bundleService->CreateBundle(
+            "chrome://branding/locale/brand.properties",
+            getter_AddRefs(brandBundle));
+        if (NS_SUCCEEDED(rv)) {
+          nsString brandName;
+          brandBundle->GetStringFromName("brandFullName", brandName);
+          if (!brandName.IsEmpty())
+            finalHeaders->SetUnstructuredHeader("User-Agent", brandName);
+        }
+      }
+    } else {
+      nsCOMPtr<nsIHttpProtocolHandler> pHTTPHandler =
+          do_GetService(NS_NETWORK_PROTOCOL_CONTRACTID_PREFIX "http", &rv);
+      if (NS_SUCCEEDED(rv) && pHTTPHandler) {
+        nsAutoCString userAgentString;
+        // Ignore error since we're testing the return value.
+        mozilla::Unused << pHTTPHandler->GetUserAgent(userAgentString);
 
-    if (!userAgentString.IsEmpty())
-      finalHeaders->SetUnstructuredHeader(
-          "User-Agent", NS_ConvertUTF8toUTF16(userAgentString));
+        if (!userAgentString.IsEmpty())
+          finalHeaders->SetUnstructuredHeader(
+              "User-Agent", NS_ConvertUTF8toUTF16(userAgentString));
+      }
+    }
   }
 
   finalHeaders->SetUnstructuredHeader("MIME-Version", u"1.0"_ns);
@@ -370,7 +399,7 @@ nsresult mime_generate_headers(nsIMsgCompFields* fields,
       fields->HasHeader("Bcc", &hasBcc);
       if (hasBcc) {
         nsCOMPtr<nsIStringBundleService> stringService =
-            mozilla::services::GetStringBundleService();
+            mozilla::components::StringBundle::Service();
         if (stringService) {
           nsCOMPtr<nsIStringBundle> composeStringBundle;
           rv = stringService->CreateBundle(
@@ -383,7 +412,7 @@ nsresult mime_generate_headers(nsIMsgCompFields* fields,
                                                         undisclosedRecipients);
             if (NS_SUCCEEDED(rv) && !undisclosedRecipients.IsEmpty()) {
               nsCOMPtr<nsIMsgHeaderParser> headerParser(
-                  mozilla::services::GetHeaderParser());
+                  mozilla::components::HeaderParser::Service());
               nsCOMPtr<msgIAddressObject> group;
               nsTArray<RefPtr<msgIAddressObject>> noRecipients;
               headerParser->MakeGroupObject(undisclosedRecipients, noRecipients,
@@ -492,336 +521,88 @@ char* mime_make_separator(const char* prefix) {
       rand_buf[10], rand_buf[11]);
 }
 
-static char* LegacyParmFolding(const nsCString& aCharset,
-                               const nsCString& aFileName,
-                               int32_t aParmFolding);
+// Tests if the content of a string is a valid host name.
+// In this case, a valid host name is any non-empty string that only contains
+// letters (a-z + A-Z), numbers (0-9) and the characters '-', '_' and '.'.
+static bool isValidHost(const nsCString& host) {
+  if (host.IsEmpty()) {
+    return false;
+  }
 
-char* mime_generate_attachment_headers(
-    const char* type, const char* type_param, const char* encoding,
-    const char* description, const char* x_mac_type, const char* x_mac_creator,
-    const char* real_name, const char* base_url, bool /*digest_p*/,
-    nsMsgAttachmentHandler* /*ma*/, const char* attachmentCharset,
-    bool bodyIsAsciiOnly, const char* content_id, bool aBodyDocument) {
-  NS_ASSERTION(encoding, "null encoding");
-
-  int32_t parmFolding = 2;  // RFC 2231-compliant
-  nsCOMPtr<nsIPrefBranch> prefs(do_GetService(NS_PREFSERVICE_CONTRACTID));
-  if (prefs) prefs->GetIntPref("mail.strictly_mime.parm_folding", &parmFolding);
-
-  /* Let's encode the real name */
-  char* encodedRealName = nullptr;
-  nsAutoString realName;
-  if (real_name) {
-    encodedRealName = RFC2231ParmFolding("filename", real_name);
-    // somehow RFC2231ParamFolding failed. fall back to legacy method
-    if (!encodedRealName || !*encodedRealName) {
-      PR_FREEIF(encodedRealName);
-      parmFolding = 0;
-      // Not RFC 2231 style encoding (it's not standard-compliant)
-      encodedRealName = LegacyParmFolding(
-          "UTF-8"_ns, nsDependentCString(real_name), parmFolding);
+  const auto* cur = host.BeginReading();
+  const auto* end = host.EndReading();
+  for (; cur < end; ++cur) {
+    if (!isalpha(*cur) && !isdigit(*cur) && *cur != '-' && *cur != '_' &&
+        *cur != '.') {
+      return false;
     }
   }
 
-  nsCString buf;  // very likely to be longer than 64 characters
-  buf.AppendLiteral("Content-Type: ");
-  buf.Append(type);
-  if (type_param && *type_param) {
-    if (*type_param != ';') buf.AppendLiteral("; ");
-    buf.Append(type_param);
-  }
-
-  if (mime_type_needs_charset(type)) {
-    char charset_label[65] = "";  // Content-Type: charset
-    if (attachmentCharset) {
-      PL_strncpy(charset_label, attachmentCharset, sizeof(charset_label) - 1);
-      charset_label[sizeof(charset_label) - 1] = '\0';
-    }
-
-    // If the characters are all 7bit, arguably it's better to
-    // claim the charset to be US-ASCII. However, it causes
-    // a major 'interoperability problem' with MS OE, which makes it hard
-    // to sell Mozilla/TB to people most of whose correspondents use
-    // MS OE. MS OE turns all non-ASCII characters to question marks
-    // in replies to messages labeled as US-ASCII if users select 'send as is'
-    // with MIME turned on. (with MIME turned off, this happens without
-    // any warning.) To avoid this, we use the label 'US-ASCII' only when
-    // it's explicitly requested by setting the hidden pref.
-    // 'mail.label_ascii_only_mail_as_us_ascii'. (bug 247958)
-    bool labelAsciiAsAscii = false;
-    if (prefs)
-      prefs->GetBoolPref("mail.label_ascii_only_mail_as_us_ascii",
-                         &labelAsciiAsAscii);
-    if (labelAsciiAsAscii && encoding && !PL_strcasecmp(encoding, "7bit") &&
-        bodyIsAsciiOnly)
-      PL_strcpy(charset_label, "us-ascii");
-
-    // If charset is multibyte then no charset to be specified (apply base64
-    // instead). The list of file types match with PickEncoding() where we put
-    // base64 label.
-    if (((attachmentCharset &&
-          !nsMsgI18Nmultibyte_charset(attachmentCharset)) ||
-         ((PL_strcasecmp(type, TEXT_HTML) == 0) ||
-          (PL_strcasecmp(type, TEXT_MDL) == 0) ||
-          (PL_strcasecmp(type, TEXT_PLAIN) == 0) ||
-          (PL_strcasecmp(type, TEXT_RICHTEXT) == 0) ||
-          (PL_strcasecmp(type, TEXT_ENRICHED) == 0) ||
-          (PL_strcasecmp(type, TEXT_VCARD) == 0) ||
-          (PL_strcasecmp(type, APPLICATION_DIRECTORY) ==
-           0) || /* text/vcard synonym */
-          (PL_strcasecmp(type, TEXT_CSS) == 0) ||
-          (PL_strcasecmp(type, TEXT_JSSS) == 0)) ||
-         (PL_strcasecmp(encoding, ENCODING_BASE64) != 0)) &&
-        (*charset_label)) {
-      buf.AppendLiteral("; charset=");
-      buf.Append(charset_label);
-    }
-  }
-
-  // Only do this if we are in the body of a message
-  if (aBodyDocument) {
-    // Add format=flowed as in RFC 2646 if we are using that
-    if (type && !PL_strcasecmp(type, "text/plain")) {
-      bool flowed, formatted;
-      GetSerialiserFlags(&flowed, &formatted);
-      if (flowed) buf.AppendLiteral("; format=flowed");
-      // else
-      // {
-      // Don't add a markup. Could use
-      //        PUSH_STRING ("; format=fixed");
-      // but it is equivalent to nothing at all and we do want
-      // to save bandwidth. Don't we?
-      // }
-    }
-  }
-
-  if (x_mac_type && *x_mac_type) {
-    buf.AppendLiteral("; x-mac-type=\"");
-    buf.Append(x_mac_type);
-    buf.Append('"');
-  }
-
-  if (x_mac_creator && *x_mac_creator) {
-    buf.AppendLiteral("; x-mac-creator=\"");
-    buf.Append(x_mac_creator);
-    buf.Append('"');
-  }
-
-#ifdef EMIT_NAME_IN_CONTENT_TYPE
-  if (encodedRealName && *encodedRealName) {
-    // Note that we don't need to output the name field if the name encoding is
-    // RFC 2231. If the MUA knows the RFC 2231, it should know the RFC 2183 too.
-    if (parmFolding != 2) {
-      // The underlying JS MIME code will only handle UTF-8 here.
-      char* nameValue = LegacyParmFolding(
-          "UTF-8"_ns, nsDependentCString(real_name), parmFolding);
-      if (!nameValue || !*nameValue) {
-        PR_FREEIF(nameValue);
-        nameValue = encodedRealName;
-      }
-      buf.AppendLiteral(";\r\n name=\"");
-      buf.Append(nameValue);
-      buf.Append('"');
-      if (nameValue != encodedRealName) PR_FREEIF(nameValue);
-    }
-  }
-#endif /* EMIT_NAME_IN_CONTENT_TYPE */
-  buf.Append(CRLF);
-
-  buf.AppendLiteral("Content-Transfer-Encoding: ");
-  buf.Append(encoding);
-  buf.Append(CRLF);
-
-  if (description && *description) {
-    char* s = mime_fix_header(description);
-    if (s) {
-      buf.AppendLiteral("Content-Description: ");
-      buf.Append(s);
-      buf.Append(CRLF);
-      PR_Free(s);
-    }
-  }
-
-  if ((content_id) && (*content_id)) {
-    buf.AppendLiteral("Content-ID: <");
-    buf.Append(content_id);
-    buf.Append('>');
-    buf.Append(CRLF);
-  }
-
-  if (encodedRealName && *encodedRealName) {
-    char* period = PL_strrchr(encodedRealName, '.');
-    int32_t pref_content_disposition = 0;
-
-    if (prefs) {
-      mozilla::DebugOnly<nsresult> rv = prefs->GetIntPref(
-          "mail.content_disposition_type", &pref_content_disposition);
-      NS_ASSERTION(NS_SUCCEEDED(rv),
-                   "failed to get mail.content_disposition_type");
-    }
-
-    buf.AppendLiteral("Content-Disposition: ");
-
-    // If this is an attachment which is part of the message body and therefore
-    // has a Content-ID (e.g, image in HTML msg), then Content-Disposition has
-    // to be inline
-    if (content_id && *content_id)
-      buf.AppendLiteral("inline");
-    else if (pref_content_disposition == 1)
-      buf.AppendLiteral("attachment");
-    else if (pref_content_disposition == 2 &&
-             (!PL_strcasecmp(type, TEXT_PLAIN) ||
-              (period && !PL_strcasecmp(period, ".txt"))))
-      buf.AppendLiteral("attachment");
-
-    // If this document is an anonymous binary file or a vcard,
-    // then always show it as an attachment, never inline.
-    else if (!PL_strcasecmp(type, APPLICATION_OCTET_STREAM) ||
-             !PL_strcasecmp(type, TEXT_VCARD) ||
-             !PL_strcasecmp(type,
-                            APPLICATION_DIRECTORY)) /* text/vcard synonym */
-      buf.AppendLiteral("attachment");
-    else
-      buf.AppendLiteral("inline");
-
-    buf.AppendLiteral(";\r\n ");
-    buf.Append(encodedRealName);
-    buf.Append(CRLF);
-  } else if (type && (!PL_strcasecmp(type, MESSAGE_RFC822) ||
-                      !PL_strcasecmp(type, MESSAGE_NEWS)))
-    buf.AppendLiteral("Content-Disposition: inline" CRLF);
-
-#ifdef GENERATE_CONTENT_BASE
-  // If this is an HTML document, and we know the URL it originally
-  // came from, write out a Content-Base header.
-  if (type &&
-      (!PL_strcasecmp(type, TEXT_HTML) || !PL_strcasecmp(type, TEXT_MDL)) &&
-      base_url && *base_url) {
-    int32_t col = 0;
-    const char* s = base_url;
-    const char* colon = PL_strchr(s, ':');
-    bool useContentLocation = false; /* rhp - add this  */
-
-    if (!colon) goto GIVE_UP_ON_CONTENT_BASE; /* malformed URL? */
-
-    // Don't emit a content-base that points to (or into) a news or
-    // mail message.
-    if (!PL_strncasecmp(s, "news:", 5) || !PL_strncasecmp(s, "snews:", 6) ||
-        !PL_strncasecmp(s, "IMAP:", 5) ||
-        !PL_strncasecmp(
-            s, "file:", 5) || /* rhp: fix targets from included HTML files */
-        !PL_strncasecmp(s, "mailbox:", 8))
-      goto GIVE_UP_ON_CONTENT_BASE;
-
-    // rhp - Put in a pref for using Content-Location instead of Content-Base.
-    //       This will get tweaked to default to true in 5.0
-    if (prefs)
-      prefs->GetBoolPref("mail.use_content_location_on_send",
-                         &useContentLocation);
-
-    if (useContentLocation)
-      buf.AppendLiteral("Content-Location: ");
-    else
-      buf.AppendLiteral("Content-Base: ");
-    /* rhp - Pref for Content-Location usage */
-
-  /* rhp: this is to work with the Content-Location stuff */
-  CONTENT_LOC_HACK:
-
-    while (*s != 0 && *s != '#') {
-      uint32_t ot = buf.Length();
-      char tmp[] = "\x00\x00";
-      /* URLs must be wrapped at 40 characters or less. */
-      if (col >= 38) {
-        buf.Append(CRLF "\t");
-        col = 0;
-      }
-
-      if (*s == ' ')
-        buf.AppendLiteral("%20");
-      else if (*s == '\t')
-        buf.AppendLiteral("%09");
-      else if (*s == '\n')
-        buf.AppendLiteral("%0A");
-      else if (*s == '\r')
-        buf.AppendLiteral("%0D");
-      else {
-        tmp[0] = *s;
-        buf.Append(tmp);
-      }
-      s++;
-      col += (buf.Length() - ot);
-    }
-    buf.AppendLiteral(CRLF);
-
-    // rhp: this is to try to get around this fun problem with Content-Location
-    if (!useContentLocation) {
-      buf.AppendLiteral("Content-Location: ");
-      s = base_url;
-      col = 0;
-      useContentLocation = true;
-      goto CONTENT_LOC_HACK;
-    }
-    // rhp: this is to try to get around this fun problem with Content-Location
-
-  GIVE_UP_ON_CONTENT_BASE:;
-  }
-#endif /* GENERATE_CONTENT_BASE */
-
-  /* realloc it smaller... */
-
-#ifdef DEBUG_jungshik
-  printf("header=%s\n", buf.get());
-#endif
-  PR_Free(encodedRealName);
-  return PL_strdup(buf.get());
+  return true;
 }
 
-static bool isValidHost(const char* host) {
-  if (host)
-    for (const char* s = host; *s; ++s)
-      if (!isalpha(*s) && !isdigit(*s) && *s != '-' && *s != '_' && *s != '.') {
-        host = nullptr;
-        break;
-      }
+// Extract the domain name from an address.
+// If none could be found (i.e. the address does not contain an '@' sign, or
+// the value following it is not a valid domain), then nullptr is returned.
+void msg_domain_name_from_address(const nsACString& address, nsACString& host) {
+  auto atIndex = address.FindChar('@');
 
-  return nullptr != host;
+  if (address.IsEmpty() || atIndex == kNotFound) {
+    return;
+  }
+
+  // Substring() should handle cases where we would go out of bounds (by
+  // preventing the index from exceeding the length of the source string), so we
+  // don't need to handle this here.
+  host = Substring(address, atIndex + 1);
 }
 
-char* msg_generate_message_id(nsIMsgIdentity* identity) {
-  const char* host = 0;
+// Generate a value for a Message-Id header using the identity and optional
+// hostname provided.
+void msg_generate_message_id(nsIMsgIdentity* identity,
+                             const nsACString& customHost,
+                             nsACString& messageID) {
+  nsCString host;
 
+  // Check if the identity forces host name. This is sometimes the case when
+  // using newsgroup.
   nsCString forcedFQDN;
-  nsCString from;
-  nsresult rv = NS_OK;
-
-  rv = identity->GetCharAttribute("FQDN", forcedFQDN);
-
-  if (NS_SUCCEEDED(rv) && !forcedFQDN.IsEmpty()) host = forcedFQDN.get();
-
-  if (!isValidHost(host)) {
-    nsresult rv = identity->GetEmail(from);
-    if (NS_SUCCEEDED(rv) && !from.IsEmpty()) host = strchr(from.get(), '@');
-
-    // No '@'? Munged address, anti-spam?
-    // see bug #197203
-    if (host) ++host;
+  nsresult rv = identity->GetCharAttribute("FQDN", forcedFQDN);
+  if (NS_SUCCEEDED(rv) && !forcedFQDN.IsEmpty()) {
+    host = forcedFQDN;
   }
 
-  if (!isValidHost(host))
-    // If we couldn't find a valid host name to use, we can't generate a
-    // valid message ID, so bail, and let NNTP and SMTP generate them.
-    return 0;
+  // If no valid host name has been set, try using the value defined by the
+  // caller, if any.
+  if (!isValidHost(host)) {
+    host = customHost;
+  }
 
-  // Generate 128-bit UUID for the local part. We use the high-entropy
-  // GenerateGlobalRandomBytes to make tracking more difficult.
-  nsID uuid;
-  GenerateGlobalRandomBytes((unsigned char*)&uuid, sizeof(nsID));
+  // If no valid host name has been set, try extracting one from the email
+  // address associated with the identity.
+  if (!isValidHost(host)) {
+    nsCString from;
+    rv = identity->GetEmail(from);
+    if (NS_SUCCEEDED(rv) && !from.IsEmpty()) {
+      msg_domain_name_from_address(from, host);
+    }
+  }
+
+  // If we still couldn't find a valid host name to use, we can't generate a
+  // valid message ID, so bail, and let NNTP and SMTP generate them.
+  if (!isValidHost(host)) {
+    return;
+  }
+
+  // Generate 128-bit UUID for the local part of the ID. `nsID` provides us with
+  // cryptographically-secure generation.
+  nsID uuid = nsID::GenerateUUID();
   char uuidString[NSID_LENGTH];
   uuid.ToProvidedString(uuidString);
   // Drop first and last characters (curly braces).
   uuidString[NSID_LENGTH - 2] = 0;
-  return PR_smprintf("<%s@%s>", uuidString + 1, host);
+
+  messageID.AppendPrintf("<%s@%s>", uuidString + 1, host.get());
 }
 
 // this is to guarantee the folded line will never be greater
@@ -930,28 +711,6 @@ char* msg_generate_message_id(nsIMsgIdentity* identity) {
   }
 
   return foldedParm;
-}
-
-/*static */ char* LegacyParmFolding(const nsCString& aCharset,
-                                    const nsCString& aFileName,
-                                    int32_t aParmFolding) {
-  bool usemime = nsMsgMIMEGetConformToStandard();
-  char* encodedRealName = nsMsgI18NEncodeMimePartIIStr(
-      aFileName.get(), false, aCharset.get(), 0, usemime);
-
-  if (!encodedRealName || !*encodedRealName) {
-    PR_FREEIF(encodedRealName);
-    encodedRealName = (char*)PR_Malloc(aFileName.Length() + 1);
-    if (encodedRealName) PL_strcpy(encodedRealName, aFileName.get());
-  }
-
-  // Now put backslashes before special characters per RFC 822
-  char* qtextName = msg_make_filename_qtext(encodedRealName, aParmFolding == 0);
-  if (qtextName) {
-    PR_FREEIF(encodedRealName);
-    encodedRealName = qtextName;
-  }
-  return encodedRealName;
 }
 
 bool mime_7bit_data_p(const char* string, uint32_t size) {
@@ -1168,134 +927,11 @@ char* msg_make_filename_qtext(const char* srcText, bool stripCRLFs) {
   return newString;
 }
 
-// Rip apart the URL and extract a reasonable value for the `real_name' slot.
-void msg_pick_real_name(nsMsgAttachmentHandler* attachment,
-                        const char16_t* proposedName) {
-  const char *s, *s2;
-
-  if (!attachment->m_realName.IsEmpty()) return;
-
-  if (proposedName && *proposedName) {
-    attachment->m_realName.Adopt(ToNewUTF8String(nsAutoString(proposedName)));
-  } else  // Let's extract the name from the URL
-  {
-    nsCString url;
-    nsresult rv = attachment->mURL->GetSpec(url);
-    if (NS_FAILED(rv)) return;
-
-    s = url.get();
-    s2 = PL_strchr(s, ':');
-    if (s2) s = s2 + 1;
-    // If we know the URL doesn't have a sensible file name in it,
-    // don't bother emitting a content-disposition.
-    if (StringBeginsWith(url, "news:"_ns, nsCaseInsensitiveCStringComparator) ||
-        StringBeginsWith(url, "snews:"_ns,
-                         nsCaseInsensitiveCStringComparator) ||
-        StringBeginsWith(url, "IMAP:"_ns, nsCaseInsensitiveCStringComparator) ||
-        StringBeginsWith(url, "mailbox:"_ns,
-                         nsCaseInsensitiveCStringComparator))
-      return;
-
-    if (StringBeginsWith(url, "data:"_ns, nsCaseInsensitiveCStringComparator)) {
-      int32_t endNonData = url.FindChar(',');
-      if (endNonData == -1) return;
-      nsCString nonDataPart(Substring(url, 5, endNonData - 5));
-      int32_t filenamePos = nonDataPart.Find("filename=");
-      if (filenamePos != -1) {
-        filenamePos += 9;
-        int32_t endFilename = nonDataPart.FindChar(';', filenamePos);
-        if (endFilename == -1) endFilename = endNonData;
-        attachment->m_realName =
-            Substring(nonDataPart, filenamePos, endFilename - filenamePos);
-      } else {
-        // no filename; need to construct one based on the content type.
-        nsCOMPtr<nsIMIMEService> mimeService(
-            do_GetService(NS_MIMESERVICE_CONTRACTID));
-        if (!mimeService) return;
-        nsCOMPtr<nsIMIMEInfo> mimeInfo;
-        nsCString mediaType(
-            Substring(nonDataPart, 0, nonDataPart.FindChar(';')));
-        mimeService->GetFromTypeAndExtension(mediaType, EmptyCString(),
-                                             getter_AddRefs(mimeInfo));
-        if (!mimeInfo) return;
-        nsCString filename;
-        nsCString extension;
-        mimeInfo->GetPrimaryExtension(extension);
-        unsigned char filePrefixBytes[8];
-        GenerateGlobalRandomBytes(filePrefixBytes, 8);
-        // Create a filename prefix with 16 lowercase letters,
-        // representing 8 bytes.
-        for (int32_t i = 0; i < 8; i++) {
-          // A pair of letters, each any of (a-p).
-          filename.Append((filePrefixBytes[i] & 0xF) + 'a');
-          filename.Append((filePrefixBytes[i] >> 4) + 'a');
-        }
-        filename.Append('.');
-        filename.Append(extension);
-        attachment->m_realName = filename;
-      }
-    } else {
-      /* Take the part of the file name after the last / or \ */
-      s2 = PL_strrchr(s, '/');
-      if (s2) s = s2 + 1;
-      s2 = PL_strrchr(s, '\\');
-
-      if (s2) s = s2 + 1;
-      /* Copy it into the attachment struct. */
-      attachment->m_realName = s;
-      int32_t charPos = attachment->m_realName.FindChar('?');
-      if (charPos != -1) attachment->m_realName.SetLength(charPos);
-      /* Now trim off any named anchors or search data. */
-      charPos = attachment->m_realName.FindChar('#');
-      if (charPos != -1) attachment->m_realName.SetLength(charPos);
-    }
-    /* Now lose the %XX crap. */
-    nsCString unescaped_real_name;
-    MsgUnescapeString(attachment->m_realName, 0, unescaped_real_name);
-    attachment->m_realName = unescaped_real_name;
-  }
-
-  // Now a special case for attaching uuencoded files...
-
-  // If we attach a file "foo.txt.uu", we will send it out with
-  // Content-Type: text/plain; Content-Transfer-Encoding: x-uuencode.
-  // When saving such a file, a mail reader will generally decode it first
-  // (thus removing the uuencoding.)  So, let's make life a little easier by
-  // removing the indication of uuencoding from the file name itself.  (This
-  // will presumably make the file name in the Content-Disposition header be
-  // the same as the file name in the "begin" line of the uuencoded data.)
-
-  // However, since there are mailers out there (including earlier versions of
-  // Mozilla) that will use "foo.txt.uu" as the file name, we still need to
-  // cope with that; the code which copes with that is in the MIME parser, in
-  // libmime/mimei.c.
-  if (attachment->m_already_encoded_p && !attachment->m_encoding.IsEmpty()) {
-    // #### XXX TOTAL KLUDGE.
-    // I'd like to ask the mime.types file, "what extensions correspond
-    // to obj->encoding (which happens to be "x-uuencode") but doing that
-    // in a non-sphagetti way would require brain surgery.  So, since
-    // currently uuencode is the only content-transfer-encoding which we
-    // understand which traditionally has an extension, we just special-
-    // case it here!
-
-    // Note that it's special-cased in a similar way in libmime/mimei.c.
-    if (attachment->m_encoding.LowerCaseEqualsLiteral(ENCODING_UUENCODE) ||
-        attachment->m_encoding.LowerCaseEqualsLiteral(ENCODING_UUENCODE2) ||
-        attachment->m_encoding.LowerCaseEqualsLiteral(ENCODING_UUENCODE3) ||
-        attachment->m_encoding.LowerCaseEqualsLiteral(ENCODING_UUENCODE4)) {
-      if (StringEndsWith(attachment->m_realName, ".uu"_ns))
-        attachment->m_realName.Cut(attachment->m_realName.Length() - 3, 3);
-      else if (StringEndsWith(attachment->m_realName, ".uue"_ns))
-        attachment->m_realName.Cut(attachment->m_realName.Length() - 4, 4);
-    }
-  }
-}
-
 // Utility to create a nsIURI object...
 nsresult nsMsgNewURL(nsIURI** aInstancePtrResult, const nsCString& aSpec) {
   nsresult rv = NS_OK;
   if (nullptr == aInstancePtrResult) return NS_ERROR_NULL_POINTER;
-  nsCOMPtr<nsIIOService> pNetService = mozilla::services::GetIOService();
+  nsCOMPtr<nsIIOService> pNetService = mozilla::components::IO::Service();
   NS_ENSURE_TRUE(pNetService, NS_ERROR_UNEXPECTED);
   if (aSpec.Find("://") == kNotFound && !StringBeginsWith(aSpec, "data:"_ns)) {
     // XXXjag Temporary fix for bug 139362 until the real problem(bug 70083) get

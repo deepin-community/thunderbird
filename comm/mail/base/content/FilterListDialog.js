@@ -3,13 +3,20 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-var { PluralForm } = ChromeUtils.import(
-  "resource://gre/modules/PluralForm.jsm"
+var { PluralForm } = ChromeUtils.importESModule(
+  "resource://gre/modules/PluralForm.sys.mjs"
 );
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 var { MailServices } = ChromeUtils.import(
   "resource:///modules/MailServices.jsm"
 );
+
+window.addEventListener("load", onLoad);
+window.addEventListener("unload", onFilterUnload);
+window.addEventListener("close", event => {
+  if (!onFilterClose()) {
+    event.preventDefault();
+  }
+});
 
 var gFilterListMsgWindow = null;
 var gCurrentFilterList;
@@ -123,11 +130,35 @@ function onLoad() {
 
   updateButtons();
 
+  initNewToolbarButtons(document.querySelector("#newButton toolbarbutton"));
+  initNewToolbarButtons(document.querySelector("#newButton dropmarker"));
+  document
+    .getElementById("filterActionButtons")
+    .addEventListener("keypress", event => onFilterActionButtonKeyPress(event));
+
   processWindowArguments(window.arguments[0]);
+
+  // Don't change width after initial layout, so buttons stay within the dialog.
+  gRunFiltersFolder.style.maxWidth =
+    gRunFiltersFolder.getBoundingClientRect().width + "px";
 
   Services.obs.addObserver(
     filterEditorQuitObserver,
     "quit-application-requested"
+  );
+}
+/**
+ * Set up the toolbarbutton to have an index and an EvenListener for proper
+ * keyboard navigation.
+ *
+ * @param {XULElement} newToolbarbutton - The toolbarbutton that needs to be
+ *   initialized.
+ */
+function initNewToolbarButtons(newToolbarbutton) {
+  newToolbarbutton.setAttribute("tabindex", "0");
+  newToolbarbutton.setAttribute(
+    "id",
+    newToolbarbutton.parentNode.id + newToolbarbutton.tagName
   );
 }
 
@@ -249,9 +280,10 @@ function setFilterFolder(msgFolder) {
   runMenu._ensureInitialized();
 
   let canFilterAfterTheFact = CanRunFiltersAfterTheFact(msgFolder.server);
-  gRunFiltersFolder.hidden = !canFilterAfterTheFact;
-  gRunFiltersButton.hidden = !canFilterAfterTheFact;
-  document.getElementById("folderPickerPrefix").hidden = !canFilterAfterTheFact;
+  gRunFiltersFolder.disabled = !canFilterAfterTheFact;
+  gRunFiltersButton.disabled = !canFilterAfterTheFact;
+  document.getElementById("folderPickerPrefix").disabled =
+    !canFilterAfterTheFact;
 
   if (canFilterAfterTheFact) {
     let wantedFolder = null;
@@ -285,7 +317,7 @@ function setFilterFolder(msgFolder) {
             wantedFolder = null;
         }
       } catch (e) {
-        Cu.reportError(
+        console.error(
           "Failed to select a suitable folder to run filters on: " + e
         );
         wantedFolder = null;
@@ -343,7 +375,7 @@ function toggleFilter(aFilterItem, aSetForEvent) {
  *
  * @param aFilter  The nsIMsgFilter to select.
  *
- * @return  true/false indicating whether the filter was found and selected.
+ * @returns true/false indicating whether the filter was found and selected.
  */
 function selectFilter(aFilter) {
   if (currentFilter() == aFilter) {
@@ -468,7 +500,7 @@ function calculatePositionAndShowCreateFilterDialog(args) {
     // Select the new filter, it is at the position of previous selection.
     gFilterListbox.selectItem(gFilterListbox.getItemAtIndex(position));
     if (currentFilter() != args.newFilter) {
-      Cu.reportError("Filter created at an unexpected position!");
+      console.error("Filter created at an unexpected position!");
     }
   }
 }
@@ -659,6 +691,8 @@ function onFilterUnload() {
     filterEditorQuitObserver,
     "quit-application-requested"
   );
+
+  gFilterListMsgWindow.closeWindow();
 }
 
 function onFilterClose() {
@@ -811,6 +845,7 @@ function rebuildFilterList() {
       listitem.setAttribute("role", "checkbox");
       nameCell = document.createXULElement("label");
       nameCell.setAttribute("flex", "1");
+      nameCell.setAttribute("crop", "end");
       enabledCell = document.createXULElement("checkbox");
       enabledCell.setAttribute("style", "padding-inline-start: 25px;");
       enabledCell.addEventListener("CheckboxStateChange", onFilterClick, true);
@@ -986,6 +1021,32 @@ function onFilterDoubleClick(event) {
   onEditFilter();
 }
 
+/**
+ * Handles the keypress event on the filter list dialog.
+ *
+ * @param {Event} event - The keypress DOMEvent.
+ */
+function onFilterActionButtonKeyPress(event) {
+  if (
+    event.key == "Enter" ||
+    (event.key == " " && event.target.hasAttribute("type"))
+  ) {
+    event.preventDefault();
+
+    if (
+      event.target.classList.contains("toolbarbutton-menubutton-dropmarker")
+    ) {
+      document
+        .getElementById("newFilterMenupopup")
+        .openPopup(event.target.parentNode, "after_end", {
+          triggerEvent: event,
+        });
+      return;
+    }
+    event.target.click();
+  }
+}
+
 function onFilterListKeyPress(aEvent) {
   if (aEvent.keyCode) {
     switch (aEvent.keyCode) {
@@ -1025,7 +1086,7 @@ function onFilterListKeyPress(aEvent) {
  * @param  aFilter   nsIMsgFilter to check
  * @param  aKeyword  the string to find in the filter name
  *
- * @return  True if the filter name contains the searched keyword.
+ * @returns True if the filter name contains the searched keyword.
             Otherwise false. In the future this may be extended to match
             other filter attributes.
  */
@@ -1035,7 +1096,8 @@ function filterSearchMatch(aFilter, aKeyword) {
 
 /**
  * Called from rebuildFilterList when the list needs to be redrawn.
- * @return  Uses the search term in search box, to produce an array of
+ *
+ * @returns Uses the search term in search box, to produce an array of
  *          row (filter) numbers (indexes) that match the search term.
  */
 function onFindFilter() {
@@ -1089,17 +1151,12 @@ function updateCountBox() {
       len,
       gFilterBundle.getString("filterCountItems")
     ).replace("#1", len);
-    countBox.removeAttribute("filterActive");
-  } else {
-    // "N of M"
-    countBox.value = gFilterBundle.getFormattedString(
-      "filterCountVisibleOfTotal",
-      [len, sum]
-    );
-    if (len == 0 && sum > 0) {
-      countBox.setAttribute("filterActive", "nomatches");
-    } else {
-      countBox.setAttribute("filterActive", "matches");
-    }
+    return;
   }
+
+  // "N of M"
+  countBox.value = gFilterBundle.getFormattedString(
+    "filterCountVisibleOfTotal",
+    [len, sum]
+  );
 }

@@ -12,7 +12,6 @@ interface calIItemBase;
 interface calIDateTime;
 interface calIDuration;
 interface calITimezone;
-interface calITimezoneProvider;
 
 interface calIIcalProperty;
 interface nsIInputStream;
@@ -154,7 +153,7 @@ interface calIIcalProperty : nsISupports
 {
     /**
      * The whole property as an ical string.
-     * @exception Any libical error will be thrown as an calIError::ICS_ error.
+     * @exception Any error will be thrown as an calIError::ICS_ error.
      */
     readonly attribute AUTF8String icalString;
 
@@ -222,57 +221,22 @@ interface calIIcsComponentParsingListener : nsISupports
 interface calIICSService : nsISupports
 {
     /**
-     * Parses an ICS string and uses the passed tzProvider instance to
-     * resolve timezones not contained within the VCALENDAR.
+     * Parse an ICS string into components.
      *
      * @param serialized     an ICS string
-     * @param tzProvider     timezone provider used to resolve TZIDs
-     *                       not contained within the VCALENDAR;
-     *                       if null is passed, parsing falls back to
-     *                       using the timezone service
      */
-    calIIcalComponent parseICS(in AUTF8String serialized,
-                               in calITimezoneProvider tzProvider);
+    calIIcalComponent parseICS(in AUTF8String serialized);
 
     /**
-     * Asynchronously parse an ICS string
+     * Asynchronously parse an ICS string into components.
      *
      * @param serialized     an ICS string
-     * @param tzProvider     timezone provider used to resolve TZIDs
-     *                       not contained within the VCALENDAR;
-     *                       if null is passed, parsing falls back to
-     *                       using the timezone service
      * @param listener       The listener that notifies the root component
      */
     void parseICSAsync(in AUTF8String serialized,
-                       in calITimezoneProvider tzProvider,
                        in calIIcsComponentParsingListener listener);
 
     calIIcalComponent createIcalComponent(in AUTF8String kind);
     calIIcalProperty createIcalProperty(in AUTF8String kind);
     calIIcalProperty createIcalPropertyFromString(in AUTF8String str);
-    /* I wish I could write this function atop libical!
-    boolean isLegalParameterValue(in AUTF8String paramKind,
-                                  in AUTF8String paramValue);
-    */
-};
-
-/** Libical specific interfaces */
-
-[ptr] native icalpropertyptr(struct icalproperty_impl);
-[ptr] native icalcomponentptr(struct icalcomponent_impl);
-[ptr] native icaltimezoneptr(struct _icaltimezone);
-
-[builtinclass,scriptable,uuid(d2fc0264-191e-435e-8ef2-b2ab1fa81ca9)]
-interface calIIcalComponentLibical : calIIcalComponent
-{
-    [noscript,notxpcom] icalcomponentptr getLibicalComponent();
-    [noscript,notxpcom] icaltimezoneptr getLibicalTimezone();
-};
-
-[builtinclass,scriptable,uuid(e0b9067f-0a53-4724-9c69-63599681877e)]
-interface calIIcalPropertyLibical : calIIcalProperty
-{
-    [noscript,notxpcom] icalpropertyptr getLibicalProperty();
-    [noscript,notxpcom] icalcomponentptr getLibicalComponent();
 };

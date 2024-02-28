@@ -1,12 +1,9 @@
-/* -*- Mode: Java; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
 /* vim:set ts=2 sw=2 sts=2 et: */
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 const EXPORTED_SYMBOLS = ["BinaryServer"];
-
-const { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 
 const CC = Components.Constructor;
 
@@ -53,7 +50,7 @@ class BinaryServer {
    * @async
    * @callback handlerFn
    * @param {Connection} conn
-   * @param {Object} daemon
+   * @param {object} daemon
    *
    * The handler function runs as long as it wants - reading and writing bytes
    * (via methods on conn) until it is finished with the connection.
@@ -68,7 +65,7 @@ class BinaryServer {
    * Construct a new BinaryServer.
    *
    * @param {handlerFn} handlerFn - Function to call to handle each new connection.
-   * @param {Object} daemon - Object to pass on to the handler, to share state
+   * @param {object} daemon - Object to pass on to the handler, to share state
    *                 and functionality between across connections.
    */
   constructor(handlerFn, daemon) {
@@ -109,7 +106,7 @@ class BinaryServer {
           // If we get here, handler completed, without error.
         } catch (e) {
           if (conn.isClosed()) {
-            // if we get here, assume the error occured because we're
+            // if we get here, assume the error occurred because we're
             // shutting down, and ignore it.
           } else {
             // if we get here, something went wrong.
@@ -170,7 +167,7 @@ class Connection {
   }
 
   /**
-   * @return true if close() has been called.
+   * @returns true if close() has been called.
    */
   isClosed() {
     return this._transport === null;
@@ -197,7 +194,7 @@ class Connection {
    * Read exactly nBytes from the connection.
    *
    * @param {number} nBytes - The number of bytes required.
-   * @return {Array.<number>} - An array containing the requested bytes.
+   * @returns {Array.<number>} - An array containing the requested bytes.
    */
   async read(nBytes) {
     let conn = this;

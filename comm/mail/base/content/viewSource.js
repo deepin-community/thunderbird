@@ -4,11 +4,10 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-/* globals gViewSourceUtils, internalSave */
+/* globals gViewSourceUtils, internalSave, ZoomManager */
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-var { XPCOMUtils } = ChromeUtils.import(
-  "resource://gre/modules/XPCOMUtils.jsm"
+var { XPCOMUtils } = ChromeUtils.importESModule(
+  "resource://gre/modules/XPCOMUtils.sys.mjs"
 );
 
 XPCOMUtils.defineLazyScriptGetter(
@@ -23,6 +22,9 @@ window.browserDOMWindow = window.opener.browserDOMWindow;
 var gBrowser;
 addEventListener("load", () => {
   gBrowser = document.getElementById("content");
+  gBrowser.getTabForBrowser = () => {
+    return null;
+  };
   gBrowser.addEventListener("pagetitlechanged", () => {
     document.title =
       document.documentElement.getAttribute("titlepreface") +
@@ -52,6 +54,21 @@ addEventListener("load", () => {
       document
         .getElementById("repair-text-encoding")
         .setAttribute("disabled", !gBrowser.mayEnableCharacterEncodingMenu);
+    },
+    true
+  );
+
+  gBrowser.addEventListener(
+    "DoZoomEnlargeBy10",
+    () => {
+      ZoomManager.scrollZoomEnlarge(gBrowser);
+    },
+    true
+  );
+  gBrowser.addEventListener(
+    "DoZoomReduceBy10",
+    () => {
+      ZoomManager.scrollReduceEnlarge(gBrowser);
     },
     true
   );
@@ -108,13 +125,44 @@ function ViewSourceSavePage() {
     null,
     null,
     null,
+    null,
     "SaveLinkTitle",
     null,
     null,
+    gBrowser.cookieJarSettings,
     gBrowser.contentDocument,
     null,
     gBrowser.webNavigation.QueryInterface(Ci.nsIWebPageDescriptor),
     null,
     Services.scriptSecurityManager.getSystemPrincipal()
   );
+}
+
+/** Called by ContextMenuParent.sys.mjs */
+function openContextMenu({ data }, browser, actor) {
+  let popup = browser.ownerDocument.getElementById("viewSourceContextMenu");
+
+  let newEvent = document.createEvent("MouseEvent");
+  let screenX = data.context.screenXDevPx / window.devicePixelRatio;
+  let screenY = data.context.screenYDevPx / window.devicePixelRatio;
+  newEvent.initNSMouseEvent(
+    "contextmenu",
+    true,
+    true,
+    null,
+    0,
+    screenX,
+    screenY,
+    0,
+    0,
+    false,
+    false,
+    false,
+    false,
+    2,
+    null,
+    0,
+    data.context.mozInputSource
+  );
+  popup.openPopupAtScreen(newEvent.screenX, newEvent.screenY, true, newEvent);
 }

@@ -37,6 +37,12 @@ var PAB_CARD_DATA = [
     SecondEmail: "tomez.doe@foo2.invalid",
     PreferDisplayName: true,
     PopularityIndex: 10,
+    // Poison the card data with an unparseable birthday. This will cause the
+    // vCard parser to throw an exception, but it should be caught and the
+    // search should carry on as normal.
+    BirthDay: 25,
+    BirthMonth: 9,
+    BirthYear: "NaN",
   },
   {
     FirstName: "Tomas",
@@ -68,7 +74,7 @@ function setupAddressBookData(aDirURI, aCardData, aMailListData) {
     ab.dropCard(card, false);
   }
 
-  aCardData.forEach(function(cd) {
+  aCardData.forEach(function (cd) {
     let card = Cc["@mozilla.org/addressbook/cardproperty;1"].createInstance(
       Ci.nsIAbCard
     );
@@ -78,7 +84,7 @@ function setupAddressBookData(aDirURI, aCardData, aMailListData) {
     ab.addCard(card);
   });
 
-  aMailListData.forEach(function(ld) {
+  aMailListData.forEach(function (ld) {
     let list = Cc[
       "@mozilla.org/addressbook/directoryproperty;1"
     ].createInstance(Ci.nsIAbDirectory);

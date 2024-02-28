@@ -2,8 +2,8 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-const { FileUtils } = ChromeUtils.import(
-  "resource://gre/modules/FileUtils.jsm"
+const { FileUtils } = ChromeUtils.importESModule(
+  "resource://gre/modules/FileUtils.sys.mjs"
 );
 const { PromiseTestUtils } = ChromeUtils.import(
   "resource://testing-common/mailnews/PromiseTestUtils.jsm"
@@ -11,8 +11,8 @@ const { PromiseTestUtils } = ChromeUtils.import(
 var { convertMailStoreTo } = ChromeUtils.import(
   "resource:///modules/mailstoreConverter.jsm"
 );
-const { allAccountsSorted } = ChromeUtils.import(
-  "resource:///modules/folderUtils.jsm"
+const { FolderUtils } = ChromeUtils.import(
+  "resource:///modules/FolderUtils.jsm"
 );
 
 // XXX: merge into test_converter.js
@@ -50,8 +50,8 @@ var copyListenerWrap = {
   },
 };
 
-var EventTarget = function() {
-  this.dispatchEvent = function(event) {
+var EventTarget = function () {
+  this.dispatchEvent = function (event) {
     if (event.type == "progress") {
       log.trace("Progress: " + event.detail);
     }
@@ -75,8 +75,9 @@ function copyFileMessage(file, destFolder, isDraftOrTemplate) {
 
 /**
  * Check that conversion worked for the given source.
- * @param source - mbox source directory
- * @param target - maildir target directory
+ *
+ * @param {nsIFile} source - mbox source directory.
+ * @param {nsIFile} target - maildir target directory.
  */
 function checkConversion(source, target) {
   for (let sourceContent of source.directoryEntries) {
@@ -145,7 +146,7 @@ function run_test() {
   // String to hold names of accounts to convert.
   let accountsToConvert = "";
 
-  let accounts = allAccountsSorted(true);
+  let accounts = FolderUtils.allAccountsSorted(true);
   for (let account of accounts) {
     if (
       account.incomingServer.rootFolder.filePath.path == deferredToRootFolder
@@ -170,7 +171,7 @@ function run_test() {
   run_next_test();
 }
 
-add_task(async function setupMessages() {
+add_setup(async function () {
   let msgFile = do_get_file("../../../data/bugmail10");
   // Add 1000 messages to the "Inbox" folder.
   for (let i = 0; i < 1000; i++) {
@@ -192,13 +193,13 @@ add_task(function testMaildirConversion() {
   let originalRootFolder = gServer.rootFolder.filePath;
 
   pConverted
-    .then(function(val) {
+    .then(function (val) {
       log.debug("Conversion done: " + originalRootFolder.path + " => " + val);
       let newRootFolder = gServer.rootFolder.filePath;
       checkConversion(originalRootFolder, newRootFolder);
       do_test_finished();
     })
-    .catch(function(reason) {
+    .catch(function (reason) {
       log.error("Conversion failed: " + reason.error);
       ok(false); // Fail the test!
     });

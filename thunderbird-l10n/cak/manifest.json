@@ -1,29 +1,28 @@
 {
   "langpack_id": "cak",
   "manifest_version": 2,
-  "applications": {
+  "browser_specific_settings": {
     "gecko": {
       "id": "langpack-cak@thunderbird.mozilla.org",
-      "strict_min_version": "91.0",
-      "strict_max_version": "91.*"
+      "strict_min_version": "115.0",
+      "strict_max_version": "115.*"
     }
   },
-  "name": "Kaqchikel (Guatemala) Language Pack",
-  "description": "Language pack for Thunderbird for cak",
-  "version": "91.0buildid20211101223011",
+  "name": "Language: Kaqchikel",
+  "description": "Thunderbird Language Pack for Kaqchikel (cak)",
+  "version": "115.8.20240216.174500",
   "languages": {
     "cak": {
-      "version": "20211011130305",
+      "version": "20240216183709",
       "chrome_resources": {
         "alerts": "chrome/cak/locale/cak/alerts/",
         "autoconfig": "chrome/cak/locale/cak/autoconfig/",
-        "branding": "chrome/cak/locale/cak/branding/",
+        "branding": "chrome/cak/locale/branding/",
         "calendar": "chrome/cak/locale/cak/calendar/",
         "chat": "chrome/cak/locale/cak/chat/",
         "communicator": "chrome/cak/locale/cak/communicator/",
         "devtools": "chrome/cak/locale/cak/devtools/client/",
         "devtools-shared": "chrome/cak/locale/cak/devtools/shared/",
-        "devtools-startup": "chrome/cak/locale/cak/devtools/startup/",
         "global": "chrome/cak/locale/cak/global/",
         "global-platform": {
           "macosx": "chrome/cak/locale/cak/global-platform/mac/",

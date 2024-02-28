@@ -17,19 +17,20 @@
 #ifndef __WMFUtils_h__
 #define __WMFUtils_h__
 
-#include <cstdint>
-#include <string>
-
 #include <assert.h>
 #include <mfapi.h>
 #include <mferror.h>
 #include <mfobjects.h>
 #include <mftransform.h>
 #include <wmcodecdsp.h>
-#include "mozilla/Attributes.h"
-#include "VideoLimits.h"
 
+#include <cstdint>
+#include <string>
+
+#include "VideoLimits.h"
+#include "content_decryption_module.h"
 #include "gmp-platform.h"
+#include "mozilla/Attributes.h"
 
 void LOG(const char* format, ...);
 
@@ -124,8 +125,12 @@ typedef int64_t Microseconds;
     }                                                          \
   }
 
-#define STATUS_SUCCEEDED(x) ((x) == Status::kSuccess)
-#define STATUS_FAILED(x) ((x) != Status::kSuccess)
+inline bool STATUS_SUCCEEDED(cdm::Status status) {
+  return status == cdm::Status::kSuccess;
+}
+inline bool STATUS_FAILED(cdm::Status status) {
+  return !STATUS_SUCCEEDED(status);
+}
 
 #define MFPLAT_FUNC(_func, _dllname) extern decltype(::_func)* _func;
 #include "WMFSymbols.h"

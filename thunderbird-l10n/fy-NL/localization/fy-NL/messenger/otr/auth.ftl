@@ -19,7 +19,6 @@ auth-your-fp-value = Fingerôfdruk foar jo, { $own_name }:
 auth-their-fp-value = Fingerôfdruk foar { $their_name }:
 
 auth-help = Troch de identiteit fan in kontaktpersoan te ferifiearjen, soargje jo derfoar dat it petear echt privee is, wêrtroch it foar in tredde hiel swier is om it petear ôf te lústerjen of te manipulearjen.
-
 auth-help-title = Help by ferifikaasje
 
 auth-question-received = Dizze fraach wurdt troch jo kontakt steld:
@@ -45,7 +44,7 @@ auth-question-and-answer-label =
 auth-shared-secret-label =
     .label = { auth-shared-secret }
 
-auth-manual-instruction = Nim kontakt op mei jo bedoele petearpartner fia in oar feilich kanaal, lykas in mei OpenPGP ûndertekene e-mailberjocht of telefoanysk. Jo moatte jo fingerôfdrukken diele. (In fingerôfdruk is in checksum dy't in kodearringskaai identifisearret.) As de fingerôfdruk oerienkomt, jou dan yn it ûndersteande dialoochfinster oan dat jo de fingerôfdruk ferifiearre hawwe.
+auth-manual-instruction = Nim kontakt op mei jo bedoele petearpartner fia in oar feilich kanaal, lykas in mei OpenPGP ûndertekene e-mailberjocht of telefoanysk. Jo moatte jo fingerôfdrukken diele. (In fingerôfdruk is in checksum dy’t in kodearringskaai identifisearret.) As de fingerôfdruk oerienkomt, jou dan yn it ûndersteande dialoochfinster oan dat jo de fingerôfdruk ferifiearre hawwe.
 
 auth-how = Hoe wolle jo de identiteit fan jo kontakt ferifiearje?
 

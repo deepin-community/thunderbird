@@ -18,6 +18,7 @@
         buttons="accept,cancel">
   <linkset>
     <html:link rel="localization" href="toolkit/global/wizard.ftl"/>
+    <html:link rel="localization" href="messenger/importDialog.ftl"/>
   </linkset>
 
   <script src="chrome://messenger/content/migration/migration.js"/>
@@ -34,6 +35,8 @@
         <label control="importSourceGroup">&importFromNonWin.label;</label>
 #endif
         <radiogroup id="importSourceGroup">
+          <radio id="thunderbird-zip" data-l10n-id="import-from-thunderbird-zip"/>
+          <radio id="thunderbird-dir" data-l10n-id="import-from-thunderbird-dir"/>
           <radio id="seamonkey" label="&importFromSeamonkey3.label;"
                  accesskey="&importFromSeamonkey3.accesskey;"/>
 #ifdef XP_WIN
@@ -68,9 +71,7 @@
       <separator class="thin"/>
       <vbox id="migratingItems" class="indent" style="overflow: auto;" flex="1" align="start"/>
       <separator class="thin"/>
-      <hbox>
-        <html:progress class="progressmeter-statusbar" id="progressBar" flex="1" value="0" max="100"/>
-      </hbox>
+      <html:progress class="progressmeter-statusbar" id="progressBar" flex="1" value="0" max="100"/>
     </wizardpage>
 
     <wizardpage id="done" pageid="done" label="&done.title;">
@@ -78,6 +79,11 @@
       <separator class="thin"/>
       <vbox id="doneItems" class="indent" style="overflow: auto;" align="start"/>
     </wizardpage>
+
+    <wizardpage id="failed" pageid="failed" data-l10n-id="wizardpage-failed">
+  <description id="failed-message-default"
+               data-l10n-id="wizardpage-failed-message"></description>
+      <description id="failed-message"></description>
+    </wizardpage>
   </wizard>
 </window>
-
