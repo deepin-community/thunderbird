@@ -4,8 +4,6 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-/* eslint no-invalid-this: 0 */
-
 /**
  * This module serves to integrate WKS (Webkey service) into Enigmail
  */
@@ -14,14 +12,17 @@
 
 var EXPORTED_SYMBOLS = ["EnigmailWks"];
 
-const { XPCOMUtils } = ChromeUtils.import(
-  "resource://gre/modules/XPCOMUtils.jsm"
+const { XPCOMUtils } = ChromeUtils.importESModule(
+  "resource://gre/modules/XPCOMUtils.sys.mjs"
+);
+const { MailServices } = ChromeUtils.import(
+  "resource:///modules/MailServices.jsm"
 );
 
-XPCOMUtils.defineLazyModuleGetters(this, {
+const lazy = {};
+XPCOMUtils.defineLazyModuleGetters(lazy, {
   EnigmailFuncs: "chrome://openpgp/content/modules/funcs.jsm",
   EnigmailLog: "chrome://openpgp/content/modules/log.jsm",
-  EnigmailStdlib: "chrome://openpgp/content/modules/stdlib.jsm",
 });
 
 var EnigmailWks = {
@@ -33,10 +34,10 @@ var EnigmailWks = {
    * @param window  : Object - parent window for dialog display
    * @param cb      : Function(retValue) - callback function.
    *                   retValue: nsIFile Object to gpg-wks-client executable or NULL
-   * @return        : Object - NULL or a process handle
+   * @returns : Object - NULL or a process handle
    */
   getWksClientPathAsync(window, cb) {
-    EnigmailLog.DEBUG("webKey.jsm: getWksClientPathAsync\n");
+    lazy.EnigmailLog.DEBUG("webKey.jsm: getWksClientPathAsync\n");
     throw new Error("Not implemented");
   },
 
@@ -47,10 +48,10 @@ var EnigmailWks = {
    * @param window: Object - parent window of dialog display
    * @param cb    : Function(retValue) - callback function.
    *                   retValue: Boolean: true if WKS is supported / false otherwise
-   * @return      : Object - process handle
+   * @returns : Object - process handle
    */
   isWksSupportedAsync(email, window, cb) {
-    EnigmailLog.DEBUG(
+    lazy.EnigmailLog.DEBUG(
       "webKey.jsm: isWksSupportedAsync: email = " + email + "\n"
     );
     throw new Error("Not implemented");
@@ -66,10 +67,10 @@ var EnigmailWks = {
    *    - onProgress: function(percentComplete) [only implemented for download()]
    *     - onCancel: function() - the body will be set by the callee
    *
-   * @return Promise<...>
+   * @returns Promise<...>
    */
   wksUpload(keys, win, observer = null) {
-    EnigmailLog.DEBUG(`webKey.jsm: wksUpload(): keys = ${keys.length}\n`);
+    lazy.EnigmailLog.DEBUG(`webKey.jsm: wksUpload(): keys = ${keys.length}\n`);
     let ids = getWkdIdentities(keys);
 
     if (observer === null) {
@@ -79,7 +80,7 @@ var EnigmailWks = {
     }
 
     observer.isCanceled = false;
-    observer.onCancel = function() {
+    observer.onCancel = function () {
       this.isCanceled = true;
     };
 
@@ -104,11 +105,13 @@ var EnigmailWks = {
    * @param window: Object - parent window of dialog display
    * @param cb    : Function(retValue) - callback function.
    *                   retValue: Boolean: true if submit was successful / false otherwise
-   * @return      : Object - process handle
+   * @returns : Object - process handle
    */
 
   submitKey(ident, key, window, cb) {
-    EnigmailLog.DEBUG("webKey.jsm: submitKey(): email = " + ident.email + "\n");
+    lazy.EnigmailLog.DEBUG(
+      "webKey.jsm: submitKey(): email = " + ident.email + "\n"
+    );
     throw new Error("Not implemented");
   },
 
@@ -121,11 +124,13 @@ var EnigmailWks = {
    * @param window: Object - parent window of dialog display
    * @param cb    : Function(retValue) - callback function.
    *                   retValue: Boolean: true if submit was successful / false otherwise
-   * @return      : Object - process handle
+   * @returns : Object - process handle
    */
 
   confirmKey(ident, body, window, cb) {
-    EnigmailLog.DEBUG("webKey.jsm: confirmKey: ident=" + ident.email + "\n");
+    lazy.EnigmailLog.DEBUG(
+      "webKey.jsm: confirmKey: ident=" + ident.email + "\n"
+    );
     throw new Error("Not implemented");
   },
 };
@@ -136,11 +141,13 @@ var EnigmailWks = {
  * @param path:         String - directory name
  * @param execFileName: String - executable name
  *
- * @return Object - nsIFile if file exists; NULL otherwise
+ * @returns Object - nsIFile if file exists; NULL otherwise
  */
 
 function getWkdIdentities(keys) {
-  EnigmailLog.DEBUG(`webKey.jsm: getWkdIdentities(): keys = ${keys.length}\n`);
+  lazy.EnigmailLog.DEBUG(
+    `webKey.jsm: getWkdIdentities(): keys = ${keys.length}\n`
+  );
   let senderIdentities = [],
     notFound = [];
 
@@ -148,12 +155,14 @@ function getWkdIdentities(keys) {
     try {
       let found = false;
       for (let uid of key.userIds) {
-        let email = EnigmailFuncs.stripEmail(uid.userId);
-        let maybeIdent = EnigmailStdlib.getIdentityForEmail(email);
+        let email = lazy.EnigmailFuncs.stripEmail(uid.userId).toLowerCase();
+        let identity = MailServices.accounts.allIdentities.find(
+          id => id.email?.toLowerCase() == email
+        );
 
-        if (maybeIdent && maybeIdent.identity) {
+        if (identity) {
           senderIdentities.push({
-            identity: maybeIdent.identity,
+            identity,
             fpr: key.fpr,
           });
         }
@@ -162,7 +171,7 @@ function getWkdIdentities(keys) {
         notFound.push(key);
       }
     } catch (ex) {
-      EnigmailLog.DEBUG(ex + "\n");
+      lazy.EnigmailLog.DEBUG(ex + "\n");
       return null;
     }
   }
@@ -182,14 +191,14 @@ function getWkdIdentities(keys) {
  * @param win:         nsIWindow - parent window
  * @param observer:    Object:
  *                       - onProgress: function(percentComplete [0 .. 100])
- *                             called after processing of every key (indpendent of status)
+ *                             called after processing of every key (independent of status)
  *                       - onUpload: function(fpr)
  *                              called after successful uploading of a key
  *                       - onFinished: function(completionStatus, errorMessage, displayError)
  *                       - isCanceled: Boolean - used to determine if process is canceled
  */
 function performWkdUpload(keyList, win, observer) {
-  EnigmailLog.DEBUG(
+  lazy.EnigmailLog.DEBUG(
     `webKey.jsm: performWkdUpload: keyList.length=${keyList.length}\n`
   );
 
@@ -203,44 +212,48 @@ function performWkdUpload(keyList, win, observer) {
     let keyFpr = keyList[i].fpr;
     let senderIdent = keyList[i].identity;
 
-    let was_uploaded = new Promise(function(resolve, reject) {
-      EnigmailLog.DEBUG(
+    let was_uploaded = new Promise(function (resolve, reject) {
+      lazy.EnigmailLog.DEBUG(
         "webKey.jsm: performWkdUpload: _isSupported(): ident=" +
           senderIdent.email +
           ", key=" +
           keyFpr +
           "\n"
       );
-      EnigmailWks.isWksSupportedAsync(senderIdent.email, win, function(
-        is_supported
-      ) {
-        if (observer.isCanceled) {
-          EnigmailLog.DEBUG("webKey.jsm: performWkdUpload: canceled by user\n");
-          reject("canceled");
-        }
+      EnigmailWks.isWksSupportedAsync(
+        senderIdent.email,
+        win,
+        function (is_supported) {
+          if (observer.isCanceled) {
+            lazy.EnigmailLog.DEBUG(
+              "webKey.jsm: performWkdUpload: canceled by user\n"
+            );
+            reject("canceled");
+          }
 
-        EnigmailLog.DEBUG(
-          "webKey.jsm: performWkdUpload: ident=" +
-            senderIdent.email +
-            ", supported=" +
-            is_supported +
-            "\n"
-        );
-        resolve(is_supported);
-      });
-    }).then(function(is_supported) {
-      EnigmailLog.DEBUG(
+          lazy.EnigmailLog.DEBUG(
+            "webKey.jsm: performWkdUpload: ident=" +
+              senderIdent.email +
+              ", supported=" +
+              is_supported +
+              "\n"
+          );
+          resolve(is_supported);
+        }
+      );
+    }).then(function (is_supported) {
+      lazy.EnigmailLog.DEBUG(
         `webKey.jsm: performWkdUpload: _submitKey ${is_supported}\n`
       );
       if (is_supported) {
-        return new Promise(function(resolve, reject) {
+        return new Promise(function (resolve, reject) {
           EnigmailWks.submitKey(
             senderIdent,
             {
               fpr: keyFpr,
             },
             win,
-            function(success) {
+            function (success) {
               observer.onProgress(((i + 1) / numKeys) * 100);
               if (success) {
                 resolve(senderIdent);
@@ -260,14 +273,14 @@ function performWkdUpload(keyList, win, observer) {
   }
 
   return Promise.all(uploads)
-    .catch(function(reason) {
+    .catch(function (reason) {
       //let errorMsg = "Could not upload your key to the Web Key Service";
       return [];
     })
-    .then(function(senders) {
+    .then(function (senders) {
       let uploaded_uids = [];
       if (senders) {
-        senders.forEach(function(val) {
+        senders.forEach(function (val) {
           if (val !== null) {
             uploaded_uids.push(val.email);
           }

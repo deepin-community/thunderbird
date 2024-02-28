@@ -2,7 +2,7 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-var { XPCOMUtils } = ChromeUtils.import("resource://gre/modules/XPCOMUtils.jsm");
+var { XPCOMUtils } = ChromeUtils.importESModule("resource://gre/modules/XPCOMUtils.sys.mjs");
 
 XPCOMUtils.defineLazyModuleGetters(this, {
   CalEvent: "resource:///modules/CalEvent.jsm",
@@ -14,7 +14,7 @@ function run_test() {
 
 function really_run_test() {
   function getMozTimezone(tzid) {
-    return cal.getTimezoneService().getTimezone(tzid);
+    return cal.timezoneService.getTimezone(tzid);
   }
 
   let date = cal.createDateTime();
@@ -76,13 +76,10 @@ function really_run_test() {
   equal(duration.compare(zeroLength), 0);
   equal(a.compare(b), 0);
 
-  equal(b.timezone.displayName, "America/New York");
-  equal(b.timezone.latitude, "+0404251");
-  equal(b.timezone.longitude, "-0740023");
-
-  // check aliases
-  equal(getMozTimezone("/mozilla.org/xyz/Asia/Calcutta").tzid, "Asia/Kolkata");
-  equal(getMozTimezone("Asia/Calcutta").tzid, "Asia/Kolkata");
+  // Check that we can get the same timezone with several aliases
+  equal(getMozTimezone("/mozilla.org/xyz/Asia/Calcutta").tzid, "Asia/Calcutta");
+  equal(getMozTimezone("Asia/Calcutta").tzid, "Asia/Calcutta");
+  equal(getMozTimezone("Asia/Kolkata").tzid, "Asia/Kolkata");
 
   // A newly created date should be in UTC, as should its clone
   let utc = cal.createDateTime();

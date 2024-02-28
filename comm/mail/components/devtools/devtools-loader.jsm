@@ -21,8 +21,8 @@ DevToolsStartup.prototype = {
   },
 
   handleDevToolsFlag(cmdLine) {
-    const { BrowserToolboxLauncher } = ChromeUtils.import(
-      "resource://devtools/client/framework/browser-toolbox/Launcher.jsm"
+    const { BrowserToolboxLauncher } = ChromeUtils.importESModule(
+      "resource://devtools/client/framework/browser-toolbox/Launcher.sys.mjs"
     );
     BrowserToolboxLauncher.init();
 
@@ -32,8 +32,8 @@ DevToolsStartup.prototype = {
   },
 
   initialize() {
-    let { loader, require, DevToolsLoader } = ChromeUtils.import(
-      "resource://devtools/shared/Loader.jsm"
+    let { loader, require, DevToolsLoader } = ChromeUtils.importESModule(
+      "resource://devtools/shared/loader/Loader.sys.mjs"
     );
     let { DevToolsServer } = require("devtools/server/devtools-server");
     let { gDevTools } = require("devtools/client/framework/devtools");
@@ -51,10 +51,9 @@ DevToolsStartup.prototype = {
     });
 
     // Make sure our root actor is always registered, no matter how devtools are called.
-    let devtoolsRegisterActors = DevToolsServer.registerActors.bind(
-      DevToolsServer
-    );
-    DevToolsServer.registerActors = function(options) {
+    let devtoolsRegisterActors =
+      DevToolsServer.registerActors.bind(DevToolsServer);
+    DevToolsServer.registerActors = function (options) {
       devtoolsRegisterActors(options);
       if (options.root) {
         const {

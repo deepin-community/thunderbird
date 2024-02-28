@@ -1,29 +1,28 @@
 {
   "langpack_id": "nl",
   "manifest_version": 2,
-  "applications": {
+  "browser_specific_settings": {
     "gecko": {
       "id": "langpack-nl@thunderbird.mozilla.org",
-      "strict_min_version": "91.0",
-      "strict_max_version": "91.*"
+      "strict_min_version": "115.0",
+      "strict_max_version": "115.*"
     }
   },
-  "name": "Nederlands (NL) Language Pack",
-  "description": "Language pack for Thunderbird for nl",
-  "version": "91.0buildid20211101223011",
+  "name": "Language: Nederlands (Dutch)",
+  "description": "Thunderbird Language Pack for Nederlands (nl) – Dutch",
+  "version": "115.8.20240216.174500",
   "languages": {
     "nl": {
-      "version": "20211013120758",
+      "version": "20240216183855",
       "chrome_resources": {
         "alerts": "chrome/nl/locale/nl/alerts/",
         "autoconfig": "chrome/nl/locale/nl/autoconfig/",
-        "branding": "chrome/nl/locale/nl/branding/",
+        "branding": "chrome/nl/locale/branding/",
         "calendar": "chrome/nl/locale/nl/calendar/",
         "chat": "chrome/nl/locale/nl/chat/",
         "communicator": "chrome/nl/locale/nl/communicator/",
         "devtools": "chrome/nl/locale/nl/devtools/client/",
         "devtools-shared": "chrome/nl/locale/nl/devtools/shared/",
-        "devtools-startup": "chrome/nl/locale/nl/devtools/startup/",
         "global": "chrome/nl/locale/nl/global/",
         "global-platform": {
           "macosx": "chrome/nl/locale/nl/global-platform/mac/",

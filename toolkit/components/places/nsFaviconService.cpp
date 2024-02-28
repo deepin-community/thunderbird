@@ -30,6 +30,7 @@
 #include "mozilla/Preferences.h"
 #include "nsILoadInfo.h"
 #include "nsIContentPolicy.h"
+#include "nsIProtocolHandler.h"
 #include "nsIScriptError.h"
 #include "nsContentUtils.h"
 #include "imgICache.h"
@@ -335,8 +336,9 @@ nsFaviconService::SetAndFetchFaviconForPage(
   // If the page url points to an image, the icon's url will be the same.
   // TODO (Bug 403651): store a resample of the image.  For now avoid that
   // for database size and UX concerns.
-  // Don't store favicons for error pages too.
+  // Don't store favicons for error pages either.
   if (icon.spec.Equals(page.spec) ||
+      icon.spec.EqualsLiteral(FAVICON_CERTERRORPAGE_URL) ||
       icon.spec.EqualsLiteral(FAVICON_ERRORPAGE_URL)) {
     return NS_OK;
   }
@@ -536,6 +538,10 @@ nsFaviconService::GetFaviconURLForPage(nsIURI* aPageURI,
   MOZ_ASSERT(NS_IsMainThread());
   NS_ENSURE_ARG(aPageURI);
   NS_ENSURE_ARG(aCallback);
+  // Use the default value, may be UINT16_MAX if a default is not set.
+  if (aPreferredWidth == 0) {
+    aPreferredWidth = mDefaultIconURIPreferredSize;
+  }
 
   nsAutoCString pageSpec;
   nsresult rv = aPageURI->GetSpec(pageSpec);
@@ -561,6 +567,10 @@ nsFaviconService::GetFaviconDataForPage(nsIURI* aPageURI,
   MOZ_ASSERT(NS_IsMainThread());
   NS_ENSURE_ARG(aPageURI);
   NS_ENSURE_ARG(aCallback);
+  // Use the default value, may be UINT16_MAX if a default is not set.
+  if (aPreferredWidth == 0) {
+    aPreferredWidth = mDefaultIconURIPreferredSize;
+  }
 
   nsAutoCString pageSpec;
   nsresult rv = aPageURI->GetSpec(pageSpec);
@@ -708,25 +718,29 @@ nsresult nsFaviconService::OptimizeIconSizes(IconData& aIcon) {
         newPayload.width = size;
       }
 
-      // If the original payload is png and the size is the same, rescale the
-      // image only if it's larger than the maximum allowed.
+      // If the original payload is png, the size is the same and not animated,
+      // rescale the image only if it's larger than the maximum allowed.
+      bool animated;
       if (newPayload.mimeType.Equals(payload.mimeType) &&
           newPayload.width == frameInfo.width &&
-          payload.data.Length() < nsIFaviconService::MAX_FAVICON_BUFFER_SIZE) {
+          payload.data.Length() < nsIFaviconService::MAX_FAVICON_BUFFER_SIZE &&
+          (NS_FAILED(container->GetAnimated(&animated)) || !animated)) {
         newPayload.data = payload.data;
-      } else {
-        // Otherwise, scale and recompress.
-        // Since EncodeScaledImage uses SYNC_DECODE, it will pick the best
-        // frame.
-        nsCOMPtr<nsIInputStream> iconStream;
-        rv = GetImgTools()->EncodeScaledImage(
-            container, newPayload.mimeType, newPayload.width, newPayload.width,
-            u""_ns, getter_AddRefs(iconStream));
-        NS_ENSURE_SUCCESS(rv, rv);
-        // Read the stream into the new buffer.
-        rv = NS_ConsumeStream(iconStream, UINT32_MAX, newPayload.data);
-        NS_ENSURE_SUCCESS(rv, rv);
+        break;
       }
+
+      // Otherwise, scale and recompress. Rescaling will also take care of
+      // extracting a static image from an animated one.
+      // Since EncodeScaledImage uses SYNC_DECODE, it will pick the best
+      // frame.
+      nsCOMPtr<nsIInputStream> iconStream;
+      rv = GetImgTools()->EncodeScaledImage(container, newPayload.mimeType,
+                                            newPayload.width, newPayload.width,
+                                            u""_ns, getter_AddRefs(iconStream));
+      NS_ENSURE_SUCCESS(rv, rv);
+      // Read the stream into the new buffer.
+      rv = NS_ConsumeStream(iconStream, UINT32_MAX, newPayload.data);
+      NS_ENSURE_SUCCESS(rv, rv);
 
       // If the icon size is good, we are done, otherwise try the next size.
       if (newPayload.data.Length() <
@@ -771,6 +785,7 @@ nsFaviconService::SetDefaultIconURIPreferredSize(uint16_t aDefaultSize) {
 
 NS_IMETHODIMP
 nsFaviconService::PreferredSizeFromURI(nsIURI* aURI, uint16_t* _size) {
+  NS_ENSURE_ARG(aURI);
   *_size = mDefaultIconURIPreferredSize;
   nsAutoCString ref;
   // Check for a ref first.

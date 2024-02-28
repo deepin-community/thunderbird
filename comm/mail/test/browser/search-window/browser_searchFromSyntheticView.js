@@ -5,12 +5,13 @@
 "use strict";
 
 const {
-  add_sets_to_folders,
-  delete_message_set,
-  inboxFolder,
+  add_message_sets_to_folders,
   be_in_folder,
   create_folder,
   create_thread,
+  delete_messages,
+  get_about_3pane,
+  inboxFolder,
 } = ChromeUtils.import(
   "resource://testing-common/mozmill/FolderDisplayHelpers.jsm"
 );
@@ -26,37 +27,41 @@ const { GlodaMsgIndexer } = ChromeUtils.import(
  * See bug 1664761 and bug 1248522.
  */
 add_task(async function testSearchDialogFolderSelectedFromSyntheticView() {
+  // Make sure the whole test runs with an unthreaded view in all folders.
+  Services.prefs.setIntPref("mailnews.default_view_flags", 0);
+
   let folderName = "Test Folder Name";
-  let folder = create_folder(folderName);
+  let folder = await create_folder(folderName);
   let thread = create_thread(3);
   let term = "atermtosearchfor";
 
-  registerCleanupFunction(() => {
-    be_in_folder(inboxFolder);
-    delete_message_set(thread);
+  registerCleanupFunction(async () => {
+    await be_in_folder(inboxFolder);
+    await delete_messages(thread);
 
     let trash = folder.rootFolder.getFolderWithFlags(Ci.nsMsgFolderFlags.Trash);
     folder.deleteSelf(null);
-    trash.emptyTrash(null, null);
+    trash.emptyTrash(null);
 
     let tabmail = document.querySelector("tabmail");
     while (tabmail.tabInfo.length > 1) {
       tabmail.closeTab(1);
     }
+    Services.prefs.clearUserPref("mailnews.default_view_flags");
   });
 
   for (let msg of thread.synMessages) {
     msg.bodyPart = new SyntheticPartLeaf(term);
   }
 
-  be_in_folder(folder);
-  add_sets_to_folders([folder], [thread]);
+  await be_in_folder(folder);
+  await add_message_sets_to_folders([folder], [thread]);
 
   await new Promise(callback => {
     GlodaMsgIndexer.indexFolder(folder, { callback, force: true });
   });
 
-  let dbView = window.gFolderDisplay.view.dbView;
+  let dbView = get_about_3pane().gDBView;
   await TestUtils.waitForCondition(
     () =>
       thread.synMessages.every((_, i) =>
@@ -97,8 +102,8 @@ add_task(async function testSearchDialogFolderSelectedFromSyntheticView() {
   document.querySelector("#searchMailCmd").click();
 
   let dialogWindow = await dialogPromise;
-  let selectedFolder = dialogWindow.document.querySelector("#searchableFolders")
-    .label;
+  let selectedFolder =
+    dialogWindow.document.querySelector("#searchableFolders").label;
 
   Assert.ok(selectedFolder.includes(folderName), "a folder is selected");
   dialogWindow.close();

@@ -18,10 +18,12 @@
 #include "mozilla/FontPropertyTypes.h"
 #include "mozilla/gfx/2D.h"
 #include "mozilla/StaticPrefs_widget.h"
+#include "mozilla/Telemetry.h"
 #include "mozilla/widget/WidgetMessageUtils.h"
 #include "SDKDeclarations.h"
 
 #import <Cocoa/Cocoa.h>
+#import <AppKit/NSColor.h>
 
 // This must be included last:
 #include "nsObjCExceptions.h"
@@ -114,54 +116,30 @@ nsresult nsLookAndFeel::NativeGetColor(ColorID aID, ColorScheme aScheme, nscolor
 
   nscolor color = 0;
   switch (aID) {
-    case ColorID::WindowBackground:
-      color = NS_RGB(0xff, 0xff, 0xff);
-      break;
-    case ColorID::WindowForeground:
-      color = NS_RGB(0x00, 0x00, 0x00);
-      break;
-    case ColorID::WidgetBackground:
     case ColorID::Infobackground:
-      color = NS_RGB(0xdd, 0xdd, 0xdd);
+      color = aScheme == ColorScheme::Light ? NS_RGB(0xdd, 0xdd, 0xdd)
+                                            : GetColorFromNSColor(NSColor.windowBackgroundColor);
       break;
-    case ColorID::WidgetForeground:
-      color = NS_RGB(0x00, 0x00, 0x00);
-      break;
-    case ColorID::WidgetSelectBackground:
-      color = NS_RGB(0x80, 0x80, 0x80);
-      break;
-    case ColorID::WidgetSelectForeground:
-      color = NS_RGB(0x00, 0x00, 0x80);
-      break;
-    case ColorID::Widget3DHighlight:
-      color = NS_RGB(0xa0, 0xa0, 0xa0);
-      break;
-    case ColorID::Widget3DShadow:
-      color = NS_RGB(0x40, 0x40, 0x40);
-      break;
-    case ColorID::TextBackground:
-      color = NS_RGB(0xff, 0xff, 0xff);
-      break;
-    case ColorID::TextForeground:
-      color = NS_RGB(0x00, 0x00, 0x00);
-      break;
-    case ColorID::TextSelectBackground:
+    case ColorID::Highlight:
       color = ProcessSelectionBackground(GetColorFromNSColor(NSColor.selectedTextBackgroundColor),
                                          aScheme);
       break;
     // This is used to gray out the selection when it's not focused. Used with
     // nsISelectionController::SELECTION_DISABLED.
-    case ColorID::TextSelectBackgroundDisabled:
+    case ColorID::TextSelectDisabledBackground:
       color = ProcessSelectionBackground(GetColorFromNSColor(NSColor.secondarySelectedControlColor),
                                          aScheme);
       break;
-    case ColorID::Highlight:  // CSS2 color
+    case ColorID::MozMenuhoverdisabled:
+      aColor = NS_TRANSPARENT;
+      break;
     case ColorID::MozMenuhover:
+    case ColorID::Selecteditem:
       color = GetColorFromNSColor(NSColor.alternateSelectedControlColor);
       break;
-    case ColorID::Highlighttext:  // CSS2 color
-    case ColorID::MozAccentColorForeground:
+    case ColorID::Accentcolortext:
     case ColorID::MozMenuhovertext:
+    case ColorID::Selecteditemtext:
       color = GetColorFromNSColor(NSColor.alternateSelectedControlTextColor);
       break;
     case ColorID::IMESelectedRawTextBackground:
@@ -174,7 +152,7 @@ nsresult nsLookAndFeel::NativeGetColor(ColorID aID, ColorScheme aScheme, nscolor
     case ColorID::IMESelectedConvertedTextForeground:
     case ColorID::IMERawInputForeground:
     case ColorID::IMEConvertedTextForeground:
-    case ColorID::TextSelectForeground:
+    case ColorID::Highlighttext:
       color = NS_SAME_AS_FOREGROUND_COLOR;
       break;
     case ColorID::IMERawInputUnderline:
@@ -184,9 +162,6 @@ nsresult nsLookAndFeel::NativeGetColor(ColorID aID, ColorScheme aScheme, nscolor
     case ColorID::IMESelectedRawTextUnderline:
     case ColorID::IMESelectedConvertedTextUnderline:
       color = NS_SAME_AS_FOREGROUND_COLOR;
-      break;
-    case ColorID::SpellCheckerUnderline:
-      color = NS_RGB(0xff, 0, 0);
       break;
 
       //
@@ -200,13 +175,15 @@ nsresult nsLookAndFeel::NativeGetColor(ColorID aID, ColorScheme aScheme, nscolor
       // Thanks to mpt26@student.canterbury.ac.nz for the hardcoded values that form the defaults
       //  if querying the Appearance Manager fails ;)
       //
-    case ColorID::MozMacButtonactivetext:
     case ColorID::MozMacDefaultbuttontext:
       color = NS_RGB(0xFF, 0xFF, 0xFF);
       break;
-    case ColorID::Buttontext:
-    case ColorID::MozButtonhovertext:
-      color = GetColorFromNSColor(NSColor.controlTextColor);
+    case ColorID::MozButtonactivetext:
+      // Pre-macOS 12, pressed buttons were filled with the highlight color and the text was white.
+      // Starting with macOS 12, pressed (non-default) buttons are filled with medium gray and the
+      // text color is the same as in the non-pressed state.
+      color = nsCocoaFeatures::OnMontereyOrLater() ? GetColorFromNSColor(NSColor.controlTextColor)
+                                                   : NS_RGB(0xFF, 0xFF, 0xFF);
       break;
     case ColorID::Captiontext:
     case ColorID::Menutext:
@@ -231,20 +208,15 @@ nsresult nsLookAndFeel::NativeGetColor(ColorID aID, ColorScheme aScheme, nscolor
       break;
     case ColorID::Buttonface:
     case ColorID::MozButtonhoverface:
+    case ColorID::MozButtonactiveface:
+    case ColorID::MozButtondisabledface:
       color = GetColorFromNSColor(NSColor.controlColor);
+      if (!NS_GET_A(color)) {
+        color = GetColorFromNSColor(NSColor.controlBackgroundColor);
+      }
       break;
     case ColorID::Buttonhighlight:
-      color = NS_RGB(0xFF, 0xFF, 0xFF);
-      break;
-    case ColorID::Buttonshadow:
-      color = NS_RGB(0xDC, 0xDC, 0xDC);
-      break;
-    case ColorID::Graytext:
-      color = GetColorFromNSColor(NSColor.disabledControlTextColor);
-      break;
-    case ColorID::Inactiveborder:
-    case ColorID::Inactivecaption:
-      color = GetColorFromNSColor(NSColor.controlBackgroundColor);
+      color = GetColorFromNSColor(NSColor.selectedControlColor);
       break;
     case ColorID::Inactivecaptiontext:
       color = NS_RGB(0x45, 0x45, 0x45);
@@ -252,20 +224,23 @@ nsresult nsLookAndFeel::NativeGetColor(ColorID aID, ColorScheme aScheme, nscolor
     case ColorID::Scrollbar:
       color = GetColorFromNSColor(NSColor.scrollBarColor);
       break;
-    case ColorID::Threeddarkshadow:
-      color = NS_RGB(0xDC, 0xDC, 0xDC);
-      break;
-    case ColorID::Threedshadow:
-      color = NS_RGB(0xE0, 0xE0, 0xE0);
-      break;
-    case ColorID::Threedface:
-      color = NS_RGB(0xF0, 0xF0, 0xF0);
-      break;
     case ColorID::Threedhighlight:
       color = GetColorFromNSColor(NSColor.highlightColor);
       break;
+    case ColorID::Buttonshadow:
+    case ColorID::Threeddarkshadow:
+      color = aScheme == ColorScheme::Dark ? *GenericDarkColor(aID) : NS_RGB(0xDC, 0xDC, 0xDC);
+      break;
+    case ColorID::Threedshadow:
+      color = aScheme == ColorScheme::Dark ? *GenericDarkColor(aID) : NS_RGB(0xE0, 0xE0, 0xE0);
+      break;
+    case ColorID::Threedface:
+      color = aScheme == ColorScheme::Dark ? *GenericDarkColor(aID) : NS_RGB(0xF0, 0xF0, 0xF0);
+      break;
     case ColorID::Threedlightshadow:
-      color = NS_RGB(0xDA, 0xDA, 0xDA);
+    case ColorID::Buttonborder:
+    case ColorID::MozDisabledfield:
+      color = aScheme == ColorScheme::Dark ? *GenericDarkColor(aID) : NS_RGB(0xDA, 0xDA, 0xDA);
       break;
     case ColorID::Menu:
       color = GetColorFromNSColor(NSColor.textBackgroundColor);
@@ -285,18 +260,17 @@ nsresult nsLookAndFeel::NativeGetColor(ColorID aID, ColorScheme aScheme, nscolor
     }
     case ColorID::Field:
     case ColorID::MozCombobox:
+    case ColorID::Inactiveborder:
+    case ColorID::Inactivecaption:
+    case ColorID::MozDialog:
       color = GetColorFromNSColor(NSColor.controlBackgroundColor);
       break;
     case ColorID::Fieldtext:
     case ColorID::MozComboboxtext:
-      color = GetColorFromNSColor(NSColor.controlTextColor);
-      break;
-    case ColorID::MozDialog:
-      color = GetColorFromNSColor(NSColor.controlBackgroundColor);
-      break;
+    case ColorID::Buttontext:
+    case ColorID::MozButtonhovertext:
     case ColorID::MozDialogtext:
     case ColorID::MozCellhighlighttext:
-    case ColorID::MozHtmlCellhighlighttext:
     case ColorID::MozColheadertext:
     case ColorID::MozColheaderhovertext:
       color = GetColorFromNSColor(NSColor.controlTextColor);
@@ -327,6 +301,7 @@ nsresult nsLookAndFeel::NativeGetColor(ColorID aID, ColorScheme aScheme, nscolor
       color = GetColorFromNSColor(NSColor.selectedMenuItemTextColor);
       break;
     case ColorID::MozMacDisabledtoolbartext:
+    case ColorID::Graytext:
       color = GetColorFromNSColor(NSColor.disabledControlTextColor);
       break;
     case ColorID::MozMacMenuselect:
@@ -336,7 +311,6 @@ nsresult nsLookAndFeel::NativeGetColor(ColorID aID, ColorScheme aScheme, nscolor
       color = NS_RGB(0xDC, 0xDC, 0xDC);
       break;
     case ColorID::MozCellhighlight:
-    case ColorID::MozHtmlCellhighlight:
     case ColorID::MozMacSecondaryhighlight:
       // For inactive list selection
       color = GetColorFromNSColor(NSColor.secondarySelectedControlColor);
@@ -352,19 +326,8 @@ nsresult nsLookAndFeel::NativeGetColor(ColorID aID, ColorScheme aScheme, nscolor
     case ColorID::MozNativehyperlinktext:
       color = GetColorFromNSColor(NSColor.linkColor);
       break;
-    // The following colors are supposed to be used as font-smoothing background
-    // colors, in the chrome-only -moz-font-smoothing-background-color property.
-    // This property is used for text on "vibrant" -moz-appearances.
-    // The colors have been obtained from the system on 10.14 using the
-    // program at https://bugzilla.mozilla.org/attachment.cgi?id=9208594 .
-    // We could obtain them at runtime, but doing so may be expensive and
-    // requires the use of the private API
-    // -[NSVisualEffectView fontSmoothingBackgroundColor].
-    case ColorID::MozMacVibrantTitlebarLight:
-      color = NS_RGB(0xe6, 0xe6, 0xe6);
-      break;
-    case ColorID::MozMacVibrantTitlebarDark:
-      color = NS_RGB(0x28, 0x28, 0x28);
+    case ColorID::MozNativevisitedhyperlinktext:
+      color = GetColorFromNSColor(NSColor.systemPurpleColor);
       break;
     case ColorID::MozMacTooltip:
     case ColorID::MozMacMenupopup:
@@ -379,11 +342,15 @@ nsresult nsLookAndFeel::NativeGetColor(ColorID aID, ColorScheme aScheme, nscolor
       break;
     case ColorID::MozMacActiveMenuitem:
     case ColorID::MozMacActiveSourceListSelection:
-    case ColorID::MozAccentColor:
+    case ColorID::Accentcolor:
       color = GetColorFromNSColor(ControlAccentColor());
       break;
+    case ColorID::Marktext:
+    case ColorID::Mark:
+    case ColorID::SpellCheckerUnderline:
+      aColor = GetStandinForNativeColor(aID, aScheme);
+      return NS_OK;
     default:
-      NS_WARNING("Someone asked nsILookAndFeel for a color I don't know about");
       aColor = NS_RGB(0xff, 0xff, 0xff);
       return NS_ERROR_FAILURE;
   }
@@ -441,9 +408,6 @@ nsresult nsLookAndFeel::NativeGetInt(IntID aID, int32_t& aResult) {
     case IntID::ScrollArrowStyle:
       aResult = eScrollArrow_None;
       break;
-    case IntID::ScrollSliderStyle:
-      aResult = eScrollThumbStyle_Proportional;
-      break;
     case IntID::UseOverlayScrollbars:
     case IntID::AllowOverlayScrollbarsOverlap:
       aResult = NSScroller.preferredScrollerStyle == NSScrollerStyleOverlay;
@@ -472,19 +436,14 @@ nsresult nsLookAndFeel::NativeGetInt(IntID aID, int32_t& aResult) {
     case IntID::TreeScrollLinesMax:
       aResult = 3;
       break;
-    case IntID::DWMCompositor:
-    case IntID::WindowsClassic:
-    case IntID::WindowsDefaultTheme:
-    case IntID::WindowsThemeIdentifier:
-    case IntID::OperatingSystemVersionIdentifier:
-      aResult = 0;
-      res = NS_ERROR_NOT_IMPLEMENTED;
-      break;
     case IntID::MacGraphiteTheme:
       aResult = NSColor.currentControlTint == NSGraphiteControlTint;
       break;
     case IntID::MacBigSurTheme:
       aResult = nsCocoaFeatures::OnBigSurOrLater();
+      break;
+    case IntID::MacRTL:
+      aResult = IsSystemOrientationRTL();
       break;
     case IntID::AlertNotificationOrigin:
       aResult = NS_ALERT_TOP;
@@ -503,10 +462,10 @@ nsresult nsLookAndFeel::NativeGetInt(IntID aID, int32_t& aResult) {
     case IntID::IMEConvertedTextUnderlineStyle:
     case IntID::IMESelectedRawTextUnderlineStyle:
     case IntID::IMESelectedConvertedTextUnderline:
-      aResult = NS_STYLE_TEXT_DECORATION_STYLE_SOLID;
+      aResult = static_cast<int32_t>(StyleTextDecorationStyle::Solid);
       break;
     case IntID::SpellCheckerUnderlineStyle:
-      aResult = NS_STYLE_TEXT_DECORATION_STYLE_DOTTED;
+      aResult = static_cast<int32_t>(StyleTextDecorationStyle::Dotted);
       break;
     case IntID::ScrollbarButtonAutoRepeatBehavior:
       aResult = 0;
@@ -526,9 +485,24 @@ nsresult nsLookAndFeel::NativeGetInt(IntID aID, int32_t& aResult) {
     case IntID::PrefersReducedMotion:
       aResult = NSWorkspace.sharedWorkspace.accessibilityDisplayShouldReduceMotion;
       break;
+    case IntID::PrefersReducedTransparency:
+      aResult = NSWorkspace.sharedWorkspace.accessibilityDisplayShouldReduceTransparency;
+      break;
+    case IntID::InvertedColors:
+      aResult = NSWorkspace.sharedWorkspace.accessibilityDisplayShouldInvertColors;
+      break;
     case IntID::UseAccessibilityTheme:
       aResult = NSWorkspace.sharedWorkspace.accessibilityDisplayShouldIncreaseContrast;
       break;
+    case IntID::VideoDynamicRange: {
+      // If the platform says it supports HDR, then we claim to support video-dynamic-range.
+      gfxPlatform* platform = gfxPlatform::GetPlatform();
+      MOZ_ASSERT(platform);
+      aResult = platform->SupportsHDR();
+      break;
+    }
+    case IntID::PanelAnimations:
+      aResult = 1;
       break;
     default:
       aResult = 0;
@@ -540,6 +514,8 @@ nsresult nsLookAndFeel::NativeGetInt(IntID aID, int32_t& aResult) {
 }
 
 nsresult nsLookAndFeel::NativeGetFloat(FloatID aID, float& aResult) {
+  NS_OBJC_BEGIN_TRY_BLOCK_RETURN;
+
   nsresult res = NS_OK;
 
   switch (aID) {
@@ -549,12 +525,21 @@ nsresult nsLookAndFeel::NativeGetFloat(FloatID aID, float& aResult) {
     case FloatID::SpellCheckerUnderlineRelativeSize:
       aResult = 2.0f;
       break;
+    case FloatID::CursorScale: {
+      id uaDefaults = [[NSUserDefaults alloc] initWithSuiteName:@"com.apple.universalaccess"];
+      float f = [uaDefaults floatForKey:@"mouseDriverCursorSize"];
+      [uaDefaults release];
+      aResult = f > 0.0 ? f : 1.0;  // default to 1.0 if value not available
+      break;
+    }
     default:
       aResult = -1.0;
       res = NS_ERROR_FAILURE;
   }
 
   return res;
+
+  NS_OBJC_END_TRY_BLOCK_RETURN(NS_ERROR_FAILURE);
 }
 
 bool nsLookAndFeel::SystemWantsDarkTheme() {
@@ -568,22 +553,19 @@ bool nsLookAndFeel::SystemWantsDarkTheme() {
   return false;
 }
 
+/*static*/
+bool nsLookAndFeel::IsSystemOrientationRTL() {
+  NSWindow* window = [[NSWindow alloc] initWithContentRect:NSZeroRect
+                                                 styleMask:NSWindowStyleMaskBorderless
+                                                   backing:NSBackingStoreBuffered
+                                                     defer:NO];
+  auto direction = window.windowTitlebarLayoutDirection;
+  [window release];
+  return direction == NSUserInterfaceLayoutDirectionRightToLeft;
+}
+
 bool nsLookAndFeel::NativeGetFont(FontID aID, nsString& aFontName, gfxFontStyle& aFontStyle) {
   NS_OBJC_BEGIN_TRY_BLOCK_RETURN;
-
-  // hack for now
-  if (aID == FontID::MozWindow || aID == FontID::MozDocument) {
-    aFontStyle.style = mozilla::FontSlantStyle::Normal();
-    aFontStyle.weight = mozilla::FontWeight::Normal();
-    aFontStyle.stretch = mozilla::FontStretch::Normal();
-    aFontStyle.size = 14;
-    aFontStyle.systemFont = true;
-
-    aFontName.AssignLiteral("sans-serif");
-    return true;
-  }
-
-  // TODO: Add caching? Note that it needs to be thread-safe for stylo use.
 
   nsAutoCString name;
   gfxPlatformMac::LookupSystemFont(aID, name, aFontStyle);
@@ -592,6 +574,14 @@ bool nsLookAndFeel::NativeGetFont(FontID aID, nsString& aFontName, gfxFontStyle&
   return true;
 
   NS_OBJC_END_TRY_BLOCK_RETURN(false);
+}
+
+void nsLookAndFeel::RecordAccessibilityTelemetry() {
+  if ([[NSWorkspace sharedWorkspace]
+          respondsToSelector:@selector(accessibilityDisplayShouldInvertColors)]) {
+    bool val = [[NSWorkspace sharedWorkspace] accessibilityDisplayShouldInvertColors];
+    Telemetry::ScalarSet(Telemetry::ScalarID::A11Y_INVERT_COLORS, val);
+  }
 }
 
 @implementation MOZLookAndFeelDynamicChangeObserver
@@ -681,6 +671,10 @@ bool nsLookAndFeel::NativeGetFont(FontID aID, nsString& aFontName, gfxFontStyle&
 }
 
 - (void)mediaQueriesChanged {
+  // Changing`Invert Colors` sends AccessibilityDisplayOptionsDidChangeNotifications.
+  // We monitor that setting via telemetry, so call into that
+  // recording method here.
+  nsLookAndFeel::RecordAccessibilityTelemetry();
   LookAndFeel::NotifyChangedAllWindows(widget::ThemeChangeKind::MediaQueriesOnly);
 }
 
@@ -689,8 +683,8 @@ bool nsLookAndFeel::NativeGetFont(FontID aID, nsString& aFontName, gfxFontStyle&
 }
 
 - (void)cachedValuesChanged {
-  // We only need to re-cache (and broadcast) updated LookAndFeel values, so that they're up-to-date
-  // the next time they're queried. No further change handling is needed.
+  // We only need to re-cache (and broadcast) updated LookAndFeel values, so that they're
+  // up-to-date the next time they're queried. No further change handling is needed.
   // TODO: Add a change hint for this which avoids the unnecessary media query invalidation.
   LookAndFeel::NotifyChangedAllWindows(widget::ThemeChangeKind::MediaQueriesOnly);
 }

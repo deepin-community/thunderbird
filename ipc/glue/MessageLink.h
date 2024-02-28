@@ -14,12 +14,13 @@
 #include "mojo/core/ports/port_ref.h"
 #include "mozilla/Assertions.h"
 #include "mozilla/UniquePtr.h"
-#include "mozilla/ipc/Transport.h"
 #include "mozilla/ipc/ScopedPort.h"
 
 namespace IPC {
 class Message;
-}
+class MessageReader;
+class MessageWriter;
+}  // namespace IPC
 
 namespace mozilla {
 namespace ipc {
@@ -49,17 +50,20 @@ class MessageLink {
   explicit MessageLink(MessageChannel* aChan);
   virtual ~MessageLink();
 
-  // This is called immediately before the MessageChannel destroys its
-  // MessageLink. See the implementation in ThreadLink for details.
-  virtual void PrepareToDestroy(){};
-
   // n.b.: These methods all require that the channel monitor is
   // held when they are invoked.
   virtual void SendMessage(mozilla::UniquePtr<Message> msg) = 0;
-  virtual void SendClose() = 0;
 
-  virtual bool Unsound_IsClosed() const = 0;
-  virtual uint32_t Unsound_NumQueuedMessages() const = 0;
+  // Synchronously close the connection, such that no further notifications will
+  // be delivered to the MessageChannel instance. Must be called with the
+  // channel monitor held.
+  virtual void Close() = 0;
+
+  virtual bool IsClosed() const = 0;
+
+#ifdef FUZZING_SNAPSHOT
+  virtual Maybe<mojo::core::ports::PortName> GetPortName() { return Nothing(); }
+#endif
 
  protected:
   MessageChannel* mChan;
@@ -76,10 +80,15 @@ class PortLink final : public MessageLink {
   virtual ~PortLink();
 
   void SendMessage(UniquePtr<Message> aMessage) override;
-  void SendClose() override;
+  void Close() override;
 
-  bool Unsound_IsClosed() const override;
-  uint32_t Unsound_NumQueuedMessages() const override;
+  bool IsClosed() const override;
+
+#ifdef FUZZING_SNAPSHOT
+  Maybe<mojo::core::ports::PortName> GetPortName() override {
+    return Some(mPort.name());
+  }
+#endif
 
  private:
   class PortObserverThunk;

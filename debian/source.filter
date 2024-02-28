@@ -1,5 +1,6 @@
 # Lines that are commented out are files that are needed later while building.
 # Don't remove those files!
+*/__pycache__
 browser/app/profile/firefox.js
 browser/base/content/test/general/browser_bug477014.js
 browser/base/content/test/general/browser_contentAreaClick.js
@@ -10,10 +11,9 @@ browser/components/enterprisepolicies/tests/browser/browser_policy_bookmarks.js
 browser/components/extensions/test/browser/browser_ext_contextMenus_icons.js
 # browser/components/extensions/test/browser/browser_ext_themes_icons.js
 browser/components/migration/tests/unit/test_IE7_passwords.js
-browser/components/translation/cld2/cld-worker.js
-browser/components/translation/test/unit/test_cld2.js
 browser/extensions/formautofill/content/*.js
-browser/extensions/translations/extension/wasm/cld-worker.js
+build/android
+build/pgo/blueprint/sample.html
 build/pgo/blueprint/valid.png
 build/pgo/js-input/sunspider/string-tagcloud.html
 build/pgo/js-input/sunspider/string-unpack-code.html
@@ -30,7 +30,7 @@ comm/mailnews/addrbook/test/unit/test_nsIAbCard.js
 comm/mailnews/base/test/unit/test_compactColumnSave.js
 comm/other-licenses/7zstub
 comm/third_party/rnp/src/tests/*
-configure
+# configure
 # devtools/client/debugger/new/debugger.js
 # devtools/client/debugger/new/parser-worker.js
 # devtools/client/debugger/new/pretty-print-worker.js
@@ -71,7 +71,6 @@ devtools/client/shared/vendor/react-dom-server-dev.js
 # devtools/shared/acorn/acorn_loose.js
 # devtools/shared/acorn/walk.js
 # devtools/shared/sourcemap/tests/unit/test_source_node.js
-dom/base/crashtests/561981-1-iframe.xhtml
 dom/base/crashtests/827190.html
 dom/base/crashtests/849727.html
 dom/base/crashtests/xhr_html_nullresponse.html
@@ -86,7 +85,6 @@ dom/canvas/test/webgl-conf/checkout/conformance2/glsl3/shader-with-1024-characte
 dom/canvas/test/webgl-conf/checkout/conformance2/glsl3/shader-with-1025-character-define.html
 dom/canvas/test/webgl-conf/checkout/conformance2/glsl3/shader-with-1025-character-identifier.frag.html
 dom/canvas/test/webgl-conf/checkout/conformance2/glsl3/uniform-location-length-limits.html
-dom/canvas/test/webgl-conf/checkout/conformance/extensions/webgl-compressed-texture-s3tc.html
 dom/canvas/test/webgl-conf/checkout/conformance/glsl/misc/glsl-long-variable-names.html
 dom/canvas/test/webgl-conf/checkout/deqp/deqp-deps.js
 dom/canvas/test/webgl-conf/checkout/deqp/framework/referencerenderer/rrFragmentOperations.js
@@ -170,7 +168,6 @@ layout/base/crashtests/378325-1.html
 layout/docs
 layout/generic/crashtests/simple_blank.swf
 layout/generic/crashtests/text-overflow-form-elements.html
-layout/mathml/tests/stretchy-and-large-operators.js
 layout/reftests/bugs/256180-6.html
 layout/reftests/bugs/424465-1.html
 layout/reftests/font-loading-api/src-list-data-1.html
@@ -185,7 +182,8 @@ modules/freetype2/docs
 netwerk/test/crashtests/785753-1.html
 netwerk/test/unit/data/signed_win.exe
 netwerk/test/unit/test_readline.js
-old-configure
+*old-configure
+*.orig
 other-licenses/7zstub/*
 # other-licenses/7zstub/firefox/7zSD.sfx
 other-licenses/nsis/Contrib/ApplicationID/ApplicationID.rc
@@ -194,16 +192,17 @@ other-licenses/nsis/Contrib/ServicesHelper/resource.h
 other-licenses/nsis/Contrib/ServicesHelper/ServicesHelper.rc
 other-licenses/nsis/nsisui.exe
 other-licenses/nsis/Plugins
+parser/html/java/named-character-references.html
 parser/xml/test
+*.pyc
+*.rej
 # services/common/kinto-http-client.js
 # services/common/kinto-offline-client.js
 # testing/marionette/atom.js
 # testing/marionette/harness/marionette_harness/runner/mixins/browsermob-proxy-py/docs/_build/html/_static/jquery.js
 # testing/marionette/harness/marionette_harness/runner/mixins/browsermob-proxy-py/docs/_build/html/_static/underscore.js
 testing/mochitest/browser-test.js
-testing/modules/ajv-4.1.1.js
 testing/modules/sinon-7.2.7.js
-testing/talos/talos/scripts/jszip.min.js
 testing/talos/talos/startup_test/sessionrestore/profile-manywindows/sessionstore.js
 testing/talos/talos/startup_test/sessionrestore/profile/sessionstore.js
 testing/talos/talos/tests/devtools/addon/content/pages/custom/debugger/static/js/main.js
@@ -214,9 +213,19 @@ testing/talos/talos/tests/dromaeo/tests/sunspider-string-unpack-code.html
 testing/talos/talos/tests/dromaeo/webrunner.js
 testing/talos/talos/tests/v8_7/regexp.js
 testing/web-platform/meta/css/css-backgrounds/#inheritance.sub.html.ini#
+testing/web-platform/tests/IndexedDB/keypath_maxsize.htm
+testing/web-platform/tests/WebCryptoAPI/derive_bits_keys/ecdh_bits.js
+testing/web-platform/tests/WebCryptoAPI/derive_bits_keys/ecdh_keys.js
+testing/web-platform/tests/WebCryptoAPI/encrypt_decrypt/aes_ctr_vectors.js
+testing/web-platform/tests/WebCryptoAPI/encrypt_decrypt/rsa_vectors.js
+testing/web-platform/tests/WebCryptoAPI/sign_verify/ecdsa_vectors.js
+testing/web-platform/tests/WebCryptoAPI/sign_verify/hmac_vectors.js
+testing/web-platform/tests/WebCryptoAPI/sign_verify/rsa_pkcs_vectors.js
+testing/web-platform/tests/WebCryptoAPI/sign_verify/rsa_pss_vectors.js
 testing/web-platform/tests/acid/acid3/test.html
 testing/web-platform/tests/common/performance-timeline-utils.js
 testing/web-platform/tests/conformance-checkers/html/elements/table/integrity/Naser_al-Din_Shah_Qajar-novalid.html
+testing/web-platform/tests/content-security-policy/support/media/flash.swf
 testing/web-platform/tests/css/CSS2/text/text-transform-bicameral-001.xht
 testing/web-platform/tests/css/CSS2/text/text-transform-bicameral-002.xht
 testing/web-platform/tests/css/CSS2/text/text-transform-bicameral-003.xht
@@ -239,7 +248,6 @@ testing/web-platform/tests/css/CSS2/text/text-transform-bicameral-019.xht
 testing/web-platform/tests/css/CSS2/text/text-transform-bicameral-020.xht
 testing/web-platform/tests/css/CSS2/text/text-transform-bicameral-021.xht
 testing/web-platform/tests/css/CSS2/text/text-transform-bicameral-022.xht
-testing/web-platform/tests/content-security-policy/support/media/flash.swf
 testing/web-platform/tests/editing/data/indent.js
 testing/web-platform/tests/encoding/legacy-mb-japanese/euc-jp/jis0208_index.js
 testing/web-platform/tests/encoding/legacy-mb-japanese/euc-jp/jis0212_index.js
@@ -340,6 +348,7 @@ testing/web-platform/tests/html/syntax/parsing/html5lib_scripted_ark.html
 testing/web-platform/tests/html/syntax/parsing/html5lib_scripted_webkit01.html
 testing/web-platform/tests/html/syntax/parsing/html5lib_tables01.html
 testing/web-platform/tests/html/syntax/parsing/html5lib_template.html
+testing/web-platform/tests/html/syntax/parsing/html5lib_tests1.html
 testing/web-platform/tests/html/syntax/parsing/html5lib_tests10.html
 testing/web-platform/tests/html/syntax/parsing/html5lib_tests11.html
 testing/web-platform/tests/html/syntax/parsing/html5lib_tests12.html
@@ -349,7 +358,7 @@ testing/web-platform/tests/html/syntax/parsing/html5lib_tests16.html
 testing/web-platform/tests/html/syntax/parsing/html5lib_tests17.html
 testing/web-platform/tests/html/syntax/parsing/html5lib_tests18.html
 testing/web-platform/tests/html/syntax/parsing/html5lib_tests19.html
-testing/web-platform/tests/html/syntax/parsing/html5lib_tests1.html
+testing/web-platform/tests/html/syntax/parsing/html5lib_tests2.html
 testing/web-platform/tests/html/syntax/parsing/html5lib_tests20.html
 testing/web-platform/tests/html/syntax/parsing/html5lib_tests21.html
 testing/web-platform/tests/html/syntax/parsing/html5lib_tests22.html
@@ -357,7 +366,6 @@ testing/web-platform/tests/html/syntax/parsing/html5lib_tests23.html
 testing/web-platform/tests/html/syntax/parsing/html5lib_tests24.html
 testing/web-platform/tests/html/syntax/parsing/html5lib_tests25.html
 testing/web-platform/tests/html/syntax/parsing/html5lib_tests26.html
-testing/web-platform/tests/html/syntax/parsing/html5lib_tests2.html
 testing/web-platform/tests/html/syntax/parsing/html5lib_tests3.html
 testing/web-platform/tests/html/syntax/parsing/html5lib_tests5.html
 testing/web-platform/tests/html/syntax/parsing/html5lib_tests6.html
@@ -367,29 +375,23 @@ testing/web-platform/tests/html/syntax/parsing/html5lib_tests9.html
 testing/web-platform/tests/html/syntax/parsing/html5lib_tricky01.html
 testing/web-platform/tests/html/syntax/parsing/html5lib_webkit01.html
 testing/web-platform/tests/html/syntax/parsing/html5lib_webkit02.html
-testing/web-platform/tests/IndexedDB/keypath_maxsize.htm
 testing/web-platform/tests/navigation-timing/resources/webperftestharness.js
 testing/web-platform/tests/pointerevents/pointerevent_support.js
 testing/web-platform/tests/resource-timing/resources/webperftestharness.js
+testing/web-platform/tests/tools/third_party/packaging/tests/manylinux
 testing/web-platform/tests/user-timing/resources/webperftestharness.js
-testing/web-platform/tests/WebCryptoAPI/derive_bits_keys/ecdh_bits.js
-testing/web-platform/tests/WebCryptoAPI/derive_bits_keys/ecdh_keys.js
-testing/web-platform/tests/WebCryptoAPI/encrypt_decrypt/aes_ctr_vectors.js
-testing/web-platform/tests/WebCryptoAPI/encrypt_decrypt/rsa_vectors.js
-testing/web-platform/tests/WebCryptoAPI/sign_verify/ecdsa_vectors.js
-testing/web-platform/tests/WebCryptoAPI/sign_verify/hmac_vectors.js
-testing/web-platform/tests/WebCryptoAPI/sign_verify/rsa_pkcs_vectors.js
-testing/web-platform/tests/WebCryptoAPI/sign_verify/rsa_pss_vectors.js
 testing/web-platform/tests/workers/constructors/Worker/unexpected-self-properties.worker.js
 testing/xpcshell/moz-http2/moz-http2.js
 testing/xpcshell/node-http2/test/compressor.js
-third_party/python/coverage/coverage/htmlfiles/*.js
 third_party/python/gyp/test/win/rc-build/Resource.h
 third_party/python/gyp/test/win/rc-build/*.rc
 third_party/python/gyp/test/win/rc-build/subdir/hello2.rc
-third_party/python/virtualenv/__virtualenv__/distlib-0.3.1-py2.py3-none-any/*/*.exe
-# third_party/rust/libloading
-third_party/rust/pkcs11/NOTICE
+third_party/libwebrtc/data/voice_engine/stereo_rtp_files/rtpplay.exe
+third_party/python/pip/pip/_vendor/distlib/*.exe
+third_party/python/setuptools/setuptools/*.exe
+# third_party/rust/libloading*
+# third_party/rust/pkcs11/NOTICE
+third_party/rust/winapi-*-pc-windows-gnu/lib/*.a
 third_party/webkit/PerformanceTests/ARES-6/*
 third_party/webkit/PerformanceTests/MotionMark/resources/debug-runner/d3.min.js
 third_party/webkit/PerformanceTests/Speedometer/resources/todomvc
@@ -408,6 +410,8 @@ toolkit/components/reputationservice/test/unit/data/*.exe
 # toolkit/components/search/tests/xpcshell/test_json_cache.js
 # toolkit/components/telemetry/tests/marionette
 toolkit/components/telemetry/tests/unit/*.dll
+# toolkit/components/translation/cld2/cld-worker.js*
+# toolkit/components/translation/test/unit/test_cld2.js
 toolkit/components/url-classifier/tests/unit/test_hashcompleter_v4.js
 toolkit/content/tests/browser/browser_default_image_filename.js
 toolkit/crashreporter/client/crashreporter.rc
@@ -421,4 +425,3 @@ toolkit/mozapps/update/updater/macbuild/Contents/Resources/English.lproj/MainMen
 toolkit/mozapps/update/updater/resource.h
 toolkit/mozapps/update/updater/updater.rc
 # widget/windows/*
-tools/infer/test/gradle/wrapper/gradle-wrapper.jar

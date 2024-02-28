@@ -50,6 +50,3 @@
 <!ENTITY onedayforward.tooltip "Bir kun oldinga">
 <!ENTITY onedaybackward.tooltip "Bir kun orqaroqqa">
 <!ENTITY showselectedday.tooltip "Tanlangan kun uchun tadbirlarni ko'rsatish">
-
-<!ENTITY oneyearbackward.tooltip "One Year Back" >
-<!ENTITY oneyearforward.tooltip "One Year Forward" >

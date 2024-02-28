@@ -25,7 +25,7 @@ account-setup-name-input =
 account-setup-name-info-icon =
     .title = Így fog megjelenni a neve
 account-setup-name-warning-icon =
-    .title = { account-setup-name-warning }
+    .title = Adja meg a nevét
 account-setup-email-label = E-mail cím
     .accesskey = E
 account-setup-email-input =
@@ -33,14 +33,12 @@ account-setup-email-input =
 account-setup-email-info-icon =
     .title = A meglévő e-mail címe
 account-setup-email-warning-icon =
-    .title = { account-setup-email-warning }
+    .title = Érvénytelen e-mail-cím
 account-setup-password-label = Jelszó
     .accesskey = J
     .title = Nem kötelező, csak a felhasználónév ellenőrzéséhez használatos
 account-provisioner-button = Új e-mail-cím kérése
     .accesskey = j
-account-setup-password-toggle =
-    .title = Jelszó megjelenítése/elrejtése
 account-setup-password-toggle-show =
     .title = Jelszó megjelenítése
 account-setup-password-toggle-hide =
@@ -126,21 +124,14 @@ account-setup-results-area-title =
         [one] Elérhető konfiguráció
        *[other] Elérhető konfigurációk
     }
-# Note: IMAP is the name of a protocol.
-account-setup-result-imap = IMAP
 account-setup-result-imap-description = Mappák és e-mailek szinkronban tartása a kiszolgálón
-# Note: POP3 is the name of a protocol.
-account-setup-result-pop = POP3
 account-setup-result-pop-description = Mappák és e-mailek tárolása az Ön számítógépén
-# Note: Exchange is the name of a product.
-account-setup-result-exchange = Exchange
 # Note: Exchange, Office365 are the name of products.
 account-setup-result-exchange2-description = Microsoft Exchange vagy Office 365 felhőszolgáltatások használata
 account-setup-incoming-title = Bejövő
 account-setup-outgoing-title = Kimenő
 account-setup-username-title = Felhasználónév
 account-setup-exchange-title = Kiszolgáló
-account-setup-result-smtp = SMTP
 account-setup-result-no-encryption = Nincs titkosítás
 account-setup-result-ssl = SSL/TLS
 account-setup-result-starttls = STARTTLS
@@ -164,9 +155,6 @@ account-setup-provisioner-error = Hiba történt az új fiókja beállításakor
 account-setup-manual-config-title = Kiszolgáló beállításai
 account-setup-incoming-server-legend = Bejövő kiszolgáló
 account-setup-protocol-label = Protokoll:
-protocol-imap-option = { account-setup-result-imap }
-protocol-pop-option = { account-setup-result-pop }
-protocol-exchange-option = { account-setup-result-exchange }
 account-setup-hostname-label = Gépnév:
 account-setup-port-label = Port:
     .title = Az automatikus észleléshez állítsa 0-ra a portszámot
@@ -291,10 +279,12 @@ account-setup-calendar-name-input =
 account-setup-calendar-color-label = Szín
 account-setup-calendar-refresh-label = Frissítés
 account-setup-calendar-refresh-manual = Kézzel
+# Variables:
+# $count (Number) - Number of minutes in the calendar refresh interval.
 account-setup-calendar-refresh-interval =
     { $count ->
         [one] Percenként
-       *[other] { $minutes } percenként
+       *[other] { $count } percenként
     }
 account-setup-calendar-read-only = Csak olvasható
     .accesskey = o

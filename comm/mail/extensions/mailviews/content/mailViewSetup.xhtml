@@ -5,6 +5,8 @@
 
 <?xml-stylesheet href="chrome://messenger/skin/shared/input-fields.css" type="text/css" ?>
 <?xml-stylesheet href="chrome://messenger/skin/searchDialog.css" type="text/css"?>
+<?xml-stylesheet href="chrome://messenger/skin/colors.css" type="text/css"?>
+<?xml-stylesheet href="chrome://messenger/skin/variables.css" type="text/css"?>
 <?xml-stylesheet href="chrome://messenger/skin/themeableDialog.css" type="text/css"?>
 
 <!DOCTYPE window [
@@ -22,13 +24,11 @@
         onunload="mailViewOnUnLoad();"
         windowtype="mailnews:mailview"
         title="&mailViewSetupTitle.label;"
-        style="width: 52em; height: 22em;"
+        style="min-width: 52em; min-height: 22em;"
         persist="screenX screenY width height">
 <dialog buttons="accept,cancel">
 
-  <stringbundle id="bundle_search" src="chrome://messenger/locale/search.properties"/>
-
-  <script src="chrome://global/content/globalOverlay.js"/>
+  <script src="chrome://messenger/content/globalOverlay.js"/>
   <script src="chrome://messenger/content/mailViewSetup.js"/>
   <script src="chrome://messenger/content/searchTerm.js"/>
   <script src="chrome://messenger/content/searchWidgets.js"/>

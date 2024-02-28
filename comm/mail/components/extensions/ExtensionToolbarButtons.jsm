@@ -6,47 +6,134 @@
 
 "use strict";
 
-const EXPORTED_SYMBOLS = ["ToolbarButtonAPI"];
+const EXPORTED_SYMBOLS = [
+  "ToolbarButtonAPI",
+  "getIconData",
+  "getCachedAllowedSpaces",
+  "setCachedAllowedSpaces",
+];
 
+const lazy = {};
+
+ChromeUtils.defineESModuleGetters(lazy, {
+  ViewPopup: "resource:///modules/ExtensionPopups.sys.mjs",
+});
 ChromeUtils.defineModuleGetter(
-  this,
-  "Services",
-  "resource://gre/modules/Services.jsm"
-);
-ChromeUtils.defineModuleGetter(
-  this,
-  "ViewPopup",
-  "resource:///modules/ExtensionPopups.jsm"
-);
-ChromeUtils.defineModuleGetter(
-  this,
+  lazy,
   "ExtensionSupport",
   "resource:///modules/ExtensionSupport.jsm"
 );
-const { ExtensionCommon } = ChromeUtils.import(
-  "resource://gre/modules/ExtensionCommon.jsm"
+const { ExtensionCommon } = ChromeUtils.importESModule(
+  "resource://gre/modules/ExtensionCommon.sys.mjs"
 );
-const { ExtensionUtils } = ChromeUtils.import(
-  "resource://gre/modules/ExtensionUtils.jsm"
+const { ExtensionUtils } = ChromeUtils.importESModule(
+  "resource://gre/modules/ExtensionUtils.sys.mjs"
 );
-const { ExtensionParent } = ChromeUtils.import(
-  "resource://gre/modules/ExtensionParent.jsm"
+const { ExtensionParent } = ChromeUtils.importESModule(
+  "resource://gre/modules/ExtensionParent.sys.mjs"
 );
 
-var { EventManager, ExtensionAPI, makeWidgetId } = ExtensionCommon;
+var { EventManager, ExtensionAPIPersistent, makeWidgetId } = ExtensionCommon;
 
 var { IconDetails, StartupCache } = ExtensionParent;
 
 var { DefaultWeakMap, ExtensionError } = ExtensionUtils;
 
-const { XPCOMUtils } = ChromeUtils.import(
-  "resource://gre/modules/XPCOMUtils.jsm"
-);
-XPCOMUtils.defineLazyGlobalGetters(this, ["InspectorUtils"]);
-
 var DEFAULT_ICON = "chrome://messenger/content/extension.svg";
 
-var ToolbarButtonAPI = class extends ExtensionAPI {
+function getCachedAllowedSpaces() {
+  let cache = {};
+  if (
+    Services.xulStore.hasValue(
+      "chrome://messenger/content/messenger.xhtml",
+      "unifiedToolbar",
+      "allowedExtSpaces"
+    )
+  ) {
+    let rawCache = Services.xulStore.getValue(
+      "chrome://messenger/content/messenger.xhtml",
+      "unifiedToolbar",
+      "allowedExtSpaces"
+    );
+    cache = JSON.parse(rawCache);
+  }
+  return new Map(Object.entries(cache));
+}
+
+function setCachedAllowedSpaces(allowedSpacesMap) {
+  Services.xulStore.setValue(
+    "chrome://messenger/content/messenger.xhtml",
+    "unifiedToolbar",
+    "allowedExtSpaces",
+    JSON.stringify(Object.fromEntries(allowedSpacesMap))
+  );
+}
+
+/**
+ * Get icon properties for updating the UI.
+ *
+ * @param {object} icons
+ *        Contains the icon information, typically the extension manifest
+ */
+function getIconData(icons, extension) {
+  let baseSize = 16;
+  let { icon, size } = IconDetails.getPreferredIcon(icons, extension, baseSize);
+
+  let legacy = false;
+
+  // If the best available icon size is not divisible by 16, check if we have
+  // an 18px icon to fall back to, and trim off the padding instead.
+  if (size % 16 && typeof icon === "string" && !icon.endsWith(".svg")) {
+    let result = IconDetails.getPreferredIcon(icons, extension, 18);
+
+    if (result.size % 18 == 0) {
+      baseSize = 18;
+      icon = result.icon;
+      legacy = true;
+    }
+  }
+
+  let getIcon = (size, theme) => {
+    let { icon } = IconDetails.getPreferredIcon(icons, extension, size);
+    if (typeof icon === "object") {
+      if (icon[theme] == IconDetails.DEFAULT_ICON) {
+        icon[theme] = DEFAULT_ICON;
+      }
+      return IconDetails.escapeUrl(icon[theme]);
+    }
+    if (icon == IconDetails.DEFAULT_ICON) {
+      return DEFAULT_ICON;
+    }
+    return IconDetails.escapeUrl(icon);
+  };
+
+  let style = [];
+  let getStyle = (name, size) => {
+    style.push([
+      `--webextension-${name}`,
+      `url("${getIcon(size, "default")}")`,
+    ]);
+    style.push([
+      `--webextension-${name}-light`,
+      `url("${getIcon(size, "light")}")`,
+    ]);
+    style.push([
+      `--webextension-${name}-dark`,
+      `url("${getIcon(size, "dark")}")`,
+    ]);
+  };
+
+  getStyle("menupanel-image", 32);
+  getStyle("menupanel-image-2x", 64);
+  getStyle("toolbar-image", baseSize);
+  getStyle("toolbar-image-2x", baseSize * 2);
+
+  let realIcon = getIcon(size, "default");
+
+  return { style, legacy, realIcon };
+}
+
+var ToolbarButtonAPI = class extends ExtensionAPIPersistent {
   constructor(extension, global) {
     super(extension);
     this.global = global;
@@ -56,9 +143,16 @@ var ToolbarButtonAPI = class extends ExtensionAPI {
   }
 
   /**
+   * If this action is available in the unified toolbar.
+   *
+   * @type {boolean}
+   */
+  inUnifiedToolbar = false;
+
+  /**
    * Called when the extension is enabled.
    *
-   * @param {String} entryName
+   * @param {string} entryName
    *        The name of the property in the extension manifest
    */
   async onManifestEntry(entryName) {
@@ -66,9 +160,14 @@ var ToolbarButtonAPI = class extends ExtensionAPI {
     this.paint = this.paint.bind(this);
     this.unpaint = this.unpaint.bind(this);
 
-    this.widgetId = makeWidgetId(extension.id);
-    this.id = `${this.widgetId}-${this.manifestName}-toolbarbutton`;
+    if (this.manifest?.type == "menu" && this.manifest.default_popup) {
+      console.warn(
+        `The "default_popup" manifest entry is not supported for action buttons with type "menu".`
+      );
+    }
 
+    this.widgetId = makeWidgetId(extension.id);
+    this.id = `${this.widgetId}-${this.moduleName}-toolbarbutton`;
     this.eventQueue = [];
 
     let options = extension.manifest[entryName];
@@ -79,37 +178,9 @@ var ToolbarButtonAPI = class extends ExtensionAPI {
       badgeText: "",
       badgeBackgroundColor: null,
       popup: options.default_popup || "",
+      type: options.type,
     };
     this.globals = Object.create(this.defaults);
-
-    // In tests, startupReason is undefined, because the test suite is naughty.
-    // Assume ADDON_INSTALL.
-    if (
-      !this.extension.startupReason ||
-      this.extension.startupReason == "ADDON_INSTALL"
-    ) {
-      for (let windowURL of this.windowURLs) {
-        let currentSet = Services.xulStore.getValue(
-          windowURL,
-          this.toolbarId,
-          "currentset"
-        );
-        if (!currentSet) {
-          continue;
-        }
-        currentSet = currentSet.split(",");
-        if (currentSet.includes(this.id)) {
-          continue;
-        }
-        currentSet.push(this.id);
-        Services.xulStore.setValue(
-          windowURL,
-          this.toolbarId,
-          "currentset",
-          currentSet.join(",")
-        );
-      }
-    }
 
     this.browserStyle = options.browser_style;
 
@@ -127,17 +198,17 @@ var ToolbarButtonAPI = class extends ExtensionAPI {
         )
     );
 
-    this.iconData = new DefaultWeakMap(icons => this.getIconData(icons));
+    this.iconData = new DefaultWeakMap(icons => getIconData(icons, extension));
     this.iconData.set(
       this.defaults.icon,
       await StartupCache.get(
         extension,
         [this.manifestName, "default_icon_data"],
-        () => this.getIconData(this.defaults.icon)
+        () => getIconData(this.defaults.icon, extension)
       )
     );
 
-    ExtensionSupport.registerWindowListener(this.id, {
+    lazy.ExtensionSupport.registerWindowListener(this.id, {
       chromeURLs: this.windowURLs,
       onLoadWindow: window => {
         this.paint(window);
@@ -151,8 +222,8 @@ var ToolbarButtonAPI = class extends ExtensionAPI {
    * Called when the extension is disabled or removed.
    */
   close() {
-    ExtensionSupport.unregisterWindowListener(this.id);
-    for (let window of ExtensionSupport.openWindows) {
+    lazy.ExtensionSupport.unregisterWindowListener(this.id);
+    for (let window of lazy.ExtensionSupport.openWindows) {
       if (this.windowURLs.includes(window.location.href)) {
         this.unpaint(window);
       }
@@ -166,7 +237,23 @@ var ToolbarButtonAPI = class extends ExtensionAPI {
    */
   makeButton(window) {
     let { document } = window;
-    let button = document.createXULElement("toolbarbutton");
+    let button;
+    switch (this.globals.type) {
+      case "menu":
+        {
+          button = document.createXULElement("toolbarbutton");
+          button.setAttribute("type", "menu");
+          button.setAttribute("wantdropmarker", "true");
+          let menupopup = document.createXULElement("menupopup");
+          menupopup.dataset.actionMenu = this.manifestName;
+          menupopup.dataset.extensionId = this.extension.id;
+          button.appendChild(menupopup);
+        }
+        break;
+      case "button":
+        button = document.createXULElement("toolbarbutton");
+        break;
+    }
     button.id = this.id;
     button.classList.add("toolbarbutton-1");
     button.classList.add("webextension-action");
@@ -178,11 +265,24 @@ var ToolbarButtonAPI = class extends ExtensionAPI {
   }
 
   /**
-   * Adds a toolbar button to this window.
+   * Returns an element in the toolbar, which is to be used as default insertion
+   * point for new toolbar buttons in non-customizable toolbars.
+   *
+   * May return null to append new buttons to the end of the toolbar.
+   *
+   * @param {DOMElement} toolbar - a toolbar node
+   * @returns {DOMElement} a node which is to be used as insertion point, or null
+   */
+  getNonCustomizableToolbarInsertionPoint(toolbar) {
+    return null;
+  }
+
+  /**
+   * Adds a toolbar button to a customizable toolbar in this window.
    *
    * @param {Window} window
    */
-  paint(window) {
+  customizableToolbarPaint(window) {
     let windowURL = window.location.href;
     let { document } = window;
     if (document.getElementById(this.id)) {
@@ -194,14 +294,16 @@ var ToolbarButtonAPI = class extends ExtensionAPI {
       return;
     }
 
-    // Get all toolbars which link to or are children of this.toolboxId
+    // Get all toolbars which link to or are children of this.toolboxId and check
+    // if the button has been moved to a non-default toolbar.
     let toolbars = window.document.querySelectorAll(
       `#${this.toolboxId} toolbar, toolbar[toolboxid="${this.toolboxId}"]`
     );
     for (let toolbar of toolbars) {
       let currentSet = Services.xulStore
         .getValue(windowURL, toolbar.id, "currentset")
-        .split(",");
+        .split(",")
+        .filter(Boolean);
       if (currentSet.includes(this.id)) {
         this.toolbarId = toolbar.id;
         break;
@@ -215,32 +317,123 @@ var ToolbarButtonAPI = class extends ExtensionAPI {
     } else {
       toolbar.appendChild(button);
     }
-    if (
-      Services.xulStore.hasValue(
-        window.location.href,
+
+    // Handle the special case where this toolbar does not yet have a currentset
+    // defined.
+    if (!Services.xulStore.hasValue(windowURL, this.toolbarId, "currentset")) {
+      let defaultSet = toolbar
+        .getAttribute("defaultset")
+        .split(",")
+        .filter(Boolean);
+      Services.xulStore.setValue(
+        windowURL,
         this.toolbarId,
-        "currentset"
-      )
-    ) {
-      toolbar.currentSet = Services.xulStore.getValue(
-        window.location.href,
-        this.toolbarId,
-        "currentset"
+        "currentset",
+        defaultSet.join(",")
       );
-      toolbar.setAttribute("currentset", toolbar.currentSet);
-    } else {
-      let currentSet = toolbar.getAttribute("defaultset").split(",");
+    }
+
+    // Add new buttons to currentset: If the extensionset does not include the
+    // button, it is a new one which needs to be added.
+    let extensionSet = Services.xulStore
+      .getValue(windowURL, this.toolbarId, "extensionset")
+      .split(",")
+      .filter(Boolean);
+    if (!extensionSet.includes(this.id)) {
+      extensionSet.push(this.id);
+      Services.xulStore.setValue(
+        windowURL,
+        this.toolbarId,
+        "extensionset",
+        extensionSet.join(",")
+      );
+      let currentSet = Services.xulStore
+        .getValue(windowURL, this.toolbarId, "currentset")
+        .split(",")
+        .filter(Boolean);
       if (!currentSet.includes(this.id)) {
         currentSet.push(this.id);
-        toolbar.currentSet = currentSet.join(",");
-        toolbar.setAttribute("currentset", toolbar.currentSet);
-        Services.xulStore.persist(toolbar, "currentset");
+        Services.xulStore.setValue(
+          windowURL,
+          this.toolbarId,
+          "currentset",
+          currentSet.join(",")
+        );
       }
     }
+
+    let currentSet = Services.xulStore.getValue(
+      windowURL,
+      this.toolbarId,
+      "currentset"
+    );
+
+    toolbar.currentSet = currentSet;
+    toolbar.setAttribute("currentset", toolbar.currentSet);
 
     if (this.extension.hasPermission("menus")) {
       document.addEventListener("popupshowing", this);
     }
+  }
+
+  /**
+   * Adds a toolbar button to a non-customizable toolbar in this window.
+   *
+   * @param {Window} window
+   */
+  nonCustomizableToolbarPaint(window) {
+    let { document } = window;
+    let windowURL = window.location.href;
+    if (document.getElementById(this.id)) {
+      return;
+    }
+    let toolbar = document.getElementById(this.toolbarId);
+    let before = this.getNonCustomizableToolbarInsertionPoint(toolbar);
+    let button = this.makeButton(window);
+    let currentSet = Services.xulStore
+      .getValue(windowURL, toolbar.id, "currentset")
+      .split(",")
+      .filter(Boolean);
+    if (!currentSet.includes(this.id)) {
+      currentSet.push(this.id);
+      Services.xulStore.setValue(
+        windowURL,
+        toolbar.id,
+        "currentset",
+        currentSet.join(",")
+      );
+    } else {
+      for (let id of [...currentSet].reverse()) {
+        if (!id.endsWith(`-${this.manifestName}-toolbarbutton`)) {
+          continue;
+        }
+        if (id == this.id) {
+          break;
+        }
+        let element = document.getElementById(id);
+        if (element) {
+          before = element;
+        }
+      }
+    }
+    toolbar.insertBefore(button, before);
+
+    if (this.extension.hasPermission("menus")) {
+      document.addEventListener("popupshowing", this);
+    }
+  }
+
+  /**
+   * Adds a toolbar button to a toolbar in this window.
+   *
+   * @param {Window} window
+   */
+  paint(window) {
+    let toolbar = window.document.getElementById(this.toolbarId);
+    if (toolbar.hasAttribute("customizable")) {
+      return this.customizableToolbarPaint(window);
+    }
+    return this.nonCustomizableToolbarPaint(window);
   }
 
   /**
@@ -262,6 +455,18 @@ var ToolbarButtonAPI = class extends ExtensionAPI {
   }
 
   /**
+   * Return the toolbar button if it is currently visible in the given window.
+   *
+   * @param window
+   * @returns {DOMElement} the toolbar button element, or null
+   */
+  getToolbarButton(window) {
+    let button = window.document.getElementById(this.id);
+    let toolbar = button?.closest("toolbar");
+    return button && !toolbar?.collapsed ? button : null;
+  }
+
+  /**
    * Triggers this browser action for the given window, with the same effects as
    * if it were clicked by a user.
    *
@@ -269,26 +474,40 @@ var ToolbarButtonAPI = class extends ExtensionAPI {
    * present in, the given window.
    *
    * @param {Window} window
+   * @param {object} options
+   * @param {boolean} options.requirePopupUrl - do not fall back to emitting an
+   *                                            onClickedEvent, if no popupURL is
+   *                                            set and consider this action fail
+   *
+   * @returns {boolean} status if action could be successfully triggered
    */
-  async triggerAction(window) {
-    let { document } = window;
-    let button = document.getElementById(this.id);
+  async triggerAction(window, options = {}) {
+    let button = this.getToolbarButton(window);
     let { popup: popupURL, enabled } = this.getContextData(
       this.getTargetFromWindow(window)
     );
 
-    if (button && popupURL && enabled) {
-      let popup =
-        ViewPopup.for(this.extension, window) ||
-        this.getPopup(window, popupURL);
-      popup.viewNode.openPopup(button, "bottomcenter topleft", 0, 0);
-    } else {
-      if (!this.lastClickInfo) {
-        this.lastClickInfo = { button: 0, modifiers: [] };
+    let success = false;
+    if (button && enabled) {
+      window.focus();
+
+      if (popupURL) {
+        success = true;
+        let popup =
+          lazy.ViewPopup.for(this.extension, window.top) ||
+          this.getPopup(window.top, popupURL);
+        popup.viewNode.openPopup(button, "bottomleft topleft", 0, 0);
+      } else if (!options.requirePopupUrl) {
+        if (!this.lastClickInfo) {
+          this.lastClickInfo = { button: 0, modifiers: [] };
+        }
+        this.emit("click", window.top, this.lastClickInfo);
+        success = true;
       }
-      this.emit("click", window);
-      delete this.lastClickInfo;
     }
+
+    delete this.lastClickInfo;
+    return success;
   }
 
   /**
@@ -298,10 +517,19 @@ var ToolbarButtonAPI = class extends ExtensionAPI {
    */
   handleEvent(event) {
     let window = event.target.ownerGlobal;
-
     switch (event.type) {
+      case "click":
       case "mousedown":
         if (event.button == 0) {
+          // Bail out, if this is a menu typed action button or any of its menu entries.
+          if (
+            event.target.tagName == "menu" ||
+            event.target.tagName == "menuitem" ||
+            event.target.getAttribute("type") == "menu"
+          ) {
+            return;
+          }
+
           this.lastClickInfo = {
             button: 0,
             modifiers: this.global.clickModifiersFromEvent(event),
@@ -332,7 +560,7 @@ var ToolbarButtonAPI = class extends ExtensionAPI {
    * @returns {ViewPopup}
    */
   getPopup(window, popupURL, blockParser = false) {
-    let popup = new ViewPopup(
+    let popup = new lazy.ViewPopup(
       this.extension,
       window,
       popupURL,
@@ -350,7 +578,7 @@ var ToolbarButtonAPI = class extends ExtensionAPI {
    *
    * @param {XULElement} node
    *        XUL toolbarbutton to update
-   * @param {Object} tabData
+   * @param {object} tabData
    *        Properties to set
    * @param {boolean} sync
    *        Whether to perform the update immediately
@@ -380,20 +608,15 @@ var ToolbarButtonAPI = class extends ExtensionAPI {
 
       let color = tabData.badgeBackgroundColor;
       if (color) {
-        color = `rgba(${color[0]}, ${color[1]}, ${color[2]}, ${color[3] /
-          255})`;
+        color = `rgba(${color[0]}, ${color[1]}, ${color[2]}, ${
+          color[3] / 255
+        })`;
         node.setAttribute("badgeStyle", `background-color: ${color};`);
       } else {
         node.removeAttribute("badgeStyle");
       }
 
-      let { style, legacy } = this.iconData.get(tabData.icon);
-      const LEGACY_CLASS = "toolbarbutton-legacy-addon";
-      if (legacy) {
-        node.classList.add(LEGACY_CLASS);
-      } else {
-        node.classList.remove(LEGACY_CLASS);
-      }
+      let { style } = this.iconData.get(tabData.icon);
 
       for (let [name, value] of style) {
         node.style.setProperty(name, value);
@@ -407,86 +630,16 @@ var ToolbarButtonAPI = class extends ExtensionAPI {
   }
 
   /**
-   * Get icon properties for updating the UI.
-   *
-   * @param {Object} icons
-   *        Contains the icon information, typically the extension manifest
-   */
-  getIconData(icons) {
-    let baseSize = 16;
-    let { icon, size } = IconDetails.getPreferredIcon(
-      icons,
-      this.extension,
-      baseSize
-    );
-
-    let legacy = false;
-
-    // If the best available icon size is not divisible by 16, check if we have
-    // an 18px icon to fall back to, and trim off the padding instead.
-    if (size % 16 && typeof icon === "string" && !icon.endsWith(".svg")) {
-      let result = IconDetails.getPreferredIcon(icons, this.extension, 18);
-
-      if (result.size % 18 == 0) {
-        baseSize = 18;
-        icon = result.icon;
-        legacy = true;
-      }
-    }
-
-    let getIcon = (size, theme) => {
-      let { icon } = IconDetails.getPreferredIcon(icons, this.extension, size);
-      if (typeof icon === "object") {
-        if (icon[theme] == IconDetails.DEFAULT_ICON) {
-          icon[theme] = DEFAULT_ICON;
-        }
-        return IconDetails.escapeUrl(icon[theme]);
-      }
-      if (icon == IconDetails.DEFAULT_ICON) {
-        return DEFAULT_ICON;
-      }
-      return IconDetails.escapeUrl(icon);
-    };
-
-    let style = [];
-    let getStyle = (name, size) => {
-      style.push([
-        `--webextension-${name}`,
-        `url("${getIcon(size, "default")}")`,
-      ]);
-      style.push([
-        `--webextension-${name}-light`,
-        `url("${getIcon(size, "light")}")`,
-      ]);
-      style.push([
-        `--webextension-${name}-dark`,
-        `url("${getIcon(size, "dark")}")`,
-      ]);
-    };
-
-    getStyle("menupanel-image", 32);
-    getStyle("menupanel-image-2x", 64);
-    getStyle("toolbar-image", baseSize);
-    getStyle("toolbar-image-2x", baseSize * 2);
-
-    let realIcon = getIcon(size, "default");
-
-    return { style, legacy, realIcon };
-  }
-
-  /**
    * Update the toolbar button for a given window.
    *
    * @param {ChromeWindow} window
    *        Browser chrome window.
    */
   async updateWindow(window) {
-    let button = window.document.getElementById(this.id);
+    let button = this.getToolbarButton(window);
     if (button) {
-      this.updateButton(
-        button,
-        this.getContextData(this.getTargetFromWindow(window))
-      );
+      let tabData = this.getContextData(this.getTargetFromWindow(window));
+      this.updateButton(button, tabData);
     }
     await new Promise(window.requestAnimationFrame);
   }
@@ -513,7 +666,7 @@ var ToolbarButtonAPI = class extends ExtensionAPI {
       }
     } else {
       let promises = [];
-      for (let window of ExtensionSupport.openWindows) {
+      for (let window of lazy.ExtensionSupport.openWindows) {
         if (this.windowURLs.includes(window.location.href)) {
           promises.push(this.updateWindow(window));
         }
@@ -530,18 +683,25 @@ var ToolbarButtonAPI = class extends ExtensionAPI {
    * @returns {XULElement|ChromeWindow}
    */
   getTargetFromWindow(window) {
-    let tabmail = window.document.getElementById("tabmail");
-    if (tabmail) {
+    let tabmail = window.top.document.getElementById("tabmail");
+    if (!tabmail) {
+      return window.top;
+    }
+
+    if (window == window.top) {
       return tabmail.currentTabInfo;
     }
-    return window;
+    if (window.parent != window.top) {
+      window = window.parent;
+    }
+    return tabmail.tabInfo.find(t => t.chromeBrowser?.contentWindow == window);
   }
 
   /**
    * Gets the target object corresponding to the `details` parameter of the various
    * get* and set* API methods.
    *
-   * @param {Object} details
+   * @param {object} details
    *        An object with optional `tabId` or `windowId` properties.
    * @throws if `windowId` is specified, this is not valid in Thunderbird.
    * @returns {XULElement|ChromeWindow|null}
@@ -564,7 +724,7 @@ var ToolbarButtonAPI = class extends ExtensionAPI {
    *
    * @param {XULElement|ChromeWindow|null} target
    *        A XULElement tab, a ChromeWindow, or null for the global data.
-   * @returns {Object}
+   * @returns {object}
    *        The icon, title, badge, etc. associated with the target.
    */
   getContextData(target) {
@@ -577,7 +737,7 @@ var ToolbarButtonAPI = class extends ExtensionAPI {
   /**
    * Set a global, window specific or tab specific property.
    *
-   * @param {Object} details
+   * @param {object} details
    *        An object with optional `tabId` or `windowId` properties.
    * @param {string} prop
    *        String property to set. Should should be one of "icon", "title", "label",
@@ -600,7 +760,7 @@ var ToolbarButtonAPI = class extends ExtensionAPI {
   /**
    * Retrieve the value of a global, window specific or tab specific property.
    *
-   * @param {Object} details
+   * @param {object} details
    *        An object with optional `tabId` or `windowId` properties.
    * @param {string} prop
    *        String property to retrieve. Should should be one of "icon", "title", "label",
@@ -612,14 +772,42 @@ var ToolbarButtonAPI = class extends ExtensionAPI {
     return this.getContextData(this.getTargetFromDetails(details))[prop];
   }
 
+  PERSISTENT_EVENTS = {
+    onClicked({ context, fire }) {
+      const { extension } = this;
+      const { tabManager, windowManager } = extension;
+
+      async function listener(_event, window, clickInfo) {
+        if (fire.wakeup) {
+          await fire.wakeup();
+        }
+
+        // TODO: We should double-check if the tab is already being closed by the time
+        // the background script got started and we converted the primed listener.
+
+        let win = windowManager.wrapWindow(window);
+        fire.sync(tabManager.convert(win.activeTab.nativeTab), clickInfo);
+      }
+      this.on("click", listener);
+      return {
+        unregister: () => {
+          this.off("click", listener);
+        },
+        convert(newFire, extContext) {
+          fire = newFire;
+          context = extContext;
+        },
+      };
+    },
+  };
+
   /**
    * WebExtension API.
    *
-   * @param {Object} context
+   * @param {object} context
    */
   getAPI(context) {
     let { extension } = context;
-    let { tabManager, windowManager } = extension;
 
     let action = this;
 
@@ -627,21 +815,10 @@ var ToolbarButtonAPI = class extends ExtensionAPI {
       [this.manifestName]: {
         onClicked: new EventManager({
           context,
-          name: `${this.manifestName}.onClicked`,
+          module: this.moduleName,
+          event: "onClicked",
           inputHandling: true,
-          register: fire => {
-            let listener = (event, window) => {
-              let win = windowManager.wrapWindow(window);
-              fire.sync(
-                tabManager.convert(win.activeTab.nativeTab),
-                this.lastClickInfo
-              );
-            };
-            action.on("click", listener);
-            return () => {
-              action.off("click", listener);
-            };
-          },
+          extensionApi: this,
         }).api(),
 
         async enable(tabId) {
@@ -691,6 +868,12 @@ var ToolbarButtonAPI = class extends ExtensionAPI {
         },
 
         async setPopup(details) {
+          if (this.manifest?.type == "menu") {
+            console.warn(
+              `Popups are not supported for action buttons with type "menu".`
+            );
+          }
+
           // Note: Chrome resolves arguments to setIcon relative to the calling
           // context, but resolves arguments to setPopup relative to the extension
           // root.
@@ -705,6 +888,12 @@ var ToolbarButtonAPI = class extends ExtensionAPI {
         },
 
         getPopup(details) {
+          if (this.manifest?.type == "menu") {
+            console.warn(
+              `Popups are not supported for action buttons with type "menu".`
+            );
+          }
+
           return action.getProperty(details, "popup");
         },
 
@@ -727,11 +916,32 @@ var ToolbarButtonAPI = class extends ExtensionAPI {
           return color || [0xd9, 0, 0, 255];
         },
 
-        openPopup() {
-          let window = Services.wm.getMostRecentWindow("");
-          if (action.windowURLs.includes(window.location.href)) {
-            action.triggerAction(window);
+        openPopup(options) {
+          if (this.manifest?.type == "menu") {
+            console.warn(
+              `Popups are not supported for action buttons with type "menu".`
+            );
+            return false;
           }
+
+          let window;
+          if (options?.windowId) {
+            window = action.global.windowTracker.getWindow(
+              options.windowId,
+              context
+            );
+            if (!window) {
+              return Promise.reject({
+                message: `Invalid window ID: ${options.windowId}`,
+              });
+            }
+          } else {
+            window = Services.wm.getMostRecentWindow("");
+          }
+
+          // When triggering the action here, we consider a missing popupUrl as a failure and will not
+          // cause an onClickedEvent.
+          return action.triggerAction(window, { requirePopupUrl: true });
         },
       },
     };

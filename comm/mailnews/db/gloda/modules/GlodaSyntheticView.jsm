@@ -9,8 +9,6 @@
 
 const EXPORTED_SYMBOLS = ["GlodaSyntheticView"];
 
-const { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-
 /**
  * Create a synthetic view suitable for passing to |FolderDisplayWidget.show|.
  * You must pass a query, collection, or conversation in.
@@ -38,6 +36,7 @@ function GlodaSyntheticView(aArgs) {
     this.query = this.collection.query;
     this.completed = false;
     this.viewType = "conversation";
+    this.selectedMessage = aArgs.message.folderMessage;
   } else {
     throw new Error("You need to pass a query or collection");
   }
@@ -166,7 +165,9 @@ GlodaSyntheticView.prototype = {
   onItemsRemoved(aItems, aCollection) {},
   onQueryCompleted(aCollection) {
     this.completed = true;
-    this.searchListener.onSearchDone(Cr.NS_OK);
+    if (this.searchListener) {
+      this.searchListener.onSearchDone(Cr.NS_OK);
+    }
     if (this.completionCallback) {
       this.completionCallback();
     }

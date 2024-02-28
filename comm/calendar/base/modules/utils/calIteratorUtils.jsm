@@ -2,25 +2,24 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-
-ChromeUtils.defineModuleGetter(this, "cal", "resource:///modules/calendar/calUtils.jsm");
-
-/*
+/**
  * Iterators for various data structures
  */
 
 // NOTE: This module should not be loaded directly, it is available when
 // including calUtils.jsm under the cal.iterate namespace.
 
-const EXPORTED_SYMBOLS = ["caliterate"]; /* exported caliterate */
+const EXPORTED_SYMBOLS = ["caliterate"];
+
+const lazy = {};
+ChromeUtils.defineModuleGetter(lazy, "cal", "resource:///modules/calendar/calUtils.jsm");
 
 var caliterate = {
   /**
    * Iterates an array of items, i.e. the passed item including all
    * overridden instances of a recurring series.
    *
-   * @param {calIItemBase[]} items        array of items to iterate
+   * @param {calIItemBase[]} items - array of items to iterate
    * @yields {calIItemBase}
    */
   *items(items) {
@@ -47,10 +46,10 @@ var caliterate = {
    * iteration is complete. If you need to run actions after the real for each loop, use the
    * optional completed() function.
    *
-   * @param {Iterable} iterable       The Iterator or the plain Object to go through in this loop.
-   * @param {Function} body           The function called for each iteration. Its parameter is the
+   * @param {Iterable} iterable - The Iterator or the plain Object to go through in this loop.
+   * @param {Function} body - The function called for each iteration. Its parameter is the
    *                                    single item from the iterator.
-   * @param {?Function} completed     [optional] The function called after the loop completes.
+   * @param {?Function} completed - [optional] The function called after the loop completes.
    */
   forEach: (() => {
     // eslint-disable-next-line require-jsdoc
@@ -76,7 +75,7 @@ var caliterate = {
 
             if (!done) {
               let rc = body(next.value);
-              if (rc == cal.iterate.forEach.BREAK) {
+              if (rc == lazy.cal.iterate.forEach.BREAK) {
                 done = true;
               }
             }
@@ -113,15 +112,15 @@ var caliterate = {
    *   for (let component of cal.iterate.icalComponent(aComp)) { ... }
    *
    *  @param {calIIcalComponent} aComponent   The component to iterate given the above rules.
-   *  @param {String} aCompType               The type of item to iterate.
+   *  @param {string} aCompType               The type of item to iterate.
    *  @yields {calIIcalComponent}             The iterator that yields all items.
    */
   *icalComponent(aComponent, aCompType = "ANY") {
     if (aComponent && aComponent.componentType == "VCALENDAR") {
-      yield* cal.iterate.icalSubcomponent(aComponent, aCompType);
+      yield* lazy.cal.iterate.icalSubcomponent(aComponent, aCompType);
     } else if (aComponent && aComponent.componentType == "XROOT") {
-      for (let calComp of cal.iterate.icalSubcomponent(aComponent, "VCALENDAR")) {
-        yield* cal.iterate.icalSubcomponent(calComp, aCompType);
+      for (let calComp of lazy.cal.iterate.icalSubcomponent(aComponent, "VCALENDAR")) {
+        yield* lazy.cal.iterate.icalSubcomponent(calComp, aCompType);
       }
     } else if (aComponent && (aCompType == "ANY" || aCompType == aComponent.componentType)) {
       yield aComponent;
@@ -135,8 +134,8 @@ var caliterate = {
    * This iterator can only be used in a for() block:
    *   for (let component of cal.iterate.icalSubcomponent(aComp)) { ... }
    *
-   * @param {calIIcalComponent} aComponent    The component who's subcomponents to iterate.
-   * @param {?String} aSubcomp                (optional) the specific subcomponent to enumerate.
+   * @param {calIIcalComponent} aComponent - The component who's subcomponents to iterate.
+   * @param {?string} aSubcomp - (optional) the specific subcomponent to enumerate.
    *                                            If not given, "ANY" will be used.
    * @yields {calIIcalComponent}              An iterator object to iterate the properties.
    */
@@ -155,8 +154,8 @@ var caliterate = {
    * This iterator can only be used in a for() block:
    *   for (let property of cal.iterate.icalProperty(aComp)) { ... }
    *
-   * @param {calIIcalComponent} aComponent    The component to iterate.
-   * @param {?String} aProperty               (optional) the specific property to enumerate.
+   * @param {calIIcalComponent} aComponent - The component to iterate.
+   * @param {?string} aProperty - (optional) the specific property to enumerate.
    *                                            If not given, "ANY" will be used.
    * @yields {calIIcalProperty}               An iterator object to iterate the properties.
    */
@@ -177,7 +176,7 @@ var caliterate = {
    * or:
    *   for (let [paramName, paramValue] of cal.iterate.icalParameter(prop)) { ... }
    *
-   * @param {calIIcalProperty} aProperty         The property to iterate.
+   * @param {calIIcalProperty} aProperty - The property to iterate.
    * @yields {[String, String]}                  An iterator object to iterate the properties.
    */
   *icalParameter(aProperty) {
@@ -195,4 +194,86 @@ var caliterate = {
       }
     }
   },
+
+  /**
+   * A function used to transform items received from a ReadableStream of
+   * calIItemBase instances.
+   *
+   * @callback MapStreamFunction
+   * @param {calIItemBase[]} chunk
+   *
+   * @returns {*[]|Promise<*[]>}
+   */
+
+  /**
+   * Applies the provided MapStreamFunction to each chunk received from a
+   * ReadableStream of calIItemBase instances providing the results as a single
+   * array.
+   *
+   * @param {ReadableStream} stream
+   * @param {MapStreamFunction} func
+   *
+   * @returns {*[]}
+   */
+  async mapStream(stream, func) {
+    let buffer = [];
+    for await (let value of caliterate.streamValues(stream)) {
+      buffer.push.apply(buffer, await func(value));
+    }
+    return buffer;
+  },
+  /**
+   * Converts a ReadableStream of calIItemBase into an array.
+   *
+   * @param {ReadableStream} stream
+   *
+   * @returns {calIItemBase[]}
+   */
+  async streamToArray(stream) {
+    return caliterate.mapStream(stream, chunk => chunk);
+  },
+
+  /**
+   * Provides an async iterator for the target stream allowing its values to
+   * be extracted in a for of loop.
+   *
+   * @param {ReadableStream} stream
+   *
+   * @returns {CalReadableStreamIterator}
+   */
+  streamValues(stream) {
+    return new CalReadableStreamIterator(stream);
+  },
 };
+
+/**
+ * An async iterator implementation for streams returned from getItems() and
+ * similar calls. This class can be used in a for await ... loop to extract
+ * the values of a stream.
+ */
+class CalReadableStreamIterator {
+  _stream = null;
+  _reader = null;
+
+  /**
+   * @param {ReadableStream} stream
+   */
+  constructor(stream) {
+    this._stream = stream;
+  }
+
+  [Symbol.asyncIterator]() {
+    this._reader = this._stream.getReader();
+    return this;
+  }
+
+  /**
+   * Cancels the reading of values from the underlying stream's reader.
+   */
+  async cancel() {
+    return this._reader && this._reader.cancel();
+  }
+  async next() {
+    return this._reader.read();
+  }
+}

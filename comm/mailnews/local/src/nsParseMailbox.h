@@ -46,7 +46,6 @@ class nsParseMailMessageState : public nsIMsgParseMailMsgState,
 
   nsParseMailMessageState();
 
-  void Init(uint64_t fileposition);
   nsresult ParseFolderLine(const char* line, uint32_t lineLength);
   nsresult StartNewEnvelope(const char* line, uint32_t lineLength);
   nsresult ParseHeaders();
@@ -120,8 +119,6 @@ class nsParseMailMessageState : public nsIMsgParseMailMsgState,
   uint16_t m_body_lines;
   uint16_t m_lastLineBlank;
 
-  bool m_IgnoreXMozillaStatus;
-
   // this enables extensions to add the values of particular headers to
   // the .msf file as properties of nsIMsgHdr. It is initialized from a
   // pref, mailnews.customDBHeaders
@@ -141,9 +138,6 @@ class nsMsgMailboxParser : public nsIStreamListener,
   nsMsgMailboxParser();
   nsresult Init();
 
-  bool IsRunningUrl() {
-    return m_urlInProgress;
-  }  // returns true if we are currently running a url and false otherwise...
   NS_DECL_ISUPPORTS_INHERITED
 
   ////////////////////////////////////////////////////////////////////////////////////////
@@ -177,24 +171,15 @@ class nsMsgMailboxParser : public nsIStreamListener,
   nsCOMPtr<nsIMsgStatusFeedback> m_statusFeedback;
 
   virtual int32_t PublishMsgHeader(nsIMsgWindow* msgWindow);
-  void FreeBuffers();
 
   // data
   nsString m_folderName;
   nsCString m_inboxUri;
   ::nsByteArray m_inputStream;
-  int32_t m_obuffer_size;
-  char* m_obuffer;
   uint64_t m_graph_progress_total;
   uint64_t m_graph_progress_received;
-  bool m_parsingDone;
-  PRTime m_startTime;
 
  private:
-  // the following flag is used to determine when a url is currently being run.
-  // It is cleared on calls to ::StopBinding and it is set whenever we call Load
-  // on a url
-  bool m_urlInProgress;
   nsWeakPtr m_folder;
   void ReleaseFolderLock();
   nsresult AcquireFolderLock();
@@ -205,8 +190,6 @@ class nsParseNewMailState : public nsMsgMailboxParser,
  public:
   nsParseNewMailState();
   NS_DECL_ISUPPORTS_INHERITED
-
-  NS_IMETHOD FinishHeader() override;
 
   nsresult Init(nsIMsgFolder* rootFolder, nsIMsgFolder* downloadFolder,
                 nsIMsgWindow* aMsgWindow, nsIMsgDBHdr* aHdr,
@@ -224,10 +207,9 @@ class nsParseNewMailState : public nsMsgMailboxParser,
   nsresult EndMsgDownload();
 
   nsresult AppendMsgFromStream(nsIInputStream* fileStream, nsIMsgDBHdr* aHdr,
-                               uint32_t length, nsIMsgFolder* destFolder);
+                               nsIMsgFolder* destFolder);
 
-  virtual void ApplyFilters(bool* pMoved, nsIMsgWindow* msgWindow,
-                            uint64_t msgOffset);
+  void ApplyFilters(bool* pMoved, nsIMsgWindow* msgWindow);
   nsresult ApplyForwardAndReplyFilter(nsIMsgWindow* msgWindow);
   virtual void OnNewMessage(nsIMsgWindow* msgWindow) override;
 
@@ -259,12 +241,6 @@ class nsParseNewMailState : public nsMsgMailboxParser,
   bool m_msgMovedByFilter;
   bool m_msgCopiedByFilter;
   bool m_disableFilters;
-  uint32_t m_ibuffer_fp;
-  char* m_ibuffer;
-  uint32_t m_ibuffer_size;
-  // used for applying move filters, because in the case of using a temporary
-  // download file, the offset/key in the msg hdr is not right.
-  uint64_t m_curHdrOffset;
 
   // we have to apply the reply/forward filters in a second pass, after
   // msg quarantining and moving to other local folders, so we remember the

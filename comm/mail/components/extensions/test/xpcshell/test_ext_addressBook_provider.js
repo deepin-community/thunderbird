@@ -2,11 +2,11 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, you can obtain one at http://mozilla.org/MPL/2.0/. */
 
-var { ExtensionTestUtils } = ChromeUtils.import(
-  "resource://testing-common/ExtensionXPCShellUtils.jsm"
+var { ExtensionTestUtils } = ChromeUtils.importESModule(
+  "resource://testing-common/ExtensionXPCShellUtils.sys.mjs"
 );
 
-add_task(async function() {
+add_task(async function () {
   let extension = ExtensionTestUtils.loadExtension({
     background: async () => {
       let id = "9b9074ff-8fa4-4c58-9c3b-bc9ea2e17db1";
@@ -94,7 +94,7 @@ add_task(async function() {
       onSearchFinished(status, isCompleteResult) {
         ok(Components.isSuccessCode(status), "Search finished successfully.");
         equal(foundCards, 1, "One card was found.");
-        ok(isCompleteResult, "A full result set was receieved.");
+        ok(isCompleteResult, "A full result set was received.");
         resolve();
       },
     });
@@ -133,5 +133,7 @@ add_task(async function() {
 
 registerCleanupFunction(() => {
   // Make sure any open database is given a chance to close.
-  Services.obs.notifyObservers(null, "quit-application");
+  Services.startup.advanceShutdownPhase(
+    Services.startup.SHUTDOWN_PHASE_APPSHUTDOWNCONFIRMED
+  );
 });

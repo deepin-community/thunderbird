@@ -11,7 +11,6 @@
 // stuff for temporary root folder hack
 #include "nsIMsgAccountManager.h"
 #include "nsIMsgIncomingServer.h"
-#include "nsMsgBaseCID.h"
 #include "nsNativeCharsetUtils.h"
 
 #include "nsMsgUtils.h"
@@ -34,7 +33,7 @@ static nsresult nsGetMailboxServer(const char* uriStr,
 
   // retrieve the AccountManager
   nsCOMPtr<nsIMsgAccountManager> accountManager =
-      do_GetService(NS_MSGACCOUNTMANAGER_CONTRACTID, &rv);
+      do_GetService("@mozilla.org/messenger/account-manager;1", &rv);
   if (NS_FAILED(rv)) return rv;
 
   // find all local mail "no servers" matching the given hostname
@@ -43,7 +42,7 @@ static nsresult nsGetMailboxServer(const char* uriStr,
   NS_ENSURE_SUCCESS(rv, rv);
   // No unescaping of username or hostname done here.
   // The unescaping is done inside of FindServerByURI
-  rv = accountManager->FindServerByURI(url, false, getter_AddRefs(none_server));
+  rv = accountManager->FindServerByURI(url, getter_AddRefs(none_server));
   if (NS_SUCCEEDED(rv)) {
     none_server.forget(aResult);
     return rv;
@@ -53,7 +52,7 @@ static nsresult nsGetMailboxServer(const char* uriStr,
   nsCOMPtr<nsIMsgIncomingServer> rss_server;
   rv = NS_MutateURI(url).SetScheme("rss"_ns).Finalize(url);
   NS_ENSURE_SUCCESS(rv, rv);
-  rv = accountManager->FindServerByURI(url, false, getter_AddRefs(rss_server));
+  rv = accountManager->FindServerByURI(url, getter_AddRefs(rss_server));
   if (NS_SUCCEEDED(rv)) {
     rss_server.forget(aResult);
     return rv;
@@ -64,14 +63,14 @@ static nsresult nsGetMailboxServer(const char* uriStr,
   if (NS_FAILED(rv)) {
     rv = NS_MutateURI(url).SetScheme("pop3"_ns).Finalize(url);
     NS_ENSURE_SUCCESS(rv, rv);
-    rv = accountManager->FindServerByURI(url, false, getter_AddRefs(server));
+    rv = accountManager->FindServerByURI(url, getter_AddRefs(server));
 
     // if we can't find a pop server, maybe it's a local message
     // in an imap hierarchy. look for an imap server.
     if (NS_FAILED(rv)) {
       rv = NS_MutateURI(url).SetScheme("imap"_ns).Finalize(url);
       NS_ENSURE_SUCCESS(rv, rv);
-      rv = accountManager->FindServerByURI(url, false, getter_AddRefs(server));
+      rv = accountManager->FindServerByURI(url, getter_AddRefs(server));
     }
   }
   if (NS_SUCCEEDED(rv)) {
@@ -154,11 +153,11 @@ nsresult nsLocalURI2Path(const char* rootURI, const char* uriStr,
  * puts folder URI in folderURI (mailbox://folder1/folder2)
  * message key number in key
  */
-nsresult nsParseLocalMessageURI(const char* uri, nsCString& folderURI,
+nsresult nsParseLocalMessageURI(const nsACString& uri, nsCString& folderURI,
                                 nsMsgKey* key) {
   if (!key) return NS_ERROR_NULL_POINTER;
 
-  nsAutoCString uriStr(uri);
+  const nsPromiseFlatCString& uriStr = PromiseFlatCString(uri);
   int32_t keySeparator = uriStr.FindChar('#');
   if (keySeparator != -1) {
     int32_t keyEndSeparator = MsgFindCharInSet(uriStr, "?&", keySeparator);
@@ -178,7 +177,7 @@ nsresult nsParseLocalMessageURI(const char* uri, nsCString& folderURI,
   return NS_ERROR_FAILURE;
 }
 
-nsresult nsBuildLocalMessageURI(const char* baseURI, nsMsgKey key,
+nsresult nsBuildLocalMessageURI(const nsACString& baseURI, nsMsgKey key,
                                 nsACString& uri) {
   // need to convert mailbox://hostname/.. to mailbox-message://hostname/..
   uri.Append(baseURI);

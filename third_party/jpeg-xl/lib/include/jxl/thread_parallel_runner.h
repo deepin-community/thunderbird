@@ -4,7 +4,9 @@
  * license that can be found in the LICENSE file.
  */
 
-/** @file thread_parallel_runner.h
+/** @addtogroup libjxl_threads
+ * @{
+ * @file thread_parallel_runner.h
  * @brief implementation using std::thread of a ::JxlParallelRunner.
  */
 
@@ -28,14 +30,13 @@
 #ifndef JXL_THREAD_PARALLEL_RUNNER_H_
 #define JXL_THREAD_PARALLEL_RUNNER_H_
 
+#include <jxl/jxl_threads_export.h>
+#include <jxl/memory_manager.h>
+#include <jxl/parallel_runner.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-
-#include "jxl/jxl_threads_export.h"
-#include "jxl/memory_manager.h"
-#include "jxl/parallel_runner.h"
 
 #if defined(__cplusplus) || defined(c_plusplus)
 extern "C" {
@@ -67,3 +68,5 @@ JXL_THREADS_EXPORT size_t JxlThreadParallelRunnerDefaultNumWorkerThreads();
 #endif
 
 #endif /* JXL_THREAD_PARALLEL_RUNNER_H_ */
+
+/** @}*/

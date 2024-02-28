@@ -4,8 +4,10 @@
 
 const EXPORTED_SYMBOLS = ["MimeType", "MimeTypeNoun"];
 
-const { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 const { Gloda } = ChromeUtils.import("resource:///modules/gloda/Gloda.jsm");
+const { GlodaConstants } = ChromeUtils.import(
+  "resource:///modules/gloda/GlodaConstants.jsm"
+);
 
 var LOG = console.createInstance({
   prefix: "gloda.noun.mimetype",
@@ -191,7 +193,6 @@ var MimeCategoryMapping = {
     "application/x-pdf",
     "image/pdf",
     "file/pdf",
-
     "application/x-bzpdf",
     "application/x-gzpdf",
   ],
@@ -255,7 +256,7 @@ MimeType.prototype = {
   },
 
   /**
-   * @return the category we believe this mime type belongs to.  This category
+   * @returns the category we believe this mime type belongs to.  This category
    *     name should never be shown directly to the user.  Instead, use
    *     |categoryLabel| to get the localized name for the category.  The
    *     category mapping comes from mimeTypesCategories.js.
@@ -264,7 +265,7 @@ MimeType.prototype = {
     return this._category;
   },
   /**
-   * @return The localized label for the category from gloda.properties in the
+   * @returns The localized label for the category from gloda.properties in the
    *     "gloda.mimetype.category.CATEGORY.label" definition using the value
    *     from |category|.
    */
@@ -388,7 +389,7 @@ var MimeTypeNoun = {
   _loadMimeTypes() {
     // get all the existing mime types!
     let query = Gloda.newQuery(this.id);
-    let nullFunc = function() {};
+    let nullFunc = function () {};
     this._universalCollection = query.getCollection(
       {
         onItemsAdded: nullFunc,
@@ -571,7 +572,7 @@ var MimeTypeNoun = {
     return this._mimeTypesByID[aMimeTypeID];
   },
 };
-Gloda.defineNoun(MimeTypeNoun, Gloda.NOUN_MIME_TYPE);
+Gloda.defineNoun(MimeTypeNoun, GlodaConstants.NOUN_MIME_TYPE);
 try {
   MimeTypeNoun._init();
 } catch (ex) {

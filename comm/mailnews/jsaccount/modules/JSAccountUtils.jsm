@@ -70,16 +70,11 @@ var log = console.createInstance({
  *                                  XPCOM methods calls will be delegated.
  */
 
-JSAccountUtils.jaFactory = function(aProperties, aJsDelegateConstructor) {
+JSAccountUtils.jaFactory = function (aProperties, aJsDelegateConstructor) {
   let factory = {};
   factory.QueryInterface = ChromeUtils.generateQI([Ci.nsIFactory]);
-  factory.lockFactory = function() {};
 
-  factory.createInstance = function(outer, iid) {
-    if (outer != null) {
-      throw Components.Exception("", Cr.NS_ERROR_NO_AGGREGATION);
-    }
-
+  factory.createInstance = function (iid) {
     // C++ delegator class.
     let delegator = Cc[aProperties.baseContractID].createInstance(
       Ci.msgIOverride
@@ -192,7 +187,7 @@ JSAccountUtils.jaFactory = function(aProperties, aJsDelegateConstructor) {
  *
  * @returns a JS object suitable as the prototype of a JsAccount implementation.
  */
-JSAccountUtils.makeCppDelegator = function(aProperties) {
+JSAccountUtils.makeCppDelegator = function (aProperties) {
   log.info("Making cppDelegator for contractID " + aProperties.contractID);
   let cppDelegator = {};
   let cppDummy = Cc[aProperties.baseContractID].createInstance(Ci.nsISupports);
@@ -222,24 +217,24 @@ JSAccountUtils.makeCppDelegator = function(aProperties) {
     // a closure containing just the last value it was set to.
     if ("value" in descriptor) {
       log.debug("Adding value for " + method);
-      property.value = (function(aMethod) {
-        return function(...args) {
+      property.value = (function (aMethod) {
+        return function (...args) {
           return Reflect.apply(this.cppBase[aMethod], undefined, args);
         };
       })(method);
     }
     if (descriptor.set) {
       log.debug("Adding setter for " + method);
-      property.set = (function(aMethod) {
-        return function(aVal) {
+      property.set = (function (aMethod) {
+        return function (aVal) {
           this.cppBase[aMethod] = aVal;
         };
       })(method);
     }
     if (descriptor.get) {
       log.debug("Adding getter for " + method);
-      property.get = (function(aMethod) {
-        return function() {
+      property.get = (function (aMethod) {
+        return function () {
           return this.cppBase[aMethod];
         };
       })(method);

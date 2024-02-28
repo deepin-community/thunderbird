@@ -13,8 +13,7 @@
 
 #include <limits>
 
-namespace mozilla {
-namespace dom {
+namespace mozilla::dom {
 
 // -------------------------------------------
 // CSSKeyframeList
@@ -22,7 +21,7 @@ namespace dom {
 
 class CSSKeyframeList : public dom::CSSRuleList {
  public:
-  CSSKeyframeList(already_AddRefed<RawServoKeyframesRule> aRawRule,
+  CSSKeyframeList(already_AddRefed<StyleLockedKeyframesRule> aRawRule,
                   StyleSheet* aSheet, CSSKeyframesRule* aParentRule)
       : mStyleSheet(aSheet), mParentRule(aParentRule), mRawRule(aRawRule) {
     mRules.SetCount(Servo_KeyframesRule_GetCount(mRawRule));
@@ -30,6 +29,22 @@ class CSSKeyframeList : public dom::CSSRuleList {
 
   NS_DECL_ISUPPORTS_INHERITED
   NS_DECL_CYCLE_COLLECTION_CLASS_INHERITED(CSSKeyframeList, dom::CSSRuleList)
+
+  void SetRawAfterClone(RefPtr<StyleLockedKeyframesRule> aRaw) {
+    mRawRule = std::move(aRaw);
+    uint32_t index = 0;
+    for (css::Rule* rule : mRules) {
+      if (rule) {
+        uint32_t line = 0, column = 0;
+        RefPtr<StyleLockedKeyframe> keyframe =
+            Servo_KeyframesRule_GetKeyframeAt(mRawRule, index, &line, &column)
+                .Consume();
+        static_cast<CSSKeyframeRule*>(rule)->SetRawAfterClone(
+            std::move(keyframe));
+      }
+      index++;
+    }
+  }
 
   void DropSheetReference() {
     if (!mStyleSheet) {
@@ -48,7 +63,7 @@ class CSSKeyframeList : public dom::CSSRuleList {
   CSSKeyframeRule* GetRule(uint32_t aIndex) {
     if (!mRules[aIndex]) {
       uint32_t line = 0, column = 0;
-      RefPtr<RawServoKeyframe> rule =
+      RefPtr<StyleLockedKeyframe> rule =
           Servo_KeyframesRule_GetKeyframeAt(mRawRule, aIndex, &line, &column)
               .Consume();
       CSSKeyframeRule* ruleObj = new CSSKeyframeRule(rule.forget(), mStyleSheet,
@@ -124,7 +139,7 @@ class CSSKeyframeList : public dom::CSSRuleList {
   // may be nullptr when the style sheet drops the reference to us.
   StyleSheet* mStyleSheet = nullptr;
   CSSKeyframesRule* mParentRule = nullptr;
-  RefPtr<RawServoKeyframesRule> mRawRule;
+  RefPtr<StyleLockedKeyframesRule> mRawRule;
   nsCOMArray<css::Rule> mRules;
 };
 
@@ -154,7 +169,7 @@ NS_IMPL_CYCLE_COLLECTION_TRAVERSE_END
 // CSSKeyframesRule
 //
 
-CSSKeyframesRule::CSSKeyframesRule(RefPtr<RawServoKeyframesRule> aRawRule,
+CSSKeyframesRule::CSSKeyframesRule(RefPtr<StyleLockedKeyframesRule> aRawRule,
                                    StyleSheet* aSheet, css::Rule* aParentRule,
                                    uint32_t aLine, uint32_t aColumn)
     : css::Rule(aSheet, aParentRule, aLine, aColumn),
@@ -191,6 +206,17 @@ bool CSSKeyframesRule::IsCCLeaf() const {
   return Rule::IsCCLeaf() && !mKeyframeList;
 }
 
+StyleCssRuleType CSSKeyframesRule::Type() const {
+  return StyleCssRuleType::Keyframes;
+}
+
+void CSSKeyframesRule::SetRawAfterClone(RefPtr<StyleLockedKeyframesRule> aRaw) {
+  mRawRule = std::move(aRaw);
+  if (mKeyframeList) {
+    mKeyframeList->SetRawAfterClone(mRawRule);
+  }
+}
+
 #ifdef DEBUG
 /* virtual */
 void CSSKeyframesRule::List(FILE* out, int32_t aIndent) const {
@@ -224,8 +250,14 @@ nsresult CSSKeyframesRule::UpdateRule(Func aCallback) {
     return NS_OK;
   }
 
+  StyleSheet* sheet = GetStyleSheet();
+  if (sheet) {
+    sheet->WillDirty();
+  }
+
   aCallback();
-  if (StyleSheet* sheet = GetStyleSheet()) {
+
+  if (sheet) {
     sheet->RuleChanged(this, StyleRuleChangeKind::Generic);
   }
 
@@ -286,19 +318,23 @@ void CSSKeyframesRule::GetCssText(nsACString& aCssText) const {
 }
 
 /* virtual */ dom::CSSRuleList* CSSKeyframesRule::CssRules() {
-  if (!mKeyframeList) {
-    mKeyframeList = new CSSKeyframeList(do_AddRef(mRawRule), mSheet, this);
-  }
-  return mKeyframeList;
+  return EnsureRules();
+}
+
+/* virtual */ dom::CSSKeyframeRule* CSSKeyframesRule::IndexedGetter(
+    uint32_t aIndex, bool& aFound) {
+  return EnsureRules()->IndexedGetter(aIndex, aFound);
+}
+
+/* virtual */ uint32_t CSSKeyframesRule::Length() {
+  return EnsureRules()->Length();
 }
 
 /* virtual */ dom::CSSKeyframeRule* CSSKeyframesRule::FindRule(
     const nsAString& aKey) {
   auto index = FindRuleIndexForKey(aKey);
   if (index != kRuleNotFound) {
-    // Construct mKeyframeList but ignore the result.
-    CssRules();
-    return mKeyframeList->GetRule(index);
+    return EnsureRules()->GetRule(index);
   }
   return nullptr;
 }
@@ -318,5 +354,11 @@ JSObject* CSSKeyframesRule::WrapObject(JSContext* aCx,
   return CSSKeyframesRule_Binding::Wrap(aCx, this, aGivenProto);
 }
 
-}  // namespace dom
-}  // namespace mozilla
+dom::CSSKeyframeList* CSSKeyframesRule::EnsureRules() {
+  if (!mKeyframeList) {
+    mKeyframeList = new CSSKeyframeList(do_AddRef(mRawRule), mSheet, this);
+  }
+  return mKeyframeList;
+}
+
+}  // namespace mozilla::dom

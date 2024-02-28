@@ -1,14 +1,68 @@
+# mypy: allow-untyped-defs
+
 import os
 import traceback
-
+from typing import Type
 from urllib.parse import urljoin
 
-from .base import WdspecProtocol, WdspecExecutor, get_pages
-from .executorwebdriver import WebDriverProtocol, WebDriverRefTestExecutor, WebDriverRun
+from .base import (
+    CrashtestExecutor,
+    TestharnessExecutor,
+    get_pages,
+)
+from .executorwebdriver import (
+    WebDriverCrashtestExecutor,
+    WebDriverProtocol,
+    WebDriverRefTestExecutor,
+    WebDriverRun,
+    WebDriverTestharnessExecutor,
+)
 from .protocol import PrintProtocolPart
-from ..webdriver_server import ChromeDriverServer
 
 here = os.path.dirname(__file__)
+
+
+def make_sanitizer_mixin(crashtest_executor_cls: Type[CrashtestExecutor]):  # type: ignore[no-untyped-def]
+    class SanitizerMixin:
+        def __new__(cls, logger, browser, **kwargs):
+            # Overriding `__new__` is the least worst way we can force tests to run
+            # as crashtests at runtime while still supporting:
+            #   * Class attributes (e.g., `extra_timeout`)
+            #   * Pickleability for `multiprocessing` transport
+            #   * The `__wptrunner__` product interface
+            #
+            # These requirements rule out approaches with `functools.partial(...)`
+            # or global variables.
+            if kwargs.get("sanitizer_enabled"):
+                executor = crashtest_executor_cls(logger, browser, **kwargs)
+
+                def convert_from_crashtest_result(test, result):
+                    if issubclass(cls, TestharnessExecutor):
+                        status = result["status"]
+                        if status == "PASS":
+                            status = "OK"
+                        harness_result = test.result_cls(status, result["message"])
+                        # Don't report subtests.
+                        return harness_result, []
+                    # `crashtest` statuses are a subset of `(print-)reftest`
+                    # ones, so no extra conversion necessary.
+                    return cls.convert_result(executor, test, result)
+
+                executor.convert_result = convert_from_crashtest_result
+                return executor
+            return super().__new__(cls)
+    return SanitizerMixin
+
+
+_SanitizerMixin = make_sanitizer_mixin(WebDriverCrashtestExecutor)
+
+
+class ChromeDriverRefTestExecutor(WebDriverRefTestExecutor, _SanitizerMixin):  # type: ignore
+    pass
+
+
+class ChromeDriverTestharnessExecutor(WebDriverTestharnessExecutor, _SanitizerMixin):  # type: ignore
+    pass
 
 
 class ChromeDriverPrintProtocolPart(PrintProtocolPart):
@@ -17,7 +71,7 @@ class ChromeDriverPrintProtocolPart(PrintProtocolPart):
         self.runner_handle = None
 
     def load_runner(self):
-        url = urljoin(self.parent.executor.server_url("http"), "/print_reftest_runner.html")
+        url = urljoin(self.parent.executor.server_url("http"), "/print_pdf_runner.html")
         self.logger.debug("Loading %s" % url)
         try:
             self.webdriver.url = url
@@ -66,11 +120,11 @@ class ChromeDriverProtocol(WebDriverProtocol):
     implements = WebDriverProtocol.implements + [ChromeDriverPrintProtocolPart]
 
 
-class ChromeDriverPrintRefTestExecutor(WebDriverRefTestExecutor):
+class ChromeDriverPrintRefTestExecutor(ChromeDriverRefTestExecutor):
     protocol_cls = ChromeDriverProtocol
 
     def setup(self, runner):
-        super(ChromeDriverPrintRefTestExecutor, self).setup(runner)
+        super().setup(runner)
         self.protocol.pdf_print.load_runner()
         self.has_window = False
         with open(os.path.join(here, "reftest.js")) as f:
@@ -111,11 +165,3 @@ class ChromeDriverPrintRefTestExecutor(WebDriverRefTestExecutor):
                 screenshots[i] = screenshot.split(",", 1)[1]
 
         return screenshots
-
-
-class ChromeDriverWdspecProtocol(WdspecProtocol):
-    server_cls = ChromeDriverServer
-
-
-class ChromeDriverWdspecExecutor(WdspecExecutor):
-    protocol_cls = ChromeDriverWdspecProtocol

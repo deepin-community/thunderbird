@@ -4,12 +4,6 @@
 
 const EXPORTED_SYMBOLS = ["AddrBookMailingList"];
 
-ChromeUtils.defineModuleGetter(
-  this,
-  "Services",
-  "resource://gre/modules/Services.jsm"
-);
-
 /* Prototype for mailing lists. A mailing list can appear as nsIAbDirectory
  * or as nsIAbCard. Here we keep all relevant information in the class itself
  * and fulfill each interface on demand. This will make more sense and be
@@ -353,6 +347,10 @@ AddrBookMailingList.prototype = {
       get primaryEmail() {
         return "";
       },
+      get emailAddresses() {
+        // NOT the members of this list.
+        return [];
+      },
 
       generateName(generateFormat) {
         return self._name;
@@ -401,6 +399,12 @@ AddrBookMailingList.prototype = {
           });
         }
         return props;
+      },
+      get supportsVCard() {
+        return false;
+      },
+      get vCardProperties() {
+        return null;
       },
       translateTo(type) {
         // Get nsAbCardProperty to do the work, the code is in C++ anyway.

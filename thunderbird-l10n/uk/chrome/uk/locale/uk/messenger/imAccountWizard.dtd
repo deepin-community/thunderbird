@@ -9,13 +9,13 @@
 <!ENTITY accountProtocolField.label   "Протокол:">
 <!ENTITY accountProtocolGetMore.label "Отримати більше…">
 
-<!ENTITY accountUsernameTitle.label   "Ім’я користувача">
+<!ENTITY accountUsernameTitle.label   "Ім'я користувача">
 <!ENTITY accountUsernameDuplicate.label "Цей обліковий запис уже налаштовано!">
 
 <!ENTITY accountPasswordTitle.label   "Пароль">
 <!ENTITY accountPasswordInfo.label    "Введіть ваш пароль у цьому полі.">
 <!ENTITY accountPasswordField.label   "Пароль:">
-<!ENTITY accountPasswordManager.label "Введений вами пароль буде збережений в Керівнику Паролями. Якщо ви хочете щоразу вводити пароль при підключенні цього запису, то лишіть це поле порожнім.">
+<!ENTITY accountPasswordManager.label "Введений вами пароль буде збережений в Менеджері Паролів. Якщо ви хочете щоразу вводити пароль під час під'єднання цього запису, то лишіть це поле порожнім.">
 
 <!ENTITY accountAdvancedTitle.label   "Розширені параметри">
 <!ENTITY accountAdvancedInfo.label    "Залиште пустим, щоб пропустити цей крок, якщо хочете.">

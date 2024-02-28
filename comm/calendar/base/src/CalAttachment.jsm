@@ -4,7 +4,6 @@
 
 var EXPORTED_SYMBOLS = ["CalAttachment"];
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 var { cal } = ChromeUtils.import("resource:///modules/calendar/calUtils.jsm");
 
 /**
@@ -32,13 +31,7 @@ CalAttachment.prototype = {
   get hashId() {
     if (!this.mHashId) {
       let cryptoHash = Cc["@mozilla.org/security/hash;1"].createInstance(Ci.nsICryptoHash);
-
-      let converter = Cc["@mozilla.org/intl/scriptableunicodeconverter"].createInstance(
-        Ci.nsIScriptableUnicodeConverter
-      );
-      converter.charset = "UTF-8";
-      let data = converter.convertToByteArray(this.rawData, {});
-
+      let data = new TextEncoder().encode(this.rawData);
       cryptoHash.init(cryptoHash.MD5);
       cryptoHash.update(data, data.length);
       this.mHashId = cryptoHash.finish(true);
@@ -97,7 +90,7 @@ CalAttachment.prototype = {
   },
 
   get icalProperty() {
-    let icalatt = cal.getIcsService().createIcalProperty("ATTACH");
+    let icalatt = cal.icsService.createIcalProperty("ATTACH");
 
     for (let [key, value] of this.mProperties.entries()) {
       try {
@@ -135,7 +128,7 @@ CalAttachment.prototype = {
     return comp ? comp.icalString : "";
   },
   set icalString(val) {
-    let prop = cal.getIcsService().createIcalPropertyFromString(val);
+    let prop = cal.icsService.createIcalPropertyFromString(val);
     if (prop.propertyName != "ATTACH") {
       throw Components.Exception("", Cr.NS_ERROR_ILLEGAL_VALUE);
     }

@@ -5,7 +5,9 @@
 
 // Test top-level target switching for memory panel.
 
-const { treeMapState } = require("devtools/client/memory/constants");
+const {
+  treeMapState,
+} = require("resource://devtools/client/memory/constants.js");
 const PARENT_PROCESS_URI = "about:robots";
 const CONTENT_PROCESS_URI =
   "data:text/html,<section>content process page</section>";
@@ -13,12 +15,6 @@ const EXPECTED_ELEMENT_IN_PARENT_PROCESS = "button";
 const EXPECTED_ELEMENT_IN_CONTENT_PROCESS = "section";
 
 add_task(async () => {
-  // Disable bfcache for Fission for now.
-  // If Fission is disabled, the pref is no-op.
-  await SpecialPowers.pushPrefEnv({
-    set: [["fission.bfcacheInParent", false]],
-  });
-
   info("Open the memory panel with empty page");
   const tab = await addTab();
   const { panel } = await openMemoryPanel(tab);

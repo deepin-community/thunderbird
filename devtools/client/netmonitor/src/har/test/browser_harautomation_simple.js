@@ -13,7 +13,7 @@ const HAR_PATH = ["har", "logs", HAR_FILENAME];
  * Note that the `enableAutoExportToFile` is set from browser-harautomation.ini
  * because the preference needs to be set before starting the browser.
  */
-add_task(async function() {
+add_task(async function () {
   // Set a simple test filename for the exported HAR.
   await pushPref("devtools.netmonitor.har.defaultFileName", "test_filename");
 
@@ -22,7 +22,7 @@ add_task(async function() {
     toolId: "inspector",
   });
 
-  tab.linkedBrowser.reload();
+  await reloadBrowser();
 
   info("Wait until the HAR file is created in the profile directory");
   await waitUntil(() => FileUtils.getFile("ProfD", HAR_PATH).exists());

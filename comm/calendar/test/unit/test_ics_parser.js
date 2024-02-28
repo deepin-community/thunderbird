@@ -9,9 +9,7 @@ function run_test() {
 function really_run_test() {
   test_roundtrip();
   test_async();
-  if (Services.prefs.getBoolPref("calendar.icaljs", false)) {
-    test_failures();
-  }
+  test_failures();
   test_fake_parent();
   test_props_comps();
   test_timezone();
@@ -47,7 +45,7 @@ function test_failures() {
   let parser = Cc["@mozilla.org/calendar/ics-parser;1"].createInstance(Ci.calIIcsParser);
 
   do_test_pending();
-  parser.parseString("BOGUS", null, {
+  parser.parseString("BOGUS", {
     onParsingComplete(rc, opparser) {
       dump("Note: The previous error message is expected ^^\n");
       equal(rc, Cr.NS_ERROR_FAILURE);
@@ -118,7 +116,7 @@ function test_async() {
   ].join("\r\n");
 
   do_test_pending();
-  parser.parseString(str, null, {
+  parser.parseString(str, {
     onParsingComplete(rc, opparser) {
       let items = parser.getItems();
       equal(items.length, 2);
@@ -174,15 +172,8 @@ function test_roundtrip() {
   parser.getComponents().forEach(serializer.addComponent, serializer);
 
   equal(
-    serializer
-      .serializeToString()
-      .split("\r\n")
-      .sort()
-      .join("\r\n"),
-    str
-      .split("\r\n")
-      .sort()
-      .join("\r\n")
+    serializer.serializeToString().split("\r\n").sort().join("\r\n"),
+    str.split("\r\n").sort().join("\r\n")
   );
 
   // Test parseFromStream
@@ -204,14 +195,7 @@ function test_roundtrip() {
   everything.push(props[0].icalString.split("\r\n")[0]);
   everything.sort();
 
-  equal(
-    everything.join("\r\n"),
-    str
-      .split("\r\n")
-      .concat([""])
-      .sort()
-      .join("\r\n")
-  );
+  equal(everything.join("\r\n"), str.split("\r\n").concat([""]).sort().join("\r\n"));
 
   // Test serializeToStream/parseFromStream
   parser = Cc["@mozilla.org/calendar/ics-parser;1"].createInstance(Ci.calIIcsParser);
@@ -232,12 +216,5 @@ function test_roundtrip() {
   everything.push(props[0].icalString.split("\r\n")[0]);
   everything.sort();
 
-  equal(
-    everything.join("\r\n"),
-    str
-      .split("\r\n")
-      .concat([""])
-      .sort()
-      .join("\r\n")
-  );
+  equal(everything.join("\r\n"), str.split("\r\n").concat([""]).sort().join("\r\n"));
 }

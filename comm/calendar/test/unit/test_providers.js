@@ -193,6 +193,9 @@ add_task(async function testIcalData() {
   }
 
   async function checkCalendar(calendar, aItem, aResult) {
+    // add item to calendar
+    await calendar.addItem(aItem);
+
     // construct range
     let rangeStart = createDate(2002, 3, 2); // 3 = April
     let rangeEnd = rangeStart.clone();
@@ -206,42 +209,28 @@ add_task(async function testIcalData() {
 
     // implement listener
     let count = 0;
-    await new Promise(resolve => {
-      let listener = {
-        onOperationComplete(aCalendar, aStatus, aOperationType, aId, aDetail) {
-          equal(aStatus, 0);
-          if (aOperationType == Ci.calIOperationListener.ADD) {
-            // perform getItems() on calendar
-            aCalendar.getItems(filter, 0, rangeStart, rangeEnd, listener);
-          } else if (aOperationType == Ci.calIOperationListener.GET) {
-            equal(count, aResult);
-            resolve();
-          }
-        },
-        onGetResult(aCalendar, aStatus, aItemType, aDetail, aItems) {
-          if (aItems.length) {
-            count += aItems.length;
-            for (let i = 0; i < aItems.length; i++) {
-              // Don't check creationDate as it changed when we added the item to the database.
-              compareItemsSpecific(aItems[i].parentItem, aItem, [
-                "start",
-                "end",
-                "duration",
-                "title",
-                "priority",
-                "privacy",
-                "status",
-                "alarmLastAck",
-                "recurrenceStartDate",
-              ]);
-            }
-          }
-        },
-      };
-
-      // add item to calendar
-      calendar.addItem(aItem, listener);
-    });
+    for await (let items of cal.iterate.streamValues(
+      calendar.getItems(filter, 0, rangeStart, rangeEnd)
+    )) {
+      if (items.length) {
+        count += items.length;
+        for (let i = 0; i < items.length; i++) {
+          // Don't check creationDate as it changed when we added the item to the database.
+          compareItemsSpecific(items[i].parentItem, aItem, [
+            "start",
+            "end",
+            "duration",
+            "title",
+            "priority",
+            "privacy",
+            "status",
+            "alarmLastAck",
+            "recurrenceStartDate",
+          ]);
+        }
+      }
+    }
+    equal(count, aResult);
   }
 
   /**
@@ -256,50 +245,28 @@ add_task(async function testIcalData() {
     calArray.push(getStorageCal());
     calArray.push(getMemoryCal());
     for (let calendar of calArray) {
-      // implement listener
       let count = 0;
       let returnedItem = null;
-      let listener = {
-        promises: [],
-        async onOperationComplete(aCalendar, aStatus, aOperationType, aId, aDetail) {
-          equal(aStatus, 0);
-          if (aOperationType == Ci.calIOperationListener.ADD) {
-            compareItemsSpecific(aDetail, aItem);
-            // perform getItem() on calendar
-            await new Promise(resolve => {
-              listener.promises.push(resolve);
-              aCalendar.getItem(aId, listener);
-            });
-          } else if (aOperationType == Ci.calIOperationListener.GET) {
-            equal(count, 1);
-            // Don't check creationDate as it changed when we added the item to the database.
-            compareItemsSpecific(returnedItem, aItem, [
-              "start",
-              "end",
-              "duration",
-              "title",
-              "priority",
-              "privacy",
-              "status",
-              "alarmLastAck",
-              "recurrenceStartDate",
-            ]);
-          }
-          this.promises.pop()();
-        },
-        onGetResult(aCalendar, aStatus, aItemType, aDetail, aItems) {
-          if (aItems.length) {
-            count += aItems.length;
-            returnedItem = aItems[0];
-          }
-        },
-      };
 
-      await new Promise(resolve => {
-        listener.promises.push(resolve);
-        // add item to calendar
-        calendar.addItem(aItem, listener);
-      });
+      let aDetail = await calendar.addItem(aItem);
+      compareItemsSpecific(aDetail, aItem);
+      // perform getItem() on calendar
+      returnedItem = await calendar.getItem(aDetail.id);
+      count = returnedItem ? 1 : 0;
+
+      equal(count, 1);
+      // Don't check creationDate as it changed when we added the item to the database.
+      compareItemsSpecific(returnedItem, aItem, [
+        "start",
+        "end",
+        "duration",
+        "title",
+        "priority",
+        "privacy",
+        "status",
+        "alarmLastAck",
+        "recurrenceStartDate",
+      ]);
     }
   }
 });
@@ -312,24 +279,16 @@ add_task(async function testMetaData() {
     );
 
     event1.id = "item1";
-    await new Promise(resolve => {
-      aCalendar.addItem(event1, {
-        onGetResult(calendar, aStatus, aItemType, aDetail, aItems) {},
-        onOperationComplete: resolve,
-      });
-    });
+    await aCalendar.addItem(event1);
+
     aCalendar.setMetaData("item1", "meta1");
     equal(aCalendar.getMetaData("item1"), "meta1");
     equal(aCalendar.getMetaData("unknown"), null);
 
     let event2 = event1.clone();
     event2.id = "item2";
-    await new Promise(resolve => {
-      aCalendar.addItem(event2, {
-        onGetResult(calendar, aStatus, aItemType, aDetail, aItems) {},
-        onOperationComplete: resolve,
-      });
-    });
+    await aCalendar.addItem(event2);
+
     aCalendar.setMetaData("item2", "meta2-");
     equal(aCalendar.getMetaData("item2"), "meta2-");
 
@@ -345,12 +304,8 @@ add_task(async function testMetaData() {
     ok(values[0] == "meta1" || values[1] == "meta1");
     ok(values[0] == "meta2" || values[1] == "meta2");
 
-    await new Promise(resolve => {
-      aCalendar.deleteItem(event1, {
-        onGetResult: (calendar, aStatus, aItemType, aDetail, aItems) => {},
-        onOperationComplete: resolve,
-      });
-    });
+    await aCalendar.deleteItem(event1);
+
     equal(aCalendar.getMetaData("item1"), null);
     ids = aCalendar.getAllMetaDataIds();
     values = aCalendar.getAllMetaDataValues();
@@ -390,7 +345,6 @@ add_task(async function testMetaData() {
 async function testOfflineStorage(storageGetter, isRecurring) {
     let storage = storageGetter();
     print(`Running offline storage test for ${storage.type} calendar for ${isRecurring ? "recurring" : "normal"} item`);
-    let pcal = cal.async.promisifyCalendar(storage);
 
     let event1 = createEventFromIcalString("BEGIN:VEVENT\n" +
                                            "DTSTART;VALUE=DATE:20020402\n" +
@@ -399,69 +353,69 @@ async function testOfflineStorage(storageGetter, isRecurring) {
                                            (isRecurring ? "RRULE:FREQ=DAILY;INTERVAL=1;COUNT=10\n" : "") +
                                            "END:VEVENT\n");
 
-    event1 = await pcal.addItem(event1);
+    event1 = await storage.addItem(event1);
 
     // Make sure the event is really in the calendar
-    let result = await pcal.getAllItems();
+    let result = await storage.getAllItems();
     equal(result.length, 1);
 
     // When searching for offline added items, there are none
     let filter = Ci.calICalendar.ITEM_FILTER_ALL_ITEMS | Ci.calICalendar.ITEM_FILTER_OFFLINE_CREATED;
-    result = await pcal.getItems(filter, 0, null, null);
+    result = await storage.getItems(filter, 0, null, null);
     equal(result.length, 0);
 
     // Mark the item as offline added
-    await pcal.addOfflineItem(event1);
+    await storage.addOfflineItem(event1);
 
     // Now there should be an offline item
-    result = await pcal.getItems(filter, 0, null, null);
+    result = await storage.getItems(filter, 0, null, null);
     equal(result.length, 1);
 
     let event2 = event1.clone();
     event2.title = "event2";
 
-    event2 = await pcal.modifyItem(event2, event1);
+    event2 = await storage.modifyItem(event2, event1);
 
-    await pcal.modifyOfflineItem(event2);
+    await storage.modifyOfflineItem(event2);
 
     // The flag should still be offline added, as it was already marked as such
     filter = Ci.calICalendar.ITEM_FILTER_ALL_ITEMS | Ci.calICalendar.ITEM_FILTER_OFFLINE_CREATED;
-    result = await pcal.getItems(filter, 0, null, null);
+    result = await storage.getItems(filter, 0, null, null);
     equal(result.length, 1);
 
     // Reset the flag
-    await pcal.resetItemOfflineFlag(event2);
+    await storage.resetItemOfflineFlag(event2);
 
     // No more offline items after resetting the flag
     filter = Ci.calICalendar.ITEM_FILTER_ALL_ITEMS | Ci.calICalendar.ITEM_FILTER_OFFLINE_CREATED;
-    result = await pcal.getItems(filter, 0, null, null);
+    result = await storage.getItems(filter, 0, null, null);
     equal(result.length, 0);
 
     // Setting modify flag without one set should actually set that flag
-    await pcal.modifyOfflineItem(event2);
+    await storage.modifyOfflineItem(event2);
     filter = Ci.calICalendar.ITEM_FILTER_ALL_ITEMS | Ci.calICalendar.ITEM_FILTER_OFFLINE_CREATED;
-    result = await pcal.getItems(filter, 0, null, null);
+    result = await storage.getItems(filter, 0, null, null);
     equal(result.length, 0);
 
     filter = Ci.calICalendar.ITEM_FILTER_ALL_ITEMS | Ci.calICalendar.ITEM_FILTER_OFFLINE_MODIFIED;
-    result = await pcal.getItems(filter, 0, null, null);
+    result = await storage.getItems(filter, 0, null, null);
     equal(result.length, 1);
 
     // Setting the delete flag should modify the flag accordingly
-    await pcal.deleteOfflineItem(event2);
+    await storage.deleteOfflineItem(event2);
     filter = Ci.calICalendar.ITEM_FILTER_ALL_ITEMS | Ci.calICalendar.ITEM_FILTER_OFFLINE_MODIFIED;
-    result = await pcal.getItems(filter, 0, null, null);
+    result = await storage.getItems(filter, 0, null, null);
     equal(result.length, 0);
 
     filter = Ci.calICalendar.ITEM_FILTER_ALL_ITEMS | Ci.calICalendar.ITEM_FILTER_OFFLINE_DELETED;
-    result = await pcal.getItems(filter, 0, null, null);
+    result = await storage.getItems(filter, 0, null, null);
     equal(result.length, 1);
 
     // Setting the delete flag on an offline added item should remove it
-    await pcal.resetItemOfflineFlag(event2);
-    await pcal.addOfflineItem(event2);
-    await pcal.deleteOfflineItem(event2);
-    result = await pcal.getAllItems();
+    await storage.resetItemOfflineFlag(event2);
+    await storage.addOfflineItem(event2);
+    await storage.deleteOfflineItem(event2);
+    result = await storage.getItemsAsArray(Ci.calICalendar.ITEM_FILTER_ALL_ITEMS, 0, null, null);
     equal(result.length, 0);
 }
 

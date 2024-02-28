@@ -69,11 +69,13 @@ static int (*pw_stream_connect_fn)(struct pw_stream *stream,
                                 enum pw_stream_flags flags,
                                 const struct spa_pod **params,
                                 uint32_t n_params);
+static int (*pw_stream_disconnect_fn)(struct pw_stream *stream);
 static struct pw_buffer* (*pw_stream_dequeue_buffer_fn)(struct pw_stream *stream);
 static void (*pw_stream_destroy_fn)(struct pw_stream *stream);
 static struct pw_stream* (*pw_stream_new_fn)(struct pw_core *core,
                                           const char *name,
                                           struct pw_properties *props);
+
 static int (*pw_stream_queue_buffer_fn)(struct pw_stream *stream,
                                      struct pw_buffer *buffer);
 static int (*pw_stream_update_params_fn)(struct pw_stream *stream,
@@ -85,6 +87,12 @@ static struct pw_thread_loop* (*pw_thread_loop_new_fn)(const char *name,
                                                 const struct spa_dict *props);
 static int (*pw_thread_loop_start_fn)(struct pw_thread_loop *loop);
 static void (*pw_thread_loop_stop_fn)(struct pw_thread_loop *loop);
+static void (*pw_thread_loop_lock_fn)(struct pw_thread_loop *loop);
+static void (*pw_thread_loop_unlock_fn)(struct pw_thread_loop *loop);
+static void (*pw_thread_loop_wait_fn)(struct pw_thread_loop *loop);
+static void (*pw_thread_loop_signal_fn)(struct pw_thread_loop *loop, bool wait_for_accept);
+static struct pw_properties* (*pw_properties_new_string_fn)(const char *str);
+static const char* (*pw_get_library_version_fn)();
 
 bool IsPwLibraryLoaded() {
   static bool isLoaded =
@@ -96,6 +104,7 @@ bool IsPwLibraryLoaded() {
           IS_FUNC_LOADED(pw_init_fn) &&
           IS_FUNC_LOADED(pw_stream_add_listener_fn) &&
           IS_FUNC_LOADED(pw_stream_connect_fn) &&
+          IS_FUNC_LOADED(pw_stream_disconnect_fn) &&
           IS_FUNC_LOADED(pw_stream_dequeue_buffer_fn) &&
           IS_FUNC_LOADED(pw_stream_destroy_fn) &&
           IS_FUNC_LOADED(pw_stream_new_fn) &&
@@ -105,7 +114,13 @@ bool IsPwLibraryLoaded() {
           IS_FUNC_LOADED(pw_thread_loop_get_loop_fn) &&
           IS_FUNC_LOADED(pw_thread_loop_new_fn) &&
           IS_FUNC_LOADED(pw_thread_loop_start_fn) &&
-          IS_FUNC_LOADED(pw_thread_loop_stop_fn));
+          IS_FUNC_LOADED(pw_thread_loop_stop_fn) &&
+          IS_FUNC_LOADED(pw_thread_loop_lock_fn) &&
+          IS_FUNC_LOADED(pw_thread_loop_unlock_fn) &&
+          IS_FUNC_LOADED(pw_thread_loop_signal_fn) &&
+          IS_FUNC_LOADED(pw_thread_loop_wait_fn) &&
+          IS_FUNC_LOADED(pw_properties_new_string_fn) &&
+          IS_FUNC_LOADED(pw_get_library_version_fn));
 
   return isLoaded;
 }
@@ -130,6 +145,7 @@ bool LoadPWLibrary() {
     GET_FUNC(pw_init, pwLib);
     GET_FUNC(pw_stream_add_listener, pwLib);
     GET_FUNC(pw_stream_connect, pwLib);
+    GET_FUNC(pw_stream_disconnect, pwLib);
     GET_FUNC(pw_stream_dequeue_buffer, pwLib);
     GET_FUNC(pw_stream_destroy, pwLib);
     GET_FUNC(pw_stream_new, pwLib);
@@ -140,6 +156,12 @@ bool LoadPWLibrary() {
     GET_FUNC(pw_thread_loop_new, pwLib);
     GET_FUNC(pw_thread_loop_start, pwLib);
     GET_FUNC(pw_thread_loop_stop, pwLib);
+    GET_FUNC(pw_thread_loop_lock, pwLib);
+    GET_FUNC(pw_thread_loop_unlock, pwLib);
+    GET_FUNC(pw_thread_loop_signal, pwLib);
+    GET_FUNC(pw_thread_loop_wait, pwLib);
+    GET_FUNC(pw_properties_new_string, pwLib);
+    GET_FUNC(pw_get_library_version, pwLib);
   }
 
   return IsPwLibraryLoaded();
@@ -231,6 +253,15 @@ pw_stream_connect(struct pw_stream *stream,
   }
   return pw_stream_connect_fn(stream, direction, target_id, flags,
                               params, n_params);
+}
+
+int
+pw_stream_disconnect(struct pw_stream *stream)
+{
+  if (!LoadPWLibrary()) {
+    return 0;
+  }
+  return pw_stream_disconnect_fn(stream);
 }
 
 struct pw_buffer *
@@ -328,3 +359,58 @@ pw_thread_loop_stop(struct pw_thread_loop *loop)
   }
   return pw_thread_loop_stop_fn(loop);
 }
+
+void
+pw_thread_loop_lock(struct pw_thread_loop *loop)
+{
+  if (!LoadPWLibrary()) {
+    return;
+  }
+  return pw_thread_loop_lock_fn(loop);
+}
+
+void
+pw_thread_loop_unlock(struct pw_thread_loop *loop)
+{
+  if (!LoadPWLibrary()) {
+    return;
+  }
+  return pw_thread_loop_unlock_fn(loop);
+}
+
+void
+pw_thread_loop_signal(struct pw_thread_loop *loop, bool wait_for_accept)
+{
+  if (!LoadPWLibrary()) {
+    return;
+  }
+  return pw_thread_loop_signal_fn(loop, wait_for_accept);
+}
+
+void
+pw_thread_loop_wait(struct pw_thread_loop *loop)
+{
+  if (!LoadPWLibrary()) {
+    return;
+  }
+  return pw_thread_loop_wait_fn(loop);
+}
+
+struct pw_properties *
+pw_properties_new_string(const char *str)
+{
+  if (!LoadPWLibrary()) {
+    return nullptr;
+  }
+  return pw_properties_new_string_fn(str);
+}
+
+const char*
+pw_get_library_version()
+{
+  if (!LoadPWLibrary()) {
+    return nullptr;
+  }
+  return pw_get_library_version_fn();
+}
+

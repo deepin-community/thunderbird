@@ -9,12 +9,10 @@
 #include "nsIMsgThread.h"
 #include "nsQuickSort.h"
 #include "nsIDBFolderInfo.h"
-#include "nsMsgBaseCID.h"
 #include "nsIMsgCopyService.h"
 #include "nsMsgUtils.h"
 #include "nsIMsgSearchSession.h"
 #include "nsIMsgSearchTerm.h"
-#include "nsMsgDBCID.h"
 #include "nsMsgMessageFlags.h"
 #include "nsServiceManagerUtils.h"
 
@@ -23,6 +21,7 @@ nsMsgXFVirtualFolderDBView::nsMsgXFVirtualFolderDBView() {
   m_doingSearch = false;
   m_doingQuickSearch = false;
   m_totalMessagesInView = 0;
+  m_curFolderHasCachedHits = false;
 }
 
 nsMsgXFVirtualFolderDBView::~nsMsgXFVirtualFolderDBView() {}
@@ -41,7 +40,7 @@ nsMsgXFVirtualFolderDBView::Open(nsIMsgFolder* folder,
 void nsMsgXFVirtualFolderDBView::RemovePendingDBListeners() {
   nsresult rv;
   nsCOMPtr<nsIMsgDBService> msgDBService =
-      do_GetService(NS_MSGDB_SERVICE_CONTRACTID, &rv);
+      do_GetService("@mozilla.org/msgDatabase/msgDBService;1", &rv);
 
   // UnregisterPendingListener will return an error when there are no more
   // instances of this object registered as pending listeners.
@@ -88,7 +87,7 @@ nsMsgXFVirtualFolderDBView::CopyDBView(
   // It's OK not to have a search session.
   NS_ENSURE_SUCCESS(rv, NS_OK);
   nsCOMPtr<nsIMsgDBService> msgDBService =
-      do_GetService(NS_MSGDB_SERVICE_CONTRACTID, &rv);
+      do_GetService("@mozilla.org/msgDatabase/msgDBService;1", &rv);
   NS_ENSURE_SUCCESS(rv, rv);
   searchSession->CountSearchScopes(&scopeCount);
   for (int32_t i = 0; i < scopeCount; i++) {
@@ -135,8 +134,8 @@ nsresult nsMsgXFVirtualFolderDBView::OnNewHeader(nsIMsgDBHdr* newHdr,
 
 NS_IMETHODIMP
 nsMsgXFVirtualFolderDBView::OnHdrPropertyChanged(
-    nsIMsgDBHdr* aHdrChanged, bool aPreChange, uint32_t* aStatus,
-    nsIDBChangeListener* aInstigator) {
+    nsIMsgDBHdr* aHdrChanged, const nsACString& property, bool aPreChange,
+    uint32_t* aStatus, nsIDBChangeListener* aInstigator) {
   // If the junk mail plugin just activated on a message, then
   // we'll allow filters to remove from view.
   // Otherwise, just update the view line.
@@ -152,8 +151,7 @@ nsMsgXFVirtualFolderDBView::OnHdrPropertyChanged(
   if (index == nsMsgViewIndex_None) return NS_OK;
 
   nsCString originStr;
-  (void)aHdrChanged->GetStringProperty("junkscoreorigin",
-                                       getter_Copies(originStr));
+  (void)aHdrChanged->GetStringProperty("junkscoreorigin", originStr);
   // Check for "plugin" with only first character for performance.
   bool plugin = (originStr.get()[0] == 'p');
 
@@ -188,7 +186,7 @@ void nsMsgXFVirtualFolderDBView::UpdateCacheAndViewForFolder(
     nsCString searchUri;
     m_viewFolder->GetURI(searchUri);
     nsTArray<nsMsgKey> badHits;
-    rv = db->RefreshCache(searchUri.get(), newHits, badHits);
+    rv = db->RefreshCache(searchUri, newHits, badHits);
     if (NS_SUCCEEDED(rv)) {
       nsCOMPtr<nsIMsgDBHdr> badHdr;
       for (nsMsgKey badKey : badHits) {
@@ -260,7 +258,7 @@ nsMsgXFVirtualFolderDBView::OnSearchHit(nsIMsgDBHdr* aMsgHdr,
     if (NS_SUCCEEDED(rv)) {
       nsCString searchUri;
       m_viewFolder->GetURI(searchUri);
-      dbToUse->HdrIsInCache(searchUri.get(), aMsgHdr, &hdrInCache);
+      dbToUse->HdrIsInCache(searchUri, aMsgHdr, &hdrInCache);
     }
   }
 
@@ -281,6 +279,9 @@ nsMsgXFVirtualFolderDBView::OnSearchHit(nsIMsgDBHdr* aMsgHdr,
 
 NS_IMETHODIMP
 nsMsgXFVirtualFolderDBView::OnSearchDone(nsresult status) {
+  // This batch began in OnNewSearch.
+  if (mJSTree) mJSTree->EndUpdateBatch();
+
   NS_ENSURE_TRUE(m_viewFolder, NS_ERROR_NOT_INITIALIZED);
 
   // Handle any non verified hits we haven't handled yet.
@@ -354,6 +355,7 @@ nsMsgXFVirtualFolderDBView::OnNewSearch() {
   // Needs to happen after we remove the keys, since RowCountChanged() will
   // call our GetRowCount().
   if (mTree) mTree->RowCountChanged(0, -oldSize);
+  if (mJSTree) mJSTree->RowCountChanged(0, -oldSize);
 
   // To use the search results cache, we'll need to iterate over the scopes
   // in the search session, calling getNthSearchScope
@@ -368,7 +370,7 @@ nsMsgXFVirtualFolderDBView::OnNewSearch() {
   // Just ignore.
   NS_ENSURE_TRUE(searchSession, NS_OK);
   nsCOMPtr<nsIMsgDBService> msgDBService =
-      do_GetService(NS_MSGDB_SERVICE_CONTRACTID);
+      do_GetService("@mozilla.org/msgDatabase/msgDBService;1");
   searchSession->CountSearchScopes(&scopeCount);
 
   // Figure out how many search terms the virtual folder has.
@@ -398,7 +400,10 @@ nsMsgXFVirtualFolderDBView::OnNewSearch() {
   // cached results, or used cached results.
   m_doingQuickSearch = !curSearchAsString.Equals(terms);
 
-  if (mTree && !m_doingQuickSearch) mTree->BeginUpdateBatch();
+  if (!m_doingQuickSearch) {
+    if (mTree) mTree->BeginUpdateBatch();
+    if (mJSTree) mJSTree->BeginUpdateBatch();
+  }
 
   for (int32_t i = 0; i < scopeCount; i++) {
     nsMsgSearchScopeValue scopeId;
@@ -418,7 +423,7 @@ nsMsgXFVirtualFolderDBView::OnNewSearch() {
         if (m_doingQuickSearch) continue;
 
         nsCOMPtr<nsIMsgEnumerator> cachedHits;
-        searchDB->GetCachedHits(searchUri.get(), getter_AddRefs(cachedHits));
+        searchDB->GetCachedHits(searchUri, getter_AddRefs(cachedHits));
         bool hasMore;
         if (cachedHits) {
           cachedHits->HasMoreElements(&hasMore);
@@ -448,7 +453,10 @@ nsMsgXFVirtualFolderDBView::OnNewSearch() {
     }
   }
 
-  if (mTree && !m_doingQuickSearch) mTree->EndUpdateBatch();
+  if (!m_doingQuickSearch) {
+    if (mTree) mTree->EndUpdateBatch();
+    if (mJSTree) mJSTree->EndUpdateBatch();
+  }
 
   m_curFolderStartKeyIndex = 0;
   m_curFolderGettingHits = nullptr;
@@ -462,8 +470,13 @@ nsMsgXFVirtualFolderDBView::OnNewSearch() {
       // Sort the results.
       m_sortValid = false;
       Sort(m_sortType, m_sortOrder);
+    } else if (mJSTree) {
+      mJSTree->Invalidate();
     }
   }
+
+  // Prevent updates for every message found. This batch ends in OnSearchDone.
+  if (mJSTree) mJSTree->BeginUpdateBatch();
 
   return NS_OK;
 }

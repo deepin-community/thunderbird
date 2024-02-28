@@ -2,18 +2,19 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-var { XPCOMUtils } = ChromeUtils.import("resource://gre/modules/XPCOMUtils.jsm");
+var { XPCOMUtils } = ChromeUtils.importESModule("resource://gre/modules/XPCOMUtils.sys.mjs");
 
-ChromeUtils.defineModuleGetter(this, "cal", "resource:///modules/calendar/calUtils.jsm");
+const lazy = {};
 
-XPCOMUtils.defineLazyGetter(this, "gDateStringBundle", () =>
+ChromeUtils.defineModuleGetter(lazy, "cal", "resource:///modules/calendar/calUtils.jsm");
+
+XPCOMUtils.defineLazyGetter(lazy, "gDateStringBundle", () =>
   Services.strings.createBundle("chrome://calendar/locale/dateFormat.properties")
 );
 
-XPCOMUtils.defineLazyPreferenceGetter(this, "dateFormat", "calendar.date.format", 0);
+XPCOMUtils.defineLazyPreferenceGetter(lazy, "dateFormat", "calendar.date.format", 0);
 XPCOMUtils.defineLazyPreferenceGetter(
-  this,
+  lazy,
   "timeBeforeDate",
   "calendar.date.formatTimeBeforeDate",
   false
@@ -29,78 +30,118 @@ var formatCache = new Map();
 // NOTE: This module should not be loaded directly, it is available when
 // including calUtils.jsm under the cal.dtz.formatter namespace.
 
-const EXPORTED_SYMBOLS = ["formatter"]; /* exported formatter */
+const EXPORTED_SYMBOLS = ["formatter"];
 
 var formatter = {
   /**
    * Format a date in either short or long format, depending on the users preference.
    *
-   * @param {calIDateTime} aDate    The datetime to format.
-   * @return {string}               A string representing the date part of the datetime.
+   * @param {calIDateTime} aDate - The datetime to format.
+   * @returns {string} A string representing the date part of the datetime.
    */
   formatDate(aDate) {
     // Format the date using user's format preference (long or short)
-    return dateFormat == 0 ? this.formatDateLong(aDate) : this.formatDateShort(aDate);
+    return lazy.dateFormat == 0 ? this.formatDateLong(aDate) : this.formatDateShort(aDate);
   },
 
   /**
    * Format a date into a short format, for example "12/17/2005".
    *
-   * @param {calIDateTime} aDate    The datetime to format.
-   * @return {string}               A string representing the date part of the datetime.
+   * @param {calIDateTime} aDate - The datetime to format.
+   * @returns {string} A string representing the date part of the datetime.
    */
   formatDateShort(aDate) {
-    return inTimezone(aDate, { dateStyle: "short" });
+    return formatDateTimeWithOptions(aDate, { dateStyle: "short" });
   },
 
   /**
    * Format a date into a long format, for example "Sat Dec 17 2005".
    *
-   * @param {calIDateTime} aDate    The datetime to format.
-   * @return {string}               A string representing the date part of the datetime.
+   * @param {calIDateTime} aDate - The datetime to format.
+   * @returns {string} A string representing the date part of the datetime.
    */
   formatDateLong(aDate) {
-    return inTimezone(aDate, { dateStyle: "full" });
+    return formatDateTimeWithOptions(aDate, { dateStyle: "full" });
   },
 
   /**
    * Format a date into a short format without mentioning the year, for example "Dec 17"
    *
-   * @param {calIDateTime} aDate    The datetime to format.
-   * @return {string}               A string representing the date part of the datetime.
+   * @param {calIDateTime} aDate - The datetime to format.
+   * @returns {string} A string representing the date part of the datetime.
    */
   formatDateWithoutYear(aDate) {
-    let dtOptions = { month: "short", day: "numeric" };
-    return inTimezone(aDate, dtOptions);
+    return formatDateTimeWithOptions(aDate, { month: "short", day: "numeric" });
   },
 
   /**
-   * Format a time into the format specified by the OS settings. Will omit the seconds from the
-   * output.
+   * Format a date into a long format without mentioning the year, for example
+   * "Monday, December 17".
    *
-   * @param {calIDateTime} aDate    The datetime to format.
-   * @return {string}               A string representing the time part of the datetime.
+   * @param {calIDateTime} aDate - The datetime to format.
+   * @returns {string} A string representing the date part of the datetime.
    */
-  formatTime(aDate) {
-    if (aDate.isDate) {
-      return gDateStringBundle.GetStringFromName("AllDay");
+  formatDateLongWithoutYear(aDate) {
+    return formatDateTimeWithOptions(aDate, { weekday: "long", month: "long", day: "numeric" });
+  },
+
+  /**
+   * Format the time portion of a date-time object. Note: only the hour and
+   * minutes are shown.
+   *
+   * @param {calIDateTime} time - The date-time to format the time of.
+   * @param {boolean} [preferEndOfDay = false] - Whether to prefer showing a
+   *   midnight time as the end of a day, rather than the start of the day, if
+   *   the time formatting allows for it. I.e. if the formatter would use a
+   *   24-hour format, then this would show midnight as 24:00, rather than
+   *   00:00.
+   *
+   * @returns {string} A string representing the time.
+   */
+  formatTime(time, preferEndOfDay = false) {
+    if (time.isDate) {
+      return lazy.gDateStringBundle.GetStringFromName("AllDay");
     }
 
-    return inTimezone(aDate, { timeStyle: "short" });
+    const options = { timeStyle: "short" };
+    if (preferEndOfDay && time.hour == 0 && time.minute == 0) {
+      // Midnight. Note that the timeStyle is short, so we don't test for
+      // seconds.
+      // Test what hourCycle the default formatter would use.
+      if (getFormatter(options).resolvedOptions().hourCycle == "h23") {
+        // Midnight start-of-day is 00:00, so we can show midnight end-of-day
+        // as 24:00.
+        options.hourCycle = "h24";
+      }
+      // NOTE: Regarding the other hourCycle values:
+      // + "h24": This is not expected in any locale.
+      // + "h12": In a 12-hour format that cycles 12 -> 1 -> ... -> 11, there is
+      //   no convention to distinguish between midnight start-of-day and
+      //   midnight end-of-day. So we do nothing.
+      // + "h11": The ja-JP locale with a 12-hour format returns this. In this
+      //   locale, midnight start-of-day is shown as "午前0:00" (i.e. 0 AM),
+      //   which means midnight end-of-day can be shown as "午後12:00" (12 PM).
+      //   However, Intl.DateTimeFormatter does not expose a means to do this.
+      //   Just forcing a h12 hourCycle will show midnight as "午前12:00", which
+      //   would be incorrect in this locale. Therefore, we similarly do nothing
+      //   in this case as well.
+    }
+
+    return formatDateTimeWithOptions(time, options);
   },
 
   /**
    * Format a datetime into the format specified by the OS settings. Will omit the seconds from the
    * output.
    *
-   * @param {calIDateTime} aDate    The datetime to format.
-   * @return {string}               A string representing the datetime.
+   * @param {calIDateTime} aDate - The datetime to format.
+   * @returns {string} A string representing the datetime.
    */
   formatDateTime(aDate) {
     let formattedDate = this.formatDate(aDate);
     let formattedTime = this.formatTime(aDate);
 
-    if (timeBeforeDate) {
+    if (lazy.timeBeforeDate) {
       return formattedTime + " " + formattedDate;
     }
     return formattedDate + " " + formattedTime;
@@ -109,9 +150,9 @@ var formatter = {
   /**
    * Format a time interval like formatInterval, but show only the time.
    *
-   * @param {calIDateTime} aStartDate   The start of the interval.
-   * @param {calIDateTime} aEndDate     The end of the interval.
-   * @return {string}                   The formatted time interval.
+   * @param {calIDateTime} aStartDate - The start of the interval.
+   * @param {calIDateTime} aEndDate - The end of the interval.
+   * @returns {string} The formatted time interval.
    */
   formatTimeInterval(aStartDate, aEndDate) {
     if (!aStartDate && aEndDate) {
@@ -131,99 +172,222 @@ var formatter = {
   },
 
   /**
-   * Format a date/time interval. The returned string may assume that the dates are so close to each
-   * other, that it can leave out some parts of the part string denoting the end date.
+   * Format a date/time interval to a string. The returned string may assume
+   * that the dates are so close to each other, that it can leave out some parts
+   * of the part string denoting the end date.
    *
-   * @param {calIDateTime} aStartDate        The start of the interval.
-   * @param {calIDateTime} aEndDate          The end of the interval.
-   * @return {string}                        A string describing the interval in a legible form.
+   * @param {calIDateTime} startDate - The start of the interval.
+   * @param {calIDateTime} endDate - The end of the interval.
+   * @returns {string} - A string describing the interval in a legible form.
    */
-  formatInterval(aStartDate, aEndDate) {
-    // Check for tasks without start and/or due date
-    if (aEndDate == null && aStartDate == null) {
-      return cal.l10n.getCalString("datetimeIntervalTaskWithoutDate");
-    } else if (aEndDate == null) {
-      let startDateString = this.formatDate(aStartDate);
-      let startTime = this.formatTime(aStartDate);
-      return cal.l10n.getCalString("datetimeIntervalTaskWithoutDueDate", [
-        startDateString,
-        startTime,
-      ]);
-    } else if (aStartDate == null) {
-      let endDateString = this.formatDate(aEndDate);
-      let endTime = this.formatTime(aEndDate);
-      return cal.l10n.getCalString("datetimeIntervalTaskWithoutStartDate", [
-        endDateString,
-        endTime,
-      ]);
+  formatInterval(startDate, endDate) {
+    let format = this.formatIntervalParts(startDate, endDate);
+    switch (format.type) {
+      case "task-without-dates":
+        return lazy.cal.l10n.getCalString("datetimeIntervalTaskWithoutDate");
+
+      case "task-without-due-date":
+        return lazy.cal.l10n.getCalString("datetimeIntervalTaskWithoutDueDate", [
+          format.startDate,
+          format.startTime,
+        ]);
+
+      case "task-without-start-date":
+        return lazy.cal.l10n.getCalString("datetimeIntervalTaskWithoutStartDate", [
+          format.endDate,
+          format.endTime,
+        ]);
+
+      case "all-day":
+        return format.startDate;
+
+      case "all-day-between-years":
+        return lazy.cal.l10n.getCalString("daysIntervalBetweenYears", [
+          format.startMonth,
+          format.startDay,
+          format.startYear,
+          format.endMonth,
+          format.endDay,
+          format.endYear,
+        ]);
+
+      case "all-day-in-month":
+        return lazy.cal.l10n.getCalString("daysIntervalInMonth", [
+          format.month,
+          format.startDay,
+          format.endDay,
+          format.year,
+        ]);
+
+      case "all-day-between-months":
+        return lazy.cal.l10n.getCalString("daysIntervalBetweenMonths", [
+          format.startMonth,
+          format.startDay,
+          format.endMonth,
+          format.endDay,
+          format.year,
+        ]);
+
+      case "same-date-time":
+        return lazy.cal.l10n.getCalString("datetimeIntervalOnSameDateTime", [
+          format.startDate,
+          format.startTime,
+        ]);
+
+      case "same-day":
+        return lazy.cal.l10n.getCalString("datetimeIntervalOnSameDay", [
+          format.startDate,
+          format.startTime,
+          format.endTime,
+        ]);
+
+      case "several-days":
+        return lazy.cal.l10n.getCalString("datetimeIntervalOnSeveralDays", [
+          format.startDate,
+          format.startTime,
+          format.endDate,
+          format.endTime,
+        ]);
+      default:
+        return "";
     }
+  },
+
+  /**
+   * Object used to describe the parts of a formatted interval.
+   *
+   * @typedef {object} IntervalParts
+   * @property {string} type
+   *   Used to distinguish IntervalPart results.
+   * @property {string?} startDate
+   *   The full date of the start of the interval.
+   * @property {string?} startTime
+   *   The time part of the start of the interval.
+   * @property {string?} startDay
+   *   The day (of the month) the interval starts on.
+   * @property {string?} startMonth
+   *   The month the interval starts on.
+   * @property {string?} startYear
+   *   The year interval starts on.
+   * @property {string?} endDate
+   *   The full date of the end of the interval.
+   * @property {string?} endTime
+   *   The time part of the end of the interval.
+   * @property {string?} endDay
+   *   The day (of the month) the interval ends on.
+   * @property {string?} endMonth
+   *   The month the interval ends on.
+   * @property {string?} endYear
+   *   The year interval ends on.
+   * @property {string?} month
+   *   The month the interval occurs in when the start is all day and the
+   *   interval does not span multiple months.
+   * @property {string?} year
+   *   The year the interval occurs in when the the start is all day and the
+   *   interval does not span multiple years.
+   */
+
+  /**
+   * Format a date interval into various parts suitable for building
+   * strings that describe the interval. This result may leave out some parts of
+   * either date based on the closeness of the two.
+   *
+   * @param {calIDateTime} startDate - The start of the interval.
+   * @param {calIDateTime} endDate - The end of the interval.
+   * @returns {IntervalParts} An object to be used to create an
+   *                                       interval string.
+   */
+  formatIntervalParts(startDate, endDate) {
+    if (endDate == null && startDate == null) {
+      return { type: "task-without-dates" };
+    }
+
+    if (endDate == null) {
+      return {
+        type: "task-without-due-date",
+        startDate: this.formatDate(startDate),
+        startTime: this.formatTime(startDate),
+      };
+    }
+
+    if (startDate == null) {
+      return {
+        type: "task-without-start-date",
+        endDate: this.formatDate(endDate),
+        endTime: this.formatTime(endDate),
+      };
+    }
+
     // Here there are only events or tasks with both start and due date.
     // make sure start and end use the same timezone when formatting intervals:
-    let endDate = aEndDate.getInTimezone(aStartDate.timezone);
-    let testdate = aStartDate.clone();
+    let testdate = startDate.clone();
     testdate.isDate = true;
+    let originalEndDate = endDate.clone();
+    endDate = endDate.getInTimezone(startDate.timezone);
     let sameDay = testdate.compare(endDate) == 0;
-    if (aStartDate.isDate) {
+    if (startDate.isDate) {
       // All-day interval, so we should leave out the time part
       if (sameDay) {
-        return this.formatDateLong(aStartDate);
+        return {
+          type: "all-day",
+          startDate: this.formatDateLong(startDate),
+        };
       }
-      let startDay = this.formatDayWithOrdinal(aStartDate.day);
-      let startYear = aStartDate.year;
+
+      let startDay = this.formatDayWithOrdinal(startDate.day);
+      let startYear = String(startDate.year);
       let endDay = this.formatDayWithOrdinal(endDate.day);
-      let endYear = endDate.year;
-      if (aStartDate.year != endDate.year) {
-        let startMonthName = cal.l10n.formatMonth(
-          aStartDate.month + 1,
-          "calendar",
-          "daysIntervalBetweenYears"
-        );
-        let endMonthName = cal.l10n.formatMonth(
-          aEndDate.month + 1,
-          "calendar",
-          "daysIntervalBetweenYears"
-        );
-        return cal.l10n.getCalString("daysIntervalBetweenYears", [
-          startMonthName,
+      let endYear = String(endDate.year);
+      if (startDate.year != endDate.year) {
+        return {
+          type: "all-day-between-years",
           startDay,
+          startMonth: lazy.cal.l10n.formatMonth(
+            startDate.month + 1,
+            "calendar",
+            "daysIntervalBetweenYears"
+          ),
           startYear,
-          endMonthName,
           endDay,
+          endMonth: lazy.cal.l10n.formatMonth(
+            originalEndDate.month + 1,
+            "calendar",
+            "daysIntervalBetweenYears"
+          ),
           endYear,
-        ]);
-      } else if (aStartDate.month == endDate.month) {
-        let startMonthName = cal.l10n.formatMonth(
-          aStartDate.month + 1,
-          "calendar",
-          "daysIntervalInMonth"
-        );
-        return cal.l10n.getCalString("daysIntervalInMonth", [
-          startMonthName,
-          startDay,
-          endDay,
-          endYear,
-        ]);
+        };
       }
-      let startMonthName = cal.l10n.formatMonth(
-        aStartDate.month + 1,
-        "calendar",
-        "daysIntervalBetweenMonths"
-      );
-      let endMonthName = cal.l10n.formatMonth(
-        aEndDate.month + 1,
-        "calendar",
-        "daysIntervalBetweenMonths"
-      );
-      return cal.l10n.getCalString("daysIntervalBetweenMonths", [
-        startMonthName,
+
+      if (startDate.month == endDate.month) {
+        return {
+          type: "all-day-in-month",
+          startDay,
+          month: lazy.cal.l10n.formatMonth(startDate.month + 1, "calendar", "daysIntervalInMonth"),
+          endDay,
+          year: endYear,
+        };
+      }
+
+      return {
+        type: "all-day-between-months",
         startDay,
-        endMonthName,
+        startMonth: lazy.cal.l10n.formatMonth(
+          startDate.month + 1,
+          "calendar",
+          "daysIntervalBetweenMonths"
+        ),
         endDay,
-        endYear,
-      ]);
+        endMonth: lazy.cal.l10n.formatMonth(
+          originalEndDate.month + 1,
+          "calendar",
+          "daysIntervalBetweenMonths"
+        ),
+        year: endYear,
+      };
     }
-    let startDateString = this.formatDate(aStartDate);
-    let startTime = this.formatTime(aStartDate);
+
+    let startDateString = this.formatDate(startDate);
+    let startTime = this.formatTime(startDate);
     let endDateString = this.formatDate(endDate);
     let endTime = this.formatTime(endDate);
     // non-allday, so need to return date and time
@@ -232,28 +396,32 @@ var formatter = {
       if (startTime == endTime) {
         // End time is on the same time as start, so we can leave out the end time
         // "5 Jan 2006 13:00"
-        return cal.l10n.getCalString("datetimeIntervalOnSameDateTime", [
-          startDateString,
+        return {
+          type: "same-date-time",
+          startDate: startDateString,
           startTime,
-        ]);
+        };
       }
       // still include end time
       // "5 Jan 2006 13:00 - 17:00"
-      return cal.l10n.getCalString("datetimeIntervalOnSameDay", [
-        startDateString,
+      return {
+        type: "same-day",
+        startDate: startDateString,
         startTime,
         endTime,
-      ]);
+      };
     }
+
     // Spanning multiple days, so need to include date and time
     // for start and end
     // "5 Jan 2006 13:00 - 7 Jan 2006 9:00"
-    return cal.l10n.getCalString("datetimeIntervalOnSeveralDays", [
-      startDateString,
+    return {
+      type: "several-days",
+      startDate: startDateString,
       startTime,
-      endDateString,
+      endDate: endDateString,
       endTime,
-    ]);
+    };
   },
 
   /**
@@ -261,144 +429,192 @@ var formatter = {
    * e.g.  monthday 1 -> 1st
    *       monthday 2 -> 2nd etc.
    *
-   * @param {number} aDay    A number from 1 to 31.
-   * @return {string}        The monthday number in ordinal format in the current locale.
+   * @param {number} aDay - A number from 1 to 31.
+   * @returns {string} The monthday number in ordinal format in the current locale.
    */
   formatDayWithOrdinal(aDay) {
-    let ordinalSymbols = gDateStringBundle.GetStringFromName("dayOrdinalSymbol").split(",");
+    let ordinalSymbols = lazy.gDateStringBundle.GetStringFromName("dayOrdinalSymbol").split(",");
     let dayOrdinalSymbol = ordinalSymbols[aDay - 1] || ordinalSymbols[0];
     return aDay + dayOrdinalSymbol;
   },
 
   /**
+   * Helper to get the start/end dates for a given item.
+   *
+   * @param {calIItemBase} item - The item to get the dates for.
+   * @returns {[calIDateTime, calIDateTime]} An array with start and end date.
+   */
+  getItemDates(item) {
+    let start = item[lazy.cal.dtz.startDateProp(item)];
+    let end = item[lazy.cal.dtz.endDateProp(item)];
+    let kDefaultTimezone = lazy.cal.dtz.defaultTimezone;
+    // Check for tasks without start and/or due date
+    if (start) {
+      start = start.getInTimezone(kDefaultTimezone);
+    }
+    if (end) {
+      end = end.getInTimezone(kDefaultTimezone);
+    }
+    // EndDate is exclusive. For all-day events, we need to subtract one day,
+    // to get into a format that's understandable.
+    if (start && start.isDate && end) {
+      end.day -= 1;
+    }
+
+    return [start, end];
+  },
+
+  /**
    * Format an interval that is defined by an item with the default timezone.
    *
-   * @param {calIItemBase} aItem      The item describing the interval.
-   * @return {string}                 The formatted item interval.
+   * @param {calIItemBase} aItem - The item describing the interval.
+   * @returns {string} The formatted item interval.
    */
   formatItemInterval(aItem) {
-    return this.formatInterval(...getItemDates(aItem));
+    return this.formatInterval(...this.getItemDates(aItem));
   },
 
   /**
    * Format a time interval like formatItemInterval, but only show times.
    *
-   * @param {calIItemBase} aItem      The item describing the interval.
-   * @return {string}                 The formatted item interval.
+   * @param {calIItemBase} aItem - The item describing the interval.
+   * @returns {string} The formatted item interval.
    */
   formatItemTimeInterval(aItem) {
-    return this.formatTimeInterval(...getItemDates(aItem));
+    return this.formatTimeInterval(...this.getItemDates(aItem));
   },
 
   /**
    * Get the month name.
    *
-   * @param {number} aMonthIndex      Zero-based month number (0 is january, 11 is december).
-   * @return {string}                 The month name in the current locale.
+   * @param {number} aMonthIndex - Zero-based month number (0 is january, 11 is december).
+   * @returns {string} The month name in the current locale.
    */
   monthName(aMonthIndex) {
     let oneBasedMonthIndex = aMonthIndex + 1;
-    return gDateStringBundle.GetStringFromName("month." + oneBasedMonthIndex + ".name");
+    return lazy.gDateStringBundle.GetStringFromName("month." + oneBasedMonthIndex + ".name");
   },
 
   /**
    * Get the abbreviation of the month name.
    *
-   * @param {number} aMonthIndex      Zero-based month number (0 is january, 11 is december).
-   * @return {string}                 The abbreviated month name in the current locale.
+   * @param {number} aMonthIndex - Zero-based month number (0 is january, 11 is december).
+   * @returns {string} The abbreviated month name in the current locale.
    */
   shortMonthName(aMonthIndex) {
     let oneBasedMonthIndex = aMonthIndex + 1;
-    return gDateStringBundle.GetStringFromName("month." + oneBasedMonthIndex + ".Mmm");
+    return lazy.gDateStringBundle.GetStringFromName("month." + oneBasedMonthIndex + ".Mmm");
   },
 
   /**
    * Get the day name.
    *
-   * @param {number} aMonthIndex      Zero-based day number (0 is sunday, 6 is saturday).
-   * @return {string}                 The day name in the current locale.
+   * @param {number} aMonthIndex - Zero-based day number (0 is sunday, 6 is saturday).
+   * @returns {string} The day name in the current locale.
    */
   dayName(aDayIndex) {
     let oneBasedDayIndex = aDayIndex + 1;
-    return gDateStringBundle.GetStringFromName("day." + oneBasedDayIndex + ".name");
+    return lazy.gDateStringBundle.GetStringFromName("day." + oneBasedDayIndex + ".name");
   },
 
   /**
    * Get the abbreviation of the day name.
    *
-   * @param {number} aMonthIndex      Zero-based day number (0 is sunday, 6 is saturday).
-   * @return {string}                 The abbrevidated day name in the current locale.
+   * @param {number} aMonthIndex - Zero-based day number (0 is sunday, 6 is saturday).
+   * @returns {string} The abbrevidated day name in the current locale.
    */
   shortDayName(aDayIndex) {
     let oneBasedDayIndex = aDayIndex + 1;
-    return gDateStringBundle.GetStringFromName("day." + oneBasedDayIndex + ".Mmm");
+    return lazy.gDateStringBundle.GetStringFromName("day." + oneBasedDayIndex + ".Mmm");
   },
 };
 
 /**
- * inTimezone returns a string with date formatted.
+ * Determine whether a datetime is specified relative to the user, i.e. a date
+ * or floating datetime, both of which should be displayed the same regardless
+ * of the user's time zone.
  *
- * @param  {calIDateTime} aDate    The date object holding the tz information.
- * @param  {Object} aOptions       The Intl.DateTimeFormatter options object.
- * @return {string}                The date as a string.
+ * @param {calIDateTime} dateTime The datetime object to check.
+ * @returns {boolean}
  */
-function inTimezone(aDate, aOptions) {
-  let cacheKey;
-  let formatter;
-  let timezone = aDate.timezone;
-
-  if (!aDate.isDate && timezone && (timezone.isUTC || timezone.icalComponent)) {
-    let optionsWithTimezone = { ...aOptions, timeZone: timezone.tzid };
-
-    cacheKey = JSON.stringify(optionsWithTimezone);
-    if (formatCache.has(cacheKey)) {
-      formatter = formatCache.get(cacheKey);
-    } else {
-      try {
-        formatter = new Services.intl.DateTimeFormat(undefined, optionsWithTimezone);
-        formatCache.set(cacheKey, formatter);
-      } catch (ex) {
-        // Non-IANA timezones throw a RangeError.
-        cal.WARN(ex);
-      }
-    }
-  }
-
-  if (!formatter) {
-    cacheKey = JSON.stringify(aOptions);
-    if (formatCache.has(cacheKey)) {
-      formatter = formatCache.get(cacheKey);
-    } else {
-      formatter = new Services.intl.DateTimeFormat(undefined, aOptions);
-      formatCache.set(cacheKey, formatter);
-    }
-  }
-
-  return formatter.format(cal.dtz.dateTimeToJsDate(aDate));
+function isDateTimeRelativeToUser(dateTime) {
+  return dateTime.isDate || dateTime.timezone.isFloating;
 }
 
 /**
- * Helper to get the start/end dates for a given item.
+ * Format a datetime object as a string with a given set of formatting options.
  *
- * @param {calIItemBase} aItem              The item to get the dates for.
- * @return {[calIDateTime, calIDateTime]}   An array with start and end date.
+ * @param {calIDateTime} dateTime The datetime object to be formatted.
+ * @param {object} options
+ *  The set of Intl.DateTimeFormat options to use for formatting.
+ * @returns {string} A formatted string representing the given datetime.
  */
-function getItemDates(aItem) {
-  let start = aItem[cal.dtz.startDateProp(aItem)];
-  let end = aItem[cal.dtz.endDateProp(aItem)];
-  let kDefaultTimezone = cal.dtz.defaultTimezone;
-  // Check for tasks without start and/or due date
-  if (start) {
-    start = start.getInTimezone(kDefaultTimezone);
-  }
-  if (end) {
-    end = end.getInTimezone(kDefaultTimezone);
-  }
-  // EndDate is exclusive. For all-day events, we need to subtract one day,
-  // to get into a format that's understandable.
-  if (start && start.isDate && end) {
-    end.day -= 1;
+function formatDateTimeWithOptions(dateTime, options) {
+  const jsDate = getDateTimeAsAdjustedJsDate(dateTime);
+
+  // We want floating datetimes and dates to be formatted without regard to
+  // timezone; everything else has been adjusted so that "UTC" will produce the
+  // correct result because we cannot guarantee that the datetime's timezone is
+  // supported by Gecko.
+  const timezone = isDateTimeRelativeToUser(dateTime) ? undefined : "UTC";
+
+  return getFormatter({ ...options, timeZone: timezone }).format(jsDate);
+}
+
+/**
+ * Convert a calendar datetime object to a JavaScript standard Date adjusted
+ * for timezone offset.
+ *
+ * @param {calIDateTime} dateTime The datetime object to convert and adjust.
+ * @returns {Date} The standard JS equivalent of the given datetime, offset
+ *                 from UTC according to the datetime's timezone.
+ */
+function getDateTimeAsAdjustedJsDate(dateTime) {
+  const unadjustedJsDate = lazy.cal.dtz.dateTimeToJsDate(dateTime);
+
+  // If the datetime is date-only, it doesn't make sense to adjust for timezone.
+  // Floating datetimes likewise are not fixed in a single timezone.
+  if (isDateTimeRelativeToUser(dateTime)) {
+    return unadjustedJsDate;
   }
 
-  return [start, end];
+  // We abuse `Date` slightly here: its internal representation is intended to
+  // contain the date as seconds from the epoch, but `Intl` relies on adjusting
+  // timezone and we can't be sure we have a recognized timezone ID. Instead, we
+  // force the internal representation to compensate for timezone offset.
+  const offsetInMs = dateTime.timezoneOffset * 1000;
+  return new Date(unadjustedJsDate.valueOf() + offsetInMs);
+}
+
+/**
+ * Get a formatter that can be used to format a date-time in a
+ * locale-appropriate way.
+ *
+ * NOTE: formatters are cached for future requests.
+ *
+ * @param {object} formatOptions - Intl.DateTimeFormatter options.
+ *
+ * @returns {DateTimeFormatter} - The formatter.
+ */
+function getFormatter(formatOptions) {
+  let cacheKey = JSON.stringify(formatOptions);
+  if (formatCache.has(cacheKey)) {
+    return formatCache.get(cacheKey);
+  }
+
+  // Use en-US when running in a test to make the result independent of the test
+  // machine.
+  let locale = Services.appinfo.name == "xpcshell" ? "en-US" : undefined;
+  let formatter;
+  if ("hourCycle" in formatOptions) {
+    // FIXME: The hourCycle property is currently ignored by Services.intl, so
+    // we use Intl instead. Once bug 1749459 is closed, we should only use
+    // Services.intl again.
+    formatter = new Intl.DateTimeFormat(locale, formatOptions);
+  } else {
+    formatter = new Services.intl.DateTimeFormat(locale, formatOptions);
+  }
+
+  formatCache.set(cacheKey, formatter);
+  return formatter;
 }

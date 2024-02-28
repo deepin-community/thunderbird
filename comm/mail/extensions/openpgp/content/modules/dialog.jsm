@@ -6,23 +6,22 @@
 
 "use strict";
 
-var EXPORTED_SYMBOLS = ["EnigmailDialog"];
+const EXPORTED_SYMBOLS = ["EnigmailDialog"];
 
-const { XPCOMUtils } = ChromeUtils.import(
-  "resource://gre/modules/XPCOMUtils.jsm"
+const { XPCOMUtils } = ChromeUtils.importESModule(
+  "resource://gre/modules/XPCOMUtils.sys.mjs"
 );
 
-XPCOMUtils.defineLazyModuleGetters(this, {
+const lazy = {};
+
+XPCOMUtils.defineLazyModuleGetters(lazy, {
   EnigmailConstants: "chrome://openpgp/content/modules/constants.jsm",
   EnigmailWindows: "chrome://openpgp/content/modules/windows.jsm",
-  Services: "resource://gre/modules/Services.jsm",
 });
 
-XPCOMUtils.defineLazyGetter(this, "l10n", () => {
+XPCOMUtils.defineLazyGetter(lazy, "l10n", () => {
   return new Localization(["messenger/openpgp/openpgp.ftl"], true);
 });
-
-const LOCAL_FILE_CONTRACTID = "@mozilla.org/file/local;1";
 
 var EnigmailDialog = {
   /***
@@ -40,12 +39,12 @@ var EnigmailDialog = {
       win,
       {
         msgtext: mesg,
-        button1: okLabel ? okLabel : l10n.formatValueSync("dlg-button-ok"),
+        button1: okLabel ? okLabel : lazy.l10n.formatValueSync("dlg-button-ok"),
         cancelButton: cancelLabel
           ? cancelLabel
-          : l10n.formatValueSync("dlg-button-cancel"),
-        iconType: EnigmailConstants.ICONTYPE_QUESTION,
-        dialogTitle: l10n.formatValueSync("enig-confirm"),
+          : lazy.l10n.formatValueSync("dlg-button-cancel"),
+        iconType: lazy.EnigmailConstants.ICONTYPE_QUESTION,
+        dialogTitle: lazy.l10n.formatValueSync("enig-confirm"),
       },
       null
     );
@@ -66,9 +65,9 @@ var EnigmailDialog = {
       win,
       {
         msgtext: mesg,
-        button1: l10n.formatValueSync("dlg-button-close"),
-        iconType: EnigmailConstants.ICONTYPE_ALERT,
-        dialogTitle: l10n.formatValueSync("enig-alert"),
+        button1: lazy.l10n.formatValueSync("dlg-button-close"),
+        iconType: lazy.EnigmailConstants.ICONTYPE_ALERT,
+        dialogTitle: lazy.l10n.formatValueSync("enig-alert"),
       },
       null
     );
@@ -87,67 +86,12 @@ var EnigmailDialog = {
       win,
       {
         msgtext: mesg,
-        button1: l10n.formatValueSync("dlg-button-close"),
-        iconType: EnigmailConstants.ICONTYPE_INFO,
-        dialogTitle: l10n.formatValueSync("enig-info"),
+        button1: lazy.l10n.formatValueSync("dlg-button-close"),
+        iconType: lazy.EnigmailConstants.ICONTYPE_INFO,
+        dialogTitle: lazy.l10n.formatValueSync("enig-info"),
       },
       null
     );
-  },
-
-  /**
-   * Displays an alert dialog with 1-3 optional buttons.
-   *
-   * @win:           nsIWindow - parent window to display modal dialog; can be null
-   * @mesg:          String    - message text
-   * @checkboxLabel: String    - if not null, display checkbox with text; the
-   *                             checkbox state is returned in checkedObj.value
-   * @button-Labels: String    - use "&" to indicate access key
-   *     use "buttonType:label" or ":buttonType" to indicate special button types
-   *        (buttonType is one of cancel, help, extra1, extra2)
-   * @checkedObj:    Object    - holding the checkbox value
-   *
-   * @return: 0-2: button Number pressed
-   *          -1: ESC or close window button pressed
-   *
-   */
-  longAlert(
-    win,
-    mesg,
-    checkboxLabel,
-    okLabel,
-    labelButton2,
-    labelButton3,
-    checkedObj
-  ) {
-    var result = {
-      value: -1,
-      checked: false,
-    };
-
-    if (!win) {
-      win = EnigmailWindows.getBestParentWin();
-    }
-
-    win.openDialog(
-      "chrome://openpgp/content/ui/enigmailMsgBox.xhtml",
-      "_blank",
-      "chrome,dialog,modal,centerscreen,resizable,titlebar",
-      {
-        msgtext: mesg,
-        checkboxLabel,
-        iconType: EnigmailConstants.ICONTYPE_ALERT,
-        button1: okLabel,
-        button2: labelButton2,
-        button3: labelButton3,
-      },
-      result
-    );
-
-    if (checkboxLabel) {
-      checkedObj.value = result.checked;
-    }
-    return result.value;
   },
 
   /**
@@ -181,7 +125,7 @@ var EnigmailDialog = {
     };
 
     if (!win) {
-      win = EnigmailWindows.getBestParentWin();
+      win = lazy.EnigmailWindows.getBestParentWin();
     }
 
     win.openDialog(
@@ -196,26 +140,6 @@ var EnigmailDialog = {
       checkedObj.value = result.checked;
     }
     return result.value;
-  },
-
-  /**
-   * Display a dialog with a message and a text entry field
-   *
-   * @win:      nsIWindow - parent window to display modal dialog; can be null
-   * @mesg:     String    - message text
-   * @valueObj: Object    - object to hold the entered text in .value
-   *
-   * @return:   Boolean - true if OK was pressed / false otherwise
-   */
-  promptValue(win, mesg, valueObj) {
-    return Services.prompt.prompt(
-      win,
-      l10n.formatValueSync("enig-prompt"),
-      mesg,
-      valueObj,
-      "",
-      {}
-    );
   },
 
   /**
@@ -239,9 +163,9 @@ var EnigmailDialog = {
         win,
         {
           msgtext: mesg,
-          dialogTitle: l10n.formatValueSync("enig-info"),
-          iconType: EnigmailConstants.ICONTYPE_INFO,
-          checkboxLabel: l10n.formatValueSync("dlg-no-prompt"),
+          dialogTitle: lazy.l10n.formatValueSync("enig-info"),
+          iconType: lazy.EnigmailConstants.ICONTYPE_INFO,
+          checkboxLabel: lazy.l10n.formatValueSync("dlg-no-prompt"),
         },
         checkBoxObj
       );
@@ -275,14 +199,14 @@ var EnigmailDialog = {
     if (alertCount > 0) {
       mesg +=
         "\n" +
-        l10n.formatValueSync("repeat-prefix", { count: alertCount }) +
+        lazy.l10n.formatValueSync("repeat-prefix", { count: alertCount }) +
         " ";
       mesg +=
         alertCount == 1
-          ? l10n.formatValueSync("repeat-suffix-singular")
-          : l10n.formatValueSync("repeat-suffix-plural");
+          ? lazy.l10n.formatValueSync("repeat-suffix-singular")
+          : lazy.l10n.formatValueSync("repeat-suffix-plural");
     } else {
-      mesg += "\n" + l10n.formatValueSync("no-repeat");
+      mesg += "\n" + lazy.l10n.formatValueSync("no-repeat");
     }
 
     EnigmailDialog.alert(win, mesg);
@@ -297,10 +221,10 @@ var EnigmailDialog = {
    * @param {mesg} - Mssage text
    * @param {pref} - Full name of preference to read/store the future display status.
    *
-   * @param {String} [okLabel] - Label for Ok button.
-   * @param {String} [cancelLabel] - Label for Cancel button.
+   * @param {string} [okLabel] - Label for Ok button.
+   * @param {string} [cancelLabel] - Label for Cancel button.
    *
-   * @return {integer} 1: Ok pressed / 0: Cancel pressed / -1: ESC pressed
+   * @returns {integer} 1: Ok pressed / 0: Cancel pressed / -1: ESC pressed
    *
    * If the dialog is not displayed:
    *  - if @prefText is type Boolean: return 1
@@ -319,13 +243,15 @@ var EnigmailDialog = {
           win,
           {
             msgtext: mesg,
-            button1: okLabel ? okLabel : l10n.formatValueSync("dlg-button-ok"),
+            button1: okLabel
+              ? okLabel
+              : lazy.l10n.formatValueSync("dlg-button-ok"),
             cancelButton: cancelLabel
               ? cancelLabel
-              : l10n.formatValueSync("dlg-button-cancel"),
-            checkboxLabel: l10n.formatValueSync("dlg-no-prompt"),
-            iconType: EnigmailConstants.ICONTYPE_QUESTION,
-            dialogTitle: l10n.formatValueSync("enig-confirm"),
+              : lazy.l10n.formatValueSync("dlg-button-cancel"),
+            checkboxLabel: lazy.l10n.formatValueSync("dlg-no-prompt"),
+            iconType: lazy.EnigmailConstants.ICONTYPE_QUESTION,
+            dialogTitle: lazy.l10n.formatValueSync("enig-confirm"),
           },
           checkBoxObj
         );
@@ -355,13 +281,15 @@ var EnigmailDialog = {
           win,
           {
             msgtext: mesg,
-            button1: okLabel ? okLabel : l10n.formatValueSync("dlg-button-ok"),
+            button1: okLabel
+              ? okLabel
+              : lazy.l10n.formatValueSync("dlg-button-ok"),
             cancelButton: cancelLabel
               ? cancelLabel
-              : l10n.formatValueSync("dlg-button-cancel"),
-            checkboxLabel: l10n.formatValueSync("dlg-keep-setting"),
-            iconType: EnigmailConstants.ICONTYPE_QUESTION,
-            dialogTitle: l10n.formatValueSync("enig-confirm"),
+              : lazy.l10n.formatValueSync("dlg-button-cancel"),
+            checkboxLabel: lazy.l10n.formatValueSync("dlg-keep-setting"),
+            iconType: lazy.EnigmailConstants.ICONTYPE_QUESTION,
+            dialogTitle: lazy.l10n.formatValueSync("enig-confirm"),
           },
           checkBoxObj
         );
@@ -414,9 +342,10 @@ var EnigmailDialog = {
     let mode = save ? Ci.nsIFilePicker.modeSave : open;
 
     filePicker.init(win, title, mode);
-
     if (displayDir) {
-      var localFile = Cc[LOCAL_FILE_CONTRACTID].createInstance(Ci.nsIFile);
+      var localFile = Cc["@mozilla.org/file/local;1"].createInstance(
+        Ci.nsIFile
+      );
 
       try {
         localFile.initWithPath(displayDir);
@@ -496,7 +425,7 @@ var EnigmailDialog = {
     };
 
     if (!win) {
-      win = EnigmailWindows.getBestParentWin();
+      win = lazy.EnigmailWindows.getBestParentWin();
     }
 
     win.openDialog(
@@ -522,27 +451,22 @@ var EnigmailDialog = {
    * Asks user to confirm the import of the given public keys.
    * User is allowed to automatically accept new/undecided keys.
    *
-   * @param {?nsIDOMWindow} parent - Parent window.
+   * @param {nsIDOMWindow} parentWindow - Parent window.
+   * @param {object[]} keyPreview - Key details. See EnigmailKey.getKeyListFromKeyBlock().
    * @param {EnigmailKeyObj[]} - Array of key objects.
-   * @param {Object} outputParams - Out parameters. If confirmed,
-   *                       outputParams.acceptance {String} contains the decision.
-   * @return:              Boolean - true if user confirms import
+   * @param {object} outputParams - Out parameters.
+   * @param {string} outputParams.acceptance contains the decision. If confirmed.
+   * @returns {boolean} true if user confirms import
    *
    */
   confirmPubkeyImport(parentWindow, keyPreview, outputParams) {
-    // For TB 78 compatibility
-    let w =
-      "browsingContext" in parentWindow
-        ? parentWindow.browsingContext.topChromeWindow
-        : parentWindow.docShell.rootTreeItem.domWindow;
-
     let args = {
       keys: keyPreview,
       confirmed: false,
       acceptance: "",
     };
 
-    w.openDialog(
+    parentWindow.browsingContext.topChromeWindow.openDialog(
       "chrome://openpgp/content/ui/confirmPubkeyImport.xhtml",
       "",
       "dialog,modal,centerscreen,resizable",
@@ -552,9 +476,6 @@ var EnigmailDialog = {
     if (args.confirmed && outputParams) {
       outputParams.acceptance = args.acceptance;
     }
-
     return args.confirmed;
   },
 };
-
-EnigmailWindows.alert = EnigmailDialog.alert;

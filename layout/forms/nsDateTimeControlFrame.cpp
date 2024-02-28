@@ -64,11 +64,11 @@ nscoord nsDateTimeControlFrame::GetPrefISize(gfxContext* aRenderingContext) {
   return result;
 }
 
-bool nsDateTimeControlFrame::GetNaturalBaselineBOffset(
-    mozilla::WritingMode aWM, BaselineSharingGroup aBaselineGroup,
-    nscoord* aBaseline) const {
+Maybe<nscoord> nsDateTimeControlFrame::GetNaturalBaselineBOffset(
+    WritingMode aWM, BaselineSharingGroup aBaselineGroup,
+    BaselineExportContext) const {
   return nsTextControlFrame::GetSingleLineTextControlBaseline(
-      this, mFirstBaseline, aWM, aBaselineGroup, aBaseline);
+      this, mFirstBaseline, aWM, aBaselineGroup);
 }
 
 void nsDateTimeControlFrame::Reflow(nsPresContext* aPresContext,
@@ -155,8 +155,9 @@ void nsDateTimeControlFrame::Reflow(nsPresContext* aPresContext,
 
     if (contentBoxBSize == NS_UNCONSTRAINEDSIZE) {
       // We are intrinsically sized -- we should shrinkwrap the input area's
-      // block-size:
-      contentBoxBSize = childMarginBoxBSize;
+      // block-size, or our line-height:
+      contentBoxBSize =
+          std::max(aReflowInput.GetLineHeight(), childMarginBoxBSize);
 
       // Make sure we obey min/max-bsize in the case when we're doing intrinsic
       // sizing (we get it for free when we have a non-intrinsic
@@ -186,7 +187,6 @@ void nsDateTimeControlFrame::Reflow(nsPresContext* aPresContext,
 
   LogicalSize logicalDesiredSize(myWM, borderBoxISize, borderBoxBSize);
   aDesiredSize.SetSize(myWM, logicalDesiredSize);
-
   aDesiredSize.SetOverflowAreasToDesiredBounds();
 
   if (inputAreaFrame) {
@@ -198,5 +198,4 @@ void nsDateTimeControlFrame::Reflow(nsPresContext* aPresContext,
   NS_FRAME_TRACE(NS_FRAME_TRACE_CALLS,
                  ("exit nsDateTimeControlFrame::Reflow: size=%d,%d",
                   aDesiredSize.Width(), aDesiredSize.Height()));
-  NS_FRAME_SET_TRUNCATION(aStatus, aReflowInput, aDesiredSize);
 }

@@ -14,7 +14,7 @@ load("../../../resources/alertTestUtils.js");
 // Messages to load must have CRLF line endings, that is Windows style
 var gMessage = "bugmail10"; // message file used as the test message
 
-add_task(function() {
+add_task(function () {
   Services.prefs.setBoolPref(
     "mail.server.server1.autosync_offline_stores",
     false
@@ -25,7 +25,7 @@ add_task(function() {
 // load and update a message in the imap fake server
 add_task(async function loadImapMessage() {
   IMAPPump.mailbox.addMessage(
-    new imapMessage(specForFileName(gMessage), IMAPPump.mailbox.uidnext++, [])
+    new ImapMessage(specForFileName(gMessage), IMAPPump.mailbox.uidnext++, [])
   );
   let promiseUrlListener = new PromiseTestUtils.PromiseUrlListener();
   IMAPPump.inbox.updateFolderWithListener(gDummyMsgWindow, promiseUrlListener);

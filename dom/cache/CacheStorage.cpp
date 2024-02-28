@@ -23,6 +23,7 @@
 #include "mozilla/dom/cache/ReadStream.h"
 #include "mozilla/dom/cache/TypeUtils.h"
 #include "mozilla/dom/quota/QuotaManager.h"
+#include "mozilla/dom/quota/ResultExtensions.h"
 #include "mozilla/dom/WorkerPrivate.h"
 #include "mozilla/ipc/BackgroundChild.h"
 #include "mozilla/ipc/BackgroundUtils.h"
@@ -35,15 +36,14 @@
 #include "nsIGlobalObject.h"
 #include "nsMixedContentBlocker.h"
 #include "nsURLParsers.h"
-#include "js/Object.h"  // JS::GetClass
+#include "js/Object.h"              // JS::GetClass
+#include "js/PropertyAndElement.h"  // JS_DefineProperty
 
 namespace mozilla::dom::cache {
 
 using mozilla::ErrorResult;
-using mozilla::Unused;
 using mozilla::dom::quota::QuotaManager;
 using mozilla::ipc::BackgroundChild;
-using mozilla::ipc::IProtocol;
 using mozilla::ipc::PBackgroundChild;
 using mozilla::ipc::PrincipalInfo;
 using mozilla::ipc::PrincipalToPrincipalInfo;
@@ -105,10 +105,10 @@ bool IsTrusted(const PrincipalInfo& aPrincipalInfo, bool aTestingPrefEnabled) {
   int32_t schemeLen;
   uint32_t authPos;
   int32_t authLen;
-  QM_TRY(
-      urlParser->ParseURL(url, flatURL.Length(), &schemePos, &schemeLen,
-                          &authPos, &authLen, nullptr, nullptr),  // ignore path
-      false);
+  QM_TRY(MOZ_TO_RESULT(urlParser->ParseURL(url, flatURL.Length(), &schemePos,
+                                           &schemeLen, &authPos, &authLen,
+                                           nullptr, nullptr)),  // ignore path
+         false);
 
   const nsAutoCString scheme(Substring(flatURL, schemePos, schemeLen));
   if (scheme.LowerCaseEqualsLiteral("https") ||
@@ -119,11 +119,12 @@ bool IsTrusted(const PrincipalInfo& aPrincipalInfo, bool aTestingPrefEnabled) {
 
   uint32_t hostPos;
   int32_t hostLen;
-  QM_TRY(urlParser->ParseAuthority(url + authPos, authLen, nullptr,
-                                   nullptr,           // ignore username
-                                   nullptr, nullptr,  // ignore password
-                                   &hostPos, &hostLen,
-                                   nullptr),  // ignore port
+  QM_TRY(MOZ_TO_RESULT(
+             urlParser->ParseAuthority(url + authPos, authLen, nullptr,
+                                       nullptr,           // ignore username
+                                       nullptr, nullptr,  // ignore password
+                                       &hostPos, &hostLen,
+                                       nullptr)),  // ignore port
          false);
 
   return nsMixedContentBlocker::IsPotentiallyTrustworthyLoopbackHost(
@@ -141,8 +142,8 @@ already_AddRefed<CacheStorage> CacheStorage::CreateOnMainThread(
   MOZ_ASSERT(NS_IsMainThread());
 
   PrincipalInfo principalInfo;
-  QM_TRY(PrincipalToPrincipalInfo(aPrincipal, &principalInfo), nullptr,
-         [&aRv](const nsresult rv) { aRv.Throw(rv); });
+  QM_TRY(MOZ_TO_RESULT(PrincipalToPrincipalInfo(aPrincipal, &principalInfo)),
+         nullptr, [&aRv](const nsresult rv) { aRv.Throw(rv); });
 
   QM_TRY(OkIf(QuotaManager::IsPrincipalInfoValid(principalInfo)),
          RefPtr{new CacheStorage(NS_ERROR_DOM_SECURITY_ERR)}.forget(),
@@ -300,7 +301,8 @@ already_AddRefed<Promise> CacheStorage::Match(
     const MultiCacheQueryOptions& aOptions, ErrorResult& aRv) {
   NS_ASSERT_OWNINGTHREAD(CacheStorage);
 
-  if (!HasStorageAccess()) {
+  if (!HasStorageAccess(eUseCounter_custom_PrivateBrowsingCachesMatch,
+                        UseCounterWorker::Custom_PrivateBrowsingCachesMatch)) {
     aRv.Throw(NS_ERROR_DOM_SECURITY_ERR);
     return nullptr;
   }
@@ -338,7 +340,8 @@ already_AddRefed<Promise> CacheStorage::Has(const nsAString& aKey,
                                             ErrorResult& aRv) {
   NS_ASSERT_OWNINGTHREAD(CacheStorage);
 
-  if (!HasStorageAccess()) {
+  if (!HasStorageAccess(eUseCounter_custom_PrivateBrowsingCachesHas,
+                        UseCounterWorker::Custom_PrivateBrowsingCachesHas)) {
     aRv.Throw(NS_ERROR_DOM_SECURITY_ERR);
     return nullptr;
   }
@@ -366,7 +369,8 @@ already_AddRefed<Promise> CacheStorage::Open(const nsAString& aKey,
                                              ErrorResult& aRv) {
   NS_ASSERT_OWNINGTHREAD(CacheStorage);
 
-  if (!HasStorageAccess()) {
+  if (!HasStorageAccess(eUseCounter_custom_PrivateBrowsingCachesOpen,
+                        UseCounterWorker::Custom_PrivateBrowsingCachesOpen)) {
     aRv.Throw(NS_ERROR_DOM_SECURITY_ERR);
     return nullptr;
   }
@@ -394,7 +398,8 @@ already_AddRefed<Promise> CacheStorage::Delete(const nsAString& aKey,
                                                ErrorResult& aRv) {
   NS_ASSERT_OWNINGTHREAD(CacheStorage);
 
-  if (!HasStorageAccess()) {
+  if (!HasStorageAccess(eUseCounter_custom_PrivateBrowsingCachesDelete,
+                        UseCounterWorker::Custom_PrivateBrowsingCachesDelete)) {
     aRv.Throw(NS_ERROR_DOM_SECURITY_ERR);
     return nullptr;
   }
@@ -421,7 +426,8 @@ already_AddRefed<Promise> CacheStorage::Delete(const nsAString& aKey,
 already_AddRefed<Promise> CacheStorage::Keys(ErrorResult& aRv) {
   NS_ASSERT_OWNINGTHREAD(CacheStorage);
 
-  if (!HasStorageAccess()) {
+  if (!HasStorageAccess(eUseCounter_custom_PrivateBrowsingCachesKeys,
+                        UseCounterWorker::Custom_PrivateBrowsingCachesKeys)) {
     aRv.Throw(NS_ERROR_DOM_SECURITY_ERR);
     return nullptr;
   }
@@ -552,26 +558,35 @@ OpenMode CacheStorage::GetOpenMode() const {
   return mNamespace == CHROME_ONLY_NAMESPACE ? OpenMode::Eager : OpenMode::Lazy;
 }
 
-bool CacheStorage::HasStorageAccess() const {
+bool CacheStorage::HasStorageAccess(UseCounter aLabel,
+                                    UseCounterWorker aLabelWorker) const {
   NS_ASSERT_OWNINGTHREAD(CacheStorage);
-
-  StorageAccess access;
-
-  if (NS_IsMainThread()) {
-    nsCOMPtr<nsPIDOMWindowInner> window = do_QueryInterface(mGlobal);
-    if (NS_WARN_IF(!window)) {
-      return true;
-    }
-
-    access = StorageAllowedForWindow(window);
-  } else {
-    WorkerPrivate* workerPrivate = GetCurrentThreadWorkerPrivate();
-    MOZ_ASSERT(workerPrivate);
-
-    access = workerPrivate->StorageAccess();
+  if (NS_WARN_IF(!mGlobal)) {
+    return false;
   }
 
-  return access > StorageAccess::ePrivateBrowsing;
+  StorageAccess access = mGlobal->GetStorageAccess();
+  if (access == StorageAccess::ePrivateBrowsing) {
+    if (NS_IsMainThread()) {
+      SetUseCounter(mGlobal->GetGlobalJSObject(), aLabel);
+    } else {
+      SetUseCounter(aLabelWorker);
+    }
+  }
+
+  // Deny storage access for private browsing.
+  if (nsIPrincipal* principal = mGlobal->PrincipalOrNull()) {
+    if (!principal->IsSystemPrincipal() &&
+        principal->GetPrivateBrowsingId() !=
+            nsIScriptSecurityManager::DEFAULT_PRIVATE_BROWSING_ID) {
+      return false;
+    }
+  }
+
+  return access > StorageAccess::ePrivateBrowsing ||
+         (StaticPrefs::
+              privacy_partition_always_partition_third_party_non_cookie_storage() &&
+          ShouldPartitionStorage(access));
 }
 
 }  // namespace mozilla::dom::cache

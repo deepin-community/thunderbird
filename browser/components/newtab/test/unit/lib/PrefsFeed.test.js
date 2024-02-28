@@ -1,4 +1,7 @@
-import { actionCreators as ac, actionTypes as at } from "common/Actions.jsm";
+import {
+  actionCreators as ac,
+  actionTypes as at,
+} from "common/Actions.sys.mjs";
 import { GlobalOverrider } from "test/unit/utils";
 import { PrefsFeed } from "lib/PrefsFeed.jsm";
 
@@ -15,6 +18,7 @@ describe("PrefsFeed", () => {
       ["foo", 1],
       ["bar", 2],
       ["baz", { value: 1, skipBroadcast: true }],
+      ["qux", { value: 1, skipBroadcast: true, alsoToPreloaded: true }],
     ]);
     feed = new PrefsFeed(FAKE_PREFS);
     const storage = {
@@ -33,6 +37,7 @@ describe("PrefsFeed", () => {
         addObserver: sinon.spy(),
       },
     };
+    sinon.spy(feed, "_setPref");
     feed.store = {
       dispatch: sinon.spy(),
       getState() {
@@ -83,7 +88,7 @@ describe("PrefsFeed", () => {
     assert.isTrue(data.isPrivateBrowsingEnabled);
   });
   it("should dispatch PREFS_INITIAL_VALUES with a .featureConfig", () => {
-    sandbox.stub(global.NimbusFeatures.newtab, "getValue").returns({
+    sandbox.stub(global.NimbusFeatures.newtab, "getAllVariables").returns({
       prefsButtonIcon: "icon-foo",
     });
     feed.onAction({ type: at.INIT });
@@ -95,7 +100,7 @@ describe("PrefsFeed", () => {
     assert.deepEqual(data.featureConfig, { prefsButtonIcon: "icon-foo" });
   });
   it("should dispatch PREFS_INITIAL_VALUES with an empty object if no experiment is returned", () => {
-    sandbox.stub(global.NimbusFeatures.newtab, "getValue").returns(null);
+    sandbox.stub(global.NimbusFeatures.newtab, "getAllVariables").returns(null);
     feed.onAction({ type: at.INIT });
     assert.equal(
       feed.store.dispatch.firstCall.args[0].type,
@@ -153,8 +158,39 @@ describe("PrefsFeed", () => {
       })
     );
   });
+  it("should send a PREF_CHANGED actions when onPocketExperimentUpdated is called", () => {
+    sandbox
+      .stub(global.NimbusFeatures.pocketNewtab, "getAllVariables")
+      .returns({
+        prefsButtonIcon: "icon-new",
+      });
+    feed.onPocketExperimentUpdated();
+    assert.calledWith(
+      feed.store.dispatch,
+      ac.BroadcastToContent({
+        type: at.PREF_CHANGED,
+        data: {
+          name: "pocketConfig",
+          value: {
+            prefsButtonIcon: "icon-new",
+          },
+        },
+      })
+    );
+  });
+  it("should not send a PREF_CHANGED actions when onPocketExperimentUpdated is called during startup", () => {
+    sandbox
+      .stub(global.NimbusFeatures.pocketNewtab, "getAllVariables")
+      .returns({
+        prefsButtonIcon: "icon-new",
+      });
+    feed.onPocketExperimentUpdated({}, "feature-experiment-loaded");
+    assert.notCalled(feed.store.dispatch);
+    feed.onPocketExperimentUpdated({}, "feature-rollout-loaded");
+    assert.notCalled(feed.store.dispatch);
+  });
   it("should send a PREF_CHANGED actions when onExperimentUpdated is called", () => {
-    sandbox.stub(global.NimbusFeatures.newtab, "getValue").returns({
+    sandbox.stub(global.NimbusFeatures.newtab, "getAllVariables").returns({
       prefsButtonIcon: "icon-new",
     });
     feed.onExperimentUpdated();
@@ -169,6 +205,26 @@ describe("PrefsFeed", () => {
           },
         },
       })
+    );
+  });
+
+  it("should remove all events on removeListeners", () => {
+    feed.geo = "";
+    sandbox.spy(global.NimbusFeatures.pocketNewtab, "offUpdate");
+    sandbox.spy(global.NimbusFeatures.newtab, "offUpdate");
+    feed.removeListeners();
+    assert.calledWith(
+      global.NimbusFeatures.pocketNewtab.offUpdate,
+      feed.onPocketExperimentUpdated
+    );
+    assert.calledWith(
+      global.NimbusFeatures.newtab.offUpdate,
+      feed.onExperimentUpdated
+    );
+    assert.calledWith(
+      ServicesStub.obs.removeObserver,
+      feed,
+      global.Region.REGION_TOPIC
     );
   });
 
@@ -207,10 +263,95 @@ describe("PrefsFeed", () => {
       })
     );
   });
+  it("should send AlsoToPreloaded pref update if config for pref has skipBroadcast: true and alsoToPreloaded: true", async () => {
+    feed.onPrefChanged("qux", {
+      value: 2,
+      skipBroadcast: true,
+      alsoToPreloaded: true,
+    });
+    assert.calledWith(
+      feed.store.dispatch,
+      ac.AlsoToPreloaded({
+        type: at.PREF_CHANGED,
+        data: {
+          name: "qux",
+          value: { value: 2, skipBroadcast: true, alsoToPreloaded: true },
+        },
+      })
+    );
+  });
   describe("#observe", () => {
     it("should call dispatch from observe", () => {
       feed.observe(undefined, global.Region.REGION_TOPIC);
       assert.calledOnce(feed.store.dispatch);
+    });
+  });
+  describe("#_setStringPref", () => {
+    it("should call _setPref and getStringPref from _setStringPref", () => {
+      feed._setStringPref({}, "fake.pref", "default");
+      assert.calledOnce(feed._setPref);
+      assert.calledWith(
+        feed._setPref,
+        { "fake.pref": undefined },
+        "fake.pref",
+        "default"
+      );
+      assert.calledOnce(ServicesStub.prefs.getStringPref);
+      assert.calledWith(
+        ServicesStub.prefs.getStringPref,
+        "browser.newtabpage.activity-stream.fake.pref",
+        "default"
+      );
+    });
+  });
+  describe("#_setBoolPref", () => {
+    it("should call _setPref and getBoolPref from _setBoolPref", () => {
+      feed._setBoolPref({}, "fake.pref", false);
+      assert.calledOnce(feed._setPref);
+      assert.calledWith(
+        feed._setPref,
+        { "fake.pref": undefined },
+        "fake.pref",
+        false
+      );
+      assert.calledOnce(ServicesStub.prefs.getBoolPref);
+      assert.calledWith(
+        ServicesStub.prefs.getBoolPref,
+        "browser.newtabpage.activity-stream.fake.pref",
+        false
+      );
+    });
+  });
+  describe("#_setIntPref", () => {
+    it("should call _setPref and getIntPref from _setIntPref", () => {
+      feed._setIntPref({}, "fake.pref", 1);
+      assert.calledOnce(feed._setPref);
+      assert.calledWith(
+        feed._setPref,
+        { "fake.pref": undefined },
+        "fake.pref",
+        1
+      );
+      assert.calledOnce(ServicesStub.prefs.getIntPref);
+      assert.calledWith(
+        ServicesStub.prefs.getIntPref,
+        "browser.newtabpage.activity-stream.fake.pref",
+        1
+      );
+    });
+  });
+  describe("#_setPref", () => {
+    it("should set pref value with _setPref", () => {
+      const getPrefFunctionSpy = sinon.spy();
+      const values = {};
+      feed._setPref(values, "fake.pref", "default", getPrefFunctionSpy);
+      assert.deepEqual(values, { "fake.pref": undefined });
+      assert.calledOnce(getPrefFunctionSpy);
+      assert.calledWith(
+        getPrefFunctionSpy,
+        "browser.newtabpage.activity-stream.fake.pref",
+        "default"
+      );
     });
   });
 });

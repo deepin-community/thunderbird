@@ -20,7 +20,8 @@ SOURCES += [
 ]
 LOCAL_INCLUDES += [
     "..",
-    "../ffmpeg58/include",
+    "../ffmpeg60/include",
+    "/media/mozva",
 ]
 
 CXXFLAGS += ["-Wno-deprecated-declarations"]
@@ -37,7 +38,13 @@ DEFINES["FFVPX_VERSION"] = 46465650
 DEFINES["USING_MOZFFVPX"] = True
 
 if CONFIG["MOZ_WAYLAND"]:
-    CXXFLAGS += CONFIG["TK_CFLAGS"]
-    DEFINES["MOZ_WAYLAND_USE_VAAPI"] = 1
+    CXXFLAGS += CONFIG["MOZ_GTK3_CFLAGS"]
+if CONFIG["MOZ_ENABLE_VAAPI"] or CONFIG["MOZ_ENABLE_V4L2"]:
+    UNIFIED_SOURCES += ["../FFmpegVideoFramePool.cpp"]
+    LOCAL_INCLUDES += ["/third_party/drm/drm/include/libdrm/"]
+    USE_LIBS += ["mozva"]
+    DEFINES["MOZ_WAYLAND_USE_HWDECODE"] = 1
+
+include("/ipc/chromium/chromium-config.mozbuild")
 
 FINAL_LIBRARY = "xul"

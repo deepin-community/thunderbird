@@ -4,21 +4,35 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 #include "nsClipboard.h"
-#include <ole2.h>
+
 #include <shlobj.h>
 #include <intshcut.h>
 
 // shellapi.h is needed to build with WIN32_LEAN_AND_MEAN
 #include <shellapi.h>
 
+#include <functional>
+#include <thread>
+#include <chrono>
+
+#ifdef ACCESSIBILITY
+#  include "mozilla/a11y/Compatibility.h"
+#endif
+#include "mozilla/Logging.h"
+#include "mozilla/ScopeExit.h"
 #include "mozilla/StaticPrefs_clipboard.h"
+#include "mozilla/StaticPrefs_widget.h"
+#include "mozilla/WindowsVersion.h"
+#include "SpecialSystemDirectory.h"
+
 #include "nsArrayUtils.h"
 #include "nsCOMPtr.h"
+#include "nsComponentManagerUtils.h"
 #include "nsDataObj.h"
 #include "nsString.h"
 #include "nsNativeCharsetUtils.h"
+#include "nsIInputStream.h"
 #include "nsITransferable.h"
-#include "nsCOMPtr.h"
 #include "nsXPCOM.h"
 #include "nsReadableUtils.h"
 #include "nsUnicharUtils.h"
@@ -32,10 +46,25 @@
 #include "nsIObserverService.h"
 #include "nsMimeTypes.h"
 #include "imgITools.h"
+#include "imgIContainer.h"
 
 using mozilla::LogLevel;
 
 static mozilla::LazyLogModule gWin32ClipboardLog("nsClipboard");
+
+/* static */
+UINT nsClipboard::GetClipboardFileDescriptorFormatA() {
+  static UINT format = ::RegisterClipboardFormatW(CFSTR_FILEDESCRIPTORA);
+  MOZ_ASSERT(format);
+  return format;
+}
+
+/* static */
+UINT nsClipboard::GetClipboardFileDescriptorFormatW() {
+  static UINT format = ::RegisterClipboardFormatW(CFSTR_FILEDESCRIPTORW);
+  MOZ_ASSERT(format);
+  return format;
+}
 
 /* static */
 UINT nsClipboard::GetHtmlClipboardFormat() {
@@ -55,8 +84,11 @@ UINT nsClipboard::GetCustomClipboardFormat() {
 // nsClipboard constructor
 //
 //-------------------------------------------------------------------------
-nsClipboard::nsClipboard() : nsBaseClipboard() {
-  mIgnoreEmptyNotification = false;
+nsClipboard::nsClipboard()
+    : nsBaseClipboard(mozilla::dom::ClipboardCapabilities(
+          false /* supportsSelectionClipboard */,
+          false /* supportsFindClipboard */,
+          false /* supportsSelectionCache */)) {
   mWindow = nullptr;
 
   // Register for a shutdown notification so that we can flush data
@@ -65,7 +97,7 @@ nsClipboard::nsClipboard() : nsBaseClipboard() {
       do_GetService("@mozilla.org/observer-service;1");
   if (observerService) {
     observerService->AddObserver(this, NS_XPCOM_WILL_SHUTDOWN_OBSERVER_ID,
-                                 PR_FALSE);
+                                 false);
   }
 }
 
@@ -91,8 +123,6 @@ UINT nsClipboard::GetFormat(const char* aMimeStr, bool aMapHTMLMime) {
   UINT format;
 
   if (strcmp(aMimeStr, kTextMime) == 0) {
-    format = CF_TEXT;
-  } else if (strcmp(aMimeStr, kUnicodeMime) == 0) {
     format = CF_UNICODETEXT;
   } else if (strcmp(aMimeStr, kRTFMime) == 0) {
     format = ::RegisterClipboardFormat(L"Rich Text Format");
@@ -116,29 +146,23 @@ UINT nsClipboard::GetFormat(const char* aMimeStr, bool aMapHTMLMime) {
 }
 
 //-------------------------------------------------------------------------
-nsresult nsClipboard::CreateNativeDataObject(nsITransferable* aTransferable,
-                                             IDataObject** aDataObj,
-                                             nsIURI* uri) {
-  if (nullptr == aTransferable) {
+// static
+nsresult nsClipboard::CreateNativeDataObject(
+    nsITransferable* aTransferable, IDataObject** aDataObj, nsIURI* aUri,
+    MightNeedToFlush* aMightNeedToFlush) {
+  MOZ_ASSERT(aTransferable);
+  if (!aTransferable) {
     return NS_ERROR_FAILURE;
   }
 
-  // Create our native DataObject that implements
-  // the OLE IDataObject interface
-  nsDataObj* dataObj = new nsDataObj(uri);
-
-  if (!dataObj) {
-    return NS_ERROR_OUT_OF_MEMORY;
-  }
-
-  dataObj->AddRef();
+  // Create our native DataObject that implements the OLE IDataObject interface
+  RefPtr<nsDataObj> dataObj = new nsDataObj(aUri);
 
   // Now set it up with all the right data flavors & enums
-  nsresult res = SetupNativeDataObject(aTransferable, dataObj);
-  if (NS_OK == res) {
-    *aDataObj = dataObj;
-  } else {
-    dataObj->Release();
+  nsresult res =
+      SetupNativeDataObject(aTransferable, dataObj, aMightNeedToFlush);
+  if (NS_SUCCEEDED(res)) {
+    dataObj.forget(aDataObj);
   }
   return res;
 }
@@ -167,13 +191,19 @@ static nsresult StoreValueInDataObject(nsDataObj* aObj,
 }
 
 //-------------------------------------------------------------------------
-nsresult nsClipboard::SetupNativeDataObject(nsITransferable* aTransferable,
-                                            IDataObject* aDataObj) {
-  if (nullptr == aTransferable || nullptr == aDataObj) {
+nsresult nsClipboard::SetupNativeDataObject(
+    nsITransferable* aTransferable, IDataObject* aDataObj,
+    MightNeedToFlush* aMightNeedToFlush) {
+  MOZ_ASSERT(aTransferable);
+  MOZ_ASSERT(aDataObj);
+  if (!aTransferable || !aDataObj) {
     return NS_ERROR_FAILURE;
   }
 
-  nsDataObj* dObj = static_cast<nsDataObj*>(aDataObj);
+  auto* dObj = static_cast<nsDataObj*>(aDataObj);
+  if (aMightNeedToFlush) {
+    *aMightNeedToFlush = MightNeedToFlush::No;
+  }
 
   // Now give the Transferable to the DataObject
   // for getting the data out of it
@@ -202,12 +232,15 @@ nsresult nsClipboard::SetupNativeDataObject(nsITransferable* aTransferable,
     // Do various things internal to the implementation, like map one
     // flavor to another or add additional flavors based on what's required
     // for the win32 impl.
-    if (flavorStr.EqualsLiteral(kUnicodeMime)) {
-      // if we find text/unicode, also advertise text/plain (which we will
-      // convert on our own in nsDataObj::GetText().
+    if (flavorStr.EqualsLiteral(kTextMime)) {
+      // if we find text/plain, also add CF_TEXT, but we can add it for
+      // text/plain as well.
       FORMATETC textFE;
       SET_FORMATETC(textFE, CF_TEXT, 0, DVASPECT_CONTENT, -1, TYMED_HGLOBAL);
       dObj->AddDataFlavor(kTextMime, &textFE);
+      if (aMightNeedToFlush) {
+        *aMightNeedToFlush = MightNeedToFlush::Yes;
+      }
     } else if (flavorStr.EqualsLiteral(kHTMLMime)) {
       // if we find text/html, also advertise win32's html flavor (which we will
       // convert on our own in nsDataObj::GetText().
@@ -272,7 +305,8 @@ nsresult nsClipboard::SetupNativeDataObject(nsITransferable* aTransferable,
     }
   }
 
-  if (!StaticPrefs::clipboard_copyPrivateDataToClipboardCloudOrHistory()) {
+  if (!mozilla::StaticPrefs::
+          clipboard_copyPrivateDataToClipboardCloudOrHistory()) {
     // Let Clipboard know that data is sensitive and must not be copied to
     // the Cloud Clipboard, Clipboard History and similar.
     // https://docs.microsoft.com/en-us/windows/win32/dataxchg/clipboard-formats#cloud-clipboard-and-clipboard-history-formats
@@ -292,30 +326,208 @@ nsresult nsClipboard::SetupNativeDataObject(nsITransferable* aTransferable,
   return NS_OK;
 }
 
+// See methods listed at
+// <https://docs.microsoft.com/en-us/windows/win32/api/objidl/nn-objidl-idataobject#methods>.
+static void IDataObjectMethodResultToString(const HRESULT aHres,
+                                            nsACString& aResult) {
+  switch (aHres) {
+    case E_INVALIDARG:
+      aResult = "E_INVALIDARG";
+      break;
+    case E_UNEXPECTED:
+      aResult = "E_UNEXPECTED";
+      break;
+    case E_OUTOFMEMORY:
+      aResult = "E_OUTOFMEMORY";
+      break;
+    case DV_E_LINDEX:
+      aResult = "DV_E_LINDEX";
+      break;
+    case DV_E_FORMATETC:
+      aResult = "DV_E_FORMATETC";
+      break;
+    case DV_E_TYMED:
+      aResult = "DV_E_TYMED";
+      break;
+    case DV_E_DVASPECT:
+      aResult = "DV_E_DVASPECT";
+      break;
+    case OLE_E_NOTRUNNING:
+      aResult = "OLE_E_NOTRUNNING";
+      break;
+    case STG_E_MEDIUMFULL:
+      aResult = "STG_E_MEDIUMFULL";
+      break;
+    case DV_E_CLIPFORMAT:
+      aResult = "DV_E_CLIPFORMAT";
+      break;
+    case S_OK:
+      aResult = "S_OK";
+      break;
+    default:
+      // Explicit template instantiaton, because otherwise the call is
+      // ambiguous.
+      constexpr int kRadix = 16;
+      aResult = IntToCString<int32_t>(aHres, kRadix);
+      break;
+  }
+}
+
+// See
+// <https://docs.microsoft.com/en-us/windows/win32/api/ole2/nf-ole2-olegetclipboard>.
+static void OleGetClipboardResultToString(const HRESULT aHres,
+                                          nsACString& aResult) {
+  switch (aHres) {
+    case S_OK:
+      aResult = "S_OK";
+      break;
+    case CLIPBRD_E_CANT_OPEN:
+      aResult = "CLIPBRD_E_CANT_OPEN";
+      break;
+    case CLIPBRD_E_CANT_CLOSE:
+      aResult = "CLIPBRD_E_CANT_CLOSE";
+      break;
+    default:
+      // Explicit template instantiaton, because otherwise the call is
+      // ambiguous.
+      constexpr int kRadix = 16;
+      aResult = IntToCString<int32_t>(aHres, kRadix);
+      break;
+  }
+}
+
+// See
+// <https://docs.microsoft.com/en-us/windows/win32/api/ole2/nf-ole2-olegetclipboard>.
+static void LogOleGetClipboardResult(const HRESULT aHres) {
+  if (MOZ_LOG_TEST(gWin32ClipboardLog, LogLevel::Debug)) {
+    nsAutoCString hresString;
+    OleGetClipboardResultToString(aHres, hresString);
+    MOZ_LOG(gWin32ClipboardLog, LogLevel::Debug,
+            ("OleGetClipboard result: %s", hresString.get()));
+  }
+}
+
+// See
+// <https://docs.microsoft.com/en-us/windows/win32/api/ole2/nf-ole2-olesetclipboard>.
+static void OleSetClipboardResultToString(HRESULT aHres, nsACString& aResult) {
+  switch (aHres) {
+    case S_OK:
+      aResult = "S_OK";
+      break;
+    case CLIPBRD_E_CANT_OPEN:
+      aResult = "CLIPBRD_E_CANT_OPEN";
+      break;
+    case CLIPBRD_E_CANT_EMPTY:
+      aResult = "CLIPBRD_E_CANT_EMPTY";
+      break;
+    case CLIPBRD_E_CANT_CLOSE:
+      aResult = "CLIPBRD_E_CANT_CLOSE";
+      break;
+    case CLIPBRD_E_CANT_SET:
+      aResult = "CLIPBRD_E_CANT_SET";
+      break;
+    default:
+      // Explicit template instantiaton, because otherwise the call is
+      // ambiguous.
+      constexpr int kRadix = 16;
+      aResult = IntToCString<int32_t>(aHres, kRadix);
+      break;
+  }
+}
+
+// See
+// <https://docs.microsoft.com/en-us/windows/win32/api/ole2/nf-ole2-olesetclipboard>.
+static void LogOleSetClipboardResult(const HRESULT aHres) {
+  if (MOZ_LOG_TEST(gWin32ClipboardLog, LogLevel::Debug)) {
+    nsAutoCString hresString;
+    OleSetClipboardResultToString(aHres, hresString);
+    MOZ_LOG(gWin32ClipboardLog, LogLevel::Debug,
+            ("OleSetClipboard result: %s", hresString.get()));
+  }
+}
+
+template <typename Function, typename LogFunction, typename... Args>
+static HRESULT RepeatedlyTry(Function aFunction, LogFunction aLogFunction,
+                             Args... aArgs) {
+  // These are magic values based on local testing. They are chosen not higher
+  // to avoid jank (<https://developer.mozilla.org/en-US/docs/Glossary/Jank>).
+  // When changing them, be careful.
+  static constexpr int kNumberOfTries = 3;
+  static constexpr int kDelayInMs = 3;
+
+  HRESULT hres;
+  for (int i = 0; i < kNumberOfTries; ++i) {
+    hres = aFunction(aArgs...);
+    aLogFunction(hres);
+
+    if (hres == S_OK) {
+      break;
+    }
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(kDelayInMs));
+  }
+
+  return hres;
+}
+
+// Other apps can block access to the clipboard. This repeatedly
+// calls `::OleSetClipboard` for a fixed number of times and should be called
+// instead of `::OleSetClipboard`.
+static void RepeatedlyTryOleSetClipboard(IDataObject* aDataObj) {
+  RepeatedlyTry(::OleSetClipboard, LogOleSetClipboardResult, aDataObj);
+}
+
 //-------------------------------------------------------------------------
-NS_IMETHODIMP nsClipboard::SetNativeClipboardData(int32_t aWhichClipboard) {
+NS_IMETHODIMP nsClipboard::SetNativeClipboardData(
+    nsITransferable* aTransferable, nsIClipboardOwner* aOwner,
+    int32_t aWhichClipboard) {
+  MOZ_LOG(gWin32ClipboardLog, LogLevel::Debug, ("%s", __FUNCTION__));
+
   if (aWhichClipboard != kGlobalClipboard) {
     return NS_ERROR_FAILURE;
   }
 
-  mIgnoreEmptyNotification = true;
-
   // make sure we have a good transferable
-  if (nullptr == mTransferable) {
+  if (!aTransferable) {
     return NS_ERROR_FAILURE;
   }
 
-  IDataObject* dataObj;
-  if (NS_SUCCEEDED(CreateNativeDataObject(mTransferable, &dataObj,
-                                          nullptr))) {  // this add refs dataObj
-    ::OleSetClipboard(dataObj);
-    dataObj->Release();
+#ifdef ACCESSIBILITY
+  mozilla::a11y::Compatibility::SuppressA11yForClipboardCopy();
+#endif
+
+  RefPtr<IDataObject> dataObj;
+  auto mightNeedToFlush = MightNeedToFlush::No;
+  if (NS_SUCCEEDED(CreateNativeDataObject(aTransferable,
+                                          getter_AddRefs(dataObj), nullptr,
+                                          &mightNeedToFlush))) {
+    RepeatedlyTryOleSetClipboard(dataObj);
+
+    const bool doFlush = [&] {
+      switch (mozilla::StaticPrefs::widget_windows_sync_clipboard_flush()) {
+        case 0:
+          return false;
+        case 1:
+          return true;
+        default:
+          // Bug 1774285: Windows Suggested Actions (introduced in Windows 11
+          // 22H2) walks the entire a11y tree using UIA if something is placed
+          // on the clipboard using delayed rendering. (The OLE clipboard always
+          // uses delayed rendering.) This a11y tree walk causes an unacceptable
+          // hang, particularly when the a11y cache is disabled. We choose the
+          // lesser of the two performance/memory evils here and force immediate
+          // rendering.
+          return mightNeedToFlush == MightNeedToFlush::Yes &&
+                 mozilla::NeedsWindows11SuggestedActionsWorkaround();
+      }
+    }();
+    if (doFlush) {
+      RepeatedlyTry(::OleFlushClipboard, [](HRESULT) {});
+    }
   } else {
     // Clear the native clipboard
-    ::OleSetClipboard(nullptr);
+    RepeatedlyTryOleSetClipboard(nullptr);
   }
-
-  mIgnoreEmptyNotification = false;
 
   return NS_OK;
 }
@@ -323,6 +535,8 @@ NS_IMETHODIMP nsClipboard::SetNativeClipboardData(int32_t aWhichClipboard) {
 //-------------------------------------------------------------------------
 nsresult nsClipboard::GetGlobalData(HGLOBAL aHGBL, void** aData,
                                     uint32_t* aLen) {
+  MOZ_LOG(gWin32ClipboardLog, LogLevel::Verbose, ("%s", __FUNCTION__));
+
   // Allocate a new memory buffer and copy the data from global memory.
   // Recall that win98 allocates to nearest DWORD boundary. As a safety
   // precaution, allocate an extra 3 bytes (but don't report them in |aLen|!)
@@ -332,8 +546,8 @@ nsresult nsClipboard::GetGlobalData(HGLOBAL aHGBL, void** aData,
   nsresult result = NS_ERROR_FAILURE;
   if (aHGBL != nullptr) {
     LPSTR lpStr = (LPSTR)GlobalLock(aHGBL);
-    CheckedInt<uint32_t> allocSize =
-        CheckedInt<uint32_t>(GlobalSize(aHGBL)) + 3;
+    mozilla::CheckedInt<uint32_t> allocSize =
+        mozilla::CheckedInt<uint32_t>(GlobalSize(aHGBL)) + 3;
     if (!allocSize.isValid()) {
       return NS_ERROR_INVALID_ARG;
     }
@@ -378,6 +592,9 @@ nsresult nsClipboard::GetGlobalData(HGLOBAL aHGBL, void** aData,
 nsresult nsClipboard::GetNativeDataOffClipboard(nsIWidget* aWidget,
                                                 UINT /*aIndex*/, UINT aFormat,
                                                 void** aData, uint32_t* aLen) {
+  MOZ_LOG(gWin32ClipboardLog, LogLevel::Debug,
+          ("%s: overload taking nsIWidget*.", __FUNCTION__));
+
   HGLOBAL hglb;
   nsresult result = NS_ERROR_FAILURE;
 
@@ -390,50 +607,48 @@ nsresult nsClipboard::GetNativeDataOffClipboard(nsIWidget* aWidget,
   return result;
 }
 
-static void DisplayErrCode(HRESULT hres) {
-#if defined(DEBUG_rods) || defined(DEBUG_pinkerton)
-  if (hres == E_INVALIDARG) {
-    MOZ_LOG(gWin32ClipboardLog, LogLevel::Info, ("E_INVALIDARG\n"));
-  } else if (hres == E_UNEXPECTED) {
-    MOZ_LOG(gWin32ClipboardLog, LogLevel::Info, ("E_UNEXPECTED\n"));
-  } else if (hres == E_OUTOFMEMORY) {
-    MOZ_LOG(gWin32ClipboardLog, LogLevel::Info, ("E_OUTOFMEMORY\n"));
-  } else if (hres == DV_E_LINDEX) {
-    MOZ_LOG(gWin32ClipboardLog, LogLevel::Info, ("DV_E_LINDEX\n"));
-  } else if (hres == DV_E_FORMATETC) {
-    MOZ_LOG(gWin32ClipboardLog, LogLevel::Info, ("DV_E_FORMATETC\n"));
-  } else if (hres == DV_E_TYMED) {
-    MOZ_LOG(gWin32ClipboardLog, LogLevel::Info, ("DV_E_TYMED\n"));
-  } else if (hres == DV_E_DVASPECT) {
-    MOZ_LOG(gWin32ClipboardLog, LogLevel::Info, ("DV_E_DVASPECT\n"));
-  } else if (hres == OLE_E_NOTRUNNING) {
-    MOZ_LOG(gWin32ClipboardLog, LogLevel::Info, ("OLE_E_NOTRUNNING\n"));
-  } else if (hres == STG_E_MEDIUMFULL) {
-    MOZ_LOG(gWin32ClipboardLog, LogLevel::Info, ("STG_E_MEDIUMFULL\n"));
-  } else if (hres == DV_E_CLIPFORMAT) {
-    MOZ_LOG(gWin32ClipboardLog, LogLevel::Info, ("DV_E_CLIPFORMAT\n"));
-  } else if (hres == S_OK) {
-    MOZ_LOG(gWin32ClipboardLog, LogLevel::Info, ("S_OK\n"));
-  } else {
-    MOZ_LOG(gWin32ClipboardLog, LogLevel::Info,
-            ("****** DisplayErrCode 0x%X\n", hres));
+// See methods listed at
+// <https://docs.microsoft.com/en-us/windows/win32/api/objidl/nn-objidl-idataobject#methods>.
+static void LogIDataObjectMethodResult(const HRESULT aHres,
+                                       const nsCString& aMethodName) {
+  if (MOZ_LOG_TEST(gWin32ClipboardLog, LogLevel::Debug)) {
+    nsAutoCString hresString;
+    IDataObjectMethodResultToString(aHres, hresString);
+    MOZ_LOG(
+        gWin32ClipboardLog, LogLevel::Debug,
+        ("IDataObject::%s result: %s", aMethodName.get(), hresString.get()));
   }
-#endif
+}
+
+// Other apps can block access to the clipboard. This repeatedly calls
+// `GetData` for a fixed number of times and should be called instead of
+// `GetData`. See
+// <https://docs.microsoft.com/en-us/windows/win32/api/objidl/nf-objidl-idataobject-getdata>.
+// While Microsoft's documentation doesn't include `CLIPBRD_E_CANT_OPEN`
+// explicitly, it allows it implicitly and in local experiments it was indeed
+// returned.
+static HRESULT RepeatedlyTryGetData(IDataObject& aDataObject, LPFORMATETC pFE,
+                                    LPSTGMEDIUM pSTM) {
+  return RepeatedlyTry(
+      [&aDataObject, &pFE, &pSTM]() { return aDataObject.GetData(pFE, pSTM); },
+      std::bind(LogIDataObjectMethodResult, std::placeholders::_1,
+                "GetData"_ns));
 }
 
 //-------------------------------------------------------------------------
-static HRESULT FillSTGMedium(IDataObject* aDataObject, UINT aFormat,
-                             LPFORMATETC pFE, LPSTGMEDIUM pSTM, DWORD aTymed) {
+// static
+HRESULT nsClipboard::FillSTGMedium(IDataObject* aDataObject, UINT aFormat,
+                                   LPFORMATETC pFE, LPSTGMEDIUM pSTM,
+                                   DWORD aTymed) {
   SET_FORMATETC(*pFE, aFormat, 0, DVASPECT_CONTENT, -1, aTymed);
 
   // Starting by querying for the data to see if we can get it as from global
   // memory
   HRESULT hres = S_FALSE;
   hres = aDataObject->QueryGetData(pFE);
-  DisplayErrCode(hres);
+  LogIDataObjectMethodResult(hres, "QueryGetData"_ns);
   if (S_OK == hres) {
-    hres = aDataObject->GetData(pFE, pSTM);
-    DisplayErrCode(hres);
+    hres = RepeatedlyTryGetData(*aDataObject, pFE, pSTM);
   }
   return hres;
 }
@@ -446,6 +661,9 @@ nsresult nsClipboard::GetNativeDataOffClipboard(IDataObject* aDataObject,
                                                 UINT aIndex, UINT aFormat,
                                                 const char* aMIMEImageFormat,
                                                 void** aData, uint32_t* aLen) {
+  MOZ_LOG(gWin32ClipboardLog, LogLevel::Debug,
+          ("%s: overload taking IDataObject*.", __FUNCTION__));
+
   nsresult result = NS_ERROR_FAILURE;
   *aData = nullptr;
   *aLen = 0;
@@ -463,6 +681,19 @@ nsresult nsClipboard::GetNativeDataOffClipboard(IDataObject* aDataObject,
   FORMATETC fe;
   STGMEDIUM stm;
   hres = FillSTGMedium(aDataObject, format, &fe, &stm, TYMED_HGLOBAL);
+
+  // If the format is CF_HDROP and we haven't found any files we can try looking
+  // for virtual files with FILEDESCRIPTOR.
+  if (FAILED(hres) && format == CF_HDROP) {
+    hres = FillSTGMedium(aDataObject,
+                         nsClipboard::GetClipboardFileDescriptorFormatW(), &fe,
+                         &stm, TYMED_HGLOBAL);
+    if (FAILED(hres)) {
+      hres = FillSTGMedium(aDataObject,
+                           nsClipboard::GetClipboardFileDescriptorFormatA(),
+                           &fe, &stm, TYMED_HGLOBAL);
+    }
+  }
 
   // Currently this is only handling TYMED_HGLOBAL data
   // For Text, Dibs, Files, and generic data (like HTML)
@@ -579,8 +810,31 @@ nsresult nsClipboard::GetNativeDataOffClipboard(IDataObject* aDataObject,
 
           default: {
             if (fe.cfFormat == fileDescriptorFlavorA ||
-                fe.cfFormat == fileDescriptorFlavorW ||
-                fe.cfFormat == fileFlavor) {
+                fe.cfFormat == fileDescriptorFlavorW) {
+              nsAutoString tempPath;
+
+              LPFILEGROUPDESCRIPTOR fgdesc =
+                  static_cast<LPFILEGROUPDESCRIPTOR>(GlobalLock(stm.hGlobal));
+              if (fgdesc) {
+                result = GetTempFilePath(
+                    nsDependentString((fgdesc->fgd)[aIndex].cFileName),
+                    tempPath);
+                GlobalUnlock(stm.hGlobal);
+              }
+              if (NS_FAILED(result)) {
+                break;
+              }
+              result = SaveStorageOrStream(aDataObject, aIndex, tempPath);
+              if (NS_FAILED(result)) {
+                break;
+              }
+              wchar_t* buffer = reinterpret_cast<wchar_t*>(
+                  moz_xmalloc((tempPath.Length() + 1) * sizeof(wchar_t)));
+              wcscpy(buffer, tempPath.get());
+              *aData = buffer;
+              *aLen = tempPath.Length() * sizeof(wchar_t);
+              result = NS_OK;
+            } else if (fe.cfFormat == fileFlavor) {
               NS_WARNING(
                   "Mozilla doesn't yet understand how to read this type of "
                   "file flavor");
@@ -650,6 +904,8 @@ nsresult nsClipboard::GetNativeDataOffClipboard(IDataObject* aDataObject,
 nsresult nsClipboard::GetDataFromDataObject(IDataObject* aDataObject,
                                             UINT anIndex, nsIWidget* aWindow,
                                             nsITransferable* aTransferable) {
+  MOZ_LOG(gWin32ClipboardLog, LogLevel::Debug, ("%s", __FUNCTION__));
+
   // make sure we have a good transferable
   if (!aTransferable) {
     return NS_ERROR_INVALID_ARG;
@@ -693,7 +949,7 @@ nsresult nsClipboard::GetDataFromDataObject(IDataObject* aDataObject,
     // when directly asking for the flavor. Let's try digging around in other
     // flavors to help satisfy our craving for data.
     if (!dataFound) {
-      if (flavorStr.EqualsLiteral(kUnicodeMime)) {
+      if (flavorStr.EqualsLiteral(kTextMime)) {
         dataFound =
             FindUnicodeFromPlainText(aDataObject, anIndex, &data, &dataLen);
       } else if (flavorStr.EqualsLiteral(kURLMime)) {
@@ -759,14 +1015,15 @@ nsresult nsClipboard::GetDataFromDataObject(IDataObject* aDataObject,
       } else {
         // Treat custom types as a string of bytes.
         if (!flavorStr.EqualsLiteral(kCustomTypesMime)) {
+          bool isRTF = flavorStr.EqualsLiteral(kRTFMime);
           // we probably have some form of text. The DOM only wants LF, so
           // convert from Win32 line endings to DOM line endings.
           int32_t signedLen = static_cast<int32_t>(dataLen);
-          nsLinebreakHelpers::ConvertPlatformToDOMLinebreaks(flavorStr, &data,
+          nsLinebreakHelpers::ConvertPlatformToDOMLinebreaks(isRTF, &data,
                                                              &signedLen);
           dataLen = signedLen;
 
-          if (flavorStr.EqualsLiteral(kRTFMime)) {
+          if (isRTF) {
             // RTF on Windows is known to sometimes deliver an extra null byte.
             if (dataLen > 0 && static_cast<char*>(data)[dataLen - 1] == '\0') {
               dataLen--;
@@ -854,18 +1111,21 @@ bool nsClipboard ::FindPlatformHTML(IDataObject* inDataObject, UINT inIndex,
 //
 // FindUnicodeFromPlainText
 //
-// we are looking for text/unicode and we failed to find it on the clipboard
-// first, try again with text/plain. If that is present, convert it to unicode.
+// Looks for CF_TEXT on the clipboard and converts it into an UTF-16 string
+// if present. Returns this string in outData, and its length in outDataLen.
+// XXXndeakin Windows converts between CF_UNICODE and CF_TEXT automatically
+// so it doesn't seem like this is actually needed.
 //
 bool nsClipboard ::FindUnicodeFromPlainText(IDataObject* inDataObject,
                                             UINT inIndex, void** outData,
                                             uint32_t* outDataLen) {
-  // we are looking for text/unicode and we failed to find it on the clipboard
-  // first, try again with text/plain. If that is present, convert it to
+  MOZ_LOG(gWin32ClipboardLog, LogLevel::Debug, ("%s", __FUNCTION__));
+
+  // We are looking for text/plain and we failed to find it on the clipboard
+  // first, so try again with CF_TEXT. If that is present, convert it to
   // unicode.
-  nsresult rv =
-      GetNativeDataOffClipboard(inDataObject, inIndex, GetFormat(kTextMime),
-                                nullptr, outData, outDataLen);
+  nsresult rv = GetNativeDataOffClipboard(inDataObject, inIndex, CF_TEXT,
+                                          nullptr, outData, outDataLen);
   if (NS_FAILED(rv) || !*outData) {
     return false;
   }
@@ -897,6 +1157,8 @@ bool nsClipboard ::FindUnicodeFromPlainText(IDataObject* inDataObject,
 //
 bool nsClipboard ::FindURLFromLocalFile(IDataObject* inDataObject, UINT inIndex,
                                         void** outData, uint32_t* outDataLen) {
+  MOZ_LOG(gWin32ClipboardLog, LogLevel::Debug, ("%s", __FUNCTION__));
+
   bool dataFound = false;
 
   nsresult loadResult =
@@ -961,6 +1223,8 @@ bool nsClipboard ::FindURLFromLocalFile(IDataObject* inDataObject, UINT inIndex,
 //
 bool nsClipboard ::FindURLFromNativeURL(IDataObject* inDataObject, UINT inIndex,
                                         void** outData, uint32_t* outDataLen) {
+  MOZ_LOG(gWin32ClipboardLog, LogLevel::Debug, ("%s", __FUNCTION__));
+
   bool dataFound = false;
 
   void* tempOutData = nullptr;
@@ -1014,6 +1278,13 @@ bool nsClipboard ::FindURLFromNativeURL(IDataObject* inDataObject, UINT inIndex,
   return dataFound;
 }  // FindURLFromNativeURL
 
+// Other apps can block access to the clipboard. This repeatedly
+// calls `::OleGetClipboard` for a fixed number of times and should be called
+// instead of `::OleGetClipboard`.
+static HRESULT RepeatedlyTryOleGetClipboard(IDataObject** aDataObj) {
+  return RepeatedlyTry(::OleGetClipboard, LogOleGetClipboardResult, aDataObj);
+}
+
 //
 // ResolveShortcut
 //
@@ -1047,6 +1318,9 @@ bool nsClipboard ::IsInternetShortcut(const nsAString& inFileName) {
 NS_IMETHODIMP
 nsClipboard::GetNativeClipboardData(nsITransferable* aTransferable,
                                     int32_t aWhichClipboard) {
+  MOZ_LOG(gWin32ClipboardLog, LogLevel::Debug,
+          ("%s aWhichClipboard=%i", __FUNCTION__, aWhichClipboard));
+
   // make sure we have a good transferable
   if (!aTransferable || aWhichClipboard != kGlobalClipboard) {
     return NS_ERROR_FAILURE;
@@ -1056,8 +1330,10 @@ nsClipboard::GetNativeClipboardData(nsITransferable* aTransferable,
 
   // This makes sure we can use the OLE functionality for the clipboard
   IDataObject* dataObj;
-  if (S_OK == ::OleGetClipboard(&dataObj)) {
+  if (S_OK == RepeatedlyTryOleGetClipboard(&dataObj)) {
     // Use OLE IDataObject for clipboard operations
+    MOZ_LOG(gWin32ClipboardLog, LogLevel::Verbose,
+            ("%s: use OLE IDataObject.", __FUNCTION__));
     res = GetDataFromDataObject(dataObj, 0, nullptr, aTransferable);
     dataObj->Release();
   } else {
@@ -1075,7 +1351,7 @@ nsClipboard::EmptyClipboard(int32_t aWhichClipboard) {
   // has the clipboard open.  So to avoid this race condition for OpenClipboard
   // we do not empty the clipboard when we're setting it.
   if (aWhichClipboard == kGlobalClipboard && !mEmptyingForSetData) {
-    OleSetClipboard(nullptr);
+    RepeatedlyTryOleSetClipboard(nullptr);
   }
   return nsBaseClipboard::EmptyClipboard(aWhichClipboard);
 }
@@ -1090,32 +1366,106 @@ NS_IMETHODIMP nsClipboard::HasDataMatchingFlavors(
   }
 
   for (auto& flavor : aFlavorList) {
-#ifdef DEBUG
-    if (flavor.EqualsLiteral(kTextMime)) {
-      NS_WARNING(
-          "DO NOT USE THE text/plain DATA FLAVOR ANY MORE. USE text/unicode "
-          "INSTEAD");
-    }
-#endif
-
     UINT format = GetFormat(flavor.get());
     if (IsClipboardFormatAvailable(format)) {
       *_retval = true;
       break;
-    } else {
-      // We haven't found the exact flavor the client asked for, but maybe we
-      // can still find it from something else that's on the clipboard...
-      if (flavor.EqualsLiteral(kUnicodeMime)) {
-        // client asked for unicode and it wasn't present, check if we have
-        // CF_TEXT. We'll handle the actual data substitution in the data
-        // object.
-        if (IsClipboardFormatAvailable(GetFormat(kTextMime))) {
-          *_retval = true;
-          break;
-        }
-      }
     }
   }
 
+  return NS_OK;
+}
+
+//-------------------------------------------------------------------------
+nsresult nsClipboard::GetTempFilePath(const nsAString& aFileName,
+                                      nsAString& aFilePath) {
+  nsresult result = NS_OK;
+
+  nsCOMPtr<nsIFile> tmpFile;
+  result =
+      GetSpecialSystemDirectory(OS_TemporaryDirectory, getter_AddRefs(tmpFile));
+  NS_ENSURE_SUCCESS(result, result);
+
+  result = tmpFile->Append(aFileName);
+  NS_ENSURE_SUCCESS(result, result);
+
+  result = tmpFile->CreateUnique(nsIFile::NORMAL_FILE_TYPE, 0660);
+  NS_ENSURE_SUCCESS(result, result);
+  result = tmpFile->GetPath(aFilePath);
+
+  return result;
+}
+
+//-------------------------------------------------------------------------
+nsresult nsClipboard::SaveStorageOrStream(IDataObject* aDataObject, UINT aIndex,
+                                          const nsAString& aFileName) {
+  NS_ENSURE_ARG_POINTER(aDataObject);
+
+  FORMATETC fe = {0};
+  SET_FORMATETC(fe, RegisterClipboardFormat(CFSTR_FILECONTENTS), 0,
+                DVASPECT_CONTENT, aIndex, TYMED_ISTORAGE | TYMED_ISTREAM);
+
+  STGMEDIUM stm = {0};
+  HRESULT hres = aDataObject->GetData(&fe, &stm);
+  if (FAILED(hres)) {
+    return NS_ERROR_FAILURE;
+  }
+
+  auto releaseMediumGuard =
+      mozilla::MakeScopeExit([&] { ReleaseStgMedium(&stm); });
+
+  // We do this check because, even though we *asked* for IStorage or IStream,
+  // it seems that IDataObject providers can just hand us back whatever they
+  // feel like. See Bug 1824644 for a fun example of that!
+  if (stm.tymed != TYMED_ISTORAGE && stm.tymed != TYMED_ISTREAM) {
+    return NS_ERROR_FAILURE;
+  }
+
+  if (stm.tymed == TYMED_ISTORAGE) {
+    RefPtr<IStorage> file;
+    hres = StgCreateStorageEx(
+        aFileName.Data(), STGM_CREATE | STGM_READWRITE | STGM_SHARE_EXCLUSIVE,
+        STGFMT_STORAGE, 0, NULL, NULL, IID_IStorage, getter_AddRefs(file));
+    if (FAILED(hres)) {
+      return NS_ERROR_FAILURE;
+    }
+
+    hres = stm.pstg->CopyTo(0, NULL, NULL, file);
+    if (FAILED(hres)) {
+      return NS_ERROR_FAILURE;
+    }
+
+    file->Commit(STGC_DEFAULT);
+
+    return NS_OK;
+  }
+
+  MOZ_ASSERT(stm.tymed == TYMED_ISTREAM);
+
+  HANDLE handle = CreateFile(aFileName.Data(), GENERIC_WRITE, FILE_SHARE_READ,
+                             NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+  if (handle == INVALID_HANDLE_VALUE) {
+    return NS_ERROR_FAILURE;
+  }
+
+  auto fileCloseGuard = mozilla::MakeScopeExit([&] { CloseHandle(handle); });
+
+  const ULONG bufferSize = 4096;
+  char buffer[bufferSize] = {0};
+  ULONG bytesRead = 0;
+  DWORD bytesWritten = 0;
+  while (true) {
+    HRESULT result = stm.pstm->Read(buffer, bufferSize, &bytesRead);
+    if (FAILED(result)) {
+      return NS_ERROR_FAILURE;
+    }
+    if (bytesRead == 0) {
+      break;
+    }
+    if (!WriteFile(handle, buffer, static_cast<DWORD>(bytesRead), &bytesWritten,
+                   NULL)) {
+      return NS_ERROR_FAILURE;
+    }
+  }
   return NS_OK;
 }

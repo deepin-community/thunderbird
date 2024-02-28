@@ -2,7 +2,7 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-/* globals calendarNavigationBar, MozElements, MozXULElement, timeIndicator */
+/* globals calendarNavigationBar, MozElements, MozXULElement */
 
 /* import-globals-from calendar-ui-utils.js */
 
@@ -15,13 +15,13 @@
   /**
    * Implements the Drag and Drop class for the Month Day Box view.
    *
-   * @extends {MozElements.CalendarDnDContainer}
+   * @augments {MozElements.CalendarDnDContainer}
    */
   class CalendarMonthDayBox extends MozElements.CalendarDnDContainer {
     static get inheritedAttributes() {
       return {
         ".calendar-month-week-label": "relation,selected",
-        ".calendar-month-day-label": "relation,selected,value",
+        ".calendar-month-day-label": "relation,selected,text=value",
       };
     }
 
@@ -46,24 +46,17 @@
 
       this.setAttribute("orient", "vertical");
 
-      let monthDayLabels = document.createXULElement("hbox");
+      let monthDayLabels = document.createElement("h2");
       monthDayLabels.classList.add("calendar-month-day-box-dates");
 
-      let weekLabel = document.createXULElement("label");
+      let weekLabel = document.createElement("span");
       weekLabel.setAttribute("data-label", "week");
-      weekLabel.setAttribute("flex", "1");
-      weekLabel.setAttribute("crop", "end");
       weekLabel.setAttribute("hidden", "true");
       weekLabel.style.pointerEvents = "none";
-      weekLabel.classList.add(
-        "calendar-month-day-box-week-label",
-        "calendar-month-day-box-date-label",
-        "calendar-month-week-label"
-      );
+      weekLabel.classList.add("calendar-month-day-box-week-label", "calendar-month-week-label");
 
-      let dayLabel = document.createXULElement("label");
+      let dayLabel = document.createElement("span");
       dayLabel.setAttribute("data-label", "day");
-      dayLabel.setAttribute("flex", "1");
       dayLabel.style.pointerEvents = "none";
       dayLabel.classList.add("calendar-month-day-box-date-label", "calendar-month-day-label");
 
@@ -126,12 +119,16 @@
       }
     }
 
-    setDate(aDate) {
+    clear() {
       // Remove all the old events.
       this.mItemHash = {};
       while (this.dayList.lastChild) {
         this.dayList.lastChild.remove();
       }
+    }
+
+    setDate(aDate) {
+      this.clear();
 
       if (this.mDate && aDate && this.mDate.compare(aDate) == 0) {
         return;
@@ -150,15 +147,14 @@
       }
 
       // Set up DOM attributes for custom CSS coloring.
-      let weekTitle = cal.getWeekInfoService().getWeekTitle(aDate);
+      let weekTitle = cal.weekInfoService.getWeekTitle(aDate);
       this.setAttribute("year", aDate.year);
       this.setAttribute("month", aDate.month + 1);
       this.setAttribute("week", weekTitle);
       this.setAttribute("day", aDate.day);
 
       if (this.mShowMonthLabel) {
-        let monthName = cal.l10n.getDateFmtString(`month.${aDate.month + 1}.Mmm`);
-        this.setAttribute("value", aDate.day + " " + monthName);
+        this.setAttribute("value", cal.dtz.formatter.formatDateWithoutYear(this.mDate));
       } else {
         this.setAttribute("value", aDate.day);
       }
@@ -294,7 +290,7 @@
    * Multiweek and Month views of the calendar. It displays the event name,
    * alarm icon and the category type color.
    *
-   * @extends {MozElements.MozCalendarEditableItem}
+   * @augments {MozElements.MozCalendarEditableItem}
    */
   class MozCalendarMonthDayBoxItem extends MozElements.MozCalendarEditableItem {
     static get inheritedAttributes() {
@@ -318,15 +314,17 @@
                       placeholder='${cal.l10n.getCalString("newEvent")}' />
           <html:div class="alarm-icons-box"></html:div>
           <html:img class="item-classification-icon" />
+          <html:img class="item-recurrence-icon" />
           <html:div class="calendar-category-box"></html:div>
         `)
       );
+      this.timeLabel = this.querySelector(".item-time-label");
 
       this.classList.add("calendar-color-box", "calendar-item-flex");
 
-      // We have two event listeners for dragstart. This event listener is for the bubbling phase
+      // We have two event listeners for dragstart. This event listener is for the capturing phase
       // where we are setting up the document.monthDragEvent which will be used in the event listener
-      // in the capturing phase which is set up in the calendar-editable-item.
+      // in the bubbling phase which is set up in the calendar-editable-item.
       this.addEventListener(
         "dragstart",
         event => {
@@ -344,60 +342,83 @@
     set occurrence(val) {
       cal.ASSERT(!this.mOccurrence, "Code changes needed to set the occurrence twice", true);
       this.mOccurrence = val;
-      let labelTime;
+      let displayTime;
       if (val.isEvent()) {
         let type;
         if (!val.startDate.isDate) {
-          let timezone = this.calendarView ? this.calendarView.mTimezone : cal.dtz.defaultTimezone;
-          let parentDate = this.parentBox.date;
-          let parentTime = cal.createDateTime();
-          parentTime.resetTo(parentDate.year, parentDate.month, parentDate.day, 0, 0, 0, timezone);
-          let startTime = val.startDate.getInTimezone(timezone);
-          let endTime = val.endDate.getInTimezone(timezone);
-          let nextDay = parentTime.clone();
-          nextDay.day++;
-          let comp = endTime.compare(nextDay);
-          if (startTime.compare(parentTime) == -1) {
-            if (comp == 1) {
-              type = "continue";
-            } else if (comp == 0) {
-              type = "start";
-            } else {
-              type = "end";
-              labelTime = endTime;
+          let formatter = cal.dtz.formatter;
+          let parentTime = this.parentBox.date.clone();
+          // Convert to the date-time for the start of the day.
+          parentTime.isDate = false;
+          // NOTE: Since this event was placed in this box, then we should be
+          // able to assume that the event starts before or on the same day, and
+          // it ends after or on the same day.
+          let startCompare = val.startDate.compare(parentTime);
+          // Go to the end of the day (midnight).
+          parentTime.day++;
+          let endCompare = val.endDate.compare(parentTime);
+          if (startCompare == -1) {
+            // Starts before this day.
+            switch (endCompare) {
+              case 1: // Ends on a later day.
+                type = "continue";
+                // We have no time to show in this case.
+                break;
+              case 0: // Ends at midnight.
+              case -1: // Ends on this day.
+                type = "end";
+                displayTime = formatter.formatTime(
+                  val.endDate.getInTimezone(this.parentBox.date.timezone),
+                  // We prefer to show midnight as 24:00 if possible to indicate
+                  // that the event ends at the end of this day, rather than the
+                  // start of the next day.
+                  true
+                );
+                break;
             }
-          } else if (comp == 1) {
-            type = "start";
-            labelTime = startTime;
           } else {
-            labelTime = startTime;
+            // Starts on this day.
+            if (endCompare == 1) {
+              // Ends on a later day.
+              type = "start";
+            }
+            // Use the same format as ending on the day.
+            displayTime = formatter.formatTime(
+              val.startDate.getInTimezone(this.parentBox.date.timezone)
+            );
           }
         }
         let icon = this.querySelector(".item-type-icon");
-        if (type) {
-          // NOTE: "type" attribute only seems to be used in the mochitest
-          // browser_eventDisplay.js.
-          icon.setAttribute("type", type);
-          icon.setAttribute("src", `chrome://calendar/skin/shared/event-${type}.svg`);
-          icon.setAttribute("rotated-to-read-direction", true);
-          // Sets alt.
-          document.l10n.setAttributes(icon, `calendar-editable-item-multiday-event-icon-${type}`);
-        } else {
-          icon.removeAttribute("type");
-          icon.removeAttribute("src");
-          icon.removeAttribute("rotated-to-read-direction");
-          icon.removeAttribute("data-l10n-id");
-          icon.setAttribute("alt", "");
+        icon.classList.toggle("rotated-to-read-direction", !!type);
+        switch (type) {
+          case "start":
+            icon.setAttribute("src", "chrome://calendar/skin/shared/event-start.svg");
+            document.l10n.setAttributes(icon, "calendar-editable-item-multiday-event-icon-start");
+            break;
+          case "continue":
+            icon.setAttribute("src", "chrome://calendar/skin/shared/event-continue.svg");
+            document.l10n.setAttributes(
+              icon,
+              "calendar-editable-item-multiday-event-icon-continue"
+            );
+            break;
+          case "end":
+            icon.setAttribute("src", "chrome://calendar/skin/shared/event-end.svg");
+            document.l10n.setAttributes(icon, "calendar-editable-item-multiday-event-icon-end");
+            break;
+          default:
+            icon.removeAttribute("src");
+            icon.removeAttribute("data-l10n-id");
+            icon.setAttribute("alt", "");
         }
       }
-      let timeLabel = this.querySelector(".item-time-label");
-      if (labelTime === undefined) {
-        timeLabel.textContent = "";
-        timeLabel.hidden = true;
+
+      if (displayTime) {
+        this.timeLabel.textContent = displayTime;
+        this.timeLabel.hidden = false;
       } else {
-        let formatter = cal.dtz.formatter;
-        timeLabel.textContent = formatter.formatTime(labelTime);
-        timeLabel.hidden = false;
+        this.timeLabel.textContent = "";
+        this.timeLabel.hidden = true;
       }
 
       this.setEditableLabel();
@@ -415,16 +436,15 @@
    * Abstract base class that is used for the month and multiweek calendar view custom elements.
    *
    * @implements {calICalendarView}
-   * @extends {MozElements.CalendarBaseView}
+   * @augments {MozElements.CalendarBaseView}
    * @abstract
    */
   class CalendarMonthBaseView extends MozElements.CalendarBaseView {
-    connectedCallback() {
-      if (this.delayConnectedCallback() || this.hasConnected) {
+    ensureInitialized() {
+      if (this.isInitialized) {
         return;
       }
-      // this.hasConnected is set to true in super.connectedCallback.
-      super.connectedCallback();
+      super.ensureInitialized();
 
       this.appendChild(
         MozXULElement.parseXULToFragment(`
@@ -472,7 +492,6 @@
       this.mShowFullMonth = true;
       this.mShowWeekNumber = true;
 
-      this.mShowDaysOutsideMonth = true;
       this.mClickedTime = null;
 
       let dayHeaderRow = this.querySelector("thead > tr");
@@ -527,14 +546,6 @@
       return false;
     }
 
-    get startDate() {
-      return this.mStartDate;
-    }
-
-    get endDate() {
-      return this.mEndDate;
-    }
-
     set selectedDay(day) {
       if (this.mSelectedDayBox) {
         this.mSelectedDayBox.selected = false;
@@ -586,18 +597,6 @@
       return 0;
     }
 
-    // Whether to show days outside of the current month.
-    set showDaysOutsideMonth(showDays) {
-      if (this.mShowDaysOutsideMonth != showDays) {
-        this.mShowDaysOutsideMonth = showDays;
-        this.refresh();
-      }
-    }
-
-    get showDaysOutsideMonth() {
-      return this.mShowDaysOutsideMonth;
-    }
-
     // calICalendarView Methods
 
     setSelectedItems(items, suppressEvent) {
@@ -633,8 +632,7 @@
         this.setDateRange(date.startOfMonth, date.endOfMonth);
         this.selectedDay = date;
       } else {
-        // Refresh the selected day if it doesn't appear in the view.
-        this.refresh();
+        this.setDateRange(this.rangeStartDate, this.rangeEndDate);
       }
     }
 
@@ -642,11 +640,9 @@
       this.rangeStartDate = startDate;
       this.rangeEndDate = endDate;
 
-      const viewStart = cal
-        .getWeekInfoService()
-        .getStartOfWeek(startDate.getInTimezone(this.mTimezone));
+      const viewStart = cal.weekInfoService.getStartOfWeek(startDate.getInTimezone(this.mTimezone));
 
-      const viewEnd = cal.getWeekInfoService().getEndOfWeek(endDate.getInTimezone(this.mTimezone));
+      const viewEnd = cal.weekInfoService.getEndOfWeek(endDate.getInTimezone(this.mTimezone));
 
       viewStart.isDate = true;
       viewStart.makeImmutable();
@@ -655,6 +651,12 @@
 
       this.mStartDate = viewStart;
       this.mEndDate = viewEnd;
+
+      // The start and end dates to query calendars with (in CalendarFilteredViewMixin).
+      this.startDate = viewStart;
+      let viewEndPlusOne = viewEnd.clone();
+      viewEndPlusOne.day++;
+      this.endDate = viewEndPlusOne;
 
       // Check values of tasksInView, workdaysOnly, showCompleted.
       // See setDateRange comment in calendar-multiday-base-view.js.
@@ -683,7 +685,7 @@
         this.mViewStart.compare(viewStart) != 0 ||
         this.mToggleStatus != toggleStatus
       ) {
-        this.refresh();
+        this.relayout();
       }
     }
 
@@ -708,8 +710,8 @@
     /**
      * Set an attribute on the view element, and do re-layout if needed.
      *
-     * @param {string} attr     The attribute to set.
-     * @param {string} value    The value to set.
+     * @param {string} attr - The attribute to set.
+     * @param {string} value - The value to set.
      */
     setAttribute(attr, value) {
       const needsRelayout = attr == "context" || attr == "item-context";
@@ -726,9 +728,9 @@
     /**
      * Handle preference changes. Typically called by a preference observer.
      *
-     * @param {Object} subject       The subject, a prefs object.
-     * @param {string} topic         The notification topic.
-     * @param {string} preference    The preference to handle.
+     * @param {object} subject - The subject, a prefs object.
+     * @param {string} topic - The notification topic.
+     * @param {string} preference - The preference to handle.
      */
     handlePreference(subject, topic, preference) {
       subject.QueryInterface(Ci.nsIPrefBranch);
@@ -764,9 +766,36 @@
     }
 
     /**
+     * Guarantee that the labels are clipped when an overflow occurs, to
+     * prevent horizontal scrollbars from appearing briefly.
+     */
+    adjustWeekdayLength() {
+      let dayLabels = this.querySelectorAll("calendar-day-label");
+      if (!this.longWeekdayTotalPixels) {
+        let maxDayWidth = 0;
+
+        for (const label of dayLabels) {
+          label.shortWeekNames = false;
+          maxDayWidth = Math.max(maxDayWidth, label.getLongWeekdayPixels());
+        }
+        if (maxDayWidth > 0) {
+          // FIXME: Where does the + 10 come from?
+          this.longWeekdayTotalPixels = maxDayWidth * dayLabels.length + 10;
+        } else {
+          this.longWeekdayTotalPixels = 0;
+        }
+      }
+      let useShortNames = this.longWeekdayTotalPixels > 0.95 * this.clientWidth;
+
+      for (let label of dayLabels) {
+        label.shortWeekNames = useShortNames;
+      }
+    }
+
+    /**
      * Handle resizing by adjusting the view to the new size.
      *
-     * @param {Element} viewElement    A calendar view element (calICalendarView).
+     * @param {Element} viewElement - A calendar view element (calICalendarView).
      */
     onResize() {
       let { width, height } = this.getBoundingClientRect();
@@ -778,8 +807,6 @@
       this.mHeight = height;
 
       this.adjustWeekdayLength();
-      // Delete the timer for the time indicator in day/week view.
-      timeIndicator.cancel();
     }
 
     /**
@@ -811,7 +838,6 @@
       }
 
       const dateBoxes = [];
-      const today = this.today();
 
       // This gets set to true, telling us to collapse the rest of the rows.
       let finished = false;
@@ -873,20 +899,6 @@
             boxClass = "calendar-month-day-box-day-off " + boxClass;
           }
 
-          // Set up date relations.
-          switch (date.compare(today)) {
-            case -1:
-              daybox.setAttribute("relation", "past");
-              break;
-            case 0:
-              daybox.setAttribute("relation", "today");
-              this.dayHeaders[j].setAttribute("relation", "today");
-              break;
-            case 1:
-              daybox.setAttribute("relation", "future");
-              break;
-          }
-
           // Set up label with the week number in the first day of the row.
           if (this.mShowWeekNumber) {
             const weekLabel = daybox.querySelector("[data-label='week']");
@@ -899,9 +911,9 @@
             // Build and set the label.
             if (j == weekLabelColumnPos) {
               weekLabel.removeAttribute("hidden");
-              const weekNumber = cal.getWeekInfoService().getWeekTitle(date);
+              const weekNumber = cal.weekInfoService.getWeekTitle(date);
               const weekString = cal.l10n.getCalString("multiweekViewWeek", [weekNumber]);
-              weekLabel.value = weekString;
+              weekLabel.textContent = weekString;
             } else {
               weekLabel.hidden = true;
             }
@@ -931,6 +943,7 @@
 
       // Store these, so that we can access them later.
       this.mDateBoxes = dateBoxes;
+      this.setDateBoxRelations();
       this.hideDaysOff();
 
       this.adjustWeekdayLength();
@@ -955,6 +968,37 @@
       }
 
       this.mToggleStatus = toggleStatus;
+      this.refreshItems(true);
+    }
+
+    /**
+     * Marks the box for today and the header for the current day of the week.
+     */
+    setDateBoxRelations() {
+      const today = this.today();
+
+      for (let header of this.dayHeaders) {
+        if (header.weekDay == today.weekday) {
+          header.setAttribute("relation", "today");
+        } else {
+          header.removeAttribute("relation");
+        }
+      }
+
+      for (let daybox of this.mDateBoxes) {
+        // Set up date relations.
+        switch (daybox.mDate.compare(today)) {
+          case -1:
+            daybox.setAttribute("relation", "past");
+            break;
+          case 0:
+            daybox.setAttribute("relation", "today");
+            break;
+          case 1:
+            daybox.setAttribute("relation", "future");
+            break;
+        }
+      }
     }
 
     /**
@@ -993,8 +1037,8 @@
     /**
      * Return the day box element for a given date.
      *
-     * @param {calIDateTime} date    A date.
-     * @return {?Element}            A `calendar-month-day-box` element.
+     * @param {calIDateTime} date - A date.
+     * @returns {?Element} A `calendar-month-day-box` element.
      */
     findDayBoxForDate(date) {
       if (!this.mDateBoxes) {
@@ -1011,8 +1055,8 @@
     /**
      * Return the day box elements for a given calendar item.
      *
-     * @param {calIItemBase} item    A calendar item.
-     * @return {Element[]}           An array of `calendar-month-day-box` elements.
+     * @param {calIItemBase} item - A calendar item.
+     * @returns {Element[]} An array of `calendar-month-day-box` elements.
      */
     findDayBoxesForItem(item) {
       let targetDate = null;
@@ -1083,7 +1127,7 @@
     /**
      * Display a calendar item.
      *
-     * @param {calIItemBase} item    A calendar item.
+     * @param {calIItemBase} item - A calendar item.
      */
     doAddItem(item) {
       this.findDayBoxesForItem(item).forEach(box => box.addItem(item));
@@ -1092,7 +1136,7 @@
     /**
      * Remove a calendar item so it is no longer displayed.
      *
-     * @param {calIItemBase} item    A calendar item.
+     * @param {calIItemBase} item - A calendar item.
      */
     doRemoveItem(item) {
       const boxes = this.findDayBoxesForItem(item);
@@ -1114,12 +1158,23 @@
       }
     }
 
+    // CalendarFilteredViewMixin implementation.
+
+    /**
+     * Removes all items so they are no longer displayed.
+     */
+    clearItems() {
+      for (let dayBox of this.querySelectorAll("calendar-month-day-box")) {
+        dayBox.clear();
+      }
+    }
+
     /**
      * Remove all items for a given calendar so they are no longer displayed.
      *
-     * @param {calICalendar} calendar    A calendar object.
+     * @param {string} calendarId - The ID of the calendar to remove items from.
      */
-    removeItemsFromCalendar(calendar) {
+    removeItemsFromCalendar(calendarId) {
       if (!this.mDateBoxes) {
         return;
       }
@@ -1128,21 +1183,23 @@
           const node = box.mItemHash[id];
           const item = node.item;
 
-          if (item.calendar.id == calendar.id) {
+          if (item.calendar.id == calendarId) {
             box.removeItem(item);
           }
         }
       }
     }
 
+    // End of CalendarFilteredViewMixin implementation.
+
     /**
      * Make a calendar item flash.  Used when an alarm goes off to make the related item flash.
      *
-     * @param {Object} item    The calendar item to flash.
-     * @param {boolean} stop        Whether to stop flashing that's already started.
+     * @param {object} item - The calendar item to flash.
+     * @param {boolean} stop - Whether to stop flashing that's already started.
      */
     flashAlarm(item, stop) {
-      if (!this.initialized) {
+      if (!this.mStartDate || !this.mEndDate) {
         return;
       }
 

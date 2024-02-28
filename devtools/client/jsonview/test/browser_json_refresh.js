@@ -5,7 +5,7 @@
 
 const TEST_JSON_FILE = "simple_json.json";
 
-add_task(async function() {
+add_task(async function () {
   info("Test JSON refresh started");
 
   // generate file:// URI for JSON file and load in new tab
@@ -20,7 +20,7 @@ add_task(async function() {
     tab.linkedBrowser,
     [{ TEST_JSON_FILE }],
     // eslint-disable-next-line no-shadow
-    async function({ TEST_JSON_FILE }) {
+    async function ({ TEST_JSON_FILE }) {
       const channel = content.docShell.currentDocumentChannel;
       const channelURI = channel.URI.spec;
       ok(
@@ -54,16 +54,14 @@ add_task(async function() {
   );
 
   // reload the tab
-  const loaded = BrowserTestUtils.browserLoaded(tab.linkedBrowser);
-  tab.linkedBrowser.reload();
-  await loaded;
+  await reloadBrowser();
 
   // check principals in loadInfo are still correct
   await SpecialPowers.spawn(
     tab.linkedBrowser,
     [{ TEST_JSON_FILE }],
     // eslint-disable-next-line no-shadow
-    async function({ TEST_JSON_FILE }) {
+    async function ({ TEST_JSON_FILE }) {
       // eslint-disable-line
       const channel = content.docShell.currentDocumentChannel;
       const channelURI = channel.URI.spec;

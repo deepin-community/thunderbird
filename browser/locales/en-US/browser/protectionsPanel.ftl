@@ -62,9 +62,8 @@ protections-panel-not-found-label = None Detected
 
 ##
 
-protections-panel-settings-label = Protection Settings
-# This should match the "appmenuitem-protection-dashboard-title" string in browser/appmenu.ftl.
-protections-panel-protectionsdashboard-label = Protections Dashboard
+protections-panel-settings-label = Protection settings
+protections-panel-protectionsdashboard-label = Protections dashboard
 
 ## In the Site Not Working? view, we suggest turning off protections if
 ## the user is experiencing issues with any of a variety of functionality.
@@ -78,6 +77,7 @@ protections-panel-site-not-working-view-issue-list-forms = Forms
 protections-panel-site-not-working-view-issue-list-payments = Payments
 protections-panel-site-not-working-view-issue-list-comments = Comments
 protections-panel-site-not-working-view-issue-list-videos = Videos
+protections-panel-site-not-working-view-issue-list-fonts = Fonts
 
 protections-panel-site-not-working-view-send-report = Send a report
 
@@ -95,7 +95,7 @@ protections-panel-shim-allowed-indicator =
   .tooltiptext = Tracker partially unblocked
 
 protections-panel-content-blocking-manage-settings =
-  .label = Manage Protection Settings
+  .label = Manage protection settings
   .accesskey = M
 
 protections-panel-content-blocking-breakage-report-view =
@@ -111,3 +111,22 @@ protections-panel-content-blocking-breakage-report-view-cancel =
   .label = Cancel
 protections-panel-content-blocking-breakage-report-view-send-report =
   .label = Send Report
+
+# Cookie Banner Handling
+
+protections-panel-cookie-banner-handling-header = Cookie Banner Reduction
+protections-panel-cookie-banner-handling-enabled = On for this site
+protections-panel-cookie-banner-handling-disabled = Off for this site
+protections-panel-cookie-banner-handling-undetected = Site currently not supported
+
+protections-panel-cookie-banner-view-title =
+  .title = Cookie Banner Reduction
+# Variables
+#  $host (String): the hostname of the site that is being displayed.
+protections-panel-cookie-banner-view-turn-off-for-site = Turn off Cookie Banner Reduction for { $host }?
+protections-panel-cookie-banner-view-turn-on-for-site = Turn on Cookie Banner Reduction for this site?
+protections-panel-cookie-banner-view-cookie-clear-warning = { -brand-short-name } will clear this site’s cookies and refresh the page. Clearing all cookies may sign you out or empty shopping carts.
+protections-panel-cookie-banner-view-turn-on-description = { -brand-short-name } tries to automatically reject all cookie requests on supported sites.
+protections-panel-cookie-banner-view-cancel = Cancel
+protections-panel-cookie-banner-view-turn-off = Turn Off
+protections-panel-cookie-banner-view-turn-on = Turn On

@@ -124,8 +124,7 @@ nsresult nsMsgThreadedDBView::InitThreadedView(int32_t& count) {
     if (unreadOnly) {
       rv = threadHdr->GetFirstUnreadChild(getter_AddRefs(msgHdr));
     } else {
-      int32_t unusedRootIndex;
-      rv = threadHdr->GetRootHdr(&unusedRootIndex, getter_AddRefs(msgHdr));
+      rv = threadHdr->GetRootHdr(getter_AddRefs(msgHdr));
     }
     NS_ENSURE_SUCCESS(rv, rv);
 
@@ -272,6 +271,7 @@ nsMsgThreadedDBView::Sort(nsMsgViewSortTypeValue sortType,
   if (!rowCountBeforeSort) {
     // Still need to setup our flags even when no articles - bug 98183.
     m_sortType = sortType;
+    m_sortOrder = sortOrder;
     if (sortType == nsMsgViewSortType::byThread &&
         !(m_viewFlags & nsMsgViewFlagsType::kThreadedDisplay)) {
       SetViewFlags(m_viewFlags | nsMsgViewFlagsType::kThreadedDisplay);
@@ -322,6 +322,7 @@ nsMsgThreadedDBView::Sort(nsMsgViewSortTypeValue sortType,
 
         RestoreSelection(preservedKey, preservedSelection);
         if (mTree) mTree->Invalidate();
+        if (mJSTree) mJSTree->Invalidate();
 
         return NS_OK;
       } else {
@@ -340,6 +341,7 @@ nsMsgThreadedDBView::Sort(nsMsgViewSortTypeValue sortType,
 
         RestoreSelection(preservedKey, preservedSelection);
         if (mTree) mTree->Invalidate();
+        if (mJSTree) mJSTree->Invalidate();
 
         return NS_OK;
       }
@@ -374,6 +376,7 @@ nsMsgThreadedDBView::Sort(nsMsgViewSortTypeValue sortType,
   if (!sortThreads) {
     // Call the base class in case we're not sorting by thread.
     rv = nsMsgDBView::Sort(sortType, sortOrder);
+    NS_ENSURE_SUCCESS(rv, rv);
     SaveSortInfo(sortType, sortOrder);
   }
 
@@ -385,6 +388,7 @@ nsMsgThreadedDBView::Sort(nsMsgViewSortTypeValue sortType,
 
   RestoreSelection(preservedKey, preservedSelection);
   if (mTree) mTree->Invalidate();
+  if (mJSTree) mJSTree->Invalidate();
 
   NS_ENSURE_SUCCESS(rv, rv);
   return NS_OK;
@@ -673,7 +677,7 @@ void nsMsgThreadedDBView::MoveThreadAt(nsMsgViewIndex threadIndex) {
   int32_t selectionCount;
   int32_t currentIndex;
   bool hasSelection =
-      mTree && mTreeSelection &&
+      mTreeSelection &&
       ((NS_SUCCEEDED(mTreeSelection->GetCurrentIndex(&currentIndex)) &&
         currentIndex >= 0 && (uint32_t)currentIndex < GetSize()) ||
        (NS_SUCCEEDED(mTreeSelection->GetRangeCount(&selectionCount)) &&

@@ -25,6 +25,7 @@ const kESModuleList = new Set([
   /browser\/proxy-card.js$/,
   /toolkit\/content\/global\/certviewer\/components\/.*\.js$/,
   /toolkit\/content\/global\/certviewer\/.*\.js$/,
+  /chrome\/pdfjs\/content\/web\/.*\.js$/,
 ]);
 
 // Normally we would use reflect.jsm to get Reflect.parse. However, if
@@ -43,7 +44,7 @@ init();
  * objects defined in kWhitelist
  *
  * @param uri the uri to check against the whitelist
- * @return true if the uri should be skipped, false otherwise.
+ * @returns true if the uri should be skipped, false otherwise.
  */
 function uriIsWhiteListed(uri) {
   for (let whitelistItem of kWhitelist) {
@@ -58,7 +59,7 @@ function uriIsWhiteListed(uri) {
  * Check if a URI should be parsed as an ES module.
  *
  * @param uri the uri to check against the ES module list
- * @return true if the uri should be parsed as a module, otherwise parse it as a script.
+ * @returns true if the uri should be parsed as a module, otherwise parse it as a script.
  */
 function uriIsESModule(uri) {
   for (let whitelistItem of kESModuleList) {
@@ -73,7 +74,7 @@ function parsePromise(uri, parseTarget) {
   let promise = new Promise((resolve, reject) => {
     let xhr = new XMLHttpRequest();
     xhr.open("GET", uri, true);
-    xhr.onreadystatechange = function() {
+    xhr.onreadystatechange = function () {
       if (this.readyState == this.DONE) {
         let scriptText = this.responseText;
         try {

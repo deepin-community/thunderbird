@@ -15,8 +15,6 @@ const ZipReader = new Components.Constructor(
   "open"
 );
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-
 /**
  * Returns a promise that is resolved with a list of files that have one of the
  * extensions passed, represented by their nsIURI objects, which exist inside
@@ -30,7 +28,7 @@ function generateURIsFromDirTree(dir, extensions) {
     extensions = [extensions];
   }
   let dirQueue = [dir.path];
-  return (async function() {
+  return (async function () {
     let rv = [];
     while (dirQueue.length) {
       let nextDir = dirQueue.shift();
@@ -123,7 +121,7 @@ function fetchFile(uri) {
     let xhr = new XMLHttpRequest();
     xhr.responseType = "text";
     xhr.open("GET", uri, true);
-    xhr.onreadystatechange = function() {
+    xhr.onreadystatechange = function () {
       if (this.readyState != this.DONE) {
         return;
       }

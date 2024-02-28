@@ -1,3 +1,4 @@
+/* -*- indent-tabs-mode: nil; js-indent-level: 2 -*- */
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
@@ -25,7 +26,7 @@ function Startup()
   document.getElementById("showAlertSender").hidden =
     !Services.prefs.getBoolPref("mail.biff.show_new_alert");
 
-  // animate dock icon option currently available for Mac OSX only
+  // animate dock icon option currently available for macOS only
   var newMailNotificationBouncePref = document.getElementById("newMailNotificationBounceBox");
   newMailNotificationBouncePref.hidden = AppConstants.platform != "macosx";
 

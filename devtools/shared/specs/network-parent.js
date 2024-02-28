@@ -4,12 +4,22 @@
 
 "use strict";
 
-const { generateActorSpec, Arg, RetVal } = require("devtools/shared/protocol");
+const {
+  generateActorSpec,
+  Arg,
+  RetVal,
+} = require("resource://devtools/shared/protocol.js");
 
 const networkParentSpec = generateActorSpec({
   typeName: "networkParent",
 
   methods: {
+    setPersist: {
+      request: {
+        options: Arg(0, "boolean"),
+      },
+      response: {},
+    },
     setNetworkThrottling: {
       request: {
         options: Arg(0, "json"),
@@ -24,6 +34,12 @@ const networkParentSpec = generateActorSpec({
     },
     clearNetworkThrottling: {
       request: {},
+      response: {},
+    },
+    setSaveRequestAndResponseBodies: {
+      request: {
+        save: Arg(0, "boolean"),
+      },
       response: {},
     },
     setBlockedUrls: {
@@ -48,6 +64,17 @@ const networkParentSpec = generateActorSpec({
         filters: Arg(0, "json"),
       },
       response: {},
+    },
+    override: {
+      request: {
+        url: Arg(0, "string"),
+        path: Arg(1, "string"),
+      },
+    },
+    removeOverride: {
+      request: {
+        url: Arg(0, "string"),
+      },
     },
   },
 });

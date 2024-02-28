@@ -4,19 +4,14 @@
 
 const EXPORTED_SYMBOLS = ["GPGMELibLoader"];
 
-const { XPCOMUtils } = ChromeUtils.import(
-  "resource://gre/modules/XPCOMUtils.jsm"
+const { ctypes } = ChromeUtils.importESModule(
+  "resource://gre/modules/ctypes.sys.mjs"
 );
-
-XPCOMUtils.defineLazyModuleGetters(this, {
-  ctypes: "resource://gre/modules/ctypes.jsm",
-  Services: "resource://gre/modules/Services.jsm",
-});
 
 var systemOS = Services.appinfo.OS.toLowerCase();
 var abi = ctypes.default_abi;
 
-// Default libary paths to look for on macOS
+// Default library paths to look for on macOS
 const ADDITIONAL_LIB_PATHS = [
   "/usr/local/lib",
   "/opt/local/lib",
@@ -78,7 +73,11 @@ function tryLoadGPGME(name, suffix) {
 function loadExternalGPGMELib() {
   if (!libgpgme) {
     if (systemOS === "winnt") {
-      tryLoadGPGME("libgpgme-11", "");
+      tryLoadGPGME("libgpgme6-11", "");
+
+      if (!libgpgme) {
+        tryLoadGPGME("libgpgme-11", "");
+      }
 
       if (!libgpgme) {
         tryLoadGPGME("gpgme-11", "");
@@ -263,8 +262,23 @@ function enableGPGMELibJS() {
       return success;
     },
 
-    exportKeys(pattern, secret = false) {
-      let resultArray = [];
+    /**
+     * Export key blocks from GnuPG that match the given paramters.
+     *
+     * @param {string} pattern - A pattern given to GnuPG for listing keys.
+     * @param {boolean} secret - If true, retrieve secret keys.
+     *   If false, retrieve public keys.
+     * @param {function} keyFilterFunction - An optional test function that
+     *   will be called for each candidate key that GnuPG lists for the
+     *   given pattern. Allows the caller to decide whether a candidate
+     *   key is wanted or not. Function will be called with a
+     *   {gpgme_key_t} parameter, the candidate key returned by GPGME.
+     *
+     * @returns {Map} - a Map that contains ASCII armored key blocks
+     *   indexed by fingerprint.
+     */
+    exportKeys(pattern, secret = false, keyFilterFunction = undefined) {
+      let resultMap = new Map();
       let allFingerprints = [];
 
       let c1 = new gpgme_ctx_t();
@@ -286,8 +300,10 @@ function enableGPGMELibJS() {
         }
 
         if (key.contents.protocol == GPGMELib.GPGME_PROTOCOL_OpenPGP) {
-          let fpr = key.contents.fpr.readString();
-          allFingerprints.push(fpr);
+          if (!keyFilterFunction || keyFilterFunction(key)) {
+            let fpr = key.contents.fpr.readString();
+            allFingerprints.push(fpr);
+          }
         }
         this.gpgme_key_release(key);
       } while (true);
@@ -333,12 +349,12 @@ function enableGPGMELibJS() {
           ctypes.char.array(result_len.value).ptr
         ).contents;
 
-        resultArray.push(keyData.readString());
+        resultMap.set(aFpr, keyData.readString());
 
         this.gpgme_free(result_buf);
         this.gpgme_release(c2);
       }
-      return resultArray;
+      return resultMap;
     },
 
     gpgme_check_version: libgpgme.declare(
@@ -557,5 +573,12 @@ function enableGPGMELibJS() {
     GPGME_DECRYPT_UNWRAP: 128,
     GPGME_DATA_ENCODING_ARMOR: 3,
     GPGME_SIG_MODE_DETACH: 1,
+    GPGME_SIG_MODE_NORMAL: 0,
+
+    gpgme_key_t_revoked: 1,
+    gpgme_key_t_expired: 2,
+    gpgme_key_t_disabled: 4,
+    gpgme_key_t_invalid: 8,
+    gpgme_key_t_can_encrypt: 16,
   };
 }

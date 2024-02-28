@@ -1,10 +1,10 @@
-/* -*- Mode: Java; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 var gIdentity = null;
 
+window.addEventListener("load", onLoadArchiveOptions);
 document.addEventListener("dialogaccept", onAcceptArchiveOptions);
 
 /**
@@ -30,9 +30,8 @@ function onLoadArchiveOptions() {
  * Save the archive settings to the current identity.
  */
 function onAcceptArchiveOptions() {
-  gIdentity.archiveGranularity = document.getElementById(
-    "archiveGranularity"
-  ).selectedIndex;
+  gIdentity.archiveGranularity =
+    document.getElementById("archiveGranularity").selectedIndex;
   gIdentity.archiveKeepFolderStructure = document.getElementById(
     "archiveKeepFolderStructure"
   ).checked;

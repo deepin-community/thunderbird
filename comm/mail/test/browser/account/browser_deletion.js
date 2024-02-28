@@ -18,7 +18,7 @@ var { MailServices } = ChromeUtils.import(
 
 var gPopAccount, gImapAccount, gOriginalAccountCount;
 
-add_task(function setupModule(module) {
+add_setup(function () {
   // There may be pre-existing accounts from other tests.
   gOriginalAccountCount = MailServices.accounts.allServers.length;
 
@@ -52,17 +52,17 @@ add_task(function setupModule(module) {
   );
 });
 
-registerCleanupFunction(function teardownModule(module) {
+registerCleanupFunction(function () {
   // There should be only the original accounts left.
   Assert.equal(MailServices.accounts.allServers.length, gOriginalAccountCount);
 });
 
 add_task(async function test_account_data_deletion() {
-  await open_advanced_settings(function(tab) {
+  await open_advanced_settings(function (tab) {
     subtest_account_data_deletion1(tab);
   });
 
-  await open_advanced_settings(function(tab) {
+  await open_advanced_settings(function (tab) {
     subtest_account_data_deletion2(tab);
   });
 });
@@ -71,7 +71,7 @@ add_task(async function test_account_data_deletion() {
  * Bug 274452
  * Check if files of an account are preserved.
  *
- * @param {Object} tab - The account manager tab.
+ * @param {object} tab - The account manager tab.
  */
 function subtest_account_data_deletion1(tab) {
   let accountDir = gPopAccount.incomingServer.localPath;
@@ -91,7 +91,7 @@ function subtest_account_data_deletion1(tab) {
  * Bug 274452
  * Check if files of an account can be deleted.
  *
- * @param {Object} tab - The account manager tab.
+ * @param {object} tab - The account manager tab.
  */
 function subtest_account_data_deletion2(tab) {
   let accountDir = gImapAccount.incomingServer.localPath;

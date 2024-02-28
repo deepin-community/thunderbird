@@ -19,6 +19,7 @@ var {
   create_folder,
   enter_folder,
   expand_folder,
+  get_about_3pane,
   mc,
 } = ChromeUtils.import(
   "resource://testing-common/mozmill/FolderDisplayHelpers.jsm"
@@ -34,11 +35,11 @@ var { MailServices } = ChromeUtils.import(
  * correct number of rows for accounts and folders are always shown as new
  * folders are created, expanded, and collapsed.
  */
-add_task(function test_all_folders_toggle_folder_open_state() {
+add_task(async function test_all_folders_toggle_folder_open_state() {
   // Test that we are in All Folders mode by default
   assert_folder_mode("all");
 
-  let pop3Server = MailServices.accounts.FindServer(
+  let pop3Server = MailServices.accounts.findServer(
     "tinderbox",
     FAKE_SERVER_HOSTNAME,
     "pop3"
@@ -71,41 +72,51 @@ add_task(function test_all_folders_toggle_folder_open_state() {
   // so that we should have 5 rows visible
   assert_folder_tree_view_row_count(accounts + inbox + trash + archives);
   // close the tinderbox server.
-  mc.folderTreeView.toggleOpenState(0);
-  let folderA = create_folder("FolderPaneA");
-  be_in_folder(folderA);
+  collapse_folder(pop3Server.rootFolder);
+  let folderA = await create_folder("FolderPaneA");
+  await be_in_folder(folderA);
 
   // After creating our first folder we should have 6 rows visible
   assert_folder_tree_view_row_count(
     accounts + inbox + trash + outbox + folderPaneA
   );
 
-  let oneFolderCount = mc.folderTreeView.rowCount;
+  let about3Pane = get_about_3pane();
+  let oneFolderCount = about3Pane.folderTree.rowCount;
 
   // This makes sure the folder can be toggled
   folderA.createSubfolder("FolderPaneB", null);
   let folderB = folderA.getChildNamed("FolderPaneB");
   // Enter folderB, then enter folderA. This makes sure that folderA is not
   // collapsed.
-  enter_folder(folderB);
-  enter_folder(folderA);
+  await enter_folder(folderB);
+  await enter_folder(folderA);
 
   // At this point folderA should be open, so the view should have one more
   // item than before (FolderPaneB).
   assert_folder_tree_view_row_count(oneFolderCount + 1);
 
   // Toggle the open state of folderA
-  let index = mc.folderTreeView.getIndexOfFolder(folderA);
-  mc.folderTreeView.toggleOpenState(index);
+  collapse_folder(folderA);
 
   // folderA should be collapsed so we are back to the original count
   assert_folder_tree_view_row_count(oneFolderCount);
 
   // Toggle it back to open
-  mc.folderTreeView.toggleOpenState(index);
+  expand_folder(folderA);
 
   // folderB should be visible again
   assert_folder_tree_view_row_count(oneFolderCount + 1);
+
+  // Close folderA and delete folderB.
+  collapse_folder(folderA);
+  MailServices.accounts.localFoldersServer.rootFolder.propagateDelete(
+    folderB,
+    true
+  );
+  // Open folderA again and check folderB is deleted.
+  expand_folder(folderA);
+  assert_folder_tree_view_row_count(oneFolderCount);
 
   // Clean up
   expand_folder(pop3Server.rootFolder);
@@ -113,8 +124,7 @@ add_task(function test_all_folders_toggle_folder_open_state() {
   pop3Server.rootFolder.propagateDelete(folder, true, null);
   MailServices.accounts.localFoldersServer.rootFolder.propagateDelete(
     folderA,
-    true,
-    null
+    true
   );
 
   Assert.report(

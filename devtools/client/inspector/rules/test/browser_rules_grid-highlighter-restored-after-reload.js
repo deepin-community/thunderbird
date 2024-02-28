@@ -30,7 +30,7 @@ const OTHER_URI = `
   </div>
 `;
 
-add_task(async function() {
+add_task(async function () {
   await addTab("data:text/html;charset=utf-8," + encodeURIComponent(TEST_URI));
 
   info("Check that the grid highlighter can be displayed");
@@ -58,7 +58,7 @@ add_task(async function() {
   const onRestored = waitForHighlighterTypeRestored(HIGHLIGHTER_TYPE);
 
   const onReloaded = inspector.once("reloaded");
-  await refreshTab();
+  await reloadBrowser();
   info("Wait for inspector to be reloaded after page reload");
   await onReloaded;
 

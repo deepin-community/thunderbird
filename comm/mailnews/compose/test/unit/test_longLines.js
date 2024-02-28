@@ -3,7 +3,6 @@
  * Most of this test was copied from test_messageHeaders.js.
  */
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 const { MimeParser } = ChromeUtils.import("resource:///modules/mimeParser.jsm");
 
 var CompFields = CC(
@@ -101,21 +100,9 @@ let longMultibyteLineCJK = "안".repeat(400);
 let longMultibyteLineJapanese = "語".repeat(450);
 
 async function testBodyWithLongLine() {
-  let newline;
-  // Windows uses CR+LF, the other platforms just LF.
-  // Note: Services.appinfo.OS returns "XPCShell" in the test, so we
-  // use this hacky condition to separate Windows from the others.
-  if (
-    "@mozilla.org/windows-registry-key;1" in Cc ||
-    // Lines in the message body are split by CRLF according to RFC 5322, should
-    // be independant of the system. For nsMsgSend.cpp on non-Windows this is
-    // not respected.
-    Services.prefs.getBoolPref("mailnews.send.jsmodule")
-  ) {
-    newline = "\r\n";
-  } else {
-    newline = "\n";
-  }
+  // Lines in the message body are split by CRLF according to RFC 5322, should
+  // be independent of the system.
+  let newline = "\r\n";
 
   let fields = new CompFields();
   let identity = getSmtpIdentity(
@@ -132,7 +119,7 @@ async function testBodyWithLongLine() {
     '<meta http-equiv="content-type" content="text/html; charset=utf-8">' +
     "</head><body>" +
     longMultibyteLine +
-    "</body></html>\r\n";
+    "</body></html>\r\n\r\n";
   fields.body = htmlMessage;
   await richCreateMessage(fields, [], identity);
   checkDraftHeadersAndBody(
@@ -163,7 +150,7 @@ async function testBodyWithLongLine() {
     '<meta http-equiv="content-type" content="text/html; charset=utf-8">' +
     "</head><body>" +
     longMultibyteLineCJK +
-    "</body></html>\r\n";
+    "</body></html>\r\n\r\n";
   fields.body = htmlMessage;
   await richCreateMessage(fields, [], identity);
   checkDraftHeadersAndBody(
@@ -194,7 +181,7 @@ async function testBodyWithLongLine() {
     '<meta http-equiv="content-type" content="text/html; charset=ISO-2022-JP">' +
     "</head><body>" +
     longMultibyteLineJapanese +
-    "</body></html>\r\n";
+    "</body></html>\r\n\r\n";
   fields.body = htmlMessage;
   await richCreateMessage(fields, [], identity);
   checkDraftHeadersAndBody(

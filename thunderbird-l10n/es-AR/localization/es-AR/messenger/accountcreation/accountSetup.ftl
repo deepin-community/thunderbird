@@ -7,9 +7,7 @@ account-setup-tab-title = Configuración de cuenta
 ## Header
 
 account-setup-title = Configurar una dirección de correo electrónico existente
-account-setup-description =
-    Para utilizar su dirección de correo electrónico actual, complete sus credenciales. <br/>
-    { -brand-product-name } buscará automáticamente una configuración de servidor recomendada y que funcione.
+account-setup-description = Para utilizar su dirección de correo electrónico actual, complete sus credenciales.
 account-setup-secondary-description = { -brand-product-name } buscará automáticamente la configuración de servidor recomendada y que funcione.
 account-setup-success-title = Cuenta creada correctamente
 account-setup-success-description = Ahora puede usar esta cuenta con { -brand-short-name }.
@@ -25,7 +23,7 @@ account-setup-name-input =
 account-setup-name-info-icon =
     .title = Su nombre, como se mostrará al resto
 account-setup-name-warning-icon =
-    .title = { account-setup-name-warning }
+    .title = Ingrese su nombre
 account-setup-email-label = Dirección de correo electrónico
     .accesskey = e
 account-setup-email-input =
@@ -39,8 +37,6 @@ account-setup-password-label = Contraseña
     .title = Opcional, solo se usará para validar el nombre de usuario
 account-provisioner-button = Obtener una nueva dirección de correo electrónico
     .accesskey = b
-account-setup-password-toggle =
-    .title = Mostrar/ocultar contraseña
 account-setup-password-toggle-show =
     .title = Mostrar la contraseña en texto sin cifrar
 account-setup-password-toggle-hide =
@@ -75,7 +71,7 @@ account-setup-button-done = Listo
 
 account-setup-looking-up-settings = Buscando configuración…
 account-setup-looking-up-settings-guess = Buscando configuración: Intentando nombres de servidor comunes…
-account-setup-looking-up-settings-half-manual = Buscando configuración: Sondeando servidor...
+account-setup-looking-up-settings-half-manual = Buscando configuración: Sondeando servidor…
 account-setup-looking-up-disk = Buscando configuración: Instalación de { -brand-short-name }…
 account-setup-looking-up-isp = Buscando configuración: Proveedor de correo electrónico…
 # Note: Do not translate or replace Mozilla. It stands for the public project mozilla.org, not Mozilla Corporation. The database is a generic, public domain facility usable by any client.
@@ -126,21 +122,14 @@ account-setup-results-area-title =
         [one] Configuración disponible
        *[other] Configuraciones disponibles
     }
-# Note: IMAP is the name of a protocol.
-account-setup-result-imap = IMAP
 account-setup-result-imap-description = Mantener las carpetas y correos electrónicos sincronizados en el servidor
-# Note: POP3 is the name of a protocol.
-account-setup-result-pop = POP3
 account-setup-result-pop-description = Mantener las carpetas y correos electrónicos en su computadora
-# Note: Exchange is the name of a product.
-account-setup-result-exchange = Exchange
 # Note: Exchange, Office365 are the name of products.
 account-setup-result-exchange2-description = Usar el servidor de Microsoft Exchange o los servicios en la nube de Office365
 account-setup-incoming-title = Entrante
 account-setup-outgoing-title = Saliente
 account-setup-username-title = Nombre de usuario
 account-setup-exchange-title = Servidor
-account-setup-result-smtp = SMTP
 account-setup-result-no-encryption = Sin cifrar
 account-setup-result-ssl = SSL/TLS
 account-setup-result-starttls = STARTTLS
@@ -164,9 +153,6 @@ account-setup-provisioner-error = Ocurrió un error al configurar la nueva cuent
 account-setup-manual-config-title = Configuración del servidor
 account-setup-incoming-server-legend = Servidor entrante
 account-setup-protocol-label = Protocolo:
-protocol-imap-option = { account-setup-result-imap }
-protocol-pop-option = { account-setup-result-pop }
-protocol-exchange-option = { account-setup-result-exchange }
 account-setup-hostname-label = Host
 account-setup-port-label = Puerto:
     .title = Establecer el número del puerto en 0 para la detección automática
@@ -266,8 +252,8 @@ account-setup-found-calendars-description =
     }
 account-setup-button-finish = Finalizar
     .accesskey = F
-account-setup-looking-up-address-books = Buscando libretas de direcciones...
-account-setup-looking-up-calendars = Buscando calendarios...
+account-setup-looking-up-address-books = Buscando libretas de direcciones…
+account-setup-looking-up-calendars = Buscando calendarios…
 account-setup-address-books-button = Libretas de direcciones
 account-setup-calendars-button = Calendarios
 account-setup-connect-link = Conectar
@@ -291,6 +277,8 @@ account-setup-calendar-name-input =
 account-setup-calendar-color-label = Color
 account-setup-calendar-refresh-label = Actualizar
 account-setup-calendar-refresh-manual = A mano
+# Variables:
+# $count (Number) - Number of minutes in the calendar refresh interval.
 account-setup-calendar-refresh-interval =
     { $count ->
         [one] Cada minuto

@@ -4,10 +4,12 @@
 -->
 
 <!-- Calendar Invitations Dialog -->
+
+<!-- Calendar Invitations List -->
+<!ENTITY calendar.invitations.list.accept.button.label                  "Прыняць">
+
+<!-- Calendar Invitations Dialog -->
 <!ENTITY calendar.invitations.dialog.invitations.text                   "Invitations">
 <!ENTITY calendar.invitations.dialog.statusmessage.updating.text        "Updating list of invitations.">
 <!ENTITY calendar.invitations.dialog.statusmessage.noinvitations.text   "No unconfirmed invitations found.">
-
-<!-- Calendar Invitations List -->
-<!ENTITY calendar.invitations.list.accept.button.label                  "Accept">
 <!ENTITY calendar.invitations.list.decline.button.label                 "Decline">

@@ -14,7 +14,18 @@ accounts-conn-security = Захист з'єднання
 accounts-auth-method = Метод автентифікації
 accounts-default = Типово?
 identity-name = Ідентифікація
-
 send-via-email = Надіслати електронною поштою
-
 app-basics-telemetry = Дані телеметрії
+app-basics-cache-use = Використання кешу
+mail-libs-title = Бібліотеки
+libs-table-heading-library = Бібліотека
+libs-table-heading-expected-version = Очікувана найнижча версія
+libs-table-heading-loaded-version = Поточна версія
+libs-table-heading-path = Шлях
+libs-table-heading-status = Стан
+libs-rnp-status-ok = OK
+libs-rnp-status-load-failed = Не вдалося завантажити. OpenPGP не працюватиме.
+libs-rnp-status-incompatible = Несумісна версія. OpenPGP не працюватиме.
+libs-rnp-status-unofficial = Неофіційна версія. OpenPGP може працювати неналежним чином.
+libs-otr-status-ok = Гаразд
+libs-otr-status-error = Не вдалося завантажити. Шифрування OpenPGP не працюватиме.

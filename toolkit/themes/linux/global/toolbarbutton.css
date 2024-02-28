@@ -11,8 +11,6 @@
 toolbarbutton {
   appearance: auto;
   -moz-default-appearance: toolbarbutton;
-  -moz-box-align: center;
-  -moz-box-pack: center;
   margin: 0;
   padding: 3px;
 }
@@ -23,11 +21,6 @@ toolbarbutton {
 
 .toolbarbutton-text {
   margin: 0;
-  text-align: center;
-}
-
-toolbarbutton.tabbable {
-  -moz-user-focus: normal !important;
 }
 
 toolbarbutton:where([checked="true"]) {
@@ -87,7 +80,7 @@ toolbarbutton:-moz-lwtheme:not(:hover, [checked="true"], [open="true"], [disable
   margin: -5px 0 0 !important;
   margin-inline-end: -4px !important;
   min-width: 14px;
-  max-width: 24px;
+  max-width: 20px;
   line-height: 10px;
   text-align: center;
   align-self: start;

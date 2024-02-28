@@ -21,7 +21,7 @@
 <!ENTITY biffStart.label "Kontrollo për mesazhe të rinj çdo ">
 <!ENTITY biffStart.accesskey "k">
 <!ENTITY biffEnd.label "minuta">
-<!ENTITY useIdleNotifications.label "Lejo nga shërbyesi njoftime të menjëhershme kur arrijnë mesazhe të rinj">
+<!ENTITY useIdleNotifications.label "Lejo nga shërbyesi njoftime të menjëhershme, kur mbërrijnë mesazhe të rinj">
 <!ENTITY useIdleNotifications.accesskey "L">
 <!ENTITY connectionSecurity.label "Siguri lidhjeje:">
 <!ENTITY connectionSecurity.accesskey "S">
@@ -38,7 +38,7 @@
 <!ENTITY deleteByAgeFromServer.label "Për e shumta">
 <!ENTITY deleteByAgeFromServer.accesskey "u">
 <!ENTITY daysEnd.label "ditë">
-<!ENTITY deleteOnServer2.label "Derisa t&apos;i fshij ata">
+<!ENTITY deleteOnServer2.label "Derisa t’i fshij ata">
 <!ENTITY deleteOnServer2.accesskey "d">
 <!ENTITY downloadOnBiff.label "Shkarko mesazhe të rinj vetvetiu">
 <!ENTITY downloadOnBiff.accesskey "k">
@@ -50,7 +50,7 @@
 <!ENTITY modelDeleteImmediately.label "Hiqe aty për aty">
 <!ENTITY modelDeleteImmediately.accesskey "H">
 <!-- LOCALIZATION NOTE (expungeOnExit.label) : do not translate two of "&quot;" in below line -->
-<!ENTITY expungeOnExit.label "Gjatë daljes Pastro (&quot;Fshiji&quot;) Të Marrët">
+<!ENTITY expungeOnExit.label "Gjatë daljes Pastro (“Fshiji”) Të Marrët">
 <!ENTITY expungeOnExit.accesskey "P">
 <!ENTITY emptyTrashOnExit.label "Zbrazi Hedhurinat Gjatë Daljes">
 <!ENTITY emptyTrashOnExit.accesskey "Z">
@@ -64,7 +64,7 @@
 <!ENTITY maxMessagesStart.accesskey "P">
 <!-- LOCALIZATION NOTE (maxMessagesEnd.label) : see note for maxMessagesStart.label -->
 <!ENTITY maxMessagesEnd.label "mesazhe">
-<!ENTITY alwaysAuthenticate.label "Kërko përherë mirëfilltësim kur lidhesh me këtë shërbyes">
+<!ENTITY alwaysAuthenticate.label "Kërko përherë mirëfilltësim, kur lidhesh me këtë shërbyes">
 <!ENTITY alwaysAuthenticate.accesskey "k">
 <!ENTITY newsrcFilePath1.label "Kartelë News.rc:">
 <!ENTITY newsrcPicker1.label "Përzgjidhni Kartelë News.rc">

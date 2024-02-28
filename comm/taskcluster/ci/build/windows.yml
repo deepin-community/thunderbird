@@ -8,11 +8,6 @@ job-defaults:
         comm-checkout: true
         config-paths:
             - comm/testing/mozharness/configs
-        tooltool-downloads: internal
-    fetches:
-        toolchain:
-            - win64-dump-syms
-            - win64-pdbstr
 
 win32/opt:
     description: "Win32 Opt (Cross)"
@@ -26,13 +21,11 @@ win32/opt:
         platform: windows2012-32/opt
         symbol: B
         tier: 1
-    worker-type: b-linux
+    worker-type: b-linux-gcp
     worker:
-        docker-image: {in-tree: debian10-amd64-build}
         max-run-time: 7200
         env:
             PERFHERDER_EXTRA_OPTIONS: cross
-            TOOLTOOL_MANIFEST: "browser/config/tooltool-manifests/vs2017-15.8.manifest"
             MOZ_AUTOMATION_PACKAGE_TESTS: "1"
     run:
         actions: [build]
@@ -44,9 +37,6 @@ win32/opt:
         extra-config:
             stage_platform: win32
             mozconfig_platform: win32
-            env:
-                LD_PRELOAD: "/builds/worker/fetches/liblowercase/liblowercase.so"
-                LOWERCASE_DIRS: "/builds/worker/checkouts/gecko/vs2017_15.8.4"
     use-sccache: true
     optimization:
         skip-suite-only: null
@@ -54,9 +44,8 @@ win32/opt:
         toolchain:
             - linux64-binutils
             - linux64-cbindgen
-            - linux64-clang-win-cross
-            - linux64-dump-syms
-            - linux64-liblowercase
+            - linux64-clang
+            - linux64-dump_syms
             - linux64-nasm
             - linux64-node
             - linux64-rust-cross
@@ -64,9 +53,12 @@ win32/opt:
             - linux64-sccache
             - linux64-winchecksec
             - linux64-wine
+            - nsis
+            - sysroot-wasm32-wasi
+            - sysroot-x86_64-linux-gnu
             - win32-libotr
+            - vs
         fetch:
-            - nsis-3.01-win
             - upx-3.95-win
 
 win32-shippable/opt:
@@ -85,13 +77,11 @@ win32-shippable/opt:
         platform: windows2012-32-shippable/opt
         symbol: B
         tier: 1
-    worker-type: b-linux
+    worker-type: b-linux-gcp
     worker:
-        docker-image: {in-tree: debian10-amd64-build}
         max-run-time: 7200
         env:
             PERFHERDER_EXTRA_OPTIONS: cross
-            TOOLTOOL_MANIFEST: "browser/config/tooltool-manifests/vs2017-15.8.manifest"
             MOZ_AUTOMATION_PACKAGE_TESTS: "1"
     run:
         actions: [build]
@@ -104,9 +94,6 @@ win32-shippable/opt:
         extra-config:
             stage_platform: win32
             mozconfig_platform: win32
-            env:
-                LD_PRELOAD: "/builds/worker/fetches/liblowercase/liblowercase.so"
-                LOWERCASE_DIRS: "/builds/worker/checkouts/gecko/vs2017_15.8.4"
     run-on-projects: ['release']
     optimization:
         skip-suite-only: null
@@ -114,18 +101,20 @@ win32-shippable/opt:
         toolchain:
             - linux64-binutils
             - linux64-cbindgen
-            - linux64-clang-win-cross
-            - linux64-dump-syms
-            - linux64-liblowercase
+            - linux64-clang
+            - linux64-dump_syms
             - linux64-nasm
             - linux64-node
             - linux64-rust-cross
             - linux64-rust-size
             - linux64-winchecksec
             - linux64-wine
+            - nsis
+            - sysroot-wasm32-wasi
+            - sysroot-x86_64-linux-gnu
             - win32-libotr
+            - vs
         fetch:
-            - nsis-3.01-win
             - upx-3.95-win
 
 win32/debug:
@@ -140,13 +129,11 @@ win32/debug:
         platform: windows2012-32/debug
         symbol: B
         tier: 1
-    worker-type: b-linux
+    worker-type: b-linux-gcp
     worker:
-        docker-image: {in-tree: debian10-amd64-build}
         max-run-time: 7200
         env:
             PERFHERDER_EXTRA_OPTIONS: cross
-            TOOLTOOL_MANIFEST: "browser/config/tooltool-manifests/vs2017-15.8.manifest"
             MOZ_AUTOMATION_PACKAGE_TESTS: "1"
     run:
         actions: [build]
@@ -159,9 +146,6 @@ win32/debug:
         mozconfig-variant: debug
         extra-config:
             mozconfig_platform: win32
-            env:
-                LD_PRELOAD: "/builds/worker/fetches/liblowercase/liblowercase.so"
-                LOWERCASE_DIRS: "/builds/worker/checkouts/gecko/vs2017_15.8.4"
     use-sccache: true
     optimization:
         skip-suite-only: null
@@ -169,9 +153,8 @@ win32/debug:
         toolchain:
             - linux64-binutils
             - linux64-cbindgen
-            - linux64-clang-win-cross
-            - linux64-dump-syms
-            - linux64-liblowercase
+            - linux64-clang
+            - linux64-dump_syms
             - linux64-nasm
             - linux64-node
             - linux64-rust-cross
@@ -179,9 +162,12 @@ win32/debug:
             - linux64-sccache
             - linux64-winchecksec
             - linux64-wine
+            - nsis
+            - sysroot-wasm32-wasi
+            - sysroot-x86_64-linux-gnu
             - win32-libotr
+            - vs
         fetch:
-            - nsis-3.01-win
             - upx-3.95-win
 
 win64/opt:
@@ -196,13 +182,11 @@ win64/opt:
         platform: windows2012-64/opt
         symbol: B
         tier: 1
-    worker-type: b-linux
+    worker-type: b-linux-gcp
     worker:
-        docker-image: {in-tree: debian10-amd64-build}
         max-run-time: 7200
         env:
             PERFHERDER_EXTRA_OPTIONS: cross
-            TOOLTOOL_MANIFEST: "browser/config/tooltool-manifests/vs2017-15.8.manifest"
             MOZ_AUTOMATION_PACKAGE_TESTS: "1"
     run:
         actions: [build]
@@ -214,9 +198,6 @@ win64/opt:
         extra-config:
             stage_platform: win64
             mozconfig_platform: win64
-            env:
-                LD_PRELOAD: "/builds/worker/fetches/liblowercase/liblowercase.so"
-                LOWERCASE_DIRS: "/builds/worker/checkouts/gecko/vs2017_15.8.4"
     use-sccache: true
     optimization:
         skip-suite-only: null
@@ -224,9 +205,8 @@ win64/opt:
         toolchain:
             - linux64-binutils
             - linux64-cbindgen
-            - linux64-clang-win-cross
-            - linux64-dump-syms
-            - linux64-liblowercase
+            - linux64-clang
+            - linux64-dump_syms
             - linux64-nasm
             - linux64-node
             - linux64-rust-cross
@@ -234,9 +214,12 @@ win64/opt:
             - linux64-sccache
             - linux64-winchecksec
             - linux64-wine
+            - nsis
+            - sysroot-wasm32-wasi
+            - sysroot-x86_64-linux-gnu
             - win64-libotr
+            - vs
         fetch:
-            - nsis-3.01-win
             - upx-3.95-win
 
 win64-shippable/opt:
@@ -255,13 +238,11 @@ win64-shippable/opt:
         platform: windows2012-64-shippable/opt
         symbol: B
         tier: 1
-    worker-type: b-linux
+    worker-type: b-linux-gcp
     worker:
-        docker-image: {in-tree: debian10-amd64-build}
         max-run-time: 7200
         env:
             PERFHERDER_EXTRA_OPTIONS: cross
-            TOOLTOOL_MANIFEST: "browser/config/tooltool-manifests/vs2017-15.8.manifest"
             MOZ_AUTOMATION_PACKAGE_TESTS: "1"
     run:
         actions: [build]
@@ -274,9 +255,6 @@ win64-shippable/opt:
         extra-config:
             stage_platform: win64
             mozconfig_platform: win64
-            env:
-                LD_PRELOAD: "/builds/worker/fetches/liblowercase/liblowercase.so"
-                LOWERCASE_DIRS: "/builds/worker/checkouts/gecko/vs2017_15.8.4"
     run-on-projects: ['release']
     optimization:
         skip-suite-only: null
@@ -284,18 +262,20 @@ win64-shippable/opt:
         toolchain:
             - linux64-binutils
             - linux64-cbindgen
-            - linux64-clang-win-cross
-            - linux64-dump-syms
-            - linux64-liblowercase
+            - linux64-clang
+            - linux64-dump_syms
             - linux64-nasm
             - linux64-node
             - linux64-rust-cross
             - linux64-rust-size
             - linux64-winchecksec
             - linux64-wine
+            - nsis
+            - sysroot-wasm32-wasi
+            - sysroot-x86_64-linux-gnu
             - win64-libotr
+            - vs
         fetch:
-            - nsis-3.01-win
             - upx-3.95-win
 
 win64/debug:
@@ -310,13 +290,11 @@ win64/debug:
         platform: windows2012-64/debug
         symbol: B
         tier: 1
-    worker-type: b-linux
+    worker-type: b-linux-gcp
     worker:
-        docker-image: {in-tree: debian10-amd64-build}
         max-run-time: 7200
         env:
             PERFHERDER_EXTRA_OPTIONS: cross
-            TOOLTOOL_MANIFEST: "browser/config/tooltool-manifests/vs2017-15.8.manifest"
             MOZ_AUTOMATION_PACKAGE_TESTS: "1"
     run:
         actions: [build]
@@ -329,9 +307,6 @@ win64/debug:
         mozconfig-variant: debug
         extra-config:
             mozconfig_platform: win64
-            env:
-                LD_PRELOAD: "/builds/worker/fetches/liblowercase/liblowercase.so"
-                LOWERCASE_DIRS: "/builds/worker/checkouts/gecko/vs2017_15.8.4"
     use-sccache: true
     optimization:
         skip-suite-only: null
@@ -339,9 +314,8 @@ win64/debug:
         toolchain:
             - linux64-binutils
             - linux64-cbindgen
-            - linux64-clang-win-cross
-            - linux64-dump-syms
-            - linux64-liblowercase
+            - linux64-clang
+            - linux64-dump_syms
             - linux64-nasm
             - linux64-node
             - linux64-rust-cross
@@ -349,9 +323,12 @@ win64/debug:
             - linux64-sccache
             - linux64-winchecksec
             - linux64-wine
+            - nsis
+            - sysroot-wasm32-wasi
+            - sysroot-x86_64-linux-gnu
             - win64-libotr
+            - vs
         fetch:
-            - nsis-3.01-win
             - upx-3.95-win
 
 
@@ -369,7 +346,6 @@ win64-plain/debug:
         max-run-time: 7200
         env:
             PERFHERDER_EXTRA_OPTIONS: plain
-            TOOLTOOL_MANIFEST: "browser/config/tooltool-manifests/vs2017-15.8.manifest"
     run:
         actions: [build]
         options: [append-env-variables-from-configs]
@@ -387,13 +363,17 @@ win64-plain/debug:
         skip-unless-backstop-no-suite: null
     fetches:
         toolchain:
+            - nsis
+            - sysroot-wasm32-wasi
             - win64-cbindgen
             - win64-clang
+            - win64-dump_syms
             - win64-libotr
             - win64-mozmake
             - win64-node
             - win64-nasm
             - win64-rust
+            - vs
             - win64-winchecksec
 
 win64-plain/opt:
@@ -410,7 +390,6 @@ win64-plain/opt:
         max-run-time: 7200
         env:
             PERFHERDER_EXTRA_OPTIONS: plain
-            TOOLTOOL_MANIFEST: "browser/config/tooltool-manifests/vs2017-15.8.manifest"
     run:
         actions: [build]
         options: [append-env-variables-from-configs]
@@ -428,13 +407,17 @@ win64-plain/opt:
         skip-unless-backstop-no-suite: null
     fetches:
         toolchain:
+            - nsis
+            - sysroot-wasm32-wasi
             - win64-cbindgen
             - win64-clang
+            - win64-dump_syms
             - win64-libotr
             - win64-mozmake
             - win64-node
             - win64-nasm
             - win64-rust
+            - vs
             - win64-winchecksec
 
 win64-asan/opt:
@@ -446,12 +429,10 @@ win64-asan/opt:
         platform: windows2012-64/asan
         symbol: Bo
         tier: 1
-    worker-type: b-linux
+    worker-type: b-linux-gcp
     worker:
-        docker-image: {in-tree: debian10-amd64-build}
         max-run-time: 7200
         env:
-            TOOLTOOL_MANIFEST: "browser/config/tooltool-manifests/vs2017-15.8.manifest"
             PERFHERDER_EXTRA_OPTIONS: "opt asan"
             MOZ_AUTOMATION_PACKAGE_TESTS: "1"
     run:
@@ -464,9 +445,6 @@ win64-asan/opt:
         extra-config:
             stage_platform: win64-asan
             mozconfig_platform: win64
-            env:
-                LD_PRELOAD: "/builds/worker/fetches/liblowercase/liblowercase.so"
-                LOWERCASE_DIRS: "/builds/worker/checkouts/gecko/vs2017_15.8.4"
         mozconfig-variant: nightly-asan
     run-on-projects: ['comm-central']
     use-sccache: true
@@ -476,9 +454,8 @@ win64-asan/opt:
         toolchain:
             - linux64-binutils
             - linux64-cbindgen
-            - linux64-clang-win-cross
-            - linux64-dump-syms
-            - linux64-liblowercase
+            - linux64-clang
+            - linux64-dump_syms
             - linux64-nasm
             - linux64-node
             - linux64-rust-cross
@@ -486,8 +463,74 @@ win64-asan/opt:
             - linux64-sccache
             - linux64-winchecksec
             - linux64-wine
+            - nsis
+            - sysroot-wasm32-wasi
+            - sysroot-x86_64-linux-gnu
             - win64-libotr
             - win64-llvm-symbolizer
+            - vs
         fetch:
-            - nsis-3.01-win
+            - upx-3.95-win
+
+win64-asan-reporter-shippable/opt:
+    description: "Win64 Opt ASAN Reporter (Shippable)"
+    attributes:
+        shippable: true
+    shipping-product:
+        by-release-type:
+            nightly: thunderbird
+            default: null
+    index:
+        product: thunderbird
+        job-name: win64-asan-reporter-opt
+        type: shippable
+    treeherder:
+        platform: win64-asan-reporter/opt
+        symbol: BoR
+    worker-type: b-linux-gcp
+    worker:
+        max-run-time: 7200
+        env:
+            PERFHERDER_EXTRA_OPTIONS: "asan-reporter"
+            MOZ_AUTOMATION_PACKAGE_TESTS: "1"
+    run:
+        actions: [build]
+        options: [append-env-variables-from-configs]
+        script: mozharness/scripts/fx_desktop_build.py
+        config:
+            - builds/taskcluster_base_thunderbird.py
+            - builds/releng_base_linux_64_builds.py
+            - builds/taskcluster_sub_win64/asan_reporter_opt.py
+            - taskcluster_nightly.py
+        extra-config:
+            stage_platform: win64-asan-reporter
+            mozconfig_platform: win64
+        mozconfig-variant: nightly-asan-reporter
+        mar-channel-id:
+            thunderbird-comm-central-asan
+        accepted-mar-channel-ids:
+            thunderbird-comm-central-asan
+    run-on-projects: ['comm-central']
+    optimization:
+        skip-unless-backstop-no-suite: null
+    fetches:
+        toolchain:
+            - linux64-binutils
+            - linux64-cbindgen
+            - linux64-clang
+            - linux64-dump_syms
+            - linux64-nasm
+            - linux64-node
+            - linux64-rust-cross
+            - linux64-rust-size
+            - linux64-sccache
+            - linux64-winchecksec
+            - linux64-wine
+            - nsis
+            - sysroot-wasm32-wasi
+            - sysroot-x86_64-linux-gnu
+            - win64-libotr
+            - win64-llvm-symbolizer
+            - vs
+        fetch:
             - upx-3.95-win

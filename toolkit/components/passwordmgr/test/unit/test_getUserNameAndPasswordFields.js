@@ -1,16 +1,12 @@
 /**
- * Test for LoginManagerChild.getUserNameAndPasswordFields
+ * Test for LoginFormState.getUserNameAndPasswordFields
  */
 
 "use strict";
 
-XPCOMUtils.defineLazyGlobalGetters(this, ["URL"]);
-
-const LMCBackstagePass = ChromeUtils.import(
-  "resource://gre/modules/LoginManagerChild.jsm",
-  null
+const { LoginManagerChild } = ChromeUtils.importESModule(
+  "resource://gre/modules/LoginManagerChild.sys.mjs"
 );
-const { LoginManagerChild } = LMCBackstagePass;
 const TESTCASES = [
   {
     description: "1 password field outside of a <form>",
@@ -117,14 +113,14 @@ function _setPrefs() {
   });
 }
 
-this._setPrefs();
+_setPrefs();
 
 for (let tc of TESTCASES) {
   info("Sanity checking the testcase: " + tc.description);
 
-  (function() {
+  (function () {
     let testcase = tc;
-    add_task(async function() {
+    add_task(async function () {
       info("Starting testcase: " + testcase.description);
       let document = MockDocument.createTestDocument(
         "http://localhost:8080/test/",
@@ -150,7 +146,9 @@ for (let tc of TESTCASES) {
       let formOrigin = LoginHelper.getLoginOrigin(document.documentURI);
       LoginRecipesContent.cacheRecipes(formOrigin, win, new Set());
 
-      let actual = new LoginManagerChild().getUserNameAndPasswordFields(input);
+      const loginManagerChild = new LoginManagerChild();
+      const docState = loginManagerChild.stateForDocument(document);
+      let actual = docState.getUserNameAndPasswordFields(input);
 
       Assert.strictEqual(
         testcase.returnedFieldIDs.length,

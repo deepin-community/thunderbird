@@ -5,7 +5,13 @@
 @import url("chrome://messenger/skin/messenger.css");
 @import url("chrome://messenger/skin/messageIcons.css");
 
+#threadTree {
+  flex: 1;
+}
+
 #searchTerms {
+  flex: 1 auto;
+  min-height: 12em;
   margin-top: 8px;
 }
 
@@ -17,23 +23,33 @@
 }
 
 #searchTermBox {
+  min-height: 0;
   padding-top: 2px;
   padding-bottom: 2px;
 }
 
 #searchResults {
+  flex: 1 auto;
+  min-height: 8em;
   padding: 0 6px 6px;
   text-shadow: none;
 }
 
-#searchResultListBox {
-  margin: 4px;
-  height: 100px;
+#searchableFolders {
+  flex: 2 2;
 }
 
-.search-value-menulist,
-.search-value-textbox[type="number"] {
+#searchResultListBox {
+  margin: 4px;
+  min-height: 50px;
+}
+
+.search-value-menulist {
   flex: 1;
+}
+
+.search-value-input {
+  width: -moz-available;
 }
 
 .search-menulist[unavailable="true"] {
@@ -46,13 +62,22 @@ radio[value="and"] {
 
 /* ::::: box sizes ::::: */
 
-#searchTermTree {
-  min-height: 50px;
+#virtualFolderSearchTerms {
+  flex: 1 1 0;
+  overflow: hidden;
 }
 
-#searchTermListBox,
+#virtualFolderSearchTermListBoxWrapper {
+  flex: 1;
+  min-height: 0;
+}
+
 #virtualFolderSearchTermListBox {
-  height: 100px;
+  flex: 1;
+}
+
+#searchTermTree {
+  min-height: 50px;
 }
 
 /* ::::: thread decoration ::::: */
@@ -84,22 +109,6 @@ treechildren::-moz-tree-cell-text(container, closed, hasUnread, read) {
 :root:not([lwt-tree]) #searchTermBox:-moz-lwtheme,
 :root:not([lwt-tree]) #searchResults:-moz-lwtheme {
   background-color: -moz-Dialog;
-  color: -moz-DialogText;
-}
-
-:root:not([lwt-tree]) #searchTermBox:-moz-lwtheme-brighttext,
-:root:not([lwt-tree]) #searchResults:-moz-lwtheme-brighttext {
-  --button-background: #d2d2d3;
-  --button-background-hover: #c2c2c3;
-  --button-background-active: #b2b2b3;
-  --box-text-color: #0c0c0d;
-  --box-background-color: #fff;
-  --box-border-color: #adadae;
-  --field-text-color: #181920;
-  --field-background-color: #fff;
-  --field-border-color: rgba(0, 0, 0, .3);
-  --field-border-hover-color: rgba(0, 0, 0, .4);
-  --highlight-color: Highlight;
 }
 
 :root[lwt-tree] #searchTermBox,
@@ -107,11 +116,11 @@ treechildren::-moz-tree-cell-text(container, closed, hasUnread, read) {
   background-color: var(--lwt-accent-color-inactive, var(--lwt-accent-color));
 }
 
-:root:not([lwt-tree]) #searchTermList:focus > richlistitem[selected="true"] {
+:root:not(:-moz-lwtheme) #searchTermList:focus > richlistitem[selected="true"] {
   color: inherit;
 }
 
-:root[lwt-tree] #gray_horizontal_splitter {
+:root:-moz-lwtheme #gray_horizontal_splitter {
   background-color: var(--toolbar-bgcolor);
   border-color: hsla(0, 0%, 50%, .3);
 }

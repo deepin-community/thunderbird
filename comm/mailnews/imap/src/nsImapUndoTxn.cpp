@@ -4,7 +4,6 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 #include "msgCore.h"  // for precompiled headers
-#include "nsMsgImapCID.h"
 #include "nsIMsgHdr.h"
 #include "nsImapUndoTxn.h"
 #include "nsIMsgIncomingServer.h"
@@ -79,7 +78,7 @@ NS_IMETHODIMP
 nsImapMoveCopyMsgTxn::UndoTransaction(void) {
   nsresult rv;
   nsCOMPtr<nsIImapService> imapService =
-      do_GetService(NS_IMAPSERVICE_CONTRACTID, &rv);
+      do_GetService("@mozilla.org/messenger/imapservice;1", &rv);
   NS_ENSURE_SUCCESS(rv, rv);
 
   bool finishInOnStopRunningUrl = false;
@@ -97,8 +96,9 @@ nsImapMoveCopyMsgTxn::UndoTransaction(void) {
 
       // ** make sure we are in the selected state; use lite select
       // folder so we won't hit performance hard
+      nsCOMPtr<nsIURI> outUri;
       rv = imapService->LiteSelectFolder(srcFolder, srcListener, nullptr,
-                                         nullptr);
+                                         getter_AddRefs(outUri));
       if (NS_FAILED(rv)) return rv;
       bool deletedMsgs = true;  // default is true unless imapDelete model
       nsMsgImapDeleteModel deleteModel;
@@ -116,18 +116,20 @@ nsImapMoveCopyMsgTxn::UndoTransaction(void) {
 
         if (deletedMsgs)
           rv = imapService->SubtractMessageFlags(
-              srcFolder, this, nullptr, m_srcMsgIdString, kImapMsgDeletedFlag,
+              srcFolder, this, m_srcMsgIdString, kImapMsgDeletedFlag,
               m_idsAreUids);
         else
-          rv = imapService->AddMessageFlags(srcFolder, srcListener, nullptr,
+          rv = imapService->AddMessageFlags(srcFolder, srcListener,
                                             m_srcMsgIdString,
                                             kImapMsgDeletedFlag, m_idsAreUids);
         if (NS_FAILED(rv)) return rv;
 
         finishInOnStopRunningUrl = true;
         if (deleteModel != nsMsgImapDeleteModels::IMAPDelete)
-          rv = imapService->GetHeaders(srcFolder, srcListener, nullptr,
-                                       m_srcMsgIdString, true);
+          nsCOMPtr<nsIURI> outUri;
+        rv = imapService->GetHeaders(srcFolder, srcListener,
+                                     getter_AddRefs(outUri), m_srcMsgIdString,
+                                     true);
       }
     }
   }
@@ -141,12 +143,12 @@ nsImapMoveCopyMsgTxn::UndoTransaction(void) {
     NS_ENSURE_SUCCESS(rv, rv);
     // ** make sure we are in the selected state; use lite select folder
     // so we won't potentially download a bunch of headers.
-    rv =
-        imapService->LiteSelectFolder(dstFolder, dstListener, nullptr, nullptr);
+    nsCOMPtr<nsIURI> outUri;
+    rv = imapService->LiteSelectFolder(dstFolder, dstListener, nullptr,
+                                       getter_AddRefs(outUri));
     NS_ENSURE_SUCCESS(rv, rv);
-    rv = imapService->AddMessageFlags(dstFolder, dstListener, nullptr,
-                                      m_dstMsgIdString, kImapMsgDeletedFlag,
-                                      m_idsAreUids);
+    rv = imapService->AddMessageFlags(dstFolder, dstListener, m_dstMsgIdString,
+                                      kImapMsgDeletedFlag, m_idsAreUids);
   }
   return rv;
 }
@@ -155,7 +157,7 @@ NS_IMETHODIMP
 nsImapMoveCopyMsgTxn::RedoTransaction(void) {
   nsresult rv;
   nsCOMPtr<nsIImapService> imapService =
-      do_GetService(NS_IMAPSERVICE_CONTRACTID, &rv);
+      do_GetService("@mozilla.org/messenger/imapservice;1", &rv);
   NS_ENSURE_SUCCESS(rv, rv);
 
   if (m_isMove || !m_dstFolder) {
@@ -183,15 +185,16 @@ nsImapMoveCopyMsgTxn::RedoTransaction(void) {
 
       // Make sure we are in the selected state; use lite select
       // folder so performance won't suffer.
+      nsCOMPtr<nsIURI> outUri;
       rv = imapService->LiteSelectFolder(srcFolder, srcListener, nullptr,
-                                         nullptr);
+                                         getter_AddRefs(outUri));
       NS_ENSURE_SUCCESS(rv, rv);
       if (deletedMsgs) {
         rv = imapService->SubtractMessageFlags(
-            srcFolder, srcListener, nullptr, m_srcMsgIdString,
-            kImapMsgDeletedFlag, m_idsAreUids);
+            srcFolder, srcListener, m_srcMsgIdString, kImapMsgDeletedFlag,
+            m_idsAreUids);
       } else {
-        rv = imapService->AddMessageFlags(srcFolder, srcListener, nullptr,
+        rv = imapService->AddMessageFlags(srcFolder, srcListener,
                                           m_srcMsgIdString, kImapMsgDeletedFlag,
                                           m_idsAreUids);
       }
@@ -207,10 +210,11 @@ nsImapMoveCopyMsgTxn::RedoTransaction(void) {
     NS_ENSURE_SUCCESS(rv, rv);
     // ** make sure we are in the selected state; use lite select
     // folder so we won't hit performance hard
-    rv =
-        imapService->LiteSelectFolder(dstFolder, dstListener, nullptr, nullptr);
+    nsCOMPtr<nsIURI> outUri;
+    rv = imapService->LiteSelectFolder(dstFolder, dstListener, nullptr,
+                                       getter_AddRefs(outUri));
     NS_ENSURE_SUCCESS(rv, rv);
-    rv = imapService->SubtractMessageFlags(dstFolder, dstListener, nullptr,
+    rv = imapService->SubtractMessageFlags(dstFolder, dstListener,
                                            m_dstMsgIdString,
                                            kImapMsgDeletedFlag, m_idsAreUids);
     NS_ENSURE_SUCCESS(rv, rv);
@@ -327,7 +331,7 @@ NS_IMETHODIMP nsImapMoveCopyMsgTxn::OnStopRunningUrl(nsIURI* aUrl,
   if (imapUrl) {
     nsresult rv;
     nsCOMPtr<nsIImapService> imapService =
-        do_GetService(NS_IMAPSERVICE_CONTRACTID, &rv);
+        do_GetService("@mozilla.org/messenger/imapservice;1", &rv);
     NS_ENSURE_SUCCESS(rv, rv);
     nsImapAction imapAction;
     imapUrl->GetImapAction(&imapAction);
@@ -360,10 +364,11 @@ NS_IMETHODIMP nsImapMoveCopyMsgTxn::OnStopRunningUrl(nsIURI* aUrl,
         NS_ENSURE_SUCCESS(rv, rv);
         // ** make sure we are in the selected state; use lite select folder
         // so we won't potentially download a bunch of headers.
+        nsCOMPtr<nsIURI> outUri;
         rv = imapService->LiteSelectFolder(dstFolder, dstListener, nullptr,
-                                           nullptr);
+                                           getter_AddRefs(outUri));
         NS_ENSURE_SUCCESS(rv, rv);
-        rv = imapService->AddMessageFlags(dstFolder, dstListener, nullptr,
+        rv = imapService->AddMessageFlags(dstFolder, dstListener,
                                           m_dstMsgIdString, kImapMsgDeletedFlag,
                                           m_idsAreUids);
       }
@@ -478,11 +483,13 @@ NS_IMETHODIMP nsImapOfflineTxn::UndoTransaction(void) {
       nsCOMPtr<nsIMsgDBHdr> firstHdr = m_srcHdrs[0];
       nsMsgKey hdrKey;
       firstHdr->GetMessageKey(&hdrKey);
-      rv = srcDB->GetOfflineOpForKey(hdrKey, false, getter_AddRefs(op));
+      nsCOMPtr<nsIMsgOfflineOpsDatabase> opsDb = do_QueryInterface(srcDB, &rv);
+      NS_ENSURE_SUCCESS(rv, rv);
+      rv = opsDb->GetOfflineOpForKey(hdrKey, false, getter_AddRefs(op));
       bool offlineOpPlayedBack = true;
       if (NS_SUCCEEDED(rv) && op) {
         op->GetPlayingBack(&offlineOpPlayedBack);
-        srcDB->RemoveOfflineOp(op);
+        opsDb->RemoveOfflineOp(op);
         op = nullptr;
       }
       if (!WeAreOffline() && offlineOpPlayedBack) {
@@ -546,11 +553,13 @@ NS_IMETHODIMP nsImapOfflineTxn::RedoTransaction(void) {
 
   switch (m_opType) {
     case nsIMsgOfflineImapOperation::kMsgMoved:
-    case nsIMsgOfflineImapOperation::kMsgCopy:
+    case nsIMsgOfflineImapOperation::kMsgCopy: {
+      nsCOMPtr<nsIMsgOfflineOpsDatabase> opsDb = do_QueryInterface(srcDB, &rv);
+      NS_ENSURE_SUCCESS(rv, rv);
       for (int32_t i = 0; i < m_srcHdrs.Count(); i++) {
         nsMsgKey hdrKey;
         m_srcHdrs[i]->GetMessageKey(&hdrKey);
-        rv = srcDB->GetOfflineOpForKey(hdrKey, false, getter_AddRefs(op));
+        rv = opsDb->GetOfflineOpForKey(hdrKey, false, getter_AddRefs(op));
         if (NS_SUCCEEDED(rv) && op) {
           nsCOMPtr<nsIMsgFolder> dstFolder = do_QueryReferent(m_dstFolder, &rv);
           if (dstFolder) {
@@ -558,10 +567,10 @@ NS_IMETHODIMP nsImapOfflineTxn::RedoTransaction(void) {
             dstFolder->GetURI(folderURI);
 
             if (m_opType == nsIMsgOfflineImapOperation::kMsgMoved)
-              op->SetDestinationFolderURI(folderURI.get());  // offline move
+              op->SetDestinationFolderURI(folderURI);  // offline move
             if (m_opType == nsIMsgOfflineImapOperation::kMsgCopy) {
               op->SetOperation(nsIMsgOfflineImapOperation::kMsgMoved);
-              op->AddMessageCopyOperation(folderURI.get());  // offline copy
+              op->AddMessageCopyOperation(folderURI);  // offline copy
             }
             dstFolder->SummaryChanged();
           }
@@ -572,10 +581,13 @@ NS_IMETHODIMP nsImapOfflineTxn::RedoTransaction(void) {
         }
       }
       break;
+    }
     case nsIMsgOfflineImapOperation::kAddedHeader: {
       nsCOMPtr<nsIMsgFolder> dstFolder = do_QueryReferent(m_dstFolder, &rv);
       rv = srcFolder->GetDBFolderInfoAndDB(getter_AddRefs(folderInfo),
                                            getter_AddRefs(destDB));
+      NS_ENSURE_SUCCESS(rv, rv);
+      nsCOMPtr<nsIMsgOfflineOpsDatabase> opsDb = do_QueryInterface(destDB, &rv);
       NS_ENSURE_SUCCESS(rv, rv);
       for (int32_t i = 0; i < m_srcHdrs.Count(); i++) {
         nsCOMPtr<nsIMsgDBHdr> restoreHdr;
@@ -583,11 +595,11 @@ NS_IMETHODIMP nsImapOfflineTxn::RedoTransaction(void) {
         m_srcHdrs[i]->GetMessageKey(&msgKey);
         destDB->CopyHdrFromExistingHdr(msgKey, m_srcHdrs[i], true,
                                        getter_AddRefs(restoreHdr));
-        rv = destDB->GetOfflineOpForKey(msgKey, true, getter_AddRefs(op));
+        rv = opsDb->GetOfflineOpForKey(msgKey, true, getter_AddRefs(op));
         if (NS_SUCCEEDED(rv) && op) {
           nsCString folderURI;
           srcFolder->GetURI(folderURI);
-          op->SetSourceFolderURI(folderURI.get());
+          op->SetSourceFolderURI(folderURI);
         }
       }
       dstFolder->SummaryChanged();
@@ -607,11 +619,13 @@ NS_IMETHODIMP nsImapOfflineTxn::RedoTransaction(void) {
         srcDB->MarkImapDeleted(msgKey, true, nullptr);
       }
       break;
-    case nsIMsgOfflineImapOperation::kFlagsChanged:
+    case nsIMsgOfflineImapOperation::kFlagsChanged: {
+      nsCOMPtr<nsIMsgOfflineOpsDatabase> opsDb = do_QueryInterface(srcDB, &rv);
+      NS_ENSURE_SUCCESS(rv, rv);
       for (int32_t i = 0; i < m_srcHdrs.Count(); i++) {
         nsMsgKey msgKey;
         m_srcHdrs[i]->GetMessageKey(&msgKey);
-        rv = srcDB->GetOfflineOpForKey(msgKey, true, getter_AddRefs(op));
+        rv = opsDb->GetOfflineOpForKey(msgKey, true, getter_AddRefs(op));
         if (NS_SUCCEEDED(rv) && op) {
           imapMessageFlagsType newMsgFlags;
           op->GetNewFlags(&newMsgFlags);
@@ -622,6 +636,7 @@ NS_IMETHODIMP nsImapOfflineTxn::RedoTransaction(void) {
         }
       }
       break;
+    }
     default:
       break;
   }

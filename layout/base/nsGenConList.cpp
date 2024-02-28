@@ -9,6 +9,30 @@
 #include "nsGenConList.h"
 #include "nsLayoutUtils.h"
 #include "nsIContent.h"
+#include "nsIFrame.h"
+
+void nsGenConNode::CheckFrameAssertions() {
+  NS_ASSERTION(
+      mContentIndex < int32_t(mPseudoFrame->StyleContent()->ContentCount()) ||
+          // Special-case for the USE node created for the legacy markers,
+          // which don't use the content property.
+          mContentIndex == 0,
+      "index out of range");
+  // We allow negative values of mContentIndex for 'counter-reset' and
+  // 'counter-increment'.
+
+  NS_ASSERTION(mContentIndex < 0 ||
+                   mPseudoFrame->Style()->GetPseudoType() ==
+                       mozilla::PseudoStyleType::before ||
+                   mPseudoFrame->Style()->GetPseudoType() ==
+                       mozilla::PseudoStyleType::after ||
+                   mPseudoFrame->Style()->GetPseudoType() ==
+                       mozilla::PseudoStyleType::marker,
+               "not CSS generated content and not counter change");
+  NS_ASSERTION(mContentIndex < 0 ||
+                   mPseudoFrame->HasAnyStateBits(NS_FRAME_GENERATED_CONTENT),
+               "not generated content and not counter change");
+}
 
 void nsGenConList::Clear() {
   // Delete entire list.
@@ -101,6 +125,41 @@ bool nsGenConList::NodeAfter(const nsGenConNode* aNode1,
   return cmp > 0;
 }
 
+nsGenConNode* nsGenConList::BinarySearch(
+    const mozilla::FunctionRef<bool(nsGenConNode*)>& aIsAfter) {
+  if (mList.isEmpty()) {
+    return nullptr;
+  }
+
+  // The range of indices at which |aNode| could end up.
+  // (We already know it can't be at index mSize.)
+  uint32_t first = 0, last = mSize - 1;
+
+  // A cursor to avoid walking more than the length of the list.
+  nsGenConNode* curNode = mList.getLast();
+  uint32_t curIndex = mSize - 1;
+
+  while (first != last) {
+    uint32_t test = first + (last - first) / 2;
+    if (last == curIndex) {
+      for (; curIndex != test; --curIndex) curNode = Prev(curNode);
+    } else {
+      for (; curIndex != test; ++curIndex) curNode = Next(curNode);
+    }
+
+    if (aIsAfter(curNode)) {
+      first = test + 1;
+      // if we exit the loop, we need curNode to be right
+      ++curIndex;
+      curNode = Next(curNode);
+    } else {
+      last = test;
+    }
+  }
+
+  return curNode;
+}
+
 void nsGenConList::Insert(nsGenConNode* aNode) {
   // Check for append.
   if (mList.isEmpty() || NodeAfter(aNode, mList.getLast())) {
@@ -111,34 +170,11 @@ void nsGenConList::Insert(nsGenConNode* aNode) {
     // Fast path for inserting many consecutive nodes in one place
     mLastInserted->setNext(aNode);
   } else {
-    // Binary search.
-
-    // the range of indices at which |aNode| could end up.
-    // (We already know it can't be at index mSize.)
-    uint32_t first = 0, last = mSize - 1;
-
-    // A cursor to avoid walking more than the length of the list.
-    nsGenConNode* curNode = mList.getLast();
-    uint32_t curIndex = mSize - 1;
-
-    while (first != last) {
-      uint32_t test = (first + last) / 2;
-      if (last == curIndex) {
-        for (; curIndex != test; --curIndex) curNode = Prev(curNode);
-      } else {
-        for (; curIndex != test; ++curIndex) curNode = Next(curNode);
-      }
-
-      if (NodeAfter(aNode, curNode)) {
-        first = test + 1;
-        // if we exit the loop, we need curNode to be right
-        ++curIndex;
-        curNode = Next(curNode);
-      } else {
-        last = test;
-      }
-    }
-    curNode->setPrevious(aNode);
+    auto IsAfter = [aNode](nsGenConNode* curNode) {
+      return NodeAfter(aNode, curNode);
+    };
+    auto* insertionNode = BinarySearch(IsAfter);
+    insertionNode->setPrevious(aNode);
   }
   ++mSize;
 

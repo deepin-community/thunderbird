@@ -2,10 +2,9 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-var { cal } = ChromeUtils.import("resource:///modules/calendar/calUtils.jsm");
+const EXPORTED_SYMBOLS = ["calproviderdetection"];
 
-this.EXPORTED_SYMBOLS = ["calproviderdetection"]; /* exported calproviderdetection */
+var { cal } = ChromeUtils.import("resource:///modules/calendar/calUtils.jsm");
 
 /**
  * Code to call the calendar provider detection mechanism.
@@ -22,8 +21,8 @@ class DetectionError extends Error {}
 /**
  * Creates an error class that extends the base detection error.
  *
- * @param {string} aName        The name of the constructor, used for the base error class.
- * @return {DetectionError}     A class extending DetectionError.
+ * @param {string} aName - The name of the constructor, used for the base error class.
+ * @returns {DetectionError} A class extending DetectionError.
  */
 function DetectionErrorClass(aName) {
   return class extends DetectionError {
@@ -41,6 +40,7 @@ var calproviderdetection = {
   /**
    * A map of providers that implement detection. Maps the type identifier
    * (e.g. "ics", "caldav") to the provider object.
+   *
    * @type {Map<string, calICalendarProvider>}
    */
   get providers() {
@@ -56,18 +56,19 @@ var calproviderdetection = {
   /**
    * Known domains for Google OAuth. This is just to catch the most common case,
    * MX entries should be checked for remaining cases.
+   *
    * @type {Set<string>}
    */
-  googleOAuthDomains: new Set(["gmail.com", "googlemail.com"]),
+  googleOAuthDomains: new Set(["gmail.com", "googlemail.com", "apidata.googleusercontent.com"]),
 
   /**
    * Translate location and username to an uri. If the location is empty, the
    * domain part of the username is taken. If the location is a hostname it is
    * converted to a https:// uri, if it is an uri string then use that.
    *
-   * @param {string} aLocation        The location string.
-   * @param {string} aUsername        The username string.
-   * @return {nsIURI}                 The resulting location uri.
+   * @param {string} aLocation - The location string.
+   * @param {string} aUsername - The username string.
+   * @returns {nsIURI} The resulting location uri.
    */
   locationToUri(aLocation, aUsername) {
     let uri = null;
@@ -91,15 +92,15 @@ var calproviderdetection = {
    * of things and handling this is up to the provider. It could be a hostname,
    * a specific URL, the origin URL, etc.
    *
-   * @param {string} aUsername                          The username for logging in.
-   * @param {string} aPassword                          The password for logging in.
-   * @param {string} aLocation                          The location information.
-   * @param {boolean} aSavePassword                     If true, the credentials will be saved
+   * @param {string} aUsername - The username for logging in.
+   * @param {string} aPassword - The password for logging in.
+   * @param {string} aLocation - The location information.
+   * @param {boolean} aSavePassword - If true, the credentials will be saved
    *                                                      in the password manager if used.
-   * @param {ProviderFilter[]} aPreDetectFilters        Functions for filtering out providers.
-   * @param {Object} aExtraProperties                   Extra properties to pass on to the
+   * @param {ProviderFilter[]} aPreDetectFilters - Functions for filtering out providers.
+   * @param {object} aExtraProperties - Extra properties to pass on to the
    *                                                      providers.
-   * @return {Promise<Map<String, calICalendar[]>>}     A promise resolving with a Map of
+   * @returns {Promise<Map<string, calICalendar[]>>} A promise resolving with a Map of
    *                                                      provider type to calendars found.
    */
   async detect(

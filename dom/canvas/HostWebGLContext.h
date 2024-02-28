@@ -17,7 +17,6 @@
 #include "WebGLFramebuffer.h"
 #include "WebGLTypes.h"
 #include "WebGLCommandQueue.h"
-#include "IpdlQueue.h"
 
 #include <unordered_map>
 #include <unordered_set>
@@ -170,9 +169,14 @@ class HostWebGLContext final : public SupportsWeakPtr {
   }
 
   void Present(const ObjectId xrFb, const layers::TextureType t,
-               const bool webvr) const {
-    return (void)mContext->Present(AutoResolve(xrFb), t, webvr);
+               const bool webvr, const webgl::SwapChainOptions& options) const {
+    return (void)mContext->Present(AutoResolve(xrFb), t, webvr, options);
   }
+  void CopyToSwapChain(const ObjectId fb, const layers::TextureType t,
+                       const webgl::SwapChainOptions& options) const {
+    return (void)mContext->CopyToSwapChain(AutoResolve(fb), t, options);
+  }
+  void EndOfFrame() const { return (void)mContext->EndOfFrame(); }
   Maybe<layers::SurfaceDescriptor> GetFrontBuffer(ObjectId xrFb,
                                                   const bool webvr) const;
 
@@ -180,6 +184,12 @@ class HostWebGLContext final : public SupportsWeakPtr {
 
   Maybe<uvec2> FrontBufferSnapshotInto(Maybe<Range<uint8_t>> dest) const {
     return mContext->FrontBufferSnapshotInto(dest);
+  }
+
+  Maybe<uvec2> FrontBufferSnapshotInto(
+      std::shared_ptr<gl::SharedSurface>& front,
+      Maybe<Range<uint8_t>> dest) const {
+    return mContext->FrontBufferSnapshotInto(front, dest);
   }
 
   void ClearVRSwapChain() const { mContext->ClearVRSwapChain(); }
@@ -241,9 +251,9 @@ class HostWebGLContext final : public SupportsWeakPtr {
   // ------------------------- GL State -------------------------
   bool IsContextLost() const { return mContext->IsContextLost(); }
 
-  void Disable(GLenum cap) const { mContext->Disable(cap); }
-
-  void Enable(GLenum cap) const { mContext->Enable(cap); }
+  void SetEnabled(GLenum cap, Maybe<GLuint> i, bool val) const {
+    mContext->SetEnabled(cap, i, val);
+  }
 
   bool IsEnabled(GLenum cap) const { return mContext->IsEnabled(cap); }
 
@@ -277,13 +287,14 @@ class HostWebGLContext final : public SupportsWeakPtr {
     mContext->BlendColor(r, g, b, a);
   }
 
-  void BlendEquationSeparate(GLenum modeRGB, GLenum modeAlpha) const {
-    mContext->BlendEquationSeparate(modeRGB, modeAlpha);
+  void BlendEquationSeparate(Maybe<GLuint> i, GLenum modeRGB,
+                             GLenum modeAlpha) const {
+    mContext->BlendEquationSeparate(i, modeRGB, modeAlpha);
   }
 
-  void BlendFuncSeparate(GLenum srcRGB, GLenum dstRGB, GLenum srcAlpha,
-                         GLenum dstAlpha) const {
-    mContext->BlendFuncSeparate(srcRGB, dstRGB, srcAlpha, dstAlpha);
+  void BlendFuncSeparate(Maybe<GLuint> i, GLenum srcRGB, GLenum dstRGB,
+                         GLenum srcAlpha, GLenum dstAlpha) const {
+    mContext->BlendFuncSeparate(i, srcRGB, dstRGB, srcAlpha, dstAlpha);
   }
 
   GLenum CheckFramebufferStatus(GLenum target) const {
@@ -300,9 +311,8 @@ class HostWebGLContext final : public SupportsWeakPtr {
 
   void ClearStencil(GLint v) const { mContext->ClearStencil(v); }
 
-  void ColorMask(WebGLboolean r, WebGLboolean g, WebGLboolean b,
-                 WebGLboolean a) const {
-    mContext->ColorMask(r, g, b, a);
+  void ColorMask(Maybe<GLuint> i, uint8_t mask) const {
+    mContext->ColorMask(i, mask);
   }
 
   void CompileShader(const ObjectId id) const {
@@ -467,16 +477,20 @@ class HostWebGLContext final : public SupportsWeakPtr {
     return GetWebGL2Context()->GetBufferSubData(target, srcByteOffset, dest);
   }
 
-  void BufferData(GLenum target, const RawBuffer<>& data, GLenum usage) const {
-    const auto& beginOrNull = data.begin();
-    mContext->BufferData(target, data.size(), beginOrNull, usage);
+  void BufferData(GLenum target, const RawBuffer<>& srcData, GLenum usage) const {
+    mContext->BufferData(target, srcData.size(), srcData.begin(), usage);
+  }
+
+  void BufferData_SizeOnly(GLenum target, size_t byteSize, GLenum usage) const {
+    mContext->BufferData(target, byteSize, nullptr, usage);
   }
 
   void BufferSubData(GLenum target, uint64_t dstByteOffset,
-                     const RawBuffer<>& srcData) const {
+                     const RawBuffer<>& srcData,
+                     bool unsynchronized = false) const {
     const auto& range = srcData.Data();
     mContext->BufferSubData(target, dstByteOffset, range.length(),
-                            range.begin().get());
+                            range.begin().get(), unsynchronized);
   }
 
   // -------------------------- Framebuffer Objects --------------------------
@@ -584,7 +598,7 @@ class HostWebGLContext final : public SupportsWeakPtr {
   // ------------------------ Uniforms and attributes ------------------------
 
   void UniformData(uint32_t loc, bool transpose,
-                   const RawBuffer<>& data) const {
+                   const RawBuffer<webgl::UniformDataVal>& data) const {
     mContext->UniformData(loc, transpose, data.Data());
   }
 
@@ -763,6 +777,11 @@ class HostWebGLContext final : public SupportsWeakPtr {
     const auto obj = ById<WebGLQuery>(id);
     if (!obj) return {};
     return mContext->GetQueryParameter(*obj, pname);
+  }
+
+  // WEBGL_provoking_vertex
+  void ProvokingVertex(const webgl::ProvokingVertex mode) const {
+    mContext->ProvokingVertex(mode);
   }
 
   // -------------------------------------------------------------------------

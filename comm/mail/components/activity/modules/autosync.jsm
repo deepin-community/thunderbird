@@ -16,10 +16,6 @@ var nsActEvent = Components.Constructor(
   "init"
 );
 
-const { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-
-var nsIAutoSyncMgrListener = Ci.nsIAutoSyncMgrListener;
-
 /**
  * This code aims to mediate between the auto-sync code and the activity mgr.
  *
@@ -114,8 +110,9 @@ var autosyncModule = {
       ]);
 
       let statusMsg;
-      let numOfMessages = this._syncInfoPerServer.get(folder.server)
-        .totalDownloads;
+      let numOfMessages = this._syncInfoPerServer.get(
+        folder.server
+      ).totalDownloads;
       if (numOfMessages) {
         statusMsg = this.bundle.formatStringFromName(
           "autosyncEventStatusText",
@@ -173,7 +170,7 @@ var autosyncModule = {
     try {
       if (
         folder instanceof Ci.nsIMsgFolder &&
-        queue == nsIAutoSyncMgrListener.PriorityQueue
+        queue == Ci.nsIAutoSyncMgrListener.PriorityQueue
       ) {
         this._inQFolderList.push(folder);
         this.log.info(
@@ -219,7 +216,7 @@ var autosyncModule = {
     try {
       if (
         folder instanceof Ci.nsIMsgFolder &&
-        queue == nsIAutoSyncMgrListener.PriorityQueue
+        queue == Ci.nsIAutoSyncMgrListener.PriorityQueue
       ) {
         let i = this._inQFolderList.indexOf(folder);
         if (i > -1) {
@@ -253,6 +250,8 @@ var autosyncModule = {
             // that we add activities into the activity manager in
             // onDownloadStarted notification rather than onFolderAddedIntoQ.
             // This is an expected side effect.
+            // Log a warning, but do not throw an error.
+            this.log.warn("onFolderRemovedFromQ: " + e);
           }
 
           // remove the folder/syncItem association from the table
@@ -347,7 +346,11 @@ var autosyncModule = {
             ]
           );
 
-          process.setProgress(msg, numOfMessages, totalPending);
+          process.setProgress(
+            msg,
+            syncItem.totalDownloaded,
+            syncItem.pendingMsgCount
+          );
 
           let serverInfo = this._syncInfoPerServer.get(
             syncItem.syncFolder.server

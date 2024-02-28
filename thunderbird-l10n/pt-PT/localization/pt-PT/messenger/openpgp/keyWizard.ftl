@@ -10,6 +10,10 @@ key-wizard-button =
     .buttonlabelaccept = Continuar
     .buttonlabelhelp = Retroceder
 
+key-wizard-dialog =
+    .buttonlabelaccept = Continuar
+    .buttonlabelextra1 = Retroceder
+
 key-wizard-warning = <b>Se você já tiver uma chave pessoal</b> para este endereço de e-mail, deve importar a mesma. Caso contrário, você não terá acesso aos arquivos dos seus e-mails encriptados nem poderá ler e-mails encriptados recebidos de pessoas que ainda estejam a utilizar a sua chave existente.
 
 key-wizard-learn-more = Saber mais
@@ -124,10 +128,10 @@ openpgp-import-key-description = Pode importar chaves pessoais que foram criadas
 openpgp-import-key-info = Outros softwares podem descrever uma chave pessoal utilizando termos alternativos, como chave própria, chave secreta, chave privada ou par de chaves.
 
 #   $count (Number) - the number of keys found in the selected files
-openpgp-import-key-list-amount =
+openpgp-import-key-list-amount-2 =
     { $count ->
-        [one] O Thunderbird encontrou { $count } chave que pode ser importada.
-       *[other] O Thunderbird encontrou { $count } chaves que podem ser importadas.
+        [one] { -brand-short-name } encontrou uma chave que pode ser importada.
+       *[other] { -brand-short-name } encontrou { $count } chaves que podem ser importadas.
     }
 
 openpgp-import-key-list-description = Confirme quais as chaves podem ser tratadas como as suas chaves pessoais. Apenas as chaves que você mesmo criou e que mostram a sua própria identidade devem ser utilizadas como chaves pessoais. Você pode alterar esta opção mais tarde na janela Propriedades da chave.

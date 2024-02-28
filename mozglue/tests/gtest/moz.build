@@ -4,23 +4,17 @@
 
 if CONFIG["OS_ARCH"] == "WINNT":
     SOURCES += [
-        "TestDLLBlocklist.cpp",
         "TestNativeNtGTest.cpp",
     ]
 
-    TEST_DIRS += [
-        "TestDllBlocklist_AllowByVersion",
-        "TestDllBlocklist_MatchByName",
-        "TestDllBlocklist_MatchByVersion",
-        "TestDllBlocklist_NoOpEntryPoint",
+
+if not CONFIG["MOZ_TSAN"]:
+    SOURCES += [
+        "TestStackWalk.cpp",
     ]
 
-SOURCES += [
-    "TestStackWalk.cpp",
-]
-
-# The test relies on optimizations being on, so we can't let --disable-optimize
-# getting in the way. See details in the source file.
-SOURCES["TestStackWalk.cpp"].flags += ["-O2"]
+    # The test relies on optimizations being on, so we can't let --disable-optimize
+    # getting in the way. See details in the source file.
+    SOURCES["TestStackWalk.cpp"].flags += ["-O2"]
 
 FINAL_LIBRARY = "xul-gtest"

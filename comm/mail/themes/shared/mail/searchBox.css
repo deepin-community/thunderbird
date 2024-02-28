@@ -4,12 +4,14 @@
 
 .gloda-search {
   padding-inline-start: 21px !important;
-  -moz-box-flex: 1;
+  flex: 1;
 }
 
 .search-icon {
-  list-style-image: url(chrome://global/skin/icons/search-textbox.svg);
   margin-inline-end: -21px;
+  height: 16px;
+  width: 16px;
+  z-index: 2;
 }
 
 .search-icon:-moz-locale-dir(rtl) {
@@ -19,10 +21,14 @@
 .searchBox,
 .themeableSearchBox {
   appearance: none;
-  border-radius: var(--toolbarbutton-border-radius);
+  color: FieldText;
+  background-color: Field;
+  border: 1px solid color-mix(in srgb, currentColor 50%, transparent);
+  border-radius: var(--button-border-radius);
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
   outline: none;
-  height: 24px;
+  min-height: 24px;
+  height: 1.2em;
 }
 
 .textbox-search-clear {
@@ -42,6 +48,22 @@
   box-shadow: 0 1px 6px rgba(0, 0, 0, 0.1);
 }
 
+@media (prefers-color-scheme: dark) {
+  .searchBox:hover {
+    box-shadow: 0 1px 3px rgba(255, 255, 255, 0.25);
+  }
+}
+
+/* special treatment because these boxes are on themable toolbars */
+.gloda-search:-moz-lwtheme,
+.remote-gloda-search:-moz-lwtheme,
+:root[lwt-tree] .themeableSearchBox,
+:root[lwt-tree] #peopleSearchInput:not([focused="true"]) {
+  color: var(--toolbar-field-color);
+  background-color: var(--toolbar-field-background-color);
+  border-color: var(--toolbar-field-border-color);
+}
+
 .gloda-search:focus,
 .searchBox[focused="true"],
 .themeableSearchBox:not([disabled="true"]):focus,
@@ -50,109 +72,35 @@
   outline: 1px solid var(--toolbar-field-focus-border-color);
 }
 
-.searchBox:-moz-lwtheme-brighttext:hover,
-.themeableSearchBox:-moz-lwtheme-brighttext:not([disabled]):hover {
-  box-shadow: 0 1px 3px rgba(255, 255, 255, 0.25);
-}
-
-/* special treatment because these boxes are on themable toolbars */
-.gloda-search:-moz-lwtheme,
-#searchBox:-moz-lwtheme,
-#peopleSearchInput:-moz-lwtheme,
-.themeableSearchBox:-moz-lwtheme,
-.remote-gloda-search:-moz-lwtheme {
-  background-color: var(--lwt-toolbar-field-background-color,
-                        hsla(0, 0%, 100%, 0.8));
-  color: var(--lwt-toolbar-field-color, black);
-  border-color: var(--lwt-toolbar-field-border-color, hsla(240, 5%, 5%, 0.25));
-}
-
 .gloda-search:-moz-lwtheme:focus,
-.themeableSearchBox:-moz-lwtheme:focus,
-#searchBox:-moz-lwtheme[focused="true"],
-#peopleSearchInput:-moz-lwtheme[focused="true"],
-.themeableSearchBox:-moz-lwtheme[focused="true"],
+:root[lwt-tree] .themeableSearchBox:focus,
+:root[lwt-tree] .themeableSearchBox[focused="true"],
+:root[lwt-tree] #peopleSearchInput[focused="true"],
 .remote-gloda-search:-moz-lwtheme[focused="true"] {
-  background-color: var(--lwt-toolbar-field-focus,
-                    var(--lwt-toolbar-field-background-color, white));
-  color: var(--lwt-toolbar-field-focus-color,
-         var(--lwt-toolbar-field-color, black));
-  border-color: var(--toolbar-field-focus-border-color);
+  color: var(--toolbar-field-focus-color);
+  background-color: var(--toolbar-field-focus-background-color);
 }
 
 .gloda-search:-moz-lwtheme::selection,
-#searchBox .textbox-input:-moz-lwtheme::selection,
-#peopleSearchInput .textbox-input:-moz-lwtheme::selection,
-.themeableSearchBox .textbox-input:-moz-lwtheme::selection,
-.remote-gloda-search .textbox-input:-moz-lwtheme::selection {
-  background-color: var(--lwt-toolbar-field-highlight,
-                        -moz-system-color(text-select-background, light));
-  color: var(--lwt-toolbar-field-highlight-text,
-             -moz-system-color(text-select-foreground, light));
+.themeableSearchBox:-moz-lwtheme::selection {
+  background-color: var(--lwt-toolbar-field-highlight, Highlight);
+  color: var(--lwt-toolbar-field-highlight-text, HighlightText);
 }
 
 .gloda-search:not(:focus)::selection,
-#searchBox:not([focused="true"]) .textbox-input::selection,
-#peopleSearchInput:not([focused="true"]) .textbox-input::selection,
-.themeableSearchBox:not(:focus) .textbox-input::selection,
-.themeableSearchBox:not([focused="true"]) .textbox-input::selection,
-.remote-gloda-search:not([focused="true"]) .textbox-input::selection {
-  background-color: var(--lwt-toolbar-field-highlight,
-                        -moz-system-color(text-select-background-disabled,
-                        light));
-}
-
-:root[lwt-toolbar-field-focus-brighttext] .gloda-search:focus::selection,
-:root[lwt-toolbar-field-focus-brighttext]
-  #searchBox[focused="true"] .textbox-input::selection,
-:root[lwt-toolbar-field-focus-brighttext]
-  #peopleSearchInput[focused="true"] .textbox-input::selection,
-:root[lwt-toolbar-field-focus-brighttext]
-  .themeableSearchBox:focus .textbox-input::selection,
-:root[lwt-toolbar-field-focus-brighttext]
-  .themeableSearchBox[focused="true"] .textbox-input::selection,
-:root[lwt-toolbar-field-focus-brighttext]
-  .remote-gloda-search[focused="true"] .textbox-input::selection {
-  background-color: var(--lwt-toolbar-field-highlight,
-                        -moz-system-color(text-select-background, dark));
-  color: var(--lwt-toolbar-field-highlight-text,
-             -moz-system-color(text-select-foreground, dark));
-}
-
-:root[lwt-toolbar-field-brighttext] .gloda-search:not(:focus)::selection,
-:root[lwt-toolbar-field-brighttext]
-  #searchBox:not([focused="true"]) .textbox-input::selection,
-:root[lwt-toolbar-field-brighttext]
-  #peopleSearchInput:not([focused="true"]) .textbox-input::selection,
-:root[lwt-toolbar-field-brighttext]
-  .themeableSearchBox:not(:focus) .textbox-input::selection,
-:root[lwt-toolbar-field-brighttext]
-  .themeableSearchBox:not([focused="true"]) .textbox-input::selection,
-:root[lwt-toolbar-field-brighttext]
-  .remote-gloda-search:not([focused="true"]) .textbox-input::selection {
-  background-color: var(--lwt-toolbar-field-highlight,
-                        -moz-system-color(text-select-background-disabled,
-                        dark));
-  color: var(--lwt-toolbar-field-highlight-text,
-             -moz-system-color(text-select-foreground, dark));
-}
-
-#PopupGlodaAutocomplete {
-  appearance: none;
-  margin-top: -1px;
-  background: var(--autocomplete-popup-background);
-  color: var(--autocomplete-popup-color);
-  border: 1px solid var(--arrowpanel-border-color);
+.themeableSearchBox:not(:focus)::selection,
+.themeableSearchBox:not([focused="true"])::selection {
+  background-color: var(--lwt-toolbar-field-highlight, text-select-disabled-background);
 }
 
 #PopupGlodaAutocomplete > .autocomplete-richlistbox {
-  padding: 2px 0;
+  padding: 0;
   color: inherit;
   background-color: inherit;
 }
 
 #PopupGlodaAutocomplete .ac-url {
-  display: -moz-box;
+  display: flex;
   margin-bottom: 2px;
 }
 
@@ -173,4 +121,9 @@
 .autocomplete-richlistitem[type^="gloda-"][selected] {
   background: var(--autocomplete-popup-highlight-background);
   color: var(--autocomplete-popup-highlight-color);
+}
+
+.remote-gloda-search-container {
+  min-width: 10em;
+  align-items: center;
 }

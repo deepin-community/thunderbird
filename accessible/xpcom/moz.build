@@ -17,6 +17,7 @@ UNIFIED_SOURCES += [
     "xpcAccessibleSelectable.cpp",
     "xpcAccessibleTable.cpp",
     "xpcAccessibleTableCell.cpp",
+    "xpcAccessibleTextLeafRange.cpp",
     "xpcAccessibleTextRange.cpp",
     "xpcAccessibleValue.cpp",
 ]
@@ -77,6 +78,3 @@ GeneratedFile(
 FINAL_LIBRARY = "xul"
 
 include("/ipc/chromium/chromium-config.mozbuild")
-
-if CONFIG["CC_TYPE"] in ("clang", "gcc"):
-    CXXFLAGS += ["-Wno-error=shadow"]

@@ -54,8 +54,13 @@ n13: dq 0x4a75479abd64e097
 n14: dq 0x249214109d5d1c88
 %endif
 
-errmsg_reg:   db "failed to preserve register", 0
 errmsg_stack: db "stack corruption", 0
+errmsg_register: db "failed to preserve register:%s", 0
+errmsg_vzeroupper: db "missing vzeroupper", 0
+
+SECTION .bss
+
+check_vzeroupper: resd 1
 
 SECTION .text
 
@@ -65,148 +70,302 @@ cextern fail_func
 ; (max_args % 4) must equal 3 for stack alignment
 %define max_args 15
 
-%if ARCH_X86_64
+%if UNIX64
+    DECLARE_REG_TMP 0
+%else
+    DECLARE_REG_TMP 4
+%endif
 
 ;-----------------------------------------------------------------------------
-; int checkasm_stack_clobber(uint64_t clobber, ...)
+; unsigned checkasm_init_x86(char *name)
 ;-----------------------------------------------------------------------------
-cglobal stack_clobber, 1, 2
-    ; Clobber the stack with junk below the stack pointer
-    %define argsize (max_args+6)*8
-    SUB  rsp, argsize
-    mov   r1, argsize-8
-.loop:
-    mov [rsp+r1], r0
-    sub   r1, 8
-    jge .loop
-    ADD  rsp, argsize
+cglobal init_x86, 0, 5
+%if ARCH_X86_64
+    push          rbx
+%endif
+    movifnidn      t0, r0mp
+    mov           eax, 0x80000000
+    cpuid
+    cmp           eax, 0x80000004
+    jb .no_brand ; processor brand string not supported
+    mov           eax, 0x80000002
+    cpuid
+    mov     [t0+4* 0], eax
+    mov     [t0+4* 1], ebx
+    mov     [t0+4* 2], ecx
+    mov     [t0+4* 3], edx
+    mov           eax, 0x80000003
+    cpuid
+    mov     [t0+4* 4], eax
+    mov     [t0+4* 5], ebx
+    mov     [t0+4* 6], ecx
+    mov     [t0+4* 7], edx
+    mov           eax, 0x80000004
+    cpuid
+    mov     [t0+4* 8], eax
+    mov     [t0+4* 9], ebx
+    mov     [t0+4*10], ecx
+    mov     [t0+4*11], edx
+    xor           eax, eax
+    cpuid
+    jmp .check_xcr1
+.no_brand: ; use manufacturer id as a fallback
+    xor           eax, eax
+    mov      [t0+4*3], eax
+    cpuid
+    mov      [t0+4*0], ebx
+    mov      [t0+4*1], edx
+    mov      [t0+4*2], ecx
+.check_xcr1:
+    test          eax, eax
+    jz .end2 ; cpuid leaf 1 not supported
+    mov           t0d, eax ; max leaf
+    mov           eax, 1
+    cpuid
+    and           ecx, 0x18000000
+    cmp           ecx, 0x18000000
+    jne .end2 ; osxsave/avx not supported
+    cmp           t0d, 13 ; cpuid leaf 13 not supported
+    jb .end2
+    mov           t0d, eax ; cpuid signature
+    mov           eax, 13
+    mov           ecx, 1
+    cpuid
+    test           al, 0x04
+    jz .end ; xcr1 not supported
+    mov           ecx, 1
+    xgetbv
+    test           al, 0x04
+    jnz .end ; always-dirty ymm state
+%if ARCH_X86_64 == 0 && PIC
+    LEA           eax, check_vzeroupper
+    mov         [eax], ecx
+%else
+    mov [check_vzeroupper], ecx
+%endif
+.end:
+    mov           eax, t0d
+.end2:
+%if ARCH_X86_64
+    pop           rbx
+%endif
     RET
 
+%if ARCH_X86_64
 %if WIN64
-    %assign free_regs 7
     %define stack_param rsp+32 ; shadow space
-    %define num_stack_params rsp+stack_offset+22*8
+    %define num_fn_args rsp+stack_offset+17*8
+    %assign num_reg_args 4
+    %assign free_regs 7
+    %assign clobber_mask_stack_bit 16
     DECLARE_REG_TMP 4
 %else
-    %assign free_regs 9
     %define stack_param rsp
-    %define num_stack_params rsp+stack_offset+16*8
+    %define num_fn_args rsp+stack_offset+11*8
+    %assign num_reg_args 6
+    %assign free_regs 9
+    %assign clobber_mask_stack_bit 64
     DECLARE_REG_TMP 7
 %endif
 
-;-----------------------------------------------------------------------------
-; void checkasm_checked_call(void *func, ...)
-;-----------------------------------------------------------------------------
-INIT_XMM
+%macro CLOBBER_UPPER 2 ; reg, mask_bit
+    mov          r13d, %1d
+    or            r13, r8
+    test          r9b, %2
+    cmovnz         %1, r13
+%endmacro
+
 cglobal checked_call, 2, 15, 16, max_args*8+64+8
-    mov  t0, r0
+    mov          r10d, [num_fn_args]
+    mov            r8, 0xdeadbeef00000000
+    mov           r9d, [num_fn_args+r10*8+8] ; clobber_mask
+    mov            t0, [num_fn_args+r10*8]   ; func
 
-    ; All arguments have been pushed on the stack instead of registers in
-    ; order to test for incorrect assumptions that 32-bit ints are
-    ; zero-extended to 64-bit.
-    mov  r0, r6mp
-    mov  r1, r7mp
-    mov  r2, r8mp
-    mov  r3, r9mp
+    ; Clobber the upper halves of 32-bit parameters
+    CLOBBER_UPPER  r0, 1
+    CLOBBER_UPPER  r1, 2
+    CLOBBER_UPPER  r2, 4
+    CLOBBER_UPPER  r3, 8
 %if UNIX64
-    mov  r4, r10mp
-    mov  r5, r11mp
+    CLOBBER_UPPER  r4, 16
+    CLOBBER_UPPER  r5, 32
 %else ; WIN64
-    ; Move possible floating-point arguments to the correct registers
-    movq m0, r0
-    movq m1, r1
-    movq m2, r2
-    movq m3, r3
-
-    %assign i 6
-    %rep 16-6
-        mova m %+ i, [x %+ i]
-        %assign i i+1
-    %endrep
-%endif
-
-    ; write stack canaries to the area above parameters passed on the stack
-    mov r9d, [num_stack_params]
-    mov  r8, [rsp+stack_offset] ; return address
-    not  r8
-%assign i 0
-%rep 8 ; 64 bytes
-    mov [stack_param+(r9+i)*8], r8
+%assign i 6
+%rep 16-6
+    mova       m %+ i, [x %+ i]
     %assign i i+1
 %endrep
-    dec r9d
-    jl .stack_setup_done ; no stack parameters
+%endif
+
+    xor          r11d, r11d
+    sub          r10d, num_reg_args
+    cmovs        r10d, r11d ; num stack args
+
+    ; write stack canaries to the area above parameters passed on the stack
+    mov           r12, [rsp+stack_offset] ; return address
+    not           r12
+%assign i 0
+%rep 8 ; 64 bytes
+    mov [stack_param+(r10+i)*8], r12
+    %assign i i+1
+%endrep
+
+    test         r10d, r10d
+    jz .stack_setup_done ; no stack parameters
 .copy_stack_parameter:
-    mov  r8, [stack_param+stack_offset+7*8+r9*8]
-    mov [stack_param+r9*8], r8
-    dec r9d
-    jge .copy_stack_parameter
+    mov           r12, [stack_param+stack_offset+8+r11*8]
+    CLOBBER_UPPER r12, clobber_mask_stack_bit
+    shr           r9d, 1
+    mov [stack_param+r11*8], r12
+    inc          r11d
+    cmp          r11d, r10d
+    jl .copy_stack_parameter
 .stack_setup_done:
 
 %assign i 14
 %rep 15-free_regs
-    mov r %+ i, [n %+ i]
+    mov        r %+ i, [n %+ i]
     %assign i i-1
 %endrep
-    call t0
+    call           t0
+
+    ; check for stack corruption
+    mov           r0d, [num_fn_args]
+    xor           r3d, r3d
+    sub           r0d, num_reg_args
+    cmovs         r0d, r3d ; num stack args
+
+    mov            r3, [rsp+stack_offset]
+    mov            r4, [stack_param+r0*8]
+    not            r3
+    xor            r4, r3
+%assign i 1
+%rep 6
+    mov            r5, [stack_param+(r0+i)*8]
+    xor            r5, r3
+    or             r4, r5
+    %assign i i+1
+%endrep
+    xor            r3, [stack_param+(r0+7)*8]
+    or             r4, r3
+    jz .stack_ok
+    ; Save the return value located in rdx:rax first to prevent clobbering.
+    mov           r10, rax
+    mov           r11, rdx
+    lea            r0, [errmsg_stack]
+    jmp .fail
+.stack_ok:
 
     ; check for failure to preserve registers
-    xor r14, [n14]
-    lea  r0, [errmsg_reg]
-%assign i 13
-%rep 14-free_regs
-    xor r %+ i, [n %+ i]
-    or  r14, r %+ i
+%assign i 14
+%rep 15-free_regs
+    cmp        r %+ i, [n %+ i]
+    setne         r4b
+    lea           r3d, [r4+r3*2]
     %assign i i-1
 %endrep
 %if WIN64
-    pxor m6, [x6]
-    %assign i 7
-    %rep 16-7
-        pxor m %+ i, [x %+ i]
-        por  m6, m %+ i
-        %assign i i+1
-    %endrep
-    packsswb m6, m6
-    movq r5, m6
-    or  r14, r5
+    lea            r0, [rsp+32] ; account for shadow space
+    mov            r5, r0
+    test          r3d, r3d
+    jz .gpr_ok
+%else
+    test          r3d, r3d
+    jz .gpr_xmm_ok
+    mov            r0, rsp
 %endif
-    jnz .fail
-
-    ; check for stack corruption
-    mov r9d, [num_stack_params]
-    mov  r8, [rsp+stack_offset]
-    mov  r4, [stack_param+r9*8]
-    not  r8
-    xor  r4, r8
-%assign i 1
-%rep 6
-    mov  r5, [stack_param+(r9+i)*8]
-    xor  r5, r8
-    or   r4, r5
+%assign i free_regs
+%rep 15-free_regs
+%if i < 10
+    mov    dword [r0], " r0" + (i << 16)
+    lea            r4, [r0+3]
+%else
+    mov    dword [r0], " r10" + ((i - 10) << 24)
+    lea            r4, [r0+4]
+%endif
+    test          r3b, 1 << (i - free_regs)
+    cmovnz         r0, r4
     %assign i i+1
 %endrep
-    xor  r8, [stack_param+(r9+7)*8]
-    or   r4, r8
-    jz .ok
-    add  r0, errmsg_stack-errmsg_reg
+%if WIN64 ; xmm registers
+.gpr_ok:
+%assign i 6
+%rep 16-6
+    pxor       m %+ i, [x %+ i]
+    %assign i i+1
+%endrep
+    packsswb       m6, m7
+    packsswb       m8, m9
+    packsswb      m10, m11
+    packsswb      m12, m13
+    packsswb      m14, m15
+    packsswb       m6, m6
+    packsswb       m8, m10
+    packsswb      m12, m14
+    packsswb       m6, m6
+    packsswb       m8, m12
+    packsswb       m6, m8
+    pxor           m7, m7
+    pcmpeqb        m6, m7
+    pmovmskb      r3d, m6
+    cmp           r3d, 0xffff
+    je .xmm_ok
+    mov           r7d, " xmm"
+%assign i 6
+%rep 16-6
+    mov        [r0+0], r7d
+%if i < 10
+    mov   byte [r0+4], "0" + i
+    lea            r4, [r0+5]
+%else
+    mov   word [r0+4], "10" + ((i - 10) << 8)
+    lea            r4, [r0+6]
+%endif
+    test          r3d, 1 << i
+    cmovz          r0, r4
+    %assign i i+1
+%endrep
+.xmm_ok:
+    cmp            r0, r5
+    je .gpr_xmm_ok
+    mov     byte [r0], 0
+    mov           r11, rdx
+    mov            r1, r5
+%else
+    mov     byte [r0], 0
+    mov           r11, rdx
+    mov            r1, rsp
+%endif
+    mov           r10, rax
+    lea            r0, [errmsg_register]
+    jmp .fail
+.gpr_xmm_ok:
+    ; Check for dirty YMM state, i.e. missing vzeroupper
+    mov           ecx, [check_vzeroupper]
+    test          ecx, ecx
+    jz .ok ; not supported, skip
+    mov           r10, rax
+    mov           r11, rdx
+    xgetbv
+    test           al, 0x04
+    jz .restore_retval ; clean ymm state
+    lea            r0, [errmsg_vzeroupper]
+    vzeroupper
 .fail:
     ; Call fail_func() with a descriptive message to mark it as a failure.
-    ; Save the return value located in rdx:rax first to prevent clobbering.
-    mov  r9, rax
-    mov r10, rdx
-    xor eax, eax
+    xor           eax, eax
     call fail_func
-    mov rdx, r10
-    mov rax, r9
+.restore_retval:
+    mov           rax, r10
+    mov           rdx, r11
 .ok:
     RET
 
 ; trigger a warmup of vector units
 %macro WARMUP 0
 cglobal warmup, 0, 0
-    xorps   m0, m0
-    mulps   m0, m0
+    xorps          m0, m0
+    mulps          m0, m0
     RET
 %endmacro
 
@@ -227,61 +386,90 @@ WARMUP
 ; void checkasm_checked_call(void *func, ...)
 ;-----------------------------------------------------------------------------
 cglobal checked_call, 1, 7
-    mov  r3, [esp+stack_offset]      ; return address
-    mov  r1, [esp+stack_offset+17*4] ; num_stack_params
-    mov  r2, 27
-    not  r3
-    sub  r2, r1
+    mov            r3, [esp+stack_offset]      ; return address
+    mov            r1, [esp+stack_offset+17*4] ; num_stack_params
+    mov            r2, 27
+    not            r3
+    sub            r2, r1
 .push_canary:
-    push r3
-    dec  r2
+    push           r3
+    dec            r2
     jg .push_canary
 .push_parameter:
     push dword [esp+32*4]
-    dec  r1
+    dec            r1
     jg .push_parameter
-    mov  r3, n3
-    mov  r4, n4
-    mov  r5, n5
-    mov  r6, n6
-    call r0
+    mov            r3, n3
+    mov            r4, n4
+    mov            r5, n5
+    mov            r6, n6
+    call           r0
 
     ; check for failure to preserve registers
-    xor  r3, n3
-    xor  r4, n4
-    xor  r5, n5
-    xor  r6, n6
-    or   r3, r4
-    or   r5, r6
-    LEA  r1, errmsg_reg
-    or   r3, r5
-    jnz .fail
-
+    cmp            r3, n3
+    setne         r3h
+    cmp            r4, n4
+    setne         r3b
+    shl           r3d, 16
+    cmp            r5, n5
+    setne         r3h
+    cmp            r6, n6
+    setne         r3b
+    test           r3, r3
+    jz .gpr_ok
+    lea            r1, [esp+16]
+    mov       [esp+4], r1
+%assign i 3
+%rep 4
+    mov    dword [r1], " r0" + (i << 16)
+    lea            r4, [r1+3]
+    test           r3, 1 << ((6 - i) * 8)
+    cmovnz         r1, r4
+    %assign i i+1
+%endrep
+    mov     byte [r1], 0
+    mov            r5, eax
+    mov            r6, edx
+    LEA            r1, errmsg_register
+    jmp .fail
+.gpr_ok:
     ; check for stack corruption
-    mov  r3, [esp+48*4] ; num_stack_params
-    mov  r6, [esp+31*4] ; return address
-    mov  r4, [esp+r3*4]
-    sub  r3, 26
-    not  r6
-    xor  r4, r6
+    mov            r3, [esp+48*4] ; num_stack_params
+    mov            r6, [esp+31*4] ; return address
+    mov            r4, [esp+r3*4]
+    sub            r3, 26
+    not            r6
+    xor            r4, r6
 .check_canary:
-    mov  r5, [esp+(r3+27)*4]
-    xor  r5, r6
-    or   r4, r5
-    inc  r3
+    mov            r5, [esp+(r3+27)*4]
+    xor            r5, r6
+    or             r4, r5
+    inc            r3
     jl .check_canary
-    test r4, r4
-    jz .ok
-    add  r1, errmsg_stack-errmsg_reg
+    mov            r5, eax
+    mov            r6, edx
+    test           r4, r4
+    jz .stack_ok
+    LEA            r1, errmsg_stack
+    jmp .fail
+.stack_ok:
+    ; check for dirty YMM state, i.e. missing vzeroupper
+    LEA           ecx, check_vzeroupper
+    mov           ecx, [ecx]
+    test          ecx, ecx
+    jz .ok ; not supported, skip
+    xgetbv
+    test           al, 0x04
+    jz .ok ; clean ymm state
+    LEA            r1, errmsg_vzeroupper
+    vzeroupper
 .fail:
-    mov  r3, eax
-    mov  r4, edx
-    mov [esp], r1
+    mov         [esp], r1
     call fail_func
-    mov edx, r4
-    mov eax, r3
 .ok:
-    add esp, 27*4
+    add           esp, 27*4
+    mov           eax, r5
+    mov           edx, r6
     RET
 
 %endif ; ARCH_X86_64

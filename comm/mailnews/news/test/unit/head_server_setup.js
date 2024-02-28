@@ -1,9 +1,8 @@
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 var { MailServices } = ChromeUtils.import(
   "resource:///modules/MailServices.jsm"
 );
-var { XPCOMUtils } = ChromeUtils.import(
-  "resource://gre/modules/XPCOMUtils.jsm"
+var { XPCOMUtils } = ChromeUtils.importESModule(
+  "resource://gre/modules/XPCOMUtils.sys.mjs"
 );
 var { localAccountUtils } = ChromeUtils.import(
   "resource://testing-common/mailnews/LocalAccountUtils.jsm"
@@ -12,8 +11,8 @@ var { localAccountUtils } = ChromeUtils.import(
 var test = null;
 
 // WebApps.jsm called by ProxyAutoConfig (PAC) requires a valid nsIXULAppInfo.
-var { getAppInfo, newAppInfo, updateAppInfo } = ChromeUtils.import(
-  "resource://testing-common/AppInfo.jsm"
+var { getAppInfo, newAppInfo, updateAppInfo } = ChromeUtils.importESModule(
+  "resource://testing-common/AppInfo.sys.mjs"
 );
 updateAppInfo();
 
@@ -27,12 +26,12 @@ var { fsDebugAll, gThreadManager, nsMailServer } = ChromeUtils.import(
   "resource://testing-common/mailnews/Maild.jsm"
 );
 var {
-  newsArticle,
+  NewsArticle,
   NNTP_Giganews_handler,
   NNTP_RFC2980_handler,
   NNTP_RFC4643_extension,
   NNTP_RFC977_handler,
-  nntpDaemon,
+  NntpDaemon,
 } = ChromeUtils.import("resource://testing-common/mailnews/Nntpd.jsm");
 
 var kSimpleNewsArticle =
@@ -56,23 +55,23 @@ var groups = [
 ];
 // Sets up the NNTP daemon object for use in fake server
 function setupNNTPDaemon() {
-  var daemon = new nntpDaemon();
+  var daemon = new NntpDaemon();
 
-  groups.forEach(function(element) {
+  groups.forEach(function (element) {
     daemon.addGroup(element[0]);
   });
 
   var auto_add = do_get_file("postings/auto-add/");
   var files = [...auto_add.directoryEntries];
 
-  files.sort(function(a, b) {
+  files.sort(function (a, b) {
     if (a.leafName == b.leafName) {
       return 0;
     }
     return a.leafName < b.leafName ? -1 : 1;
   });
 
-  files.forEach(function(file) {
+  files.forEach(function (file) {
     var fstream = Cc["@mozilla.org/network/file-input-stream;1"].createInstance(
       Ci.nsIFileInputStream
     );
@@ -90,10 +89,10 @@ function setupNNTPDaemon() {
     }
     sstream.close();
     fstream.close();
-    daemon.addArticle(new newsArticle(post));
+    daemon.addArticle(new NewsArticle(post));
   });
 
-  var article = new newsArticle(kSimpleNewsArticle);
+  var article = new NewsArticle(kSimpleNewsArticle);
   daemon.addArticleToGroup(article, "test.subscribe.simple", 1);
 
   return daemon;
@@ -119,7 +118,7 @@ var _account = null;
 function subscribeServer(incomingServer) {
   // Subscribe to newsgroups
   incomingServer.QueryInterface(Ci.nsINntpIncomingServer);
-  groups.forEach(function(element) {
+  groups.forEach(function (element) {
     if (element[1]) {
       incomingServer.subscribeToNewsgroup(element[0]);
     }
@@ -197,13 +196,17 @@ function resetFolder(folder) {
   var db = folder.msgDatabase;
   db.dBFolderInfo.knownArtsSet = "";
   for (var header of headers) {
-    db.DeleteHeader(header, null, true, false);
+    db.deleteHeader(header, null, true, false);
   }
   dump("resetting folder\n");
   folder.msgDatabase = null;
 }
 
 function do_check_transaction(real, expected) {
+  if (Array.isArray(real)) {
+    real = real.at(-1);
+  }
+
   // real.them may have an extra QUIT on the end, where the stream is only
   // closed after we have a chance to process it and not them. We therefore
   // excise this from the list
@@ -233,41 +236,9 @@ function make_article(file) {
   }
   sstream.close();
   fstream.close();
-  return new newsArticle(post);
+  return new NewsArticle(post);
 }
 
-var articleTextListener = {
-  data: "",
-  finished: false,
-
-  QueryInterface: ChromeUtils.generateQI([
-    "nsIStreamListener",
-    "nsIRequestObserver",
-  ]),
-
-  // nsIRequestObserver
-  onStartRequest(aRequest) {},
-  onStopRequest(aRequest, aStatusCode) {
-    Assert.equal(aStatusCode, 0);
-
-    // Reduce any \r\n to just \n so we can do a good comparison on any
-    // platform.
-    this.data = this.data.replace(/\r\n/g, "\n");
-    this.finished = true;
-  },
-
-  // nsIStreamListener
-  onDataAvailable(aRequest, aInputStream, aOffset, aCount) {
-    let scriptStream = Cc[
-      "@mozilla.org/scriptableinputstream;1"
-    ].createInstance(Ci.nsIScriptableInputStream);
-
-    scriptStream.init(aInputStream);
-
-    this.data += scriptStream.read(aCount);
-  },
-};
-
-registerCleanupFunction(function() {
+registerCleanupFunction(function () {
   load("../../../resources/mailShutdown.js");
 });

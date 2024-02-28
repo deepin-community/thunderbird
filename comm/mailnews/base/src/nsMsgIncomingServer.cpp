@@ -16,8 +16,6 @@
 #include "nsISupportsPrimitives.h"
 
 #include "nsIMsgBiffManager.h"
-#include "nsMsgBaseCID.h"
-#include "nsMsgDBCID.h"
 #include "nsIMsgFolder.h"
 #include "nsMsgDBFolder.h"
 #include "nsIMsgFolderCache.h"
@@ -45,11 +43,13 @@
 #include "nsMsgMessageFlags.h"
 #include "nsIMsgSearchTerm.h"
 #include "nsAppDirectoryServiceDefs.h"
+#include "mozilla/Components.h"
 #include "mozilla/Services.h"
-#include "Services.h"
 #include "nsIMsgFilter.h"
 #include "nsIObserverService.h"
 #include "mozilla/Unused.h"
+#include "nsIUUIDGenerator.h"
+#include "nsArrayUtils.h"
 
 #define PORT_NOT_SET -1
 
@@ -79,31 +79,82 @@ nsMsgIncomingServer::~nsMsgIncomingServer() {}
 NS_IMPL_ISUPPORTS(nsMsgIncomingServer, nsIMsgIncomingServer,
                   nsISupportsWeakReference, nsIObserver)
 
+/**
+ * Observe() receives notifications for all accounts, not just this server's
+ * account. So we ignore all notifications not intended for this server.
+ * When the state of the password manager changes we need to clear the
+ * this server's password from the cache in case the user just changed or
+ * removed the password or username.
+ * Oauth2 servers often automatically change the password manager's stored
+ * password (the token).
+ */
 NS_IMETHODIMP
 nsMsgIncomingServer::Observe(nsISupports* aSubject, const char* aTopic,
                              const char16_t* aData) {
   nsresult rv;
-
-  // When the state of the password manager changes we need to clear the
-  // password from the cache in case the user just removed it.
   if (strcmp(aTopic, "passwordmgr-storage-changed") == 0) {
+    nsAutoString otherFullName;
+    nsAutoString otherUserName;
     // Check that the notification is for this server.
     nsCOMPtr<nsILoginInfo> loginInfo = do_QueryInterface(aSubject);
     if (loginInfo) {
-      nsAutoString hostnameInfo;
-      loginInfo->GetHostname(hostnameInfo);
-      nsAutoCString hostname;
-      GetHostName(hostname);
-      nsAutoCString fullName;
-      GetType(fullName);
-      if (fullName.EqualsLiteral("pop3")) {
-        fullName = "mailbox://"_ns + hostname;
-      } else {
-        fullName += "://"_ns + hostname;
+      // The login info for this server has been removed with aData being
+      // "removeLogin" or "removeAllLogins".
+      loginInfo->GetOrigin(otherFullName);
+      loginInfo->GetUsername(otherUserName);
+    } else {
+      // Probably a 2 element array containing old and new login info due to
+      // aData being "modifyLogin". E.g., a user has modified password or
+      // username in the password manager or an OAuth2 token string has
+      // automatically changed.
+      nsCOMPtr<nsIArray> logins = do_QueryInterface(aSubject);
+      if (logins) {
+        // Only need to look at names in first array element (login info before
+        // any modification) since the user might have changed the username as
+        // found in the 2nd elements. (The hostname can't be modified in the
+        // password manager.)
+        nsCOMPtr<nsILoginInfo> login;
+        logins->QueryElementAt(0, NS_GET_IID(nsILoginInfo),
+                               getter_AddRefs(login));
+        if (login) {
+          login->GetOrigin(otherFullName);
+          login->GetUsername(otherUserName);
+        }
       }
-      if (!fullName.Equals(NS_ConvertUTF16toUTF8(hostnameInfo))) return NS_OK;
     }
-    rv = ForgetSessionPassword();
+    if (!otherFullName.IsEmpty()) {
+      nsAutoCString thisHostname;
+      nsAutoCString thisUsername;
+      GetHostName(thisHostname);
+      GetUsername(thisUsername);
+      nsAutoCString thisFullName;
+      GetType(thisFullName);
+      if (thisFullName.EqualsLiteral("pop3")) {
+        // Note: POP3 now handled by MsgIncomingServer.jsm so does not occur.
+        MOZ_ASSERT_UNREACHABLE("pop3 should not use nsMsgIncomingServer");
+        thisFullName = "mailbox://"_ns + thisHostname;
+      } else {
+        thisFullName += "://"_ns + thisHostname;
+      }
+      if (!thisFullName.Equals(NS_ConvertUTF16toUTF8(otherFullName)) ||
+          !thisUsername.Equals(NS_ConvertUTF16toUTF8(otherUserName))) {
+        // Not for this server; keep this server's cached password.
+        return NS_OK;
+      }
+    } else if (NS_strcmp(aData, u"hostSavingDisabled") != 0) {
+      // "hostSavingDisabled" only occurs during test_smtpServer.js and
+      // expects the password to be removed from memory cache. Otherwise, we
+      // don't have enough information to decide to remove the cached
+      // password, so keep it.
+      return NS_OK;
+    }
+    // When nsMsgImapIncomingServer::ForgetSessionPassword called with
+    // parameter modifyLogin true and if the server uses OAuth2, it causes the
+    // password to not be cleared from cache. This is needed by autosync. When
+    // the aData paremater of Observe() is not "modifyLogin" but is
+    // e.g., "removeLogin" or "removeAllLogins", ForgetSessionPassword(false)
+    // will still clear the cached password regardless of authentication method.
+    rv = ForgetSessionPassword(NS_strcmp(aData, u"modifyLogin") == 0);
     NS_ENSURE_SUCCESS(rv, rv);
   } else if (strcmp(aTopic, NS_XPCOM_SHUTDOWN_OBSERVER_ID) == 0) {
     // Now remove ourselves from the observer service as well.
@@ -155,6 +206,41 @@ nsMsgIncomingServer::SetKey(const nsACString& serverKey) {
 
   return prefs->GetBranch("mail.server.default.",
                           getter_AddRefs(mDefPrefBranch));
+}
+
+NS_IMETHODIMP
+nsMsgIncomingServer::GetUID(nsACString& uid) {
+  bool hasValue;
+  nsresult rv = mPrefBranch->PrefHasUserValue("uid", &hasValue);
+  NS_ENSURE_SUCCESS(rv, rv);
+  if (hasValue) {
+    return GetCharValue("uid", uid);
+  }
+
+  nsCOMPtr<nsIUUIDGenerator> uuidgen =
+      mozilla::components::UUIDGenerator::Service();
+  NS_ENSURE_TRUE(uuidgen, NS_ERROR_FAILURE);
+
+  nsID id;
+  rv = uuidgen->GenerateUUIDInPlace(&id);
+  NS_ENSURE_SUCCESS(rv, rv);
+
+  char idString[NSID_LENGTH];
+  id.ToProvidedString(idString);
+
+  uid.AppendASCII(idString + 1, NSID_LENGTH - 3);
+  return SetUID(uid);
+}
+
+NS_IMETHODIMP
+nsMsgIncomingServer::SetUID(const nsACString& uid) {
+  bool hasValue;
+  nsresult rv = mPrefBranch->PrefHasUserValue("uid", &hasValue);
+  NS_ENSURE_SUCCESS(rv, rv);
+  if (hasValue) {
+    return NS_ERROR_ABORT;
+  }
+  return SetCharValue("uid", uid);
 }
 
 NS_IMETHODIMP
@@ -307,14 +393,6 @@ nsMsgIncomingServer::GetCanUndoDeleteOnServer(bool* canUndoDeleteOnServer) {
   // derived class should override if they need to do this.
   NS_ENSURE_ARG_POINTER(canUndoDeleteOnServer);
   *canUndoDeleteOnServer = true;
-  return NS_OK;
-}
-
-NS_IMETHODIMP
-nsMsgIncomingServer::GetCanEmptyTrashOnExit(bool* canEmptyTrashOnExit) {
-  // derived class should override if they need to do this.
-  NS_ENSURE_ARG_POINTER(canEmptyTrashOnExit);
-  *canEmptyTrashOnExit = true;
   return NS_OK;
 }
 
@@ -671,7 +749,6 @@ nsresult nsMsgIncomingServer::GetPasswordWithoutUI() {
 NS_IMETHODIMP
 nsMsgIncomingServer::GetPasswordWithUI(const nsAString& aPromptMessage,
                                        const nsAString& aPromptTitle,
-                                       nsIMsgWindow* aMsgWindow,
                                        nsAString& aPassword) {
   nsresult rv = NS_OK;
 
@@ -686,13 +763,9 @@ nsMsgIncomingServer::GetPasswordWithUI(const nsAString& aPromptMessage,
     if (rv == NS_ERROR_ABORT) return NS_MSG_PASSWORD_PROMPT_CANCELLED;
   }
   if (m_password.IsEmpty()) {
-    nsCOMPtr<nsIAuthPrompt> dialog;
-    // aMsgWindow is required if we need to prompt
-    if (aMsgWindow) {
-      rv = aMsgWindow->GetAuthPrompt(getter_AddRefs(dialog));
-      NS_ENSURE_SUCCESS(rv, rv);
-    }
-    if (dialog) {
+    nsCOMPtr<nsIAuthPrompt> authPrompt =
+        do_GetService("@mozilla.org/messenger/msgAuthPrompt;1");
+    if (authPrompt) {
       // prompt the user for the password
       nsCString serverUri;
       rv = GetLocalStoreType(serverUri);
@@ -722,11 +795,11 @@ nsMsgIncomingServer::GetPasswordWithUI(const nsAString& aPromptMessage,
       if (!aPassword.IsEmpty()) uniPassword = ToNewUnicode(aPassword);
 
       bool okayValue = true;
-      rv = dialog->PromptPassword(PromiseFlatString(aPromptTitle).get(),
-                                  PromiseFlatString(aPromptMessage).get(),
-                                  NS_ConvertASCIItoUTF16(serverUri).get(),
-                                  nsIAuthPrompt::SAVE_PASSWORD_PERMANENTLY,
-                                  &uniPassword, &okayValue);
+      rv = authPrompt->PromptPassword(PromiseFlatString(aPromptTitle).get(),
+                                      PromiseFlatString(aPromptMessage).get(),
+                                      NS_ConvertASCIItoUTF16(serverUri).get(),
+                                      nsIAuthPrompt::SAVE_PASSWORD_PERMANENTLY,
+                                      &uniPassword, &okayValue);
       NS_ENSURE_SUCCESS(rv, rv);
 
       if (!okayValue)  // if the user pressed cancel, just return an empty
@@ -784,8 +857,11 @@ nsMsgIncomingServer::ForgetPassword() {
   // there isn't.
   nsString username;
   for (uint32_t i = 0; i < logins.Length(); ++i) {
-    if (NS_SUCCEEDED(logins[i]->GetUsername(username)) &&
-        username.Equals(serverUsername)) {
+    rv = logins[i]->GetUsername(username);
+    int32_t atPos = serverUsername.FindChar('@');
+    if (NS_SUCCEEDED(rv) &&
+        (username.Equals(serverUsername) ||
+         StringHead(serverUsername, atPos).Equals(username))) {
       // If this fails, just continue, we'll still want to remove the password
       // from our local cache.
       loginMgr->RemoveLogin(logins[i]);
@@ -796,7 +872,7 @@ nsMsgIncomingServer::ForgetPassword() {
 }
 
 NS_IMETHODIMP
-nsMsgIncomingServer::ForgetSessionPassword() {
+nsMsgIncomingServer::ForgetSessionPassword(bool modifyLogin) {
   m_password.Truncate();
   return NS_OK;
 }
@@ -1034,7 +1110,7 @@ nsMsgIncomingServer::GetFilterList(nsIMsgWindow* aMsgWindow,
       }
     }
     nsCOMPtr<nsIMsgFilterService> filterService =
-        do_GetService(NS_MSGFILTERSERVICE_CONTRACTID, &rv);
+        do_GetService("@mozilla.org/messenger/services/filters;1", &rv);
     NS_ENSURE_SUCCESS(rv, rv);
 
     rv = filterService->OpenFilterList(mFilterFile, msgFolder, aMsgWindow,
@@ -1117,31 +1193,20 @@ nsMsgIncomingServer::OnUserOrHostNameChanged(const nsACString& oldName,
   // 1. Reset password so that users are prompted for new password for the new
   // user/host.
   int32_t atPos = newName.FindChar('@');
-  // If only username changed and the new name just added a domain
-  // we can keep the password.
-  if (hostnameChanged || (atPos == kNotFound) ||
-      !StringHead(NS_ConvertASCIItoUTF16(newName), atPos)
-           .Equals(NS_ConvertASCIItoUTF16(oldName))) {
+  if (hostnameChanged) {
     ForgetPassword();
   }
 
-  // 2. Let the derived class close all cached connection to the old host.
-  CloseCachedConnections();
-
-  // 3. Notify any listeners for account server changes.
-  nsCOMPtr<nsIMsgAccountManager> accountManager(
-      mozilla::services::GetAccountManager());
-
-  rv = accountManager->NotifyServerChanged(this);
-  NS_ENSURE_SUCCESS(rv, rv);
-
-  // 4. Replace all occurrences of old name in the acct name with the new one.
+  // 2. Replace all occurrences of old name in the acct name with the new one.
   nsString acctName;
   rv = GetPrettyName(acctName);
   NS_ENSURE_SUCCESS(rv, rv);
 
-  // 5. Clear the clientid because the user or host have changed.
+  // 3. Clear the clientid because the user or host have changed.
   SetClientid(EmptyCString());
+
+  // Will be generated again when used.
+  mPrefBranch->ClearUserPref("spamActionTargetAccount");
 
   // If new username contains @ then better do not update the account name.
   if (acctName.IsEmpty() || (!hostnameChanged && (atPos != kNotFound)))
@@ -1152,12 +1217,12 @@ nsMsgIncomingServer::OnUserOrHostNameChanged(const nsACString& oldName,
   // get previous username and hostname
   nsCString userName, hostName;
   if (hostnameChanged) {
-    rv = GetRealUsername(userName);
+    rv = GetUsername(userName);
     NS_ENSURE_SUCCESS(rv, rv);
     hostName.Assign(oldName);
   } else {
     userName.Assign(oldName);
-    rv = GetRealHostName(hostName);
+    rv = GetHostName(hostName);
     NS_ENSURE_SUCCESS(rv, rv);
   }
 
@@ -1186,28 +1251,20 @@ nsMsgIncomingServer::OnUserOrHostNameChanged(const nsACString& oldName,
 
 NS_IMETHODIMP
 nsMsgIncomingServer::SetHostName(const nsACString& aHostname) {
-  return (InternalSetHostName(aHostname, "hostname"));
-}
-
-// SetRealHostName() is called only when the server name is changed from the
-// UI (Account Settings page).  No one should call it in any circumstances.
-NS_IMETHODIMP
-nsMsgIncomingServer::SetRealHostName(const nsACString& aHostname) {
   nsCString oldName;
-  nsresult rv = GetRealHostName(oldName);
+  nsresult rv = GetHostName(oldName);
   NS_ENSURE_SUCCESS(rv, rv);
-  rv = InternalSetHostName(aHostname, "realhostname");
+  rv = InternalSetHostName(aHostname, "hostname");
 
-  // A few things to take care of if we're changing the hostname.
-  if (!aHostname.Equals(oldName, nsCaseInsensitiveCStringComparator))
+  if (!oldName.IsEmpty() &&
+      !aHostname.Equals(oldName, nsCaseInsensitiveCStringComparator))
     rv = OnUserOrHostNameChanged(oldName, aHostname, true);
   return rv;
 }
 
 NS_IMETHODIMP
 nsMsgIncomingServer::GetHostName(nsACString& aResult) {
-  nsresult rv;
-  rv = GetCharValue("hostname", aResult);
+  nsresult rv = GetCharValue("hostname", aResult);
   if (aResult.CountChar(':') == 1) {
     // gack, we need to reformat the hostname - SetHostName will do that
     SetHostName(aResult);
@@ -1217,43 +1274,32 @@ nsMsgIncomingServer::GetHostName(nsACString& aResult) {
 }
 
 NS_IMETHODIMP
-nsMsgIncomingServer::GetRealHostName(nsACString& aResult) {
-  // If 'realhostname' is set (was changed) then use it, otherwise use
-  // 'hostname'
-  nsresult rv;
-  rv = GetCharValue("realhostname", aResult);
-  NS_ENSURE_SUCCESS(rv, rv);
-
-  if (aResult.IsEmpty()) return GetHostName(aResult);
-
-  if (aResult.CountChar(':') == 1) {
-    SetRealHostName(aResult);
-    rv = GetCharValue("realhostname", aResult);
-  }
-
-  return rv;
-}
-
-NS_IMETHODIMP
-nsMsgIncomingServer::GetRealUsername(nsACString& aResult) {
-  // If 'realuserName' is set (was changed) then use it, otherwise use
-  // 'userName'
-  nsresult rv;
-  rv = GetCharValue("realuserName", aResult);
-  NS_ENSURE_SUCCESS(rv, rv);
-  return aResult.IsEmpty() ? GetUsername(aResult) : rv;
-}
-
-NS_IMETHODIMP
-nsMsgIncomingServer::SetRealUsername(const nsACString& aUsername) {
-  // Need to take care of few things if we're changing the username.
+nsMsgIncomingServer::SetUsername(const nsACString& aUsername) {
   nsCString oldName;
-  nsresult rv = GetRealUsername(oldName);
+  nsresult rv = GetUsername(oldName);
   NS_ENSURE_SUCCESS(rv, rv);
-  rv = SetCharValue("realuserName", aUsername);
-  if (!oldName.Equals(aUsername))
+
+  if (!oldName.IsEmpty() && !oldName.Equals(aUsername)) {
+    // If only username changed and the new name just added a domain we can keep
+    // the password.
+    int32_t atPos = aUsername.FindChar('@');
+    if ((atPos == kNotFound) ||
+        !StringHead(NS_ConvertASCIItoUTF16(aUsername), atPos)
+             .Equals(NS_ConvertASCIItoUTF16(oldName))) {
+      ForgetPassword();
+    }
+    rv = SetCharValue("userName", aUsername);
+    NS_ENSURE_SUCCESS(rv, rv);
     rv = OnUserOrHostNameChanged(oldName, aUsername, false);
+  } else {
+    rv = SetCharValue("userName", aUsername);
+  }
   return rv;
+}
+
+NS_IMETHODIMP
+nsMsgIncomingServer::GetUsername(nsACString& aResult) {
+  return GetCharValue("userName", aResult);
 }
 
 #define BIFF_PREF_NAME "check_new_mail"
@@ -1293,7 +1339,7 @@ nsMsgIncomingServer::SetDoBiff(bool aDoBiff) {
   // existing/non-existing server is handled without error checking.
   nsresult rv;
   nsCOMPtr<nsIMsgBiffManager> biffService =
-      do_GetService(NS_MSGBIFFMANAGER_CONTRACTID, &rv);
+      do_GetService("@mozilla.org/messenger/biffManager;1", &rv);
   if (NS_SUCCEEDED(rv) && biffService) {
     if (aDoBiff)
       (void)biffService->AddServerBiff(this);
@@ -1376,7 +1422,7 @@ NS_IMETHODIMP nsMsgIncomingServer::GetRetentionSettings(
   // Create an empty retention settings object,
   // get the settings from the server prefs, and init the object from the prefs.
   nsCOMPtr<nsIMsgRetentionSettings> retentionSettings =
-      do_CreateInstance(NS_MSG_RETENTIONSETTINGS_CONTRACTID);
+      do_CreateInstance("@mozilla.org/msgDatabase/retentionSettings;1");
   if (retentionSettings) {
     rv = GetIntValue("retainBy", (int32_t*)&retainByPreference);
     NS_ENSURE_SUCCESS(rv, rv);
@@ -1452,7 +1498,8 @@ NS_IMETHODIMP nsMsgIncomingServer::GetDownloadSettings(
   uint32_t ageLimitOfMsgsToDownload = 0;
   nsresult rv = NS_OK;
   if (!m_downloadSettings) {
-    m_downloadSettings = do_CreateInstance(NS_MSG_DOWNLOADSETTINGS_CONTRACTID);
+    m_downloadSettings =
+        do_CreateInstance("@mozilla.org/msgDatabase/downloadSettings;1");
     if (m_downloadSettings) {
       rv = GetBoolValue("downloadUnreadOnly", &downloadUnreadOnly);
       rv = GetBoolValue("downloadByDate", &downloadByDate);
@@ -1509,29 +1556,6 @@ nsMsgIncomingServer::SetOfflineSupportLevel(int32_t aSupportLevel) {
   SetIntValue("offline_support_level", aSupportLevel);
   return NS_OK;
 }
-#define BASE_MSGS_URL "chrome://messenger/locale/messenger.properties"
-
-NS_IMETHODIMP nsMsgIncomingServer::DisplayOfflineMsg(nsIMsgWindow* aMsgWindow) {
-  NS_ENSURE_ARG_POINTER(aMsgWindow);
-
-  nsCOMPtr<nsIStringBundleService> bundleService =
-      mozilla::services::GetStringBundleService();
-  NS_ENSURE_TRUE(bundleService, NS_ERROR_UNEXPECTED);
-
-  nsCOMPtr<nsIStringBundle> bundle;
-  nsresult rv =
-      bundleService->CreateBundle(BASE_MSGS_URL, getter_AddRefs(bundle));
-  NS_ENSURE_SUCCESS(rv, rv);
-  if (bundle) {
-    nsString errorMsgTitle;
-    nsString errorMsgBody;
-    bundle->GetStringFromName("nocachedbodybody2", errorMsgBody);
-    bundle->GetStringFromName("nocachedbodytitle", errorMsgTitle);
-    aMsgWindow->DisplayHTMLInMessagePane(errorMsgTitle, errorMsgBody, true);
-  }
-
-  return NS_OK;
-}
 
 // Called only during the migration process. A unique name is generated for the
 // migrated account.
@@ -1572,7 +1596,6 @@ nsMsgIncomingServer::GetIsSecure(bool* aIsSecure) {
 }
 
 // use the convenience macros to implement the accessors
-NS_IMPL_SERVERPREF_STR(nsMsgIncomingServer, Username, "userName")
 NS_IMPL_SERVERPREF_INT(nsMsgIncomingServer, AuthMethod, "authMethod")
 NS_IMPL_SERVERPREF_INT(nsMsgIncomingServer, BiffMinutes, "check_time")
 NS_IMPL_SERVERPREF_STR(nsMsgIncomingServer, Type, "type")
@@ -1727,7 +1750,7 @@ nsresult nsMsgIncomingServer::ConfigureTemporaryServerSpamFilters(
   if (!file) return NS_OK;
 
   nsCOMPtr<nsIMsgFilterService> filterService =
-      do_GetService(NS_MSGFILTERSERVICE_CONTRACTID, &rv);
+      do_GetService("@mozilla.org/messenger/services/filters;1", &rv);
   nsCOMPtr<nsIMsgFilterList> serverFilterList;
 
   rv = filterService->OpenFilterList(file, NULL, NULL,
@@ -1784,7 +1807,7 @@ nsresult nsMsgIncomingServer::ConfigureTemporaryServerSpamFilters(
     spamSettings->GetMoveOnSpam(&moveOnSpam);
     if (moveOnSpam) {
       nsCString spamFolderURI;
-      rv = spamSettings->GetSpamFolderURI(getter_Copies(spamFolderURI));
+      rv = spamSettings->GetSpamFolderURI(spamFolderURI);
       if (NS_SUCCEEDED(rv) && (!spamFolderURI.IsEmpty())) {
         nsCOMPtr<nsIMsgRuleAction> moveAction;
         rv = newFilter->CreateAction(getter_AddRefs(moveAction));
@@ -1822,7 +1845,7 @@ nsresult nsMsgIncomingServer::ConfigureTemporaryReturnReceiptsFilter(
   nsresult rv;
 
   nsCOMPtr<nsIMsgAccountManager> accountMgr =
-      do_GetService(NS_MSGACCOUNTMANAGER_CONTRACTID, &rv);
+      do_GetService("@mozilla.org/messenger/account-manager;1", &rv);
   NS_ENSURE_SUCCESS(rv, rv);
 
   nsCOMPtr<nsIMsgIdentity> identity;
@@ -1958,7 +1981,8 @@ nsMsgIncomingServer::GetSpamSettings(nsISpamSettings** aSpamSettings) {
 
   if (!mSpamSettings) {
     nsresult rv;
-    mSpamSettings = do_CreateInstance(NS_SPAMSETTINGS_CONTRACTID, &rv);
+    mSpamSettings =
+        do_CreateInstance("@mozilla.org/messenger/spamsettings;1", &rv);
     NS_ENSURE_SUCCESS(rv, rv);
     mSpamSettings->Initialize(this);
     NS_ENSURE_SUCCESS(rv, rv);
@@ -1989,7 +2013,7 @@ nsresult nsMsgIncomingServer::GetDeferredServers(
     nsTArray<RefPtr<nsIPop3IncomingServer>>& aServers) {
   nsresult rv;
   nsCOMPtr<nsIMsgAccountManager> accountManager =
-      do_GetService(NS_MSGACCOUNTMANAGER_CONTRACTID, &rv);
+      do_GetService("@mozilla.org/messenger/account-manager;1", &rv);
   NS_ENSURE_SUCCESS(rv, rv);
 
   nsCOMPtr<nsIMsgAccount> thisAccount;
@@ -2015,7 +2039,7 @@ nsresult nsMsgIncomingServer::GetDeferredServers(
 NS_IMETHODIMP nsMsgIncomingServer::GetIsDeferredTo(bool* aIsDeferredTo) {
   NS_ENSURE_ARG_POINTER(aIsDeferredTo);
   nsCOMPtr<nsIMsgAccountManager> accountManager =
-      do_GetService(NS_MSGACCOUNTMANAGER_CONTRACTID);
+      do_GetService("@mozilla.org/messenger/account-manager;1");
   if (accountManager) {
     nsCOMPtr<nsIMsgAccount> thisAccount;
     accountManager->FindAccountForServer(this, getter_AddRefs(thisAccount));
@@ -2062,7 +2086,7 @@ NS_IMETHODIMP nsMsgIncomingServer::IsNewHdrDuplicate(nsIMsgDBHdr* aNewHdr,
   nsCString messageId, subject;
   aNewHdr->GetMessageId(getter_Copies(messageId));
   strHashKey.Append(messageId);
-  aNewHdr->GetSubject(getter_Copies(subject));
+  aNewHdr->GetSubject(subject);
   // err on the side of caution and ignore messages w/o subject or messageid.
   if (subject.IsEmpty() || messageId.IsEmpty()) return NS_OK;
   strHashKey.Append(subject);

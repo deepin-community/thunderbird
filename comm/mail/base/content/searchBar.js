@@ -26,6 +26,8 @@ var gStatusBar = document.getElementById("statusbar-icon");
 var GlodaSearchBoxTabMonitor = {
   monitorName: "glodaSearchBox",
 
+  onTabSwitched(aTab, aOldTab) {},
+
   onTabTitleChanged() {},
 
   onTabOpened(aTab, aFirstTab, aOldTab) {
@@ -38,26 +40,6 @@ var GlodaSearchBoxTabMonitor = {
       if (searchInput) {
         searchInput.value = aTab.searchString;
       }
-    }
-  },
-
-  onTabSwitched(aTab, aOldTab) {
-    let searchInput = document.getElementById("searchInput");
-    if (!searchInput) {
-      // customized out of the way
-      return;
-    }
-
-    // save the current search field value
-    if (aOldTab) {
-      aOldTab._ext.glodaSearchBox.value = searchInput.value;
-    }
-    // Load (or clear if there is none) the persisted search field value
-    // (We check first to avoid weird blank field / empty text transitions on
-    // tab change.)
-    let desiredValue = aTab._ext.glodaSearchBox.value || "";
-    if (searchInput.value != desiredValue) {
-      searchInput.value = desiredValue;
     }
   },
 };

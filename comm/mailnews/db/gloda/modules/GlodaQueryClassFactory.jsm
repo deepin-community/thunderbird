@@ -4,10 +4,8 @@
 
 const EXPORTED_SYMBOLS = ["GlodaQueryClassFactory"];
 
-// GlodaDatastore has some constants we need, and oddly enough, there was no
-//  load dependency preventing us from doing this.
-const { GlodaDatastore } = ChromeUtils.import(
-  "resource:///modules/gloda/GlodaDatastore.jsm"
+const { GlodaConstants } = ChromeUtils.import(
+  "resource:///modules/gloda/GlodaConstants.jsm"
 );
 
 /**
@@ -148,7 +146,7 @@ GlodaQueryClass.prototype = {
         let boundName = attrDef ? attrDef.boundName : "id";
         if (
           boundName in aObj &&
-          aObj[boundName] === GlodaDatastore.IGNORE_FACET
+          aObj[boundName] === GlodaConstants.IGNORE_FACET
         ) {
           querySatisfied = false;
           break;
@@ -156,14 +154,14 @@ GlodaQueryClass.prototype = {
 
         let constraintValues = constraint.slice(2);
 
-        if (constraintType === GlodaDatastore.kConstraintIdIn) {
+        if (constraintType === GlodaConstants.kConstraintIdIn) {
           if (!constraintValues.includes(aObj.id)) {
             querySatisfied = false;
             break;
           }
         } else if (
-          constraintType === GlodaDatastore.kConstraintIn ||
-          constraintType === GlodaDatastore.kConstraintEquals
+          constraintType === GlodaConstants.kConstraintIn ||
+          constraintType === GlodaConstants.kConstraintEquals
         ) {
           // @testpoint gloda.query.test.kConstraintIn
           let objectNounDef = attrDef.objectNounDef;
@@ -287,7 +285,7 @@ GlodaQueryClass.prototype = {
               break;
             }
           }
-        } else if (constraintType === GlodaDatastore.kConstraintRanges) {
+        } else if (constraintType === GlodaConstants.kConstraintRanges) {
           // @testpoint gloda.query.test.kConstraintRanges
           let objectNounDef = attrDef.objectNounDef;
 
@@ -306,29 +304,25 @@ GlodaQueryClass.prototype = {
             for (let rangeTuple of constraintValues) {
               let [lowerRValue, upperRValue] = rangeTuple;
               if (lowerRValue == null) {
-                let [upperParam, upperValue] = objectNounDef.toParamAndValue(
-                  upperRValue
-                );
+                let [upperParam, upperValue] =
+                  objectNounDef.toParamAndValue(upperRValue);
                 if (tParam == upperParam && tValue <= upperValue) {
                   foundMatch = true;
                   break;
                 }
               } else if (upperRValue == null) {
-                let [lowerParam, lowerValue] = objectNounDef.toParamAndValue(
-                  lowerRValue
-                );
+                let [lowerParam, lowerValue] =
+                  objectNounDef.toParamAndValue(lowerRValue);
                 if (tParam == lowerParam && tValue >= lowerValue) {
                   foundMatch = true;
                   break;
                 }
               } else {
                 // no one is null
-                let [upperParam, upperValue] = objectNounDef.toParamAndValue(
-                  upperRValue
-                );
-                let [lowerParam, lowerValue] = objectNounDef.toParamAndValue(
-                  lowerRValue
-                );
+                let [upperParam, upperValue] =
+                  objectNounDef.toParamAndValue(upperRValue);
+                let [lowerParam, lowerValue] =
+                  objectNounDef.toParamAndValue(lowerRValue);
                 if (
                   tParam == lowerParam &&
                   tValue >= lowerValue &&
@@ -348,7 +342,7 @@ GlodaQueryClass.prototype = {
             querySatisfied = false;
             break;
           }
-        } else if (constraintType === GlodaDatastore.kConstraintStringLike) {
+        } else if (constraintType === GlodaConstants.kConstraintStringLike) {
           // @testpoint gloda.query.test.kConstraintStringLike
           let curIndex = 0;
           let value = boundName in aObj ? aObj[boundName] : "";
@@ -381,7 +375,7 @@ GlodaQueryClass.prototype = {
           if (querySatisfied && curIndex !== null && curIndex != value.length) {
             querySatisfied = false;
           }
-        } else if (constraintType === GlodaDatastore.kConstraintFulltext) {
+        } else if (constraintType === GlodaConstants.kConstraintFulltext) {
           // @testpoint gloda.query.test.kConstraintFulltext
           // this is beyond our powers. Even if we have the fulltext content in
           //  memory, which we may not, the tokenization and such to perform
@@ -415,7 +409,7 @@ GlodaQueryClass.prototype = {
    * @protected
    */
   _inConstraintHelper(aAttrDef, aValues) {
-    let constraint = [GlodaDatastore.kConstraintIn, aAttrDef].concat(aValues);
+    let constraint = [GlodaConstants.kConstraintIn, aAttrDef].concat(aValues);
     this._constraints.push(constraint);
     return this;
   },
@@ -429,7 +423,7 @@ GlodaQueryClass.prototype = {
    * @protected
    */
   _rangedConstraintHelper(aAttrDef, aRanges) {
-    let constraint = [GlodaDatastore.kConstraintRanges, aAttrDef].concat(
+    let constraint = [GlodaConstants.kConstraintRanges, aAttrDef].concat(
       aRanges
     );
     this._constraints.push(constraint);
@@ -613,14 +607,14 @@ GlodaWildcardQueryClass.prototype = {
  *  the 'class'.
  */
 function GlodaQueryClassFactory(aNounDef) {
-  let newQueryClass = function(aOptions) {
+  let newQueryClass = function (aOptions) {
     GlodaQueryClass.call(this, aOptions);
   };
   newQueryClass.prototype = new GlodaQueryClass();
   newQueryClass.prototype._queryClass = newQueryClass;
   newQueryClass.prototype._nounDef = aNounDef;
 
-  let newNullClass = function(aCollection) {
+  let newNullClass = function (aCollection) {
     GlodaNullQueryClass.call(this);
     this.collection = aCollection;
   };
@@ -628,7 +622,7 @@ function GlodaQueryClassFactory(aNounDef) {
   newNullClass.prototype._queryClass = newNullClass;
   newNullClass.prototype._nounDef = aNounDef;
 
-  let newExplicitClass = function(aCollection) {
+  let newExplicitClass = function (aCollection) {
     GlodaExplicitQueryClass.call(this);
     this.collection = aCollection;
   };
@@ -636,7 +630,7 @@ function GlodaQueryClassFactory(aNounDef) {
   newExplicitClass.prototype._queryClass = newExplicitClass;
   newExplicitClass.prototype._nounDef = aNounDef;
 
-  let newWildcardClass = function(aCollection) {
+  let newWildcardClass = function (aCollection) {
     GlodaWildcardQueryClass.call(this);
     this.collection = aCollection;
   };

@@ -2,18 +2,20 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 ---
-loader: taskgraph.loader.single_dep:loader
+loader: gecko_taskgraph.loader.single_dep:loader
 
 transforms:
-    - taskgraph.transforms.chunk_partners:transforms
-    - taskgraph.transforms.name_sanity:transforms
-    - taskgraph.transforms.repackage_partner:transforms
-    - taskgraph.transforms.job:transforms
-    - taskgraph.transforms.task:transforms
+    - gecko_taskgraph.transforms.repackage_set_upstream_mac_kind:transforms
+    - gecko_taskgraph.transforms.chunk_partners:transforms
+    - gecko_taskgraph.transforms.name_sanity:transforms
+    - gecko_taskgraph.transforms.repackage_partner:transforms
+    - gecko_taskgraph.transforms.job:transforms
+    - gecko_taskgraph.transforms.task:transforms
 
 kind-dependencies:
     - release-eme-free-repack
-    - release-eme-free-repack-signing
+    - release-eme-free-repack-mac-signing
+    - release-eme-free-repack-mac-notarization
     - toolchain
 
 only-for-build-platforms:
@@ -22,6 +24,13 @@ only-for-build-platforms:
     - win64-shippable/opt
 
 job-template:
+    upstream-mac-kind:
+        by-build-type:
+            debug: release-eme-free-repack-mac-signing
+            default:
+                by-project:
+                    mozilla-(central|beta|release|esr.*): release-eme-free-repack-mac-notarization
+                    default: release-eme-free-repack-mac-signing
     mozharness:
         config:
             by-build-platform:

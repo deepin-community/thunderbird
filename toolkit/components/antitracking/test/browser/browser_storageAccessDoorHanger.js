@@ -1,8 +1,8 @@
 /* eslint-disable mozilla/no-arbitrary-setTimeout */
-const CHROME_BASE =
-  "chrome://mochitests/content/browser/browser/modules/test/browser/";
-Services.scriptloader.loadSubScript(CHROME_BASE + "head.js", this);
-/* import-globals-from ../../../../../browser/modules/test/browser/head.js */
+Services.scriptloader.loadSubScript(
+  "chrome://mochitests/content/browser/browser/modules/test/browser/head.js",
+  this
+);
 
 const BLOCK = 0;
 const ALLOW = 1;
@@ -12,7 +12,8 @@ async function testDoorHanger(
   showPrompt,
   useEscape,
   topPage,
-  maxConcurrent
+  maxConcurrent,
+  disableWebcompat = false
 ) {
   info(
     `Running doorhanger test with choice #${choice}, showPrompt: ${showPrompt} and ` +
@@ -30,6 +31,7 @@ async function testDoorHanger(
   await SpecialPowers.flushPrefEnv();
   await SpecialPowers.pushPrefEnv({
     set: [
+      ["privacy.antitracking.enableWebcompat", !disableWebcompat],
       ["dom.storage_access.auto_grants", true],
       ["dom.storage_access.auto_grants.delayed", false],
       ["dom.storage_access.enabled", true],
@@ -50,7 +52,8 @@ async function testDoorHanger(
         "privacy.restrict3rdpartystorage.userInteractionRequiredForHosts",
         "tracking.example.com,tracking.example.org",
       ],
-      ["browser.contentblocking.state-partitioning.mvp.ui.enabled", true],
+      // Bug 1617611: Fix all the tests broken by "cookies SameSite=lax by default"
+      ["network.cookie.sameSite.laxByDefault", false],
     ],
   });
 
@@ -177,10 +180,10 @@ async function testDoorHanger(
   let ct = SpecialPowers.spawn(
     browser,
     [{ page: url, callback: runChecks.toString(), choice, useEscape }],
-    async function(obj) {
+    async function (obj) {
       await new content.Promise(resolve => {
         let ifr = content.document.createElement("iframe");
-        ifr.onload = function() {
+        ifr.onload = function () {
           info("Sending code to the 3rd party content");
           ifr.contentWindow.postMessage(obj.callback, "*");
         };
@@ -223,38 +226,37 @@ async function testDoorHanger(
   } else {
     await Promise.all([ct, permChanged]);
   }
-  if (choice != BLOCK) {
-    let permissionPopupPromise = BrowserTestUtils.waitForEvent(
-      window,
-      "popupshown",
-      true,
-      event => event.target == gPermissionPanel._permissionPopup
-    );
-    gPermissionPanel._identityPermissionBox.click();
-    await permissionPopupPromise;
-    let permissionItem = document.querySelector(
-      ".permission-popup-permission-item-3rdPartyStorage"
-    );
-    ok(permissionItem, "Permission item exists");
-    ok(
-      BrowserTestUtils.is_visible(permissionItem),
-      "Permission item visible in the identity panel"
-    );
-    let permissionLearnMoreLink = document.getElementById(
-      "permission-popup-storage-access-permission-learn-more"
-    );
-    ok(permissionLearnMoreLink, "Permission learn more link exists");
-    ok(
-      BrowserTestUtils.is_visible(permissionLearnMoreLink),
-      "Permission learn more link is visible in the identity panel"
-    );
-    permissionPopupPromise = BrowserTestUtils.waitForEvent(
-      gPermissionPanel._permissionPopup,
-      "popuphidden"
-    );
-    gPermissionPanel._permissionPopup.hidePopup();
-    await permissionPopupPromise;
-  }
+
+  let permissionPopupPromise = BrowserTestUtils.waitForEvent(
+    window,
+    "popupshown",
+    true,
+    event => event.target == gPermissionPanel._permissionPopup
+  );
+  gPermissionPanel._identityPermissionBox.click();
+  await permissionPopupPromise;
+  let permissionItem = document.querySelector(
+    ".permission-popup-permission-item-3rdPartyStorage"
+  );
+  ok(permissionItem, "Permission item exists");
+  ok(
+    BrowserTestUtils.is_visible(permissionItem),
+    "Permission item visible in the identity panel"
+  );
+  let permissionLearnMoreLink = document.getElementById(
+    "permission-popup-storage-access-permission-learn-more"
+  );
+  ok(permissionLearnMoreLink, "Permission learn more link exists");
+  ok(
+    BrowserTestUtils.is_visible(permissionLearnMoreLink),
+    "Permission learn more link is visible in the identity panel"
+  );
+  permissionPopupPromise = BrowserTestUtils.waitForEvent(
+    gPermissionPanel._permissionPopup,
+    "popuphidden"
+  );
+  gPermissionPanel._permissionPopup.hidePopup();
+  await permissionPopupPromise;
 
   BrowserTestUtils.removeTab(tab);
 
@@ -300,6 +302,7 @@ async function preparePermissionsFromOtherSites(topPage) {
 
 async function cleanUp() {
   info("Cleaning up.");
+  SpecialPowers.clearUserPref("network.cookie.sameSite.laxByDefault");
   await new Promise(resolve => {
     Services.clearData.deleteData(Ci.nsIClearDataService.CLEAR_ALL, value =>
       resolve()
@@ -307,25 +310,53 @@ async function cleanUp() {
   });
 }
 
-async function runRound(topPage, showPrompt, maxConcurrent) {
+async function runRound(topPage, showPrompt, maxConcurrent, disableWebcompat) {
   if (showPrompt) {
     await preparePermissionsFromOtherSites(topPage);
-    await testDoorHanger(BLOCK, showPrompt, true, topPage, maxConcurrent);
+    await testDoorHanger(
+      BLOCK,
+      showPrompt,
+      true,
+      topPage,
+      maxConcurrent,
+      disableWebcompat
+    );
     await cleanUp();
     await preparePermissionsFromOtherSites(topPage);
-    await testDoorHanger(BLOCK, showPrompt, false, topPage, maxConcurrent);
+    await testDoorHanger(
+      BLOCK,
+      showPrompt,
+      false,
+      topPage,
+      maxConcurrent,
+      disableWebcompat
+    );
     await cleanUp();
     await preparePermissionsFromOtherSites(topPage);
-    await testDoorHanger(ALLOW, showPrompt, false, topPage, maxConcurrent);
+    await testDoorHanger(
+      ALLOW,
+      showPrompt,
+      false,
+      topPage,
+      maxConcurrent,
+      disableWebcompat
+    );
     await cleanUp();
   } else {
     await preparePermissionsFromOtherSites(topPage);
-    await testDoorHanger(ALLOW, showPrompt, false, topPage, maxConcurrent);
+    await testDoorHanger(
+      ALLOW,
+      showPrompt,
+      false,
+      topPage,
+      maxConcurrent,
+      disableWebcompat
+    );
   }
   await cleanUp();
 }
 
-add_task(async function() {
+add_task(async function test_combinations() {
   await runRound(TEST_TOP_PAGE, false, 1);
   await runRound(TEST_TOP_PAGE_2, true, 1);
   await runRound(TEST_TOP_PAGE, false, 5);
@@ -334,4 +365,8 @@ add_task(async function() {
   await runRound(TEST_TOP_PAGE_4, false, 5);
   await runRound(TEST_TOP_PAGE_5, false, 5);
   await runRound(TEST_TOP_PAGE_6, true, 5);
+});
+
+add_task(async function test_disableWebcompat() {
+  await runRound(TEST_TOP_PAGE, true, 5, true);
 });

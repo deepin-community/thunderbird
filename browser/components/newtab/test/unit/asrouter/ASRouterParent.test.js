@@ -1,5 +1,5 @@
-import { ASRouterParent } from "actors/ASRouterParent.jsm";
-import { MESSAGE_TYPE_HASH as msg } from "common/ActorConstants.jsm";
+import { ASRouterParent } from "actors/ASRouterParent.sys.mjs";
+import { MESSAGE_TYPE_HASH as msg } from "common/ActorConstants.sys.mjs";
 
 describe("ASRouterParent", () => {
   let asRouterParent = null;
@@ -14,7 +14,6 @@ describe("ASRouterParent", () => {
       destroy: sandbox.stub(),
       size: 1,
       messageAll: sandbox.stub().resolves(),
-      messagePreloaded: sandbox.stub().resolves(),
       registerActor: sandbox.stub(),
       unregisterActor: sandbox.stub(),
       loadingMessageHandler: Promise.resolve({
@@ -78,8 +77,6 @@ describe("ASRouterParent", () => {
         data: { id: 1 },
       });
       assert.calledOnce(handleMessage);
-      // No "ClearMessages" message should be sent.
-      assert.notCalled(ASRouterParent.tabs.messagePreloaded);
       assert.equal(result, "handle-message-result");
     });
     it("it messages all actors on BLOCK_MESSAGE_BY_ID messages", async () => {

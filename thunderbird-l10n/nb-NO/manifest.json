@@ -1,29 +1,28 @@
 {
   "langpack_id": "nb-NO",
   "manifest_version": 2,
-  "applications": {
+  "browser_specific_settings": {
     "gecko": {
       "id": "langpack-nb-NO@thunderbird.mozilla.org",
-      "strict_min_version": "91.0",
-      "strict_max_version": "91.*"
+      "strict_min_version": "115.0",
+      "strict_max_version": "115.*"
     }
   },
-  "name": "Norsk (bokmål) Language Pack",
-  "description": "Language pack for Thunderbird for nb-NO",
-  "version": "91.0buildid20211101223011",
+  "name": "Language: Norsk Bokmål (Norwegian Bokmål)",
+  "description": "Thunderbird Language Pack for Norsk Bokmål (nb-NO) – Norwegian Bokmål",
+  "version": "115.8.20240216.174500",
   "languages": {
     "nb-NO": {
-      "version": "20211013060824",
+      "version": "20240216183809",
       "chrome_resources": {
         "alerts": "chrome/nb-NO/locale/nb-NO/alerts/",
         "autoconfig": "chrome/nb-NO/locale/nb-NO/autoconfig/",
-        "branding": "chrome/nb-NO/locale/nb-NO/branding/",
+        "branding": "chrome/nb-NO/locale/branding/",
         "calendar": "chrome/nb-NO/locale/nb-NO/calendar/",
         "chat": "chrome/nb-NO/locale/nb-NO/chat/",
         "communicator": "chrome/nb-NO/locale/nb-NO/communicator/",
         "devtools": "chrome/nb-NO/locale/nb-NO/devtools/client/",
         "devtools-shared": "chrome/nb-NO/locale/nb-NO/devtools/shared/",
-        "devtools-startup": "chrome/nb-NO/locale/nb-NO/devtools/startup/",
         "global": "chrome/nb-NO/locale/nb-NO/global/",
         "global-platform": {
           "macosx": "chrome/nb-NO/locale/nb-NO/global-platform/mac/",

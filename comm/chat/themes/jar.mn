@@ -4,13 +4,11 @@
 
 chat.jar:
 % skin chat classic/1.0 %skin/classic/chat/
-  skin/classic/chat/browserRequest.css
   skin/classic/chat/chat.svg
   skin/classic/chat/chat-left.svg
   skin/classic/chat/conv.css
   skin/classic/chat/imtooltip.css
   skin/classic/chat/mobile.svg
-  skin/classic/chat/otr.css
   skin/classic/chat/otrFingerprintDialog.css
   skin/classic/chat/typed.svg
   skin/classic/chat/typing.svg

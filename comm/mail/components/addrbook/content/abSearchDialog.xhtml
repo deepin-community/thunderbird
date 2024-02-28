@@ -1,5 +1,4 @@
 <?xml version="1.0"?>
-
 <!-- This Source Code Form is subject to the terms of the Mozilla Public
    - License, v. 2.0. If a copy of the MPL was not distributed with this
    - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
@@ -8,6 +7,7 @@
 <?xml-stylesheet href="chrome://messenger/skin/input-fields.css" type="text/css"?>
 <?xml-stylesheet href="chrome://messenger/skin/themeableDialog.css" type="text/css"?>
 <?xml-stylesheet href="chrome://messenger/skin/addressbook/abResultsPane.css" type="text/css"?>
+<?xml-stylesheet href="chrome://messenger/skin/abSearchDialog.css" type="text/css"?>
 
 <!DOCTYPE window [
   <!ENTITY % abResultsPaneDTD SYSTEM "chrome://messenger/locale/addressbook/abResultsPane.dtd">
@@ -17,7 +17,6 @@
   <!ENTITY % searchTermDTD SYSTEM "chrome://messenger/locale/searchTermOverlay.dtd">
   %searchTermDTD;
 ]>
-
 <window id="searchAddressBookWindow"
         xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul"
         xmlns:html="http://www.w3.org/1999/xhtml"
@@ -26,19 +25,12 @@
         onclose="onSearchStop();"
         windowtype="mailnews:absearch"
         title="&abSearchDialogTitle.label;"
-        style="width: 52em; height: 34em;"
+        style="min-width: 52em; min-height: 34em;"
         lightweightthemes="true"
         persist="screenX screenY width height sizemode">
+  <html:link rel="localization" href="messenger/addressbook/aboutAddressBook.ftl" />
 
-  <stringbundle id="bundle_addressBook" src="chrome://messenger/locale/addressbook/addressBook.properties"/>
-  <stringbundle id="bundle_search" src="chrome://messenger/locale/search.properties"/>
-  <stringbundle id="bundle_messenger" src="chrome://messenger/locale/messenger.properties"/>
-  <stringbundle id="bundle_brand" src="chrome://branding/locale/brand.properties"/>
-
-  <script src="chrome://messenger/content/mailWindow.js"/>
-  <script src="chrome://messenger/content/msgMail3PaneWindow.js"/>
-  <script src="chrome://global/content/globalOverlay.js"/>
-  <script src="chrome://messenger/content/commandglue.js"/>
+  <script src="chrome://messenger/content/globalOverlay.js"/>
   <script src="chrome://messenger/content/addressbook/abSearchDialog.js"/>
   <script src="chrome://messenger/content/addressbook/abResultsPane.js"/>
   <script src="chrome://messenger/content/addressbook/abCommon.js"/>
@@ -49,8 +41,8 @@
   <script src="chrome://messenger/content/addressbook/abView.js"/>
 
   <keyset id="mailKeys">
-    <key key="&closeCmd.key;" modifiers="accel" oncommand="onSearchStop(); closeWindow(true);"/>
-    <key keycode="VK_ESCAPE" oncommand="onSearchStop(); closeWindow(true);"/>
+    <key key="&closeCmd.key;" modifiers="accel" oncommand="onSearchStop(); window.close();"/>
+    <key keycode="VK_ESCAPE" oncommand="onSearchStop(); window.close();"/>
   </keyset>
 
   <commandset id="AbCommands">
@@ -59,7 +51,7 @@
     <command id="cmd_deleteCard" oncommand="onDelete();"/>
   </commandset>
 
-    <vbox id="searchTerms" class="themeable-brighttext" flex="3" persist="height">
+    <vbox id="searchTerms" class="themeable-brighttext" persist="height">
       <vbox>
         <hbox align="center">
           <label value="&abSearchHeading.label;" accesskey="&abSearchHeading.accesskey;" control="abPopup"/>
@@ -67,7 +59,7 @@
                     oncommand="SelectDirectory(this.value);"
                     alladdressbooks="true"
                     flex="1"/>
-          <spacer flex="3"/>
+          <spacer style="flex: 3 3;"/>
           <button id="search-button" oncommand="onSearchButton(event);" default="true"/>
         </hbox>
         <hbox align="center">
@@ -82,12 +74,11 @@
       </hbox>
     </vbox>
 
-    <splitter id="gray_horizontal_splitter" collapse="after" persist="state" orient="vertical"/>
+    <splitter id="gray_horizontal_splitter" orient="vertical"/>
 
-    <vbox id="searchResults" flex="4" persist="height">
-      <vbox id="searchResultListBox" flex="1" >
+    <vbox id="searchResults" persist="height">
+      <vbox id="searchResultListBox">
         <tree id="abResultsTree" flex="1" enableColumnDrag="true" class="plain"
-              context="mailContext"
               onclick="AbResultsPaneOnClick(event);"
               onkeypress="AbResultsPaneKeyPress(event);"
               onselect="this.view.selectionChanged();"
@@ -97,72 +88,91 @@
           <treecols id="abResultsTreeCols">
           <!-- these column ids must match up to the mork column names, except for GeneratedName and ChatName, see nsIAddrDatabase.idl -->
           <treecol id="GeneratedName"
-                   persist="hidden ordinal width sortDirection" flex="1"
-                   label="&GeneratedName.label;" primary="true"/>
+                   persist="hidden ordinal width sortDirection"
+                   style="flex: 1 auto"
+                   label="&GeneratedName.label;"
+                   primary="true"/>
           <splitter class="tree-splitter"/>
           <treecol id="PrimaryEmail"
-                   persist="hidden ordinal width sortDirection"  flex="1" label="&PrimaryEmail.label;"/>
+                   persist="hidden ordinal width sortDirection"
+                   style="flex: 1 auto"
+                   label="&PrimaryEmail.label;"/>
           <splitter class="tree-splitter"/>
           <treecol id="ChatName"
                    hidden="true"
-                   persist="hidden ordinal width sortDirection" flex="1" label="&ChatName.label;"/>
+                   persist="hidden ordinal width sortDirection"
+                   style="flex: 1 auto"
+                   label="&ChatName.label;"/>
           <splitter class="tree-splitter"/>
           <treecol id="Company"
-                   persist="hidden ordinal width sortDirection" flex="1" label="&Company.label;"/>
+                   persist="hidden ordinal width sortDirection"
+                   style="flex: 1 auto"
+                   label="&Company.label;"/>
           <splitter class="tree-splitter"/>
           <treecol id="NickName"
                    persist="hidden ordinal width sortDirection"
                    hidden="true"
-                   flex="1" label="&NickName.label;"/>
+                   style="flex: 1 auto"
+                   label="&NickName.label;"/>
           <splitter class="tree-splitter"/>
           <treecol id="SecondEmail"
                    persist="hidden ordinal width sortDirection"
                    hidden="true"
-                   flex="1" label="&SecondEmail.label;"/>
+                   style="flex: 1 auto"
+                   label="&SecondEmail.label;"/>
           <splitter class="tree-splitter"/>
           <treecol id="Department"
                    persist="hidden ordinal width sortDirection"
                    hidden="true"
-                   flex="1" label="&Department.label;"/>
+                   style="flex: 1 auto"
+                   label="&Department.label;"/>
           <splitter class="tree-splitter"/>
           <treecol id="JobTitle"
                    persist="hidden ordinal width sortDirection"
                    hidden="true"
-                   flex="1" label="&JobTitle.label;"/>
+                   style="flex: 1 auto"
+                   label="&JobTitle.label;"/>
           <splitter class="tree-splitter"/>
           <treecol id="CellularNumber"
                    persist="hidden ordinal width sortDirection"
                    hidden="true"
-                   flex="1" label="&CellularNumber.label;"/>
+                   style="flex: 1 auto"
+                   label="&CellularNumber.label;"/>
           <splitter class="tree-splitter"/>
           <treecol id="PagerNumber"
                    persist="hidden ordinal width sortDirection"
                    hidden="true"
-                   flex="1" label="&PagerNumber.label;"/>
+                   style="flex: 1 auto"
+                   label="&PagerNumber.label;"/>
           <splitter class="tree-splitter"/>
           <treecol id="FaxNumber"
                    persist="hidden ordinal width sortDirection"
                    hidden="true"
-                   flex="1" label="&FaxNumber.label;"/>
+                   style="flex: 1 auto"
+                   label="&FaxNumber.label;"/>
           <splitter class="tree-splitter"/>
           <treecol id="HomePhone"
                    persist="hidden ordinal width sortDirection"
                    hidden="true"
-                   flex="1" label="&HomePhone.label;"/>
+                   style="flex: 1 auto"
+                   label="&HomePhone.label;"/>
           <splitter class="tree-splitter"/>
           <treecol id="WorkPhone"
                    persist="hidden ordinal width sortDirection"
-                   flex="1" label="&WorkPhone.label;"/>
+                   style="flex: 1 auto"
+                   label="&WorkPhone.label;"/>
           <splitter class="tree-splitter"/>
           <treecol id="Addrbook"
                    persist="hidden ordinal width sortDirection"
-                   flex="1" label="&Addrbook.label;"/>
+                   style="flex: 1 auto"
+                   label="&Addrbook.label;"/>
           <!-- LOCALIZATION NOTE: _PhoneticName may be enabled for Japanese builds. -->
           <!--
             <treecol id="_PhoneticName"
                      persist="hidden ordinal width sortDirection"
                      hidden="true"
-                     flex="1" label="&_PhoneticName.label;"/>
+                     style="flex: 1 auto"
+                     label="&_PhoneticName.label;"/>
             <splitter class="tree-splitter"/>
            -->
 

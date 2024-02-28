@@ -8,16 +8,10 @@
 
 "use strict";
 
-ChromeUtils.defineModuleGetter(
-  this,
-  "Downloads",
-  "resource://gre/modules/Downloads.jsm"
-);
-ChromeUtils.defineModuleGetter(
-  this,
-  "DownloadUtils",
-  "resource://gre/modules/DownloadUtils.jsm"
-);
+ChromeUtils.defineESModuleGetters(this, {
+  Downloads: "resource://gre/modules/Downloads.sys.mjs",
+  DownloadUtils: "resource://gre/modules/DownloadUtils.sys.mjs",
+});
 
 window.addEventListener("load", event => {
   DownloadsView.init();
@@ -32,12 +26,12 @@ var DownloadsView = {
 
     Downloads.getList(Downloads.ALL)
       .then(list => list.addView(this))
-      .then(null, Cu.reportError);
+      .catch(console.error);
 
     window.addEventListener("unload", aEvent => {
       Downloads.getList(Downloads.ALL)
         .then(list => list.removeView(this))
-        .then(null, Cu.reportError);
+        .catch(console.error);
       window.controllers.removeController(this);
     });
   },
@@ -83,7 +77,7 @@ var DownloadsView = {
   onDownloadChanged(aDownload) {
     let item = this.items.get(aDownload);
     if (!item) {
-      Cu.reportError("No DownloadItem found for download");
+      console.error("No DownloadItem found for download");
       return;
     }
 
@@ -97,7 +91,7 @@ var DownloadsView = {
   onDownloadRemoved(aDownload) {
     let item = this.items.get(aDownload);
     if (!item) {
-      Cu.reportError("No DownloadItem found for download");
+      console.error("No DownloadItem found for download");
       return;
     }
 
@@ -112,7 +106,7 @@ var DownloadsView = {
   clearDownloads() {
     Downloads.getList(Downloads.ALL)
       .then(list => list.removeFinished())
-      .then(null, Cu.reportError);
+      .catch(console.error);
   },
 
   searchDownloads() {
@@ -250,9 +244,10 @@ DownloadItem.prototype = {
     element.classList.add("download");
     element.setAttribute("align", "center");
 
-    let image = document.createXULElement("image");
-    image.setAttribute("validate", "always");
-    image.classList.add("fileTypeIcon");
+    let image = document.createElement("img");
+    image.setAttribute("alt", "");
+    // Allow the given src to be invalid.
+    image.classList.add("fileTypeIcon", "invisible-on-broken");
 
     let vbox = document.createXULElement("vbox");
     vbox.setAttribute("pack", "center");
@@ -332,7 +327,7 @@ DownloadItem.prototype = {
 
   launch() {
     if (this.download.succeeded) {
-      this.download.launch().then(null, Cu.reportError);
+      this.download.launch().catch(console.error);
     }
   },
 
@@ -340,7 +335,7 @@ DownloadItem.prototype = {
     Downloads.getList(Downloads.ALL)
       .then(list => list.remove(this.download))
       .then(() => this.download.finalize(true))
-      .then(null, Cu.reportError);
+      .catch(console.error);
   },
 
   show() {

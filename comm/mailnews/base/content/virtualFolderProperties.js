@@ -1,34 +1,35 @@
-/* -*- Mode: Java; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*-
- * This Source Code Form is subject to the terms of the Mozilla Public
+/* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 /* import-globals-from ../../search/content/searchTerm.js */
 
-var gFolderTreeView;
 var gPickedFolder;
 var gMailView = null;
 var msgWindow; // important, don't change the name of this variable. it's really a global used by commandglue.js
 var gSearchTermSession; // really an in memory temporary filter we use to read in and write out the search terms
 var gSearchFolderURIs = "";
 var gMessengerBundle = null;
-var kCurrentColor = "";
-var kDefaultColor = "#363959";
-var gNeedToRestoreFolderSelection = false;
+var gFolderBundle = null;
+var gDefaultColor = "";
+var gMsgFolder;
 
-var nsMsgSearchScope = Ci.nsMsgSearchScope;
-
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-var { PluralForm } = ChromeUtils.import(
-  "resource://gre/modules/PluralForm.jsm"
+var { FolderTreeProperties } = ChromeUtils.import(
+  "resource:///modules/FolderTreeProperties.jsm"
 );
+var { FolderUtils } = ChromeUtils.import("resource:///modules/FolderUtils.jsm");
 var { MailServices } = ChromeUtils.import(
   "resource:///modules/MailServices.jsm"
+);
+var { MailUtils } = ChromeUtils.import("resource:///modules/MailUtils.jsm");
+var { PluralForm } = ChromeUtils.importESModule(
+  "resource://gre/modules/PluralForm.sys.mjs"
 );
 var { VirtualFolderHelper } = ChromeUtils.import(
   "resource:///modules/VirtualFolderWrapper.jsm"
 );
-var { MailUtils } = ChromeUtils.import("resource:///modules/MailUtils.jsm");
+
+window.addEventListener("DOMContentLoaded", onLoad);
 
 document.addEventListener("dialogaccept", onOK);
 document.addEventListener("dialogcancel", onCancel);
@@ -37,14 +38,20 @@ function onLoad() {
   var windowArgs = window.arguments[0];
   var acceptButton = document.querySelector("dialog").getButton("accept");
 
-  gMessengerBundle = document.getElementById("bundle_messenger");
+  gMessengerBundle = Services.strings.createBundle(
+    "chrome://messenger/locale/messenger.properties"
+  );
+
+  gFolderBundle = Services.strings.createBundle(
+    "chrome://messenger/locale/folderWidgets.properties"
+  );
 
   // call this when OK is pressed
   msgWindow = windowArgs.msgWindow; // eslint-disable-line no-global-assign
 
   initializeSearchWidgets();
 
-  setSearchScope(nsMsgSearchScope.offlineMail);
+  setSearchScope(Ci.nsMsgSearchScope.offlineMail);
   if (windowArgs.editExistingFolder) {
     acceptButton.label = document
       .querySelector("dialog")
@@ -143,28 +150,60 @@ function InitDialogWithVirtualFolder(aVirtualFolder) {
   let virtualFolderWrapper = VirtualFolderHelper.wrapVirtualFolder(
     window.arguments[0].folder
   );
+  gMsgFolder = window.arguments[0].folder;
+
+  let styles = getComputedStyle(document.body);
+  let folderColors = {
+    Inbox: styles.getPropertyValue("--folder-color-inbox"),
+    Sent: styles.getPropertyValue("--folder-color-sent"),
+    Outbox: styles.getPropertyValue("--folder-color-outbox"),
+    Drafts: styles.getPropertyValue("--folder-color-draft"),
+    Trash: styles.getPropertyValue("--folder-color-trash"),
+    Archive: styles.getPropertyValue("--folder-color-archive"),
+    Templates: styles.getPropertyValue("--folder-color-template"),
+    Junk: styles.getPropertyValue("--folder-color-spam"),
+    Virtual: styles.getPropertyValue("--folder-color-folder-filter"),
+    RSS: styles.getPropertyValue("--folder-color-rss"),
+    Newsgroup: styles.getPropertyValue("--folder-color-newsletter"),
+  };
+  gDefaultColor = styles.getPropertyValue("--folder-color-folder");
 
   // when editing an existing folder, hide the folder picker that stores the parent location of the folder
   document.getElementById("msgNewFolderPicker").collapsed = true;
-  document.getElementById("chooseFolderLocationLabel").collapsed = true;
+  let items = document.getElementsByClassName("chooseFolderLocation");
+  for (let item of items) {
+    item.setAttribute("hidden", true);
+  }
   let folderNameField = document.getElementById("existingName");
   folderNameField.removeAttribute("hidden");
 
   // Show the icon color options.
   document.getElementById("iconColorContainer").collapsed = false;
-  // Store the current icon color to allow discarding edits.
-  gFolderTreeView = window.arguments[0].treeView;
-  kCurrentColor = gFolderTreeView.getFolderCacheProperty(
-    aVirtualFolder,
-    "folderIconColor"
-  );
+
+  let folderType = FolderUtils.getSpecialFolderString(gMsgFolder);
+  if (folderType in folderColors) {
+    gDefaultColor = folderColors[folderType];
+  }
 
   let colorInput = document.getElementById("color");
-  colorInput.value = kCurrentColor ? kCurrentColor : kDefaultColor;
+  colorInput.value =
+    FolderTreeProperties.getColor(aVirtualFolder.URI) || gDefaultColor;
   colorInput.addEventListener("input", event => {
-    window.arguments[0].previewSelectedColorCallback(
-      aVirtualFolder,
-      event.target.value
+    // Preview the chosen color.
+    Services.obs.notifyObservers(
+      gMsgFolder,
+      "folder-color-preview",
+      colorInput.value
+    );
+  });
+  let resetColorButton = document.getElementById("resetColor");
+  resetColorButton.addEventListener("click", function () {
+    colorInput.value = gDefaultColor;
+    // Preview the default color.
+    Services.obs.notifyObservers(
+      gMsgFolder,
+      "folder-color-preview",
+      gDefaultColor
     );
   });
 
@@ -177,14 +216,13 @@ function InitDialogWithVirtualFolder(aVirtualFolder) {
   setupSearchRows(gSearchTermSession.searchTerms);
 
   // set the name of the folder
-  let folderBundle = document.getElementById("bundle_folder");
-  let name = folderBundle.getFormattedString("verboseFolderFormat", [
+  let name = gFolderBundle.formatStringFromName("verboseFolderFormat", [
     aVirtualFolder.prettyName,
     aVirtualFolder.server.prettyName,
   ]);
   folderNameField.setAttribute("value", name);
   // update the window title based on the name of the saved search
-  document.title = gMessengerBundle.getFormattedString(
+  document.title = gMessengerBundle.formatStringFromName(
     "editVirtualFolderPropertiesTitle",
     [aVirtualFolder.prettyName]
   );
@@ -203,7 +241,7 @@ function onOK(event) {
     Services.prompt.alert(
       window,
       null,
-      gMessengerBundle.getString("alertNoSearchFoldersSelected")
+      gMessengerBundle.GetStringFromName("alertNoSearchFoldersSelected")
     );
     event.preventDefault();
     return;
@@ -226,22 +264,18 @@ function onOK(event) {
 
     MailServices.accounts.saveVirtualFolders();
 
-    // Check if the icon color was updated.
-    if (
-      kCurrentColor !=
-      gFolderTreeView.getFolderCacheProperty(
-        window.arguments[0].folder,
-        "folderIconColor"
-      )
-    ) {
-      window.arguments[0].updateColorCallback(window.arguments[0].folder);
+    let color = document.getElementById("color").value;
+    if (color == gDefaultColor) {
+      color = undefined;
     }
+    FolderTreeProperties.setColor(gMsgFolder.URI, color);
+    // Tell 3-pane tabs to update the folder's color.
+    Services.obs.notifyObservers(gMsgFolder, "folder-color-changed", color);
 
     if (window.arguments[0].onOKCallback) {
-      window.arguments[0].onOKCallback(virtualFolderWrapper.virtualFolder.URI);
+      window.arguments[0].onOKCallback();
     }
 
-    restoreFolderSelection();
     return;
   }
 
@@ -257,7 +291,7 @@ function onOK(event) {
       Services.prompt.alert(
         window,
         null,
-        gMessengerBundle.getString("folderCreationFailed")
+        gMessengerBundle.GetStringFromName("folderCreationFailed")
       );
       event.preventDefault();
       return;
@@ -265,7 +299,7 @@ function onOK(event) {
       Services.prompt.alert(
         window,
         null,
-        gMessengerBundle.getString("folderExists")
+        gMessengerBundle.GetStringFromName("folderExists")
       );
       event.preventDefault();
       return;
@@ -286,31 +320,9 @@ function onOK(event) {
 }
 
 function onCancel(event) {
-  if (
-    window.arguments[0].folder &&
-    window.arguments[0].previewSelectedColorCallback
-  ) {
-    // Restore the icon to the previous color and discard edits.
-    window.arguments[0].previewSelectedColorCallback(
-      window.arguments[0].folder,
-      kCurrentColor
-    );
-  }
-
-  restoreFolderSelection();
-}
-
-/**
- * If the user interacted with the color picker, it means the folder was
- * deselected to ensure a proper preview of the color, so we need to re-select
- * the folder when done.
- */
-function restoreFolderSelection() {
-  if (
-    gNeedToRestoreFolderSelection &&
-    window.arguments[0].selectFolderCallback
-  ) {
-    window.arguments[0].selectFolderCallback(window.arguments[0].folder);
+  if (gMsgFolder) {
+    // Clear any previewed color.
+    Services.obs.notifyObservers(gMsgFolder, "folder-color-preview");
   }
 }
 
@@ -347,13 +359,13 @@ function updateFoldersCount() {
   let foldersList = document.getElementById("chosenFoldersCount");
   foldersList.textContent = PluralForm.get(
     folderCount,
-    gMessengerBundle.getString("virtualFolderSourcesChosen")
+    gMessengerBundle.GetStringFromName("virtualFolderSourcesChosen")
   ).replace("#1", folderCount);
   if (folderCount > 0) {
     let folderNames = [];
     for (let folderURI of srchFolderUriArray) {
       let folder = MailUtils.getOrCreateFolder(folderURI);
-      let name = this.gMessengerBundle.getFormattedString(
+      let name = this.gMessengerBundle.formatStringFromName(
         "verboseFolderFormat",
         [folder.prettyName, folder.server.prettyName]
       );
@@ -368,25 +380,4 @@ function updateFoldersCount() {
 function onEnterInSearchTerm() {
   // stub function called by the core search widget code...
   // nothing for us to do here
-}
-
-/**
- * Clear the tree selection if the user opens the color picker in order to
- * guarantee a proper color preview of the highlighted tree item.
- */
-function inputColorClicked() {
-  window.arguments[0].clearFolderSelectionCallback();
-  gNeedToRestoreFolderSelection = true;
-}
-
-/**
- * Reset the folder color to the default value.
- */
-function resetColor() {
-  inputColorClicked();
-  document.getElementById("color").value = kDefaultColor;
-  window.arguments[0].previewSelectedColorCallback(
-    window.arguments[0].folder,
-    null
-  );
 }

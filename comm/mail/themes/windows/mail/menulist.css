@@ -2,7 +2,7 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-@import url("chrome://messenger/content/menulist.css");
+@import url("chrome://messenger/skin/shared/menulist.css");
 
 @namespace html url("http://www.w3.org/1999/xhtml");
 
@@ -23,7 +23,7 @@ menulist::part(text-input) {
   padding-inline-end: 0;
 }
 
-@media (-moz-os-version: windows-win7) and (-moz-windows-default-theme: 0) {
+@media (-moz-platform: windows-win7) and (-moz-windows-default-theme: 0) {
   menulist::part(text-input) {
     margin-top: 0;
     margin-bottom: 0;
@@ -31,7 +31,7 @@ menulist::part(text-input) {
   }
 }
 
-@media (-moz-os-version: windows-win10) and (-moz-windows-default-theme: 0) {
+@media (-moz-platform: windows-win10) and (-moz-windows-default-theme: 0) {
   menulist::part(text-input) {
     margin-top: -1px;
     margin-bottom: -1px;
@@ -40,7 +40,7 @@ menulist::part(text-input) {
 }
 
 menulist[is="menulist-editable"][editable="true"]::part(dropmarker) {
-  display: -moz-box;
+  display: flex;
 }
 
 @media (-moz-windows-default-theme) {

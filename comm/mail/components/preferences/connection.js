@@ -6,8 +6,6 @@
 /* import-globals-from ../../../../toolkit/content/preferencesBindings.js */
 /* import-globals-from ./extensionControlled.js */
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-
 Preferences.addAll([
   // Add network.proxy.autoconfig_url before network.proxy.type so they're
   // both initialized when network.proxy.type initialization triggers a call to
@@ -113,13 +111,8 @@ window.addEventListener(
     );
 
     document
-      .getElementById("disableProxyExtension")
-      .addEventListener(
-        "command",
-        makeDisableControllingExtension(PREF_SETTING_TYPE, PROXY_KEY).bind(
-          gConnectionsDialog
-        )
-      );
+      .getElementById("proxyExtensionDisable")
+      .addEventListener("click", disableControllingProxyExtension);
     gConnectionsDialog.updateProxySettingsUI();
     initializeProxyUI(gConnectionsDialog);
   },
@@ -186,26 +179,15 @@ var gConnectionsDialog = {
 
     // In the case of a shared proxy preference, backup the current values and update with the HTTP value
     if (shareProxiesPref.value) {
-      var proxyPrefs = ["ssl"];
-      for (var i = 0; i < proxyPrefs.length; ++i) {
-        var proxyServerURLPref = Preferences.get(
-          "network.proxy." + proxyPrefs[i]
-        );
-        var proxyPortPref = Preferences.get(
-          "network.proxy." + proxyPrefs[i] + "_port"
-        );
-        var backupServerURLPref = Preferences.get(
-          "network.proxy.backup." + proxyPrefs[i]
-        );
-        var backupPortPref = Preferences.get(
-          "network.proxy.backup." + proxyPrefs[i] + "_port"
-        );
-        backupServerURLPref.value =
-          backupServerURLPref.value || proxyServerURLPref.value;
-        backupPortPref.value = backupPortPref.value || proxyPortPref.value;
-        proxyServerURLPref.value = httpProxyURLPref.value;
-        proxyPortPref.value = httpProxyPortPref.value;
-      }
+      var proxyServerURLPref = Preferences.get("network.proxy.ssl");
+      var proxyPortPref = Preferences.get("network.proxy.ssl_port");
+      var backupServerURLPref = Preferences.get("network.proxy.backup.ssl");
+      var backupPortPref = Preferences.get("network.proxy.backup.ssl_port");
+      backupServerURLPref.value =
+        backupServerURLPref.value || proxyServerURLPref.value;
+      backupPortPref.value = backupPortPref.value || proxyPortPref.value;
+      proxyServerURLPref.value = httpProxyURLPref.value;
+      proxyPortPref.value = httpProxyPortPref.value;
     }
 
     this.sanitizeNoProxiesPref();
@@ -243,12 +225,11 @@ var gConnectionsDialog = {
 
     this.updateReloadButton();
 
-    document.getElementById(
-      "networkProxyNoneLocalhost"
-    ).hidden = Services.prefs.getBoolPref(
-      "network.proxy.allow_hijacking_localhost",
-      false
-    );
+    document.getElementById("networkProxyNoneLocalhost").hidden =
+      Services.prefs.getBoolPref(
+        "network.proxy.allow_hijacking_localhost",
+        false
+      );
   },
 
   updateDNSPref() {
@@ -433,11 +414,9 @@ var gConnectionsDialog = {
 
     if (isLocked) {
       // An extension can't control this setting if any pref is locked.
-      hideControllingExtension(PROXY_KEY);
+      hideControllingProxyExtension();
     } else {
-      handleControllingExtension(PREF_SETTING_TYPE, PROXY_KEY).then(
-        setInputsDisabledState
-      );
+      handleControllingProxyExtension().then(setInputsDisabledState);
     }
   },
 
@@ -450,13 +429,13 @@ var gConnectionsDialog = {
       try {
         providers = JSON.parse(rawValue);
       } catch (ex) {
-        Cu.reportError(
+        console.error(
           `Bad JSON data in pref network.trr.resolvers: ${rawValue}`
         );
       }
     }
     if (!Array.isArray(providers)) {
-      Cu.reportError(
+      console.error(
         `Expected a JSON array in network.trr.resolvers: ${rawValue}`
       );
       providers = [];

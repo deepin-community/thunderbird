@@ -6,8 +6,8 @@
 /**
  * Tests if Request-Cookies and Response-Cookies are sorted in Cookies tab.
  */
-add_task(async function() {
-  const { tab, monitor } = await initNetMonitor(SIMPLE_UNSORTED_COOKIES_SJS, {
+add_task(async function () {
+  const { monitor } = await initNetMonitor(SIMPLE_UNSORTED_COOKIES_SJS, {
     requestCount: 1,
   });
   info("Starting test... ");
@@ -17,9 +17,8 @@ add_task(async function() {
 
   store.dispatch(Actions.batchEnable(false));
 
-  tab.linkedBrowser.reload();
-
   let wait = waitForNetworkEvents(monitor, 1);
+  await reloadBrowser();
   await wait;
 
   wait = waitForDOM(document, ".headers-overview");
@@ -37,6 +36,9 @@ add_task(async function() {
 
   info("Check if Request-Cookies and Response-Cookies are sorted");
   const expectedLabelValues = [
+    "__proto__",
+    "httpOnly",
+    "value",
     "bob",
     "httpOnly",
     "value",
@@ -46,12 +48,14 @@ add_task(async function() {
     "tom",
     "httpOnly",
     "value",
+    "__proto__",
     "bob",
     "foo",
     "tom",
   ];
+
   const labelCells = document.querySelectorAll(".treeLabelCell");
-  labelCells.forEach(function(val, index) {
+  labelCells.forEach(function (val, index) {
     is(
       val.innerText,
       expectedLabelValues[index],

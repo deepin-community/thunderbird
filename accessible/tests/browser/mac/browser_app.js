@@ -26,6 +26,28 @@ function getMacAccessible(accOrElmOrID) {
 }
 
 /**
+ * Test a11yUtils announcements are exposed to VO
+ */
+add_task(async () => {
+  const tab = await BrowserTestUtils.openNewForegroundTab(
+    gBrowser,
+    "data:text/html,"
+  );
+  const alert = document.getElementById("a11y-announcement");
+  ok(alert, "Found alert to send announcements");
+
+  const alerted = waitForMacEvent("AXAnnouncementRequested", (iface, data) => {
+    return data.AXAnnouncementKey == "hello world";
+  });
+
+  A11yUtils.announce({
+    raw: "hello world",
+  });
+  await alerted;
+  await BrowserTestUtils.removeTab(tab);
+});
+
+/**
  * Test browser tabs
  */
 add_task(async () => {
@@ -197,6 +219,7 @@ add_task(async () => {
   await BrowserTestUtils.withNewTab(
     {
       gBrowser,
+      // eslint-disable-next-line @microsoft/sdl/no-insecure-url
       url: "http://example.com",
     },
     async browser => {
@@ -222,8 +245,7 @@ add_task(async () => {
   await BrowserTestUtils.withNewTab(
     {
       gBrowser,
-      url:
-        'data:text/html,<a id="exampleLink" href="https://example.com">link</a>',
+      url: 'data:text/html,<a id="exampleLink" href="https://example.com">link</a>',
     },
     async browser => {
       if (!Services.search.isInitialized) {

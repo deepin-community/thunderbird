@@ -8,7 +8,6 @@
 
 "use strict";
 
-const { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 const { RNP } = ChromeUtils.import("chrome://openpgp/content/modules/RNP.jsm");
 const { EnigmailConstants } = ChromeUtils.import(
   "chrome://openpgp/content/modules/constants.jsm"
@@ -50,8 +49,7 @@ const tests = [
     expectedAliasKeys: null,
   },
   {
-    info:
-      "File maps Alice's address to Bob's (id) and Carol's (fingerprint) keys",
+    info: "File maps Alice's address to Bob's (id) and Carol's (fingerprint) keys",
     filename: `${mailNewsDir}/alias-1.json`,
     to: "alice@openpgp.example",
     expectedMissing: false,
@@ -206,7 +204,7 @@ const tests = [
 /**
  * Initialize OpenPGP add testing keys.
  */
-add_task(async function setUp() {
+add_setup(async function () {
   do_get_profile();
 
   await OpenPGPTestUtils.initOpenPGP();

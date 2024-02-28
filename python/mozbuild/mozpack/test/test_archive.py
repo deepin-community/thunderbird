@@ -2,8 +2,6 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-from __future__ import absolute_import, print_function
-
 import hashlib
 import os
 import shutil
@@ -13,17 +11,15 @@ import tempfile
 import unittest
 
 import pytest
+from mozunit import main
 
 from mozpack.archive import (
     DEFAULT_MTIME,
+    create_tar_bz2_from_files,
     create_tar_from_files,
     create_tar_gz_from_files,
-    create_tar_bz2_from_files,
 )
 from mozpack.files import GeneratedFile
-
-from mozunit import main
-
 
 MODE_STANDARD = stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IROTH
 
@@ -170,9 +166,9 @@ class TestArchive(unittest.TestCase):
 
             gp = os.path.join(d, "test.tar.gz")
             with open(gp, "wb") as fh:
-                create_tar_gz_from_files(fh, files, filename="foobar", compresslevel=1)
+                create_tar_gz_from_files(fh, files, filename="foobar")
 
-            self.assertEqual(file_hash(gp), "1cc8b96f0262350977c2e9d61f40a1fa76f35c52")
+            self.assertEqual(file_hash(gp), "721e00083c17d16df2edbddf40136298c06d0c49")
 
             with tarfile.open(gp, "r:gz") as tf:
                 self._verify_basic_tarfile(tf)

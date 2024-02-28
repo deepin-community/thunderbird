@@ -5,8 +5,6 @@
 
 /* global MozXULElement */
 
-/* import-globals-from ../mailWindow.js */
-
 "use strict";
 
 // The autocomplete CE is defined lazily. Create one now to get
@@ -16,30 +14,46 @@ if (!customElements.get("autocomplete-input")) {
 }
 
 customElements.whenDefined("autocomplete-input").then(() => {
-  const { Services } = ChromeUtils.import(
-    "resource://gre/modules/Services.jsm"
+  const { AppConstants } = ChromeUtils.importESModule(
+    "resource://gre/modules/AppConstants.sys.mjs"
   );
-  const { AppConstants } = ChromeUtils.import(
-    "resource://gre/modules/AppConstants.jsm"
+  const { XPCOMUtils } = ChromeUtils.importESModule(
+    "resource://gre/modules/XPCOMUtils.sys.mjs"
   );
 
-  const LazyModules = {};
-
+  const lazy = {};
+  ChromeUtils.defineESModuleGetters(lazy, {
+    GlodaIMSearcher: "resource:///modules/GlodaIMSearcher.sys.mjs",
+  });
   ChromeUtils.defineModuleGetter(
-    LazyModules,
-    "GlodaIMSearcher",
-    "resource:///modules/GlodaIMSearcher.jsm"
+    lazy,
+    "Gloda",
+    "resource:///modules/gloda/GlodaPublic.jsm"
   );
   ChromeUtils.defineModuleGetter(
-    LazyModules,
+    lazy,
     "GlodaMsgSearcher",
     "resource:///modules/gloda/GlodaMsgSearcher.jsm"
+  );
+  ChromeUtils.defineModuleGetter(
+    lazy,
+    "GlodaConstants",
+    "resource:///modules/gloda/GlodaConstants.jsm"
+  );
+
+  XPCOMUtils.defineLazyGetter(
+    lazy,
+    "glodaCompleter",
+    () =>
+      Cc["@mozilla.org/autocomplete/search;1?name=gloda"].getService(
+        Ci.nsIAutoCompleteSearch
+      ).wrappedJSObject
   );
 
   /**
    * The MozGlodaAutocompleteInput widget is used to display the autocomplete search bar.
    *
-   * @extends {AutocompleteInput}
+   * @augments {AutocompleteInput}
    */
   class MozGlodaAutocompleteInput extends customElements.get(
     "autocomplete-input"
@@ -84,14 +98,13 @@ customElements.whenDefined("autocomplete-input").then(() => {
       super.connectedCallback();
 
       this.setAttribute("is", "gloda-autocomplete-input");
-      this.glodaCompleter = null;
 
       // @implements {nsIObserver}
       this.searchInputDNDObserver = {
         onDrop: event => {
           if (event.dataTransfer.types.includes("text/x-moz-address")) {
             this.focus();
-            this.value = event.dataTransfer.getData("text/unicode");
+            this.value = event.dataTransfer.getData("text/plain");
             // XXX for some reason the input field is _cleared_ even though
             // the search works.
             this.doSearch();
@@ -114,7 +127,7 @@ customElements.whenDefined("autocomplete-input").then(() => {
             document.activeElement == this
           ) {
             let selectedIndex = this.popup.selectedIndex;
-            let curResult = this.glodaCompleter.curResult;
+            let curResult = lazy.glodaCompleter.curResult;
             if (!curResult) {
               // autocomplete didn't even finish.
               return;
@@ -136,7 +149,9 @@ customElements.whenDefined("autocomplete-input").then(() => {
               // the event loop by using setTimeout.
               setTimeout(this.doSearch.bind(this), 0);
             } else if (row.nounDef) {
-              let theQuery = Gloda.newQuery(Gloda.NOUN_MESSAGE);
+              let theQuery = lazy.Gloda.newQuery(
+                lazy.GlodaConstants.NOUN_MESSAGE
+              );
               if (row.nounDef.name == "tag") {
                 theQuery = theQuery.tags(row.item);
               } else if (row.nounDef.name == "identity") {
@@ -160,9 +175,6 @@ customElements.whenDefined("autocomplete-input").then(() => {
 
       this.setAttribute("placeholder", placeholder);
 
-      this.glodaCompleter = Cc[
-        "@mozilla.org/autocomplete/search;1?name=gloda"
-      ].getService(Ci.nsIAutoCompleteSearch).wrappedJSObject;
       Services.obs.addObserver(
         this.textObserver,
         "autocomplete-did-enter-text"
@@ -200,10 +212,10 @@ customElements.whenDefined("autocomplete-input").then(() => {
         }
         this.value = ""; // clear our value, to avoid persistence
         let args = {
-          searcher: new LazyModules.GlodaMsgSearcher(null, searchString),
+          searcher: new lazy.GlodaMsgSearcher(null, searchString),
         };
         if (Services.prefs.getBoolPref("mail.chat.enabled")) {
-          args.IMSearcher = new LazyModules.GlodaIMSearcher(null, searchString);
+          args.IMSearcher = new lazy.GlodaIMSearcher(null, searchString);
         }
         tabmail.openTab("glodaFacet", args);
       }

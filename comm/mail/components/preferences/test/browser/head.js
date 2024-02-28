@@ -41,9 +41,10 @@ async function openNewPrefsTab(paneID, scrollPaneTo, otherArgs) {
   registerCleanupOnce();
 
   await new Promise(resolve => prefsWindow.setTimeout(resolve));
-  if (scrollPaneTo) {
+  let container = prefsDocument.getElementById("preferencesContainer");
+  if (scrollPaneTo && container.scrollHeight > container.clientHeight) {
     Assert.greater(
-      prefsDocument.getElementById("preferencesContainer").scrollTop,
+      container.scrollTop,
       0,
       "Prefs page did scroll when it was supposed to"
     );
@@ -133,7 +134,7 @@ async function testCheckboxes(paneID, scrollPaneTo, ...tests) {
       scrollPaneTo
     );
 
-    let testUIState = function(test, checked) {
+    let testUIState = function (test, checked) {
       let wantedValue = checked;
       if (test.prefValues) {
         wantedValue = wantedValue ? test.prefValues[1] : test.prefValues[0];
@@ -181,7 +182,7 @@ async function testCheckboxes(paneID, scrollPaneTo, ...tests) {
       }
     };
 
-    let testUnaffected = function(ids, states) {
+    let testUnaffected = function (ids, states) {
       ids.forEach((sel, index) => {
         let isOk = prefsDocument.querySelector(sel).disabled === states[index];
         is(isOk, true, `Element "${sel}" is unaffected`);
@@ -244,7 +245,7 @@ async function testRadioButtons(paneID, scrollPaneTo, ...tests) {
         scrollPaneTo
       );
 
-      let testUIState = function(currentState) {
+      let testUIState = function (currentState) {
         info(`Testing with ${pref} set to ${currentState.prefValue}`);
         for (let state of states) {
           let isCurrentState = state == currentState;

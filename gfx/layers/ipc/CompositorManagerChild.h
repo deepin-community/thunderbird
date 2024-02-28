@@ -7,8 +7,9 @@
 #ifndef MOZILLA_GFX_COMPOSITORMANAGERCHILD_H
 #define MOZILLA_GFX_COMPOSITORMANAGERCHILD_H
 
-#include <stddef.h>              // for size_t
-#include <stdint.h>              // for uint32_t, uint64_t
+#include <stddef.h>  // for size_t
+#include <stdint.h>  // for uint32_t, uint64_t
+#include "mozilla/Atomics.h"
 #include "mozilla/Attributes.h"  // for override
 #include "mozilla/RefPtr.h"      // for already_AddRefed
 #include "mozilla/StaticPtr.h"   // for StaticRefPtr
@@ -19,10 +20,10 @@ namespace layers {
 
 class CompositorBridgeChild;
 class CompositorManagerParent;
-class LayerManager;
+class WebRenderLayerManager;
 
 class CompositorManagerChild : public PCompositorManagerChild {
-  NS_INLINE_DECL_THREADSAFE_REFCOUNTING(CompositorManagerChild)
+  NS_INLINE_DECL_THREADSAFE_REFCOUNTING(CompositorManagerChild, override)
 
  public:
   static bool IsInitialized(uint64_t aProcessToken);
@@ -35,12 +36,13 @@ class CompositorManagerChild : public PCompositorManagerChild {
   static bool CreateContentCompositorBridge(uint32_t aNamespace);
 
   static already_AddRefed<CompositorBridgeChild> CreateWidgetCompositorBridge(
-      uint64_t aProcessToken, LayerManager* aLayerManager, uint32_t aNamespace,
-      CSSToLayoutDeviceScale aScale, const CompositorOptions& aOptions,
-      bool aUseExternalSurfaceSize, const gfx::IntSize& aSurfaceSize);
+      uint64_t aProcessToken, WebRenderLayerManager* aLayerManager,
+      uint32_t aNamespace, CSSToLayoutDeviceScale aScale,
+      const CompositorOptions& aOptions, bool aUseExternalSurfaceSize,
+      const gfx::IntSize& aSurfaceSize, uint64_t aInnerWindowId);
 
   static already_AddRefed<CompositorBridgeChild>
-  CreateSameProcessWidgetCompositorBridge(LayerManager* aLayerManager,
+  CreateSameProcessWidgetCompositorBridge(WebRenderLayerManager* aLayerManager,
                                           uint32_t aNamespace);
 
   static CompositorManagerChild* GetInstance() {
@@ -48,9 +50,17 @@ class CompositorManagerChild : public PCompositorManagerChild {
     return sInstance;
   }
 
+  // Threadsafe way to get the compositor process ID.
+  static base::ProcessId GetOtherPid() { return sOtherPid; }
+
   bool CanSend() const {
     MOZ_ASSERT(NS_IsMainThread());
     return mCanSend;
+  }
+
+  bool SameProcess() const {
+    MOZ_ASSERT(NS_IsMainThread());
+    return mSameProcess;
   }
 
   uint32_t GetNextResourceId() {
@@ -73,7 +83,7 @@ class CompositorManagerChild : public PCompositorManagerChild {
 
   void ActorDestroy(ActorDestroyReason aReason) override;
 
-  void HandleFatalError(const char* aMsg) const override;
+  void HandleFatalError(const char* aMsg) override;
 
   void ProcessingError(Result aCode, const char* aReason) override;
 
@@ -84,6 +94,7 @@ class CompositorManagerChild : public PCompositorManagerChild {
 
  private:
   static StaticRefPtr<CompositorManagerChild> sInstance;
+  static Atomic<base::ProcessId> sOtherPid;
 
   CompositorManagerChild(CompositorManagerParent* aParent,
                          uint64_t aProcessToken, uint32_t aNamespace);
@@ -93,14 +104,13 @@ class CompositorManagerChild : public PCompositorManagerChild {
 
   virtual ~CompositorManagerChild() = default;
 
-  void ActorDealloc() override;
-
   void SetReplyTimeout();
 
   uint64_t mProcessToken;
   uint32_t mNamespace;
   uint32_t mResourceId;
   bool mCanSend;
+  bool mSameProcess;
 };
 
 }  // namespace layers

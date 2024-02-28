@@ -8,8 +8,13 @@
 
 // Wrap in a block to prevent leaking to window scope.
 {
-  const { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-  const { XPCOMUtils } = ChromeUtils.import("resource://gre/modules/XPCOMUtils.jsm");
+  const { XPCOMUtils } = ChromeUtils.importESModule("resource://gre/modules/XPCOMUtils.sys.mjs");
+
+  const lazy = {};
+  ChromeUtils.defineModuleGetter(lazy, "CalDateTime", "resource:///modules/CalDateTime.jsm");
+
+  let dayFormatter = new Services.intl.DateTimeFormat(undefined, { day: "numeric" });
+  let dateFormatter = new Services.intl.DateTimeFormat(undefined, { dateStyle: "long" });
 
   /**
    * MiniMonth Calendar: day-of-month grid component.
@@ -22,7 +27,6 @@
    * May get/set value in javascript with
    *   document.querySelector("#my-date-picker").value = new Date();
    *
-   * @implements {calIOperationListener}
    * @implements {calIObserver}
    * @implements {calICompositeObserver}
    */
@@ -32,10 +36,9 @@
       // Set up custom interfaces.
       this.calIObserver = this.getCustomInterfaceCallback(Ci.calIObserver);
       this.calICompositeObserver = this.getCustomInterfaceCallback(Ci.calICompositeObserver);
-      this.calIOperationListener = this.getCustomInterfaceCallback(Ci.calIOperationListener);
 
       let onPreferenceChanged = () => {
-        delete this.mDayMap; // Days have moved, force a refresh of the grid.
+        this.dayBoxes.clear(); // Days have moved, force a refresh of the grid.
         this.refreshDisplay();
       };
 
@@ -67,32 +70,49 @@
         return;
       }
 
+      MozXULElement.insertFTLIfNeeded("calendar/calendar-widgets.ftl");
+
       const minimonthHeader = `
-        <hbox class="minimonth-header minimonth-month-box" align="center">
-          <toolbarbutton class="months-back-button minimonth-nav-btns"
-                         dir="-1"
-                         oncommand="this.kMinimonth.advanceMonth(parseInt(this.getAttribute('dir'), 10))"
-                         tooltiptext="&onemonthbackward.tooltip;"></toolbarbutton>
-          <label class="minimonth-month-name" tabindex="-1"/>
-          <toolbarbutton class="months-forward-button minimonth-nav-btns"
-                         dir="1"
-                         oncommand="this.kMinimonth.advanceMonth(parseInt(this.getAttribute('dir'), 10))"
-                         tooltiptext="&onemonthforward.tooltip;"></toolbarbutton>
-          <toolbarbutton class="years-back-button minimonth-nav-btns"
-                         dir="-1"
-                         oncommand="this.kMinimonth.advanceYear(parseInt(this.getAttribute('dir'), 10))"
-                         tooltiptext="&oneyearbackward.tooltip;"></toolbarbutton>
-          <label class="yearcell minimonth-year-name" tabindex="-1"></label>
-          <toolbarbutton class="years-forward-button minimonth-nav-btns"
-                         dir="1"
-                         oncommand="this.kMinimonth.advanceYear(parseInt(this.getAttribute('dir'), 10))"
-                         tooltiptext="&oneyearforward.tooltip;"></toolbarbutton>
-          <spacer flex="1"></spacer>
-          <toolbarbutton class="today-button minimonth-nav-btns"
-                         dir="0"
-                         oncommand="this.kMinimonth.value = new Date();"
-                         tooltiptext="&showToday.tooltip;"></toolbarbutton>
-        </hbox>
+        <html:div class="minimonth-header minimonth-month-box"
+                  xmlns="http://www.w3.org/1999/xhtml">
+          <div class="minimonth-nav-section">
+            <button class="button icon-button icon-only minimonth-nav-btn today-button"
+                    data-l10n-id="calendar-today-button-tooltip"
+                    type="button"
+                    dir="0">
+            </button>
+          </div>
+          <div class="minimonth-nav-section">
+            <button class="button icon-button icon-only minimonth-nav-btn months-back-button"
+                    data-l10n-id="calendar-nav-button-prev-tooltip-month"
+                    type="button"
+                    dir="-1">
+            </button>
+            <div class="minimonth-nav-item">
+              <input class="minimonth-month-name" tabindex="-1" readonly="true" disabled="disabled" />
+            </div>
+            <button class="button icon-button icon-only minimonth-nav-btn months-forward-button"
+                    data-l10n-id="calendar-nav-button-next-tooltip-month"
+                    type="button"
+                    dir="1">
+            </button>
+          </div>
+          <div class="minimonth-nav-section">
+            <button class="button icon-button icon-only minimonth-nav-btn years-back-button"
+                    data-l10n-id="calendar-nav-button-prev-tooltip-year"
+                    type="button"
+                    dir="-1">
+            </button>
+            <div class="minimonth-nav-item">
+              <input class="yearcell minimonth-year-name" tabindex="-1" readonly="true" disabled="disabled" />
+            </div>
+            <button class="button icon-button icon-only minimonth-nav-btn years-forward-button"
+                    data-l10n-id="calendar-nav-button-next-tooltip-year"
+                    type="button"
+                    dir="1">
+            </button>
+          </div>
+        </html:div>
       `;
 
       const minimonthWeekRow = `
@@ -132,29 +152,38 @@
             ${minimonthWeekRow}
           </html:table>
           `,
-          ["chrome://calendar/locale/global.dtd", "chrome://global/locale/global.dtd"]
+          ["chrome://calendar/locale/global.dtd"]
         )
       );
       this.initializeAttributeInheritance();
       this.setAttribute("orient", "vertical");
 
       // Set up header buttons.
-      const kMinimonth = this.closest("calendar-minimonth");
-      this.querySelector(".months-back-button").kMinimonth = kMinimonth;
-      this.querySelector(".months-forward-button").kMinimonth = kMinimonth;
-      this.querySelector(".years-back-button").kMinimonth = kMinimonth;
-      this.querySelector(".years-forward-button").kMinimonth = kMinimonth;
-      this.querySelector(".today-button").kMinimonth = kMinimonth;
+      this.querySelector(".months-back-button").addEventListener("click", () =>
+        this.advanceMonth(-1)
+      );
+      this.querySelector(".months-forward-button").addEventListener("click", () =>
+        this.advanceMonth(1)
+      );
+      this.querySelector(".years-back-button").addEventListener("click", () =>
+        this.advanceYear(-1)
+      );
+      this.querySelector(".years-forward-button").addEventListener("click", () =>
+        this.advanceYear(1)
+      );
+      this.querySelector(".today-button").addEventListener("click", () => {
+        this.value = new Date();
+      });
 
-      this.mDayMap = null;
+      this.dayBoxes = new Map();
       this.mValue = null;
       this.mEditorDate = null;
       this.mExtraDate = null;
       this.mPixelScrollDelta = 0;
       this.mObservesComposite = false;
-      this.mToday = false;
-      this.mSelected = false;
-      this.mExtra = false;
+      this.mToday = null;
+      this.mSelected = null;
+      this.mExtra = null;
       this.mValue = new Date(); // Default to "today".
       this.mFocused = null;
 
@@ -310,16 +339,6 @@
       return this.querySelector(".minimonth-readonly-header");
     }
 
-    // calIOperationListener methods.
-
-    onOperationComplete(aCalendar, aStatus, aOperationType, aId, aDetail) {}
-
-    onGetResult(aCalendar, aStatus, aItemType, aDetail, aItems) {
-      if (Components.isSuccessCode(aStatus)) {
-        aItems.forEach(item => this.setBusyDaysForOccurrence(item, true));
-      }
-    }
-
     setBusyDaysForItem(aItem, aState) {
       let items = aItem.recurrenceInfo
         ? aItem.getOccurrencesBetween(this.firstDate, this.lastDate)
@@ -412,7 +431,6 @@
       }
     }
 
-    // End of calIOperationListener methods.
     // calIObserver methods.
     calendarsInBatch = new Set();
 
@@ -475,8 +493,8 @@
 
     onCalendarRemoved(aCalendar) {
       if (!aCalendar.getProperty("disabled")) {
-        for (let day in this.mDayMap) {
-          this.removeCalendarFromBoxBusy(this.mDayMap[day], aCalendar);
+        for (let box of this.dayBoxes.values()) {
+          this.removeCalendarFromBoxBusy(box, aCalendar);
         }
       }
     }
@@ -590,12 +608,24 @@
         this.mSelected = null;
       }
 
-      if (!monthChanged && this.mDayMap) {
-        let ymd =
-          this.value.getFullYear() + "-" + this.value.getMonth() + "-" + this.value.getDate();
-        this.mSelected = this.mDayMap[ymd];
+      // Get today's date.
+      let today = new Date();
+
+      if (!monthChanged && this.dayBoxes.size > 0) {
+        this.mSelected = this.getBoxForDate(this.value);
         if (this.mSelected) {
           this.mSelected.setAttribute("selected", "true");
+        }
+
+        let todayBox = this.getBoxForDate(today);
+        if (this.mToday != todayBox) {
+          if (this.mToday) {
+            this.mToday.removeAttribute("today");
+          }
+          this.mToday = todayBox;
+          if (this.mToday) {
+            this.mToday.setAttribute("today", "true");
+          }
         }
         return;
       }
@@ -612,6 +642,7 @@
 
       // Update the month and year title.
       this.setAttribute("year", aDate.getFullYear());
+      this.setAttribute("month", aDate.getMonth());
 
       let miniMonthName = this.querySelector(".minimonth-month-name");
       let dateString = cal.l10n.getDateFmtString(`month.${aDate.getMonth() + 1}.name`);
@@ -623,9 +654,6 @@
       let calbox = this.querySelector(".minimonth-calendar");
       let date = this._getStartDate(aDate);
 
-      // Get today's date.
-      let today = new Date();
-
       if (aDate.getFullYear() == (this.mValue || this.mExtraDate).getFullYear()) {
         calbox.setAttribute("aria-label", dateString);
       } else {
@@ -634,16 +662,16 @@
         calbox.setAttribute("aria-label", label);
       }
 
-      this.mDayMap = {};
+      this.dayBoxes.clear();
       let defaultTz = cal.dtz.defaultTimezone;
       for (let k = 1; k < 7; k++) {
         // Set the week number.
         let firstElement = this._getCalBoxNode(k, 0);
         firstElement.hidden = !this.showWeekNumber;
         if (this.showWeekNumber) {
-          let weekNumber = cal
-            .getWeekInfoService()
-            .getWeekTitle(cal.dtz.jsDateToDateTime(date, defaultTz));
+          let weekNumber = cal.weekInfoService.getWeekTitle(
+            cal.dtz.jsDateToDateTime(date, defaultTz)
+          );
           let weekTitle = cal.l10n.getCalString("WeekTitle", [weekNumber]);
           firstElement.textContent = weekNumber;
           firstElement.setAttribute("aria-label", weekTitle);
@@ -651,8 +679,7 @@
 
         for (let i = 1; i < 8; i++) {
           let day = this._getCalBoxNode(k, i);
-          let ymd = date.getFullYear() + "-" + date.getMonth() + "-" + date.getDate();
-          this.mDayMap[ymd] = day;
+          this.setBoxForDate(date, day);
 
           if (this.getAttribute("readonly") != "true") {
             day.setAttribute("interactive", "true");
@@ -684,9 +711,9 @@
           }
 
           if (aDate.getMonth() == date.getMonth() && aDate.getFullYear() == date.getFullYear()) {
-            day.setAttribute("aria-label", date.toLocaleDateString(undefined, { day: "numeric" }));
+            day.setAttribute("aria-label", dayFormatter.format(date));
           } else {
-            day.setAttribute("aria-label", this.dateFormatter.format(date));
+            day.setAttribute("aria-label", dateFormatter.format(date));
           }
 
           day.removeAttribute("busy");
@@ -695,7 +722,7 @@
           day.textContent = date.getDate();
           date.setDate(date.getDate() + 1);
 
-          this.resetAttributesForDate(day.date);
+          this.resetAttributesForBox(day);
         }
       }
 
@@ -717,44 +744,80 @@
       this.dispatchEvent(new CustomEvent(aEventName, { bubbles: true }));
     }
 
-    getBoxForDate(aDate) {
-      // aDate is a calIDateTime.
-      let ymd = [aDate.year, aDate.month, aDate.day].join("-");
-      return ymd in this.mDayMap ? this.mDayMap[ymd] : null;
+    _boxKeyForDate(aDate) {
+      if (aDate instanceof lazy.CalDateTime || aDate instanceof Ci.calIDateTime) {
+        return aDate.getInTimezone(cal.dtz.defaultTimezone).toString().substring(0, 10);
+      }
+      return [
+        aDate.getFullYear(),
+        (aDate.getMonth() + 1).toString().padStart(2, "0"),
+        aDate.getDate().toString().padStart(2, "0"),
+      ].join("-");
     }
 
-    resetAttributesForDate(aDate) {
-      function removeForBox(aBox) {
-        let allowedAttributes = 0;
-        while (aBox.attributes.length > allowedAttributes) {
-          switch (aBox.attributes[allowedAttributes].nodeName) {
-            case "selected":
-            case "othermonth":
-            case "today":
-            case "extra":
-            case "interactive":
-            case "class":
-            case "tabindex":
-            case "role":
-            case "aria-label":
-              allowedAttributes++;
-              break;
-            default:
-              aBox.removeAttribute(aBox.attributes[allowedAttributes].nodeName);
-              break;
-          }
+    /**
+     * Fetches the table cell for the given date, or null if the date isn't displayed.
+     *
+     * @param {calIDateTime|Date} aDate
+     * @returns {HTMLTableCellElement|null}
+     */
+    getBoxForDate(aDate) {
+      return this.dayBoxes.get(this._boxKeyForDate(aDate)) ?? null;
+    }
+
+    /**
+     * Stores the table cell for the given date.
+     *
+     * @param {Date} aDate
+     * @param {HTMLTableCellElement} aBox
+     */
+    setBoxForDate(aDate, aBox) {
+      this.dayBoxes.set(this._boxKeyForDate(aDate), aBox);
+    }
+
+    /**
+     * Remove attributes that may have been added to a table cell.
+     *
+     * @param {HTMLTableCellElement} aBox
+     */
+    resetAttributesForBox(aBox) {
+      let allowedAttributes = 0;
+      while (aBox.attributes.length > allowedAttributes) {
+        switch (aBox.attributes[allowedAttributes].nodeName) {
+          case "selected":
+          case "othermonth":
+          case "today":
+          case "extra":
+          case "interactive":
+          case "class":
+          case "tabindex":
+          case "role":
+          case "aria-label":
+            allowedAttributes++;
+            break;
+          default:
+            aBox.removeAttribute(aBox.attributes[allowedAttributes].nodeName);
+            break;
         }
       }
+    }
 
+    /**
+     * Remove attributes that may have been added to a table cell, or all table cells.
+     *
+     * @param {Date} [aDate] - If specified, the date of the cell to reset,
+     *   otherwise all date cells will be reset.
+     */
+    resetAttributesForDate(aDate) {
       if (aDate) {
-        let box = this.getBoxForDate(cal.dtz.jsDateToDateTime(aDate, cal.dtz.defaultTimezone));
+        let box = this.getBoxForDate(aDate);
         if (box) {
-          removeForBox(box);
+          this.resetAttributesForBox(box);
         }
       } else {
         for (let k = 1; k < 7; k++) {
           for (let i = 1; i < 8; i++) {
-            removeForBox(this._getCalBoxNode(k, i));
+            this.resetAttributesForBox(this._getCalBoxNode(k, i));
           }
         }
       }
@@ -787,7 +850,7 @@
       return super.setAttribute(aAttr, aVal);
     }
 
-    getItems(aCalendar) {
+    async getItems(aCalendar) {
       // The minimonth automatically clears extra styles on a month change.
       // Therefore we only need to fill the minimonth with new info.
 
@@ -798,13 +861,17 @@
         calendar.ITEM_FILTER_ALL_ITEMS;
 
       // Get new info.
-      calendar.getItems(filter, 0, this.firstDate, this.lastDate, this.calIOperationListener);
+      for await (let items of cal.iterate.streamValues(
+        calendar.getItems(filter, 0, this.firstDate, this.lastDate)
+      )) {
+        items.forEach(item => this.setBusyDaysForOccurrence(item, true));
+      }
     }
 
     updateAccessibleLabel() {
       let label;
       if (this.mValue) {
-        label = this.dateFormatter.format(this.mValue);
+        label = dateFormatter.format(this.mValue);
       } else {
         label = cal.l10n.getCalString("minimonthNoSelectedDate");
       }
@@ -831,7 +898,7 @@
     }
 
     setFocusedDate(aDate, aForceFocus) {
-      let newFocused = this.getBoxForDate(cal.dtz.jsDateToDateTime(aDate, cal.dtz.defaultTimezone));
+      let newFocused = this.getBoxForDate(aDate);
       if (!newFocused) {
         return;
       }
@@ -889,7 +956,7 @@
         this.showMonth(aMainDate);
       } else if (!sameDate) {
         // Select day only.
-        let day = this.getBoxForDate(cal.dtz.jsDateToDateTime(aDate, cal.dtz.defaultTimezone));
+        let day = this.getBoxForDate(aDate);
         if (this.mSelected) {
           this.mSelected.removeAttribute("selected");
         }
@@ -980,16 +1047,9 @@
     }
   }
 
-  XPCOMUtils.defineLazyGetter(
-    CalendarMinimonth.prototype,
-    "dateFormatter",
-    () => new Services.intl.DateTimeFormat(undefined, { dateStyle: "long" })
-  );
-
   MozXULElement.implementCustomInterface(CalendarMinimonth, [
     Ci.calIObserver,
     Ci.calICompositeObserver,
-    Ci.calIOperationListener,
   ]);
   customElements.define("calendar-minimonth", CalendarMinimonth);
 }

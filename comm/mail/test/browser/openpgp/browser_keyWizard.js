@@ -27,8 +27,8 @@ const { wait_for_frame_load } = ChromeUtils.import(
 const { MailServices } = ChromeUtils.import(
   "resource:///modules/MailServices.jsm"
 );
-const { MockFilePicker } = ChromeUtils.import(
-  "resource://specialpowers/MockFilePicker.jsm"
+const { MockFilePicker } = ChromeUtils.importESModule(
+  "resource://testing-common/MockFilePicker.sys.mjs"
 );
 const { OpenPGPTestUtils } = ChromeUtils.import(
   "resource://testing-common/mozmill/OpenPGPTestUtils.jsm"
@@ -48,7 +48,7 @@ var gImportedKeyId;
 /**
  * Set up the base account and identity.
  */
-add_task(function setup() {
+add_setup(function () {
   gAccount = MailServices.accounts.createAccount();
   gAccount.incomingServer = MailServices.accounts.createIncomingServer(
     "alice",
@@ -68,9 +68,8 @@ add_task(function setup() {
   let accountRow = get_account_tree_row(gAccount.key, "am-e2e.xhtml", gTab);
   click_account_tree_row(gTab, accountRow);
 
-  let iframe = gTab.browser.contentWindow.document.getElementById(
-    "contentFrame"
-  );
+  let iframe =
+    gTab.browser.contentWindow.document.getElementById("contentFrame");
 
   tabDocument = iframe.contentDocument;
   tabWindow = iframe.contentDocument.ownerGlobal;
@@ -321,7 +320,8 @@ add_task(async function add_external_key() {
     "Timeout waiting for the #wizardExternalKey to appear"
   );
 
-  wizard.type(doc.getElementById("externalKey"), EXTERNAL_GNUP_KEY);
+  doc.getElementById("externalKey").focus();
+  EventUtils.sendString(EXTERNAL_GNUP_KEY, wizard.window);
 
   let keyListRadio = tabDocument.getElementById("openPgpKeyListRadio");
 
@@ -349,8 +349,8 @@ add_task(async function add_external_key() {
   );
 });
 
-registerCleanupFunction(async function() {
-  mc.tabmail.closeTab(gTab);
+registerCleanupFunction(async function () {
+  mc.window.document.getElementById("tabmail").closeTab(gTab);
   gTab = null;
   tabDocument = null;
   tabWindow = null;

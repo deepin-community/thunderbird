@@ -72,7 +72,6 @@ CHECK_VARS := \
  MODULE \
  DEPTH \
  XPI_PKGNAME \
- INSTALL_EXTENSION_ID \
  SHARED_LIBRARY_NAME \
  SONAME \
  STATIC_LIBRARY_NAME \
@@ -226,7 +225,6 @@ color_flags_vars := \
   COMPILE_CXXFLAGS \
   COMPILE_CMFLAGS \
   COMPILE_CMMFLAGS \
-  LDFLAGS \
   WASM_CFLAGS \
   WASM_CXXFLAGS \
   $(NULL)
@@ -248,10 +246,6 @@ endif
 # Override defaults
 
 DEPENDENCIES	= .md
-
-ifdef MACOSX_DEPLOYMENT_TARGET
-export MACOSX_DEPLOYMENT_TARGET
-endif # MACOSX_DEPLOYMENT_TARGET
 
 # Export to propagate to cl and submake for third-party code.
 # Eventually, we'll want to just use -I.

@@ -1,22 +1,22 @@
-/* -*- Mode: Java; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 const EXPORTED_SYMBOLS = ["CreateInBackend"];
 
+const lazy = {};
+
 ChromeUtils.defineModuleGetter(
-  this,
+  lazy,
   "AccountConfig",
   "resource:///modules/accountcreation/AccountConfig.jsm"
 );
 ChromeUtils.defineModuleGetter(
-  this,
+  lazy,
   "AccountCreationUtils",
   "resource:///modules/accountcreation/AccountCreationUtils.jsm"
 );
 
-const { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 const { MailServices } = ChromeUtils.import(
   "resource:///modules/MailServices.jsm"
 );
@@ -27,12 +27,9 @@ const { MailServices } = ChromeUtils.import(
  * Thunderbird backend (which also writes it to prefs).
  *
  * @param {AccountConfig} config - The account to create
- * @return {nsIMsgAccount} - the newly created account
+ * @returns {nsIMsgAccount} - the newly created account
  */
 function createAccountInBackend(config) {
-  let uuidGen = Cc["@mozilla.org/uuid-generator;1"].getService(
-    Ci.nsIUUIDGenerator
-  );
   // incoming server
   let inServer = MailServices.accounts.createIncomingServer(
     config.incoming.username,
@@ -47,7 +44,7 @@ function createAccountInBackend(config) {
   // We must generate this unconditionally because we cannot determine whether
   // the outgoing server has clientid enabled yet or not, and we need to do it
   // here in order to populate the incoming server if the outgoing matches.
-  let newOutgoingClientid = uuidGen
+  let newOutgoingClientid = Services.uuid
     .generateUUID()
     .toString()
     .replace(/[{}]/g, "");
@@ -76,7 +73,7 @@ function createAccountInBackend(config) {
     inServer.clientid = newOutgoingClientid;
   } else {
     // If the username/hostname are different then generate a new CLIENTID.
-    inServer.clientid = uuidGen
+    inServer.clientid = Services.uuid
       .generateUUID()
       .toString()
       .replace(/[{}]/g, "");
@@ -87,24 +84,18 @@ function createAccountInBackend(config) {
   }
 
   if (inServer.authMethod == Ci.nsMsgAuthMethod.OAuth2) {
-    inServer.setCharValue("oauth2.scope", config.incoming.oauthSettings.scope);
-    inServer.setCharValue(
+    inServer.setUnicharValue(
+      "oauth2.scope",
+      config.incoming.oauthSettings.scope
+    );
+    inServer.setUnicharValue(
       "oauth2.issuer",
       config.incoming.oauthSettings.issuer
     );
   }
 
   // SSL
-  if (config.incoming.socketType == 1) {
-    // plain
-    inServer.socketType = Ci.nsMsgSocketType.plain;
-  } else if (config.incoming.socketType == 2) {
-    // SSL / TLS
-    inServer.socketType = Ci.nsMsgSocketType.SSL;
-  } else if (config.incoming.socketType == 3) {
-    // STARTTLS
-    inServer.socketType = Ci.nsMsgSocketType.alwaysSTARTTLS;
-  }
+  inServer.socketType = config.incoming.socketType;
 
   // If we already have an account with an identical name, generate a unique
   // name for the new account to avoid duplicates.
@@ -155,7 +146,7 @@ function createAccountInBackend(config) {
     username,
     config.outgoing.hostname
   );
-  AccountCreationUtils.assert(
+  lazy.AccountCreationUtils.assert(
     config.outgoing.addThisServer ||
       config.outgoing.useGlobalPreferredServer ||
       config.outgoing.existingServerKey,
@@ -195,17 +186,7 @@ function createAccountInBackend(config) {
       );
     }
 
-    if (config.outgoing.socketType == 1) {
-      // no SSL
-      outServer.socketType = Ci.nsMsgSocketType.plain;
-    } else if (config.outgoing.socketType == 2) {
-      // SSL / TLS
-      outServer.socketType = Ci.nsMsgSocketType.SSL;
-    } else if (config.outgoing.socketType == 3) {
-      // STARTTLS
-      outServer.socketType = Ci.nsMsgSocketType.alwaysSTARTTLS;
-    }
-
+    outServer.socketType = config.outgoing.socketType;
     outServer.description = config.displayName;
 
     // If this is the first SMTP server, set it as default
@@ -288,7 +269,7 @@ function createAccountInBackend(config) {
   try {
     Services.prefs.savePrefFile(null);
   } catch (ex) {
-    AccountCreationUtils.ddump("Could not write out prefs: " + ex);
+    lazy.AccountCreationUtils.ddump("Could not write out prefs: " + ex);
   }
   return account;
 }
@@ -324,7 +305,7 @@ function rememberPassword(server, password) {
   } else if (server instanceof Ci.nsISmtpServer) {
     passwordURI = "smtp://" + server.hostname;
   } else {
-    throw new AccountCreationUtils.NotReached("Server type not supported");
+    throw new lazy.AccountCreationUtils.NotReached("Server type not supported");
   }
 
   let login = Cc["@mozilla.org/login-manager/loginInfo;1"].createInstance(
@@ -349,14 +330,14 @@ function rememberPassword(server, password) {
  * (We also check the email address as username.)
  *
  * @param config {AccountConfig} filled in (no placeholders)
- * @return {nsIMsgIncomingServer} If it already exists, the server
+ * @returns {nsIMsgIncomingServer} If it already exists, the server
  *     object is returned.
  *     If it's a new server, |null| is returned.
  */
 function checkIncomingServerAlreadyExists(config) {
-  AccountCreationUtils.assert(config instanceof AccountConfig);
+  lazy.AccountCreationUtils.assert(config instanceof lazy.AccountConfig);
   let incoming = config.incoming;
-  let existing = MailServices.accounts.findRealServer(
+  let existing = MailServices.accounts.findServer(
     incoming.username,
     incoming.hostname,
     incoming.type,
@@ -366,7 +347,7 @@ function checkIncomingServerAlreadyExists(config) {
   // if username does not have an '@', also check the e-mail
   // address form of the name.
   if (!existing && !incoming.username.includes("@")) {
-    existing = MailServices.accounts.findRealServer(
+    existing = MailServices.accounts.findServer(
       config.identity.emailAddress,
       incoming.hostname,
       incoming.type,
@@ -382,12 +363,12 @@ function checkIncomingServerAlreadyExists(config) {
  * in the config.
  *
  * @param config {AccountConfig} filled in (no placeholders)
- * @return {nsISmtpServer} If it already exists, the server
+ * @returns {nsISmtpServer} If it already exists, the server
  *     object is returned.
  *     If it's a new server, |null| is returned.
  */
 function checkOutgoingServerAlreadyExists(config) {
-  AccountCreationUtils.assert(config instanceof AccountConfig);
+  lazy.AccountCreationUtils.assert(config instanceof lazy.AccountConfig);
   for (let existingServer of MailServices.smtp.servers) {
     // TODO check username with full email address, too, like for incoming
     if (
@@ -460,14 +441,14 @@ function verifyLocalFoldersAccount(am) {
       try {
         localMailServer = am.localFoldersServer;
       } catch (ex) {
-        AccountCreationUtils.ddump(
+        lazy.AccountCreationUtils.ddump(
           "Error! we should have found the local mail server " +
             "after we created it."
         );
       }
     }
   } catch (ex) {
-    AccountCreationUtils.ddump("Error in verifyLocalFoldersAccount " + ex);
+    lazy.AccountCreationUtils.ddump("Error in verifyLocalFoldersAccount " + ex);
   }
 }
 

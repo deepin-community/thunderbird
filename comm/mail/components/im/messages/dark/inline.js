@@ -15,7 +15,8 @@ function setColors(target) {
     return;
   }
 
-  var regexp = /color:\s*hsl\(\s*(\d{1,3})\s*,\s*\d{1,3}\%\s*,\s*\d{1,3}\%\s*\)/;
+  var regexp =
+    /color:\s*hsl\(\s*(\d{1,3})\s*,\s*\d{1,3}\%\s*,\s*\d{1,3}\%\s*\)/;
   var parsed = regexp.exec(senderColor);
 
   if (!parsed) {
@@ -45,7 +46,7 @@ function checkNewText(target) {
   }
 }
 
-new MutationObserver(function(aMutations) {
+new MutationObserver(function (aMutations) {
   for (let mutation of aMutations) {
     for (let node of mutation.addedNodes) {
       if (node instanceof HTMLElement) {

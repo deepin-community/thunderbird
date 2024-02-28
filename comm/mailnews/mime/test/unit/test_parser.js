@@ -68,6 +68,7 @@ async function read_file(file, start, end) {
  *         are included in the output packets!
  * _eol: The CRLFs in the input file will be replaced with the given line
  *       ending instead.
+ *
  * @param test     The name of test
  * @param file     The name of the file to read (relative to mailnews/data)
  * @param opts     Options for the mime parser, as well as a few extras detailed
@@ -267,7 +268,7 @@ function test_parser(message, opts, results) {
       Assert.equal(this.stack.pop(), partNum);
     },
   };
-  opts.onerror = function(e) {
+  opts.onerror = function (e) {
     throw e;
   };
   MimeParser.parseSync(message, emitter, opts);

@@ -22,8 +22,6 @@
 
 <!ENTITY newVirtualFolderCmd.label "Gestoorde soektog…">
 <!ENTITY newVirtualFolderCmd.accesskey "G">
-<!ENTITY newOtherAccountsCmd.label "Ander rekeninge…">
-<!ENTITY newOtherAccountsCmd.accesskey "A">
 
 
 
@@ -38,8 +36,6 @@
 <!ENTITY openMessageFileCmd.accesskey "O">
 <!ENTITY saveAsMenu.label "Stoor as">
 <!ENTITY saveAsMenu.accesskey "S">
-<!ENTITY saveAsFileCmd.label "Lêer">
-<!ENTITY saveAsFileCmd.accesskey "L">
 <!ENTITY saveAsFileCmd.key "s">
 <!ENTITY saveAsTemplateCmd.label "Sjabloon">
 <!ENTITY saveAsTemplateCmd.accesskey "S">
@@ -947,19 +943,11 @@
 <!ENTITY getNextNMsgCmd2.accesskey "t">
 <!ENTITY settingsOfflineCmd2.label "Offline Settings">
 <!ENTITY settingsOfflineCmd2.accesskey "e">
-<!ENTITY unsubscribeNewsgroupCmd.label "Unsubscribe">
-<!ENTITY unsubscribeNewsgroupCmd.accesskey "b">
-<!ENTITY folderPropsCmd2.label "Properties">
-<!ENTITY folderPropsFolderCmd2.label "Folder Properties">
-<!ENTITY folderPropsNewsgroupCmd2.label "Newsgroup Properties">
-<!ENTITY folderPropsCmd.accesskey "o">
 <!-- View Menu -->
 <!ENTITY menubarCmd.label "Menu Bar">
 <!ENTITY menubarCmd.accesskey "M">
 <!ENTITY showFolderPaneCmd.label "Folder Pane">
 <!ENTITY showFolderPaneCmd.accesskey "F">
-<!ENTITY showFolderPaneColsCmd.label "Folder Pane Columns">
-<!ENTITY showFolderPaneColsCmd.accesskey "P">
 <!ENTITY compactVersion.label "Compact View">
 <!ENTITY compactVersion.accesskey "C">
 <!ENTITY sortByAttachmentsCmd.label "Attachments">
@@ -975,7 +963,6 @@
 <!ENTITY nextUnreadThread.key "t">
 <!ENTITY goChatCmd.label "Chat">
 <!ENTITY goChatCmd.accesskey "c">
-<!ENTITY goChatCmd2.key "H">
 <!ENTITY folderMenu.label "Folder">
 <!ENTITY folderMenu.accesskey "O">
 <!ENTITY goRecentlyClosedTabs.label "Recently Closed Tabs">
@@ -1025,6 +1012,8 @@
 <!ENTITY joinChatCmd.accesskey "t">
 <!ENTITY filtersCmd2.label "Message Filters">
 <!ENTITY filtersCmd2.accesskey "F">
+<!ENTITY exportCmd.label "Export…">
+<!ENTITY exportCmd.accesskey "x">
 <!ENTITY clearRecentHistory.label "Clear Recent History…">
 <!ENTITY clearRecentHistory.accesskey "H">
 <!ENTITY accountManagerCmd2.label "Account Settings">
@@ -1083,10 +1072,7 @@
 <!-- AppMenu Popup -->
 <!ENTITY appmenuNewMsgCmd.label "New Message">
 <!ENTITY appmenuNewContactCmd.label "Address Book Contact…">
-<!ENTITY appmenuEditMenu.label "Edit">
 <!ENTITY appmenuToolbarLayout.label "Toolbar Layout…">
-<!ENTITY appmenuSelectThread.label "Select Thread">
-<!ENTITY appmenuSelectFlagged.label "Select Starred Messages">
 <!ENTITY manageTags.label "Manage Tags…">
 <!ENTITY manageTags.accesskey "M">
 <!ENTITY folderUnreadColumn.label "Unread">

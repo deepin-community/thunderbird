@@ -59,4 +59,13 @@ interface nsIURLQueryStrippingListService : nsISupports
    * Note that this is for testing purpose.
    */
   void clearLists();
+
+  /**
+   * Test-only method used to wait for the list service to initialize fully.
+   * Resolves once the service has reached a fully disabled (false) or fully
+   * enabled state (true).
+   * May also be called when the service is already fully initialized or
+   * disabled, in this case it will resolve immediately.
+   */
+  Promise testWaitForInit();
 };

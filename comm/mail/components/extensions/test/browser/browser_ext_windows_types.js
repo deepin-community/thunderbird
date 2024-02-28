@@ -2,43 +2,17 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, you can obtain one at http://mozilla.org/MPL/2.0/. */
 
-let { BrowserTestUtils } = ChromeUtils.import(
-  "resource://testing-common/BrowserTestUtils.jsm"
-);
-
 add_task(async () => {
   let files = {
     "background.js": async () => {
-      // Address book window.
-
-      let createdWindowPromise = window.waitForEvent("windows.onCreated");
-      await browser.addressBooks.openUI();
-      let [createdWindow] = await createdWindowPromise;
-      browser.test.assertEq("addressBook", createdWindow.type);
-
-      let windowDetail = await browser.windows.get(createdWindow.id, {
-        populate: true,
-      });
-      browser.test.assertEq("addressBook", windowDetail.type);
-      browser.test.assertEq(1, windowDetail.tabs.length);
-      browser.test.assertEq("addressBook", windowDetail.tabs[0].type);
-      // These three properties should not be present, but not fail either.
-      browser.test.assertEq(undefined, windowDetail.tabs[0].favIconUrl);
-      browser.test.assertEq(undefined, windowDetail.tabs[0].title);
-      browser.test.assertEq(undefined, windowDetail.tabs[0].url);
-
-      let removedWindowPromise = window.waitForEvent("windows.onRemoved");
-      await browser.addressBooks.closeUI();
-      await removedWindowPromise;
-
       // Message compose window.
 
-      createdWindowPromise = window.waitForEvent("windows.onCreated");
+      let createdWindowPromise = window.waitForEvent("windows.onCreated");
       await browser.compose.beginNew();
-      [createdWindow] = await createdWindowPromise;
+      let [createdWindow] = await createdWindowPromise;
       browser.test.assertEq("messageCompose", createdWindow.type);
 
-      windowDetail = await browser.windows.get(createdWindow.id, {
+      let windowDetail = await browser.windows.get(createdWindow.id, {
         populate: true,
       });
       browser.test.assertEq("messageCompose", windowDetail.type);
@@ -49,7 +23,7 @@ add_task(async () => {
       browser.test.assertEq(undefined, windowDetail.tabs[0].title);
       browser.test.assertEq(undefined, windowDetail.tabs[0].url);
 
-      removedWindowPromise = window.waitForEvent("windows.onRemoved");
+      let removedWindowPromise = window.waitForEvent("windows.onRemoved");
       await browser.tabs.remove(windowDetail.tabs[0].id);
       await removedWindowPromise;
 
@@ -105,6 +79,43 @@ add_task(async () => {
   await extension.awaitMessage("closeMessage");
   newWindow.close();
 
+  await extension.awaitFinish();
+  await extension.unload();
+});
+
+add_task(async function test_tabs_of_second_tabmail() {
+  let files = {
+    "background.js": async () => {
+      let testWindow = await browser.windows.create({ type: "normal" });
+      browser.test.assertEq("normal", testWindow.type);
+
+      let tabs = await await browser.tabs.query({ windowId: testWindow.id });
+      browser.test.assertEq(1, tabs.length);
+      browser.test.assertEq("mail", tabs[0].type);
+
+      await browser.windows.remove(testWindow.id);
+
+      browser.test.notifyPass();
+    },
+  };
+  let extension = ExtensionTestUtils.loadExtension({
+    files,
+    manifest: {
+      background: { scripts: ["background.js"] },
+    },
+  });
+
+  let account = createAccount();
+  addIdentity(account);
+  let rootFolder = account.incomingServer.rootFolder;
+  rootFolder.createSubfolder("test1", null);
+  let subFolders = {};
+  for (let folder of rootFolder.subFolders) {
+    subFolders[folder.name] = folder;
+  }
+  createMessages(subFolders.test1, 1);
+
+  await extension.startup();
   await extension.awaitFinish();
   await extension.unload();
 });

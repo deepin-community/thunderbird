@@ -1,16 +1,25 @@
 /* Any copyright is dedicated to the Public Domain.
  * http://creativecommons.org/publicdomain/zero/1.0/ */
 
-var { Services } = ChromeUtils.import("resource:///modules/imServices.jsm");
-const { MatrixProtocol } = ChromeUtils.import("resource:///modules/matrix.jsm");
-var matrix = {};
+var { IMServices } = ChromeUtils.importESModule(
+  "resource:///modules/IMServices.sys.mjs"
+);
+const { MatrixProtocol } = ChromeUtils.importESModule(
+  "resource:///modules/matrix.sys.mjs"
+);
+const { MatrixRoom, MatrixAccount, MatrixMessage } = ChromeUtils.importESModule(
+  "resource:///modules/matrixAccount.sys.mjs"
+);
+var { MatrixSDK } = ChromeUtils.importESModule(
+  "resource:///modules/matrix-sdk.sys.mjs"
+);
 function loadMatrix() {
-  Services.scriptloader.loadSubScript("resource:///modules/matrix.jsm", matrix);
-  Services.conversations.initConversations();
+  IMServices.conversations.initConversations();
 }
 
 /**
  * Get a MatrixRoom instance with a mocked client.
+ *
  * @param {boolean} isMUC
  * @param {string} [name="#test:example.com"]
  * @param {(any, string) => any?|object} [clientHandler]
@@ -26,7 +35,7 @@ function getRoom(
     account = getAccount(clientHandler);
   }
   const room = getClientRoom(name, clientHandler, account._client);
-  const conversation = new matrix.MatrixRoom(account, isMUC, name);
+  const conversation = new MatrixRoom(account, isMUC, name);
   conversation.initRoom(room);
   return conversation;
 }
@@ -42,11 +51,7 @@ function getClientRoom(roomId, clientHandler, client) {
   const room = new Proxy(
     {
       roomId,
-      summary: {
-        info: {
-          title: roomId,
-        },
-      },
+      name: roomId,
       tags: {},
       getJoinedMembers() {
         return [];
@@ -97,6 +102,15 @@ function getClientRoom(roomId, clientHandler, client) {
           },
         };
       },
+      guessDMUserId() {
+        return "@other:example.com";
+      },
+      loadMembersIfNeeded() {
+        return Promise.resolve();
+      },
+      getEncryptionTargetMembers() {
+        return Promise.resolve([]);
+      },
     },
     makeProxyHandler(clientHandler)
   );
@@ -110,14 +124,11 @@ function getClientRoom(roomId, clientHandler, client) {
  * @returns {MatrixAccount}
  */
 function getAccount(clientHandler) {
-  const account = new matrix.MatrixAccount(
-    Object.create(MatrixProtocol.prototype),
-    {
-      logDebugMessage(message) {
-        account._errors.push(message.message);
-      },
-    }
-  );
+  const account = new MatrixAccount(Object.create(MatrixProtocol.prototype), {
+    logDebugMessage(message) {
+      account._errors.push(message.message);
+    },
+  });
   account._errors = [];
   account._client = new Proxy(
     {
@@ -151,6 +162,33 @@ function getAccount(clientHandler) {
       getRooms() {
         return Array.from(this._rooms.values());
       },
+      getVisibleRooms() {
+        return Array.from(this._rooms.values());
+      },
+      isCryptoEnabled() {
+        return false;
+      },
+      getPushActionsForEvent() {
+        return {};
+      },
+      leave(roomId) {
+        this._rooms.delete(roomId);
+      },
+      downloadKeys() {
+        return Promise.resolve({});
+      },
+      getUser(userId) {
+        return {
+          displayName: userId,
+          userId,
+        };
+      },
+      getStoredDevicesForUser() {
+        return [];
+      },
+      isRoomEncrypted(roomId) {
+        return false;
+      },
     },
     makeProxyHandler(clientHandler)
   );
@@ -173,6 +211,81 @@ function makeProxyHandler(clientHandler) {
         return clientHandler[key];
       }
       return target[key];
+    },
+  };
+}
+
+/**
+ * Build a MatrixEvent like object from a plain object.
+ *
+ * @param {{ type: MatrixSDK.EventType, content: object, sender: string, id: number, redacted: boolean, time: Date }} eventSpec - Data the event holds.
+ * @returns {MatrixEvent}
+ */
+function makeEvent(eventSpec = {}) {
+  const time = eventSpec.time || new Date();
+  return {
+    isRedacted() {
+      return eventSpec.redacted || false;
+    },
+    getType() {
+      return eventSpec.type;
+    },
+    getContent() {
+      return eventSpec.content || {};
+    },
+    getPrevContent() {
+      return eventSpec.prevContent || {};
+    },
+    getWireContent() {
+      return eventSpec.content;
+    },
+    getSender() {
+      return eventSpec.sender;
+    },
+    getDate() {
+      return time;
+    },
+    sender: {
+      name: "foo bar",
+      getAvatarUrl() {
+        return "https://example.com/avatar";
+      },
+    },
+    getId() {
+      return eventSpec.id || 0;
+    },
+    isEncrypted() {
+      return (
+        eventSpec.type == MatrixSDK.EventType.RoomMessageEncrypted ||
+        eventSpec.isEncrypted
+      );
+    },
+    shouldAttemptDecryption() {
+      return Boolean(eventSpec.shouldDecrypt);
+    },
+    isBeingDecrypted() {
+      return Boolean(eventSpec.decrypting);
+    },
+    isDecryptionFailure() {
+      return eventSpec.content?.msgtype == "m.bad.encrypted";
+    },
+    isRedaction() {
+      return eventSpec.type == MatrixSDK.EventType.RoomRedaction;
+    },
+    getRedactionEvent() {
+      return eventSpec.redaction;
+    },
+    target: eventSpec.target,
+    replyEventId:
+      eventSpec.content?.["m.relates_to"]?.["m.in_reply_to"]?.event_id,
+    threadRootId: eventSpec.threadRootId || null,
+    getRoomId() {
+      return eventSpec.roomId || "!test:example.com";
+    },
+    status: eventSpec.status || null,
+    _listeners: {},
+    once(event, listener) {
+      this._listeners[event] = listener;
     },
   };
 }

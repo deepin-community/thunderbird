@@ -9,12 +9,18 @@
 
 "use strict";
 
+var utils = ChromeUtils.import("resource://testing-common/mozmill/utils.jsm");
+var { gThreadManager } = ChromeUtils.import(
+  "resource://testing-common/mailnews/Maild.jsm"
+);
+
 var {
   be_in_folder,
   create_folder,
   create_virtual_folder,
+  get_about_3pane,
   inboxFolder,
-  make_new_sets_in_folder,
+  make_message_sets_in_folders,
   mc,
   press_delete,
   select_click_row,
@@ -22,13 +28,17 @@ var {
   "resource://testing-common/mozmill/FolderDisplayHelpers.jsm"
 );
 
+var otherFolder;
+var folderVirtual;
+var synSets;
+
 /**
  * Add some messages to a folder, delete the first one, and create a saved
  * search over the inbox and the folder. Then, compact folders.
  */
-add_task(function test_setup_virtual_folder_and_compact() {
-  let otherFolder = create_folder("otherFolder");
-  make_new_sets_in_folder(otherFolder, [{ count: 2 }]);
+add_task(async function test_setup_virtual_folder_and_compact() {
+  otherFolder = await create_folder();
+  synSets = await make_message_sets_in_folders([otherFolder], [{ count: 2 }]);
 
   /**
    * We delete the first message in the local folder, so compaction of the
@@ -37,18 +47,18 @@ add_task(function test_setup_virtual_folder_and_compact() {
    * selection on the compaction notification to fail. We test the saved search
    * view still gets rebuilt, such that there is a valid msg hdr at row 0.
    */
-  be_in_folder(otherFolder);
+  await be_in_folder(otherFolder);
   select_click_row(0);
   press_delete();
 
-  let folderVirtual = create_virtual_folder(
+  folderVirtual = create_virtual_folder(
     [inboxFolder, otherFolder],
     {},
     true,
     "SavedSearch"
   );
 
-  be_in_folder(folderVirtual);
+  await be_in_folder(folderVirtual);
   select_click_row(0);
   let urlListener = {
     compactDone: false,
@@ -59,9 +69,9 @@ add_task(function test_setup_virtual_folder_and_compact() {
     },
   };
   if (otherFolder.msgStore.supportsCompaction) {
-    otherFolder.compactAll(urlListener, null, false);
+    otherFolder.compactAll(urlListener, null);
 
-    mc.waitFor(
+    utils.waitFor(
       () => urlListener.compactDone,
       "Timeout waiting for compact to complete",
       10000,
@@ -69,9 +79,9 @@ add_task(function test_setup_virtual_folder_and_compact() {
     );
   }
   // Let the event queue clear.
-  mc.sleep(0);
+  await new Promise(resolve => setTimeout(resolve));
   // Check view is still valid
-  mc.dbView.getMsgHdrAt(0);
+  get_about_3pane().gDBView.getMsgHdrAt(0);
 
   Assert.report(
     false,
@@ -79,4 +89,17 @@ add_task(function test_setup_virtual_folder_and_compact() {
     undefined,
     "Test ran to completion successfully"
   );
+});
+
+add_task(async function endTest() {
+  // Fixing possible nsIMsgDBHdr.markHasAttachments onEndMsgDownload runs.
+  //  Found in chaosmode.
+  var thread = gThreadManager.currentThread;
+  while (thread.hasPendingEvents()) {
+    thread.processNextEvent(true);
+  }
+  // Cleanup dbView with force.
+  get_about_3pane().gDBView.close(true);
+  folderVirtual.deleteSelf(null);
+  otherFolder.deleteSelf(null);
 });

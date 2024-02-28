@@ -1,10 +1,8 @@
 "use strict";
 
-ChromeUtils.defineModuleGetter(
-  this,
-  "setTimeout",
-  "resource://gre/modules/Timer.jsm"
-);
+ChromeUtils.defineESModuleGetters(this, {
+  setTimeout: "resource://gre/modules/Timer.sys.mjs",
+});
 
 const kFixtureBaseURL =
   "https://example.com/browser/toolkit/modules/tests/browser/";
@@ -67,19 +65,13 @@ function promiseFindResult(findbar, str = null) {
 function promiseEnterStringIntoFindField(findbar, str) {
   let promise = promiseFindResult(findbar, str);
   for (let i = 0; i < str.length; i++) {
-    let event = document.createEvent("KeyboardEvent");
-    event.initKeyEvent(
-      "keypress",
-      true,
-      true,
-      null,
-      false,
-      false,
-      false,
-      false,
-      0,
-      str.charCodeAt(i)
-    );
+    let event = new KeyboardEvent("keypress", {
+      bubbles: true,
+      cancelable: true,
+      view: null,
+      keyCode: 0,
+      charCode: str.charCodeAt(i),
+    });
     findbar._findField.dispatchEvent(event);
   }
   return promise;
@@ -94,7 +86,7 @@ function promiseTestHighlighterOutput(
   return SpecialPowers.spawn(
     browser,
     [{ word, expectedResult, extraTest: extraTest.toSource() }],
-    async function({ word, expectedResult, extraTest }) {
+    async function ({ word, expectedResult, extraTest }) {
       return new Promise((resolve, reject) => {
         let stubbed = {};
         let callCounts = {
@@ -231,7 +223,7 @@ function promiseTestHighlighterOutput(
         function stub(which) {
           stubbed[which] = content.document[which + "AnonymousContent"];
           let prop = which + "Calls";
-          return function(node) {
+          return function (node) {
             callCounts[prop].push(node);
             if (which == "insert") {
               if (node.outerHTML.indexOf("outlineMask") > -1) {

@@ -2,23 +2,20 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-/* import-globals-from ../../../../../toolkit/content/globalOverlay.js */
+/* import-globals-from ../../../../mailnews/addrbook/content/abResultsPane.js */
 /* import-globals-from ../../../../mailnews/base/content/dateFormat.js */
 /* import-globals-from ../../../../mailnews/search/content/searchTerm.js */
-/* import-globals-from ../../../base/content/commandglue.js */
-/* import-globals-from ../../../base/content/mailWindow.js */
-/* import-globals-from ../../../base/content/msgMail3PaneWindow.js */
+/* import-globals-from ../../../base/content/globalOverlay.js */
 /* import-globals-from abCommon.js */
 
 var { encodeABTermValue } = ChromeUtils.import(
   "resource:///modules/ABQueryUtils.jsm"
 );
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 var { MailServices } = ChromeUtils.import(
   "resource:///modules/MailServices.jsm"
 );
-var { PluralForm } = ChromeUtils.import(
-  "resource://gre/modules/PluralForm.jsm"
+var { PluralForm } = ChromeUtils.importESModule(
+  "resource://gre/modules/PluralForm.sys.mjs"
 );
 
 var searchSessionContractID = "@mozilla.org/messenger/searchSession;1";
@@ -27,7 +24,6 @@ var gSearchSession;
 var nsMsgSearchScope = Ci.nsMsgSearchScope;
 var nsMsgSearchOp = Ci.nsMsgSearchOp;
 var nsMsgSearchAttrib = Ci.nsMsgSearchAttrib;
-var nsIAbDirectory = Ci.nsIAbDirectory;
 
 var gStatusText;
 var gSearchBundle;
@@ -46,11 +42,11 @@ var gSearchAbViewListener = {
   onCountChanged(aTotal) {
     let statusText;
     if (aTotal == 0) {
-      statusText = gAddressBookBundle.getString("noMatchFound");
+      statusText = gAddressBookBundle.GetStringFromName("noMatchFound");
     } else {
       statusText = PluralForm.get(
         aTotal,
-        gAddressBookBundle.getString("matchesFound1")
+        gAddressBookBundle.GetStringFromName("matchesFound1")
       ).replace("#1", aTotal);
     }
 
@@ -62,16 +58,20 @@ function searchOnLoad() {
   initializeSearchWidgets();
   initializeSearchWindowWidgets();
 
-  gSearchBundle = document.getElementById("bundle_search");
+  gSearchBundle = Services.strings.createBundle(
+    "chrome://messenger/locale/search.properties"
+  );
   gSearchStopButton.setAttribute(
     "label",
-    gSearchBundle.getString("labelForSearchButton")
+    gSearchBundle.GetStringFromName("labelForSearchButton")
   );
   gSearchStopButton.setAttribute(
     "accesskey",
-    gSearchBundle.getString("labelForSearchButton.accesskey")
+    gSearchBundle.GetStringFromName("labelForSearchButton.accesskey")
   );
-  gAddressBookBundle = document.getElementById("bundle_addressBook");
+  gAddressBookBundle = Services.strings.createBundle(
+    "chrome://messenger/locale/addressbook/addressBook.properties"
+  );
   gSearchSession = Cc[searchSessionContractID].createInstance(
     Ci.nsIMsgSearchSession
   );
@@ -81,9 +81,6 @@ function searchOnLoad() {
     "mail.addr_book.show_phonetic_fields",
     Ci.nsIPrefLocalizedString
   ).data;
-
-  // Initialize globals, see abCommon.js , InitCommonJS()
-  abList = document.getElementById("abPopup");
 
   if (window.arguments && window.arguments[0]) {
     SelectDirectory(window.arguments[0].directory);
@@ -167,7 +164,7 @@ function onEnterInSearchTerm() {
   // if searching, stop and then start again
   if (
     gSearchStopButton.getAttribute("label") ==
-    gSearchBundle.getString("labelForSearchButton")
+    gSearchBundle.GetStringFromName("labelForSearchButton")
   ) {
     onSearch();
   } else {
@@ -193,6 +190,9 @@ function onSearch() {
   let searchUri = "?(";
   for (let i = 0; i < gSearchSession.searchTerms.length; i++) {
     let searchTerm = gSearchSession.searchTerms[i];
+    if (!searchTerm.value.str) {
+      continue;
+    }
     // get the "and" / "or" value from the first term
     if (i == 0) {
       if (searchTerm.booleanAnd) {
@@ -333,12 +333,19 @@ function onSearch() {
   }
 
   searchUri += ")";
+  if (searchUri == "?()") {
+    // Empty search.
+    searchUri = "";
+  }
   SetAbView(currentAbURI, searchUri, "");
 }
 
 // used to toggle functionality for Search/Stop button.
 function onSearchButton(event) {
-  if (event.target.label == gSearchBundle.getString("labelForSearchButton")) {
+  if (
+    event.target.label ==
+    gSearchBundle.GetStringFromName("labelForSearchButton")
+  ) {
     onSearch();
   } else {
     onSearchStop();
@@ -351,7 +358,7 @@ function GetAbViewListener() {
 
 function onProperties() {
   if (!gPropertiesCmd.hasAttribute("disabled")) {
-    AbEditSelectedCard();
+    window.opener.toAddressBook({ action: "display", card: GetSelectedCard() });
   }
 }
 
@@ -379,7 +386,7 @@ function AbResultsPaneKeyPress(event) {
 }
 
 function AbResultsPaneDoubleClick(card) {
-  AbEditCard(card);
+  // Kept for abResultsPane.js.
 }
 
 function UpdateCardView() {

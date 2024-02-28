@@ -5,6 +5,7 @@
 "use strict";
 
 const EXPORTED_SYMBOLS = [
+  "openAccountProvisioner",
   "openAccountSetup",
   "openAccountSettings",
   "open_advanced_settings",
@@ -22,14 +23,12 @@ var fdh = ChromeUtils.import(
 var wh = ChromeUtils.import(
   "resource://testing-common/mozmill/WindowHelpers.jsm"
 );
-
-var {
-  content_tab_e,
-  open_content_tab_with_url,
-  wait_for_content_tab_load,
-} = ChromeUtils.import(
-  "resource://testing-common/mozmill/ContentTabHelpers.jsm"
+var EventUtils = ChromeUtils.import(
+  "resource://testing-common/mozmill/EventUtils.jsm"
 );
+
+var { content_tab_e, open_content_tab_with_url, wait_for_content_tab_load } =
+  ChromeUtils.import("resource://testing-common/mozmill/ContentTabHelpers.jsm");
 
 var mc = fdh.mc;
 
@@ -37,7 +36,7 @@ var mc = fdh.mc;
  * Waits until the Account Manager tree fully loads after first open.
  */
 function wait_for_account_tree_load(tab) {
-  mc.waitFor(
+  utils.waitFor(
     () => tab.browser.contentWindow.currentAccount != null,
     "Timeout waiting for currentAccount to become non-null"
   );
@@ -53,6 +52,7 @@ async function openAccountSettings() {
 
 /**
  * Opens the Account Manager.
+ *
  * @callback tabCallback
  *
  * @param {tabCallback} callback - The callback for the account manager tab that is opened.
@@ -61,7 +61,7 @@ async function open_advanced_settings(callback) {
   let tab = open_content_tab_with_url("about:accountsettings");
   wait_for_account_tree_load(tab);
   await callback(tab);
-  mc.tabmail.closeTab(tab);
+  mc.window.document.getElementById("tabmail").closeTab(tab);
 }
 
 async function openAccountSetup() {
@@ -72,11 +72,19 @@ async function openAccountSetup() {
   });
 }
 
+async function openAccountProvisioner() {
+  return new Promise(resolve => {
+    let tab = open_content_tab_with_url("about:accountprovisioner");
+    wait_for_content_tab_load(tab, "about:accountprovisioner", 10000);
+    resolve(tab);
+  });
+}
+
 /**
  * Click a row in the account settings tree.
  *
- * @param {Object} tab - The account manager tab controller that opened.
- * @param {Number} rowIndex - The row to click.
+ * @param {object} tab - The account manager tab controller that opened.
+ * @param {number} rowIndex - The row to click.
  */
 function click_account_tree_row(tab, rowIndex) {
   utils.waitFor(
@@ -85,8 +93,7 @@ function click_account_tree_row(tab, rowIndex) {
   );
 
   let tree = content_tab_e(tab, "accounttree");
-
-  fdh.click_tree_row(tree, rowIndex, mc);
+  tree.selectedIndex = rowIndex;
 
   utils.waitFor(
     () => tab.browser.contentWindow.pendingAccount == null,
@@ -97,7 +104,7 @@ function click_account_tree_row(tab, rowIndex) {
   wh.wait_for_frame_load(
     content_tab_e(tab, "contentFrame"),
     tab.browser.contentWindow.pageURL(
-      tree.view.getItemAtIndex(rowIndex).getAttribute("PageTag")
+      tree.rows[rowIndex].getAttribute("PageTag")
     )
   );
 }
@@ -106,67 +113,32 @@ function click_account_tree_row(tab, rowIndex) {
  * Returns the index of the row in account tree corresponding to the wanted
  * account and its settings pane.
  *
- * @param {Number} accountKey - The key of the account to return.
+ * @param {number} accountKey - The key of the account to return.
  *                              If 'null', the SMTP pane is returned.
- * @param {Number} paneId - The ID of the account settings pane to select.
+ * @param {number} paneId - The ID of the account settings pane to select.
  *
  *
- * @returns {Number} The row index of the account and pane. If it was not found return -1.
+ * @returns {number} The row index of the account and pane. If it was not found return -1.
  *                   Do not throw as callers may intentionally just check if a row exists.
  *                   Just dump into the log so that a subsequent throw in
  *                   click_account_tree_row has a useful context.
  */
 function get_account_tree_row(accountKey, paneId, tab) {
-  let rowIndex = 0;
-  let accountTreeNode = content_tab_e(tab, "account-tree-children");
-
-  for (let i = 0; i < accountTreeNode.children.length; i++) {
-    if ("_account" in accountTreeNode.children[i]) {
-      let accountHead = accountTreeNode.children[i];
-      if (accountKey == accountHead._account.key) {
-        // If this is the wanted account, find the wanted settings pane.
-        let accountBlock = accountHead.querySelectorAll("[PageTag]");
-        // A null paneId means the main pane.
-        if (!paneId) {
-          return rowIndex;
-        }
-
-        // Otherwise find the pane in the children.
-        for (let j = 0; j < accountBlock.length; j++) {
-          if (accountBlock[j].getAttribute("PageTag") == paneId) {
-            return rowIndex + j + 1;
-          }
-        }
-
-        // The pane was not found.
-        dump(
-          "The treerow for pane " +
-            paneId +
-            " of account " +
-            accountKey +
-            " was not found!\n"
-        );
-        return -1;
-      }
-      // If this is not the wanted account, skip all of its settings panes.
-      rowIndex += accountHead.querySelectorAll("[PageTag]").length;
-    } else if (accountKey == null) {
-      // A row without _account should be the SMTP server.
-      return rowIndex;
-    }
-    rowIndex++;
+  let accountTree = content_tab_e(tab, "accounttree");
+  let row;
+  if (accountKey && paneId) {
+    row = accountTree.querySelector(`#${accountKey} [PageTag="${paneId}"]`);
+  } else if (accountKey) {
+    row = accountTree.querySelector(`#${accountKey}`);
   }
-
-  // The account was not found.
-  dump("The treerow for account " + accountKey + " was not found!\n");
-  return -1;
+  return accountTree.rows.indexOf(row);
 }
 
 /**
  * Remove an account via the account manager UI.
  *
- * @param {Object} account - The account to remove.
- * @param {Object} tab - The account manager tab that opened.
+ * @param {object} account - The account to remove.
+ * @param {object} tab - The account manager tab that opened.
  * @param {boolean} removeAccount - Remove the account itself.
  * @param {boolean} removeData - Remove the message data of the account.
  */
@@ -176,13 +148,28 @@ function remove_account(
   removeAccount = true,
   removeData = false
 ) {
-  let accountRow = get_account_tree_row(account.key, "am-server.xhtml", tab);
+  let accountRow = get_account_tree_row(account.key, null, tab);
   click_account_tree_row(tab, accountRow);
 
   account = null;
   // Use the Remove item in the Account actions menu.
-  mc.click(content_tab_e(tab, "accountActionsButton"));
-  mc.click(content_tab_e(tab, "accountActionsDropdownRemove"));
+  let actionsButton = content_tab_e(tab, "accountActionsButton");
+  EventUtils.synthesizeMouseAtCenter(
+    actionsButton,
+    { clickCount: 1 },
+    actionsButton.ownerGlobal
+  );
+  let actionsDd = content_tab_e(tab, "accountActionsDropdown");
+  utils.waitFor(
+    () => actionsDd.state == "open" || actionsDd.state == "showing"
+  );
+  let remove = content_tab_e(tab, "accountActionsDropdownRemove");
+  EventUtils.synthesizeMouseAtCenter(
+    remove,
+    { clickCount: 1 },
+    remove.ownerGlobal
+  );
+  utils.waitFor(() => actionsDd.state == "closed");
 
   let cdc = wh.wait_for_frame_load(
     tab.browser.contentWindow.gSubDialog._topDialog._frame,
@@ -191,14 +178,22 @@ function remove_account(
 
   // Account removal confirmation dialog. Select what to remove.
   if (removeAccount) {
-    cdc.click(cdc.window.document.getElementById("removeAccount"));
+    EventUtils.synthesizeMouseAtCenter(
+      cdc.window.document.getElementById("removeAccount"),
+      {},
+      cdc.window.document.getElementById("removeAccount").ownerGlobal
+    );
   }
   if (removeData) {
-    cdc.click(cdc.window.document.getElementById("removeData"));
+    EventUtils.synthesizeMouseAtCenter(
+      cdc.window.document.getElementById("removeData"),
+      {},
+      cdc.window.document.getElementById("removeData").ownerGlobal
+    );
   }
 
   cdc.window.document.documentElement.querySelector("dialog").acceptDialog();
-  cdc.waitFor(
+  utils.waitFor(
     () =>
       !cdc.window.document.querySelector("dialog").getButton("accept").disabled,
     "Timeout waiting for finish of account removal",

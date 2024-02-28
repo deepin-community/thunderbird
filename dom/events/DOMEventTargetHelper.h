@@ -9,6 +9,7 @@
 
 #include "mozilla/Attributes.h"
 #include "mozilla/dom/EventTarget.h"
+#include "mozilla/GlobalTeardownObserver.h"
 #include "mozilla/LinkedList.h"
 #include "mozilla/RefPtr.h"
 #include "nsAtom.h"
@@ -48,7 +49,7 @@ enum class CallerType : uint32_t;
   }
 
 class DOMEventTargetHelper : public dom::EventTarget,
-                             public LinkedListElement<DOMEventTargetHelper> {
+                             public GlobalTeardownObserver {
  public:
   DOMEventTargetHelper();
   explicit DOMEventTargetHelper(nsPIDOMWindowInner* aWindow);
@@ -56,7 +57,8 @@ class DOMEventTargetHelper : public dom::EventTarget,
   explicit DOMEventTargetHelper(DOMEventTargetHelper* aOther);
 
   NS_DECL_CYCLE_COLLECTING_ISUPPORTS
-  NS_DECL_CYCLE_COLLECTION_SKIPPABLE_SCRIPT_HOLDER_CLASS(DOMEventTargetHelper)
+  NS_DECL_CYCLE_COLLECTION_SKIPPABLE_WRAPPERCACHE_CLASS_AMBIGUOUS(
+      DOMEventTargetHelper, dom::EventTarget)
 
   virtual EventListenerManager* GetExistingListenerManager() const override;
   virtual EventListenerManager* GetOrCreateListenerManager() override;
@@ -64,8 +66,10 @@ class DOMEventTargetHelper : public dom::EventTarget,
   bool ComputeDefaultWantsUntrusted(ErrorResult& aRv) override;
 
   using EventTarget::DispatchEvent;
-  bool DispatchEvent(dom::Event& aEvent, dom::CallerType aCallerType,
-                     ErrorResult& aRv) override;
+  // TODO: Convert this to MOZ_CAN_RUN_SCRIPT (bug 1415230)
+  MOZ_CAN_RUN_SCRIPT_BOUNDARY bool DispatchEvent(dom::Event& aEvent,
+                                                 dom::CallerType aCallerType,
+                                                 ErrorResult& aRv) override;
 
   void GetEventTargetParent(EventChainPreVisitor& aVisitor) override;
 
@@ -73,12 +77,8 @@ class DOMEventTargetHelper : public dom::EventTarget,
 
   NS_DECLARE_STATIC_IID_ACCESSOR(NS_DOMEVENTTARGETHELPER_IID)
 
-  void GetParentObject(nsIScriptGlobalObject** aParentObject) {
-    if (mParentObject) {
-      CallQueryInterface(mParentObject, aParentObject);
-    } else {
-      *aParentObject = nullptr;
-    }
+  nsIGlobalObject* GetOwnerGlobal() const override {
+    return GlobalTeardownObserver::GetOwnerGlobal();
   }
 
   static DOMEventTargetHelper* FromSupports(nsISupports* aSupports) {
@@ -105,19 +105,6 @@ class DOMEventTargetHelper : public dom::EventTarget,
     return nsPIDOMWindowOuter::GetFromCurrentInner(GetOwner());
   }
 
-  // A global permanently becomes invalid when DisconnectEventTargetObjects() is
-  // called.  Normally this means:
-  // - For the main thread, when nsGlobalWindowInner::FreeInnerObjects is
-  //   called.
-  // - For a worker thread, when clearing the main event queue.  (Which we do
-  //   slightly later than when the spec notionally calls for it to be done.)
-  //
-  // A global may also become temporarily invalid when:
-  // - For the main thread, if the window is no longer the WindowProxy's current
-  //   inner window due to being placed in the bfcache.
-  nsresult CheckCurrentGlobalCorrectness() const;
-
-  nsPIDOMWindowInner* GetOwner() const { return mOwnerWindow; }
   // Like GetOwner, but only returns non-null if the window being returned is
   // current (in the "current document" sense of the HTML spec).
   nsPIDOMWindowInner* GetWindowIfCurrent() const;
@@ -125,10 +112,8 @@ class DOMEventTargetHelper : public dom::EventTarget,
   // the current document of its browsing context.  Will return null otherwise.
   mozilla::dom::Document* GetDocumentIfCurrent() const;
 
-  virtual void DisconnectFromOwner();
+  void DisconnectFromOwner() override;
   using EventTarget::GetParentObject;
-  nsIGlobalObject* GetOwnerGlobal() const final { return mParentObject; }
-  bool HasOrHasHadOwner() { return mHasOrHasHadOwnerWindow; }
 
   virtual void EventListenerAdded(nsAtom* aType) override;
 
@@ -156,30 +141,14 @@ class DOMEventTargetHelper : public dom::EventTarget,
 
   virtual void LastRelease() {}
 
-  void KeepAliveIfHasListenersFor(const nsAString& aType);
   void KeepAliveIfHasListenersFor(nsAtom* aType);
 
-  void IgnoreKeepAliveIfHasListenersFor(const nsAString& aType);
   void IgnoreKeepAliveIfHasListenersFor(nsAtom* aType);
 
-  void BindToOwner(nsIGlobalObject* aOwner);
-
  private:
-  // The parent global object.  The global will clear this when
-  // it is destroyed by calling DisconnectFromOwner().
-  nsIGlobalObject* MOZ_NON_OWNING_REF mParentObject;
-  // mParentObject pre QI-ed and cached (inner window)
-  // (it is needed for off main thread access)
-  // It is obtained in BindToOwner and reset in DisconnectFromOwner.
-  nsPIDOMWindowInner* MOZ_NON_OWNING_REF mOwnerWindow;
-  bool mHasOrHasHadOwnerWindow;
+  nsTArray<RefPtr<nsAtom>> mKeepingAliveTypes;
 
-  struct {
-    nsTArray<nsString> mStrings;
-    nsTArray<RefPtr<nsAtom>> mAtoms;
-  } mKeepingAliveTypes;
-
-  bool mIsKeptAlive;
+  bool mIsKeptAlive = false;
 };
 
 NS_DEFINE_STATIC_IID_ACCESSOR(DOMEventTargetHelper, NS_DOMEVENTTARGETHELPER_IID)

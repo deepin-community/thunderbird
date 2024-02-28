@@ -1,29 +1,28 @@
 {
   "langpack_id": "sl",
   "manifest_version": 2,
-  "applications": {
+  "browser_specific_settings": {
     "gecko": {
       "id": "langpack-sl@thunderbird.mozilla.org",
-      "strict_min_version": "91.0",
-      "strict_max_version": "91.*"
+      "strict_min_version": "115.0",
+      "strict_max_version": "115.*"
     }
   },
-  "name": "Slovenski jezik Language Pack",
-  "description": "Language pack for Thunderbird for sl",
-  "version": "91.0buildid20211101223011",
+  "name": "Language: Slovenščina (Slovenian)",
+  "description": "Thunderbird Language Pack for Slovenščina (sl) – Slovenian",
+  "version": "115.8.20240216.174500",
   "languages": {
     "sl": {
-      "version": "20211014090833",
+      "version": "20240216183828",
       "chrome_resources": {
         "alerts": "chrome/sl/locale/sl/alerts/",
         "autoconfig": "chrome/sl/locale/sl/autoconfig/",
-        "branding": "chrome/sl/locale/sl/branding/",
+        "branding": "chrome/sl/locale/branding/",
         "calendar": "chrome/sl/locale/sl/calendar/",
         "chat": "chrome/sl/locale/sl/chat/",
         "communicator": "chrome/sl/locale/sl/communicator/",
         "devtools": "chrome/sl/locale/sl/devtools/client/",
         "devtools-shared": "chrome/sl/locale/sl/devtools/shared/",
-        "devtools-startup": "chrome/sl/locale/sl/devtools/startup/",
         "global": "chrome/sl/locale/sl/global/",
         "global-platform": {
           "macosx": "chrome/sl/locale/sl/global-platform/mac/",
@@ -53,5 +52,5 @@
       "base_path": "browser/"
     }
   },
-  "author": "mozilla.org (contributors: Peter Klofutar, Vito Smolej)"
+  "author": "mozilla.org (contributors: Lan Glad, Peter Klofutar, Rok Žerdin, Vito Smolej)"
 }

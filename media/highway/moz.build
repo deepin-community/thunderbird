@@ -11,6 +11,7 @@ LOCAL_INCLUDES += [
 SOURCES += [
     "/third_party/highway/hwy/aligned_allocator.cc",
     "/third_party/highway/hwy/contrib/image/image.cc",
+    "/third_party/highway/hwy/per_target.cc",
     "/third_party/highway/hwy/targets.cc",
 ]
 
@@ -18,13 +19,19 @@ EXPORTS.hwy += [
     "/third_party/highway/hwy/aligned_allocator.h",
     "/third_party/highway/hwy/base.h",
     "/third_party/highway/hwy/cache_control.h",
+    "/third_party/highway/hwy/detect_compiler_arch.h",
+    "/third_party/highway/hwy/detect_targets.h",
     "/third_party/highway/hwy/foreach_target.h",
     "/third_party/highway/hwy/highway.h",
+    "/third_party/highway/hwy/highway_export.h",
     "/third_party/highway/hwy/targets.h",
 ]
 
 EXPORTS.hwy.ops += [
     "/third_party/highway/hwy/ops/arm_neon-inl.h",
+    "/third_party/highway/hwy/ops/arm_sve-inl.h",
+    "/third_party/highway/hwy/ops/emu128-inl.h",
+    "/third_party/highway/hwy/ops/generic_ops-inl.h",
     "/third_party/highway/hwy/ops/rvv-inl.h",
     "/third_party/highway/hwy/ops/scalar-inl.h",
     "/third_party/highway/hwy/ops/set_macros-inl.h",

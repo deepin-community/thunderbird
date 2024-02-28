@@ -10,7 +10,6 @@
 #include "nsIStringBundle.h"
 #include "nsNewsDownloader.h"
 #include "nsINntpService.h"
-#include "nsMsgNewsCID.h"
 #include "nsIMsgSearchSession.h"
 #include "nsIMsgSearchTerm.h"
 #include "nsIMsgAccountManager.h"
@@ -20,7 +19,7 @@
 #include "nsServiceManagerUtils.h"
 #include "nsComponentManagerUtils.h"
 #include "nsMsgUtils.h"
-#include "mozilla/Services.h"
+#include "mozilla/Components.h"
 
 // This file contains the news article download state machine.
 
@@ -99,11 +98,12 @@ nsresult nsNewsDownloader::DownloadNext(bool firstTimeP) {
   StartDownload();
   m_wroteAnyP = false;
   nsCOMPtr<nsINntpService> nntpService =
-      do_GetService(NS_NNTPSERVICE_CONTRACTID, &rv);
+      do_GetService("@mozilla.org/messenger/nntpservice;1", &rv);
   NS_ENSURE_SUCCESS(rv, rv);
 
+  nsCOMPtr<nsIURI> uri;
   return nntpService->FetchMessage(m_folder, m_keyToDownload, m_window, nullptr,
-                                   this, nullptr);
+                                   this, getter_AddRefs(uri));
 }
 
 bool DownloadNewsArticlesToOfflineStore::GetNextHdrToRetrieve() {
@@ -153,7 +153,7 @@ bool nsNewsDownloader::GetNextHdrToRetrieve() {
 
     m_lastProgressTime = nowMS;
     nsCOMPtr<nsIStringBundleService> bundleService =
-        mozilla::services::GetStringBundleService();
+        mozilla::components::StringBundle::Service();
     NS_ENSURE_TRUE(bundleService, false);
     nsCOMPtr<nsIStringBundle> bundle;
     rv = bundleService->CreateBundle(NEWS_MSGS_URL, getter_AddRefs(bundle));
@@ -327,7 +327,7 @@ bool nsMsgDownloadAllNewsgroups::AdvanceToNextServer() {
 
   if (m_allServers.IsEmpty()) {
     nsCOMPtr<nsIMsgAccountManager> accountManager =
-        do_GetService(NS_MSGACCOUNTMANAGER_CONTRACTID, &rv);
+        do_GetService("@mozilla.org/messenger/account-manager;1", &rv);
     NS_ASSERTION(accountManager && NS_SUCCEEDED(rv),
                  "couldn't get account mgr");
     if (!accountManager || NS_FAILED(rv)) return false;
@@ -387,7 +387,7 @@ bool nsMsgDownloadAllNewsgroups::AdvanceToNextGroup() {
     if (newsFolder) newsFolder->SetSaveArticleOffline(false);
 
     nsCOMPtr<nsIMsgMailSession> session =
-        do_GetService(NS_MSGMAILSESSION_CONTRACTID, &rv);
+        do_GetService("@mozilla.org/messenger/services/session;1", &rv);
     if (NS_SUCCEEDED(rv) && session) {
       bool folderOpen;
       uint32_t folderFlags;
@@ -466,7 +466,7 @@ nsresult nsMsgDownloadAllNewsgroups::DownloadMsgsForCurrentGroup() {
   if (newsFolder) newsFolder->SetSaveArticleOffline(true);
 
   nsCOMPtr<nsIMsgSearchSession> searchSession =
-      do_CreateInstance(NS_MSGSEARCHSESSION_CONTRACTID, &rv);
+      do_CreateInstance("@mozilla.org/messenger/searchSession;1", &rv);
   NS_ENSURE_SUCCESS(rv, rv);
 
   bool downloadByDate, downloadUnreadOnly;

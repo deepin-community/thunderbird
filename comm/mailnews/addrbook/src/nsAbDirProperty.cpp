@@ -4,7 +4,6 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 #include "nsAbDirProperty.h"
-#include "nsAbBaseCID.h"
 #include "nsIAbCard.h"
 #include "nsIPrefService.h"
 #include "nsIPrefLocalizedString.h"
@@ -14,6 +13,7 @@
 #include "nsIAbManager.h"
 #include "nsArrayUtils.h"
 #include "nsIUUIDGenerator.h"
+#include "mozilla/Components.h"
 #include "mozilla/Services.h"
 #include "nsIObserverService.h"
 #include "mozilla/dom/Promise.h"
@@ -102,7 +102,7 @@ NS_IMETHODIMP nsAbDirProperty::SetDirName(const nsAString& aDirName) {
   NS_ENSURE_SUCCESS(rv, rv);
 
   nsCOMPtr<nsIAbManager> abManager =
-      do_GetService(NS_ABMANAGER_CONTRACTID, &rv);
+      do_GetService("@mozilla.org/abmanager;1", &rv);
 
   if (NS_SUCCEEDED(rv)) {
     nsCOMPtr<nsIObserverService> observerService =
@@ -136,7 +136,8 @@ NS_IMETHODIMP nsAbDirProperty::GetUID(nsACString& aUID) {
     }
   }
 
-  nsCOMPtr<nsIUUIDGenerator> uuidgen = mozilla::services::GetUUIDGenerator();
+  nsCOMPtr<nsIUUIDGenerator> uuidgen =
+      mozilla::components::UUIDGenerator::Service();
   NS_ENSURE_TRUE(uuidgen, NS_ERROR_FAILURE);
 
   nsID id;
@@ -255,6 +256,11 @@ nsAbDirProperty::CleanUp(JSContext* cx, Promise** retval) {
 // nsIAbDirectory NOT IMPLEMENTED methods
 NS_IMETHODIMP
 nsAbDirProperty::GetChildNodes(nsTArray<RefPtr<nsIAbDirectory>>& childList) {
+  return NS_ERROR_NOT_IMPLEMENTED;
+}
+
+NS_IMETHODIMP
+nsAbDirProperty::GetChildCardCount(uint32_t* count) {
   return NS_ERROR_NOT_IMPLEMENTED;
 }
 

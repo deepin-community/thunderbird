@@ -6,10 +6,11 @@ var EXPORTED_SYMBOLS = ["CalIcsParser"];
 
 var { cal } = ChromeUtils.import("resource:///modules/calendar/calUtils.jsm");
 var { NetUtil } = ChromeUtils.import("resource://gre/modules/NetUtil.jsm");
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-var { XPCOMUtils } = ChromeUtils.import("resource://gre/modules/XPCOMUtils.jsm");
+var { XPCOMUtils } = ChromeUtils.importESModule("resource://gre/modules/XPCOMUtils.sys.mjs");
 
-XPCOMUtils.defineLazyModuleGetters(this, {
+const lazy = {};
+
+XPCOMUtils.defineLazyModuleGetters(lazy, {
   CalEvent: "resource:///modules/CalEvent.jsm",
   CalTodo: "resource:///modules/CalTodo.jsm",
   CalRecurrenceInfo: "resource:///modules/CalRecurrenceInfo.jsm",
@@ -78,19 +79,17 @@ CalIcsParser.prototype = {
 
         if (!parent) {
           // a parentless one, fake a master and override it's occurrence
-          parent = item.isEvent() ? new CalEvent() : new CalTodo();
+          parent = item.isEvent() ? new lazy.CalEvent() : new lazy.CalTodo();
           parent.id = item.id;
           parent.setProperty("DTSTART", item.recurrenceId);
           parent.setProperty("X-MOZ-FAKED-MASTER", "1"); // this tag might be useful in the future
-          parent.recurrenceInfo = new CalRecurrenceInfo(parent);
+          parent.recurrenceInfo = new lazy.CalRecurrenceInfo(parent);
           fakedParents[item.id] = true;
           state.uid2parent[item.id] = parent;
           state.items.push(parent);
         }
         if (item.id in fakedParents) {
-          let rdate = Cc["@mozilla.org/calendar/recurrence-date;1"].createInstance(
-            Ci.calIRecurrenceDate
-          );
+          let rdate = cal.createRecurrenceDate();
           rdate.date = item.recurrenceId;
           parent.recurrenceInfo.appendRecurrenceItem(rdate);
           // we'll keep the parentless-API until we switch over using itip-process for import (e.g. in dnd code)
@@ -129,7 +128,7 @@ CalIcsParser.prototype = {
     });
   },
 
-  parseString(aICSString, aTzProvider, aAsyncParsing) {
+  parseString(aICSString, aAsyncParsing) {
     if (aAsyncParsing) {
       let self = this;
 
@@ -138,7 +137,7 @@ CalIcsParser.prototype = {
       //   parser containing the processed items.
       // The listener passed to parseICSAsync is a calICsComponentParsingListener
       //   required by the ics service, that receives the parsed root component.
-      cal.getIcsService().parseICSAsync(aICSString, aTzProvider, {
+      cal.icsService.parseICSAsync(aICSString, {
         onParsingComplete(rc, rootComp) {
           if (Components.isSuccessCode(rc)) {
             self.processIcalComponent(rootComp, aAsyncParsing);
@@ -150,18 +149,7 @@ CalIcsParser.prototype = {
       });
     } else {
       try {
-        let icalComp = cal.getIcsService().parseICS(aICSString, aTzProvider);
-        // There is no such indicator like X-LIC in icaljs, so there would need to
-        // detect and log such errors already within the parser. However, until
-        // X-LIC or libical will be removed we make use of X-LIC-ERRORS here but
-        // don't add something similar to icaljs
-        if (icalComp.toString().match(/X-LIC-ERROR/)) {
-          cal.WARN(
-            "Parsing failed for parts of the item (while this is considered " +
-              "to be a minor issue, we continue processing the item):\n" +
-              icalComp.toString()
-          );
-        }
+        let icalComp = cal.icsService.parseICS(aICSString);
         this.processIcalComponent(icalComp);
       } catch (exc) {
         cal.ERROR(exc.message + " when parsing\n" + aICSString);
@@ -169,7 +157,7 @@ CalIcsParser.prototype = {
     }
   },
 
-  parseFromStream(aStream, aTzProvider, aAsyncParsing) {
+  parseFromStream(aStream, aAsyncParsing) {
     // Read in the string. Note that it isn't a real string at this point,
     // because likely, the file is utf8. The multibyte chars show up as multiple
     // 'chars' in this string. So call it an array of octets for now.
@@ -177,7 +165,7 @@ CalIcsParser.prototype = {
     let stringData = NetUtil.readInputStreamToString(aStream, aStream.available(), {
       charset: "utf-8",
     });
-    this.parseString(stringData, aTzProvider, aAsyncParsing);
+    this.parseString(stringData, aAsyncParsing);
   },
 
   getItems() {
@@ -268,7 +256,7 @@ parserState.prototype = {
         let item = null;
         switch (subComp.componentType) {
           case "VEVENT":
-            item = new CalEvent();
+            item = new lazy.CalEvent();
             item.icalComponent = subComp;
             if (isGCal) {
               cal.view.fixGoogleCalendarDescription(item);
@@ -277,7 +265,7 @@ parserState.prototype = {
             self.checkTimezone(item, item.endDate);
             break;
           case "VTODO":
-            item = new CalTodo();
+            item = new lazy.CalTodo();
             item.icalComponent = subComp;
             self.checkTimezone(item, item.entryDate);
             self.checkTimezone(item, item.dueDate);
@@ -324,7 +312,7 @@ parserState.prototype = {
    * Checks if the processing of all events has completed. If a join function
    * has been set, this function is called.
    *
-   * @return      True, if all tasks have been completed
+   * @returns True, if all tasks have been completed
    */
   checkCompletion() {
     if (this.joinFunc && this.threadCount == 0) {

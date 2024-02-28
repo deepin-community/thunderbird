@@ -11,7 +11,7 @@ about-processes-column-action =
 ## Tooltips
 
 about-processes-shutdown-process =
-    .title = Rejtariki znjemóžniś a proces znicyś
+    .title = Rejtariki wuwólniś a proces znicyś
 about-processes-shutdown-tab =
     .title = Rejtarik zacyniś
 # Profiler icons
@@ -52,6 +52,7 @@ about-processes-socket-process = Seś ({ $pid })
 about-processes-remote-sandbox-broker-process = Broker zdalonego pěskowego kašćika ({ $pid })
 about-processes-fork-server-process = Serwer Fork ({ $pid })
 about-processes-preallocated-process = Do togo pśipokazany ({ $pid })
+about-processes-utility-process = Pomocny program ({ $pid })
 # Unknown process names
 # Variables:
 #    $pid (String) The process id of this process, assigned by the OS.
@@ -64,10 +65,9 @@ about-processes-unknown-process = Drugi: { $type } ({ $pid })
 ##    $origin (String) The domain name for this process.
 
 about-processes-web-isolated-process = { $origin } ({ $pid })
-about-processes-web-large-allocation-process = { $origin } ({ $pid }, wjeliki)
+about-processes-web-serviceworker = { $origin } ({ $pid }, serviceworker)
 about-processes-with-coop-coep-process = { $origin } ({ $pid }, pśez cross-origin izolěrowany)
 about-processes-web-isolated-process-private = { $origin } – priwatny ({ $pid })
-about-processes-web-large-allocation-process-private = { $origin } – priwatny ({ $pid }, wjeliki)
 about-processes-with-coop-coep-process-private = { $origin } – priwatny ({ $pid }, pśez cross-origin izolěrowany)
 
 ## Details within processes
@@ -123,6 +123,18 @@ about-processes-frame-name-one = Pódwobłuk: { $url }
 #   $shortUrl (String) The shared prefix for the subframes in the group.
 about-processes-frame-name-many = Pódwobłuki ({ $number }): { $shortUrl }
 
+## Utility process actor names
+
+about-processes-utility-actor-unknown = Njeznaty akter
+about-processes-utility-actor-audio-decoder-generic = Generiski awdiodecoder
+about-processes-utility-actor-audio-decoder-applemedia = Medijowy awdiodecoder Apple
+about-processes-utility-actor-audio-decoder-wmf = Awdiodecoder Windows Media Framework
+about-processes-utility-actor-mf-media-engine = Windows Media Foundation Media Engine CDM
+# "Oracle" refers to an internal Firefox process and should be kept in English
+about-processes-utility-actor-js-oracle = JavaScript Oracle
+about-processes-utility-actor-windows-utils = Windows Utils
+about-processes-utility-actor-windows-file-dialog = Datajowy dialog Windows
+
 ## Displaying CPU (percentage and total)
 ## Variables:
 ##    $percent (Number) The percentage of CPU used by the process or thread.
@@ -137,9 +149,13 @@ about-processes-cpu = { NUMBER($percent, maximumSignificantDigits: 2, style: "pe
     .title = CPU-cas dogromady: { NUMBER($total, maximumFractionDigits: 0) }{ $unit }
 # Special case: data is not available yet.
 about-processes-cpu-user-and-kernel-not-ready = (měri se)
+# Special case: process or thread is almost idle (using less than 0.1% of a CPU core).
+# This case only occurs on Windows where the precision of the CPU times is low.
+about-processes-cpu-almost-idle = < 0.1%
+    .title = Cełkowny CPU-cas: { NUMBER($total, maximumFractionDigits: 0) }{ $unit }
 # Special case: process or thread is currently idle.
-about-processes-cpu-idle = inaktiwny
-    .title = CPU-cas dogromady: { NUMBER($total, maximumFractionDigits: 2) }{ $unit }
+about-processes-cpu-fully-idle = inaktiwny
+    .title = Cełkowny CPU-cas: { NUMBER($total, maximumFractionDigits: 0) }{ $unit }
 
 ## Displaying Memory (total and delta)
 ## Variables:

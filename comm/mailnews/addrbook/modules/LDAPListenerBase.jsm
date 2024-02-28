@@ -5,12 +5,6 @@
 
 const EXPORTED_SYMBOLS = ["LDAPListenerBase"];
 
-ChromeUtils.defineModuleGetter(
-  this,
-  "Services",
-  "resource://gre/modules/Services.jsm"
-);
-
 /**
  * @implements {nsILDAPMessageListener}
  */
@@ -18,7 +12,7 @@ class LDAPListenerBase {
   /**
    * @see nsILDAPMessageListener
    */
-  onLDAPInit() {
+  async onLDAPInit() {
     let outPassword = {};
     if (this._directory.authDn && this._directory.saslMechanism != "GSSAPI") {
       // If authDn is set, we're expected to use it to get a password.
@@ -29,7 +23,7 @@ class LDAPListenerBase {
       let authPrompt = Services.ww.getNewAuthPrompter(
         Services.wm.getMostRecentWindow(null)
       );
-      authPrompt.promptPassword(
+      await authPrompt.asyncPromptPassword(
         bundle.GetStringFromName("authPromptTitle"),
         bundle.formatStringFromName("authPromptText", [
           this._directory.lDAPURL.host,
@@ -56,6 +50,7 @@ class LDAPListenerBase {
 
   /**
    * Handler of nsILDAPMessage.RES_BIND message.
+   *
    * @param {nsILDAPMessage} msg - The received LDAP message.
    */
   _onLDAPBind(msg) {
@@ -98,6 +93,7 @@ class LDAPListenerBase {
 
   /**
    * Callback when BindResponse succeeded.
+   *
    * @abstract
    */
   _actionOnBindSuccess() {
@@ -109,6 +105,7 @@ class LDAPListenerBase {
 
   /**
    * Callback when BindResponse failed.
+   *
    * @abstract
    */
   _actionOnBindFailure() {

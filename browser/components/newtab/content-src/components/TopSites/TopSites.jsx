@@ -2,19 +2,18 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this file,
  * You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-import { actionCreators as ac, actionTypes as at } from "common/Actions.jsm";
 import {
-  MIN_CORNER_FAVICON_SIZE,
-  MIN_RICH_FAVICON_SIZE,
-  TOP_SITES_SOURCE,
-} from "./TopSitesConstants";
+  actionCreators as ac,
+  actionTypes as at,
+} from "common/Actions.sys.mjs";
+import { MIN_RICH_FAVICON_SIZE, TOP_SITES_SOURCE } from "./TopSitesConstants";
 import { CollapsibleSection } from "content-src/components/CollapsibleSection/CollapsibleSection";
 import { ComponentPerfTimer } from "content-src/components/ComponentPerfTimer/ComponentPerfTimer";
 import { connect } from "react-redux";
 import { ModalOverlayWrapper } from "../../asrouter/components/ModalOverlay/ModalOverlay";
 import React from "react";
 import { SearchShortcutsForm } from "./SearchShortcutsForm";
-import { TOP_SITES_MAX_SITES_PER_ROW } from "common/Reducers.jsm";
+import { TOP_SITES_MAX_SITES_PER_ROW } from "common/Reducers.sys.mjs";
 import { TopSiteForm } from "./TopSiteForm";
 import { TopSiteList } from "./TopSite";
 
@@ -27,9 +26,6 @@ function topSiteIconType(link) {
   }
   if (link.faviconSize >= MIN_RICH_FAVICON_SIZE) {
     return "rich_icon";
-  }
-  if (link.screenshot && link.faviconSize >= MIN_CORNER_FAVICON_SIZE) {
-    return "screenshot_with_icon";
   }
   if (link.screenshot) {
     return "screenshot";
@@ -50,7 +46,6 @@ function countTopSitesIconsTypes(topSites) {
 
   return topSites.reduce(countTopSitesTypes, {
     custom_screenshot: 0,
-    screenshot_with_icon: 0,
     screenshot: 0,
     tippytop: 0,
     rich_icon: 0,
@@ -62,9 +57,8 @@ export class _TopSites extends React.PureComponent {
   constructor(props) {
     super(props);
     this.onEditFormClose = this.onEditFormClose.bind(this);
-    this.onSearchShortcutsFormClose = this.onSearchShortcutsFormClose.bind(
-      this
-    );
+    this.onSearchShortcutsFormClose =
+      this.onSearchShortcutsFormClose.bind(this);
   }
 
   /**
@@ -76,8 +70,9 @@ export class _TopSites extends React.PureComponent {
     );
     const topSitesIconsStats = countTopSitesIconsTypes(topSites);
     const topSitesPinned = topSites.filter(site => !!site.isPinned).length;
-    const searchShortcuts = topSites.filter(site => !!site.searchTopSite)
-      .length;
+    const searchShortcuts = topSites.filter(
+      site => !!site.searchTopSite
+    ).length;
     // Dispatch telemetry event with the count of TopSites images types.
     this.props.dispatch(
       ac.AlsoToMain({
@@ -139,28 +134,10 @@ export class _TopSites extends React.PureComponent {
     const { props } = this;
     const { editForm, showSearchShortcutsForm } = props.TopSites;
     const extraMenuOptions = ["AddTopSite"];
-    const {
-      customizationMenuEnabled,
-      newNewtabExperienceEnabled,
-    } = props.Prefs.values.featureConfig;
     const colors = props.Prefs.values["newNewtabExperience.colors"];
 
     if (props.Prefs.values["improvesearch.topSiteSearchShortcuts"]) {
       extraMenuOptions.push("AddSearchShortcut");
-    }
-
-    const canShowCustomizationMenu =
-      newNewtabExperienceEnabled || customizationMenuEnabled;
-    const hideTitle =
-      props.Prefs.values.hideTopSitesTitle || canShowCustomizationMenu;
-
-    // `collapsed` should be sent to CollapsibleSection as undefined if
-    // `props.TopSites.pref` is not set to true.
-    let collapsed;
-    if (props.TopSites.pref) {
-      collapsed = canShowCustomizationMenu
-        ? false
-        : props.TopSites.pref.collapsed;
     }
 
     return (
@@ -171,14 +148,13 @@ export class _TopSites extends React.PureComponent {
       >
         <CollapsibleSection
           className="top-sites"
-          icon="topsites"
           id="topsites"
           title={props.title || { id: "newtab-section-header-topsites" }}
-          hideTitle={hideTitle}
+          hideTitle={true}
           extraMenuOptions={extraMenuOptions}
           showPrefName="feeds.topsites"
           eventSource={TOP_SITES_SOURCE}
-          collapsed={collapsed}
+          collapsed={false}
           isFixed={props.isFixed}
           isFirst={props.isFirst}
           isLast={props.isLast}
@@ -189,7 +165,6 @@ export class _TopSites extends React.PureComponent {
             TopSitesRows={props.TopSitesRows}
             dispatch={props.dispatch}
             topSiteIconType={topSiteIconType}
-            newNewtabExperienceEnabled={newNewtabExperienceEnabled}
             colors={colors}
           />
           <div className="edit-topsites-wrapper">
@@ -205,8 +180,6 @@ export class _TopSites extends React.PureComponent {
                     onClose={this.onEditFormClose}
                     dispatch={this.props.dispatch}
                     {...editForm}
-                    newNewtabExperienceEnabled={newNewtabExperienceEnabled}
-                    customizationMenuEnabled={customizationMenuEnabled}
                   />
                 </ModalOverlayWrapper>
               </div>
@@ -234,8 +207,7 @@ export class _TopSites extends React.PureComponent {
 }
 
 export const TopSites = connect((state, props) => ({
-  // For SPOC Experiment only, take TopSites from DiscoveryStream TopSites that takes in SPOC Data
-  TopSites: props.TopSitesWithSpoc || state.TopSites,
+  TopSites: state.TopSites,
   Prefs: state.Prefs,
   TopSitesRows: state.Prefs.values.topSitesRows,
 }))(_TopSites);

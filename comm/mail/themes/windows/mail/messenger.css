@@ -6,111 +6,12 @@
   == Styles shared throughout the Messenger application.
   ======================================================================= */
 
-@import url("chrome://global/skin/global.css");
-@import url("chrome://messenger/content/messenger.css");
 @import url("chrome://messenger/skin/shared/messenger.css");
-
-:root {
-  --autocomplete-popup-url-color: -moz-nativehyperlinktext;
-  --tabline-color: Highlight;
-  --glassShadowColor: hsla(240, 5%, 5%, .3);
-  --new-folder-color: -moz-hyperlinktext;
-  --noselect-folder-color: GrayText;
-  --toolbar-non-lwt-bgcolor: -moz-dialog;
-  --toolbar-non-lwt-textcolor: -moz-dialogText;
-  --toolbar-non-lwt-bgimage: linear-gradient(rgba(255, 255, 255, .15),
-                                             rgba(255, 255, 255, .15));
-  --chrome-content-separator-color: ThreeDShadow;
-  --row-grouped-header-bg-color: -moz-dialog;
-  --row-grouped-header-bg-color-selected: Highlight;
-  --panel-separator-color: ThreeDLightShadow;
-  --splitter-color: ThreeDShadow;
-}
-
-@media (-moz-windows-default-theme) {
-  :root {
-    --tabs-border-color: rgba(0,0,0,.3);
-    --tabline-color: #0a84ff;
-    --toolbar-non-lwt-bgcolor: #f9f9fa;
-    --toolbar-non-lwt-textcolor: #0c0c0d;
-    --toolbar-non-lwt-bgimage: none;
-    --panel-separator-color: hsla(210,4%,10%,.14);
-    --autocomplete-popup-url-color: hsl(210, 77%, 47%);
-    --splitter-color: #a9b7c9;
-    --select-focus-text-color: -moz-DialogText;
-  }
-}
-
-:root:-moz-lwtheme {
-  --tabs-border-color: rgba(0, 0, 0, .3);
-  --panel-separator-color: hsla(210, 4%, 10%, .14);
-}
-
-:root[lwt-popup-brighttext] {
-  --panel-separator-color: rgba(249, 249, 250, .1);
-}
-
-:root[lwt-tree] {
-  --splitter-color: var(--sidebar-border-color);
-  --row-grouped-header-bg-color: hsla(0,0%,50%,.15);
-  --row-grouped-header-bg-color-selected: var(--sidebar-highlight-background-color, hsla(0,0%,80%,.6));
-}
-
-:root[lwt-tree-brighttext] {
-  --row-grouped-header-bg-color-selected: var(--sidebar-highlight-background-color, rgba(249,249,250,.3));
-}
-
-@media (prefers-contrast) {
-  :root {
-    --select-focus-text-color: HighlightText;
-    --tabs-border-color: ThreeDShadow;
-    --tabline-color: Highlight;
-    --item-focus-selected-border-color: HighlightText;
-    --new-folder-color: Highligt;
-    --menuitem-vertical-padding: 3px;
-    --arrowpanel-dimmed: Highlight;
-    --arrowpanel-dimmed-further: Highlight;
-    --toolbar-field-focus-border-color: Highlight;
-  }
-
-  :root:not(:-moz-lwtheme) .themeable-full,
-  :root:not(:-moz-lwtheme) .themeable-brighttext,
-  :root:not(:-moz-lwtheme) #navigation-toolbox > toolbar,
-  :root:not(:-moz-lwtheme) #todaypane-new-event-button,
-  :root:not(:-moz-lwtheme) #CardViewBox {
-    --toolbarbutton-hover-background: Highlight;
-    --toolbarbutton-hover-bordercolor: HighlightText !important;
-    --toolbarbutton-header-bordercolor: HighlightText;
-    --toolbarbutton-active-background: Highlight;
-    --toolbarbutton-active-bordercolor: HighlightText;
-    --toolbarbutton-checked-background: Highlight;
-    --toolbarbutton-icon-fill-attention: Highlight;
-  }
-
-  :root:not(:-moz-lwtheme) .toolbarbutton-1:not(.qfb-tag-button):hover,
-  :root:not(:-moz-lwtheme) #calendar-add-task-button:hover,
-  :root:not(:-moz-lwtheme) #todaypane-new-event-button:hover,
-  :root:not(:-moz-lwtheme) .toolbarbutton-1[checked="true"],
-  :root:not(:-moz-lwtheme) .toolbarbutton-menubutton-button:hover {
-    color: HighlightText !important;
-    fill: currentColor;
-  }
-
-  menulist {
-    --toolbarbutton-hover-background: ButtonFace;
-  }
-}
-
-@media (-moz-windows-default-theme) {
-  :root:not([lwt-tree]) {
-    --new-focused-folder-color: -moz-DialogText;
-  }
-}
 
 @media not (-moz-windows-non-native-menus) {
   .menu-iconic > .menu-iconic-left,
   .menuitem-iconic > .menu-iconic-left {
-    display: -moz-box;
+    display: flex;
     padding-top: 0;
   }
 }
@@ -135,7 +36,7 @@
 
   menulist > menupopup > menu,
   menulist > menupopup > menuitem {
-    padding-inline-end: 0;
+    padding-inline-end: 5px;
   }
 
   menulist > menupopup:not([needsgutter]) > menu:not([icon], .menu-iconic),
@@ -144,25 +45,23 @@
   }
 
   menupopup:not([needsgutter]) > menu:not([icon], .menu-iconic),
-  menupopup:not([needsgutter]) > menuitem:not([icon], .menuitem-iconic) {
-    padding-inline-start: 36px;
-  }
-
-  menupopup[needsgutter] > .menu-iconic > .menu-iconic-left,
-  menupopup[needsgutter] > .menuitem-iconic > .menu-iconic-left {
-    margin-inline-start: -2px;
+  menupopup:not([needsgutter]) > menuitem:not([checked="true"], [icon], .menuitem-iconic) {
+    padding-inline-start: 32px;
   }
 
   .folderMenuItem > .menu-iconic-left,
   .menuitem-iconic > .menu-iconic-left {
-    display: -moz-box;
+    display: flex;
   }
 }
 
 @media (-moz-windows-default-theme: 0),
-       (-moz-os-version: windows-win10) and (-moz-windows-default-theme) {
+       (-moz-platform: windows-win10) and (-moz-windows-default-theme) {
   #menubar-items > #mail-menubar > menu {
     appearance: none;
+  }
+
+  #menubar-items > #mail-menubar > menu:not([disabled="true"]) {
     color: inherit;
   }
 }
@@ -173,8 +72,46 @@
   }
 }
 
-#tabbar-toolbar[customizing="true"] {
-  min-width: 24px;
+.titlebar-buttonbox-container {
+  align-items: stretch;
+}
+
+@media (-moz-platform: windows-win7),
+       (-moz-platform: windows-win8) {
+  /* Preserve window control buttons position at the top of the button box. */
+  .titlebar-buttonbox-container {
+    align-items: flex-start;
+  }
+}
+
+@media (-moz-platform: windows-win7) {
+  @media (-moz-windows-default-theme) and (-moz-windows-glass: 0) {
+    #messengerWindow[sizemode="normal"] .titlebar-buttonbox-container {
+      padding-top: 4px;
+    }
+  }
+}
+
+@media (-moz-platform: windows-win8) {
+  #messengerWindow[sizemode="normal"] .titlebar-buttonbox-container {
+    padding-top: 3px;
+  }
+
+  @media (-moz-windows-default-theme: 0) {
+    menu {
+      appearance: none;
+    }
+  }
+}
+
+@media (-moz-windows-classic) {
+  #messengerWindow[sizemode="normal"] .titlebar-buttonbox-container {
+    padding-top: 3px;
+  }
+
+  :root[tabsintitlebar][sizemode="normal"] #toolbar-menubar {
+    margin-top: 4px;
+  }
 }
 
 .inline-toolbar {
@@ -182,27 +119,19 @@
 }
 
 .inline-toolbar toolbarpaletteitem toolbarseparator,
-.inline-toolbar toolbarseparator {
+.inline-toolbar > toolbarseparator {
   height: 24px;
-}
-
-.inline-toolbar toolbarspacer {
-  height: 20px;
-}
-
-.titlebar-placeholder[type="caption-buttons"] {
-  -moz-box-ordinal-group: 1000;
 }
 
 /* ::::: menubar ::::: */
 
 #menubar-items {
-  -moz-box-orient: vertical; /* for flex hack */
+  flex-direction: column; /* for flex hack */
   margin-bottom: 1px;
 }
 
 #menubar-items > menubar {
-  -moz-box-flex: 1; /* make menu items expand to fill toolbar height */
+  flex: 1; /* make menu items expand to fill toolbar height */
 }
 
 menubar > menu[disabled="true"]:-moz-lwtheme {
@@ -218,9 +147,9 @@ toolbarpaletteitem[place="toolbar"] > toolbarspacer {
 
 /* ::::: toolbarbutton menu-button ::::: */
 
-toolbarbutton[type="menu-button"] {
-  -moz-box-align: stretch;
-  -moz-box-orient: horizontal !important;
+toolbarbutton[is="toolbarbutton-menu-button"] {
+  align-items: stretch;
+  flex-direction: row !important;
   padding: 0 !important;
 }
 
@@ -244,11 +173,6 @@ toolbarbutton[type="menu-button"] {
 
 .sidebar-header .toolbarbutton-text:not([value]) {
   display: none;
-}
-
-#tabmail-buttons > toolbarbutton {
-  margin-top: 3px;
-  margin-bottom: 0;
 }
 
 menulist.folderMenuItem menu:not(.folderMenuItem) {
@@ -280,42 +204,86 @@ treechildren::-moz-tree-cell-text {
   padding-bottom: 2px;
 }
 
+@media (prefers-color-scheme: dark) {
+  /* Override the toolkit color. */
+  :root:-moz-lwtheme tree > treechildren::-moz-tree-row(selected) {
+    background-color:  rgba(249, 249, 250, .1);
+  }
+
+  :root:-moz-lwtheme tree > treechildren::-moz-tree-row(selected, focus) {
+    background-color: var(--dark-lwt-highlight-color);
+  }
+
+  :root:-moz-lwtheme treechildren::-moz-tree-twisty(selected),
+  :root:-moz-lwtheme tree:not(:focus) treechildren::-moz-tree-image(selected),
+  :root:-moz-lwtheme #threadTree:not(:focus) treechildren::-moz-tree-cell-text(untagged, selected),
+  :root:-moz-lwtheme tree:not(#threadTree,:focus) treechildren::-moz-tree-cell-text(selected) {
+    color: FieldText;
+  }
+
+  :root:-moz-lwtheme tree:not(#threadTree) treechildren::-moz-tree-image(selected, focus),
+  :root:-moz-lwtheme #threadTree treechildren::-moz-tree-image(untagged, selected, focus) {
+    color: FieldText;
+    fill: color-mix(in srgb, currentColor 20%, transparent);
+    stroke: currentColor;
+  }
+
+  :root:-moz-lwtheme #threadTree treechildren::-moz-tree-cell-text(untagged, selected),
+  :root:-moz-lwtheme tree:not(#threadTree) treechildren::-moz-tree-cell-text(selected) {
+    color: FieldText;
+    fill: currentColor;
+    stroke: currentColor;
+  }
+
+  :root:-moz-lwtheme tree:not(#threadTree) treechildren::-moz-tree-twisty(selected),
+  :root:-moz-lwtheme #threadTree treechildren::-moz-tree-twisty(untagged, selected) {
+    fill: FieldText !important;
+  }
+
+  :root:-moz-lwtheme treechildren::-moz-tree-image(folderNameCol, selected, focus) {
+    fill: color-mix(in srgb, currentColor 20%, transparent) !important;
+    stroke: currentColor;
+  }
+}
+
+@media (prefers-contrast) {
+  #threadTree > treechildren::-moz-tree-row(tagged, selected),
+  #threadTree > treechildren::-moz-tree-row(untagged, selected),
+  tree:not(#threadTree) > treechildren::-moz-tree-row(selected) {
+    border-color: SelectedItem;
+    background-color: transparent;
+  }
+}
+
 @media (-moz-windows-default-theme: 0) {
   tree > treechildren::-moz-tree-row(hover) {
-    border-color: HighlightText !important;
+    border-color: SelectedItemText !important;
     border-style: solid;
     background-color: transparent;
   }
 
-  #folderTree > treechildren::-moz-tree-row(modeHeader, hover) {
-    border-color: ThreeDShadow !important;
-    border-inline-style: none;
-  }
-
-  tree > treechildren::-moz-tree-row(modeHeader, firstHeader, hover) {
-    border-top-style: none;
-  }
-
-  tree > treechildren::-moz-tree-row(tagged, selected) {
-    background-color: transparent;
-    border-color: Highlight;
+  #threadTree > treechildren::-moz-tree-cell-text(untagged, selected),
+  tree:not(#threadTree) > treechildren::-moz-tree-cell-text(selected) {
+    color: WindowText;
   }
 
   #threadTree > treechildren::-moz-tree-row(untagged, selected, focus),
   tree:not(#threadTree) > treechildren::-moz-tree-row(selected, focus) {
-    border-color: HighlightText;
-    background-color: Highlight;
+    border-color: SelectedItemText;
+    background-color: SelectedItem;
   }
 
   tree > treechildren::-moz-tree-twisty {
     color: WindowText;
   }
 
-  tree > treechildren::-moz-tree-twisty(selected, focus),
-  tree > treechildren::-moz-tree-cell-text(dropOn),
+  #threadTree > treechildren::-moz-tree-twisty(untagged, selected, focus),
+  tree:not(#threadTree) > treechildren::-moz-tree-twisty(selected, focus),
+  #threadTree > treechildren::-moz-tree-image(untagged, selected, focus),
+  tree:not(#threadTree) > treechildren::-moz-tree-image(selected, focus),
   #threadTree > treechildren::-moz-tree-cell-text(untagged, selected, focus),
   tree:not(#threadTree) > treechildren::-moz-tree-cell-text(selected, focus) {
-    color: HighlightText;
+    color: SelectedItemText;
     fill: currentColor;
   }
 
@@ -324,7 +292,7 @@ treechildren::-moz-tree-cell-text {
   }
 
   .autocomplete-richlistitem:hover {
-    color: HighlightText;
+    color: SelectedItemText;
   }
 }
 
@@ -332,134 +300,14 @@ treechildren::-moz-tree-indentation {
   width: 12px;
 }
 
-@media (-moz-windows-default-theme) {
-  treechildren {
-    --treechildren-focusColor: rgb(123,195,255);
-    --treechildren-selectedFocusColor: rgb(205,232,255);
-    --treechildren-currentColor: rgb(125,162,206);
-    --treechildren-hoverColor: rgb(229,243,255);
-    --treechildren-selectedBorder: rgb(217,217,217);
-    --treechildren-selectedBackground: rgb(217,217,217);
-    --treechildren-currentFocusBorder: var(--treechildren-focusColor);
-    --treechildren-selectedFocusBorder: var(--treechildren-selectedFocusColor) var(--treechildren-selectedFocusColor) rgb(165,214,255);
-    --treechildren-selectedFocusBackground: var(--treechildren-selectedFocusColor);
-    --treechildren-selectedFocusCurrentBorder: var(--treechildren-focusColor);
-    --treechildren-selectedFocusCurrentBackground: rgb(205,232,255);
-    --treechildren-hoverBorder: var(--treechildren-hoverColor);
-    --treechildren-hoverBackground: rgb(229,243,255);
-    --treechildren-hoverCurrentBorder: var(--treechildren-currentColor);
-    --treechildren-hoverCurrentBackground: rgba(131,183,249,.16);
-    --treechildren-hoverSelectedBorder: var(--treechildren-focusColor);
-    --treechildren-hoverSelectedBackground: rgb(205,232,255);
-  }
-
-  treechildren::-moz-tree-row {
-    color: FieldText;
-    margin-inline-start: 1px;
-    margin-inline-end: 1px;
-    border-width: 1px;
-    border-color: transparent;
-    background-repeat: no-repeat;
-    background-size: 100% 100%;
-  }
-
-  treechildren::-moz-tree-row(selected) {
-    border-color: var(--treechildren-selectedBorder);
-    background-color: var(--treechildren-selectedBackground);
-  }
-
-  treechildren::-moz-tree-row(current, focus) {
-    border-style: solid;
-    border-color: var(--treechildren-currentFocusBorder);
-  }
-
-  treechildren::-moz-tree-row(selected, focus) {
-    border-color: var(--treechildren-selectedFocusBorder);
-    background-color: var(--treechildren-selectedFocusBackground);
-  }
-
-  treechildren::-moz-tree-row(selected, current, focus) {
-    border-style: solid;
-    border-color: var(--treechildren-selectedFocusCurrentBorder);
-    background-color: var(--treechildren-selectedFocusCurrentBackground);
-  }
-
-  treechildren::-moz-tree-row(hover) {
-    border-color: var(--treechildren-hoverBorder);
-    background-color: var(--treechildren-hoverBackground);
-  }
-
-  treechildren::-moz-tree-row(hover, current) {
-    border-color: var(--treechildren-hoverCurrentBorder);
-    background-image: var(--treechildren-hoverCurrentBackground);
-  }
-
-  treechildren::-moz-tree-row(hover, selected) {
-    border-color: var(--treechildren-hoverSelectedBorder);
-    background-color: var(--treechildren-hoverSelectedBackground);
-  }
-
-  tree[disabled="true"] > treechildren::-moz-tree-row {
-    background: none;
-    border-color: transparent;
-  }
-
-  treechildren::-moz-tree-cell-text {
-    padding-bottom: initial;
-    border-color: transparent;
-    background-color: transparent;
-  }
-
-  treechildren::-moz-tree-cell-text(selected, focus) {
-    color: -moz-DialogText;
-  }
-
-  treechildren::-moz-tree-row(tagged, selected, focus) {
-    border-color: rgba(0,0,0,0.25);
-  }
-
-  @media (-moz-os-version: windows-win7),
-         (-moz-os-version: windows-win8) {
-    treechildren {
-      --treechildren-2ndBorderColor: rgba(255,255,255,.4);
-      --treechildren-selectedBackground: rgba(190,190,190,.4);
-      --treechildren-currentFocusBorder: var(--treechildren-currentColor);
-      --treechildren-selectedFocusBorder: rgb(132,172,221) var(--treechildren-2ndBorderColor) var(--treechildren-currentColor);
-      --treechildren-selectedFocusBackground: rgba(131,183,249,.375);
-      --treechildren-selectedFocusCurrentBorder: var(--treechildren-currentColor);
-      --treechildren-selectedFocusCurrentBackground: rgba(131,183,249,.5);
-      --treechildren-hoverBorder: rgb(184,214,251);
-      --treechildren-hoverBackground: rgba(131,183,249,.16);
-      --treechildren-hoverSelectedBorder: var(--treechildren-currentColor);
-      --treechildren-hoverSelectedBackground: rgba(131,183,249,.5);
-    }
-  }
-
-  @media (-moz-os-version: windows-win7) {
-    :root:not([lwt-tree]) treechildren::-moz-tree-row(selected),
-    :root:not([lwt-tree]) treechildren::-moz-tree-row(dropOn),
-    :root:not([lwt-tree]) treechildren::-moz-tree-row(hover) {
-      background-image: linear-gradient(rgba(255, 255, 255, 0.7), transparent);
-    }
-
-    :root:not([lwt-tree]) treechildren::-moz-tree-row(tagged, selected, focus) {
-      background-image: linear-gradient(rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0.1));
-    }
-
-    treechildren::-moz-tree-row {
-      border-radius: 3px;
-    }
-  }
-}
-
 @media (-moz-windows-classic) {
   treecol[hideheader="true"],
-  treecolpicker[hideheader="true"] {
+  .tree-columnpicker-button[hideheader="true"] {
     border-width: 0;
   }
 
   :root[lwt-tree] treecol:not([hideheader="true"]),
-  :root[lwt-tree] treecolpicker:not([hideheader="true"]) {
+  :root[lwt-tree] .tree-columnpicker-button:not([hideheader="true"]) {
     border-top-width: 0;
     border-inline-start-width: 0;
   }
@@ -476,18 +324,18 @@ treechildren::-moz-tree-indentation {
 
   :root:not(:-moz-lwtheme) tree:not(#threadTree) > treechildren::-moz-tree-row(selected, focus),
   :root:not(:-moz-lwtheme) #threadTree > treechildren::-moz-tree-row(untagged, selected, focus) {
-    border-color: HighlightText;
-    background-color: Highlight;
+    border-color: SelectedItemText;
+    background-color: SelectedItem;
   }
-}
 
-:root[lwt-tree] treechildren::-moz-tree-row(current, focus) {
-  border-color: var(--sidebar-highlight-background-color, hsla(0,0%,80%,.6));
-  outline: none;
-}
-
-:root[lwt-tree-brighttext] treechildren::-moz-tree-row(current, focus) {
-  border-color: var(--sidebar-highlight-background-color, rgba(249,249,250,.3));
+  /* Add a window top border for webextension themes */
+  :root[tabsintitlebar][sizemode="normal"] #navigation-toolbox:-moz-lwtheme {
+    background-image: linear-gradient(to bottom,
+          ThreeDLightShadow 0, ThreeDLightShadow 1px,
+          ThreeDHighlight 1px, ThreeDHighlight 2px,
+          ActiveBorder 2px, ActiveBorder 4px, transparent 4px),
+          var(--lwt-header-image), var(--lwt-additional-images);
+  }
 }
 
 :root[lwt-tree] treechildren::-moz-tree-row(hover) {
@@ -504,11 +352,11 @@ menulist.folderMenuItem::part(label) {
   margin-inline-start: 2px !important;
 }
 
-button[type="menu-button"] > .button-box > button {
+button[is="toolbarbutton-menu-button"] > .button-box > button {
   margin-block: -1px;
 }
 
-button.notification-button[type="menu-button"] {
+button.notification-button[is="toolbarbutton-menu-button"] {
   padding-inline-end: 1px;
 }
 
@@ -562,48 +410,37 @@ toolbox[labelalign="end"] > toolbar[mode="full"] .toolbarbutton-1
   appearance: none;
 }
 
-menulist > menupopup:not([is="folder-menupopup"]) > menuseparator {
-  appearance: none;
-  margin-block: 3px;
-  padding-block: 0;
-  border-top-color: #d7d7d7;
-}
-
 @media (-moz-windows-compositor) {
   #unifinder-searchBox,
   #task-addition-box {
     border-top: none;
     background-color: -moz-dialog;
   }
-}
 
-/* Status bar */
+  @media (-moz-platform: windows-win10) {
+    /* See bug 1715990 about why we do this ourselves on HCM */
+    @media (prefers-contrast) {
+      :root[tabsintitlebar]:not(:-moz-lwtheme) {
+        background-color: ActiveCaption;
+      }
 
-.statusbar {
-  appearance: auto;
-  -moz-default-appearance: statusbar;
-  min-height: 22px;
-}
-
-.statusbar:-moz-lwtheme {
-  appearance: none;
-}
-
-.statusbar:-moz-lwtheme-brighttext {
-  --tabs-border-color: hsla(0,0%,60%,.4);
+      :root[tabsintitlebar]:not(:-moz-lwtheme):-moz-window-inactive {
+        background-color: InactiveCaption;
+      }
+    }
+  }
 }
 
 .statusbarpanel {
-  appearance: none;
   border-inline-end: 1px solid ThreeDLightShadow;
 }
 
 .statusbarpanel:-moz-lwtheme {
-  border-inline-end-color: var(--tabs-border-color);
+  border-inline-end-color: var(--lwt-tabs-border-color);
 }
 
-@media (-moz-os-version: windows-win7) and (-moz-windows-default-theme),
-       (-moz-os-version: windows-win8) and (-moz-windows-default-theme) {
+@media (-moz-platform: windows-win7) and (-moz-windows-default-theme),
+       (-moz-platform: windows-win8) and (-moz-windows-default-theme) {
   #status-bar:not(:-moz-lwtheme) {
     appearance: none;
     border-style: none;
@@ -613,19 +450,10 @@ menulist > menupopup:not([is="folder-menupopup"]) > menuseparator {
 }
 
 @media (-moz-windows-classic) {
-  .statusbarpanel:not(:-moz-lwtheme) {
-    appearance: auto;
-    -moz-default-appearance: statusbarpanel;
-  }
-
   label.statusbarpanel {
     margin: 1px;
     padding-block: 2px;
   }
-}
-
-.statusbarpanel-iconic {
-  padding: 0 1px;
 }
 
 /* Status panel */
@@ -684,11 +512,9 @@ fieldset {
 }
 
 legend {
-  font-weight: normal;
   margin-top: -1em;
   margin-inline-start: 3px;
-  padding-right: 3px;
-  padding-left: 3px;
+  padding-inline: 3px;
   background-color: -moz-dialog;
   font-weight: bold;
 }
@@ -697,6 +523,39 @@ fieldset > hbox,
 fieldset > vbox,
 fieldset > radiogroup {
   width: -moz-available;
+}
+
+#navigation-toolbox {
+  appearance: none;
+}
+
+@media (-moz-platform: windows-win7) {
+  @media (-moz-windows-default-theme) and (-moz-windows-glass: 0) {
+    /* Add a window top border behind the titlebar */
+    :root[tabsintitlebar][sizemode="normal"] #navigation-toolbox-background {
+      background-image: linear-gradient(to bottom, ThreeDDarkShadow 0,
+                                        ThreeDDarkShadow 1px, ThreeDHighlight 1px,
+                                        ThreeDHighlight 2px, transparent 2px);
+    }
+  }
+  @media (-moz-windows-classic) {
+    /* Add a window top border behind the titlebar */
+    :root[tabsintitlebar][sizemode="normal"] #navigation-toolbox-background {
+      background-image: linear-gradient(to bottom, ThreeDLightShadow 0,
+                                        ThreeDLightShadow 1px, ThreeDHighlight 1px,
+                                        ThreeDHighlight 2px, ActiveBorder 2px,
+                                        ActiveBorder 4px, transparent 4px);
+    }
+  }
+
+  @media (prefers-contrast) {
+    /* Add a window top border behind the titlebar */
+    :root[tabsintitlebar][sizemode="normal"] #navigation-toolbox-background {
+      background-image: linear-gradient(to bottom, ThreeDLightShadow 0,
+                                        ThreeDLightShadow 1px, ThreeDHighlight 1px,
+                                        ThreeDHighlight 2px, transparent 2px);
+    }
+  }
 }
 
 /* UI Density customization */
@@ -711,8 +570,4 @@ treechildren::-moz-tree-row {
 
 :root[uidensity="touch"] treechildren::-moz-tree-row {
   height: 2.4rem;
-}
-
-#folderPaneOptionsPopup {
-  -moz-window-shadow: none;
 }

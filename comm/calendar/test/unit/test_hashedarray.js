@@ -3,7 +3,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 var { cal } = ChromeUtils.import("resource:///modules/calendar/calHashedArray.jsm");
-var { XPCOMUtils } = ChromeUtils.import("resource://gre/modules/XPCOMUtils.jsm");
+var { XPCOMUtils } = ChromeUtils.importESModule("resource://gre/modules/XPCOMUtils.sys.mjs");
 
 XPCOMUtils.defineLazyModuleGetters(this, {
   CalEvent: "resource:///modules/CalEvent.jsm",
@@ -20,7 +20,7 @@ function run_test() {
  * title identification.
  *
  * @param ident     The title to identify the item.
- * @return          The created item.
+ * @returns The created item.
  */
 function hashedCreateItem(ident) {
   let item = new CalEvent();
@@ -35,7 +35,7 @@ function hashedCreateItem(ident) {
  *
  * @param a         Object to compare.
  * @param b         Object to compare with.
- * @return          0, -1, or 1 (usual comptor meanings)
+ * @returns 0, -1, or 1 (usual comptor meanings)
  */
 function titleComptor(a, b) {
   if (a.title > b.title) {
@@ -58,7 +58,7 @@ function titleComptor(a, b) {
 function checkConsistancy(har, testItems, itemAccessor) {
   itemAccessor =
     itemAccessor ||
-    function(item) {
+    function (item) {
       return item;
     };
   for (let idx in testItems) {
@@ -86,13 +86,13 @@ function checkConsistancy(har, testItems, itemAccessor) {
 function testRemoveModify(har, testItems, postprocessFunc, itemAccessor, itemCreator) {
   postprocessFunc =
     postprocessFunc ||
-    function(a, b) {
+    function (a, b) {
       return [a, b];
     };
   itemCreator = itemCreator || (title => hashedCreateItem(title));
   itemAccessor =
     itemAccessor ||
-    function(item) {
+    function (item) {
       return item;
     };
 
@@ -181,7 +181,7 @@ function test_hashAccessor() {
   let comptor = (a, b) => titleComptor(a.item, b.item);
 
   har = new cal.SortedHashedArray(comptor);
-  har.hashAccessor = function(obj) {
+  har.hashAccessor = function (obj) {
     return obj.item.hashId;
   };
 

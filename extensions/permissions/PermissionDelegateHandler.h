@@ -52,7 +52,7 @@ class PermissionDelegateHandler final : public nsIPermissionDelegateHandler {
   explicit PermissionDelegateHandler() = default;
   explicit PermissionDelegateHandler(mozilla::dom::Document* aDocument);
 
-  static constexpr size_t DELEGATED_PERMISSION_COUNT = 11;
+  static constexpr size_t DELEGATED_PERMISSION_COUNT = 12;
 
   typedef struct DelegatedPermissionList {
     Array<uint32_t, DELEGATED_PERMISSION_COUNT> mPermissions;
@@ -67,7 +67,7 @@ class PermissionDelegateHandler final : public nsIPermissionDelegateHandler {
   /*
    * Indicates if we has the right to make permission request with aType
    */
-  bool HasPermissionDelegated(const nsACString& aType);
+  bool HasPermissionDelegated(const nsACString& aType) const;
 
   /*
    * Get permission state, which applied permission delegate policy.

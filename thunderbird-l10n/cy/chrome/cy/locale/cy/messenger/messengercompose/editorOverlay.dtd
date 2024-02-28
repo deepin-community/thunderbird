@@ -232,9 +232,9 @@
 <!ENTITY tableColumnBefore.accesskey "y">
 <!ENTITY tableColumnAfter.label "Colofn yn Dilyn">
 <!ENTITY tableColumnAfter.accesskey "D">
-<!ENTITY tableCell.label "Cell">
+<!ENTITY tableCell.label "Symudol">
 <!ENTITY tableCells.label "Cell(oedd)">
-<!ENTITY tableCell.accesskey "C">
+<!ENTITY tableCell.accesskey "S">
 <!ENTITY tableCellContents.label "Cynnwys Cell">
 <!ENTITY tableCellContents.accesskey "y">
 <!ENTITY tableAllCells.label "Pob Cell">
@@ -261,6 +261,7 @@
 <!ENTITY tableProperties.label "Priodweddau Tabl…">
 <!ENTITY tableProperties.accesskey "P">
 
+<!-- Toolbar-only items -->
 <!ENTITY imageToolbarCmd.label "Delwedd">
 <!ENTITY imageToolbarCmd.tooltip "Mewnosod delwedd newydd neu olygu priodweddau'r ddelwedd">
 <!ENTITY hruleToolbarCmd.label "H.Line">

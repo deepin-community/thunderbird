@@ -42,7 +42,7 @@ newsgroups-label = 新闻组
 newsgroups-description = { -brand-short-name } 可让您连接到任何新闻组。
 
 import-title = 从其他程序导入…
-import-paragraph = { -brand-short-name } 可让您从其他程序导入邮件消息、通讯录条目、收取点订阅、首选项以及来自其他邮件程序的过滤规则与常见格式的通讯录。
+import-paragraph2 = { -brand-short-name } 可让您从其他程序导入邮件消息、通讯录条目、收取点订阅、设置以及来自其他邮件程序的过滤规则与常见格式的通讯录。
 
 import-label = 导入
     .aria-label = 从其他程序导入数据

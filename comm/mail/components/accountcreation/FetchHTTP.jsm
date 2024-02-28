@@ -1,4 +1,3 @@
-/* -*- Mode: Java; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
@@ -20,8 +19,9 @@ const EXPORTED_SYMBOLS = ["FetchHTTP"];
 const { AccountCreationUtils } = ChromeUtils.import(
   "resource:///modules/accountcreation/AccountCreationUtils.jsm"
 );
+const lazy = {};
 ChromeUtils.defineModuleGetter(
-  this,
+  lazy,
   "Sanitizer",
   "resource:///modules/accountcreation/Sanitizer.jsm"
 );
@@ -44,7 +44,7 @@ const {
  *
  * @param {string} url - URL of the server function.
  *    ATTENTION: The caller needs to make sure that the URL is secure to call.
- * @param {Object} args - Additional parameters as properties, see below
+ * @param {object} args - Additional parameters as properties, see below
  *
  * @param {Function({string} result)} successCallback
  *   Called when the server call worked (no errors).
@@ -82,7 +82,7 @@ const {
  *   like a HTML form post.
  *   The values will be urlComponentEncoded, so pass them unencoded.
  *   This cannot be used together with |uploadBody|.
- * @param {Object} uploadBody - Arbitrary object, which to use as
+ * @param {object} uploadBody - Arbitrary object, which to use as
  *   body of the HTTP request. Will also set the mimetype accordingly.
  *   Only supported object types, currently only JXON is supported
  *   (sending XML).
@@ -105,7 +105,7 @@ const {
 function FetchHTTP(url, args, successCallback, errorCallback) {
   assert(typeof successCallback == "function", "BUG: successCallback");
   assert(typeof errorCallback == "function", "BUG: errorCallback");
-  this._url = Sanitizer.string(url);
+  this._url = lazy.Sanitizer.string(url);
   if (!args) {
     args = {};
   }
@@ -117,14 +117,16 @@ function FetchHTTP(url, args, successCallback, errorCallback) {
   }
 
   this._args = args;
-  this._args.post = Sanitizer.boolean(args.post || false); // default false
+  this._args.post = lazy.Sanitizer.boolean(args.post || false); // default false
   this._args.allowCache =
-    "allowCache" in args ? Sanitizer.boolean(args.allowCache) : true; // default true
-  this._args.allowAuthPrompt = Sanitizer.boolean(args.allowAuthPrompt || false); // default false
-  this._args.requireSecureAuth = Sanitizer.boolean(
+    "allowCache" in args ? lazy.Sanitizer.boolean(args.allowCache) : true; // default true
+  this._args.allowAuthPrompt = lazy.Sanitizer.boolean(
+    args.allowAuthPrompt || false
+  ); // default false
+  this._args.requireSecureAuth = lazy.Sanitizer.boolean(
     args.requireSecureAuth || false
   ); // default false
-  this._args.timeout = Sanitizer.integer(args.timeout || 5000); // default 5 seconds
+  this._args.timeout = lazy.Sanitizer.integer(args.timeout || 5000); // default 5 seconds
   this._successCallback = successCallback;
   this._errorCallback = errorCallback;
   this._logger = gAccountSetupLogger;
@@ -214,7 +216,13 @@ FetchHTTP.prototype = {
       // workaround, because open(..., username, password) does not work.
       request.setRequestHeader(
         "Authorization",
-        "Basic " + btoa(username + ":" + password)
+        "Basic " +
+          btoa(
+            // btoa() takes a BinaryString.
+            String.fromCharCode(
+              ...new TextEncoder().encode(username + ":" + password)
+            )
+          )
       );
     }
     for (let name in this._args.headers) {
@@ -229,13 +237,13 @@ FetchHTTP.prototype = {
     }
 
     var me = this;
-    request.onload = function() {
+    request.onload = function () {
       me._response(true);
     };
-    request.onerror = function() {
+    request.onerror = function () {
       me._response(false);
     };
-    request.ontimeout = function() {
+    request.ontimeout = function () {
       me._response(false);
     };
     request.send(body);
@@ -345,7 +353,7 @@ FetchHTTP.prototype = {
         try {
           this._finishedCallback(this);
         } catch (e) {
-          Cu.reportError(e);
+          console.error(e);
         }
       }
     } catch (e) {
@@ -358,7 +366,7 @@ FetchHTTP.prototype = {
       this._errorCallback(e);
     } catch (e) {
       // error in errorCallback, too!
-      Cu.reportError(e);
+      console.error(e);
       alertPrompt("Error in errorCallback for fetchhttp", e);
     }
   },

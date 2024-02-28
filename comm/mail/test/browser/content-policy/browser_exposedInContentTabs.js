@@ -26,6 +26,10 @@ var {
   "resource://testing-common/mozmill/FolderDisplayHelpers.jsm"
 );
 
+var { MailServices } = ChromeUtils.import(
+  "resource:///modules/MailServices.jsm"
+);
+
 var folder = null;
 var gMsgNo = 0;
 
@@ -46,15 +50,12 @@ var msgBody =
   'pass.png"/>\n' +
   "</body>\n</html>\n";
 
-add_task(function setupModule(module) {
-  folder = create_folder("exposedInContent");
+add_setup(async function () {
+  folder = await create_folder("exposedInContent");
 });
 
 function addToFolder(aSubject, aBody, aFolder) {
-  let msgId =
-    Cc["@mozilla.org/uuid-generator;1"]
-      .getService(Ci.nsIUUIDGenerator)
-      .generateUUID() + "@mozillamessaging.invalid";
+  let msgId = Services.uuid.generateUUID() + "@mozillamessaging.invalid";
 
   let source =
     "From - Sat Nov  1 12:39:54 2008\n" +
@@ -105,9 +106,7 @@ function addMsgToFolder(folder) {
   // We also want to return the url of the message, so save that here.
   let msgSimpleURL = msgHdr.folder.getUriForMsg(msgHdr);
 
-  let msgService = Cc["@mozilla.org/messenger;1"]
-    .createInstance(Ci.nsIMessenger)
-    .messageServiceFromURI(msgSimpleURL);
+  let msgService = MailServices.messageServiceFromURI(msgSimpleURL);
 
   let neckoURL = msgService.getUrlForUri(msgSimpleURL);
 
@@ -119,7 +118,8 @@ function addMsgToFolder(folder) {
 async function checkContentTab(msgURL) {
   // To open a tab we're going to have to cheat and use tabmail so we can load
   // in the data of what we want.
-  let preCount = mc.tabmail.tabContainer.allTabs.length;
+  let preCount =
+    mc.window.document.getElementById("tabmail").tabContainer.allTabs.length;
 
   let dataurl =
     "data:text/html,<html><head><title>test exposed</title>" +
@@ -145,15 +145,18 @@ async function checkContentTab(msgURL) {
     );
   });
 
-  mc.tabmail.closeTab(newTab);
+  mc.window.document.getElementById("tabmail").closeTab(newTab);
 
-  if (mc.tabmail.tabContainer.allTabs.length != preCount) {
+  if (
+    mc.window.document.getElementById("tabmail").tabContainer.allTabs.length !=
+    preCount
+  ) {
     throw new Error("The content tab didn't close");
   }
 }
 
 add_task(async function test_exposedInContentTabs() {
-  be_in_folder(folder);
+  await be_in_folder(folder);
 
   assert_nothing_selected();
 

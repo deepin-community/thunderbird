@@ -8,15 +8,13 @@
 
 "use strict";
 
-var {
-  close_compose_window,
-  get_compose_body,
-  open_compose_with_forward,
-} = ChromeUtils.import("resource://testing-common/mozmill/ComposeHelpers.jsm");
+var { close_compose_window, get_compose_body, open_compose_with_forward } =
+  ChromeUtils.import("resource://testing-common/mozmill/ComposeHelpers.jsm");
 var {
   assert_selected_and_displayed,
   be_in_folder,
   create_folder,
+  get_about_message,
   mc,
   open_message_from_file,
   press_delete,
@@ -24,20 +22,19 @@ var {
 } = ChromeUtils.import(
   "resource://testing-common/mozmill/FolderDisplayHelpers.jsm"
 );
-var { close_window } = ChromeUtils.import(
+var { click_menus_in_sequence, close_window } = ChromeUtils.import(
   "resource://testing-common/mozmill/WindowHelpers.jsm"
 );
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 var { MailServices } = ChromeUtils.import(
   "resource:///modules/MailServices.jsm"
 );
 
 var folderToSendFrom;
 
-add_task(function setupModule(module) {
+add_setup(async function () {
   requestLongerTimeout(2);
-  folderToSendFrom = create_folder("FolderWithUTF8");
+  folderToSendFrom = await create_folder("FolderWithUTF8");
 });
 
 function check_content(window) {
@@ -78,26 +75,38 @@ async function forwardDirect(aFilePath) {
 }
 
 async function forwardViaFolder(aFilePath) {
-  be_in_folder(folderToSendFrom);
+  await be_in_folder(folderToSendFrom);
 
   let file = new FileUtils.File(getTestFilePath(`data/${aFilePath}`));
   let msgc = await open_message_from_file(file);
+  let aboutMessage = get_about_message(msgc.window);
 
   // Copy the message to a folder.
-  let documentChild = msgc.e("messagepane").contentDocument.firstChild;
-  msgc.rightClick(documentChild);
-  await msgc.click_menus_in_sequence(msgc.e("mailContext"), [
-    { id: "mailContext-copyMenu" },
-    { label: "Local Folders" },
-    { label: "FolderWithUTF8" },
-  ]);
+  let documentChild =
+    aboutMessage.document.getElementById("messagepane").contentDocument
+      .documentElement;
+  EventUtils.synthesizeMouseAtCenter(
+    documentChild,
+    { type: "contextmenu", button: 2 },
+    documentChild.ownerGlobal
+  );
+  await click_menus_in_sequence(
+    aboutMessage.document.getElementById("mailContext"),
+    [
+      { id: "mailContext-copyMenu" },
+      { label: "Local Folders" },
+      { label: "FolderWithUTF8" },
+    ]
+  );
   close_window(msgc);
 
   let msg = select_click_row(0);
   assert_selected_and_displayed(mc, msg);
 
   Assert.ok(
-    mc.e("messagepane").contentDocument.body.textContent.includes("áóúäöüß")
+    get_about_message()
+      .document.getElementById("messagepane")
+      .contentDocument.body.textContent.includes("áóúäöüß")
   );
 
   let fwdWin = open_compose_with_forward();
@@ -135,6 +144,6 @@ add_task(async function test_utf8_forwarding_from_via_folder() {
   await forwardViaFolder("./content-utf8-alt-rel2.eml"); // Also tests content before <html>.
 });
 
-registerCleanupFunction(function teardownModule() {
+registerCleanupFunction(function () {
   Services.prefs.clearUserPref("mailnews.display.html_as");
 });

@@ -1,29 +1,28 @@
 {
   "langpack_id": "es-ES",
   "manifest_version": 2,
-  "applications": {
+  "browser_specific_settings": {
     "gecko": {
       "id": "langpack-es-ES@thunderbird.mozilla.org",
-      "strict_min_version": "91.0",
-      "strict_max_version": "91.*"
+      "strict_min_version": "115.0",
+      "strict_max_version": "115.*"
     }
   },
-  "name": "Español (España) Language Pack",
-  "description": "Language pack for Thunderbird for es-ES",
-  "version": "91.0buildid20211101223011",
+  "name": "Language: Español (ES) (Spanish, Spain)",
+  "description": "Thunderbird Language Pack for Español (ES) (es-ES) – Spanish, Spain",
+  "version": "115.8.20240216.174500",
   "languages": {
     "es-ES": {
-      "version": "20211017200738",
+      "version": "20240216183653",
       "chrome_resources": {
         "alerts": "chrome/es-ES/locale/es-ES/alerts/",
         "autoconfig": "chrome/es-ES/locale/es-ES/autoconfig/",
-        "branding": "chrome/es-ES/locale/es-ES/branding/",
+        "branding": "chrome/es-ES/locale/branding/",
         "calendar": "chrome/es-ES/locale/es-ES/calendar/",
         "chat": "chrome/es-ES/locale/es-ES/chat/",
         "communicator": "chrome/es-ES/locale/es-ES/communicator/",
         "devtools": "chrome/es-ES/locale/es-ES/devtools/client/",
         "devtools-shared": "chrome/es-ES/locale/es-ES/devtools/shared/",
-        "devtools-startup": "chrome/es-ES/locale/es-ES/devtools/startup/",
         "global": "chrome/es-ES/locale/es-ES/global/",
         "global-platform": {
           "macosx": "chrome/es-ES/locale/es-ES/global-platform/mac/",
@@ -53,5 +52,5 @@
       "base_path": "browser/"
     }
   },
-  "author": "mozilla.org"
+  "author": "mozilla.org (contributors: Proyecto NAVE (http://www.proyectonave.es/))"
 }

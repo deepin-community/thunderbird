@@ -4,17 +4,33 @@
 
 "use strict";
 
-loader.lazyRequireGetter(
-  this,
-  "NetworkObserver",
-  "devtools/server/actors/network-monitor/network-observer",
-  true
+const { Pool } = require("resource://devtools/shared/protocol/Pool.js");
+const { isWindowGlobalPartOfContext } = ChromeUtils.importESModule(
+  "resource://devtools/server/actors/watcher/browsing-context-helpers.sys.mjs"
 );
+const { WatcherRegistry } = ChromeUtils.importESModule(
+  "resource://devtools/server/actors/watcher/WatcherRegistry.sys.mjs",
+  {
+    // WatcherRegistry needs to be a true singleton and loads ActorManagerParent
+    // which also has to be a true singleton.
+    loadInDevToolsLoader: false,
+  }
+);
+const Targets = require("resource://devtools/server/actors/targets/index.js");
+
+const lazy = {};
+
+ChromeUtils.defineESModuleGetters(lazy, {
+  NetworkObserver:
+    "resource://devtools/shared/network-observer/NetworkObserver.sys.mjs",
+  NetworkUtils:
+    "resource://devtools/shared/network-observer/NetworkUtils.sys.mjs",
+});
 
 loader.lazyRequireGetter(
   this,
   "NetworkEventActor",
-  "devtools/server/actors/network-monitor/network-event-actor",
+  "resource://devtools/server/actors/network-monitor/network-event-actor.js",
   true
 );
 
@@ -41,21 +57,53 @@ class NetworkEventWatcher {
     this.watcherActor = watcherActor;
     this.onNetworkEventAvailable = onAvailable;
     this.onNetworkEventUpdated = onUpdated;
+    // Boolean to know if we keep previous document network events or not.
+    this.persist = false;
+    this.listener = new lazy.NetworkObserver({
+      ignoreChannelFunction: this.shouldIgnoreChannel.bind(this),
+      onNetworkEvent: this.onNetworkEvent.bind(this),
+    });
 
-    this.listener = new NetworkObserver(
-      { browserId: watcherActor.browserId },
-      { onNetworkEvent: this.onNetworkEvent.bind(this) }
-    );
-
-    this.listener.init();
+    Services.obs.addObserver(this, "window-global-destroyed");
   }
 
-  get conn() {
-    return this.watcherActor.conn;
+  /**
+   * Clear all the network events and the related actors.
+   *
+   * This is called on actor destroy, but also from WatcherActor.clearResources(NETWORK_EVENT)
+   */
+  clear() {
+    this.networkEvents.clear();
+    this.listener.clear();
+    if (this._pool) {
+      this._pool.destroy();
+      this._pool = null;
+    }
   }
 
-  get browserId() {
-    return this.watcherActor.browserId;
+  /**
+   * A protocol.js Pool to store all NetworkEventActor's which may be destroyed on navigations.
+   */
+  get pool() {
+    if (this._pool) {
+      return this._pool;
+    }
+    this._pool = new Pool(this.watcherActor.conn, "network-events");
+    this.watcherActor.manage(this._pool);
+    return this._pool;
+  }
+
+  /**
+   * Instruct to keep reference to previous document requests or not.
+   * If persist is disabled, we will clear all informations about previous document
+   * on each navigation.
+   * If persist is enabled, we will keep all informations for all documents, leading
+   * to lots of allocations!
+   *
+   * @param {Boolean} enabled
+   */
+  setPersist(enabled) {
+    this.persist = enabled;
   }
 
   /**
@@ -65,7 +113,7 @@ class NetworkEventWatcher {
    *
    */
   getThrottleData() {
-    return this.listener.throttleData;
+    return this.listener.getThrottleData();
   }
 
   /**
@@ -75,7 +123,15 @@ class NetworkEventWatcher {
    *
    */
   setThrottleData(data) {
-    this.listener.throttleData = data;
+    this.listener.setThrottleData(data);
+  }
+
+  /**
+   * Instruct to save or ignore request and response bodies
+   * @param {Boolean} save
+   */
+  setSaveRequestAndResponseBodies(save) {
+    this.listener.setSaveRequestAndResponseBodies(save);
   }
 
   /**
@@ -116,35 +172,158 @@ class NetworkEventWatcher {
     return this.listener.getBlockedUrls();
   }
 
-  onNetworkEvent(event) {
-    const { channelId } = event;
+  override(url, path) {
+    this.listener.override(url, path);
+  }
 
-    if (this.networkEvents.has(channelId)) {
+  removeOverride(url) {
+    this.listener.removeOverride(url);
+  }
+
+  /**
+   * Watch for previous document being unloaded in order to clear
+   * all related network events, in case persist is disabled.
+   * (which is the default behavior)
+   */
+  observe(windowGlobal, topic) {
+    if (topic !== "window-global-destroyed") {
+      return;
+    }
+    // If we persist, we will keep all requests allocated.
+    // For now, consider that the Browser console and toolbox persist all the requests.
+    if (this.persist || this.watcherActor.sessionContext.type == "all") {
+      return;
+    }
+    // Only process WindowGlobals which are related to the debugged scope.
+    if (
+      !isWindowGlobalPartOfContext(
+        windowGlobal,
+        this.watcherActor.sessionContext
+      )
+    ) {
+      return;
+    }
+    const { innerWindowId } = windowGlobal;
+
+    for (const child of this.pool.poolChildren()) {
+      // Destroy all network events matching the destroyed WindowGlobal
+      if (!child.isNavigationRequest()) {
+        if (child.getInnerWindowId() == innerWindowId) {
+          child.destroy();
+        }
+        // Avoid destroying the navigation request, which is flagged with previous document's innerWindowId.
+        // When navigating, the WindowGlobal we navigate *from* will be destroyed and notified here.
+        // We should explicitly avoid destroying it here.
+        // But, we still want to eventually destroy them.
+        // So do this when navigating a second time, we will navigate from a distinct WindowGlobal
+        // and check that this is the top level window global and not an iframe one.
+        // So that we avoid clearing the top navigation when an iframe navigates
+        //
+        // Avoid destroying the request if innerWindowId isn't set. This happens when we reload many times in a row.
+        // The previous navigation request will be cancelled and because of that its innerWindowId will be null.
+        // But the frontend will receive it after the navigation begins (after will-navigate) and will display it
+        // and try to fetch extra data about it. So, avoid destroying its NetworkEventActor.
+      } else if (
+        child.getInnerWindowId() &&
+        child.getInnerWindowId() != innerWindowId &&
+        windowGlobal.browsingContext ==
+          this.watcherActor.browserElement?.browsingContext
+      ) {
+        child.destroy();
+      }
+    }
+  }
+
+  /**
+   * Called by NetworkObserver in order to know if the channel should be ignored
+   */
+  shouldIgnoreChannel(channel) {
+    // First of all, check if the channel matches the watcherActor's session.
+    const filters = { sessionContext: this.watcherActor.sessionContext };
+    if (!lazy.NetworkUtils.matchRequest(channel, filters)) {
+      return true;
+    }
+
+    // When we are in the browser toolbox in parent process scope,
+    // the session context is still "all", but we are no longer watching frame and process targets.
+    // In this case, we should ignore all requests belonging to a BrowsingContext that isn't in the parent process
+    // (i.e. the process where this Watcher runs)
+    const isParentProcessOnlyBrowserToolbox =
+      this.watcherActor.sessionContext.type == "all" &&
+      !WatcherRegistry.isWatchingTargets(
+        this.watcherActor,
+        Targets.TYPES.FRAME
+      );
+    if (isParentProcessOnlyBrowserToolbox) {
+      // We should ignore all requests coming from BrowsingContext running in another process
+      const browsingContextID =
+        lazy.NetworkUtils.getChannelBrowsingContextID(channel);
+      const browsingContext = BrowsingContext.get(browsingContextID);
+      // We accept any request that isn't bound to any BrowsingContext.
+      // This is most likely a privileged request done from a JSM/C++.
+      // `isInProcess` will be true, when the document executes in the parent process.
+      //
+      // Note that we will still accept all requests that aren't bound to any BrowsingContext
+      // See browser_resources_network_events_parent_process.js test with privileged request
+      // made from the content processes.
+      // We miss some attribute on channel/loadInfo to know that it comes from the content process.
+      if (browsingContext?.currentWindowGlobal.isInProcess === false) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  onNetworkEvent(networkEventOptions, channel) {
+    if (this.networkEvents.has(channel.channelId)) {
       throw new Error(
-        `Got notified about channel ${channelId} more than once.`
+        `Got notified about channel ${channel.channelId} more than once.`
       );
     }
+
     const actor = new NetworkEventActor(
-      this,
+      this.watcherActor.conn,
+      this.watcherActor.sessionContext,
       {
         onNetworkEventUpdate: this.onNetworkEventUpdate.bind(this),
         onNetworkEventDestroy: this.onNetworkEventDestroy.bind(this),
       },
-      event
+      networkEventOptions,
+      channel
     );
-    this.watcherActor.manage(actor);
+    this.pool.manage(actor);
 
     const resource = actor.asResource();
-
-    this.networkEvents.set(resource.resourceId, {
+    const isBlocked = !!resource.blockedReason;
+    const networkEvent = {
+      browsingContextID: resource.browsingContextID,
+      innerWindowId: resource.innerWindowId,
       resourceId: resource.resourceId,
       resourceType: resource.resourceType,
-      isBlocked: !!resource.blockedReason,
-      types: [],
-      resourceUpdates: {},
-    });
+      isBlocked,
+      receivedUpdates: [],
+      resourceUpdates: {
+        // Requests already come with request cookies and headers, so those
+        // should always be considered as available. But the client still
+        // heavily relies on those `Available` flags to fetch additional data,
+        // so it is better to keep them for consistency.
+        requestCookiesAvailable: true,
+        requestHeadersAvailable: true,
+      },
+    };
+    this.networkEvents.set(resource.resourceId, networkEvent);
 
     this.onNetworkEventAvailable([resource]);
+
+    // Blocked requests will not receive further updates and should emit an
+    // update packet immediately.
+    // The frontend expects to receive a dedicated update to consider the
+    // request as completed. TODO: lift this restriction so that we can only
+    // emit a resource available notification if no update is needed.
+    if (isBlocked) {
+      this._emitUpdate(networkEvent);
+    }
+
     return actor;
   }
 
@@ -155,13 +334,7 @@ class NetworkEventWatcher {
       return;
     }
 
-    const {
-      resourceId,
-      resourceType,
-      resourceUpdates,
-      types,
-      isBlocked,
-    } = networkEvent;
+    const { resourceUpdates, receivedUpdates } = networkEvent;
 
     switch (updateResource.updateType) {
       case "responseStart":
@@ -175,6 +348,9 @@ class NetworkEventWatcher {
         // in _httpResponseExaminer.
         resourceUpdates.mimeType = updateResource.mimeType;
         resourceUpdates.waitingTime = updateResource.waitingTime;
+
+        resourceUpdates.responseHeadersAvailable = true;
+        resourceUpdates.responseCookiesAvailable = true;
         break;
       case "responseContent":
         resourceUpdates.contentSize = updateResource.contentSize;
@@ -193,32 +369,26 @@ class NetworkEventWatcher {
     }
 
     resourceUpdates[`${updateResource.updateType}Available`] = true;
-    types.push(updateResource.updateType);
+    receivedUpdates.push(updateResource.updateType);
 
-    if (isBlocked) {
-      // Blocked requests
-      if (
-        !types.includes("requestHeaders") ||
-        !types.includes("requestCookies")
-      ) {
-        return;
-      }
-    } else if (
-      // Un-blocked requests
-      !types.includes("requestHeaders") ||
-      !types.includes("requestCookies") ||
-      !types.includes("eventTimings") ||
-      !types.includes("responseContent") ||
-      !types.includes("securityInfo")
-    ) {
-      return;
+    const isComplete =
+      receivedUpdates.includes("eventTimings") &&
+      receivedUpdates.includes("responseContent") &&
+      receivedUpdates.includes("securityInfo");
+
+    if (isComplete) {
+      this._emitUpdate(networkEvent);
     }
+  }
 
+  _emitUpdate(networkEvent) {
     this.onNetworkEventUpdated([
       {
-        resourceType,
-        resourceId,
-        resourceUpdates,
+        resourceType: networkEvent.resourceType,
+        resourceId: networkEvent.resourceId,
+        resourceUpdates: networkEvent.resourceUpdates,
+        browsingContextID: networkEvent.browsingContextID,
+        innerWindowId: networkEvent.innerWindowId,
       },
     ]);
   }
@@ -231,13 +401,12 @@ class NetworkEventWatcher {
 
   /**
    * Stop watching for network event related to a given Watcher Actor.
-   *
-   * @param WatcherActor watcherActor
-   *        The watcher actor from which we should stop observing network events
    */
-  destroy(watcherActor) {
+  destroy() {
     if (this.listener) {
+      this.clear();
       this.listener.destroy();
+      Services.obs.removeObserver(this, "window-global-destroyed");
     }
   }
 }

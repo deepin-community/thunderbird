@@ -67,7 +67,7 @@ class nsMsgSendLater : public nsIMsgSendLater,
   nsresult SetOrigMsgDisposition();
   // Necessary for creating a valid list of recipients
   nsresult BuildHeaders();
-  nsresult DeliverQueuedLine(char* line, int32_t length);
+  nsresult DeliverQueuedLine(const char* line, int32_t length);
   nsresult RebufferLeftovers(char* startBuf, uint32_t aLen);
   nsresult BuildNewBuffer(const char* aBuf, uint32_t aCount,
                           uint32_t* totalBufSize);
@@ -101,6 +101,7 @@ class nsMsgSendLater : public nsIMsgSendLater,
   nsresult GetIdentityFromKey(const char* aKey, nsIMsgIdentity** aIdentity);
   nsresult ReparseDBIfNeeded(nsIUrlListener* aListener);
   nsresult InternalSendMessages(bool aUserInitiated, nsIMsgIdentity* aIdentity);
+  nsresult StartTimer();
 
   nsTObserverArray<nsCOMPtr<nsIMsgSendLaterListener> > mListenerArray;
   nsCOMPtr<nsIMsgDBHdr> mMessage;
@@ -133,7 +134,6 @@ class nsMsgSendLater : public nsIMsgSendLater,
   char* mIdentityKey;
   char* mAccountKey;
 
-  bool mJsSendModule;
   bool mSendingMessages;
   bool mUserInitiated;
   nsCOMPtr<nsIMsgIdentity> mIdentity;

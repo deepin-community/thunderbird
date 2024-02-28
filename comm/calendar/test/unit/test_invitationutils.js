@@ -4,8 +4,7 @@
 
 var { cal } = ChromeUtils.import("resource:///modules/calendar/calUtils.jsm");
 var { MailServices } = ChromeUtils.import("resource:///modules/MailServices.jsm");
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-var { XPCOMUtils } = ChromeUtils.import("resource://gre/modules/XPCOMUtils.jsm");
+var { XPCOMUtils } = ChromeUtils.importESModule("resource://gre/modules/XPCOMUtils.sys.mjs");
 
 XPCOMUtils.defineLazyModuleGetters(this, {
   CalAttendee: "resource:///modules/CalAttendee.jsm",
@@ -17,22 +16,14 @@ function run_test() {
 
 // tests for calInvitationUtils.jsm
 
-// Make sure that the Europe/Berlin timezone and long datetime format is set
-// and to use the app locale to avoid test failures when running locally on
-// an OS with a regional setting other than en-US.
-//
-// NOTE: If your OS is in English but not US English this will not switch it
-// to en-US. But the test is still known to work with en-GB.
-// If it doesn't work, try `export LC_TIME=en_US.UTF-8` before running the
-// test. Or you can update the test time regular expressions to also include
-// your English locale.
-Services.prefs.setBoolPref("intl.regional_prefs.use_os_locales", false);
+// Make sure that the Europe/Berlin timezone and long datetime format is set.
 Services.prefs.setIntPref("calendar.date.format", 0);
 Services.prefs.setStringPref("calendar.timezone.local", "Europe/Berlin");
 
 /**
  * typedef {Object} FullIcsValue
- * @property {Object.<string, string>} params - Parameters for the ics property,
+ *
+ * @property {Object<string, string>} params - Parameters for the ics property,
  *   mapping from the parameter name to its value. Each name should be in camel
  *   case. For example, to set "PARTSTAT=ACCEPTED" on the "attendee" property,
  *   use `{ partstat: "ACCEPTED" }`.
@@ -47,7 +38,7 @@ Services.prefs.setStringPref("calendar.timezone.local", "Europe/Berlin");
 /**
  * Get a ics string for an event.
  *
- * @param {Object.<string, (IcsValue|IcsValue[])>} [eventProperties] - Object
+ * @param {Object<string, (IcsValue | IcsValue[])>} [eventProperties] - Object
  *   used to set the event properties, mapping from the ics property name to its
  *   value. The property name should be in camel case, so "propertyName" should
  *   be used for the "PROPERTY-NAME" property. The value can either be a single
@@ -62,7 +53,7 @@ Services.prefs.setStringPref("calendar.timezone.local", "Europe/Berlin");
  *   the object. Note that to avoid a property with a default value, you must
  *   pass an empty value for the property.
  *
- * @return {string} - The ics string.
+ * @returns {string} - The ics string.
  */
 function getIcs(eventProperties) {
   // we use an unfolded ics blueprint here to make replacing of properties easier
@@ -1168,7 +1159,7 @@ add_task(async function getHeaderSection_test() {
         "Return-path: =?UTF-8?B?TWF4ICYgUmVuw6k=?= <no-reply@example.net>\r\n" +
         "From: =?UTF-8?B?UmVuw6k=?= <sender@example.net>\r\n" +
         "Organization: =?UTF-8?B?TWF4ICYgUmVuw6k=?=\r\n" +
-        "To: =?UTF-8?Q?Max_M=c3=bcller?= <mueller@example.net>\r\n" +
+        "To: =?UTF-8?Q?Max_M=C3=BCller?= <mueller@example.net>\r\n" +
         "Subject: =?UTF-8?B?SW52aXRhdGlvbjogRGlhY3JpdGlzIGNoZWNrICjDvMOk?=\r\n =?UTF-8?B" +
         "?w6kp?=\r\n" +
         "Cc: =?UTF-8?B?UmVuw6k=?= <cc@example.net>\r\n" +
@@ -1178,7 +1169,7 @@ add_task(async function getHeaderSection_test() {
   let i = 0;
   for (let test of data) {
     i++;
-    info(`testing test #${i}`);
+    info(`Running test #${i}`);
     let identity = MailServices.accounts.createIdentity();
     identity.email = test.input.identity.email || null;
     identity.fullName = test.input.identity.fullName || null;
@@ -1192,7 +1183,7 @@ add_task(async function getHeaderSection_test() {
     let composeUtils = Cc["@mozilla.org/messengercompose/computils;1"].createInstance(
       Ci.nsIMsgCompUtils
     );
-    let messageId = composeUtils.msgGenerateMessageId(identity);
+    let messageId = composeUtils.msgGenerateMessageId(identity, null);
 
     let header = cal.invitation.getHeaderSection(
       messageId,
@@ -1215,45 +1206,29 @@ add_task(async function convertFromUnicode_test() {
   let data = [
     {
       // test #1
-      input: {
-        charset: "UTF-8",
-        text: "müller",
-      },
+      input: "müller",
       expected: "mÃ¼ller",
     },
     {
       // test #2
-      input: {
-        charset: "UTF-8",
-        text: "muller",
-      },
+      input: "muller",
       expected: "muller",
     },
     {
       // test #3
-      input: {
-        charset: "UTF-8",
-        text: "müller\nmüller",
-      },
+      input: "müller\nmüller",
       expected: "mÃ¼ller\nmÃ¼ller",
     },
     {
       // test #4
-      input: {
-        charset: "UTF-8",
-        text: "müller\r\nmüller",
-      },
+      input: "müller\r\nmüller",
       expected: "mÃ¼ller\r\nmÃ¼ller",
     },
   ];
   let i = 0;
   for (let test of data) {
     i++;
-    equal(
-      cal.invitation.convertFromUnicode(test.input.charset, test.input.text),
-      test.expected,
-      "(test #" + i + ")"
-    );
+    equal(cal.invitation.convertFromUnicode(test.input), test.expected, "(test #" + i + ")");
   }
 });
 
@@ -1300,7 +1275,7 @@ add_task(async function encodeMimeHeader_test() {
         header: "Max Müller <m.mueller@example.net>",
         isEmail: true,
       },
-      expected: "=?UTF-8?Q?Max_M=c3=bcller?= <m.mueller@example.net>",
+      expected: "=?UTF-8?Q?Max_M=C3=BCller?= <m.mueller@example.net>",
     },
     {
       // test #2
@@ -1430,12 +1405,16 @@ add_task(async function parseCounter_test() {
             original: "Room 1",
           },
           dtstart: {
-            proposed: /^Thursday, (September 10,|10 September) 2015 (9:00 PM|21:00) Europe\/Berlin$/,
-            original: /^Wednesday, (September 0?9,|0?9 September) 2015 (9:00 PM|21:00) Europe\/Berlin$/,
+            proposed:
+              /^Thursday, (September 10,|10 September) 2015 (9:00 PM|21:00) Europe\/Berlin$/,
+            original:
+              /^Wednesday, (September 0?9,|0?9 September) 2015 (9:00 PM|21:00) Europe\/Berlin$/,
           },
           dtend: {
-            proposed: /^Thursday, (September 10,|10 September) 2015 (10:00 PM|22:00) Europe\/Berlin$/,
-            original: /^Wednesday, (September 0?9,|0?9 September) 2015 (10:00 PM|22:00) Europe\/Berlin$/,
+            proposed:
+              /^Thursday, (September 10,|10 September) 2015 (10:00 PM|22:00) Europe\/Berlin$/,
+            original:
+              /^Wednesday, (September 0?9,|0?9 September) 2015 (10:00 PM|22:00) Europe\/Berlin$/,
           },
           comment: {
             proposed: "Sorry, I cannot make it that time.",
@@ -1590,12 +1569,12 @@ add_task(async function parseCounter_test() {
   ];
   /* eslint-enable object-curly-newline */
 
-  let getItem = function(aProperties) {
+  let getItem = function (aProperties) {
     let item = getIcs(aProperties);
     return createEventFromIcalString(item);
   };
 
-  let formatDt = function(aDateTime) {
+  let formatDt = function (aDateTime) {
     if (!aDateTime) {
       return null;
     }

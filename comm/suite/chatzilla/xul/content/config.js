@@ -24,6 +24,7 @@ function CIRCDCC() {}
 function CIRCDCCUser() {}
 function CIRCDCCChat() {}
 function CIRCDCCFileTransfer() {}
+function CIRCSTS() {}
 
 function getObjectDetails(obj)
 {
@@ -86,13 +87,14 @@ PrefGlobal.prototype.TYPE = "PrefGlobal";
  */
 function PrefNetwork(parent, name, force, show)
 {
-    if (name in parent.networks)
-        return parent.networks[name];
+    if (":" + name in parent.networks)
+        return parent.networks[":" + name];
     
     this.parent = parent;
     this.unicodeName = name;
     this.viewName = name;
     this.canonicalName = name;
+    this.collectionKey = ":" + name;
     this.encodedName = name;
     this.prettyName = getMsg(MSG_PREFS_FMT_DISPLAY_NETWORK, this.unicodeName);
     this.servers = new Object();
@@ -107,7 +109,7 @@ function PrefNetwork(parent, name, force, show)
         this.prefs["hasPrefs"] = true;
     
     if (this.prefs["hasPrefs"] || show)
-        this.parent.networks[this.canonicalName] = this;
+        this.parent.networks[this.collectionKey] = this;
     
     return this;
 };
@@ -118,7 +120,7 @@ PrefNetwork.prototype.clear =
 function pnet_clear()
 {
     this.prefs["hasPrefs"] = false;
-    delete this.parent.networks[this.canonicalName];
+    delete this.parent.networks[this.collectionKey];
 }
 
 /* A middle-management object.
@@ -132,11 +134,12 @@ function PrefServer(parent, name)
     this.unicodeName = name;
     this.viewName = name;
     this.canonicalName = name;
+    this.collectionKey = ":" + name;
     this.encodedName = name;
     this.prettyName = this.unicodeName; // Not used, thus not localised.
     this.channels = new Object();
     this.users = new Object();
-    this.parent.servers[name] = this;
+    this.parent.servers[this.collectionKey] = this;
     return this;
 };
 PrefServer.prototype.TYPE = "PrefServer";
@@ -147,13 +150,14 @@ PrefServer.prototype.TYPE = "PrefServer";
  */
 function PrefChannel(parent, name, force, show)
 {
-    if (name in parent.channels)
-        return parent.channels[name];
+    if (":" + name in parent.channels)
+        return parent.channels[":" + name];
     
     this.parent = parent;
     this.unicodeName = name;
     this.viewName = name;
     this.canonicalName = name;
+    this.collectionKey = ":" + name;
     this.encodedName = name;
     this.prettyName = getMsg(MSG_PREFS_FMT_DISPLAY_CHANNEL, 
                              [this.parent.parent.unicodeName, this.unicodeName]);
@@ -165,7 +169,7 @@ function PrefChannel(parent, name, force, show)
         this.prefs["hasPrefs"] = true;
     
     if (this.prefs["hasPrefs"] || show)
-        this.parent.channels[this.canonicalName] = this;
+        this.parent.channels[this.collectionKey] = this;
     
     return this;
 };
@@ -176,7 +180,7 @@ PrefChannel.prototype.clear =
 function pchan_clear()
 {
     this.prefs["hasPrefs"] = false;
-    delete this.parent.channels[this.canonicalName];
+    delete this.parent.channels[this.collectionKey];
 }
 
 /* Represents a single user in the hierarchy.
@@ -185,13 +189,14 @@ function pchan_clear()
  */
 function PrefUser(parent, name, force, show)
 {
-    if (name in parent.users)
-        return parent.users[name];
+    if (":" + name in parent.users)
+        return parent.users[":" + name];
     
     this.parent = parent;
     this.unicodeName = name;
     this.viewName = name;
     this.canonicalName = name;
+    this.collectionKey = ":" + name;
     this.encodedName = name;
     this.prettyName = getMsg(MSG_PREFS_FMT_DISPLAY_USER, 
                              [this.parent.parent.unicodeName, this.unicodeName]);
@@ -203,7 +208,7 @@ function PrefUser(parent, name, force, show)
         this.prefs["hasPrefs"] = true;
     
     if (this.prefs["hasPrefs"] || show)
-        this.parent.users[this.canonicalName] = this;
+        this.parent.users[this.collectionKey] = this;
     
     return this;
 };
@@ -214,7 +219,7 @@ PrefUser.prototype.clear =
 function puser_clear()
 {
     this.prefs["hasPrefs"] = false;
-    delete this.parent.users[this.canonicalName];
+    delete this.parent.users[this.collectionKey];
 }
 
 // Stores a list of |PrefObject|s.
@@ -1001,12 +1006,12 @@ function pwin_onLoad()
         var force = client.prefManager.prefBranch.prefHasUserValue(netList[i]);
         
         // Don't bother with the new if it's already there (time saving).
-        if (!(netName in client.networks))
+        if (!(":" + netName in client.networks))
             new PrefNetwork(client, netName, force);
         
-        if ((2 in m) && (3 in m) && (netName in client.networks))
+        if ((2 in m) && (3 in m) && (":" + netName in client.networks))
         {
-            var net = client.networks[netName];
+            let net = client.networks[":" + netName];
             
             // Create a channel object if appropriate.
             if (m[2] == "channels")
@@ -1589,14 +1594,14 @@ function pwin_onAddObject()
             this.prefObjects.addObject(new PrefNetwork(client, rv.net, true));
             break;
         case "chan":
-            if (!(rv.net in client.networks))
+            if (!(":" + rv.net in client.networks))
                 this.prefObjects.addObject(new PrefNetwork(client, rv.net, true));
-            this.prefObjects.addObject(new PrefChannel(client.networks[rv.net].primServ, rv.chan, true));
+            this.prefObjects.addObject(new PrefChannel(client.networks[":" + rv.net].primServ, rv.chan, true));
             break;
         case "user":
-            if (!(rv.net in client.networks))
+            if (!(":" + rv.net in client.networks))
                 this.prefObjects.addObject(new PrefNetwork(client, rv.net, true));
-            this.prefObjects.addObject(new PrefUser(client.networks[rv.net].primServ, rv.chan, true));
+            this.prefObjects.addObject(new PrefUser(client.networks[":" + rv.net].primServ, rv.chan, true));
             break;
         default:
             // Oops. Not good, if we got here.

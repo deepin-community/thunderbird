@@ -6,30 +6,29 @@
  * This test verifies that we emit a message/rfc822 body part as an attachment
  * whether or not mail.inline_attachments is true.
  */
-/* import-globals-from ../../../test/resources/logHelper.js */
-/* import-globals-from ../../../test/resources/asyncTestUtils.js */
-/* import-globals-from ../../../test/resources/MessageGenerator.jsm */
-/* import-globals-from ../../../test/resources/messageModifier.js */
-/* import-globals-from ../../../test/resources/messageInjection.js */
-load("../../../resources/logHelper.js");
-load("../../../resources/asyncTestUtils.js");
 
-load("../../../resources/MessageGenerator.jsm");
-load("../../../resources/messageModifier.js");
-load("../../../resources/messageInjection.js");
+var { MessageGenerator, SyntheticMessageSet } = ChromeUtils.import(
+  "resource://testing-common/mailnews/MessageGenerator.jsm"
+);
+var { MessageInjection } = ChromeUtils.import(
+  "resource://testing-common/mailnews/MessageInjection.jsm"
+);
+var { PromiseTestUtils } = ChromeUtils.import(
+  "resource://testing-common/mailnews/PromiseTestUtils.jsm"
+);
+var messenger = Cc["@mozilla.org/messenger;1"].createInstance(Ci.nsIMessenger);
+var msgGen = new MessageGenerator();
+var messageInjection = new MessageInjection({ mode: "local" });
+var inbox = messageInjection.getInboxFolder();
 
-var gMessenger = Cc["@mozilla.org/messenger;1"].createInstance(Ci.nsIMessenger);
-
-// Create a message generator
-var msgGen = (gMessageGenerator = new MessageGenerator());
-
-var messages = [
-  {
+add_task(async function test_rfc822_body_display_inline() {
+  Services.prefs.setBoolPref("mail.inline_attachments", true);
+  await help_test_rfc822_body({
     // a message whose body is itself a message
     bodyPart: msgGen.makeMessage(),
-    attachmentCount: inline => 1,
-  },
-  {
+    attachmentCount: 1,
+  });
+  await help_test_rfc822_body({
     // a message whose body is itself a message, and which has an attachment
     bodyPart: msgGen.makeMessage({
       attachments: [
@@ -40,84 +39,50 @@ var messages = [
         },
       ],
     }),
-    attachmentCount: inline => (inline ? 2 : 1),
-  },
-];
+    attachmentCount: 2,
+  });
+});
 
-var gStreamListener = {
-  stream: null,
-  QueryInterface: ChromeUtils.generateQI(["nsIStreamListener"]),
+add_task(async function test_rfc822_body_no_display_inline() {
+  Services.prefs.setBoolPref("mail.inline_attachments", false);
+  await help_test_rfc822_body({
+    // a message whose body is itself a message
+    bodyPart: msgGen.makeMessage(),
+    attachmentCount: 1,
+  });
+  await help_test_rfc822_body({
+    // a message whose body is itself a message, and which has an attachment
+    bodyPart: msgGen.makeMessage({
+      attachments: [
+        {
+          body: "I'm an attachment!",
+          filename: "attachment.txt",
+          format: "",
+        },
+      ],
+    }),
+    attachmentCount: 1,
+  });
+});
 
-  // nsIRequestObserver part
-  onStartRequest(aRequest) {},
-  onStopRequest(aRequest, aStatusCode) {
-    Assert.equal(
-      gMessageHeaderSink.attachmentCount,
-      this.expectedAttachmentCount
-    );
-    async_driver();
-  },
-
-  // nsIStreamListener part
-  onDataAvailable(aRequest, aInputStream, aOffset, aCount) {
-    if (this.stream === null) {
-      this.stream = Cc["@mozilla.org/scriptableinputstream;1"].createInstance(
-        Ci.nsIScriptableInputStream
-      );
-      this.stream.init(aInputStream);
-    }
-  },
-};
-
-var gMessageHeaderSink = {
-  attachmentCount: 0,
-
-  handleAttachment(
-    aContentType,
-    aUrl,
-    aDisplayName,
-    aUri,
-    aIsExternalAttachment
-  ) {
-    this.attachmentCount++;
-  },
-
-  // stub functions from nsIMsgHeaderSink
-  addAttachmentField(aName, aValue) {},
-  onStartHeaders() {},
-  onEndHeaders() {},
-  processHeaders(aHeaderNames, aHeaderValues, dontCollectAddrs) {},
-  onEndAllAttachments() {},
-  onEndMsgDownload() {},
-  onEndMsgHeaders(aUrl) {},
-  onMsgHasRemoteContent(aMsgHdr, aContentURI) {},
-  securityInfo: null,
-  mDummyMsgHeader: null,
-  properties: null,
-  resetProperties() {
-    this.attachmentCount = 0;
-  },
-};
-
-var msgWindow = Cc["@mozilla.org/messenger/msgwindow;1"].createInstance(
-  Ci.nsIMsgWindow
-);
-msgWindow.msgHeaderSink = gMessageHeaderSink;
-
-function* help_test_rfc822_body(info, inline) {
-  Services.prefs.setBoolPref("mail.inline_attachments", inline);
-  let synMsg = gMessageGenerator.makeMessage(info);
+async function help_test_rfc822_body(info) {
+  let synMsg = msgGen.makeMessage(info);
   let synSet = new SyntheticMessageSet([synMsg]);
-  yield add_sets_to_folder(gInbox, [synSet]);
+  await messageInjection.addSetsToFolders([inbox], [synSet]);
 
   let msgURI = synSet.getMsgURI(0);
-  let msgService = gMessenger.messageServiceFromURI(msgURI);
+  let msgService = MailServices.messageServiceFromURI(msgURI);
 
-  gStreamListener.expectedAttachmentCount = info.attachmentCount(inline);
+  let streamListener = new PromiseTestUtils.PromiseStreamListener({
+    onStopRequest(request, statusCode) {
+      request.QueryInterface(Ci.nsIMailChannel);
+      Assert.equal(request.attachments.length, info.attachmentCount);
+    },
+  });
   msgService.streamMessage(
     msgURI,
-    gStreamListener,
-    msgWindow,
+    streamListener,
+    null,
     null,
     true, // have them create the converter
     // additional uri payload, note that "header=" is prepended automatically
@@ -125,27 +90,5 @@ function* help_test_rfc822_body(info, inline) {
     false
   );
 
-  yield false;
-}
-
-function test_rfc822_body_display_inline(info) {
-  return help_test_rfc822_body(info, true);
-}
-
-function test_rfc822_body_no_display_inline(info) {
-  return help_test_rfc822_body(info, false);
-}
-
-/* ===== Driver ===== */
-
-var tests = [
-  parameterizeTest(test_rfc822_body_display_inline, messages),
-  parameterizeTest(test_rfc822_body_no_display_inline, messages),
-];
-
-var gInbox;
-
-function run_test() {
-  gInbox = configure_message_injection({ mode: "local" });
-  async_run_tests(tests);
+  await streamListener.promise;
 }

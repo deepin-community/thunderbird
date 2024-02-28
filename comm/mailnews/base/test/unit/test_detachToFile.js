@@ -6,23 +6,46 @@
  * Tests nsIMessenger's detachAttachmentsWOPrompts
  */
 
-/* import-globals-from ../../../test/resources/logHelper.js */
-/* import-globals-from ../../../test/resources/asyncTestUtils.js */
-load("../../../resources/logHelper.js");
-load("../../../resources/asyncTestUtils.js");
+var { PromiseTestUtils } = ChromeUtils.import(
+  "resource://testing-common/mailnews/PromiseTestUtils.jsm"
+);
 
-// javascript mime emitter functions
-var mimeMsg = {};
 var { MailServices } = ChromeUtils.import(
   "resource:///modules/MailServices.jsm"
 );
-ChromeUtils.import("resource:///modules/gloda/MimeMessage.jsm", mimeMsg);
+var { MsgHdrToMimeMessage } = ChromeUtils.import(
+  "resource:///modules/gloda/MimeMessage.jsm"
+);
 
-var tests = [startCopy, startMime, startDetach, testDetach];
+function SaveAttachmentCallback() {
+  this.attachments = null;
+  this._promise = new Promise((resolve, reject) => {
+    this._resolve = resolve;
+    this._reject = reject;
+  });
+}
 
-function* startCopy() {
+SaveAttachmentCallback.prototype = {
+  callback: function saveAttachmentCallback_callback(aMsgHdr, aMimeMessage) {
+    this.attachments = aMimeMessage.allAttachments;
+    this._resolve();
+  },
+  get promise() {
+    return this._promise;
+  },
+};
+var gCallbackObject = new SaveAttachmentCallback();
+
+add_setup(async function () {
+  if (!localAccountUtils.inboxFolder) {
+    localAccountUtils.loadLocalMailAccount();
+  }
+});
+
+add_task(async function startCopy() {
   // Get a message into the local filestore.
-  var mailFile = do_get_file("../../../data/external-attach-test");
+  let mailFile = do_get_file("../../../data/external-attach-test");
+  let listener = new PromiseTestUtils.PromiseCopyListener();
   MailServices.copy.copyFileMessage(
     mailFile,
     localAccountUtils.inboxFolder,
@@ -30,27 +53,28 @@ function* startCopy() {
     false,
     0,
     "",
-    asyncCopyListener,
+    listener,
     null
   );
-  yield false;
-}
+  await listener.promise;
+});
 
 // process the message through mime
-function* startMime() {
+add_task(async function startMime() {
   let msgHdr = mailTestUtils.firstMsgHdr(localAccountUtils.inboxFolder);
 
-  mimeMsg.MsgHdrToMimeMessage(
+  MsgHdrToMimeMessage(
     msgHdr,
     gCallbackObject,
     gCallbackObject.callback,
-    true /* allowDownload */
+    true // allowDownload
   );
-  yield false;
-}
+
+  await gCallbackObject.promise;
+});
 
 // detach any found attachments
-function* startDetach() {
+add_task(async function startDetach() {
   let msgHdr = mailTestUtils.firstMsgHdr(localAccountUtils.inboxFolder);
   let msgURI = msgHdr.folder.generateMessageURI(msgHdr.messageKey);
 
@@ -58,6 +82,7 @@ function* startDetach() {
     Ci.nsIMessenger
   );
   let attachment = gCallbackObject.attachments[0];
+  let listener = new PromiseTestUtils.PromiseUrlListener();
 
   messenger.detachAttachmentsWOPrompts(
     do_get_profile(),
@@ -65,16 +90,15 @@ function* startDetach() {
     [attachment.url],
     [attachment.name],
     [msgURI],
-    asyncUrlListener
+    listener
   );
-  yield false;
-}
+  await listener.promise;
+});
 
-// test that the detachment was successful
-function* testDetach() {
-  // This test seems to fail on Linux without the following delay.
-  do_timeout(200, async_driver);
-  yield false;
+/**
+ * Test that the detachment was successful.
+ */
+add_task(async function testDetach() {
   // The message contained a file "check.pdf" which should
   //  now exist in the profile directory.
   let checkFile = do_get_profile().clone();
@@ -87,54 +111,49 @@ function* testDetach() {
   // Get the message header
   let msgHdr = mailTestUtils.firstMsgHdr(localAccountUtils.inboxFolder);
 
-  let messageContent = getContentFromMessage(msgHdr);
+  let messageContent = await getContentFromMessage(msgHdr);
   Assert.ok(messageContent.includes("AttachmentDetached"));
-}
+});
 
-function SaveAttachmentCallback() {
-  this.attachments = null;
-}
-
-SaveAttachmentCallback.prototype = {
-  callback: function saveAttachmentCallback_callback(aMsgHdr, aMimeMessage) {
-    this.attachments = aMimeMessage.allAttachments;
-    async_driver();
-  },
-};
-var gCallbackObject = new SaveAttachmentCallback();
-
-function run_test() {
-  if (!localAccountUtils.inboxFolder) {
-    localAccountUtils.loadLocalMailAccount();
-  }
-  async_run_tests(tests);
-}
-
-/*
+/**
  * Get the full message content.
  *
- * aMsgHdr: nsIMsgDBHdr object whose text body will be read
- *          returns: string with full message contents
+ * @param {nsIMsgDBHdr} aMsgHdr - Message whose text body will be read.
+ * @returns {Promise<string>} full message contents.
  */
 function getContentFromMessage(aMsgHdr) {
-  const MAX_MESSAGE_LENGTH = 65536;
   let msgFolder = aMsgHdr.folder;
   let msgUri = msgFolder.getUriForMsg(aMsgHdr);
 
-  let messenger = Cc["@mozilla.org/messenger;1"].createInstance(
-    Ci.nsIMessenger
-  );
-  let streamListener = Cc[
-    "@mozilla.org/network/sync-stream-listener;1"
-  ].createInstance(Ci.nsISyncStreamListener);
-  messenger
-    .messageServiceFromURI(msgUri)
-    .streamMessage(msgUri, streamListener, null, null, false, "", false);
-  let sis = Cc["@mozilla.org/scriptableinputstream;1"].createInstance(
-    Ci.nsIScriptableInputStream
-  );
-  sis.init(streamListener.inputStream);
-  let content = sis.read(MAX_MESSAGE_LENGTH);
-  sis.close();
-  return content;
+  return new Promise((resolve, reject) => {
+    let streamListener = {
+      QueryInterface: ChromeUtils.generateQI(["nsIStreamListener"]),
+      sis: Cc["@mozilla.org/scriptableinputstream;1"].createInstance(
+        Ci.nsIScriptableInputStream
+      ),
+      content: "",
+      onDataAvailable(request, inputStream, offset, count) {
+        this.sis.init(inputStream);
+        this.content += this.sis.read(count);
+      },
+      onStartRequest(request) {},
+      onStopRequest(request, statusCode) {
+        this.sis.close();
+        if (Components.isSuccessCode(statusCode)) {
+          resolve(this.content);
+        } else {
+          reject(new Error(statusCode));
+        }
+      },
+    };
+    MailServices.messageServiceFromURI(msgUri).streamMessage(
+      msgUri,
+      streamListener,
+      null,
+      null,
+      false,
+      "",
+      false
+    );
+  });
 }

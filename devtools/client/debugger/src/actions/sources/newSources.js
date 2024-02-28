@@ -6,26 +6,25 @@
  * Redux actions for the sources state
  * @module actions/sources
  */
-
-import { flatten } from "lodash";
-
-import { stringToSourceActorId } from "../../reducers/source-actors";
+import { PROMISE } from "../utils/middleware/promise";
 import { insertSourceActors } from "../../actions/source-actors";
-import { makeSourceId } from "../../client/firefox/create";
+import {
+  makeSourceId,
+  createGeneratedSource,
+  createSourceMapOriginalSource,
+  createSourceActor,
+} from "../../client/firefox/create";
 import { toggleBlackBox } from "./blackbox";
-import { syncBreakpoint } from "../breakpoints";
+import { syncPendingBreakpoint } from "../breakpoints";
 import { loadSourceText } from "./loadSourceText";
 import { togglePrettyPrint } from "./prettyPrint";
+import { toggleSourceMapIgnoreList } from "../ui";
 import { selectLocation, setBreakableLines } from "../sources";
 
+import { getRawSourceURL, isPrettyURL } from "../../utils/source";
+import { createLocation } from "../../utils/location";
 import {
-  getRawSourceURL,
-  isPrettyURL,
-  isUrlExtension,
-  isInlineScript,
-} from "../../utils/source";
-import {
-  getBlackBoxList,
+  getBlackBoxRanges,
   getSource,
   getSourceFromId,
   hasSourceActor,
@@ -33,39 +32,36 @@ import {
   getPendingSelectedLocation,
   getPendingBreakpointsForSource,
   getContext,
-  isSourceLoadingOrLoaded,
 } from "../../selectors";
 
-import { prefs, features } from "../../utils/prefs";
+import { prefs } from "../../utils/prefs";
 import sourceQueue from "../../utils/source-queue";
 import { validateNavigateContext, ContextError } from "../../utils/context";
 
 function loadSourceMaps(cx, sources) {
-  return async function({ dispatch, sourceMaps }) {
+  return async function ({ dispatch }) {
     try {
       const sourceList = await Promise.all(
         sources.map(async sourceActor => {
-          const originalSources = await dispatch(
+          const originalSourcesInfo = await dispatch(
             loadSourceMap(cx, sourceActor)
           );
-          sourceQueue.queueSources(
-            originalSources.map(data => ({
-              type: "original",
-              data,
-            }))
+          originalSourcesInfo.forEach(
+            sourcesInfo => (sourcesInfo.sourceActor = sourceActor)
           );
-          return originalSources;
+          sourceQueue.queueOriginalSources(originalSourcesInfo);
+          return originalSourcesInfo;
         })
       );
 
       await sourceQueue.flush();
-
-      return flatten(sourceList);
+      return sourceList.flat();
     } catch (error) {
       if (!(error instanceof ContextError)) {
         throw error;
       }
     }
+    return [];
   };
 }
 
@@ -74,7 +70,7 @@ function loadSourceMaps(cx, sources) {
  * @static
  */
 function loadSourceMap(cx, sourceActor) {
-  return async function({ dispatch, getState, sourceMaps }) {
+  return async function ({ dispatch, getState, sourceMapLoader }) {
     if (!prefs.clientSourceMapsEnabled || !sourceActor.sourceMapURL) {
       return [];
     }
@@ -85,7 +81,7 @@ function loadSourceMap(cx, sourceActor) {
       // we currently treat sourcemaps as Source-wide, not SourceActor-specific.
       const source = getSourceByActorId(getState(), sourceActor.id);
       if (source) {
-        data = await sourceMaps.getOriginalURLs({
+        data = await sourceMapLoader.getOriginalURLs({
           // Using source ID here is historical and eventually we'll want to
           // switch to all of this being per-source-actor.
           id: source.id,
@@ -94,17 +90,22 @@ function loadSourceMap(cx, sourceActor) {
           sourceMapURL: sourceActor.sourceMapURL || "",
           isWasm: sourceActor.introductionType === "wasm",
         });
+        dispatch({
+          type: "ADD_SOURCEMAP_IGNORE_LIST_SOURCES",
+          [PROMISE]: sourceMapLoader.getSourceMapIgnoreList(source.id),
+        });
       }
     } catch (e) {
       console.error(e);
     }
 
-    if (!data) {
-      // If this source doesn't have a sourcemap, enable it for pretty printing
+    if (!data || !data.length) {
+      // If this source doesn't have a sourcemap or there are no original files
+      // existing, enable it for pretty printing
       dispatch({
         type: "CLEAR_SOURCE_ACTOR_MAP_URL",
         cx,
-        id: sourceActor.id,
+        sourceActorId: sourceActor.id,
       });
       return [];
     }
@@ -137,29 +138,29 @@ function checkSelectedSource(cx, sourceId) {
     if (rawPendingUrl === source.url) {
       if (isPrettyURL(pendingUrl)) {
         const prettySource = await dispatch(togglePrettyPrint(cx, source.id));
-        return dispatch(checkPendingBreakpoints(cx, prettySource.id));
+        dispatch(checkPendingBreakpoints(cx, prettySource, null));
+        return;
       }
 
       await dispatch(
-        selectLocation(cx, {
-          sourceId: source.id,
-          line:
-            typeof pendingLocation.line === "number" ? pendingLocation.line : 0,
-          column: pendingLocation.column,
-        })
+        selectLocation(
+          cx,
+          createLocation({
+            source,
+            line:
+              typeof pendingLocation.line === "number"
+                ? pendingLocation.line
+                : 0,
+            column: pendingLocation.column,
+          })
+        )
       );
     }
   };
 }
 
-function checkPendingBreakpoints(cx, sourceId) {
+function checkPendingBreakpoints(cx, source, sourceActor) {
   return async ({ dispatch, getState }) => {
-    // source may have been modified by selectLocation
-    const source = getSource(getState(), sourceId);
-    if (!source) {
-      return;
-    }
-
     const pendingBreakpoints = getPendingBreakpointsForSource(
       getState(),
       source
@@ -170,13 +171,14 @@ function checkPendingBreakpoints(cx, sourceId) {
     }
 
     // load the source text if there is a pending breakpoint for it
-    await dispatch(loadSourceText({ cx, source }));
-
-    await dispatch(setBreakableLines(cx, source.id));
+    await dispatch(loadSourceText(cx, source, sourceActor));
+    await dispatch(
+      setBreakableLines(cx, createLocation({ source, sourceActor }))
+    );
 
     await Promise.all(
-      pendingBreakpoints.map(bp => {
-        return dispatch(syncBreakpoint(cx, sourceId, bp));
+      pendingBreakpoints.map(pendingBp => {
+        return dispatch(syncPendingBreakpoint(cx, source.id, pendingBp));
       })
     );
   };
@@ -184,93 +186,93 @@ function checkPendingBreakpoints(cx, sourceId) {
 
 function restoreBlackBoxedSources(cx, sources) {
   return async ({ dispatch, getState }) => {
-    const tabs = getBlackBoxList(getState());
-    if (tabs.length == 0) {
+    const currentRanges = getBlackBoxRanges(getState());
+
+    if (!Object.keys(currentRanges).length) {
       return;
     }
+
     for (const source of sources) {
-      if (tabs.includes(source.url) && !source.isBlackBoxed) {
-        dispatch(toggleBlackBox(cx, source));
-      }
-    }
-  };
-}
-
-export function newQueuedSources(sourceInfo) {
-  return async ({ dispatch }) => {
-    const generated = [];
-    const original = [];
-    for (const source of sourceInfo) {
-      if (source.type === "generated") {
-        generated.push(source.data);
-      } else {
-        original.push(source.data);
+      const ranges = currentRanges[source.url];
+      if (ranges) {
+        // If the ranges is an empty then the whole source was blackboxed.
+        await dispatch(toggleBlackBox(cx, source, true, ranges));
       }
     }
 
-    if (generated.length > 0) {
-      await dispatch(newGeneratedSources(generated));
-    }
-    if (original.length > 0) {
-      await dispatch(newOriginalSources(original));
+    if (prefs.sourceMapIgnoreListEnabled) {
+      await dispatch(toggleSourceMapIgnoreList(cx, true));
     }
   };
 }
 
-export function newOriginalSource(sourceInfo) {
-  return async ({ dispatch }) => {
-    const sources = await dispatch(newOriginalSources([sourceInfo]));
-    return sources[0];
-  };
-}
-export function newOriginalSources(sourceInfo) {
+export function newOriginalSources(originalSourcesInfo) {
   return async ({ dispatch, getState }) => {
     const state = getState();
     const seen = new Set();
-    const sources = [];
 
-    for (const { id, url } of sourceInfo) {
+    const actors = [];
+    const actorsSources = {};
+
+    for (const { id, url, sourceActor } of originalSourcesInfo) {
       if (seen.has(id) || getSource(state, id)) {
         continue;
       }
-
       seen.add(id);
 
-      sources.push({
-        id,
-        url,
-        relativeUrl: url,
-        isPrettyPrinted: false,
-        isWasm: false,
-        isBlackBoxed: false,
-        isExtension: false,
-        extensionName: null,
-        isOriginal: true,
-      });
+      if (!actorsSources[sourceActor.actor]) {
+        actors.push(sourceActor);
+        actorsSources[sourceActor.actor] = [];
+      }
+
+      actorsSources[sourceActor.actor].push(
+        createSourceMapOriginalSource(id, url)
+      );
     }
 
     const cx = getContext(state);
-    dispatch(addSources(cx, sources));
+
+    // Add the original sources per the generated source actors that
+    // they are primarily from.
+    actors.forEach(sourceActor => {
+      dispatch({
+        type: "ADD_ORIGINAL_SOURCES",
+        cx,
+        originalSources: actorsSources[sourceActor.actor],
+        generatedSourceActor: sourceActor,
+      });
+    });
+
+    // Accumulate the sources back into one list
+    const actorsSourcesValues = Object.values(actorsSources);
+    let sources = [];
+    if (actorsSourcesValues.length) {
+      sources = actorsSourcesValues.reduce((acc, sourceList) =>
+        acc.concat(sourceList)
+      );
+    }
 
     await dispatch(checkNewSources(cx, sources));
 
     for (const source of sources) {
-      dispatch(checkPendingBreakpoints(cx, source.id));
+      dispatch(checkPendingBreakpoints(cx, source, null));
     }
 
     return sources;
   };
 }
 
+// Wrapper around newGeneratedSources, only used by tests
 export function newGeneratedSource(sourceInfo) {
   return async ({ dispatch }) => {
     const sources = await dispatch(newGeneratedSources([sourceInfo]));
     return sources[0];
   };
 }
-export function newGeneratedSources(sourceInfo) {
+
+export function newGeneratedSources(sourceResources) {
   return async ({ dispatch, getState, client }) => {
-    if (sourceInfo.length == 0) {
+    if (!sourceResources.length) {
       return [];
     }
 
@@ -278,42 +280,34 @@ export function newGeneratedSources(sourceInfo) {
     const newSourcesObj = {};
     const newSourceActors = [];
 
-    for (const { thread, source, id } of sourceInfo) {
-      const newId = id || makeSourceId(source, thread);
+    for (const sourceResource of sourceResources) {
+      // By the time we process the sources, the related target
+      // might already have been destroyed. It means that the sources
+      // are also about to be destroyed, so ignore them.
+      // (This is covered by browser_toolbox_backward_forward_navigation.js)
+      if (sourceResource.targetFront.isDestroyed()) {
+        continue;
+      }
+      const id = makeSourceId(sourceResource);
 
-      if (!getSource(getState(), newId) && !newSourcesObj[newId]) {
-        newSourcesObj[newId] = {
-          id: newId,
-          url: source.url,
-          relativeUrl: source.url,
-          isPrettyPrinted: false,
-          extensionName: source.extensionName,
-          isBlackBoxed: false,
-          isWasm: !!features.wasm && source.introductionType === "wasm",
-          isExtension: (source.url && isUrlExtension(source.url)) || false,
-          isOriginal: false,
-        };
+      if (!getSource(getState(), id) && !newSourcesObj[id]) {
+        newSourcesObj[id] = createGeneratedSource(sourceResource);
       }
 
-      const actorId = stringToSourceActorId(source.actor);
+      const actorId = sourceResource.actor;
 
       // We are sometimes notified about a new source multiple times if we
       // request a new source list and also get a source event from the server.
       if (!hasSourceActor(getState(), actorId)) {
-        newSourceActors.push({
-          id: actorId,
-          actor: source.actor,
-          thread,
-          source: newId,
-          isBlackBoxed: source.isBlackBoxed,
-          sourceMapBaseURL: source.sourceMapBaseURL,
-          sourceMapURL: source.sourceMapURL,
-          url: source.url,
-          introductionType: source.introductionType,
-        });
+        newSourceActors.push(
+          createSourceActor(
+            sourceResource,
+            getSource(getState(), id) || newSourcesObj[id]
+          )
+        );
       }
 
-      resultIds.push(newId);
+      resultIds.push(id);
     }
 
     const newSources = Object.values(newSourcesObj);
@@ -322,20 +316,6 @@ export function newGeneratedSources(sourceInfo) {
     dispatch(addSources(cx, newSources));
     dispatch(insertSourceActors(newSourceActors));
 
-    for (const newSourceActor of newSourceActors) {
-      // Fetch breakable lines for new HTML scripts
-      // when the HTML file has started loading
-      if (
-        isInlineScript(newSourceActor) &&
-        isSourceLoadingOrLoaded(getState(), newSourceActor.source)
-      ) {
-        dispatch(setBreakableLines(cx, newSourceActor.source)).catch(error => {
-          if (!(error instanceof ContextError)) {
-            throw error;
-          }
-        });
-      }
-    }
     await dispatch(checkNewSources(cx, newSources));
 
     (async () => {
@@ -344,8 +324,23 @@ export function newGeneratedSources(sourceInfo) {
       // We would like to sync breakpoints after we are done
       // loading source maps as sometimes generated and original
       // files share the same paths.
-      for (const { source } of newSourceActors) {
-        dispatch(checkPendingBreakpoints(cx, source));
+      for (const sourceActor of newSourceActors) {
+        // For HTML pages, we fetch all new incoming inline script,
+        // which will be related to one dedicated source actor.
+        // Whereas, for regular sources, if we have many source actors,
+        // this is for the same URL. And code expecting to have breakable lines
+        // will request breakable lines for that particular source actor.
+        if (sourceActor.sourceObject.isHTML) {
+          await dispatch(
+            setBreakableLines(
+              cx,
+              createLocation({ source: sourceActor.sourceObject, sourceActor })
+            )
+          );
+        }
+        dispatch(
+          checkPendingBreakpoints(cx, sourceActor.sourceObject, sourceActor)
+        );
       }
     })();
 
@@ -365,7 +360,7 @@ function checkNewSources(cx, sources) {
       dispatch(checkSelectedSource(cx, source.id));
     }
 
-    dispatch(restoreBlackBoxedSources(cx, sources));
+    await dispatch(restoreBlackBoxedSources(cx, sources));
 
     return sources;
   };

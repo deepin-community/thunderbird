@@ -42,7 +42,7 @@ newsgroups-label = Nieuwsgroepen
 newsgroups-description = Met { -brand-short-name } kunt u met alle nieuwsgroepen die u wilt verbinden.
 
 import-title = Importeren vanuit een ander programma
-import-paragraph = Met { -brand-short-name } kunt u e-mailberichten, adresboekvermeldingen, feedabonnementen, voorkeuren en/of filters uit andere e-mailprogramma’s en bekende adresboekindelingen importeren.
+import-paragraph2 = Met { -brand-short-name } kunt u e-mailberichten, adresboekvermeldingen, feedabonnementen, instellingen en/of filters uit andere e-mailprogramma’s en bekende adresboekindelingen importeren.
 
 import-label = Importeren
     .aria-label = Gegevens uit andere programma’s importeren

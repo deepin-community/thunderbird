@@ -4,8 +4,7 @@
 
 var EXPORTED_SYMBOLS = ["CalICSProvider"];
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-var { setTimeout } = ChromeUtils.import("resource://gre/modules/Timer.jsm");
+var { setTimeout } = ChromeUtils.importESModule("resource://gre/modules/Timer.sys.mjs");
 
 var { cal } = ChromeUtils.import("resource:///modules/calendar/calUtils.jsm");
 
@@ -21,6 +20,7 @@ var { CalDavGenericRequest, CalDavPropfindRequest } = ChromeUtils.import(
  */
 var CalICSProvider = {
   QueryInterface: ChromeUtils.generateQI(["calICalendarProvider"]),
+
   get type() {
     return "ics";
   },
@@ -33,16 +33,8 @@ var CalICSProvider = {
     return "ICS";
   },
 
-  createCalendar(aName, aUri, aListener) {
-    throw Components.Exception("", Cr.NS_ERROR_NOT_IMPLEMENTED);
-  },
-
   deleteCalendar(aCalendar, aListener) {
     throw Components.Exception("", Cr.NS_ERROR_NOT_IMPLEMENTED);
-  },
-
-  getCalendar(aUri) {
-    return cal.getCalendarManager().createCalendar("ics", aUri);
   },
 
   async detectCalendars(
@@ -128,10 +120,10 @@ class ICSDetectionSession {
   /**
    * Create a new ICS detection session.
    *
-   * @param {string} aSessionId       The session id, used in the password manager.
-   * @param {string} aName            The user-readable description of this session.
-   * @param {string} aPassword        The password for the session.
-   * @param {boolean} aSavePassword   Whether to save the password.
+   * @param {string} aSessionId - The session id, used in the password manager.
+   * @param {string} aName - The user-readable description of this session.
+   * @param {string} aPassword - The password for the session.
+   * @param {boolean} aSavePassword - Whether to save the password.
    */
   constructor(aSessionId, aUserName, aPassword, aSavePassword) {
     this.id = aSessionId;
@@ -143,8 +135,8 @@ class ICSDetectionSession {
   /**
    * Implement nsIInterfaceRequestor.
    *
-   * @param {nsIIDRef} aIID                 The IID of the interface being requested.
-   * @return {ICSAutodetectSession | null}  Either this object QI'd to the IID, or null.
+   * @param {nsIIDRef} aIID - The IID of the interface being requested.
+   * @returns {ICSAutodetectSession | null} Either this object QI'd to the IID, or null.
    *                                          Components.returnCode is set accordingly.
    * @see {nsIInterfaceRequestor}
    */
@@ -231,9 +223,9 @@ class ICSDetector {
   /**
    * Create a new ICS detector.
    *
-   * @param {string} username         A username.
-   * @param {string} password         A password.
-   * @param {boolean} savePassword    Whether to save the password or not.
+   * @param {string} username - A username.
+   * @param {string} password - A password.
+   * @param {boolean} savePassword - Whether to save the password or not.
    */
   constructor(username, password, savePassword) {
     this.session = new ICSDetectionSession(cal.getUUID(), username, password, savePassword);
@@ -242,8 +234,8 @@ class ICSDetector {
   /**
    * Attempt to detect calendars at the given location using CalDAV PROPFIND.
    *
-   * @param {nsIURI} location                   The location to attempt.
-   * @return {Promise<calICalendar[] | null>}   An array of calendars or null.
+   * @param {nsIURI} location - The location to attempt.
+   * @returns {Promise<calICalendar[] | null>} An array of calendars or null.
    */
   async attemptDAVLocation(location) {
     let props = ["D:getcontenttype", "D:resourcetype", "D:displayname", "A:calendar-color"];
@@ -277,12 +269,14 @@ class ICSDetector {
    * Attempt to detect calendars at the given location using a CalDAV generic
    * request and a method like "HEAD" or "GET".
    *
-   * @param {string} method                     The request method to use, e.g. "GET" or "HEAD".
-   * @param {nsIURI} location                   The location to attempt.
-   * @return {Promise<calICalendar[] | null>}   An array of calendars or null.
+   * @param {string} method - The request method to use, e.g. "GET" or "HEAD".
+   * @param {nsIURI} location - The location to attempt.
+   * @returns {Promise<calICalendar[] | null>} An array of calendars or null.
    */
   async _attemptMethod(method, location) {
-    let request = new CalDavGenericRequest(this.session, null, method, location);
+    let request = new CalDavGenericRequest(this.session, null, method, location, {
+      Accept: "text/calendar, application/ics, text/plain;q=0.9",
+    });
 
     // `request.commit()` can throw; errors should be caught by calling functions.
     let response = await request.commit();
@@ -316,8 +310,8 @@ class ICSDetector {
    * Attempt to detect calendars at the given location using a CalDAV generic
    * request and "PUT".
    *
-   * @param {nsIURI} location                   The location to attempt.
-   * @return {Promise<calICalendar[] | null>}   An array of calendars or null.
+   * @param {nsIURI} location - The location to attempt.
+   * @returns {Promise<calICalendar[] | null>} An array of calendars or null.
    */
   async attemptPut(location) {
     let request = new CalDavGenericRequest(
@@ -352,8 +346,8 @@ class ICSDetector {
    * exists or not, return a calendar for the location (the file will be
    * created if it does not exist).
    *
-   * @param {nsIURI} location           The location to attempt.
-   * @return {calICalendar[] | null}    An array containing a calendar or null.
+   * @param {nsIURI} location - The location to attempt.
+   * @returns {calICalendar[] | null} An array containing a calendar or null.
    */
   async attemptLocalFile(location) {
     if (location.schemeIs("file")) {
@@ -387,8 +381,8 @@ class ICSDetector {
    * Utility function to make a new attempt to detect calendars after the
    * previous PROPFIND results contained "D:resourcetype" with "D:collection".
    *
-   * @param {nsIURI} location                   The location to attempt.
-   * @return {Promise<calICalendar[] | null>}   An array of calendars or null.
+   * @param {nsIURI} location - The location to attempt.
+   * @returns {Promise<calICalendar[] | null>} An array of calendars or null.
    */
   async handleDirectory(location) {
     let props = [
@@ -421,29 +415,21 @@ class ICSDetector {
   /**
    * Set up and return a new ICS calendar object.
    *
-   * @param {nsIURI} uri              The location of the calendar.
-   * @param {Set} [props]             For CalDav calendars, these are the props
+   * @param {nsIURI} uri - The location of the calendar.
+   * @param {Set} [props] - For CalDav calendars, these are the props
    *                                  parsed from the response.
-   * @return {calICalendar}           A new calendar.
+   * @returns {calICalendar} A new calendar.
    */
   handleCalendar(uri, props = new Set()) {
     let displayName = props["D:displayname"];
     let color = props["A:calendar-color"];
     if (!displayName) {
-      let lastPath =
-        uri.filePath
-          .split("/")
-          .filter(Boolean)
-          .pop() || "";
-      let fileName = lastPath
-        .split(".")
-        .slice(0, -1)
-        .join(".");
+      let lastPath = uri.filePath.split("/").filter(Boolean).pop() || "";
+      let fileName = lastPath.split(".").slice(0, -1).join(".");
       displayName = fileName || lastPath || uri.spec;
     }
 
-    let calMgr = cal.getCalendarManager();
-    let calendar = calMgr.createCalendar("ics", uri);
+    let calendar = cal.manager.createCalendar("ics", uri);
     calendar.setProperty("color", color || cal.view.hashColor(uri.spec));
     calendar.name = displayName;
     calendar.id = cal.getUUID();
@@ -451,12 +437,9 @@ class ICSDetector {
     // Attempt to discover if the user is allowed to write to this calendar.
     let privs = props["D:current-user-privilege-set"];
     if (privs && privs instanceof Set) {
-      calendar.readOnly = ![
-        "D:write",
-        "D:write-content",
-        "D:write-properties",
-        "D:all",
-      ].some(priv => privs.has(priv));
+      calendar.readOnly = !["D:write", "D:write-content", "D:write-properties", "D:all"].some(
+        priv => privs.has(priv)
+      );
     }
 
     return calendar;

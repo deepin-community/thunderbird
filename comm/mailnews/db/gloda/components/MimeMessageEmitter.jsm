@@ -83,9 +83,8 @@ MimeMessageEmitter.prototype = {
     this._saneBodySize =
       options && "saneBodySize" in options ? options.saneBodySize : false;
 
-    this._mimeMsg.MsgHdrToMimeMessage.RESULT_RENDEVOUZ[
-      aUrl.spec
-    ] = this._curPart;
+    this._mimeMsg.MsgHdrToMimeMessage.RESULT_RENDEVOUZ[aUrl.spec] =
+      this._curPart;
   },
 
   complete() {
@@ -392,7 +391,7 @@ MimeMessageEmitter.prototype = {
     // the specific flags that the jsmimeemitter understands (we abuse the URL
     // parameters to pass information all the way to here)
     aUrl = aUrl.replace(
-      /((header=filter|emitter=js|fetchCompleteMessage=(true|false)|examineEncryptedParts=(true|false)))&?/g,
+      /((header=filter|emitter=js|examineEncryptedParts=(true|false)))&?/g,
       ""
     );
     // the url should contain a part= piece that tells us the part name, which
@@ -421,7 +420,6 @@ MimeMessageEmitter.prototype = {
         this._partMap[partName].url = aUrl;
         this._partMap[partName].isExternal = aIsExternalAttachment;
         this._partMap[partName].name = aName;
-        this._partMap[partName].isRealAttachment = true;
       }
     } else if (partName) {
       let part = new this._mimeMsg.MimeMessageAttachment(

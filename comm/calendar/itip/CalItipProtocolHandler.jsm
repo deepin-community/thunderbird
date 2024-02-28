@@ -5,19 +5,13 @@
 var EXPORTED_SYMBOLS = ["ItipChannel", "ItipProtocolHandler", "ItipContentHandler"];
 
 var { cal } = ChromeUtils.import("resource:///modules/calendar/calUtils.jsm");
-var { XPCOMUtils } = ChromeUtils.import("resource://gre/modules/XPCOMUtils.jsm");
+var { XPCOMUtils } = ChromeUtils.importESModule("resource://gre/modules/XPCOMUtils.sys.mjs");
 
-XPCOMUtils.defineLazyModuleGetters(this, {
+const lazy = {};
+
+XPCOMUtils.defineLazyModuleGetters(lazy, {
   CalEvent: "resource:///modules/CalEvent.jsm",
 });
-
-var ITIP_HANDLER_MIMETYPE = "application/x-itip-internal";
-var ITIP_HANDLER_PROTOCOL = "moz-cal-handle-itip";
-var NS_ERROR_WONT_HANDLE_CONTENT = 0x805d0001;
-
-function NYI() {
-  throw Components.Exception("", Cr.NS_ERROR_NOT_IMPLEMENTED);
-}
 
 function ItipChannel(URI, aLoadInfo) {
   this.wrappedJSObject = this;
@@ -28,7 +22,7 @@ ItipChannel.prototype = {
   QueryInterface: ChromeUtils.generateQI(["nsIChannel", "nsIRequest"]),
   classID: Components.ID("{643e0328-36f6-411d-a107-16238dff9cd7}"),
 
-  contentType: ITIP_HANDLER_MIMETYPE,
+  contentType: "application/x-itip-internal",
   loadAttributes: null,
   contentLength: 0,
   owner: null,
@@ -36,14 +30,18 @@ ItipChannel.prototype = {
   notificationCallbacks: null,
   securityInfo: null,
 
-  open: NYI,
+  open() {
+    throw Components.Exception(
+      `${this.constructor.name}.open not implemented`,
+      Cr.NS_ERROR_NOT_IMPLEMENTED
+    );
+  },
   asyncOpen(observer) {
     observer.onStartRequest(this, null);
   },
   asyncRead(listener, ctxt) {
     return listener.onStartRequest(this, ctxt);
   },
-
   isPending() {
     return true;
   },
@@ -51,10 +49,23 @@ ItipChannel.prototype = {
   cancel(status) {
     this.status = status;
   },
-  suspend: NYI,
-  resume: NYI,
+  suspend() {
+    throw Components.Exception(
+      `${this.constructor.name}.suspend not implemented`,
+      Cr.NS_ERROR_NOT_IMPLEMENTED
+    );
+  },
+  resume() {
+    throw Components.Exception(
+      `${this.constructor.name}.resume not implemented`,
+      Cr.NS_ERROR_NOT_IMPLEMENTED
+    );
+  },
 };
 
+/**
+ * @implements {nsIProtocolHandler}
+ */
 function ItipProtocolHandler() {
   this.wrappedJSObject = this;
 }
@@ -62,7 +73,6 @@ ItipProtocolHandler.prototype = {
   QueryInterface: ChromeUtils.generateQI(["nsIProtocolHandler"]),
   classID: Components.ID("{6e957006-b4ce-11d9-b053-001124736B74}"),
 
-  protocolFlags: Ci.nsIProtocolHandler.URI_NORELATIVE | Ci.nsIProtocolHandler.URI_DANGEROUS_TO_LOAD,
   allowPort: () => false,
   isSecure: false,
   newChannel(URI, aLoadInfo) {
@@ -81,12 +91,10 @@ ItipContentHandler.prototype = {
   handleContent(contentType, windowTarget, request) {
     let channel = request.QueryInterface(Ci.nsIChannel);
     let uri = channel.URI.spec;
-    if (!uri.startsWith(ITIP_HANDLER_PROTOCOL + ":")) {
-      cal.ERROR("Unexpected iTIP uri: " + uri + "\n");
-      throw NS_ERROR_WONT_HANDLE_CONTENT;
+    if (!uri.startsWith("moz-cal-handle-itip:")) {
+      throw Components.Exception(`Unexpected iTIP uri: ${uri}`, Cr.NS_ERROR_WONT_HANDLE_CONTENT);
     }
-    // moz-cal-handle-itip:///?
-    let paramString = uri.substring(ITIP_HANDLER_PROTOCOL.length + 4);
+    let paramString = uri.substring("moz-cal-handle-itip:///".length);
     let paramArray = paramString.split("&");
     let paramBlock = {};
     paramArray.forEach(value => {
@@ -94,7 +102,7 @@ ItipContentHandler.prototype = {
       paramBlock[parts[0]] = unescape(unescape(parts[1]));
     });
     // dump("content-handler: have params " + paramBlock.toSource() + "\n");
-    let event = new CalEvent(paramBlock.data);
+    let event = new lazy.CalEvent(paramBlock.data);
     dump(
       "Processing iTIP event '" +
         event.title +
@@ -104,8 +112,7 @@ ItipContentHandler.prototype = {
         event.id +
         ")\n"
     );
-    let calMgr = cal.getCalendarManager();
-    let cals = calMgr.getCalendars();
-    cals[0].addItem(event, null);
+    let cals = cal.manager.getCalendars();
+    cals[0].addItem(event);
   },
 };

@@ -6,19 +6,51 @@
 # support for a structured logging framework built on top of Python's built-in
 # logging framework.
 
-from __future__ import absolute_import, unicode_literals
-
-try:
-    import blessings
-except ImportError:
-    blessings = None
-
 import codecs
 import json
 import logging
-import six
+import os
 import sys
 import time
+
+import blessed
+import six
+from mozbuild.util import mozilla_build_version
+from packaging.version import Version
+
+IS_WINDOWS = sys.platform.startswith("win")
+
+if IS_WINDOWS:
+    import msvcrt
+    from ctypes import byref, windll
+    from ctypes.wintypes import DWORD
+
+    ENABLE_VIRTUAL_TERMINAL_PROCESSING = 0x0004
+
+    def enable_virtual_terminal_processing(file_descriptor):
+        handle = msvcrt.get_osfhandle(file_descriptor)
+        try:
+            mode = DWORD()
+            windll.kernel32.GetConsoleMode(handle, byref(mode))
+            mode.value |= ENABLE_VIRTUAL_TERMINAL_PROCESSING
+            windll.kernel32.SetConsoleMode(handle, mode.value)
+        except Exception as e:
+            raise e
+
+
+def enable_blessed():
+    # Only Windows has issues with enabling blessed
+    # and interpreting ANSI escape sequences
+    if not IS_WINDOWS:
+        return True
+
+    if os.environ.get("NO_ANSI"):
+        return False
+
+    # MozillaBuild 4.0.2 is the first Release that supports
+    # ANSI escape sequences, so if we're greater than that
+    # version, we can enable them (via Blessed).
+    return mozilla_build_version() >= Version("4.0.2")
 
 
 # stdout and stderr may not necessarily be set up to write Unicode output, so
@@ -86,14 +118,20 @@ class StructuredHumanFormatter(logging.Formatter):
         self.last_time = None
 
     def format(self, record):
-        f = record.msg.format(**record.params)
+        formatted_msg = record.msg.format(**getattr(record, "params", {}))
 
-        if not self.write_times:
-            return f
+        elapsed_time = (
+            format_seconds(self._time(record)) + " " if self.write_times else ""
+        )
 
-        elapsed = self._time(record)
+        rv = elapsed_time + formatted_msg
+        formatted_stack_trace_result = formatted_stack_trace(record, self)
 
-        return "%s %s" % (format_seconds(elapsed), f)
+        if formatted_stack_trace_result != "":
+            stack_trace = "\n" + elapsed_time + formatted_stack_trace_result
+            rv += stack_trace.replace("\n", f"\n{elapsed_time}")
+
+        return rv
 
     def _time(self, record):
         t = record.created - self.start_time
@@ -111,15 +149,22 @@ class StructuredTerminalFormatter(StructuredHumanFormatter):
 
     def set_terminal(self, terminal):
         self.terminal = terminal
-        self._sgr0 = terminal.normal if terminal and blessings else ""
+        self._sgr0 = terminal.normal if terminal else ""
 
     def format(self, record):
-        f = record.msg.format(**record.params)
+        formatted_msg = record.msg.format(**getattr(record, "params", {}))
+        elapsed_time = (
+            self.terminal.blue(format_seconds(self._time(record))) + " "
+            if self.write_times
+            else ""
+        )
 
-        if not self.write_times:
-            return f
+        rv = elapsed_time + self._colorize(formatted_msg) + self._sgr0
+        formatted_stack_trace_result = formatted_stack_trace(record, self)
 
-        t = self.terminal.blue(format_seconds(self._time(record)))
+        if formatted_stack_trace_result != "":
+            stack_trace = "\n" + elapsed_time + formatted_stack_trace_result
+            rv += stack_trace.replace("\n", f"\n{elapsed_time}")
 
         # Some processes (notably Clang) don't reset terminal attributes after
         # printing newlines. This can lead to terminal attributes getting in a
@@ -127,7 +172,7 @@ class StructuredTerminalFormatter(StructuredHumanFormatter):
         # line to reset all attributes. For programs that rely on the next line
         # inheriting the same attributes, this will prevent that from happening.
         # But that's better than "corrupting" the terminal.
-        return "%s %s%s" % (t, self._colorize(f), self._sgr0)
+        return rv + self._sgr0
 
     def _colorize(self, s):
         if not self.terminal:
@@ -152,6 +197,28 @@ class StructuredTerminalFormatter(StructuredHumanFormatter):
             result = "REFTEST " + result
 
         return result
+
+
+def formatted_stack_trace(record, formatter):
+    """
+    Formatting behavior here intended to mimic a portion of the
+    standard library's logging.Formatter::format function
+    """
+    rv = ""
+
+    if record.exc_info:
+        # Cache the traceback text to avoid converting it multiple times
+        # (it's constant anyway)
+        if not record.exc_text:
+            record.exc_text = formatter.formatException(record.exc_info)
+    if record.exc_text:
+        rv = record.exc_text
+    if record.stack_info:
+        if rv[-1:] != "\n":
+            rv = rv + "\n"
+        rv = rv + formatter.formatStack(record.stack_info)
+
+    return rv
 
 
 class LoggingManager(object):
@@ -188,19 +255,19 @@ class LoggingManager(object):
 
         self._terminal = None
 
-    @property
-    def terminal(self):
-        if not self._terminal and blessings:
-            # Sometimes blessings fails to set up the terminal. In that case,
-            # silently fail.
+    def create_terminal(self):
+        if enable_blessed():
+            # Sometimes blessed fails to set up the terminal, in that case, silently fail.
             try:
-                terminal = blessings.Terminal(stream=_wrap_stdstream(sys.stdout))
+                terminal = blessed.Terminal(stream=_wrap_stdstream(sys.stdout))
 
                 if terminal.is_a_tty:
                     self._terminal = terminal
             except Exception:
                 pass
 
+    @property
+    def terminal(self):
         return self._terminal
 
     def add_json_handler(self, fh):
@@ -221,6 +288,16 @@ class LoggingManager(object):
         self, fh=sys.stdout, level=logging.INFO, write_interval=False, write_times=True
     ):
         """Enable logging to the terminal."""
+        self.create_terminal()
+
+        if IS_WINDOWS:
+            try:
+                # fileno() can raise in some cases, like unit tests.
+                # so we can try to enable this but if we fail it's fine
+                enable_virtual_terminal_processing(sys.stdout.fileno())
+                enable_virtual_terminal_processing(sys.stderr.fileno())
+            except Exception:
+                pass
 
         fh = _wrap_stdstream(fh)
         formatter = StructuredHumanFormatter(

@@ -15,25 +15,14 @@ namespace layers {
 class GPUVideoTextureHost : public TextureHost {
  public:
   static GPUVideoTextureHost* CreateFromDescriptor(
-      TextureFlags aFlags, const SurfaceDescriptorGPUVideo& aDescriptor);
+      const dom::ContentParentId& aContentId, TextureFlags aFlags,
+      const SurfaceDescriptorGPUVideo& aDescriptor);
 
   virtual ~GPUVideoTextureHost();
 
   void DeallocateDeviceData() override {}
 
-  virtual void SetTextureSourceProvider(
-      TextureSourceProvider* aProvider) override;
-
-  bool Lock() override;
-
-  void Unlock() override;
-
   gfx::SurfaceFormat GetFormat() const override;
-
-  void PrepareTextureSource(CompositableTextureSourceRef& aTexture) override;
-
-  bool BindTextureSource(CompositableTextureSourceRef& aTexture) override;
-  bool AcquireTextureSource(CompositableTextureSourceRef& aTexture) override;
 
   already_AddRefed<gfx::DataSourceSurface> GetAsSurface() override {
     return nullptr;  // XXX - implement this (for MOZ_DUMP_PAINTING)
@@ -50,8 +39,6 @@ class GPUVideoTextureHost : public TextureHost {
 #ifdef MOZ_LAYERS_HAVE_LOG
   const char* Name() override { return "GPUVideoTextureHost"; }
 #endif
-
-  bool HasIntermediateBuffer() const override;
 
   void CreateRenderTexture(
       const wr::ExternalImageId& aExternalImageId) override;
@@ -74,21 +61,28 @@ class GPUVideoTextureHost : public TextureHost {
   bool SupportsExternalCompositing(WebRenderBackend aBackend) override;
 
   void UnbindTextureSource() override;
+
   void NotifyNotUsed() override;
 
+  BufferTextureHost* AsBufferTextureHost() override;
+
+  bool IsWrappingSurfaceTextureHost() override;
+
+  TextureHostType GetTextureHostType() override;
+
+  bool NeedsDeferredDeletion() const override;
+
+  const dom::ContentParentId& GetContentId() const { return mContentId; }
+
  protected:
-  GPUVideoTextureHost(TextureFlags aFlags,
+  GPUVideoTextureHost(const dom::ContentParentId& aContentId,
+                      TextureFlags aFlags,
                       const SurfaceDescriptorGPUVideo& aDescriptor);
 
   TextureHost* EnsureWrappedTextureHost();
 
-  void UpdatedInternal(const nsIntRegion* Region) override;
-
   RefPtr<TextureHost> mWrappedTextureHost;
-  RefPtr<TextureSourceProvider> mPendingSourceProvider;
-  bool mPendingUpdatedInternal = false;
-  Maybe<nsIntRegion> mPendingIntRegion;
-  Maybe<CompositableTextureSourceRef> mPendingPrepareTextureSource;
+  dom::ContentParentId mContentId;
   SurfaceDescriptorGPUVideo mDescriptor;
 };
 

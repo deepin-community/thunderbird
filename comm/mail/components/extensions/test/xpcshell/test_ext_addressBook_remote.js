@@ -4,14 +4,14 @@
 
 "use strict";
 
-var { ExtensionTestUtils } = ChromeUtils.import(
-  "resource://testing-common/ExtensionXPCShellUtils.jsm"
+var { ExtensionTestUtils } = ChromeUtils.importESModule(
+  "resource://testing-common/ExtensionXPCShellUtils.sys.mjs"
 );
 var { LDAPServer } = ChromeUtils.import(
   "resource://testing-common/LDAPServer.jsm"
 );
 
-add_task(async function setup() {
+add_setup(async () => {
   // If nsIAbLDAPDirectory doesn't exist in our build options, someone has
   // specified --disable-ldap.
   if (!("nsIAbLDAPDirectory" in Ci)) {
@@ -28,8 +28,12 @@ add_task(async function setup() {
     Ci.nsIAbManager.LDAP_DIRECTORY_TYPE
   );
 
-  registerCleanupFunction(async () => {
+  registerCleanupFunction(() => {
     LDAPServer.close();
+    // Make sure any open database is given a chance to close.
+    Services.startup.advanceShutdownPhase(
+      Services.startup.SHUTDOWN_PHASE_APPSHUTDOWNCONFIRMED
+    );
   });
 });
 
@@ -94,9 +98,4 @@ add_task(async function test_addressBooks_remote() {
   await startupPromise;
   await extension.awaitFinish("addressBooks");
   await extension.unload();
-});
-
-registerCleanupFunction(() => {
-  // Make sure any open database is given a chance to close.
-  Services.obs.notifyObservers(null, "quit-application");
 });

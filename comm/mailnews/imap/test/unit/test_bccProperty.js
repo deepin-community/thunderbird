@@ -1,4 +1,7 @@
-/* -*- Mode: Java; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, you can obtain one at http://mozilla.org/MPL/2.0/. */
+
 /*
  * Test to ensure that BCC gets added to message headers on IMAP download
  *
@@ -7,17 +10,14 @@
  * original author Kent James <kent@caspia.com>
  */
 
-/* import-globals-from ../../../test/resources/logHelper.js */
-/* import-globals-from ../../../test/resources/asyncTestUtils.js */
-load("../../../resources/logHelper.js");
-load("../../../resources/asyncTestUtils.js");
+var { PromiseTestUtils } = ChromeUtils.import(
+  "resource://testing-common/mailnews/PromiseTestUtils.jsm"
+);
 
 var gFileName = "draft1";
 var gMsgFile = do_get_file("../../../data/" + gFileName);
 
-var tests = [setup, downloadAllForOffline, checkBccs, teardown];
-
-function* setup() {
+add_setup(async function () {
   setupIMAPPump();
 
   /*
@@ -29,32 +29,24 @@ function* setup() {
     .QueryInterface(Ci.nsIFileURL);
 
   IMAPPump.mailbox.addMessage(
-    new imapMessage(msgfileuri.spec, IMAPPump.mailbox.uidnext++, [])
+    new ImapMessage(msgfileuri.spec, IMAPPump.mailbox.uidnext++, [])
   );
 
   // ...and download for offline use.
-  IMAPPump.inbox.downloadAllForOffline(asyncUrlListener, null);
-  yield false;
-}
+  let listener = new PromiseTestUtils.PromiseUrlListener();
+  IMAPPump.inbox.downloadAllForOffline(listener, null);
+  await listener.promise;
+});
 
-function* downloadAllForOffline() {
-  IMAPPump.inbox.downloadAllForOffline(asyncUrlListener, null);
-  yield false;
-}
-
-function checkBccs() {
+add_task(function checkBccs() {
   // locate the new message by enumerating through the database
-  for (let hdr of IMAPPump.inbox.msgDatabase.EnumerateMessages()) {
+  for (let hdr of IMAPPump.inbox.msgDatabase.enumerateMessages()) {
     Assert.ok(hdr.bccList.includes("Another Person"));
     Assert.ok(hdr.bccList.includes("<u1@example.com>"));
     Assert.ok(!hdr.bccList.includes("IDoNotExist"));
   }
-}
+});
 
-function teardown() {
+add_task(function endTest() {
   teardownIMAPPump();
-}
-
-function run_test() {
-  async_run_tests(tests);
-}
+});

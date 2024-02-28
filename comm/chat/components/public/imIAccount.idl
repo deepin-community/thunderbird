@@ -67,6 +67,25 @@ interface prplIRoomInfoCallback: nsISupports {
   void onRoomInfoAvailable(in Array<AString> aRooms, in boolean aCompleted);
 };
 
+/**
+ * Encryption session of the prplIAccount. Usually every logged in device that
+ * can encrypt will have its own session.
+ */
+[scriptable, uuid(0254d011-44b3-40a1-8589-d2fd4a18a421)]
+interface prplISession: nsISupports {
+   /** ID of this session as displayed to the user. */
+   readonly attribute AUTF8String id;
+   /** Whether this session is trusted. */
+   readonly attribute boolean trusted;
+   /** Indicates that this is the session we're currently using */
+   readonly attribute boolean currentSession;
+   /**
+    * Verify the identity of this session.
+    *
+    * @returns {Promise<imISessionVerification>}
+    */
+   Promise verify();
+};
 
 /*
  * This interface should be implemented by the protocol plugin.
@@ -136,7 +155,7 @@ interface prplIAccount: nsISupports {
   AUTF8String normalize(in AUTF8String aName);
 
   // protocol specific options: those functions set the protocol
-  // specific options for the PurpleAccount
+  // specific options for the prplIAccount
   void setBool(in string aName, in boolean aVal);
   void setInt(in string aName, in long aVal);
   void setString(in string aName, in AUTF8String aVal);
@@ -178,39 +197,21 @@ interface prplIAccount: nsISupports {
   const short ERROR_CERT_OTHER_ERROR = 15;
   const short ERROR_OTHER_ERROR = 16;
 
-  /* From PurpleConnectionFlags */
+  /**
+   * Get a list of active encryption sessions for the account.
+   * The protocol sends a "account-sessions-changed" notification when
+   * the trust state of a session changes, or entries are added or removed.
+   */
+  Array<prplISession> getSessions();
 
-  //   PURPLE_CONNECTION_HTML
-  //    Connection sends/receives in 'HTML'.
-  readonly attribute boolean HTMLEnabled;
-
-  // libpurple expects messages to be HTML escaped even when HTML
-  // isn't enabled. Our js-prpls most likely don't want that behavior.
-  readonly attribute boolean HTMLEscapePlainText;
-
-  //   PURPLE_CONNECTION_NO_BGCOLOR
-  //    Connection does not send/receive background colors.
-  readonly attribute boolean noBackgroundColors;
-
-  //   PURPLE_CONNECTION_AUTO_RESP
-  //    Send auto responses when away.
-  readonly attribute boolean autoResponses;
-
-  //   PURPLE_CONNECTION_FORMATTING_WBFO
-  //    The text buffer must be formatted as a whole.
-  readonly attribute boolean singleFormatting;
-
-  //   PURPLE_CONNECTION_NO_FONTSIZE
-  //    Connection does not send/receive font sizes.
-  readonly attribute boolean noFontSizes;
-
-  //   PURPLE_CONNECTION_NO_URLDESC
-  //    Connection does not support descriptions with links.
-  readonly attribute boolean noUrlDesc;
-
-  //   PURPLE_CONNECTION_NO_IMAGES
-  //    Connection does not support sending of images.
-  readonly attribute boolean noImages;
+  /**
+   * Information as to the state of encryption capabilities of this account. For
+   * example Matrix surfaces the secret storage, key backup and cross-signing
+   * status info here.
+   * The protocol sends a "account-encryption-status-changed" notification when
+   * this chanes.
+   */
+  readonly attribute Array<AUTF8String> encryptionStatus;
 };
 
 

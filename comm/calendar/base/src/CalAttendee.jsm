@@ -6,7 +6,6 @@
 
 var EXPORTED_SYMBOLS = ["CalAttendee"];
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 var { cal } = ChromeUtils.import("resource:///modules/calendar/calUtils.jsm");
 
 Services.scriptloader.loadSubScript("resource:///components/calItemBase.js");
@@ -106,12 +105,11 @@ CalAttendee.prototype = {
   },
 
   get icalProperty() {
-    let icssvc = cal.getIcsService();
     let icalatt;
     if (this.mIsOrganizer) {
-      icalatt = icssvc.createIcalProperty("ORGANIZER");
+      icalatt = cal.icsService.createIcalProperty("ORGANIZER");
     } else {
-      icalatt = icssvc.createIcalProperty("ATTENDEE");
+      icalatt = cal.icsService.createIcalProperty("ATTENDEE");
     }
 
     if (!this.id) {
@@ -155,7 +153,7 @@ CalAttendee.prototype = {
     return comp ? comp.icalString : "";
   },
   set icalString(val) {
-    let prop = cal.getIcsService().createIcalPropertyFromString(val);
+    let prop = cal.icsService.createIcalPropertyFromString(val);
     if (prop.propertyName != "ORGANIZER" && prop.propertyName != "ATTENDEE") {
       throw Components.Exception("", Cr.NS_ERROR_ILLEGAL_VALUE);
     }
@@ -163,7 +161,7 @@ CalAttendee.prototype = {
   },
 
   get properties() {
-    return this.mProperties.entries();
+    return [...this.mProperties.entries()];
   },
 
   // The has/get/set/deleteProperty methods are case-insensitive.

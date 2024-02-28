@@ -61,9 +61,7 @@ function async_write_file(aContractId, aDeferOpen) {
   do_test_pending();
 
   // First, we need an output file to write to.
-  let file = Cc["@mozilla.org/file/directory_service;1"]
-    .getService(Ci.nsIProperties)
-    .get("ProfD", Ci.nsIFile);
+  let file = Services.dirsvc.get("ProfD", Ci.nsIFile);
   file.append("NetUtil-async-test-file.tmp");
   file.createUnique(Ci.nsIFile.NORMAL_FILE_TYPE, 0o666);
 
@@ -83,7 +81,7 @@ function async_write_file(aContractId, aDeferOpen) {
   );
   istream.setData(TEST_DATA, TEST_DATA.length);
 
-  NetUtil.asyncCopy(istream, ostream, function(aResult) {
+  NetUtil.asyncCopy(istream, ostream, function (aResult) {
     // Make sure the copy was successful!
     Assert.ok(Components.isSuccessCode(aResult));
 
@@ -122,9 +120,7 @@ function test_async_copy() {
     }
 
     // File input streams are not buffered, so let's create a file
-    let file = Cc["@mozilla.org/file/directory_service;1"]
-      .getService(Ci.nsIProperties)
-      .get("ProfD", Ci.nsIFile);
+    let file = Services.dirsvc.get("ProfD", Ci.nsIFile);
     file.append("NetUtil-asyncFetch-test-file.tmp");
     file.createUnique(Ci.nsIFile.NORMAL_FILE_TYPE, 0o666);
 
@@ -145,9 +141,7 @@ function test_async_copy() {
 
   // Create an output buffer holding some data
   function make_output(isBuffered) {
-    let file = Cc["@mozilla.org/file/directory_service;1"]
-      .getService(Ci.nsIProperties)
-      .get("ProfD", Ci.nsIFile);
+    let file = Services.dirsvc.get("ProfD", Ci.nsIFile);
     file.append("NetUtil-asyncFetch-test-file.tmp");
     file.createUnique(Ci.nsIFile.NORMAL_FILE_TYPE, 0o666);
 
@@ -166,7 +160,7 @@ function test_async_copy() {
     bstream.init(ostream, 256);
     return { file, sink: bstream };
   }
-  (async function() {
+  (async function () {
     do_test_pending();
     for (let bufferedInput of [true, false]) {
       for (let bufferedOutput of [true, false]) {
@@ -226,12 +220,10 @@ function test_newURI_no_spec_throws() {
 }
 
 function test_newURI() {
-  let ios = Cc["@mozilla.org/network/io-service;1"].getService(Ci.nsIIOService);
-
   // Check that we get the same URI back from the IO service and the utility
   // method.
   const TEST_URI = "http://mozilla.org";
-  let iosURI = ios.newURI(TEST_URI);
+  let iosURI = Services.io.newURI(TEST_URI);
   let NetUtilURI = NetUtil.newURI(TEST_URI);
   Assert.ok(iosURI.equals(NetUtilURI));
 
@@ -239,17 +231,13 @@ function test_newURI() {
 }
 
 function test_newURI_takes_nsIFile() {
-  let ios = Cc["@mozilla.org/network/io-service;1"].getService(Ci.nsIIOService);
-
   // Create a test file that we can pass into NetUtil.newURI
-  let file = Cc["@mozilla.org/file/directory_service;1"]
-    .getService(Ci.nsIProperties)
-    .get("ProfD", Ci.nsIFile);
+  let file = Services.dirsvc.get("ProfD", Ci.nsIFile);
   file.append("NetUtil-test-file.tmp");
 
   // Check that we get the same URI back from the IO service and the utility
   // method.
-  let iosURI = ios.newFileURI(file);
+  let iosURI = Services.io.newFileURI(file);
   let NetUtilURI = NetUtil.newURI(file);
   Assert.ok(iosURI.equals(NetUtilURI));
 
@@ -258,7 +246,7 @@ function test_newURI_takes_nsIFile() {
 
 function test_asyncFetch_no_channel() {
   try {
-    NetUtil.asyncFetch(null, function() {});
+    NetUtil.asyncFetch(null, function () {});
     do_throw("should throw!");
   } catch (e) {
     Assert.equal(e.result, Cr.NS_ERROR_INVALID_ARG);
@@ -283,7 +271,7 @@ function test_asyncFetch_with_nsIChannel() {
 
   // Start the http server, and register our handler.
   let server = new HttpServer();
-  server.registerPathHandler("/test", function(aRequest, aResponse) {
+  server.registerPathHandler("/test", function (aRequest, aResponse) {
     aResponse.setStatusLine(aRequest.httpVersion, 200, "OK");
     aResponse.setHeader("Content-Type", "text/plain", false);
     aResponse.write(TEST_DATA);
@@ -297,7 +285,7 @@ function test_asyncFetch_with_nsIChannel() {
   });
 
   // Open our channel asynchronously.
-  NetUtil.asyncFetch(channel, function(aInputStream, aResult) {
+  NetUtil.asyncFetch(channel, function (aInputStream, aResult) {
     // Check that we had success.
     Assert.ok(Components.isSuccessCode(aResult));
 
@@ -319,7 +307,7 @@ function test_asyncFetch_with_nsIURI() {
 
   // Start the http server, and register our handler.
   let server = new HttpServer();
-  server.registerPathHandler("/test", function(aRequest, aResponse) {
+  server.registerPathHandler("/test", function (aRequest, aResponse) {
     aResponse.setStatusLine(aRequest.httpVersion, 200, "OK");
     aResponse.setHeader("Content-Type", "text/plain", false);
     aResponse.write(TEST_DATA);
@@ -337,7 +325,7 @@ function test_asyncFetch_with_nsIURI() {
       uri,
       loadUsingSystemPrincipal: true,
     },
-    function(aInputStream, aResult) {
+    function (aInputStream, aResult) {
       // Check that we had success.
       Assert.ok(Components.isSuccessCode(aResult));
 
@@ -365,7 +353,7 @@ function test_asyncFetch_with_string() {
 
   // Start the http server, and register our handler.
   let server = new HttpServer();
-  server.registerPathHandler("/test", function(aRequest, aResponse) {
+  server.registerPathHandler("/test", function (aRequest, aResponse) {
     aResponse.setStatusLine(aRequest.httpVersion, 200, "OK");
     aResponse.setHeader("Content-Type", "text/plain", false);
     aResponse.write(TEST_DATA);
@@ -378,7 +366,7 @@ function test_asyncFetch_with_string() {
       uri: "http://localhost:" + server.identity.primaryPort + "/test",
       loadUsingSystemPrincipal: true,
     },
-    function(aInputStream, aResult) {
+    function (aInputStream, aResult) {
       // Check that we had success.
       Assert.ok(Components.isSuccessCode(aResult));
 
@@ -405,9 +393,7 @@ function test_asyncFetch_with_nsIFile() {
   const TEST_DATA = "this is a test string";
 
   // First we need a file to read from.
-  let file = Cc["@mozilla.org/file/directory_service;1"]
-    .getService(Ci.nsIProperties)
-    .get("ProfD", Ci.nsIFile);
+  let file = Services.dirsvc.get("ProfD", Ci.nsIFile);
   file.append("NetUtil-asyncFetch-test-file.tmp");
   file.createUnique(Ci.nsIFile.NORMAL_FILE_TYPE, 0o666);
 
@@ -428,7 +414,7 @@ function test_asyncFetch_with_nsIFile() {
       uri: NetUtil.newURI(file),
       loadUsingSystemPrincipal: true,
     },
-    function(aInputStream, aResult) {
+    function (aInputStream, aResult) {
       // Check that we had success.
       Assert.ok(Components.isSuccessCode(aResult));
 
@@ -461,7 +447,7 @@ function test_asyncFetch_with_nsIInputString() {
   // Read the input stream asynchronously.
   NetUtil.asyncFetch(
     istream,
-    function(aInputStream, aResult) {
+    function (aInputStream, aResult) {
       // Check that we had success.
       Assert.ok(Components.isSuccessCode(aResult));
 
@@ -490,7 +476,7 @@ function test_asyncFetch_does_not_block() {
   });
 
   // Open our channel asynchronously.
-  NetUtil.asyncFetch(channel, function(aInputStream, aResult) {
+  NetUtil.asyncFetch(channel, function (aInputStream, aResult) {
     // Check that we had success.
     Assert.ok(Components.isSuccessCode(aResult));
 
@@ -527,8 +513,7 @@ function test_newChannel_with_string() {
 
   // Check that we get the same URI back from channel the IO service creates and
   // the channel the utility method creates.
-  let ios = Services.io;
-  let iosChannel = ios.newChannel(
+  let iosChannel = Services.io.newChannel(
     TEST_SPEC,
     null,
     null,
@@ -815,4 +800,3 @@ function test_readInputStreamToString_invalid_sequence() {
   test_readInputStreamToString_with_charset,
   test_readInputStreamToString_invalid_sequence,
 ].forEach(f => add_test(f));
-var index = 0;

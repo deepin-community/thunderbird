@@ -1283,7 +1283,7 @@ var checkCanvasRectColor = function(gl, x, y, width, height, color, opt_errorRan
           was += "," + buf[offset + j];
         }
         differentFn('at (' + (x + (i % width)) + ', ' + (y + Math.floor(i / width)) +
-                    ') expected: ' + color + ' was ' + was);
+                    ') expected: ' + color + ' was ' + was, buf);
         return;
       }
     }
@@ -1573,6 +1573,29 @@ var create3DContext = function(opt_canvas, opt_attributes, opt_version) {
   if (!hasAttributeCaseInsensitive(attributes, "antialias")) {
     attributes.antialias = false;
   }
+
+  const parseString = v => v;
+  const parseBoolean = v => v.toLowerCase().startsWith('t') || parseFloat(v) > 0;
+  const params = new URLSearchParams(window.location.search);
+  for (const [key, parseFn] of Object.entries({
+    alpha: parseBoolean,
+    antialias: parseBoolean,
+    depth: parseBoolean,
+    desynchronized: parseBoolean,
+    failIfMajorPerformanceCaveat: parseBoolean,
+    powerPreference: parseString,
+    premultipliedAlpha: parseBoolean,
+    preserveDrawingBuffer: parseBoolean,
+    stencil: parseBoolean,
+  })) {
+    const value = params.get(key);
+    if (value) {
+      const v = parseFn(value);
+      attributes[key] = v;
+      debug(`setting context attribute: ${key} = ${v}`);
+    }
+  }
+
   if (!opt_version) {
     opt_version = getDefault3DContextVersion();
   }
@@ -1607,7 +1630,24 @@ var create3DContext = function(opt_canvas, opt_attributes, opt_version) {
     }
     window._wtu_contexts.push(context);
   }
+
+  if (params.get('showRenderer')) {
+    const ext = context.getExtension('WEBGL_debug_renderer_info');
+    debug(`RENDERER: ${context.getParameter(ext ? ext.UNMASKED_RENDERER_WEBGL : context.RENDERER)}`);
+  }
+
   return context;
+};
+
+/**
+ * Indicates whether the given context is WebGL 2.0 or greater.
+ * @param {!WebGLRenderingContext} gl The WebGLRenderingContext to use.
+ * @return {boolean} True if the given context is WebGL 2.0 or greater.
+ */
+var isWebGL2 = function(gl) {
+  // Duck typing is used so that the conformance suite can be run
+  // against libraries emulating WebGL 1.0 on top of WebGL 2.0.
+  return !!gl.drawArraysInstanced;
 };
 
 /**
@@ -1722,6 +1762,10 @@ var glErrorShouldBe = function(gl, glErrors, opt_msg) {
   return glErrorShouldBeImpl(gl, glErrors, true, opt_msg);
 };
 
+const glErrorAssert = function(gl, glErrors, opt_msg) {
+  return glErrorShouldBeImpl(gl, glErrors, false, opt_msg);
+};
+
 /**
  * Tests that the given framebuffer has a specific status
  * @param {!WebGLRenderingContext} gl The WebGLRenderingContext to use.
@@ -1740,13 +1784,23 @@ var framebufferStatusShouldBe = function(gl, target, glStatuses, opt_msg) {
     return glEnumToString(gl, status);
   }).join(' or ');
   if (ndx < 0) {
-    var msg = "checkFramebufferStatus expected" + ((glStatuses.length > 1) ? " one of: " : ": ");
-    testFailed(msg + expected +  ". Was " + glEnumToString(gl, status) + " : " + opt_msg);
-  } else {
-    var msg = "checkFramebufferStatus was " + ((glStatuses.length > 1) ? "one of: " : "expected value: ");
-    testPassed(msg + expected + " : " + opt_msg);
+    let msg = "checkFramebufferStatus expected" + ((glStatuses.length > 1) ? " one of: " : ": ") +
+      expected +  ". Was " + glEnumToString(gl, status);
+    if (opt_msg) {
+      msg += ": " + opt_msg;
+    }
+    testFailed(msg);
+    return false;
   }
-  return status;
+  let msg = `checkFramebufferStatus was ${glEnumToString(gl, status)}`;
+  if (glStatuses.length > 1) {
+    msg += `, one of: ${expected}`;
+  }
+  if (opt_msg) {
+    msg += ": " + opt_msg;
+  }
+  testPassed(msg);
+  return [status];
 }
 
 /**
@@ -2162,7 +2216,7 @@ var loadShaderFromScript = function(
   if (!shaderScript) {
     throw("*** Error: unknown script element " + scriptId);
   }
-  shaderSource = shaderScript.text;
+  shaderSource = shaderScript.text.trim();
 
   if (!opt_shaderType) {
     if (shaderScript.type == "x-shader/x-vertex") {
@@ -3070,7 +3124,11 @@ var setZeroTimeout = (function() {
 function dispatchPromise(fn) {
   return new Promise((fn_resolve, fn_reject) => {
     setZeroTimeout(() => {
-      fn_resolve(fn());
+      let val;
+      if (fn) {
+        val = fn();
+      }
+      fn_resolve(val);
     });
   });
 }
@@ -3103,22 +3161,30 @@ var runSteps = function(steps) {
  * @param {!function(!HTMLVideoElement): void} callback Function to call when
  *        video is ready.
  */
-var startPlayingAndWaitForVideo = function(video, callback) {
-  var timeWatcher = function() {
-    if (video.currentTime > 0) {
-      callback(video);
-    } else {
-      requestAnimFrame.call(window, timeWatcher);
-    }
-  };
+async function startPlayingAndWaitForVideo(video, callback) {
+  if (video.error) {
+    testFailed('Video failed to load: ' + video.error);
+    return;
+  }
 
-  requestAnimFrame.call(window, timeWatcher);
   video.loop = true;
   video.muted = true;
   // See whether setting the preload flag de-flakes video-related tests.
   video.preload = 'auto';
-  video.play();
-};
+
+  try {
+    await video.play();
+  } catch (e) {
+    testFailed('video.play failed: ' + e);
+    return;
+  }
+
+  if (video.requestVideoFrameCallback) {
+    await new Promise(go => video.requestVideoFrameCallback(go));
+  }
+
+  callback(video);
+}
 
 var getHost = function(url) {
   url = url.replace("\\", "/");
@@ -3145,13 +3211,16 @@ var getBaseDomain = function(host) {
 }
 
 var runningOnLocalhost = function() {
-  return window.location.hostname.indexOf("localhost") != -1 ||
-      window.location.hostname.indexOf("127.0.0.1") != -1;
+  let hostname = window.location.hostname;
+  return hostname == "localhost" ||
+    hostname == "127.0.0.1" ||
+    hostname == "::1";
 }
 
 var getLocalCrossOrigin = function() {
   var domain;
   if (window.location.host.indexOf("localhost") != -1) {
+    // TODO(kbr): figure out whether to use an IPv6 loopback address.
     domain = "127.0.0.1";
   } else {
     domain = "localhost";
@@ -3183,25 +3252,22 @@ var getRelativePath = function(path) {
   return relparts.join("/");
 }
 
-function chooseUrlForCrossOriginImage(imgUrl, localUrl) {
-    if (runningOnLocalhost())
-      return getLocalCrossOrigin() + getRelativePath(localUrl);
+async function loadCrossOriginImage(img, webUrl, localUrl) {
+  if (runningOnLocalhost()) {
+    img.src = getLocalCrossOrigin() + getRelativePath(localUrl);
+    console.log('[loadCrossOriginImage]', '  trying', img.src);
+    await img.decode();
+    return;
+  }
 
-    return img.src = getUrlOptions().imgUrl || imgUrl;
-}
+  try {
+    img.src = getUrlOptions().imgUrl || webUrl;
+    console.log('[loadCrossOriginImage]', 'trying', img.src);
+    await img.decode();
+    return;
+  } catch {}
 
-var setupImageForCrossOriginTest = function(img, imgUrl, localUrl, callback) {
-  window.addEventListener("load", function() {
-    if (typeof(img) == "string")
-      img = document.querySelector(img);
-    if (!img)
-      img = new Image();
-
-    img.addEventListener("load", callback, false);
-    img.addEventListener("error", callback, false);
-
-    img.src = chooseUrlForCrossOriginImage(imgUrl, localUrl);
-  }, false);
+  throw 'createCrossOriginImage failed';
 }
 
 /**
@@ -3259,6 +3325,98 @@ function linearChannelToSRGB(value) {
     return Math.trunc(value * 255 + 0.5);
 }
 
+/**
+ * Return the named color in the specified color space.
+ * @param {string} colorName The name of the color to convert.
+ *        Supported color names are:
+ *            'Red', which is the CSS color color('srgb' 1 0 0 1)
+ *            'Green', which is the CSS color color('srgb' 0 1 0 1)
+ * @param {string} colorSpace The color space to convert to. Supported
+          color spaces are:
+ *            null, which is treated as sRGB
+ *            'srgb'
+ *            'display-p3'.
+ *        Documentation on the formulas for color conversion between
+ *        spaces can be found at
+              https://www.w3.org/TR/css-color-4/#predefined-to-predefined
+ * @return {!Array.<number>} color The color in the specified color
+ *        space as an 8-bit RGBA array with unpremultiplied alpha.
+ */
+var namedColorInColorSpace = function(colorName, colorSpace) {
+  var result;
+  switch (colorSpace) {
+    case undefined:
+    case 'srgb':
+      switch(colorName) {
+        case 'Red':
+          return [255, 0, 0, 255];
+        case 'Green':
+          return [0, 255, 0, 255];
+          break;
+        default:
+          throw 'unexpected color name: ' + colorName;
+      };
+      break;
+    case 'display-p3':
+      switch(colorName) {
+        case 'Red':
+          return [234, 51, 35, 255];
+          break;
+        case 'Green':
+          return [117, 251, 76, 255];
+          break;
+        default:
+          throw 'unexpected color name: ' + colorName;
+      }
+      break;
+    default:
+      throw 'unexpected color space: ' + colorSpace;
+  }
+}
+
+/**
+ * Return the named color as it would be sampled with the specified
+ * internal format
+ * @param {!Array.<number>} color The color as an 8-bit RGBA array.
+ * @param {string} internalformat The internal format.
+ * @return {!Array.<number>} color The color, as it would be sampled by
+ *        the specified internal format, as an 8-bit RGBA array.
+ */
+var colorAsSampledWithInternalFormat = function(color, internalFormat) {
+  switch (internalFormat) {
+    case 'ALPHA':
+      return [0, 0, 0, color[3]];
+    case 'LUMINANCE':
+      return [color[0], color[0], color[0], 255];
+    case 'LUMINANCE_ALPHA':
+      return [color[0], color[0], color[0], color[3]];
+    case 'SRGB8':
+    case 'SRGB8_ALPHA8':
+      return [sRGBChannelToLinear(color[0]),
+              sRGBChannelToLinear(color[1]),
+              sRGBChannelToLinear(color[2]),
+              color[3]];
+    case 'R16F':
+    case 'R32F':
+    case 'R8':
+    case 'R8UI':
+    case 'RED':
+    case 'RED_INTEGER':
+      return [color[0], 0, 0, 0];
+    case 'RG':
+    case 'RG16F':
+    case 'RG32F':
+    case 'RG8':
+    case 'RG8UI':
+    case 'RG_INTEGER':
+      return [color[0], color[1], 0, 0];
+      break;
+    default:
+      break;
+  }
+  return color;
+}
+
 function comparePixels(cmp, ref, tolerance, diff) {
     if (cmp.length != ref.length) {
         testFailed("invalid pixel size.");
@@ -3293,12 +3451,12 @@ function comparePixels(cmp, ref, tolerance, diff) {
 }
 
 function destroyContext(gl) {
-  gl.canvas.width = 1;
-  gl.canvas.height = 1;
   const ext = gl.getExtension('WEBGL_lose_context');
   if (ext) {
     ext.loseContext();
   }
+  gl.canvas.width = 1;
+  gl.canvas.height = 1;
 }
 
 function destroyAllContexts() {
@@ -3344,6 +3502,19 @@ async function awaitTimeout(ms) {
       res();
     }, ms);
   });
+}
+
+async function awaitOrTimeout(promise, opt_timeout_ms) {
+  async function throwOnTimeout(ms) {
+    await awaitTimeout(ms);
+    throw 'timeout';
+  }
+
+  let timeout_ms = opt_timeout_ms;
+  if (timeout_ms === undefined)
+    timeout_ms = 5000;
+
+  await Promise.race([promise, throwOnTimeout(timeout_ms)]);
 }
 
 var API = {
@@ -3395,11 +3566,14 @@ var API = {
   getAttribMap: getAttribMap,
   getUniformMap: getUniformMap,
   glEnumToString: glEnumToString,
+  glErrorAssert: glErrorAssert,
   glErrorShouldBe: glErrorShouldBe,
   glTypeToTypedArrayType: glTypeToTypedArrayType,
   hasAttributeCaseInsensitive: hasAttributeCaseInsensitive,
   insertImage: insertImage,
+  isWebGL2: isWebGL2,
   linkProgram: linkProgram,
+  loadCrossOriginImage: loadCrossOriginImage,
   loadImageAsync: loadImageAsync,
   loadImagesAsync: loadImagesAsync,
   loadProgram: loadProgram,
@@ -3463,6 +3637,10 @@ var API = {
   // fullscreen api
   setupFullscreen: setupFullscreen,
 
+  // color converter API
+  namedColorInColorSpace: namedColorInColorSpace,
+  colorAsSampledWithInternalFormat: colorAsSampledWithInternalFormat,
+
   // sRGB converter api
   sRGBToLinear: sRGBToLinear,
   linearToSRGB: linearToSRGB,
@@ -3472,8 +3650,7 @@ var API = {
   runningOnLocalhost: runningOnLocalhost,
   getLocalCrossOrigin: getLocalCrossOrigin,
   getRelativePath: getRelativePath,
-  chooseUrlForCrossOriginImage: chooseUrlForCrossOriginImage,
-  setupImageForCrossOriginTest: setupImageForCrossOriginTest,
+  awaitOrTimeout: awaitOrTimeout,
   awaitTimeout: awaitTimeout,
 
   none: false

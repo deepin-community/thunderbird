@@ -12,11 +12,10 @@ const EXPORTED_SYMBOLS = [
   "shutdownNNTPServer",
 ];
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 var { MailServices } = ChromeUtils.import(
   "resource:///modules/MailServices.jsm"
 );
-var { newsArticle, NNTP_RFC977_handler, nntpDaemon } = ChromeUtils.import(
+var { NewsArticle, NNTP_RFC977_handler, NntpDaemon } = ChromeUtils.import(
   "resource://testing-common/mailnews/Nntpd.jsm"
 );
 var { nsMailServer } = ChromeUtils.import(
@@ -44,13 +43,13 @@ var groups = [
 
 // Sets up the NNTP daemon object for use in fake server
 function setupNNTPDaemon() {
-  var daemon = new nntpDaemon();
+  var daemon = new NntpDaemon();
 
-  groups.forEach(function(element) {
+  groups.forEach(function (element) {
     daemon.addGroup(element[0]);
   });
 
-  var article = new newsArticle(kSimpleNewsArticle);
+  var article = new NewsArticle(kSimpleNewsArticle);
   daemon.addArticleToGroup(article, "test.subscribe.simple", 1);
 
   return daemon;
@@ -86,7 +85,7 @@ var _server = null;
 function subscribeServer(incomingServer) {
   // Subscribe to newsgroups
   incomingServer.QueryInterface(Ci.nsINntpIncomingServer);
-  groups.forEach(function(element) {
+  groups.forEach(function (element) {
     if (element[1]) {
       incomingServer.subscribeToNewsgroup(element[0]);
     }

@@ -3,22 +3,13 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
-
-/* global dump: false */
-
 "use strict";
 
-var EXPORTED_SYMBOLS = ["EnigmailLog"];
+const EXPORTED_SYMBOLS = ["EnigmailLog"];
 
-const { XPCOMUtils } = ChromeUtils.import(
-  "resource://gre/modules/XPCOMUtils.jsm"
+const { AppConstants } = ChromeUtils.importESModule(
+  "resource://gre/modules/AppConstants.sys.mjs"
 );
-
-XPCOMUtils.defineLazyModuleGetters(this, {
-  AppConstants: "resource://gre/modules/AppConstants.jsm",
-  EnigmailFiles: "chrome://openpgp/content/modules/files.jsm",
-  Services: "resource://gre/modules/Services.jsm",
-});
 
 var EnigmailLog = {
   level: 3,
@@ -45,9 +36,14 @@ var EnigmailLog = {
       !EnigmailLog.fileStream &&
       EnigmailLog.level >= 5
     ) {
-      EnigmailLog.fileStream = EnigmailFiles.createFileStream(
-        EnigmailLog.directory + "enigdbug.txt"
-      );
+      let file = Cc["@mozilla.org/file/local;1"].createInstance(Ci.nsIFile);
+      file.initWithPath(EnigmailLog.directory + "enigdbug.txt");
+      let ofStream = Cc[
+        "@mozilla.org/network/file-output-stream;1"
+      ].createInstance(Ci.nsIFileOutputStream);
+      ofStream.init(file, -1, -1, 0);
+
+      EnigmailLog.fileStream = ofStream;
     }
   },
 
@@ -129,7 +125,7 @@ var EnigmailLog = {
   /**
    *  Log an exception including the stack trace
    *
-   *  referenceInfo: String - arbitraty text to write before the exception is logged
+   *  referenceInfo: String - arbitrary text to write before the exception is logged
    *  ex:            exception object
    */
   writeException(referenceInfo, ex) {

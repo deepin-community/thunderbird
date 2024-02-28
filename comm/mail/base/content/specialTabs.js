@@ -4,18 +4,22 @@
 
 /* global MozElements, openOptionsDialog */
 
-/* import-globals-from mailWindow.js */
 /* import-globals-from utilityOverlay.js */
 
-var { XPCOMUtils } = ChromeUtils.import(
-  "resource://gre/modules/XPCOMUtils.jsm"
+/* globals ZoomManager */ // From viewZoomOverlay.js
+/* globals PrintUtils */ // From printUtils.js
+
+var { XPCOMUtils } = ChromeUtils.importESModule(
+  "resource://gre/modules/XPCOMUtils.sys.mjs"
 );
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-var { AddonManager } = ChromeUtils.import(
-  "resource://gre/modules/AddonManager.jsm"
+var { AddonManager } = ChromeUtils.importESModule(
+  "resource://gre/modules/AddonManager.sys.mjs"
 );
-var { ExtensionParent } = ChromeUtils.import(
-  "resource://gre/modules/ExtensionParent.jsm"
+var { ExtensionParent } = ChromeUtils.importESModule(
+  "resource://gre/modules/ExtensionParent.sys.mjs"
+);
+var { MailE10SUtils } = ChromeUtils.import(
+  "resource:///modules/MailE10SUtils.jsm"
 );
 
 function tabProgressListener(aTab, aStartsBlank) {
@@ -97,9 +101,10 @@ tabProgressListener.prototype = {
       // by a pushState or a replaceState. See bug 550565.
       if (
         aWebProgress.isLoadingDocument &&
-        !(aWebProgress.loadType & Ci.nsIDocShell.LOAD_CMD_PUSHSTATE)
+        !(aWebProgress.loadType & Ci.nsIDocShell.LOAD_CMD_PUSHSTATE) &&
+        !(aFlags & Ci.nsIWebProgressListener.LOCATION_CHANGE_SAME_DOCUMENT)
       ) {
-        this.mBrowser.mIconURL = null;
+        this.mTab.favIconUrl = null;
       }
 
       var location = aLocationURI ? aLocationURI.spec : "";
@@ -175,8 +180,8 @@ tabProgressListener.prototype = {
 
       // If we've finished loading, and we've not had an icon loaded from a
       // link element, then we try using the default icon for the site.
-      if (aWebProgress.isTopLevel && !this.mBrowser.mIconURL) {
-        specialTabs.useDefaultIcon(this.mTab);
+      if (aWebProgress.isTopLevel && !this.mTab.favIconUrl) {
+        specialTabs.useDefaultFavIcon(this.mTab);
       }
     }
   },
@@ -244,6 +249,7 @@ var DOMLinkHandler = {
   handleEvent(event) {
     switch (event.type) {
       case "DOMLinkAdded":
+      case "DOMLinkChanged":
         this.onLinkAdded(event);
         break;
     }
@@ -261,18 +267,19 @@ var DOMLinkHandler = {
       }
 
       let targetDoc = link.ownerDocument;
-      let uri = makeURI(link.href, targetDoc.characterSet);
+
+      let uri = Services.io.newURI(link.href, targetDoc.characterSet);
 
       // Verify that the load of this icon is legal.
       // Some error or special pages can load their favicon.
       // To be on the safe side, only allow chrome:// favicons.
       let isAllowedPage =
         targetDoc.documentURI == "about:home" ||
-        ["about:neterror?", "about:blocked?", "about:certerror?"].some(function(
-          aStart
-        ) {
-          targetDoc.documentURI.startsWith(aStart);
-        });
+        ["about:neterror?", "about:blocked?", "about:certerror?"].some(
+          function (aStart) {
+            targetDoc.documentURI.startsWith(aStart);
+          }
+        );
 
       if (!isAllowedPage || !uri.schemeIs("chrome")) {
         // Be extra paraniod and just make sure we're not going to load
@@ -329,7 +336,7 @@ var DOMLinkHandler = {
 
       // Just set the url on the browser and we'll display the actual icon
       // when we finish loading the page.
-      specialTabs.setTabIcon(tab, link.href);
+      specialTabs.setFavIcon(tab, link.href);
     }
   },
 };
@@ -350,7 +357,7 @@ var contentTabBaseType = {
   // as specified in inContentWhitelist.
   inContentOverlays: [
     // about:addons
-    function(aDocument, aTab) {
+    function (aDocument, aTab) {
       Services.scriptloader.loadSubScript(
         "chrome://messenger/content/aboutAddonsExtra.js",
         aDocument.defaultView
@@ -358,7 +365,7 @@ var contentTabBaseType = {
     },
 
     // about:addressbook provides its own context menu.
-    function(aDocument, aTab) {
+    function (aDocument, aTab) {
       aTab.browser.removeAttribute("context");
     },
 
@@ -366,7 +373,7 @@ var contentTabBaseType = {
     null,
 
     // about:profiles
-    function(aDocument, aTab) {
+    function (aDocument, aTab) {
       let win = aDocument.defaultView;
       // Need a timeout to let the script run to create the needed buttons.
       win.setTimeout(() => {
@@ -383,7 +390,7 @@ var contentTabBaseType = {
     },
 
     // Other about:* pages.
-    function(aDocument, aTab) {
+    function (aDocument, aTab) {
       // Provide context menu for about:* pages.
       aTab.browser.setAttribute("context", "aboutPagesContext");
     },
@@ -396,25 +403,31 @@ var contentTabBaseType = {
 
     let tabmail = document.getElementById("tabmail");
     let tabInfo = tabmail.tabInfo;
+    let uri;
 
-    // Remove any anchors - especially for the about: pages, we just want
-    // to re-use the same tab.
-    let regEx = new RegExp("#.*");
-
-    let contentUrl = url.replace(regEx, "");
+    try {
+      uri = Services.io.newURI(url);
+    } catch (ex) {
+      return -1;
+    }
 
     for (
       let selectedIndex = 0;
       selectedIndex < tabInfo.length;
       ++selectedIndex
     ) {
+      // Reuse the same tab, if only the anchors differ - especially for the
+      // about: pages, we just want to re-use the same tab.
       if (
         tabInfo[selectedIndex].mode.name == this.name &&
-        tabInfo[selectedIndex].browser.currentURI?.spec.replace(regEx, "") ==
-          contentUrl
+        tabInfo[selectedIndex].browser.currentURI?.specIgnoringRef ==
+          uri.specIgnoringRef
       ) {
-        // Ensure we go to the correct location on the page.
-        tabInfo[selectedIndex].browser.setAttribute("src", url);
+        // Go to the correct location on the page, but only if it's not the
+        // current location. This should NOT cause the page to reload.
+        if (tabInfo[selectedIndex].browser.currentURI.spec != uri.spec) {
+          MailE10SUtils.loadURI(tabInfo[selectedIndex].browser, uri.spec);
+        }
         return selectedIndex;
       }
     }
@@ -433,6 +446,7 @@ var contentTabBaseType = {
       true
     );
     aTab.browser.removeEventListener("DOMLinkAdded", DOMLinkHandler);
+    aTab.browser.removeEventListener("DOMLinkChanged", DOMLinkHandler);
     aTab.browser.webProgress.removeProgressListener(aTab.filter);
     aTab.filter.removeProgressListener(aTab.progressListener);
     aTab.browser.destroy();
@@ -526,6 +540,8 @@ var contentTabBaseType = {
       case "button_print":
       case "cmd_stop":
       case "cmd_reload":
+      case "Browser:Back":
+      case "Browser:Forward":
         return true;
       default:
         return false;
@@ -549,6 +565,7 @@ var contentTabBaseType = {
           return true;
         }
         return [
+          "addressbook",
           "certificate",
           "crashes",
           "credits",
@@ -562,6 +579,10 @@ var contentTabBaseType = {
         return aTab.reloadEnabled;
       case "cmd_stop":
         return aTab.busy;
+      case "Browser:Back":
+        return aTab.browser?.canGoBack;
+      case "Browser:Forward":
+        return aTab.browser?.canGoForward;
       default:
         return false;
     }
@@ -598,6 +619,12 @@ var contentTabBaseType = {
         break;
       case "cmd_reload":
         aTab.browser.reload();
+        break;
+      case "Browser:Back":
+        specialTabs.browserBack();
+        break;
+      case "Browser:Forward":
+        specialTabs.browserForward();
         break;
     }
   },
@@ -689,13 +716,6 @@ var specialTabs = {
     ].getService(Ci.nsIExternalProtocolService));
   },
 
-  get mFaviconService() {
-    delete this.mFaviconService;
-    return (this.mFaviconService = Cc[
-      "@mozilla.org/browser/favicon-service;1"
-    ].getService(Ci.nsIFaviconService));
-  },
-
   get msgNotificationBar() {
     if (!this._notificationBox) {
       this._notificationBox = new MozElements.NotificationBox(element => {
@@ -706,117 +726,6 @@ var specialTabs = {
       });
     }
     return this._notificationBox;
-  },
-
-  /**
-   * We use an html image node to test the favicon, errors are well returned.
-   * Returning a url for nsITreeView.getImageSrc() will not indicate any
-   * error, and setAndFetchFaviconForPage() can't be used to detect
-   * failed icons due to Bug 740457. This also ensures 301 Moved or
-   * redirected urls will work (they won't otherwise in getImageSrc).
-   *
-   * @param  function successFunc - caller's success function.
-   * @param  function errorFunc   - caller's error function.
-   * @param  string iconUrl       - url to load.
-   * @return HTMLImageElement imageNode
-   */
-  loadFaviconImageNode(successFunc, errorFunc, iconUrl) {
-    let HTMLNS = "http://www.w3.org/1999/xhtml";
-    let imageNode = document.createElementNS(HTMLNS, "img");
-    imageNode.style.visibility = "collapse";
-    imageNode.addEventListener("load", event => successFunc(event, iconUrl), {
-      capture: false,
-      once: true,
-    });
-    imageNode.addEventListener("error", event => errorFunc(event, iconUrl), {
-      capture: false,
-      once: true,
-    });
-    imageNode.src = iconUrl;
-    return imageNode;
-  },
-
-  /**
-   * Favicon request timeout, 20 seconds.
-   */
-  REQUEST_TIMEOUT: 20 * 1000,
-
-  /**
-   * Get the favicon by parsing for <link rel=""> with "icon" from the page's
-   * dom <head>.
-   *
-   * @param  string aUrl          - a url from whose homepage to get a favicon.
-   * @param  function aCallback   - callback.
-   */
-  getFaviconFromPage(aUrl, aCallback) {
-    let url, uri;
-    try {
-      url = Services.io.newURI(aUrl).prePath;
-      uri = Services.io.newURI(url);
-    } catch (ex) {
-      if (aCallback) {
-        aCallback("");
-      }
-      return;
-    }
-
-    let onLoadSuccess = aEvent => {
-      let iconUri = Services.io.newURI(aEvent.target.src);
-      specialTabs.mFaviconService.setAndFetchFaviconForPage(
-        uri,
-        iconUri,
-        false,
-        specialTabs.mFaviconService.FAVICON_LOAD_NON_PRIVATE,
-        null,
-        Services.scriptSecurityManager.getSystemPrincipal()
-      );
-
-      if (aCallback) {
-        aCallback(iconUri.spec);
-      }
-    };
-
-    let onDownloadError = aEvent => {
-      if (aCallback) {
-        aCallback("");
-      }
-    };
-
-    let onDownload = aEvent => {
-      let request = aEvent.target;
-      let dom = request.response;
-      if (request.status != 200 || !(dom instanceof HTMLDocument)) {
-        onDownloadError(aEvent);
-        return;
-      }
-
-      let iconUri;
-      let linkNode = dom.head.querySelector(
-        'link[rel="shortcut icon"],link[rel="icon"]'
-      );
-      let href = linkNode ? linkNode.href : null;
-      try {
-        iconUri = Services.io.newURI(href);
-      } catch (ex) {
-        onDownloadError(aEvent);
-        return;
-      }
-
-      specialTabs.loadFaviconImageNode(
-        onLoadSuccess,
-        onDownloadError,
-        iconUri.spec
-      );
-    };
-
-    let request = new XMLHttpRequest();
-    request.open("GET", url, true);
-    request.responseType = "document";
-    request.onload = onDownload;
-    request.onerror = onDownloadError;
-    request.timeout = this.REQUEST_TIMEOUT;
-    request.ontimeout = onDownloadError;
-    request.send(null);
   },
 
   // This will open any special tabs if necessary on startup.
@@ -855,7 +764,6 @@ var specialTabs = {
     modes: {
       contentTab: {
         type: "contentTab",
-        maxTabs: 10,
       },
     },
 
@@ -863,8 +771,8 @@ var specialTabs = {
      * This is the internal function used by content tabs to open a new tab. To
      * open a contentTab, use specialTabs.openTab("contentTab", aArgs)
      *
-     * @param {Object} aArgs - The options that content tabs accept.
-     * @param {String} aArgs.url - The URL that is to be opened
+     * @param {object} aArgs - The options that content tabs accept.
+     * @param {string} aArgs.url - The URL that is to be opened
      * @param {nsIOpenWindowInfo} [aArgs.openWindowInfo] - The opener window
      * @param {"single-site"|"single-page"|null} [aArgs.linkHandler="single-site"]
      *     Restricts navigation in the browser to be opened:
@@ -905,9 +813,7 @@ var specialTabs = {
       aTab.browser.setAttribute("type", "content");
       aTab.browser.setAttribute("flex", "1");
       aTab.browser.setAttribute("autocompletepopup", "PopupAutoComplete");
-      aTab.browser.setAttribute("datetimepicker", "DateTimePickerPanel");
-      aTab.browser.setAttribute("selectmenulist", "ContentSelectDropdown");
-      aTab.browser.setAttribute("context", "mailContext");
+      aTab.browser.setAttribute("context", "browserContext");
       aTab.browser.setAttribute("maychangeremoteness", "true");
       aTab.browser.setAttribute("onclick", "return contentAreaClick(event);");
       aTab.browser.openWindowInfo = aArgs.openWindowInfo || null;
@@ -915,6 +821,9 @@ var specialTabs = {
 
       if (aArgs.skipLoad) {
         clone.querySelector("browser").setAttribute("nodefaultsrc", "true");
+      }
+      if (aArgs.userContextId) {
+        aTab.browser.setAttribute("usercontextid", aArgs.userContextId);
       }
       aTab.panel.setAttribute("id", "contentTabWrapper" + this.lastBrowserId);
       aTab.panel.appendChild(clone);
@@ -924,6 +833,11 @@ var specialTabs = {
         "extension-browser-inserted",
         aTab.browser
       );
+
+      // For pdf.js use the aboutPagesContext context menu.
+      if (aArgs.url.includes("type=application/pdf")) {
+        aTab.browser.setAttribute("context", "aboutPagesContext");
+      }
 
       // Start setting up the browser.
       aTab.toolbar = aTab.panel.querySelector(".contentTabToolbar");
@@ -950,20 +864,14 @@ var specialTabs = {
 
       if (aArgs.linkHandler == "single-page") {
         aTab.browser.setAttribute("messagemanagergroup", "single-page");
-      } else if (
-        aArgs.linkHandler === null ||
-        aArgs.url.startsWith("moz-extension:")
-      ) {
+      } else if (aArgs.linkHandler === null) {
         aTab.browser.setAttribute("messagemanagergroup", "browsers");
       } else {
         aTab.browser.setAttribute("messagemanagergroup", "single-site");
       }
 
-      // Set this attribute so that when favicons fail to load, we remove the
-      // image attribute and just show the default tab icon.
-      aTab.tabNode.setAttribute("onerror", "this.removeAttribute('image');");
-
       aTab.browser.addEventListener("DOMLinkAdded", DOMLinkHandler);
+      aTab.browser.addEventListener("DOMLinkChanged", DOMLinkHandler);
 
       // Now initialise the find bar.
       aTab.findbar = document.createXULElement("findbar");
@@ -984,7 +892,7 @@ var specialTabs = {
       /**
        * Override the browser custom element's version, which returns gBrowser.
        */
-      aTab.browser.getTabBrowser = function() {
+      aTab.browser.getTabBrowser = function () {
         return document.getElementById("tabmail");
       };
 
@@ -1046,9 +954,22 @@ var specialTabs = {
         return null;
       }
 
+      // Extension pages of temporarily installed extensions cannot be restored.
+      if (
+        aTab.browser.currentURI.scheme == "moz-extension" &&
+        WebExtensionPolicy.getByHostname(aTab.browser.currentURI.host)
+          ?.temporarilyInstalled
+      ) {
+        return null;
+      }
+
       return {
         tabURI: aTab.browser.currentURI.spec,
         linkHandler: aTab.browser.getAttribute("messagemanagergroup"),
+        userContextId: `${
+          aTab.browser.getAttribute("usercontextid") ||
+          Ci.nsIScriptSecurityManager.DEFAULT_USER_CONTEXT_ID
+        }`,
       };
     },
     restoreTab(aTabmail, aPersistedState) {
@@ -1057,25 +978,13 @@ var specialTabs = {
         duplicate: aPersistedState.duplicate,
         linkHandler: aPersistedState.linkHandler,
         url: aPersistedState.tabURI,
+        userContextId: aPersistedState.userContextId,
       });
 
-      switch (aPersistedState.tabURI) {
-        case "about:addons":
-          // Also in `openAddonsMgr` in mailCore.js.
-          tab.browser.droppedLinkHandler = event =>
-            tab.browser.contentWindow.gDragDrop.onDrop(event);
-          break;
-
-        case "about:accountsettings":
-          tab.tabNode.setAttribute("type", "accountManager");
-          break;
-
-        case "about:accountsetup":
-          tab.tabNode.setAttribute("type", "accountSetup");
-          break;
-
-        default:
-          break;
+      if (aPersistedState.tabURI == "about:addons") {
+        // Also in `openAddonsMgr` in mailCore.js.
+        tab.browser.droppedLinkHandler = event =>
+          tab.browser.contentWindow.gDragDrop.onDrop(event);
       }
     },
   },
@@ -1083,6 +992,7 @@ var specialTabs = {
   /**
    * Shows the what's new page in the system browser if we should.
    * Will update the mstone pref to a new version if needed.
+   *
    * @see {BrowserContentHandler.needHomepageOverride}
    */
   showWhatsNewPage() {
@@ -1117,6 +1027,7 @@ var specialTabs = {
   /**
    * Gets the override page for the first run after the application has been
    * updated.
+   *
    * @param {nsIUpdate} update - The nsIUpdate for the update that has been applied.
    * @param {string} defaultOverridePage - The default override page.
    * @returns {string} The override page.
@@ -1236,10 +1147,11 @@ var specialTabs = {
     ];
 
     let notification = this.msgNotificationBar.appendNotification(
-      telemetryText,
       "telemetry",
-      null,
-      this.msgNotificationBar.PRIORITY_INFO_LOW,
+      {
+        label: telemetryText,
+        priority: this.msgNotificationBar.PRIORITY_INFO_LOW,
+      },
       buttons
     );
     // Arbitrary number, just so bar sticks around for a bit.
@@ -1297,10 +1209,11 @@ var specialTabs = {
       "about-rights-notification-text"
     );
     let notification = this.msgNotificationBar.appendNotification(
-      notifyRightsText,
       "about-rights",
-      null,
-      this.msgNotificationBar.PRIORITY_INFO_LOW,
+      {
+        label: notifyRightsText,
+        priority: this.msgNotificationBar.PRIORITY_INFO_LOW,
+      },
       buttons
     );
     // Arbitrary number, just so bar sticks around for a bit.
@@ -1329,7 +1242,7 @@ var specialTabs = {
    * Tries to use the default favicon for a webpage for the specified tab.
    * We'll use the site's favicon.ico if prefs allow us to.
    */
-  useDefaultIcon(aTab) {
+  useDefaultFavIcon(aTab) {
     // Use documentURI in the check for shouldLoadFavIcon so that we do the
     // right thing with about:-style error pages.
     let docURIObject = aTab.browser.documentURI;
@@ -1338,32 +1251,70 @@ var specialTabs = {
       icon = docURIObject.prePath + "/favicon.ico";
     }
 
-    specialTabs.setTabIcon(aTab, icon);
+    this.setFavIcon(aTab, icon);
   },
 
   /**
    * This sets the specified tab to load and display the given icon for the
    * page shown in the browser. It is assumed that the preferences have already
-   * been checked before calling this function apprioriately.
+   * been checked before calling this function appropriately.
    *
    * @param aTab  The tab to set the icon for.
    * @param aIcon A string based URL of the icon to try and load.
    */
-  setTabIcon(aTab, aIcon) {
-    if (aIcon && this.mFaviconService) {
-      this.mFaviconService.setAndFetchFaviconForPage(
+  setFavIcon(aTab, aIcon) {
+    if (aIcon) {
+      PlacesUtils.favicons.setAndFetchFaviconForPage(
         aTab.browser.currentURI,
-        makeURI(aIcon),
+        Services.io.newURI(aIcon),
         false,
-        this.mFaviconService.FAVICON_LOAD_NON_PRIVATE,
+        PlacesUtils.favicons.FAVICON_LOAD_NON_PRIVATE,
         null,
         aTab.browser.contentPrincipal
       );
     }
+    document
+      .getElementById("tabmail")
+      .setTabFavIcon(
+        aTab,
+        aIcon,
+        "chrome://messenger/skin/icons/new/compact/draft.svg"
+      );
+  },
 
-    // Save this off so we know about it later,
-    aTab.browser.mIconURL = aIcon;
-    // and display the new icon.
-    document.getElementById("tabmail").setTabIcon(aTab, aIcon);
+  browserForward() {
+    let tabmail = document.getElementById("tabmail");
+    if (
+      !["contentTab", "mail3PaneTab"].includes(
+        tabmail?.currentTabInfo.mode.name
+      )
+    ) {
+      return;
+    }
+    let browser = tabmail.getBrowserForSelectedTab();
+    if (!browser) {
+      return;
+    }
+    if (browser.webNavigation) {
+      browser.webNavigation.goForward();
+    }
+  },
+
+  browserBack() {
+    let tabmail = document.getElementById("tabmail");
+    if (
+      !["contentTab", "mail3PaneTab"].includes(
+        tabmail?.currentTabInfo.mode.name
+      )
+    ) {
+      return;
+    }
+    let browser = tabmail.getBrowserForSelectedTab();
+    if (!browser) {
+      return;
+    }
+    if (browser.webNavigation) {
+      browser.webNavigation.goBack();
+    }
   },
 };

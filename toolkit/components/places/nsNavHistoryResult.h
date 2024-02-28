@@ -76,7 +76,6 @@ class nsTrimInt64HashKey : public PLDHashEntryHdr {
 class nsNavHistoryResult final
     : public nsSupportsWeakReference,
       public nsINavHistoryResult,
-      public nsINavBookmarkObserver,
       public mozilla::places::INativePlacesEventCallback {
  public:
   NS_DECLARE_STATIC_IID_ACCESSOR(NS_NAVHISTORYRESULT_IID)
@@ -85,7 +84,6 @@ class nsNavHistoryResult final
   NS_DECL_NSINAVHISTORYRESULT
   NS_DECL_CYCLE_COLLECTION_CLASS_AMBIGUOUS(nsNavHistoryResult,
                                            nsINavHistoryResult)
-  NS_DECL_NSINAVBOOKMARKOBSERVER;
 
   void AddHistoryObserver(nsNavHistoryQueryResultNode* aNode);
   void AddBookmarkFolderObserver(nsNavHistoryFolderResultNode* aNode,
@@ -169,6 +167,10 @@ class nsNavHistoryResult final
   void requestRefresh(nsNavHistoryContainerResultNode* aContainer);
 
   void HandlePlacesEvent(const PlacesEventSequence& aEvents) override;
+
+  // Optimisation: refreshing containers is much faster than incremental
+  // updates when handling multiple Page_removed events.
+  bool IsBulkPageRemovedEvent(const PlacesEventSequence& aEvents);
 
   void OnMobilePrefChanged();
 
@@ -314,16 +316,18 @@ class nsNavHistoryResultNode : public nsINavHistoryResultNode {
 
   virtual void OnRemoving();
 
-  // Called from result's onItemChanged, see also bookmark observer declaration
-  // in nsNavHistoryFolderResultNode
-  NS_IMETHOD OnItemChanged(int64_t aItemId, const nsACString& aProperty,
-                           bool aIsAnnotationProperty, const nsACString& aValue,
-                           PRTime aNewLastModified, uint16_t aItemType,
-                           int64_t aParentId, const nsACString& aGUID,
-                           const nsACString& aParentGUID,
-                           const nsACString& aOldValue, uint16_t aSource);
+  nsresult OnItemKeywordChanged(int64_t aItemId, const nsACString& aKeyword);
+  nsresult OnItemTagsChanged(int64_t aItemId, const nsAString& aURL);
+  nsresult OnItemTimeChanged(int64_t aItemId, const nsACString& aGUID,
+                             PRTime aDateAdded, PRTime aLastModified);
+  nsresult OnItemTitleChanged(int64_t aItemId, const nsACString& aGUID,
+                              const nsACString& aTitle, PRTime aLastModified);
+  nsresult OnItemUrlChanged(int64_t aItemId, const nsACString& aGUID,
+                            const nsACString& aURL, PRTime aLastModified);
 
   virtual nsresult OnMobilePrefChanged(bool newValue) { return NS_OK; };
+
+  nsresult OnVisitsRemoved();
 
  protected:
   virtual ~nsNavHistoryResultNode() = default;
@@ -492,6 +496,8 @@ class nsNavHistoryContainerResultNode
  public:
   virtual void OnRemoving() override;
 
+  nsresult OnVisitsRemoved(nsIURI* aURI);
+
   bool AreChildrenVisible();
 
   // Overridded by descendents to populate.
@@ -610,6 +616,8 @@ class nsNavHistoryContainerResultNode
   nsNavHistoryResultNode* FindChildByGuid(const nsACString& guid,
                                           int32_t* nodeIndex);
 
+  nsNavHistoryResultNode* FindChildById(int64_t aItemId, uint32_t* aNodeIndex);
+
   nsresult InsertChildAt(nsNavHistoryResultNode* aNode, int32_t aIndex);
   nsresult InsertSortedChild(nsNavHistoryResultNode* aNode,
                              bool aIgnoreDuplicates = false);
@@ -652,8 +660,7 @@ NS_DEFINE_STATIC_IID_ACCESSOR(nsNavHistoryContainerResultNode,
 
 class nsNavHistoryQueryResultNode final
     : public nsNavHistoryContainerResultNode,
-      public nsINavHistoryQueryResultNode,
-      public nsINavBookmarkObserver {
+      public nsINavHistoryQueryResultNode {
  public:
   nsNavHistoryQueryResultNode(const nsACString& aTitle, PRTime aTime,
                               const nsACString& aQueryURI,
@@ -678,8 +685,6 @@ class nsNavHistoryQueryResultNode final
 
   virtual nsresult OpenContainer() override;
 
-  NS_DECL_NSINAVBOOKMARKOBSERVER;
-
   nsresult OnItemAdded(int64_t aItemId, int64_t aParentId, int32_t aIndex,
                        uint16_t aItemType, nsIURI* aURI, PRTime aDateAdded,
                        const nsACString& aGUID, const nsACString& aParentGUID,
@@ -693,6 +698,13 @@ class nsNavHistoryQueryResultNode final
                        const nsACString& aOldParentGUID,
                        const nsACString& aNewParentGUID, uint16_t aSource,
                        const nsACString& aURI);
+  nsresult OnItemTagsChanged(int64_t aItemId, const nsAString& aURL);
+  nsresult OnItemTimeChanged(int64_t aItemId, const nsACString& aGUID,
+                             PRTime aDateAdded, PRTime aLastModified);
+  nsresult OnItemTitleChanged(int64_t aItemId, const nsACString& aGUID,
+                              const nsACString& aTitle, PRTime aLastModified);
+  nsresult OnItemUrlChanged(int64_t aItemId, const nsACString& aGUID,
+                            const nsACString& aURL, PRTime aLastModified);
 
   // The internal version has an output aAdded parameter, it is incremented by
   // query nodes when the visited uri belongs to them. If no such query exists,
@@ -751,7 +763,6 @@ class nsNavHistoryQueryResultNode final
 class nsNavHistoryFolderResultNode final
     : public nsNavHistoryContainerResultNode,
       public nsINavHistoryQueryResultNode,
-      public nsINavBookmarkObserver,
       public mozilla::places::WeakAsyncStatementCallback {
  public:
   nsNavHistoryFolderResultNode(const nsACString& aTitle,
@@ -778,11 +789,6 @@ class nsNavHistoryFolderResultNode final
   virtual nsresult OpenContainerAsync() override;
   NS_DECL_ASYNCSTATEMENTCALLBACK
 
-  // This object implements a bookmark observer interface. This is called from
-  // the result's actual observer and it knows all observers are
-  // FolderResultNodes
-  NS_DECL_NSINAVBOOKMARKOBSERVER
-
   nsresult OnItemAdded(int64_t aItemId, int64_t aParentId, int32_t aIndex,
                        uint16_t aItemType, nsIURI* aURI, PRTime aDateAdded,
                        const nsACString& aGUID, const nsACString& aParentGUID,
@@ -797,6 +803,7 @@ class nsNavHistoryFolderResultNode final
                        const nsACString& aNewParentGUID, uint16_t aSource,
                        const nsACString& aURI);
   nsresult OnItemVisited(nsIURI* aURI, int64_t aVisitId, PRTime aTime);
+
   virtual void OnRemoving() override;
 
   // this indicates whether the folder contents are valid, they don't go away
@@ -816,8 +823,6 @@ class nsNavHistoryFolderResultNode final
 
   bool StartIncrementalUpdate();
   void ReindexRange(int32_t aStartIndex, int32_t aEndIndex, int32_t aDelta);
-
-  nsNavHistoryResultNode* FindChildById(int64_t aItemId, uint32_t* aNodeIndex);
 
   nsresult OnBeginUpdateBatch();
   nsresult OnEndUpdateBatch();

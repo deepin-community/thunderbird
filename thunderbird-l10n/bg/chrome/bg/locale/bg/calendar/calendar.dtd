@@ -9,13 +9,10 @@
 <!ENTITY calendar.newevent.button.tooltip         "Създаване на ново събитие" >
 <!ENTITY calendar.newtask.button.tooltip          "Създаване на нова задача" >
 
-<!ENTITY calendar.unifinder.todoitems.label       "Задачи" >
-
 <!ENTITY calendar.unifinder.showcompletedtodos.label "Показване на завършените задачи">
 
 <!ENTITY calendar.today.button.label          "Днес">
 <!ENTITY calendar.tomorrow.button.label       "Утре">
-<!ENTITY calendar.upcoming.button.label       "Предстоящи">
 
 <!ENTITY calendar.events.filter.all.label "Всички събития">
 <!ENTITY calendar.events.filter.today.label "Днешните събития">
@@ -61,40 +58,9 @@
 <!ENTITY calendar.today.button.tooltip          "Отваряне на днешния ден" >
 <!ENTITY calendar.todaypane.button.tooltip      "Показване на дневния график" >
 
-<!ENTITY calendar.day.button.tooltip            "Превключване към дневен изглед" >
-<!ENTITY calendar.week.button.tooltip           "Превключване към седмичен излгед" >
-<!ENTITY calendar.month.button.tooltip          "Превключване към месечен изглед" >
-<!ENTITY calendar.multiweek.button.tooltip      "Превключване към многоседмичен изглед" >
-
-<!ENTITY calendar.nextday.label                 "Следващ ден" >
-<!ENTITY calendar.prevday.label                 "Предишен ден" >
-<!ENTITY calendar.nextday.accesskey             "С" >
-<!ENTITY calendar.prevday.accesskey             "р" >
-<!ENTITY calendar.nextweek.label                "Следваща седмица" >
-<!ENTITY calendar.prevweek.label                "Предишна седмица" >
-<!ENTITY calendar.nextweek.accesskey            "д" >
-<!ENTITY calendar.prevweek.accesskey            "д" >
-<!ENTITY calendar.nextmonth.label               "Следващ месец" >
-<!ENTITY calendar.prevmonth.label               "Предишен месец" >
-<!ENTITY calendar.nextmonth.accesskey           "м" >
-<!ENTITY calendar.prevmonth.accesskey           "ш" >
-
-<!ENTITY calendar.navigation.nextday.tooltip    "Един ден напред" >
-<!ENTITY calendar.navigation.prevday.tooltip    "Един ден назад" >
-<!ENTITY calendar.navigation.nextweek.tooltip   "Една седмица напред" >
-<!ENTITY calendar.navigation.prevweek.tooltip   "Една седмица назад" >
-<!ENTITY calendar.navigation.nextmonth.tooltip  "Един месец напред" >
-<!ENTITY calendar.navigation.prevmonth.tooltip  "Един месец назад" >
-
 <!ENTITY calendar.newevent.button.label         "Ново събитие" >
 <!ENTITY calendar.newtask.button.label          "Нова задача" >
-<!ENTITY calendar.print.button.label            "Отпечатване" >
-<!ENTITY calendar.print.button.accesskey        "п">
 
-<!ENTITY calendar.day.button.label              "Часове" >
-<!ENTITY calendar.week.button.label             "Дни" >
-<!ENTITY calendar.month.button.label            "Месец" >
-<!ENTITY calendar.multiweek.button.label        "Седмици" >
 <!ENTITY calendar.onlyworkday.checkbox.label    "Само работни дни" >
 <!ENTITY calendar.onlyworkday.checkbox.accesskey  "р" >
 <!ENTITY calendar.displaytodos.checkbox.label   "Задачи в изгледа" >
@@ -118,7 +84,7 @@
 <!ENTITY calendar.task.filter.next7days.accesskey   "д">
 <!ENTITY calendar.task.filter.notstarted.label      "Незапочнали задачи">
 <!ENTITY calendar.task.filter.notstarted.accesskey  "п">
-<!ENTITY calendar.task.filter.overdue.label         "Просорчени задачи">
+<!ENTITY calendar.task.filter.overdue.label         "Просрочени задачи">
 <!ENTITY calendar.task.filter.overdue.accesskey     "с">
 <!ENTITY calendar.task.filter.completed.label       "Завършени задачи">
 <!ENTITY calendar.task.filter.completed.accesskey   "р">
@@ -179,8 +145,41 @@
 <!ENTITY calendar.context.attendance.menu.label                 "Присъствие">
 <!ENTITY calendar.context.attendance.menu.accesskey             "с">
 <!ENTITY calendar.context.attendance.occurrence.label           "Това повторение">
+<!ENTITY calendar.context.attendance.all2.label                 "Пълна серия">
+<!ENTITY calendar.context.attendance.send.label                 "Изпращане на уведомление">
+<!ENTITY calendar.context.attendance.send.accesskey             "У">
+<!ENTITY calendar.context.attendance.dontsend.label             "Без изпращане на известие">
+<!ENTITY calendar.context.attendance.dontsend.accesskey         "Б">
 
+<!ENTITY calendar.context.attendance.occ.accepted.accesskey     "А">
+<!ENTITY calendar.context.attendance.occ.accepted.label         "Приемане">
+<!ENTITY calendar.context.attendance.occ.tentative.accesskey    "г">
+<!ENTITY calendar.context.attendance.occ.tentative.label        "Условно приемане">
+<!ENTITY calendar.context.attendance.occ.declined.accesskey     "с">
+<!ENTITY calendar.context.attendance.occ.declined.label         "Отказан">
+<!ENTITY calendar.context.attendance.occ.delegated.accesskey    "п">
+<!ENTITY calendar.context.attendance.occ.delegated.label        "Делегиран">
+<!ENTITY calendar.context.attendance.occ.needsaction.accesskey  "о">
+<!ENTITY calendar.context.attendance.occ.needsaction.label      "Все още се нуждае от действие">
+<!ENTITY calendar.context.attendance.occ.inprogress.accesskey   "В">
+<!ENTITY calendar.context.attendance.occ.inprogress.label       "Изпълнява се">
+<!ENTITY calendar.context.attendance.occ.completed.accesskey    "Г">
+<!ENTITY calendar.context.attendance.occ.completed.label        "Завършено">
 
+<!ENTITY calendar.context.attendance.all.accepted.accesskey     "п">
+<!ENTITY calendar.context.attendance.all.accepted.label         "Приемане">
+<!ENTITY calendar.context.attendance.all.tentative.accesskey    "у">
+<!ENTITY calendar.context.attendance.all.tentative.label        "Условно приемане">
+<!ENTITY calendar.context.attendance.all.declined.accesskey     "о">
+<!ENTITY calendar.context.attendance.all.declined.label         "Отказано">
+<!ENTITY calendar.context.attendance.all.delegated.accesskey    "л">
+<!ENTITY calendar.context.attendance.all.delegated.label        "Делегирано">
+<!ENTITY calendar.context.attendance.all.needsaction.accesskey  "в">
+<!ENTITY calendar.context.attendance.all.needsaction.label      "Все още се нуждае от действие">
+<!ENTITY calendar.context.attendance.all.inprogress.accesskey   "п">
+<!ENTITY calendar.context.attendance.all.inprogress.label       "Изпълнява се">
+<!ENTITY calendar.context.attendance.all.completed.accesskey    "п">
+<!ENTITY calendar.context.attendance.all.completed.label        "Завършено">
 
 <!-- Task Context Menu -->
 <!ENTITY calendar.context.progress.label              "Напредък">
@@ -246,11 +245,9 @@
 <!ENTITY calendar.context.removeserver.accesskey       "з">
 <!ENTITY calendar.context.unsubscribeserver.label      "Отписване от календар…">
 <!ENTITY calendar.context.unsubscribeserver.accesskey  "О">
-<!ENTITY calendar.context.synccalendars.label          "Синхронизиране на календари">
-<!ENTITY calendar.context.synccalendars.accesskey      "С">
 <!ENTITY calendar.context.publish.label                "Публикуване на календар…">
 <!ENTITY calendar.context.publish.accesskey            "б">
-<!ENTITY calendar.context.export.label                 "Експортиране на календар…">
+<!ENTITY calendar.context.export.label                 "Изнасяне на календар…">
 <!ENTITY calendar.context.export.accesskey             "р">
 <!ENTITY calendar.context.properties.label             "Свойства">
 <!ENTITY calendar.context.properties.accesskey         "й">
@@ -322,7 +319,6 @@
 <!ENTITY calendarproperties.color.label                    "Цвят:">
 <!ENTITY calendarproperties.webdav.label                   "iCalendar (ICS)">
 <!ENTITY calendarproperties.caldav.label                   "CalDAV">
-<!ENTITY calendarproperties.wcap.label                     "Sun Java System Calendar Server (WCAP)">
 <!ENTITY calendarproperties.format.label                   "Формат:">
 <!ENTITY calendarproperties.location.label                 "Местоположение:">
 <!ENTITY calendarproperties.refreshInterval.label          "Обновяване на календара:">
@@ -331,7 +327,7 @@
 <!ENTITY calendarproperties.readonly.label                 "Само за четене">
 <!ENTITY calendarproperties.firealarms.label               "Показване на припомнянията">
 <!ENTITY calendarproperties.cache3.label                   "Поддръжка извън мрежата">
-<!ENTITY calendarproperties.enabled.label                  "Включване на този календар">
+<!ENTITY calendarproperties.enabled2.label                 "Активиране на този календар">
 <!ENTITY calendarproperties.forceDisabled.label            "Доставчикът на този календар не може да бъде намерен. Това често се случва, ако сте изключили или премахнали някои добавки.">
 <!ENTITY calendarproperties.unsubscribe.label              "Отписване">
 <!ENTITY calendarproperties.unsubscribe.accesskey          "О">
@@ -342,27 +338,8 @@
 <!ENTITY calendar.publish.publish.button      "Публикуване">
 <!ENTITY calendar.publish.close.button      "Затваряне">
 
-<!ENTITY calendar.publish.example.url.description   "Например: http://www.myserver.com/webdav/test.ics">
-
 <!-- Select Calendar Dialog -->
 <!ENTITY calendar.select.dialog.title    "Избиране на календар">
-
-<!-- Calendar Printing -->
-<!ENTITY calendar.print.window.title "Отпечатване на календар">
-<!ENTITY calendar.print.title.label "Заглавие:">
-<!ENTITY calendar.print.layout.label "Оформление:">
-<!ENTITY calendar.print.range.label "Какво да се отпечата">
-<!ENTITY calendar.print.currentView2.label "Текущ изглед">
-<!ENTITY calendar.print.selectedEventsAndTasks.label "Избрани събития/задачи">
-<!ENTITY calendar.print.tasks.label "Задачи">
-<!ENTITY calendar.print.events.label "Събития">
-<!ENTITY calendar.print.custom.label "Избор на период от време:">
-<!ENTITY calendar.print.from.label "От:">
-<!ENTITY calendar.print.to.label "До:">
-<!ENTITY calendar.print.settingsGroup.label "Настройки за принтиране">
-<!ENTITY calendar.print.optionsGroup.label "Настройки">
-<!ENTITY calendar.print.taskswithnoduedate.label "Задачи без крайна дата">
-<!ENTITY calendar.print.completedtasks.label "Завършени задачи">
 
 <!-- Error reporting -->
 <!ENTITY calendar.error.detail "Подробности…">
@@ -375,38 +352,3 @@
 <!ENTITY calendar.extract.task.button          "Добавяне на задача">
 <!ENTITY calendar.extract.event.button.tooltip "Извличане на календарната информация от съобщението и добавянето ѝ към вашия календар като събитие">
 <!ENTITY calendar.extract.task.button.tooltip  "Извличане на календарната информация от съобщението и добавянето ѝ към вашия календар като задача">
-
-<!ENTITY calendar.context.attendance.all2.label                 "Complete Series">
-<!ENTITY calendar.context.attendance.send.label                 "Send a notification now">
-<!ENTITY calendar.context.attendance.send.accesskey             "S">
-<!ENTITY calendar.context.attendance.dontsend.label             "Do not send a notification">
-<!ENTITY calendar.context.attendance.dontsend.accesskey         "D">
-<!ENTITY calendar.context.attendance.occ.accepted.accesskey     "A">
-<!ENTITY calendar.context.attendance.occ.accepted.label         "Accepted">
-<!ENTITY calendar.context.attendance.occ.tentative.accesskey    "y">
-<!ENTITY calendar.context.attendance.occ.tentative.label        "Accepted tentatively">
-<!ENTITY calendar.context.attendance.occ.declined.accesskey     "c">
-<!ENTITY calendar.context.attendance.occ.declined.label         "Declined">
-<!ENTITY calendar.context.attendance.occ.delegated.accesskey    "g">
-<!ENTITY calendar.context.attendance.occ.delegated.label        "Delegated">
-<!ENTITY calendar.context.attendance.occ.needsaction.accesskey  "S">
-<!ENTITY calendar.context.attendance.occ.needsaction.label      "Still needs action">
-<!ENTITY calendar.context.attendance.occ.inprogress.accesskey   "I">
-<!ENTITY calendar.context.attendance.occ.inprogress.label       "In progress">
-<!ENTITY calendar.context.attendance.occ.completed.accesskey    "C">
-<!ENTITY calendar.context.attendance.occ.completed.label        "Completed">
-<!ENTITY calendar.context.attendance.all.accepted.accesskey     "e">
-<!ENTITY calendar.context.attendance.all.accepted.label         "Accepted">
-<!ENTITY calendar.context.attendance.all.tentative.accesskey    "v">
-<!ENTITY calendar.context.attendance.all.tentative.label        "Accepted tentatively">
-<!ENTITY calendar.context.attendance.all.declined.accesskey     "d">
-<!ENTITY calendar.context.attendance.all.declined.label         "Declined">
-<!ENTITY calendar.context.attendance.all.delegated.accesskey    "l">
-<!ENTITY calendar.context.attendance.all.delegated.label        "Delegated">
-<!ENTITY calendar.context.attendance.all.needsaction.accesskey  "l">
-<!ENTITY calendar.context.attendance.all.needsaction.label      "Still needs action">
-<!ENTITY calendar.context.attendance.all.inprogress.accesskey   "p">
-<!ENTITY calendar.context.attendance.all.inprogress.label       "In progress">
-<!ENTITY calendar.context.attendance.all.completed.accesskey    "m">
-<!ENTITY calendar.context.attendance.all.completed.label        "Completed">
-<!ENTITY calendarproperties.enabled2.label                 "Enable This Calendar">

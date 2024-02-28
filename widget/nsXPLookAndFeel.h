@@ -6,6 +6,7 @@
 #ifndef __nsXPLookAndFeel
 #define __nsXPLookAndFeel
 
+#include "mozilla/Maybe.h"
 #include "mozilla/LookAndFeel.h"
 #include "mozilla/widget/LookAndFeelTypes.h"
 #include "nsTArray.h"
@@ -16,7 +17,6 @@ class nsXPLookAndFeel : public mozilla::LookAndFeel {
  public:
   using FullLookAndFeel = mozilla::widget::FullLookAndFeel;
   using LookAndFeelFont = mozilla::widget::LookAndFeelFont;
-  using LookAndFeelTheme = mozilla::widget::LookAndFeelTheme;
 
   virtual ~nsXPLookAndFeel();
 
@@ -55,6 +55,8 @@ class nsXPLookAndFeel : public mozilla::LookAndFeel {
 
   virtual uint32_t GetPasswordMaskDelayImpl() { return 600; }
 
+  virtual bool GetDefaultDrawInTitlebar() { return true; }
+
   static bool LookAndFeelFontToStyle(const LookAndFeelFont&, nsString& aName,
                                      gfxFontStyle&);
   static LookAndFeelFont StyleToLookAndFeelFont(const nsAString& aName,
@@ -64,12 +66,18 @@ class nsXPLookAndFeel : public mozilla::LookAndFeel {
 
   virtual void NativeInit() = 0;
 
-  virtual void GetGtkContentTheme(LookAndFeelTheme&) {}
+  virtual void GetThemeInfo(nsACString&) {}
 
  protected:
   nsXPLookAndFeel() = default;
 
-  static nscolor GetStandinForNativeColor(ColorID);
+  static nscolor GetStandinForNativeColor(ColorID, ColorScheme);
+
+  // A platform-agnostic dark-color scheme, for platforms where we don't have
+  // "native" dark colors, like Windows and Android.
+  static mozilla::Maybe<nscolor> GenericDarkColor(ColorID);
+  mozilla::Maybe<nscolor> GetUncachedColor(ColorID, ColorScheme, UseStandins);
+
   void RecordTelemetry();
   virtual void RecordLookAndFeelSpecificTelemetry() {}
 

@@ -8,9 +8,12 @@
           {
             "type": "string",
             "enum": [
+              "messagesDelete",
+              "messagesImport",
               "messagesMove",
               "messagesRead",
-              "messagesDelete"
+              "messagesTags",
+              "sensitiveDataUpload"
             ]
           }
         ]
@@ -19,9 +22,7 @@
   },
   {
     "namespace": "messages",
-    "permissions": [
-      "messagesRead"
-    ],
+    "permissions": ["messagesRead"],
     "types": [
       {
         "id": "MessageHeader",
@@ -48,32 +49,49 @@
           "date": {
             "$ref": "extensionTypes.Date"
           },
+          "external": {
+            "type": "boolean",
+            "description": "Whether this message is a real message or an external message (opened from a file or from an attachment)."
+          },
           "flagged": {
-            "type": "boolean"
+            "type": "boolean",
+            "description": "Whether this message is flagged (a.k.a. starred)."
           },
           "folder": {
             "$ref": "folders.MailFolder",
-            "description": "The <permission>accountsRead</permission> permission is required for this property to be included."
+            "description": "The <permission>accountsRead</permission> permission is required for this property to be included. Not available for external or attached messages.",
+            "optional": true
           },
           "headerMessageId": {
             "type": "string",
             "description": "The message-id header of the message."
+          },
+          "headersOnly": {
+            "description": "Some account types (for example <value>pop3</value>) allow to download only the headers of the message, but not its body. The body of such messages will not be available.",
+            "type": "boolean"
           },
           "id": {
             "type": "integer",
             "minimum": 1
           },
           "junk": {
-            "description": "Not populated for news/nntp messages.",
+            "description": "Whether the message has been marked as junk. Always <value>false</value> for news/nntp messages and external messages.",
             "type": "boolean"
           },
           "junkScore": {
             "type": "integer",
+            "description": "The junk score associated with the message. Always <value>0</value> for news/nntp messages and external messages.",
             "minimum": 0,
             "maximum": 100
           },
           "read": {
-            "type": "boolean"
+            "type": "boolean",
+            "optional": true,
+            "description": "Whether the message has been marked as read. Not available for external or attached messages."
+          },
+          "new": {
+            "type": "boolean",
+            "description": "Whether the message has been received recently and is marked as new."
           },
           "recipients": {
             "description": "The To recipients. Not populated for news/nntp messages.",
@@ -87,13 +105,15 @@
             "type": "integer"
           },
           "subject": {
-            "type": "string"
+            "type": "string",
+            "description": "The subject of the message."
           },
           "tags": {
             "type": "array",
             "items": {
               "type": "string"
-            }
+            },
+            "description": "Tags associated with this message. For a list of available tags, call the listTags method."
           }
         }
       },
@@ -104,7 +124,7 @@
         "properties": {
           "id": {
             "type": "string",
-            "optional" : true
+            "optional": true
           },
           "messages": {
             "type": "array",
@@ -130,8 +150,14 @@
           },
           "headers": {
             "type": "object",
-            "description": "An object of part headers, with the header name as key, and an array of header values as value",
-            "optional": true
+            "description": "A <em>dictionary object</em> of part headers as <em>key-value</em> pairs, with the header name as <em>key</em>, and an array of headers as <em>value</em>",
+            "optional": true,
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
           },
           "name": {
             "type": "string",
@@ -140,7 +166,8 @@
           },
           "partName": {
             "type": "string",
-            "optional": true
+            "optional": true,
+            "description": "The identifier of this part, used in :ref:`messages.getAttachmentFile`"
           },
           "parts": {
             "type": "array",
@@ -152,28 +179,34 @@
           },
           "size": {
             "type": "integer",
-            "optional": true
+            "optional": true,
+            "description": "The size of this part. The size of <em>message/*</em> parts is not the actual message size (on disc), but the total size of its decoded body parts, excluding headers."
           }
         }
       },
       {
-        "id": "MessageChangeProperties",
+        "id": "MessageProperties",
         "type": "object",
-        "description": "Message properties that can be updated by the :ref:`messages.update` and that are monitored by :ref:`messages.onUpdated`.",
+        "description": "Message properties used in :ref:`messages.update` and :ref:`messages.import`. They can also be monitored by :ref:`messages.onUpdated`.",
         "properties": {
-          "read": {
+          "flagged": {
             "type": "boolean",
-            "description": "Message is read.",
+            "description": "Whether the message is flagged (a.k.a starred).",
             "optional": true
           },
           "junk": {
             "type": "boolean",
             "optional": true,
-            "description": "Message is junk."
+            "description": "Whether the message is marked as junk. Only supported in :ref:`messages.update`"
           },
-          "flagged": {
+          "new": {
             "type": "boolean",
-            "description": "Message is flagged.",
+            "description": "Whether the message is marked as new. Only supported in :ref:`messages.import`",
+            "optional": true
+          },
+          "read": {
+            "type": "boolean",
+            "description": "Whether the message is marked as read.",
             "optional": true
           },
           "tags": {
@@ -192,19 +225,19 @@
         "properties": {
           "key": {
             "type": "string",
-            "description": "Distinct tag identifier – use this string when referring to a tag"
+            "description": "Unique tag identifier."
           },
           "tag": {
             "type": "string",
-            "description": "Human-readable tag name"
+            "description": "Human-readable tag name."
           },
           "color": {
             "type": "string",
-            "description": "Tag color"
+            "description": "Tag color."
           },
           "ordinal": {
             "type": "string",
-            "description": "Custom sort string (usually empty)"
+            "description": "Custom sort string (usually empty)."
           }
         }
       },
@@ -215,7 +248,7 @@
         "properties": {
           "tags": {
             "type": "object",
-            "description": "Object keys are tags to filter on, values are <code>true</code> if the message must have the tag, or <code>false</code> if it must not have the tag. For a list of available tags, call the :ref:`messages.listTags` method.",
+            "description": "A <em>dictionary object</em> with one or more filter condition as <em>key-value</em> pairs, the <em>key</em> being the tag to filter on, and the <em>value</em> being a boolean expression, requesting whether a message must include (<value>true</value>) or exclude (<value>false</value>) the tag. For a list of available tags, call the :ref:`messages.listTags` method.",
             "patternProperties": {
               ".*": {
                 "type": "boolean"
@@ -225,15 +258,12 @@
           "mode": {
             "type": "string",
             "description": "Whether all of the tag filters must apply, or any of them.",
-            "enum": [
-              "all",
-              "any"
-            ]
+            "enum": ["all", "any"]
           }
         }
       },
       {
-        "id": "Attachment",
+        "id": "MessageAttachment",
         "type": "object",
         "description": "Represents an attachment in a message.",
         "properties": {
@@ -252,6 +282,11 @@
           "size": {
             "type": "integer",
             "description": "The size in bytes of this attachment."
+          },
+          "message": {
+            "$ref": "messages.MessageHeader",
+            "optional": true,
+            "description": "A MessageHeader, if this attachment is a message."
           }
         }
       }
@@ -268,7 +303,7 @@
           },
           {
             "name": "changedProperties",
-            "$ref": "messages.MessageChangeProperties"
+            "$ref": "messages.MessageProperties"
           }
         ]
       },
@@ -276,9 +311,7 @@
         "name": "onMoved",
         "type": "function",
         "description": "Fired when messages have been moved.",
-        "permissions": [
-          "accountsRead"
-        ],
+        "permissions": ["accountsRead"],
         "parameters": [
           {
             "name": "originalMessages",
@@ -294,9 +327,7 @@
         "name": "onCopied",
         "type": "function",
         "description": "Fired when messages have been copied.",
-        "permissions": [
-          "accountsRead"
-        ],
+        "permissions": ["accountsRead"],
         "parameters": [
           {
             "name": "originalMessages",
@@ -312,9 +343,7 @@
         "name": "onDeleted",
         "type": "function",
         "description": "Fired when messages have been permanently deleted.",
-        "permissions": [
-          "accountsRead"
-        ],
+        "permissions": ["accountsRead"],
         "parameters": [
           {
             "name": "messages",
@@ -326,9 +355,7 @@
         "name": "onNewMailReceived",
         "type": "function",
         "description": "Fired when a new message is received, and has been through junk classification and message filters.",
-        "permissions": [
-          "accountsRead"
-        ],
+        "permissions": ["accountsRead"],
         "parameters": [
           {
             "name": "folder",
@@ -346,14 +373,22 @@
         "name": "list",
         "type": "function",
         "description": "Gets all messages in a folder.",
-        "async": true,
-        "permissions": [
-          "accountsRead"
-        ],
+        "async": "callback",
+        "permissions": ["accountsRead"],
         "parameters": [
           {
             "name": "folder",
             "$ref": "folders.MailFolder"
+          },
+          {
+            "type": "function",
+            "name": "callback",
+            "optional": true,
+            "parameters": [
+              {
+                "$ref": "MessageList"
+              }
+            ]
           }
         ]
       },
@@ -361,11 +396,21 @@
         "name": "continueList",
         "type": "function",
         "description": "Returns the next chunk of messages in a list. See :doc:`how-to/messageLists` for more information.",
-        "async": true,
+        "async": "callback",
         "parameters": [
           {
             "name": "messageListId",
             "type": "string"
+          },
+          {
+            "type": "function",
+            "name": "callback",
+            "optional": true,
+            "parameters": [
+              {
+                "$ref": "MessageList"
+              }
+            ]
           }
         ]
       },
@@ -373,54 +418,158 @@
         "name": "get",
         "type": "function",
         "description": "Returns a specified message.",
-        "async": true,
+        "async": "callback",
         "parameters": [
           {
             "name": "messageId",
             "type": "integer"
+          },
+          {
+            "type": "function",
+            "name": "callback",
+            "optional": true,
+            "parameters": [
+              {
+                "$ref": "MessageHeader"
+              }
+            ]
           }
         ]
       },
       {
         "name": "getFull",
         "type": "function",
-        "description": "Returns a specified message, including all headers and MIME parts.",
-        "async": true,
+        "description": "Returns a specified message, including all headers and MIME parts. Throws if the message could not be read, for example due to network issues.",
+        "async": "callback",
         "parameters": [
           {
             "name": "messageId",
             "type": "integer"
+          },
+          {
+            "type": "function",
+            "name": "callback",
+            "optional": true,
+            "parameters": [
+              {
+                "$ref": "MessagePart"
+              }
+            ]
           }
         ]
       },
       {
         "name": "getRaw",
         "type": "function",
-        "description": "Returns the unmodified source of a message as a `binary string <https://developer.mozilla.org/en-US/docs/Web/API/DOMString/Binary>`__.",
-        "async": true,
+        "description": "Returns the unmodified source of a message. Throws if the message could not be read, for example due to network issues.",
+        "async": "callback",
         "parameters": [
           {
             "name": "messageId",
             "type": "integer"
+          },
+          {
+            "name": "options",
+            "type": "object",
+            "properties": {
+              "data_format": {
+                "choices": [
+                  {
+                    "max_manifest_version": 2,
+                    "description": "The message can either be returned as a DOM File or as a `binary string <|link-binary-string|>`__. The historic default is to return a binary string (kept for backward compatibility). However, it is now recommended to use the ``File`` format, because the DOM File object can be used as-is with the downloads API and has useful methods to access the content, like `File.text() <|link-DOMFile-text|>`__ and `File.arrayBuffer() <|link-DOMFile-arrayBuffer|>`__. Working with binary strings is error prone and needs special handling: <literalinclude>includes/messages/decodeBinaryString.js<lang>JavaScript</lang></literalinclude> (see MDN for `supported input encodings <|link-input-encoding|>`__).",
+                    "type": "string",
+                    "enum": ["File", "BinaryString"]
+                  },
+                  {
+                    "min_manifest_version": 3,
+                    "description": "The message can either be returned as a DOM File (default) or as a `binary string <|link-binary-string|>`__. It is recommended to use the ``File`` format, because the DOM File object can be used as-is with the downloads API and has useful methods to access the content, like `File.text() <|link-DOMFile-text|>`__ and `File.arrayBuffer() <|link-DOMFile-arrayBuffer|>`__. Working with binary strings is error prone and needs special handling: <literalinclude>includes/messages/decodeBinaryString.js<lang>JavaScript</lang></literalinclude> (see MDN for `supported input encodings <|link-input-encoding|>`__).",
+                    "type": "string",
+                    "enum": ["File", "BinaryString"]
+                  }
+                ]
+              }
+            },
+            "optional": true
+          },
+          {
+            "type": "function",
+            "name": "callback",
+            "optional": true,
+            "parameters": [
+              {
+                "choices": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "object",
+                    "isInstanceOf": "File",
+                    "additionalProperties": true
+                  }
+                ]
+              }
+            ]
           }
         ]
       },
       {
         "name": "listAttachments",
         "type": "function",
-        "description": "Lists all of the attachments of a message.",
-        "async": true,
+        "description": "Lists the attachments of a message.",
+        "async": "callback",
         "parameters": [
           {
             "name": "messageId",
             "type": "integer"
+          },
+          {
+            "type": "function",
+            "name": "callback",
+            "optional": true,
+            "parameters": [
+              {
+                "type": "array",
+                "items": {
+                  "$ref": "MessageAttachment"
+                }
+              }
+            ]
           }
         ]
       },
       {
         "name": "getAttachmentFile",
         "type": "function",
-        "description": "Gets the content of an attachment as a DOM <code>File</code> object.",
+        "description": "Gets the content of a :ref:`messages.MessageAttachment` as a |File| object.",
+        "async": "callback",
+        "parameters": [
+          {
+            "name": "messageId",
+            "type": "integer"
+          },
+          {
+            "name": "partName",
+            "type": "string",
+            "pattern": "^\\d+(\\.\\d+)*$"
+          },
+          {
+            "type": "function",
+            "name": "callback",
+            "optional": true,
+            "parameters": [
+              {
+                "type": "object",
+                "isInstanceOf": "File",
+                "additionalProperties": true
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "openAttachment",
+        "type": "function",
+        "description": "Opens the specified attachment",
         "async": true,
         "parameters": [
           {
@@ -431,6 +580,11 @@
             "name": "partName",
             "type": "string",
             "pattern": "^\\d+(\\.\\d+)*$"
+          },
+          {
+            "name": "tabId",
+            "type": "integer",
+            "description": "The ID of the tab associated with the message opening."
           }
         ]
       },
@@ -438,16 +592,23 @@
         "name": "query",
         "type": "function",
         "description": "Gets all messages that have the specified properties, or all messages if no properties are specified.",
-        "async": true,
+        "async": "callback",
         "parameters": [
           {
             "type": "object",
             "name": "queryInfo",
+            "optional": true,
+            "default": {},
             "properties": {
+              "attachment": {
+                "type": "boolean",
+                "optional": true,
+                "description": "If specified, returns only messages with or without attachments."
+              },
               "author": {
                 "type": "string",
                 "optional": true,
-                "description": "Returns only messages with this value matching the author. The search value is a single email address, a name or a combination (e.g.: ``Name <user@domain.org>``). The address part of the search value (if provided) must match the author's address completely. The name part of the search value (if provided) must match the author's name partially. All matches are done case-insensitive."
+                "description": "Returns only messages with this value matching the author. The search value is a single email address, a name or a combination (e.g.: <value>Name <user@domain.org></value>). The address part of the search value (if provided) must match the author's address completely. The name part of the search value (if provided) must match the author's name partially. All matches are done case-insensitive."
               },
               "body": {
                 "type": "string",
@@ -492,7 +653,7 @@
               "recipients": {
                 "type": "string",
                 "optional": true,
-                "description": "Returns only messages whose recipients match all specified addresses. The search value is a semicolon separated list of email addresses, names or combinations (e.g.: ``Name <user@domain.org>``). For a match, all specified addresses must equal a recipient's address completely and all specified names must match a recipient's name partially. All matches are done case-insensitive."
+                "description": "Returns only messages whose recipients match all specified addresses. The search value is a semicolon separated list of email addresses, names or combinations (e.g.: <value>Name <user@domain.org></value>). For a match, all specified addresses must equal a recipient's address completely and all specified names must match a recipient's name partially. All matches are done case-insensitive."
               },
               "subject": {
                 "type": "string",
@@ -520,13 +681,23 @@
                 "description": "Returns only unread (or read if false) messages."
               }
             }
+          },
+          {
+            "type": "function",
+            "name": "callback",
+            "optional": true,
+            "parameters": [
+              {
+                "$ref": "MessageList"
+              }
+            ]
           }
         ]
       },
       {
         "name": "update",
         "type": "function",
-        "description": "Marks or unmarks a message as junk, read, flagged, or tagged.",
+        "description": "Marks or unmarks a message as junk, read, flagged, or tagged. Updating external messages will throw an <em>ExtensionError</em>.",
         "async": true,
         "parameters": [
           {
@@ -536,19 +707,16 @@
           },
           {
             "name": "newProperties",
-            "$ref": "MessageChangeProperties"
+            "$ref": "MessageProperties"
           }
         ]
       },
       {
         "name": "move",
         "type": "function",
-        "description": "Moves messages to a specified folder.",
+        "description": "Moves messages to a specified folder. If the messages cannot be removed from the source folder, they will be copied instead of moved. Moving external messages will throw an <em>ExtensionError</em>.",
         "async": true,
-        "permissions": [
-          "accountsRead",
-          "messagesMove"
-        ],
+        "permissions": ["accountsRead", "messagesMove"],
         "parameters": [
           {
             "name": "messageIds",
@@ -571,10 +739,7 @@
         "type": "function",
         "description": "Copies messages to a specified folder.",
         "async": true,
-        "permissions": [
-          "accountsRead",
-          "messagesMove"
-        ],
+        "permissions": ["accountsRead", "messagesMove"],
         "parameters": [
           {
             "name": "messageIds",
@@ -595,11 +760,9 @@
       {
         "name": "delete",
         "type": "function",
-        "description": "Deletes messages permanently, or moves them to the trash folder (honoring the account's deletion behavior settings). The ``skipTrash`` parameter allows immediate permanent deletion, bypassing the trash folder.\n**Note**: Consider using :ref:`messages.move` to manually move messages to the account's trash folder, instead of requesting the overly powerful permission to actually delete messages. The account's trash folder can be extracted as follows: <literalinclude>includes/messages/getTrash.js<lang>JavaScript</lang></literalinclude>",
+        "description": "Deletes messages permanently, or moves them to the trash folder (honoring the account's deletion behavior settings). Deleting external messages will throw an <em>ExtensionError</em>. The ``skipTrash`` parameter allows immediate permanent deletion, bypassing the trash folder.\n**Note**: Consider using :ref:`messages.move` to manually move messages to the account's trash folder, instead of requesting the overly powerful permission to actually delete messages. The account's trash folder can be extracted as follows: <literalinclude>includes/messages/getTrash.js<lang>JavaScript</lang></literalinclude>",
         "async": true,
-        "permissions": [
-          "messagesDelete"
-        ],
+        "permissions": ["messagesDelete"],
         "parameters": [
           {
             "name": "messageIds",
@@ -619,13 +782,46 @@
         ]
       },
       {
+        "name": "import",
+        "type": "function",
+        "description": "Imports a message into a local Thunderbird folder. To import a message into an IMAP folder, add it to a local folder first and then move it to the IMAP folder.",
+        "async": "callback",
+        "permissions": ["accountsRead", "messagesImport"],
+        "parameters": [
+          {
+            "name": "file",
+            "type": "object",
+            "isInstanceOf": "File",
+            "additionalProperties": true
+          },
+          {
+            "name": "destination",
+            "$ref": "folders.MailFolder",
+            "description": "The folder to import the messages into."
+          },
+          {
+            "name": "properties",
+            "$ref": "messages.MessageProperties",
+            "optional": true
+          },
+          {
+            "type": "function",
+            "name": "callback",
+            "optional": true,
+            "parameters": [
+              {
+                "$ref": "messages.MessageHeader"
+              }
+            ]
+          }
+        ]
+      },
+      {
         "name": "archive",
         "type": "function",
-        "description": "Archives messages using the current settings.",
+        "description": "Archives messages using the current settings. Archiving external messages will throw an <em>ExtensionError</em>.",
         "async": true,
-        "permissions": [
-          "messagesMove"
-        ],
+        "permissions": ["messagesMove"],
         "parameters": [
           {
             "name": "messageIds",
@@ -642,8 +838,95 @@
         "name": "listTags",
         "type": "function",
         "description": "Returns a list of tags that can be set on messages, and their human-friendly name, colour, and sort order.",
+        "async": "callback",
+        "parameters": [
+          {
+            "type": "function",
+            "name": "callback",
+            "optional": true,
+            "parameters": [
+              {
+                "type": "array",
+                "items": {
+                  "$ref": "MessageTag"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "createTag",
+        "type": "function",
+        "description": "Creates a new message tag. Tagging a message will store the tag's key in the user's message. Throws if the specified tag key is used already.",
         "async": true,
-        "parameters": []
+        "permissions": ["messagesTags"],
+        "parameters": [
+          {
+            "type": "string",
+            "name": "key",
+            "description": "Unique tag identifier (will be converted to lower case). Must not include <value>()<>{/%*\"</value> or spaces.",
+            "pattern": "^[^ ()/{%*<>\"]+$"
+          },
+          {
+            "type": "string",
+            "name": "tag",
+            "description": "Human-readable tag name."
+          },
+          {
+            "type": "string",
+            "name": "color",
+            "description": "Tag color in hex format (i.e.: #000080 for navy blue)",
+            "pattern": "^#[0-9a-f]{6}"
+          }
+        ]
+      },
+      {
+        "name": "updateTag",
+        "type": "function",
+        "description": "Updates a message tag.",
+        "async": true,
+        "permissions": ["messagesTags"],
+        "parameters": [
+          {
+            "type": "string",
+            "name": "key",
+            "description": "Unique tag identifier (will be converted to lower case). Must not include <value>()<>{/%*\"</value> or spaces.",
+            "pattern": "^[^ ()/{%*<>\"]+$"
+          },
+          {
+            "type": "object",
+            "name": "updateProperties",
+            "properties": {
+              "tag": {
+                "type": "string",
+                "optional": "true",
+                "description": "Human-readable tag name."
+              },
+              "color": {
+                "type": "string",
+                "pattern": "^#[0-9a-f]{6}",
+                "description": "Tag color in hex format (i.e.: #000080 for navy blue).",
+                "optional": "true"
+              }
+            }
+          }
+        ]
+      },
+      {
+        "name": "deleteTag",
+        "type": "function",
+        "description": "Deletes a message tag, removing it from the list of known tags. Its key will not be removed from tagged messages, but they will appear untagged. Recreating a deleted tag, will make all former tagged messages appear tagged again.",
+        "async": true,
+        "permissions": ["messagesTags"],
+        "parameters": [
+          {
+            "type": "string",
+            "name": "key",
+            "description": "Unique tag identifier (will be converted to lower case). Must not include <value>()<>{/%*\"</value> or spaces.",
+            "pattern": "^[^ ()/{%*<>\"]+$"
+          }
+        ]
       }
     ]
   }

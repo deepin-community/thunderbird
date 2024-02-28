@@ -1,5 +1,138 @@
 ## Changelog
 
+### 0.17.0 [2023-05-01]
+
+#### General
+
+* Added support for hidden recipient during decryption.
+* Added support for AEAD-OCB for OpenSSL backend.
+* Improve support for offline secret keys during default key selection.
+* Support for GnuPG 2.3+ secret key store format.
+* SExp parsing code is moved to separate library, https://github.com/rnpgp/sexp.
+* Mark subkeys as expired instead of invalid if primary key is expired.
+* AEAD: use OCB by default instead of EAX.
+* Do not attempt to validate signatures of unexpected types.
+* Use thread-safe time and date handling functions.
+* Added ENABLE_BLOWFISH, ENABLE_CAST5 and ENABLE_RIPEMD160 build time options.
+* Do not use `EVP_PKEY_CTX_set_dsa_paramgen_q_bits()` if OpenSSL backend version is < 1.1.1e.
+* Corrected usage of CEK/KEK algorithms if those differs.
+
+#### FFI
+
+* Added function `rnp_signature_export()`.
+* Added flag `RNP_VERIFY_ALLOW_HIDDEN_RECIPIENT` to `rnp_op_verify_set_flags()`.
+
+#### CLI
+
+* Added default armor message type for `--enarmor` command.
+* Added command `--set-filename` to specify which file name should be stored in message.
+* Added `--add-subkey` subcommand to the `--edit-key`.
+* Added `set-expire` subcommand to the `--edit-key`.
+* Added `--s2k-iterations` and `--s2k-msec` options to the `rnp`.
+* Added `--allow-weak-hash` command to allow usage of weak hash algorithms.
+* Report number of new/updated keys during the key import.
+
+### 0.16.3 [2023-04-11]
+
+#### Security
+
+* Fixed issue with possible hang on malformed inputs (CVE-2023-29479).
+* Fixed issue where in some cases, secret keys remain unlocked after use (CVE-2023-29480).
+
+### 0.16.2 [2022-09-20]
+
+#### General
+
+* Fixed CMake issues with ENABLE_IDEA and ENABLE_BRAINPOOL.
+
+### 0.16.1 [2022-09-06]
+
+#### General
+
+* Ensure support for RHEL9/CentOS Stream 9/Fedora 36, updating OpenSSL backend support for v3.0.
+* Optional import and export of base64-encoded keys.
+* Optional raw encryption of the data.
+* Optional overriding of the current timestamp.
+* Do not fail completely on unknown signature versions.
+* Do not fail completely on unknown PKESK/SKESK packet versions.
+* Support armored messages without empty line after the headers.
+* Added automatic feature detection based on backend.
+
+#### Security
+
+* Separate security rules for the data and key signatures, extending SHA1 key signature support till the Jan, 19 2024.
+* Set default key expiration time to 2 years.
+* Limit maximum AEAD chunk bits to 16.
+
+#### FFI
+
+* Changed behaviour of `rnp_op_verify_execute()`: now it requires single valid signature to succeed.
+* Added function `rnp_op_verify_set_flags()` to override default behaviour of verification.
+* Added function `rnp_key_is_expired()`.
+* Added function `rnp_op_encrypt_set_flags()` and flag `RNP_ENCRYPT_NOWRAP` to allow raw encryption.
+* Added flag `RNP_LOAD_SAVE_BASE64` to the function `rnp_import_keys()`.
+* Added flag `RNP_KEY_EXPORT_BASE64` to the function `rnp_key_export_autocrypt()`.
+* Added function `rnp_set_timestamp()` to allow to override current time.
+* Update security rules functions with flags `RNP_SECURITY_VERIFY_KEY` and `RNP_SECURITY_VERIFY_DATA`.
+
+#### CLI
+
+* Make password request more verbose.
+* Print `RSA` instead of `RSA (Encrypt and Sign)` in the key listing to avoid confusion.
+* Added option `--source` to specify detached signature's source file.
+* Added option `--no-wrap` to allow raw data encryption.
+* Added option `--current-time` to allow to override current timestamp.
+* Strip known extensions (like `.pgp`, `.asc`, etc.) when decrypting or verifying data.
+* Display key and signature validity status in the key listing.
+* Do not attempt to use GnuPG's config to set default key.
+
+### 0.16.0 [2022-01-20]
+
+#### General
+
+* Added support for OpenSSL cryptography backend so RNP may be built and used on systems without the Botan installed.
+* Added compile-time switches to disable certain features (AEAD, Brainpool curves, SM2/SM3/SM4 algorithms, Twofish)
+* Fixed possible incompatibility with GnuPG on x25519 secret key export from RNP to GnuPG.
+* Fixed building if Git is not available.
+* Fixed export of non-FFI symbols from the rnp.so/rnp.dylib.
+* Fixed support for Gnu/Hurd (absence of PATH_MAX).
+* Added support for `None` compression algorithm.
+* Added support for the dumping of notation data signature subpackets.
+* Fixed key expiration time calculation in the case with newer non-primary self-certification.
+* Improved performance of key import (no key material checks)
+
+#### Security
+
+* Added initial support for customizable security profiles.
+* Mark SHA1 signatures produced later than 2019-01-19, as invalid.
+* Mark MD5 signatures produced later than 2012-01-01, as invalid.
+* Remove SHA1 and 3DES from the default key preferences.
+* Use SHA1 collision detection code when using SHA1.
+* Mark signatures with unknown critical notation as invalid.
+* Do not prematurely mark secret keys as valid.
+* Validate secret key material before the first operation.
+* Limit the number of possible message recipients/signatures to a reasonable value (16k).
+* Limit the number of signature subpackets during parsing.
+
+#### FFI
+
+* Added functions `rnp_backend_string()` and `rnp_backend_version()`.
+* Added functions `rnp_key_25519_bits_tweaked()` and `rnp_key_25519_bits_tweak()` to check and fix x25519 secret key bits.
+* Added security profile manipulation functions: `rnp_add_security_rule()`, `rnp_get_security_rule()`, `rnp_remove_security_rule()`.
+* Added function `rnp_signature_get_expiration()`.
+* Deprecate functions `rnp_enable_debug()`/`rnp_disable_debug()`.
+
+#### CLI
+
+* Write new detailed help messages for `rnp` and `rnpkeys`.
+* Added `-` (stdin) and `env:VAR_NAME` input specifiers, as well as `-` (stdout) output specifier.
+* Do not fail with empty keyrings if those are not needed for the operation.
+* Added algorithm aliases for better usability (i.e. `SHA-256`, `SHA256`, etc.).
+* Added option `--notty` to print everything to stdout instead of TTY.
+* Added command `--edit-key` with subcommands `--check-cv25519-bits` and `--fix-cv25519-bits`.
+* Remove support for `-o someoption=somevalue`, which is unused.
+* Remove no longer used support for additional debug dumping via `--debug source.c`.
+
 ### 0.15.2 [2021-07-20]
 
 #### General
@@ -32,7 +165,7 @@
 #### FFI
 
 * Added function `rnp_key_valid_till64()` to correctly handle keys which expire after the year 2038.
-* Added RNP_FEATURE_* defines to be used instead of raw strings.
+* Added `RNP_FEATURE_*` defines to be used instead of raw strings.
 
 #### Security
 
@@ -281,7 +414,7 @@
 
 #### FFI
 
-* Fixed rnp_op_add_signature for G10 keys
+* Fixed `rnp_op_add_signature` for G10 keys
 
 
 ### 0.9.1 [2018-07-12]
@@ -292,7 +425,7 @@
 #### CLI
 
 * Added support for keyid/fpr usage with (some) spaces and 0x prefix in
-  operations (--sign, etc).
+  operations (`--sign`, etc).
 
 #### FFI
 

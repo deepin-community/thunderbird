@@ -7,9 +7,7 @@ account-setup-tab-title = 账户设置
 ## Header
 
 account-setup-title = 设置现有的电子邮件地址
-account-setup-description =
-    若要使用您现有的电子邮件地址，请填写您的凭据。<br/>
-    { -brand-product-name } 将会自动查询可用并推荐使用的服务器配置。
+account-setup-description = 若要使用您现有的电子邮件地址，请填写您的凭据。
 account-setup-secondary-description = { -brand-product-name } 将自动搜索可用的和推荐的服务器配置。
 account-setup-success-title = 成功创建账户！
 account-setup-success-description = 您可以在 { -brand-short-name } 使用此账户了。
@@ -23,9 +21,9 @@ account-setup-name-label = 您的全名
 account-setup-name-input =
     .placeholder = 李四
 account-setup-name-info-icon =
-    .title = 你的名字，显示给其他人
+    .title = 您的名字，显示给其他人
 account-setup-name-warning-icon =
-    .title = { account-setup-name-warning }
+    .title = 请输入您的名字
 account-setup-email-label = 电子邮件地址
     .accesskey = E
 account-setup-email-input =
@@ -33,14 +31,12 @@ account-setup-email-input =
 account-setup-email-info-icon =
     .title = 您现有的电子邮件地址
 account-setup-email-warning-icon =
-    .title = { account-setup-email-warning }
+    .title = 无效的电子邮件地址
 account-setup-password-label = 密码
     .accesskey = P
     .title = 可选，仅用于验证用户名
 account-provisioner-button = 注册新的电子邮件地址…
     .accesskey = G
-account-setup-password-toggle =
-    .title = 显示/隐藏密码
 account-setup-password-toggle-show =
     .title = 以明文形式显示密码
 account-setup-password-toggle-hide =
@@ -85,7 +81,7 @@ account-setup-looking-up-exchange = 正在查询配置：Exchange 服务器…
 account-setup-checking-password = 正在验证密码…
 account-setup-installing-addon = 正在下载安装附加组件…
 account-setup-success-half-manual = 探测指定服务器找到下列配置：
-account-setup-success-guess = 尝试常用服务器名称找到配置。
+account-setup-success-guess = 尝试常用服务器名称后找到配置。
 account-setup-success-guess-offline = 您已离线。我们已推测一些设置，但您需要输入正确的设置。
 account-setup-success-password = 密码正确
 account-setup-success-addon = 已成功安装附加组件
@@ -125,21 +121,14 @@ account-setup-results-area-title =
     { $count ->
        *[other] 可用配置
     }
-# Note: IMAP is the name of a protocol.
-account-setup-result-imap = IMAP
 account-setup-result-imap-description = 与您的服务器同步各文件夹与邮件
-# Note: POP3 is the name of a protocol.
-account-setup-result-pop = POP3
 account-setup-result-pop-description = 将您服务器上的各文件夹与邮件下载到本地
-# Note: Exchange is the name of a product.
-account-setup-result-exchange = Exchange
 # Note: Exchange, Office365 are the name of products.
 account-setup-result-exchange2-description = 使用 Microsoft Exchange 服务器或 Office365 云服务
 account-setup-incoming-title = 收件
 account-setup-outgoing-title = 发件
 account-setup-username-title = 用户名
 account-setup-exchange-title = 服务器
-account-setup-result-smtp = SMTP
 account-setup-result-no-encryption = 未加密
 account-setup-result-ssl = SSL/TLS
 account-setup-result-starttls = STARTTLS
@@ -163,9 +152,6 @@ account-setup-provisioner-error = 设置 { -brand-short-name } 新账户时出�
 account-setup-manual-config-title = 服务器设置
 account-setup-incoming-server-legend = 收件服务器
 account-setup-protocol-label = 协议：
-protocol-imap-option = { account-setup-result-imap }
-protocol-pop-option = { account-setup-result-pop }
-protocol-exchange-option = { account-setup-result-exchange }
 account-setup-hostname-label = 主机名：
 account-setup-port-label = 端口：
     .title = 端口设为 0，则为自动检测
@@ -226,7 +212,7 @@ exit-dialog-confirm-button = 退出设置
 
 ## Alert dialogs
 
-account-setup-creation-error-title = 创建账户时发生错误
+account-setup-creation-error-title = 创建账户时出错
 account-setup-error-server-exists = 收件服务器已存在。
 account-setup-confirm-advanced-title = 确认高级配置
 account-setup-confirm-advanced-description = 此对话框将关闭，即使配置不正确，也会使用当前设置来创建账户。您确定要继续吗？
@@ -290,6 +276,8 @@ account-setup-calendar-name-input =
 account-setup-calendar-color-label = 颜色
 account-setup-calendar-refresh-label = 刷新
 account-setup-calendar-refresh-manual = 手动
+# Variables:
+# $count (Number) - Number of minutes in the calendar refresh interval.
 account-setup-calendar-refresh-interval =
     { $count ->
         [one] 每分钟

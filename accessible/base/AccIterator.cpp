@@ -5,10 +5,11 @@
 #include "AccIterator.h"
 
 #include "AccGroupInfo.h"
-#ifdef MOZ_XUL
-#  include "XULTreeAccessible.h"
-#endif
+#include "DocAccessible-inl.h"
+#include "XULTreeAccessible.h"
+#include "nsAccUtils.h"
 
+#include "mozilla/a11y/DocAccessibleParent.h"
 #include "mozilla/dom/DocumentOrShadowRoot.h"
 #include "mozilla/dom/HTMLLabelElement.h"
 
@@ -212,7 +213,7 @@ IDRefsIterator::IDRefsIterator(DocAccessible* aDoc, nsIContent* aContent,
                                nsAtom* aIDRefsAttr)
     : mContent(aContent), mDoc(aDoc), mCurrIdx(0) {
   if (mContent->IsElement()) {
-    mContent->AsElement()->GetAttr(kNameSpaceID_None, aIDRefsAttr, mIDs);
+    mContent->AsElement()->GetAttr(aIDRefsAttr, mIDs);
   }
 }
 
@@ -279,12 +280,15 @@ LocalAccessible* IDRefsIterator::Next() {
 // SingleAccIterator
 ////////////////////////////////////////////////////////////////////////////////
 
-LocalAccessible* SingleAccIterator::Next() {
-  RefPtr<LocalAccessible> nextAcc;
-  mAcc.swap(nextAcc);
-  if (!nextAcc || nextAcc->IsDefunct()) {
+Accessible* SingleAccIterator::Next() {
+  Accessible* nextAcc = mAcc;
+  mAcc = nullptr;
+  if (!nextAcc) {
     return nullptr;
   }
+
+  MOZ_ASSERT(!nextAcc->IsLocal() || !nextAcc->AsLocal()->IsDefunct(),
+             "Iterator references defunct accessible?");
   return nextAcc;
 }
 
@@ -292,14 +296,18 @@ LocalAccessible* SingleAccIterator::Next() {
 // ItemIterator
 ////////////////////////////////////////////////////////////////////////////////
 
-LocalAccessible* ItemIterator::Next() {
+Accessible* ItemIterator::Next() {
   if (mContainer) {
     mAnchor = AccGroupInfo::FirstItemOf(mContainer);
     mContainer = nullptr;
     return mAnchor;
   }
 
-  return mAnchor ? (mAnchor = AccGroupInfo::NextItemTo(mAnchor)) : nullptr;
+  if (mAnchor) {
+    mAnchor = AccGroupInfo::NextItemTo(mAnchor);
+  }
+
+  return mAnchor;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -335,5 +343,20 @@ LocalAccessible* XULTreeItemIterator::Next() {
     mCurrRowIdx++;
   }
 
+  return nullptr;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// RemoteAccIterator
+////////////////////////////////////////////////////////////////////////////////
+
+Accessible* RemoteAccIterator::Next() {
+  while (mIndex < mIds.Length()) {
+    uint64_t id = mIds[mIndex++];
+    Accessible* acc = mDoc->GetAccessible(id);
+    if (acc) {
+      return acc;
+    }
+  }
   return nullptr;
 }

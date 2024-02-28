@@ -150,7 +150,7 @@ static CellISizeInfo GetISizeInfo(gfxContext* aRenderingContext,
         prefCoord = minCoord;
         break;
       case StyleSize::Tag::MozAvailable:
-      case StyleSize::Tag::MozFitContent:
+      case StyleSize::Tag::FitContent:
       case StyleSize::Tag::FitContentFunction:
         // TODO: Bug 1708310: Make sure fit-content() work properly in table.
       case StyleSize::Tag::Auto:
@@ -163,7 +163,7 @@ static CellISizeInfo GetISizeInfo(gfxContext* aRenderingContext,
   if (nsIFrame::ToExtremumLength(maxISize)) {
     if (!aIsCell || maxISize.IsMozAvailable()) {
       maxISize = StyleMaxSize::None();
-    } else if (maxISize.IsMozFitContent() || maxISize.IsFitContentFunction()) {
+    } else if (maxISize.IsFitContent() || maxISize.IsFitContentFunction()) {
       // TODO: Bug 1708310: Make sure fit-content() work properly in table.
       // for 'max-inline-size', '-moz-fit-content' is like 'max-content'
       maxISize = StyleMaxSize::MaxContent();
@@ -190,7 +190,7 @@ static CellISizeInfo GetISizeInfo(gfxContext* aRenderingContext,
   if (nsIFrame::ToExtremumLength(maxISize)) {
     if (!aIsCell || minISize.IsMozAvailable()) {
       minISize = StyleSize::LengthPercentage(LengthPercentage::Zero());
-    } else if (minISize.IsMozFitContent() || minISize.IsFitContentFunction()) {
+    } else if (minISize.IsFitContent() || minISize.IsFitContentFunction()) {
       // TODO: Bug 1708310: Make sure fit-content() work properly in table.
       // for 'min-inline-size', '-moz-fit-content' is like 'min-content'
       minISize = StyleSize::MinContent();
@@ -603,23 +603,6 @@ void BasicTableLayoutStrategy::DistributePctISizeToColumns(float aSpanPrefPct,
   }
 }
 
-#ifdef DEBUG
-// Bypass some assertions for tables inside XUL which we're realistically not
-// going to investigate unless they cause havoc. Thunderbird hits these very
-// often.
-static bool IsCloseToXULBox(nsTableFrame* aTableFrame) {
-  // NOTE: GetParent() is guaranteed to be the table wrapper (thus non-null).
-  nsIFrame* f = aTableFrame->GetParent()->GetParent();
-  for (size_t i = 0; f && i < 2; ++i) {
-    if (f->IsXULBoxFrame()) {
-      return true;
-    }
-    f = f->GetParent();
-  }
-  return false;
-}
-#endif
-
 void BasicTableLayoutStrategy::DistributeISizeToColumns(
     nscoord aISize, int32_t aFirstCol, int32_t aColCount,
     BtlsISizeType aISizeType, bool aSpanHasSpecifiedISize) {
@@ -776,8 +759,7 @@ void BasicTableLayoutStrategy::DistributeISizeToColumns(
       // Return early -- we don't have any extra space to distribute.
       return;
     }
-    NS_ASSERTION(!(aISizeType == BTLS_FINAL_ISIZE && aISize < guess_min) ||
-                     IsCloseToXULBox(mTableFrame),
+    NS_ASSERTION(!(aISizeType == BTLS_FINAL_ISIZE && aISize < guess_min),
                  "Table inline-size is less than the "
                  "sum of its columns' min inline-sizes");
     if (aISize < guess_min_pct) {
@@ -1007,13 +989,9 @@ void BasicTableLayoutStrategy::DistributeISizeToColumns(
       } break;
     }
   }
-#ifdef DEBUG
-  if (!IsCloseToXULBox(mTableFrame)) {
-    NS_ASSERTION((space == 0 || space == nscoord_MAX) &&
-                     ((l2t == FLEX_PCT_LARGE)
-                          ? (-0.001f < basis.f && basis.f < 0.001f)
-                          : (basis.c == 0 || basis.c == nscoord_MAX)),
-                 "didn't subtract all that we added");
-  }
-#endif
+  NS_ASSERTION(
+      (space == 0 || space == nscoord_MAX) &&
+          ((l2t == FLEX_PCT_LARGE) ? (-0.001f < basis.f && basis.f < 0.001f)
+                                   : (basis.c == 0 || basis.c == nscoord_MAX)),
+      "didn't subtract all that we added");
 }

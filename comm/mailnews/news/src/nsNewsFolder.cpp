@@ -19,16 +19,12 @@
 #include "nsINntpService.h"
 #include "nsIMsgFilterService.h"
 #include "nsCOMPtr.h"
-#include "nsMsgDBCID.h"
-#include "nsMsgNewsCID.h"
 #include "nsMsgUtils.h"
 #include "nsNewsUtils.h"
 
-#include "nsCOMPtr.h"
 #include "nsIMsgIncomingServer.h"
 #include "nsINntpIncomingServer.h"
 #include "nsINewsDatabase.h"
-#include "nsMsgBaseCID.h"
 #include "nsILineInputStream.h"
 
 #include "nsIMsgWindow.h"
@@ -49,7 +45,8 @@
 #include "nsILoginInfo.h"
 #include "nsILoginManager.h"
 #include "nsEmbedCID.h"
-#include "mozilla/Services.h"
+#include "mozilla/Components.h"
+#include "mozilla/SlicedInputStream.h"
 #include "nsIInputStream.h"
 #include "nsMemory.h"
 #include "nsIURIMutator.h"
@@ -66,13 +63,12 @@ nsMsgNewsFolder::nsMsgNewsFolder(void)
       mGettingNews(false),
       mInitialized(false),
       m_downloadMessageForOfflineUse(false),
-      m_downloadingMultipleMessages(false),
       mReadSet(nullptr),
       mSortOrder(kNewsSortOffset) {
   mFolderSize = kSizeUnknown;
 }
 
-nsMsgNewsFolder::~nsMsgNewsFolder(void) { delete mReadSet; }
+nsMsgNewsFolder::~nsMsgNewsFolder(void) {}
 
 NS_IMPL_ADDREF_INHERITED(nsMsgNewsFolder, nsMsgDBFolder)
 NS_IMPL_RELEASE_INHERITED(nsMsgNewsFolder, nsMsgDBFolder)
@@ -148,6 +144,11 @@ nsMsgNewsFolder::AddNewsgroup(const nsACString& name, const nsACString& setStr,
   nsCOMPtr<nsIMsgNewsFolder> newsFolder(do_QueryInterface(folder, &rv));
   NS_ENSURE_SUCCESS(rv, rv);
 
+  // Ensure any containing .sdb dir exists.
+  nsCOMPtr<nsIFile> path;
+  rv = CreateDirectoryForFolder(getter_AddRefs(path));
+  NS_ENSURE_SUCCESS(rv, rv);
+
   // cache this for when we open the db
   rv = newsFolder->SetReadSetFromStr(setStr);
 
@@ -215,7 +216,7 @@ nsresult nsMsgNewsFolder::GetDatabase() {
   nsresult rv;
   if (!mDatabase) {
     nsCOMPtr<nsIMsgDBService> msgDBService =
-        do_GetService(NS_MSGDB_SERVICE_CONTRACTID, &rv);
+        do_GetService("@mozilla.org/msgDatabase/msgDBService;1", &rv);
     NS_ENSURE_SUCCESS(rv, rv);
 
     // Get the database, blowing it away if it's out of date.
@@ -236,25 +237,6 @@ nsresult nsMsgNewsFolder::GetDatabase() {
     if (NS_FAILED(rv)) return rv;
   }
   return NS_OK;
-}
-
-NS_IMETHODIMP
-nsMsgNewsFolder::GetDatabaseWithoutCache(nsIMsgDatabase** db) {
-  NS_ENSURE_ARG_POINTER(db);
-
-  // The simplest way to perform this operation is to get the database normally
-  // and then clear our information about it if we didn't already hold it open.
-  bool wasCached = !!mDatabase;
-  nsresult rv = GetDatabase();
-  NS_IF_ADDREF(*db = mDatabase);
-
-  // If the DB was not open before, close our reference to it now.
-  if (!wasCached && mDatabase) {
-    mDatabase->RemoveListener(this);
-    mDatabase = nullptr;
-  }
-
-  return rv;
 }
 
 NS_IMETHODIMP
@@ -413,9 +395,9 @@ NS_IMETHODIMP nsMsgNewsFolder::CreateSubfolder(const nsAString& newsgroupName,
                                      getter_AddRefs(db));
     NS_ENSURE_SUCCESS(rv, rv);
 
-    NotifyItemAdded(child);
+    NotifyFolderAdded(child);
     nsCOMPtr<nsIMsgFolderNotificationService> notifier(
-        do_GetService(NS_MSGNOTIFICATIONSERVICE_CONTRACTID));
+        do_GetService("@mozilla.org/messenger/msgnotificationservice;1"));
     if (notifier) notifier->NotifyFolderAdded(child);
   }
   return rv;
@@ -567,6 +549,7 @@ nsMsgNewsFolder::GetDBFolderInfoAndDB(nsIDBFolderInfo** folderInfo,
 NS_IMETHODIMP
 nsMsgNewsFolder::UpdateSummaryFromNNTPInfo(int32_t oldest, int32_t youngest,
                                            int32_t total) {
+  NS_ENSURE_STATE(mReadSet);
   /* First, mark all of the articles now known to be expired as read. */
   if (oldest > 1) {
     nsCString oldSet;
@@ -685,7 +668,7 @@ nsMsgNewsFolder::DeleteMessages(nsTArray<RefPtr<nsIMsgDBHdr>> const& msgHdrs,
 
   if (!isMove) {
     nsCOMPtr<nsIMsgFolderNotificationService> notifier(
-        do_GetService(NS_MSGNOTIFICATIONSERVICE_CONTRACTID));
+        do_GetService("@mozilla.org/messenger/msgnotificationservice;1"));
     if (notifier) notifier->NotifyMsgsDeleted(msgHdrs);
   }
 
@@ -725,7 +708,7 @@ NS_IMETHODIMP nsMsgNewsFolder::CancelMessage(nsIMsgDBHdr* msgHdr,
   nsresult rv;
 
   nsCOMPtr<nsINntpService> nntpService =
-      do_GetService(NS_NNTPSERVICE_CONTRACTID, &rv);
+      do_GetService("@mozilla.org/messenger/nntpservice;1", &rv);
   NS_ENSURE_SUCCESS(rv, rv);
 
   // for cancel, we need to
@@ -759,9 +742,10 @@ NS_IMETHODIMP nsMsgNewsFolder::CancelMessage(nsIMsgDBHdr* msgHdr,
   rv = GetUriForMsg(msgHdr, messageURI);
   NS_ENSURE_SUCCESS(rv, rv);
 
-  return nntpService->CancelMessage(cancelURL.get(), messageURI.get(),
+  nsCOMPtr<nsIURI> resultUri;
+  return nntpService->CancelMessage(cancelURL, messageURI,
                                     nullptr /* consumer */, nullptr, aMsgWindow,
-                                    nullptr);
+                                    getter_AddRefs(resultUri));
 }
 
 NS_IMETHODIMP nsMsgNewsFolder::GetNewMessages(nsIMsgWindow* aMsgWindow,
@@ -780,23 +764,27 @@ nsresult nsMsgNewsFolder::GetNewsMessages(nsIMsgWindow* aMsgWindow,
 
   bool isNewsServer = false;
   rv = GetIsServer(&isNewsServer);
-  if (NS_FAILED(rv)) return rv;
+  NS_ENSURE_SUCCESS(rv, rv);
 
-  if (isNewsServer)
-    // get new messages only works on a newsgroup, not a news server
-    return NS_OK;
+  if (isNewsServer) {
+    nsCOMPtr<nsIMsgIncomingServer> server;
+    rv = GetServer(getter_AddRefs(server));
+    NS_ENSURE_SUCCESS(rv, rv);
+
+    return server->PerformExpand(aMsgWindow);
+  }
 
   nsCOMPtr<nsINntpService> nntpService =
-      do_GetService(NS_NNTPSERVICE_CONTRACTID, &rv);
+      do_GetService("@mozilla.org/messenger/nntpservice;1", &rv);
   NS_ENSURE_SUCCESS(rv, rv);
 
   nsCOMPtr<nsINntpIncomingServer> nntpServer;
   rv = GetNntpServer(getter_AddRefs(nntpServer));
-  if (NS_FAILED(rv)) return rv;
+  NS_ENSURE_SUCCESS(rv, rv);
 
   nsCOMPtr<nsIURI> resultUri;
-  rv = nntpService->GetNewNews(nntpServer, mURI.get(), aGetOld, this,
-                               aMsgWindow, getter_AddRefs(resultUri));
+  rv = nntpService->GetNewNews(nntpServer, mURI, aGetOld, this, aMsgWindow,
+                               getter_AddRefs(resultUri));
   if (aUrlListener && NS_SUCCEEDED(rv) && resultUri) {
     nsCOMPtr<nsIMsgMailNewsUrl> msgUrl(do_QueryInterface(resultUri));
     if (msgUrl) msgUrl->RegisterListener(aUrlListener);
@@ -962,10 +950,12 @@ nsresult nsMsgNewsFolder::CreateNewsgroupUrlForSignon(const char* ref,
 
   nsCOMPtr<nsIURL> url;
   if (singleSignon) {
-    nsCString serverURI;
-    rv = server->GetServerURI(serverURI);
+    // Do not include username in the url when interacting with LoginManager.
+    nsCString serverURI = "news://"_ns;
+    nsCString hostName;
+    rv = server->GetHostName(hostName);
     NS_ENSURE_SUCCESS(rv, rv);
-
+    serverURI.Append(hostName);
     rv = NS_MutateURI(NS_STANDARDURLMUTATOR_CONTRACTID)
              .SetSpec(serverURI)
              .Finalize(url);
@@ -1034,7 +1024,7 @@ nsMsgNewsFolder::GetAuthenticationCredentials(nsIMsgWindow* aMsgWindow,
   NS_ENSURE_ARG_POINTER(validCredentials);
 
   nsCOMPtr<nsIStringBundleService> bundleService =
-      mozilla::services::GetStringBundleService();
+      mozilla::components::StringBundle::Service();
   NS_ENSURE_TRUE(bundleService, NS_ERROR_UNEXPECTED);
 
   nsresult rv;
@@ -1071,19 +1061,16 @@ nsMsgNewsFolder::GetAuthenticationCredentials(nsIMsgWindow* aMsgWindow,
   // Show the prompt if we need to
   if (mustPrompt ||
       (mayPrompt && (mGroupUsername.IsEmpty() || mGroupPassword.IsEmpty()))) {
-    nsCOMPtr<nsIAuthPrompt> dialog;
-    if (aMsgWindow) {
-      rv = aMsgWindow->GetAuthPrompt(getter_AddRefs(dialog));
-      NS_ENSURE_SUCCESS(rv, rv);
-    } else {
+    nsCOMPtr<nsIAuthPrompt> authPrompt =
+        do_GetService("@mozilla.org/messenger/msgAuthPrompt;1");
+    if (!authPrompt) {
       nsCOMPtr<nsIWindowWatcher> wwatch(
           do_GetService(NS_WINDOWWATCHER_CONTRACTID));
-      if (wwatch) wwatch->GetNewAuthPrompter(0, getter_AddRefs(dialog));
-      if (!dialog) return NS_ERROR_FAILURE;
+      if (wwatch) wwatch->GetNewAuthPrompter(0, getter_AddRefs(authPrompt));
+      if (!authPrompt) return NS_ERROR_FAILURE;
     }
 
-    NS_ASSERTION(dialog, "We didn't get a net prompt");
-    if (dialog) {
+    if (authPrompt) {
       // Format the prompt text strings
       nsString promptTitle, promptText;
       bundle->GetStringFromName("enterUserPassTitle", promptTitle);
@@ -1122,7 +1109,7 @@ nsMsgNewsFolder::GetAuthenticationCredentials(nsIMsgWindow* aMsgWindow,
           ToNewUnicode(NS_ConvertASCIItoUTF16(mGroupPassword));
 
       // Prompt for the dialog
-      rv = dialog->PromptUsernameAndPassword(
+      rv = authPrompt->PromptUsernameAndPassword(
           promptTitle.get(), promptText.get(), signonURL.get(),
           nsIAuthPrompt::SAVE_PASSWORD_PERMANENTLY, &uniGroupUsername,
           &uniGroupPassword, validCredentials);
@@ -1173,11 +1160,8 @@ NS_IMETHODIMP nsMsgNewsFolder::ForgetAuthenticationCredentials() {
 }
 
 // change order of subfolders (newsgroups)
-// aOrientation = -1 ... aNewsgroupToMove aRefNewsgroup ...
-// aOrientation =  1 ... aRefNewsgroup aNewsgroupToMove ...
-NS_IMETHODIMP nsMsgNewsFolder::MoveFolder(nsIMsgFolder* aNewsgroupToMove,
-                                          nsIMsgFolder* aRefNewsgroup,
-                                          int32_t aOrientation) {
+NS_IMETHODIMP nsMsgNewsFolder::ReorderGroup(nsIMsgFolder* aNewsgroupToMove,
+                                            nsIMsgFolder* aRefNewsgroup) {
   // if folders are identical do nothing
   if (aNewsgroupToMove == aRefNewsgroup) return NS_OK;
 
@@ -1195,34 +1179,20 @@ NS_IMETHODIMP nsMsgNewsFolder::MoveFolder(nsIMsgFolder* aNewsgroupToMove,
     // aRefNewsgroup is no subfolder of this folder
     return NS_ERROR_INVALID_ARG;
 
-  // set new index for NewsgroupToMove
-  uint32_t indexMin, indexMax;
-  if (indexNewsgroupToMove < indexRefNewsgroup) {
-    if (aOrientation < 0) indexRefNewsgroup--;
-    indexMin = indexNewsgroupToMove;
-    indexMax = indexRefNewsgroup;
-  } else {
-    if (aOrientation > 0) indexRefNewsgroup++;
-    indexMin = indexRefNewsgroup;
-    indexMax = indexNewsgroupToMove;
-  }
+  // Move NewsgroupToMove to new index and set new sort order.
 
-  // move NewsgroupToMove to new index and set new sort order
-  NotifyItemRemoved(aNewsgroupToMove);
+  nsCOMPtr<nsIMsgFolder> newsgroup = mSubFolders[indexNewsgroupToMove];
 
-  if (indexNewsgroupToMove != indexRefNewsgroup) {
-    nsCOMPtr<nsIMsgFolder> newsgroup = mSubFolders[indexNewsgroupToMove];
+  mSubFolders.RemoveObjectAt(indexNewsgroupToMove);
+  mSubFolders.InsertObjectAt(newsgroup, indexRefNewsgroup);
 
-    mSubFolders.RemoveObjectAt(indexNewsgroupToMove);
-
-    // indexRefNewsgroup is already set up correctly.
-    mSubFolders.InsertObjectAt(newsgroup, indexRefNewsgroup);
-  }
-
-  for (uint32_t i = indexMin; i <= indexMax; i++)
+  for (uint32_t i = 0; i < mSubFolders.Length(); i++) {
     mSubFolders[i]->SetSortOrder(kNewsSortOffset + i);
-
-  NotifyItemAdded(aNewsgroupToMove);
+    nsAutoString name;
+    mSubFolders[i]->GetName(name);
+    NotifyFolderRemoved(mSubFolders[i]);
+    NotifyFolderAdded(mSubFolders[i]);
+  }
 
   // write changes back to file
   nsCOMPtr<nsINntpIncomingServer> nntpServer;
@@ -1239,7 +1209,16 @@ NS_IMETHODIMP nsMsgNewsFolder::MoveFolder(nsIMsgFolder* aNewsgroupToMove,
 }
 
 nsresult nsMsgNewsFolder::CreateBaseMessageURI(const nsACString& aURI) {
-  return nsCreateNewsBaseMessageURI(nsCString(aURI).get(), mBaseMessageURI);
+  return nsCreateNewsBaseMessageURI(aURI, mBaseMessageURI);
+}
+
+NS_IMETHODIMP nsMsgNewsFolder::GetCharset(nsACString& charset) {
+  nsCOMPtr<nsIMsgIncomingServer> server;
+  nsresult rv = GetServer(getter_AddRefs(server));
+  NS_ENSURE_SUCCESS(rv, rv);
+  nsCOMPtr<nsINntpIncomingServer> nserver(do_QueryInterface(server));
+  NS_ENSURE_TRUE(nserver, NS_ERROR_NULL_POINTER);
+  return nserver->GetCharset(charset);
 }
 
 NS_IMETHODIMP
@@ -1266,8 +1245,7 @@ nsMsgNewsFolder::GetNewsrcLine(nsACString& newsrcLine) {
 }
 
 NS_IMETHODIMP nsMsgNewsFolder::SetReadSetFromStr(const nsACString& newsrcLine) {
-  delete mReadSet;
-  mReadSet = nsMsgKeySet::Create(nsCString(newsrcLine).get());
+  mReadSet = nsMsgKeySet::Create(PromiseFlatCString(newsrcLine).get());
   NS_ENSURE_TRUE(mReadSet, NS_ERROR_OUT_OF_MEMORY);
 
   // Now that mReadSet is recreated, make sure it's stored in the db as well.
@@ -1346,7 +1324,7 @@ NS_IMETHODIMP nsMsgNewsFolder::RemoveMessage(nsMsgKey key) {
 
   // Notify listeners of a delete for a single message
   nsCOMPtr<nsIMsgFolderNotificationService> notifier(
-      do_GetService(NS_MSGNOTIFICATIONSERVICE_CONTRACTID));
+      do_GetService("@mozilla.org/messenger/msgnotificationservice;1"));
   if (notifier) {
     nsCOMPtr<nsIMsgDBHdr> msgHdr;
     rv = mDatabase->GetMsgHdrForKey(key, getter_AddRefs(msgHdr));
@@ -1356,14 +1334,15 @@ NS_IMETHODIMP nsMsgNewsFolder::RemoveMessage(nsMsgKey key) {
   return mDatabase->DeleteMessage(key, nullptr, false);
 }
 
-NS_IMETHODIMP nsMsgNewsFolder::RemoveMessages(nsTArray<nsMsgKey>& aMsgKeys) {
+NS_IMETHODIMP nsMsgNewsFolder::RemoveMessages(
+    const nsTArray<nsMsgKey>& aMsgKeys) {
   nsresult rv = GetDatabase();
   NS_ENSURE_SUCCESS(rv,
                     rv);  // if GetDatabase succeeds, mDatabase will be non-null
 
   // Notify listeners of a multiple message delete
   nsCOMPtr<nsIMsgFolderNotificationService> notifier(
-      do_GetService(NS_MSGNOTIFICATIONSERVICE_CONTRACTID));
+      do_GetService("@mozilla.org/messenger/msgnotificationservice;1"));
 
   if (notifier) {
     nsTArray<RefPtr<nsIMsgDBHdr>> msgHdrs;
@@ -1424,7 +1403,6 @@ NS_IMETHODIMP nsMsgNewsFolder::DownloadAllForOffline(nsIUrlListener* listener,
   }
   RefPtr<DownloadNewsArticlesToOfflineStore> downloadState =
       new DownloadNewsArticlesToOfflineStore(msgWindow, mDatabase, this);
-  m_downloadingMultipleMessages = true;
   rv = downloadState->DownloadArticles(msgWindow, this, &srcKeyArray);
   (void)RefreshSizeOnDisk();
   return rv;
@@ -1444,42 +1422,58 @@ NS_IMETHODIMP nsMsgNewsFolder::DownloadMessagesForOffline(
   }
   RefPtr<DownloadNewsArticlesToOfflineStore> downloadState =
       new DownloadNewsArticlesToOfflineStore(window, mDatabase, this);
-  m_downloadingMultipleMessages = true;
 
   rv = downloadState->DownloadArticles(window, this, &srcKeyArray);
   (void)RefreshSizeOnDisk();
   return rv;
 }
 
-// line does not have a line terminator (e.g., CR or CRLF)
-NS_IMETHODIMP nsMsgNewsFolder::NotifyDownloadedLine(const char* line,
-                                                    nsMsgKey keyOfArticle) {
-  nsresult rv = NS_OK;
-  if (m_downloadMessageForOfflineUse) {
-    if (!m_offlineHeader) {
-      GetMessageHeader(keyOfArticle, getter_AddRefs(m_offlineHeader));
-      rv = StartNewOfflineMessage();
-    }
-    m_numOfflineMsgLines++;
+NS_IMETHODIMP nsMsgNewsFolder::GetLocalMsgStream(nsIMsgDBHdr* hdr,
+                                                 nsIInputStream** stream) {
+  nsMsgKey key;
+  hdr->GetMessageKey(&key);
+
+  uint64_t offset = 0;
+  uint32_t size = 0;
+  nsCOMPtr<nsIInputStream> rawStream;
+  nsresult rv =
+      GetOfflineFileStream(key, &offset, &size, getter_AddRefs(rawStream));
+  NS_ENSURE_SUCCESS(rv, rv);
+
+  RefPtr<mozilla::SlicedInputStream> slicedStream =
+      new mozilla::SlicedInputStream(rawStream.forget(), offset,
+                                     uint64_t(size));
+  slicedStream.forget(stream);
+  return NS_OK;
+}
+
+NS_IMETHODIMP nsMsgNewsFolder::NotifyDownloadBegin(nsMsgKey key) {
+  if (!m_downloadMessageForOfflineUse) {
+    return NS_OK;
   }
+  nsresult rv = GetMessageHeader(key, getter_AddRefs(m_offlineHeader));
+  NS_ENSURE_SUCCESS(rv, rv);
+  return StartNewOfflineMessage();  // Sets up m_tempMessageStream et al.
+}
 
+NS_IMETHODIMP nsMsgNewsFolder::NotifyDownloadedLine(nsACString const& line) {
+  nsresult rv = NS_OK;
   if (m_tempMessageStream) {
-    // line now contains the linebreak.
-    if (line[0] == '.' && line[MSG_LINEBREAK_LEN + 1] == 0) {
-      // end of article.
-      if (m_offlineHeader) EndNewOfflineMessage();
-
-      if (m_tempMessageStream && !m_downloadingMultipleMessages) {
-        m_tempMessageStream->Close();
-        m_tempMessageStream = nullptr;
-      }
-    } else {
-      uint32_t count = 0;
-      rv = m_tempMessageStream->Write(line, strlen(line), &count);
-    }
+    m_numOfflineMsgLines++;
+    uint32_t count = 0;
+    rv = m_tempMessageStream->Write(line.BeginReading(), line.Length(), &count);
+    NS_ENSURE_SUCCESS(rv, rv);
+    m_tempMessageStreamBytesWritten += count;
   }
 
   return rv;
+}
+
+NS_IMETHODIMP nsMsgNewsFolder::NotifyDownloadEnd(nsresult status) {
+  if (m_tempMessageStream) {
+    return EndNewOfflineMessage(status);
+  }
+  return NS_OK;
 }
 
 NS_IMETHODIMP nsMsgNewsFolder::NotifyFinishedDownloadinghdrs() {
@@ -1560,7 +1554,6 @@ NS_IMETHODIMP nsMsgNewsFolder::Shutdown(bool shutdownChildren) {
     // and we outlive the db, so it's safe to delete it here.
     nsCOMPtr<nsINewsDatabase> db = do_QueryInterface(mDatabase);
     if (db) db->SetReadSet(nullptr);
-    delete mReadSet;
     mReadSet = nullptr;
   }
   return nsMsgDBFolder::Shutdown(shutdownChildren);
@@ -1621,7 +1614,7 @@ nsMsgNewsFolder::GetFilterList(nsIMsgWindow* aMsgWindow,
     NS_ENSURE_SUCCESS(rv, rv);
 
     nsCOMPtr<nsIMsgFilterService> filterService =
-        do_GetService(NS_MSGFILTERSERVICE_CONTRACTID, &rv);
+        do_GetService("@mozilla.org/messenger/services/filters;1", &rv);
     NS_ENSURE_SUCCESS(rv, rv);
 
     rv = filterService->OpenFilterList(filterFile, this, aMsgWindow,
@@ -1643,16 +1636,6 @@ nsMsgNewsFolder::GetEditableFilterList(nsIMsgWindow* aMsgWindow,
 NS_IMETHODIMP
 nsMsgNewsFolder::SetEditableFilterList(nsIMsgFilterList* aFilterList) {
   return SetFilterList(aFilterList);
-}
-
-NS_IMETHODIMP
-nsMsgNewsFolder::OnStopRunningUrl(nsIURI* aUrl, nsresult aExitCode) {
-  if (m_tempMessageStream) {
-    m_tempMessageStream->Close();
-    m_tempMessageStream = nullptr;
-  }
-  m_downloadingMultipleMessages = false;
-  return nsMsgDBFolder::OnStopRunningUrl(aUrl, aExitCode);
 }
 
 NS_IMETHODIMP

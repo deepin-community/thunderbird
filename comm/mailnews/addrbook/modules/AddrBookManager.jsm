@@ -4,23 +4,24 @@
 
 const EXPORTED_SYMBOLS = ["AddrBookManager"];
 
-const { XPCOMUtils } = ChromeUtils.import(
-  "resource://gre/modules/XPCOMUtils.jsm"
+const { AppConstants } = ChromeUtils.importESModule(
+  "resource://gre/modules/AppConstants.sys.mjs"
+);
+const { XPCOMUtils } = ChromeUtils.importESModule(
+  "resource://gre/modules/XPCOMUtils.sys.mjs"
 );
 
-XPCOMUtils.defineLazyModuleGetters(this, {
-  AppConstants: "resource://gre/modules/AppConstants.jsm",
-  clearTimeout: "resource://gre/modules/Timer.jsm",
-  compareAddressBooks: "resource:///modules/AddrBookUtils.jsm",
-  Services: "resource://gre/modules/Services.jsm",
-  setTimeout: "resource://gre/modules/Timer.jsm",
+const lazy = {};
+
+ChromeUtils.defineESModuleGetters(lazy, {
+  clearTimeout: "resource://gre/modules/Timer.sys.mjs",
+  setTimeout: "resource://gre/modules/Timer.sys.mjs",
 });
-XPCOMUtils.defineLazyServiceGetter(
-  this,
-  "env",
-  "@mozilla.org/process/environment;1",
-  "nsIEnvironment"
-);
+
+XPCOMUtils.defineLazyModuleGetters(lazy, {
+  compareAddressBooks: "resource:///modules/AddrBookUtils.jsm",
+  MailGlue: "resource:///modules/MailGlue.jsm",
+});
 
 /** Test for valid directory URIs. */
 const URI_REGEXP = /^([\w-]+):\/\/([\w\.-]*)([/:].*|$)/;
@@ -50,7 +51,7 @@ if (AppConstants.platform == "macosx") {
 let sortedDirectoryList = [];
 function updateSortedDirectoryList() {
   sortedDirectoryList = [...store.values()];
-  sortedDirectoryList.sort(compareAddressBooks);
+  sortedDirectoryList.sort(lazy.compareAddressBooks);
 }
 
 /**
@@ -102,6 +103,12 @@ function ensureInitialized() {
   if (store !== null) {
     return;
   }
+  if (lazy.MailGlue.isToolboxProcess) {
+    throw new Components.Exception(
+      "AddrBookManager tried to start in the Developer Tools process!",
+      Cr.NS_ERROR_UNEXPECTED
+    );
+  }
 
   store = new Map();
 
@@ -123,7 +130,11 @@ function ensureInitialized() {
 
         switch (dirType) {
           case Ci.nsIAbManager.MAPI_DIRECTORY_TYPE:
-            if (env.exists("MOZ_AUTOMATION")) {
+            if (
+              Cu.isInAutomation ||
+              Services.env.exists("XPCSHELL_TEST_PROFILE_DIR")
+            ) {
+              // Don't load the OS Address Book in tests.
               break;
             }
             if (Services.prefs.getIntPref(`${prefName}.position`, 1) < 1) {
@@ -159,7 +170,7 @@ function ensureInitialized() {
         }
       }
     } catch (ex) {
-      Cu.reportError(ex);
+      console.error(ex);
     }
   }
 
@@ -181,9 +192,27 @@ Services.obs.addObserver(async () => {
 let addressCache = new Map();
 let addressCacheTimer = null;
 
+// Throw away cached cards if the display name properties change, so we can
+// get the updated version of the card that changed.
+Services.prefs.addObserver("mail.displayname.version", () => {
+  addressCache.clear();
+  Services.obs.notifyObservers(null, "addrbook-displayname-changed");
+});
+
+// When this prefence has been updated, we need to update the
+// mail.displayname.version, which notifies it's preference observer (above).
+// This will then notify the addrbook-displayname-changed observer, and change
+// the displayname in the thread tree and message header.
+Services.prefs.addObserver("mail.showCondensedAddresses", () => {
+  Services.prefs.setIntPref(
+    "mail.displayname.version",
+    Services.prefs.getIntPref("mail.displayname.version") + 1
+  );
+});
+
 /**
- * @implements nsIAbManager
- * @implements nsICommandLineHandler
+ * @implements {nsIAbManager}
+ * @implements {nsICommandLineHandler}
  */
 function AddrBookManager() {}
 AddrBookManager.prototype = {
@@ -283,7 +312,7 @@ AddrBookManager.prototype = {
     }
     return null;
   },
-  newAddressBook(dirName, uri, type, prefName) {
+  newAddressBook(dirName, uri, type, uid) {
     function ensureUniquePrefName() {
       let leafName = dirName.replace(/\W/g, "");
       if (!leafName) {
@@ -304,7 +333,14 @@ AddrBookManager.prototype = {
         Cr.NS_ERROR_INVALID_ARG
       );
     }
+    if (uid && this.getDirectoryFromUID(uid)) {
+      throw new Components.Exception(
+        `An address book with the UID ${uid} already exists`,
+        Cr.NS_ERROR_ABORT
+      );
+    }
 
+    let prefName;
     ensureInitialized();
 
     switch (type) {
@@ -317,6 +353,9 @@ AddrBookManager.prototype = {
         Services.prefs.setStringPref(`${prefName}.description`, dirName);
         Services.prefs.setStringPref(`${prefName}.filename`, file.leafName);
         Services.prefs.setStringPref(`${prefName}.uri`, uri);
+        if (uid) {
+          Services.prefs.setStringPref(`${prefName}.uid`, uid);
+        }
 
         uri = `moz-abldapdirectory://${prefName}`;
         let dir = createDirectoryObject(uri, true);
@@ -359,6 +398,9 @@ AddrBookManager.prototype = {
           "chrome://messenger/locale/addressbook/addressBook.properties"
         );
         Services.prefs.setStringPref(`${prefName}.uri`, uri);
+        if (uid) {
+          Services.prefs.setStringPref(`${prefName}.uid`, uid);
+        }
 
         if (AppConstants.platform == "macosx") {
           let dir = createDirectoryObject(uri, true);
@@ -386,6 +428,9 @@ AddrBookManager.prototype = {
         Services.prefs.setStringPref(`${prefName}.description`, dirName);
         Services.prefs.setIntPref(`${prefName}.dirType`, type);
         Services.prefs.setStringPref(`${prefName}.filename`, file.leafName);
+        if (uid) {
+          Services.prefs.setStringPref(`${prefName}.uid`, uid);
+        }
 
         let scheme =
           type == Ci.nsIAbManager.JS_DIRECTORY_TYPE
@@ -516,6 +561,7 @@ AddrBookManager.prototype = {
   },
   /**
    * Finds out if the directory name already exists.
+   *
    * @param {string} name - The name of a directory to check for.
    */
   directoryNameExists(name) {
@@ -533,9 +579,9 @@ AddrBookManager.prototype = {
     }
 
     if (addressCacheTimer) {
-      clearTimeout(addressCacheTimer);
+      lazy.clearTimeout(addressCacheTimer);
     }
-    addressCacheTimer = setTimeout(() => {
+    addressCacheTimer = lazy.setTimeout(() => {
       addressCacheTimer = null;
       addressCache.clear();
     }, 60000);
@@ -558,26 +604,5 @@ AddrBookManager.prototype = {
 
     addressCache.set(emailAddress, null);
     return null;
-  },
-
-  /* nsICommandLineHandler */
-
-  get helpInfo() {
-    return "  -addressbook       Open the address book at startup.\n";
-  },
-  handle(commandLine) {
-    let found = commandLine.handleFlag("addressbook", false);
-    if (!found) {
-      return;
-    }
-
-    Services.ww.openWindow(
-      null,
-      "chrome://messenger/content/addressbook/addressbook.xhtml",
-      "_blank",
-      "chrome,extrachrome,menubar,resizable,scrollbars,status,toolbar",
-      null
-    );
-    commandLine.preventDefault = true;
   },
 };

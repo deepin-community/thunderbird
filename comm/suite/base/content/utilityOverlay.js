@@ -27,7 +27,7 @@ XPCOMUtils.defineLazyModuleGetters(this, {
 
 /*
   Note: All Editor/Composer-related methods have been moved to editorApplicationOverlay.js,
-  so app windows that require those must include editorNavigatorOverlay.xul
+  so app windows that require those must include editorTasksOverlay.xul
 */
 
 /**
@@ -38,11 +38,6 @@ const kProxyManual = ["network.proxy.ftp",
                       "network.proxy.http",
                       "network.proxy.socks",
                       "network.proxy.ssl"];
-const kExistingWindow = Ci.nsIBrowserDOMWindow.OPEN_CURRENTWINDOW;
-const kNewWindow = Ci.nsIBrowserDOMWindow.OPEN_NEWWINDOW;
-const kNewTab = Ci.nsIBrowserDOMWindow.OPEN_NEWTAB;
-const kExistingTab = Ci.nsIBrowserDOMWindow.OPEN_SWITCHTAB;
-const kNewPrivate = 5;
 var TAB_DROP_TYPE = "application/x-moz-tabbrowser-tab";
 var gShowBiDi = false;
 var gUtilityBundle = null;
@@ -608,10 +603,10 @@ function goAbout(aProtocol)
   var defaultAboutState = Services.prefs.getIntPref("browser.link.open_external");
 
   switch (defaultAboutState) {
-  case kNewWindow:
+  case Ci.nsIBrowserDOMWindow.OPEN_NEWWINDOW:
     target = "window";
     break;
-  case kExistingWindow:
+  case Ci.nsIBrowserDOMWindow.OPEN_CURRENTWINDOW:
     target = "current";
     break;
   default:
@@ -935,21 +930,49 @@ function makeURLAbsolute(aBase, aUrl, aCharset)
                             Services.io.newURI(aBase, aCharset)).spec;
 }
 
-function openAsExternal(aURL) {
-  var where;
-  switch (Services.prefs.getIntPref("browser.link.open_external")) {
-    case kNewWindow :
-      where = "window";
-      break;
-    case kNewTab :
-      where = "tab";
-      break;
-    case kExistingWindow :
-    default :
-      where = "current";
+/**
+ * whereToLoadExternalLink: Returns values for opening a new external link.
+ *
+ * @returns (object[]} an array of objects with the following structure:
+ *          - (string) where location where to open the link.
+ *          - (bool) loadInBackground load url in background.
+ *          - (bool) Focus browser after load.
+  */
+function whereToLoadExternalLink() {
+  let openParms = {
+    where: null,
+    loadInBackground: false,
+    avoidBrowserFocus: false,
   }
-  var loadInBackground = Services.prefs.getBoolPref("browser.tabs.loadDivertedInBackground");
-  openNewTabWindowOrExistingWith(aURL, where, null, loadInBackground);
+
+  switch (Services.prefs.getIntPref("browser.link.open_external")) {
+    case Ci.nsIBrowserDOMWindow.OPEN_NEWWINDOW:
+      openParms.where = "window";
+      break;
+    case Ci.nsIBrowserDOMWindow.OPEN_NEWTAB:
+      openParms.where = "tab";
+      break;
+    case Ci.nsIBrowserDOMWindow.OPEN_CURRENTWINDOW:
+      openParms.where = "current";
+      break;
+    default:
+      console.log("Check pref browser.link.open_external");
+      openParms.where = "current";
+  }
+  openParms.loadInBackground =
+    Services.prefs.getBoolPref("browser.tabs.loadDivertedInBackground");
+
+  openParms.avoidBrowserFocus =
+    Services.prefs.getBoolPref("browser.tabs.avoidBrowserFocus");
+
+  return openParms;
+}
+
+function openAsExternal(aURL) {
+  let openParms = whereToLoadExternalLink();
+
+  openNewTabWindowOrExistingWith(aURL, openParms.where, null,
+                                 openParms.loadInBackground);
 }
 
 /**
@@ -1457,6 +1480,7 @@ function openLinkIn(url, where, params)
   var aRelatedToCurrent     = params.relatedToCurrent;
   var aAllowMixedContent    = params.allowMixedContent;
   var aInBackground         = params.inBackground;
+  var aAvoidBrowserFocus    = params.avoidBrowserFocus;
   var aDisallowInheritPrincipal = params.disallowInheritPrincipal;
   var aInitiatingDoc = params.initiatingDoc ? params.initiatingDoc : document;
   var aIsPrivate            = params.private;
@@ -1564,6 +1588,11 @@ function openLinkIn(url, where, params)
                     Services.prefs.getBoolPref("browser.tabs.loadInBackground");
   }
 
+  if (aAvoidBrowserFocus == null) {
+    aAvoidBrowserFocus =
+      Services.prefs.getBoolPref("browser.tabs.avoidBrowserFocus", false);
+  }
+
   // reuse the browser if its current tab is empty
   if (isBrowserEmpty(w.getBrowser()))
     where = "current";
@@ -1592,7 +1621,9 @@ function openLinkIn(url, where, params)
       postData: aPostData,
       userContextId: aUserContextId
     });
-    w.content.focus();
+    if (!aAvoidBrowserFocus) {
+      w.content.focus();
+    }
     break;
 
   case "tabfocused":
@@ -1609,6 +1640,7 @@ function openLinkIn(url, where, params)
                 referrerPolicy: aReferrerPolicy,
                 charset: aCharset,
                 postData: aPostData,
+                ownerTab: loadInBackground ? null : browser.selectedTab,
                 allowThirdPartyFixup: aAllowThirdPartyFixup,
                 relatedToCurrent: aRelatedToCurrent,
                 allowMixedContent: aAllowMixedContent,
@@ -1619,6 +1651,8 @@ function openLinkIn(url, where, params)
               });
     if (!loadInBackground) {
       browser.selectedTab = tab;
+    }
+    if (!aAvoidBrowserFocus) {
       w.content.focus();
     }
 
@@ -1790,7 +1824,7 @@ function OpenSearchEngineManager() {
 
 function loadAddSearchEngines() {
   var newWindowPref = Services.prefs.getIntPref("browser.link.open_newwindow");
-  var where = newWindowPref == kNewTab ? "tabfocused" : "window";
+  var where = newWindowPref == Ci.nsIBrowserDOMWindow.OPEN_NEWTAB ? "tabfocused" : "window";
   var searchEnginesURL = Services.urlFormatter.formatURLPref("browser.search.searchEnginesURL");
   openUILinkIn(searchEnginesURL, where);
 }

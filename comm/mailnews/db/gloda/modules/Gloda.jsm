@@ -20,6 +20,9 @@ const {
 const { GlodaCollection, GlodaCollectionManager } = ChromeUtils.import(
   "resource:///modules/gloda/Collection.jsm"
 );
+const { GlodaConstants } = ChromeUtils.import(
+  "resource:///modules/gloda/GlodaConstants.jsm"
+);
 const { whittlerRegistry, mimeMsgToContentAndMeta } = ChromeUtils.import(
   "resource:///modules/gloda/GlodaContent.jsm"
 );
@@ -166,58 +169,11 @@ var Gloda = {
   },
 
   /**
-   * The indexer is idle.
-   */
-  kIndexerIdle: 0,
-  /**
-   * The indexer is doing something.  We used to have other specific states, but
-   *  they have been rendered irrelevant and wiped from existence.
-   */
-  kIndexerIndexing: 1,
-
-  /**
-   * Synchronous activities performed that can be thought of as one processing
-   *  token.  Potentially yield the event-loop and re-schedule for later based
-   *  on how long we've actually taken/etc.  The goal here is that code that
-   *  is doing stuff synchronously yields with kWorkSync periodically to make
-   *  sure that it doesn't dominate the event-loop.  Unless the processing
-   *  in question is particularly intensive, it should be reasonable to apply
-   *  some decimation factor (ex: 32 or 64) with the general goal of yielding
-   *  every 3-10 milliseconds.
-   */
-  kWorkSync: 0,
-  /**
-   * Asynchronous activity performed, you need to relinquish flow control and
-   *  trust us to call callbackDriver later.
-   */
-  kWorkAsync: 1,
-  /**
-   * We are all done with our task, close us and figure out something else to do.
-   */
-  kWorkDone: 2,
-  /**
-   * We are not done with our task, but we think it's a good idea to take a
-   *  breather because we believe we have tied up the event loop for a
-   *  non-trivial amount of time.  So please re-schedule us in the future.
-   *
-   * This is currently only used internally by the indexer's batching logic;
-   *  minor changes may be required if used by actual indexers.
-   */
-  kWorkPause: 3,
-  /**
-   * We are done with our task, and have a result that we are returning.  This
-   *  should only be used by your callback handler's doneWithResult method.
-   *  Ex: you are passed aCallbackHandle, and you do
-   *  "yield aCallbackHandle.doneWithResult(myResult);".
-   */
-  kWorkDoneWithResult: 4,
-
-  /**
    * Callers should access the unique ID for the GlodaDatastore
    * with this getter. If the GlodaDatastore has not been
    * initialized, this value is null.
    *
-   * @return a UUID as a string, ex: "c4dd0159-9287-480f-a648-a4613e147fdb"
+   * @returns a UUID as a string, ex: "c4dd0159-9287-480f-a648-a4613e147fdb"
    */
   get datastoreID() {
     return GlodaDatastore._datastoreID;
@@ -236,12 +192,12 @@ var Gloda = {
    * @param aData The (optional) value to set as the data attribute on the
    *     collection.
    *
-   * @return The collection that will receive the results.
+   * @returns The collection that will receive the results.
    *
    * @testpoint gloda.ns.getMessageCollectionForHeader()
    */
   getMessageCollectionForHeader(aMsgHdr, aListener, aData) {
-    let query = Gloda.newQuery(Gloda.NOUN_MESSAGE);
+    let query = Gloda.newQuery(GlodaConstants.NOUN_MESSAGE);
     query.folder(aMsgHdr.folder).messageKey(aMsgHdr.messageKey);
     return query.getCollection(aListener, aData);
   },
@@ -260,7 +216,7 @@ var Gloda = {
    * @param aData The (optional) value to set as the data attribute on the
    *     collection.
    *
-   * @return The collection that will receive the results.
+   * @returns The collection that will receive the results.
    *
    * @testpoint gloda.ns.getMessageCollectionForHeaders()
    */
@@ -277,7 +233,7 @@ var Gloda = {
       }
     }
 
-    let query = Gloda.newQuery(Gloda.NOUN_MESSAGE);
+    let query = Gloda.newQuery(GlodaConstants.NOUN_MESSAGE);
     let clause;
     // build a query, using a separate union clause for each folder.
     for (let folderURI in headersByFolder) {
@@ -369,11 +325,11 @@ var Gloda = {
       return;
     }
 
-    let query = this.newQuery(this.NOUN_IDENTITY);
+    let query = this.newQuery(GlodaConstants.NOUN_IDENTITY);
     query.kind("email");
     query.value.apply(query, addressList);
     let collection = query.getCollection(aCallbackHandle);
-    yield this.kWorkAsync;
+    yield GlodaConstants.kWorkAsync;
 
     // put the identities in the appropriate result lists
     for (let identity of collection.items) {
@@ -602,198 +558,15 @@ var Gloda = {
 
     // We need contacts to make these objects reachable via the collection
     //  manager.
-    this._myContactCollection = this.explicitCollection(this.NOUN_CONTACT, [
-      this.myContact,
-    ]);
+    this._myContactCollection = this.explicitCollection(
+      GlodaConstants.NOUN_CONTACT,
+      [this.myContact]
+    );
     this._myIdentitiesCollection = this.explicitCollection(
-      this.NOUN_IDENTITY,
+      GlodaConstants.NOUN_IDENTITY,
       this.myContact._identities
     );
   },
-
-  /**
-   * An attribute that is a defining characteristic of the subject.
-   */
-  kAttrFundamental: 0,
-  /**
-   * An attribute that is an optimization derived from two or more fundamental
-   *  attributes and exists solely to improve database query performance.
-   */
-  kAttrOptimization: 1,
-  /**
-   * An attribute that is derived from the content of the subject.  For example,
-   *  a message that references a bugzilla bug could have a "derived" attribute
-   *  that captures the bugzilla reference.  This is not
-   */
-  kAttrDerived: 2,
-  /**
-   * An attribute that is the result of an explicit and intentional user action
-   *  upon the subject.  For example, a tag placed on a message by a user (or
-   *  at the user's request by a filter) is explicit.
-   */
-  kAttrExplicit: 3,
-  /**
-   * An attribute that is indirectly the result of a user's behaviour.  For
-   *  example, if a user consults a message multiple times, we may conclude that
-   *  the user finds the message interesting.  It is "implied", if you will,
-   *  that the message is interesting.
-   */
-  kAttrImplicit: 4,
-
-  /**
-   * This attribute is not 'special'; it is stored as a (thing id, attribute id,
-   *  attribute id) tuple in the database rather than on thing's row or on
-   *  thing's fulltext row.  (Where "thing" could be a message or any other
-   *  first class noun.)
-   */
-  kSpecialNotAtAll: GlodaDatastore.kSpecialNotAtAll,
-  /**
-   * This attribute is stored as a numeric column on the row for the noun.  The
-   *  attribute definition should include this value as 'special' and the
-   *  column name that stores the attribute as 'specialColumnName'.
-   */
-  kSpecialColumn: GlodaDatastore.kSpecialColumn,
-  kSpecialColumnChildren: GlodaDatastore.kSpecialColumnChildren,
-  kSpecialColumnParent: GlodaDatastore.kSpecialColumnParent,
-  /**
-   * This attribute is stored as a string column on the row for the noun.  It
-   *  differs from kSpecialColumn in that it is a string, which once had
-   *  query ramifications and one day may have them again.
-   */
-  kSpecialString: GlodaDatastore.kSpecialString,
-  /**
-   * This attribute is stored as a fulltext column on the fulltext table for
-   *  the noun.  The attribute definition should include this value as 'special'
-   *  and the column name that stores the table as 'specialColumnName'.
-   */
-  kSpecialFulltext: GlodaDatastore.kSpecialFulltext,
-
-  /**
-   * The extensionName used for the attributes defined by core gloda plugins
-   *  such as GlodaFundAttr.jsm and GlodaExplicitAttr.jsm.
-   */
-  BUILT_IN: "built-in",
-
-  /**
-   * Special sentinel value that will cause facets to skip a noun instance
-   * when an attribute has this value.
-   */
-  IGNORE_FACET: GlodaDatastore.IGNORE_FACET,
-
-  /*
-   * The following are explicit noun IDs.  While most extension-provided nouns
-   *  will have dynamically allocated id's that are looked up by name, these
-   *  id's can be relied upon to exist and be accessible via these
-   *  pseudo-constants.  It's not really clear that we need these, although it
-   *  does potentially simplify code to not have to look up all of their nouns
-   *  at initialization time.
-   */
-  /**
-   * Boolean values, expressed as 0/1 in the database and non-continuous for
-   *  constraint purposes.  Like numbers, such nouns require their attributes
-   *  to provide them with context, lacking any of their own.
-   * Having this as a noun type may be a bad idea; a change of nomenclature
-   *  (so that we are not claiming a boolean value is a noun, but still using
-   *  it in the same way) or implementation to require each boolean noun
-   *  actually be its own noun may be in order.
-   */
-  NOUN_BOOLEAN: 1,
-  /**
-   * A number, which could mean an integer or floating point values.  We treat
-   *  these as continuous, meaning that queries on them can have ranged
-   *  constraints expressed on them.  Lacking any inherent context, numbers
-   *  depend on their attributes to parameterize them as required.
-   * Same deal as with NOUN_BOOLEAN, we may need to change this up conceptually.
-   */
-  NOUN_NUMBER: 2,
-  /**
-   * A (non-fulltext) string.
-   * Same deal as with NOUN_BOOLEAN, we may need to change this up conceptually.
-   */
-  NOUN_STRING: 3,
-  /** A date, encoded as a PRTime, represented as a js Date object. */
-  NOUN_DATE: 10,
-  /**
-   * Fulltext search support, somewhat magical.  This is only intended to be
-   *  used for kSpecialFulltext attributes, and exclusively as a constraint
-   *  mechanism.  The values are always represented as strings.  It is presumed
-   *  that the user of this functionality knows how to generate SQLite FTS3
-   *  style MATCH queries, or is okay with us just gluing them together with
-   *  " OR " when used in an or-constraint case.  Gloda's query mechanism
-   *  currently lacks the ability to to compile Gloda-style and-constraints
-   *  into a single MATCH query, but it will turn out okay, just less
-   *  efficiently than it could.
-   */
-  NOUN_FULLTEXT: 20,
-  /**
-   * Represents a MIME Type.  We currently lack any human-intelligible
-   *  descriptions of mime types.
-   */
-  NOUN_MIME_TYPE: 40,
-  /**
-   * Captures a message tag as well as when the tag's presence was observed,
-   *  hoping to approximate when the tag was applied.  It's a somewhat dubious
-   *  attempt to not waste our opporunity to store a value along with the tag.
-   *  (The tag is actually stored as an attribute parameter on the attribute
-   *  definition, rather than a value in the attribute 'instance' for the
-   *  message.)
-   */
-  NOUN_TAG: 50,
-  /**
-   * Doesn't actually work owing to a lack of an object to represent a folder.
-   *  We do expose the folderURI and folderID of a message, but need to map that
-   *  to a good abstraction.  Probably something thin around a SteelFolder or
-   *  the like; we would contribute the functionality to easily move from a
-   *  folder to the list of gloda messages in that folder, as well as the
-   *  indexing preferences for that folder.
-   * @TODO folder noun and related abstraction
-   */
-  NOUN_FOLDER: GlodaFolder.prototype.NOUN_ID, // 100
-  /**
-   * All messages belong to a conversation.  See GlodaDataModel.jsm for the
-   *  definition of the GlodaConversation class.
-   */
-  NOUN_CONVERSATION: GlodaConversation.prototype.NOUN_ID, // 101
-  /**
-   * A one-to-one correspondence with underlying (indexed) nsIMsgDBHdr
-   *  instances.  See GlodaDataModel.jsm for the definition of the GlodaMessage class.
-   */
-  NOUN_MESSAGE: GlodaMessage.prototype.NOUN_ID, // 102
-  /**
-   * Corresponds to a human being, who may have multiple electronic identities
-   *  (a la NOUN_IDENTITY).  There is no requirement for association with an
-   *  address book contact, although when the address book contact exists,
-   *  we want to be associated with it.  See GlodaDataModel.jsm for the definition
-   *  of the GlodaContact class.
-   */
-  NOUN_CONTACT: GlodaContact.prototype.NOUN_ID, // 103
-  /**
-   * A single identity of a contact, who may have one or more.  E-mail accounts,
-   *  instant messaging accounts, social network site accounts, etc. are each
-   *  identities.  See GlodaDataModel.jsm for the definition of the GlodaIdentity
-   *  class.
-   */
-  NOUN_IDENTITY: GlodaIdentity.prototype.NOUN_ID, // 104
-  /**
-   * An attachment to a message. A message may have many different attachments.
-   */
-  NOUN_ATTACHMENT: GlodaAttachment.prototype.NOUN_ID, // 105
-  /**
-   * An account related to a message. A message can have only one account.
-   */
-  NOUN_ACCOUNT: GlodaAccount.prototype.NOUN_ID, // 106
-
-  /**
-   * Parameterized identities, for use in the from-me, to-me, cc-me optimization
-   *  cases.  Not for reuse without some thought.  These nouns use the parameter
-   *  to store the 'me' identity that we are talking about, and the value to
-   *  store the identity of the other party.  So in both the from-me and to-me
-   *  cases involving 'me' and 'foo@bar', the 'me' identity is always stored via
-   *  the attribute parameter, and the 'foo@bar' identity is always stored as
-   *  the attribute value.  See GlodaFundAttr.jsm for more information on this, but
-   *  you probably shouldn't be touching this unless you are fundattr.
-   */
-  NOUN_PARAM_IDENTITY: 200,
 
   /** Next Noun ID to hand out, these don't need to be persisted (for now). */
   _nextNounID: 1000,
@@ -887,7 +660,7 @@ var Gloda = {
       aNounDef.idAttr = "id";
     }
     if (!("comparator" in aNounDef)) {
-      aNounDef.comparator = function() {
+      aNounDef.comparator = function () {
         throw new Error(
           "Noun type '" + aNounDef.name + "' lacks a real comparator."
         );
@@ -909,7 +682,7 @@ var Gloda = {
       GlodaDatastore.createNounTable(aNounDef);
 
       if (!aNounDef.toParamAndValue) {
-        aNounDef.toParamAndValue = function(aThing) {
+        aNounDef.toParamAndValue = function (aThing) {
           if (aThing instanceof aNounDef.class) {
             return [null, aThing.id];
           }
@@ -935,8 +708,8 @@ var Gloda = {
       aNounDef.specialLoadAttribs = [];
 
       // - define the 'id' constrainer
-      let idConstrainer = function(...aArgs) {
-        let constraint = [GlodaDatastore.kConstraintIdIn, null, ...aArgs];
+      let idConstrainer = function (...aArgs) {
+        let constraint = [GlodaConstants.kConstraintIdIn, null, ...aArgs];
         this._constraints.push(constraint);
         return this;
       };
@@ -1095,7 +868,7 @@ var Gloda = {
           return [null, aBool ? 1 : 0];
         },
       },
-      this.NOUN_BOOLEAN
+      GlodaConstants.NOUN_BOOLEAN
     );
     this.defineNoun(
       {
@@ -1119,7 +892,7 @@ var Gloda = {
           return [null, aNum];
         },
       },
-      this.NOUN_NUMBER
+      GlodaConstants.NOUN_NUMBER
     );
     this.defineNoun(
       {
@@ -1142,7 +915,7 @@ var Gloda = {
           return [null, aString];
         },
       },
-      this.NOUN_STRING
+      GlodaConstants.NOUN_STRING
     );
     this.defineNoun(
       {
@@ -1166,7 +939,7 @@ var Gloda = {
           return [null, aDate.valueOf() * 1000];
         },
       },
-      this.NOUN_DATE
+      GlodaConstants.NOUN_DATE
     );
     this.defineNoun(
       {
@@ -1184,7 +957,7 @@ var Gloda = {
           return [null, aString];
         },
       },
-      this.NOUN_FULLTEXT
+      GlodaConstants.NOUN_FULLTEXT
     );
 
     this.defineNoun(
@@ -1267,7 +1040,7 @@ var Gloda = {
           return [null, GlodaDatastore._mapFolder(aFolderOrGlodaFolder).id];
         },
       },
-      this.NOUN_FOLDER
+      GlodaConstants.NOUN_FOLDER
     );
     this.defineNoun(
       {
@@ -1296,7 +1069,7 @@ var Gloda = {
           return a.name.localeCompare(b.name);
         },
       },
-      this.NOUN_ACCOUNT
+      GlodaConstants.NOUN_ACCOUNT
     );
     this.defineNoun(
       {
@@ -1330,7 +1103,7 @@ var Gloda = {
           return [null, aConversation];
         },
       },
-      this.NOUN_CONVERSATION
+      GlodaConstants.NOUN_CONVERSATION
     );
     this.defineNoun(
       {
@@ -1366,7 +1139,7 @@ var Gloda = {
           return [null, aMessage];
         },
       },
-      this.NOUN_MESSAGE
+      GlodaConstants.NOUN_MESSAGE
     );
     this.defineNoun(
       {
@@ -1403,7 +1176,7 @@ var Gloda = {
           return [null, aContact];
         },
       },
-      this.NOUN_CONTACT
+      GlodaConstants.NOUN_CONTACT
     );
     this.defineNoun(
       {
@@ -1449,7 +1222,7 @@ var Gloda = {
           return [null, aIdentity];
         },
       },
-      this.NOUN_IDENTITY
+      GlodaConstants.NOUN_IDENTITY
     );
     this.defineNoun(
       {
@@ -1480,7 +1253,7 @@ var Gloda = {
           );
         },
       },
-      this.NOUN_ATTACHMENT
+      GlodaConstants.NOUN_ATTACHMENT
     );
 
     // parameterized identity is just two identities; we store the first one
@@ -1554,7 +1327,8 @@ var Gloda = {
             return false;
           }
 
-          let nounIdentityDef = Gloda._nounIDToDef[Gloda.NOUN_IDENTITY];
+          let nounIdentityDef =
+            Gloda._nounIDToDef[GlodaConstants.NOUN_IDENTITY];
           let references = aReferencesByNounID[nounIdentityDef.id];
           if (references === undefined) {
             references = aReferencesByNounID[nounIdentityDef.id] = {};
@@ -1577,7 +1351,7 @@ var Gloda = {
           aReferencesByNounID,
           aInverseReferencesByNounID
         ) {
-          let references = aReferencesByNounID[Gloda.NOUN_IDENTITY];
+          let references = aReferencesByNounID[GlodaConstants.NOUN_IDENTITY];
 
           let results = [];
           for (let tupe of aJsonValues) {
@@ -1597,7 +1371,7 @@ var Gloda = {
           return [aIdentityTuple[0].id, aIdentityTuple[1].id];
         },
       },
-      this.NOUN_PARAM_IDENTITY
+      GlodaConstants.NOUN_PARAM_IDENTITY
     );
 
     GlodaDatastore.getAllAttributes();
@@ -1620,10 +1394,13 @@ var Gloda = {
     if (aSubjectNounDef.queryClass !== undefined) {
       let constrainer;
       let canQuery = true;
-      if ("special" in aAttrDef && aAttrDef.special == this.kSpecialFulltext) {
-        constrainer = function(...aArgs) {
+      if (
+        "special" in aAttrDef &&
+        aAttrDef.special == GlodaConstants.kSpecialFulltext
+      ) {
+        constrainer = function (...aArgs) {
           let constraint = [
-            GlodaDatastore.kConstraintFulltext,
+            GlodaConstants.kConstraintFulltext,
             aAttrDef,
             ...aArgs,
           ];
@@ -1631,13 +1408,13 @@ var Gloda = {
           return this;
         };
       } else if (aAttrDef.canQuery || aAttrDef.attributeName.startsWith("_")) {
-        constrainer = function(...aArgs) {
-          let constraint = [GlodaDatastore.kConstraintIn, aAttrDef, ...aArgs];
+        constrainer = function (...aArgs) {
+          let constraint = [GlodaConstants.kConstraintIn, aAttrDef, ...aArgs];
           this._constraints.push(constraint);
           return this;
         };
       } else {
-        constrainer = function() {
+        constrainer = function () {
           throw new Error(
             "Cannot query on attribute " +
               aAttrDef.attributeName +
@@ -1660,9 +1437,9 @@ var Gloda = {
       // - ranged value helper: fooRange
       if (objectNounDef.continuous) {
         // takes one or more tuples of [lower bound, upper bound]
-        let rangedConstrainer = function(...aArgs) {
+        let rangedConstrainer = function (...aArgs) {
           let constraint = [
-            GlodaDatastore.kConstraintRanges,
+            GlodaConstants.kConstraintRanges,
             aAttrDef,
             ...aArgs,
           ];
@@ -1670,18 +1447,20 @@ var Gloda = {
           return this;
         };
 
-        aSubjectNounDef.queryClass.prototype[
-          aAttrDef.boundName + "Range"
-        ] = rangedConstrainer;
+        aSubjectNounDef.queryClass.prototype[aAttrDef.boundName + "Range"] =
+          rangedConstrainer;
       }
 
       // - string LIKE helper for special on-row attributes: fooLike
       // (it is impossible to store a string as an indexed attribute, which is
       //  why we do this for on-row only.)
-      if ("special" in aAttrDef && aAttrDef.special == this.kSpecialString) {
-        let likeConstrainer = function(...aArgs) {
+      if (
+        "special" in aAttrDef &&
+        aAttrDef.special == GlodaConstants.kSpecialString
+      ) {
+        let likeConstrainer = function (...aArgs) {
           let constraint = [
-            GlodaDatastore.kConstraintStringLike,
+            GlodaConstants.kConstraintStringLike,
             aAttrDef,
             ...aArgs,
           ];
@@ -1689,9 +1468,8 @@ var Gloda = {
           return this;
         };
 
-        aSubjectNounDef.queryClass.prototype[
-          aAttrDef.boundName + "Like"
-        ] = likeConstrainer;
+        aSubjectNounDef.queryClass.prototype[aAttrDef.boundName + "Like"] =
+          likeConstrainer;
       }
 
       // - Custom helpers provided by the noun type...
@@ -1700,11 +1478,10 @@ var Gloda = {
           let helper = objectNounDef.queryHelpers[name];
           // we need a new closure...
           let helperFunc = helper;
-          aSubjectNounDef.queryClass.prototype[
-            aAttrDef.boundName + name
-          ] = function(...aArgs) {
-            return helperFunc.call(this, aAttrDef, ...aArgs);
-          };
+          aSubjectNounDef.queryClass.prototype[aAttrDef.boundName + name] =
+            function (...aArgs) {
+              return helperFunc.call(this, aAttrDef, ...aArgs);
+            };
         }
       }
     }
@@ -1955,9 +1732,8 @@ var Gloda = {
         if (aAttrDef.provider.optimize) {
           this._attrOptimizerOrderByNoun[subjectType].push(aAttrDef.provider);
         }
-        this._attrProvidersByNoun[subjectType][
-          aAttrDef.provider.providerName
-        ] = [];
+        this._attrProvidersByNoun[subjectType][aAttrDef.provider.providerName] =
+          [];
       }
       this._attrProvidersByNoun[subjectType][
         aAttrDef.provider.providerName
@@ -1965,12 +1741,14 @@ var Gloda = {
 
       subjectNounDef.attribsByBoundName[aAttrDef.boundName] = aAttrDef;
       if (aAttrDef.domExpose) {
-        subjectNounDef.domExposeAttribsByBoundName[
-          aAttrDef.boundName
-        ] = aAttrDef;
+        subjectNounDef.domExposeAttribsByBoundName[aAttrDef.boundName] =
+          aAttrDef;
       }
 
-      if ("special" in aAttrDef && aAttrDef.special & this.kSpecialColumn) {
+      if (
+        "special" in aAttrDef &&
+        aAttrDef.special & GlodaConstants.kSpecialColumn
+      ) {
         subjectNounDef.specialLoadAttribs.push(aAttrDef);
       }
 
@@ -1979,7 +1757,7 @@ var Gloda = {
       //  issuing against.
       if (
         "special" in aAttrDef &&
-        aAttrDef.special === this.kSpecialColumnParent
+        aAttrDef.special === GlodaConstants.kSpecialColumnParent
       ) {
         subjectNounDef.parentColumnAttr = aAttrDef;
       }
@@ -2003,6 +1781,7 @@ var Gloda = {
    *  towards using binding heavily, this doesn't really help, as the collisions
    *  will just occur on the attribute name instead.  Also, this can turn
    *  extensions into liars as name changes/moves to core/etc. happen.
+   *
    * @TODO consider removing the extension name argument parameter requirement
    */
   getAttrDef(aPluginName, aAttrName) {
@@ -2432,7 +2211,7 @@ var Gloda = {
 
     this._log.debug(" done grokking.");
 
-    yield this.kWorkDone;
+    yield GlodaConstants.kWorkDone;
   },
   /* eslint-enable complexity */
 

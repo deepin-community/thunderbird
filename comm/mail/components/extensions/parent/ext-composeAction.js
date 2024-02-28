@@ -14,6 +14,11 @@ ChromeUtils.defineModuleGetter(
 
 const composeActionMap = new WeakMap();
 
+var { ExtensionCommon } = ChromeUtils.importESModule(
+  "resource://gre/modules/ExtensionCommon.sys.mjs"
+);
+var { makeWidgetId } = ExtensionCommon;
+
 this.composeAction = class extends ToolbarButtonAPI {
   static for(extension) {
     return composeActionMap.get(extension);
@@ -33,18 +38,16 @@ this.composeAction = class extends ToolbarButtonAPI {
     super(extension, global);
     this.manifest_name = "compose_action";
     this.manifestName = "composeAction";
+    this.manifest = extension.manifest[this.manifest_name];
+    this.moduleName = this.manifestName;
+
     this.windowURLs = [
       "chrome://messenger/content/messengercompose/messengercompose.xhtml",
     ];
-
     let isFormatToolbar =
       extension.manifest.compose_action.default_area == "formattoolbar";
     this.toolboxId = isFormatToolbar ? "FormatToolbox" : "compose-toolbox";
     this.toolbarId = isFormatToolbar ? "FormatToolbar" : "composeToolbar2";
-
-    if (isFormatToolbar) {
-      this.paint = this.paintFormatToolbar;
-    }
   }
 
   static onUninstall(extensionId) {
@@ -58,18 +61,19 @@ this.composeAction = class extends ToolbarButtonAPI {
     // shutdown when onUninstall is called.
     let toolbars = ["composeToolbar2", "FormatToolbar"];
     for (let toolbar of toolbars) {
-      let currentSet = Services.xulStore
-        .getValue(windowURL, toolbar, "currentset")
-        .split(",");
-
-      let newSet = currentSet.filter(e => e != id);
-      if (newSet.length < currentSet.length) {
-        Services.xulStore.setValue(
-          windowURL,
-          toolbar,
-          "currentset",
-          newSet.join(",")
-        );
+      for (let setName of ["currentset", "extensionset"]) {
+        let set = Services.xulStore
+          .getValue(windowURL, toolbar, setName)
+          .split(",");
+        let newSet = set.filter(e => e != id);
+        if (newSet.length < set.length) {
+          Services.xulStore.setValue(
+            windowURL,
+            toolbar,
+            setName,
+            newSet.join(",")
+          );
+        }
       }
     }
   }
@@ -81,6 +85,10 @@ this.composeAction = class extends ToolbarButtonAPI {
     switch (event.type) {
       case "popupshowing":
         const menu = event.target;
+        if (menu.tagName != "menupopup") {
+          return;
+        }
+
         const trigger = menu.triggerNode;
         const node = window.document.getElementById(this.id);
         const contexts = [
@@ -88,13 +96,25 @@ this.composeAction = class extends ToolbarButtonAPI {
           "toolbar-context-menu",
           "customizationPanelItemContextMenu",
         ];
-
         if (contexts.includes(menu.id) && node && node.contains(trigger)) {
           global.actionContextMenu({
             tab: window,
             pageUrl: window.browser.currentURI.spec,
             extension: this.extension,
             onComposeAction: true,
+            menu,
+          });
+        }
+
+        if (
+          menu.dataset.actionMenu == "composeAction" &&
+          this.extension.id == menu.dataset.extensionId
+        ) {
+          global.actionContextMenu({
+            tab: window,
+            pageUrl: window.browser.currentURI.spec,
+            extension: this.extension,
+            inComposeActionMenu: true,
             menu,
           });
         }
@@ -113,23 +133,21 @@ this.composeAction = class extends ToolbarButtonAPI {
     return button;
   }
 
-  paintFormatToolbar(window) {
-    let { document } = window;
-    if (document.getElementById(this.id)) {
-      return;
-    }
-
-    let toolbar = document.getElementById(this.toolbarId);
-    let button = this.makeButton(window);
+  /**
+   * Returns an element in the toolbar, which is to be used as default insertion
+   * point for new toolbar buttons in non-customizable toolbars.
+   *
+   * May return null to append new buttons to the end of the toolbar.
+   *
+   * @param {DOMElement} toolbar - a toolbar node
+   * @returns {DOMElement} a node which is to be used as insertion point, or null
+   */
+  getNonCustomizableToolbarInsertionPoint(toolbar) {
     let before = toolbar.lastElementChild;
     while (before.localName == "spacer") {
       before = before.previousElementSibling;
     }
-    toolbar.insertBefore(button, before.nextElementSibling);
-
-    if (this.extension.hasPermission("menus")) {
-      document.addEventListener("popupshowing", this);
-    }
+    return before.nextElementSibling;
   }
 };
 

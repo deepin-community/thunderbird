@@ -10,10 +10,12 @@
 
 var {
   be_in_folder,
+  create_folder,
+  create_virtual_folder,
   expand_all_threads,
+  get_about_3pane,
   make_display_threaded,
-  make_folder_with_sets,
-  make_virtual_folder,
+  make_message_sets_in_folders,
   mc,
   select_click_row,
 } = ChromeUtils.import(
@@ -24,16 +26,19 @@ var msgsPerThread = 5;
 var singleVirtFolder;
 var multiVirtFolder;
 
-add_task(function setupModule(module) {
-  let [folderOne] = make_folder_with_sets([{ msgsPerThread }]);
-  let [folderTwo] = make_folder_with_sets([{ msgsPerThread }]);
+add_setup(async function () {
+  let folderOne = await create_folder();
+  let folderTwo = await create_folder();
+  await make_message_sets_in_folders([folderOne], [{ msgsPerThread }]);
+  await make_message_sets_in_folders([folderTwo], [{ msgsPerThread }]);
 
-  singleVirtFolder = make_virtual_folder([folderOne], {});
-  multiVirtFolder = make_virtual_folder([folderOne, folderTwo], {});
+  singleVirtFolder = create_virtual_folder([folderOne], {});
+  multiVirtFolder = create_virtual_folder([folderOne, folderTwo], {});
 });
 
-add_task(function test_single_folder_select_thread() {
-  be_in_folder(singleVirtFolder);
+add_task(async function test_single_folder_select_thread() {
+  await be_in_folder(singleVirtFolder);
+  let win = get_about_3pane();
   make_display_threaded();
   expand_all_threads();
 
@@ -41,7 +46,7 @@ add_task(function test_single_folder_select_thread() {
   select_click_row(0);
   EventUtils.synthesizeKey("a", { accelKey: true, shiftKey: true });
   Assert.ok(
-    mc.folderDisplay.selectedCount == msgsPerThread,
+    win.gDBView.selection.count == msgsPerThread,
     "Didn't select all messages in the thread!"
   );
 
@@ -49,13 +54,14 @@ add_task(function test_single_folder_select_thread() {
   select_click_row(1);
   EventUtils.synthesizeKey("a", { accelKey: true, shiftKey: true });
   Assert.ok(
-    mc.folderDisplay.selectedCount == msgsPerThread,
+    win.gDBView.selection.count == msgsPerThread,
     "Didn't select all messages in the thread!"
   );
 });
 
-add_task(function test_cross_folder_select_thread() {
-  be_in_folder(multiVirtFolder);
+add_task(async function test_cross_folder_select_thread() {
+  await be_in_folder(multiVirtFolder);
+  let win = get_about_3pane();
   make_display_threaded();
   expand_all_threads();
 
@@ -63,7 +69,7 @@ add_task(function test_cross_folder_select_thread() {
   select_click_row(0);
   EventUtils.synthesizeKey("a", { accelKey: true, shiftKey: true });
   Assert.ok(
-    mc.folderDisplay.selectedCount == msgsPerThread,
+    win.gDBView.selection.count == msgsPerThread,
     "Didn't select all messages in the thread!"
   );
 
@@ -71,7 +77,7 @@ add_task(function test_cross_folder_select_thread() {
   select_click_row(1);
   EventUtils.synthesizeKey("a", { accelKey: true, shiftKey: true });
   Assert.ok(
-    mc.folderDisplay.selectedCount == msgsPerThread,
+    win.gDBView.selection.count == msgsPerThread,
     "Didn't select all messages in the thread!"
   );
 });

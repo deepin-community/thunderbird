@@ -6,9 +6,9 @@
 key-wizard-dialog-window =
     .title = Add a Personal OpenPGP Key for { $identity }
 
-key-wizard-button =
+key-wizard-dialog =
     .buttonlabelaccept = Continue
-    .buttonlabelhelp = Go back
+    .buttonlabelextra1 = Go back
 
 key-wizard-warning = <b>If you have an existing personal key</b> for this email address, you should import it. Otherwise you will not have access to your archives of encrypted emails, nor be able to read incoming encrypted emails from people who are still using your existing key.
 
@@ -29,6 +29,17 @@ radio-gnupg-key =
 ## Generate key section
 
 openpgp-generate-key-title = Generate OpenPGP Key
+
+openpgp-keygen-secret-protection = Secret Key Protection
+
+radio-keygen-no-protection =
+    .label = Unprotected
+radio-keygen-protect-primary-pass =
+    .label = Protect with the Primary Password
+
+radio-keygen-passphrase-protection =
+    .label = Protect with a passphrase:
+openpgp-passphrase-repeat = Confirm the passphrase:
 
 openpgp-generate-key-info = <b>Key generation may take up to several minutes to complete.</b> Do not exit the application while key generation is in progress. Actively browsing or performing disk-intensive operations during key generation will replenish the ‘randomness pool’ and speed-up the process. You will be alerted when key generation is completed.
 
@@ -104,7 +115,7 @@ openpgp-keygen-error-core = Unable to initialize OpenPGP Core Service
 
 openpgp-keygen-error-failed = OpenPGP Key generation unexpectedly failed
 
-#   $identity (String) - the newly generate OpenPGP Key
+#   $key (String) - the ID of the newly generated OpenPGP key
 openpgp-keygen-error-revocation = OpenPGP Key created successfully, but failed to obtain revocation for key { $key }
 
 openpgp-keygen-abort-title = Abort key generation?
@@ -124,19 +135,19 @@ openpgp-import-key-description = You may import personal keys that were created 
 openpgp-import-key-info = Other software might describe a personal key using alternative terms such as your own key, secret key, private key or key pair.
 
 #   $count (Number) - the number of keys found in the selected files
-openpgp-import-key-list-amount = { $count ->
-    [one]   Thunderbird found one key that can be imported.
-   *[other] Thunderbird found { $count } keys that can be imported.
+openpgp-import-key-list-amount-2 = { $count ->
+    [one]   { -brand-short-name } found one key that can be imported.
+   *[other] { -brand-short-name } found { $count } keys that can be imported.
 }
 
 openpgp-import-key-list-description = Confirm which keys may be treated as your personal keys. Only keys that you created yourself and that show your own identity should be used as personal keys. You can change this option later in the Key Properties dialog.
 
 openpgp-import-key-list-caption = Keys marked to be treated as Personal Keys will be listed in the End-To-End Encryption section. The others will be available inside the Key Manager.
 
-openpgp-passphrase-prompt-title = Passphrase required
+openpgp-import-keep-passphrases =
+    .label = Keep passphrase protection for imported secret keys
 
-#   $identity (String) - the id of the key being imported
-openpgp-passphrase-prompt = Please enter the passphrase to unlock the following key: { $key }
+openpgp-passphrase-prompt-title = Passphrase required
 
 openpgp-import-key-button =
     .label = Select File to Import…

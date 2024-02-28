@@ -121,7 +121,7 @@
                       hidden="true"
                       align="center"
                       disable-on-readonly="true">
-                  <html:img class="attachment-icon"
+                  <html:img class="attachment-icon invisible-on-broken"
                             alt="" />
                   <label class="text-link item-attachment-cell-label"
                          crop="end"
@@ -132,29 +132,40 @@
           </html:tr>
         </html:table>
         <!-- Attendees -->
-        <box class="item-attendees" orient="vertical" hidden="true" flex="1">
-          <spacer class="default-spacer"/>
-          <hbox class="calendar-caption" align="center">
-            <label value="&read.only.attendees.label;"
-                   class="header"/>
-            <separator class="groove" flex="1"/>
-          </hbox>
-          <vbox class="item-attendees-list-container" flex="1">
-          </vbox>
-        </box>
+        <box class="item-attendees-description">
+          <box class="item-attendees" orient="vertical" hidden="true">
+            <spacer class="default-spacer"/>
+            <hbox class="calendar-caption" align="center">
+              <label value="&read.only.attendees.label;"
+                    class="header"/>
+              <separator class="groove" flex="1"/>
+            </hbox>
+            <vbox class="item-attendees-list-container"
+                  flex="1"
+                  context="attendee-popup"
+                  oncontextmenu="onAttendeeContextMenu(event)">
+            </vbox>
+          </box>
 
-        <!-- Description -->
-        <box class="item-description-box" hidden="true" orient="vertical" flex="1">
-          <spacer class="default-spacer"/>
-          <hbox class="calendar-caption" align="center">
-            <label value="&read.only.description.label;"
-                   class="header"/>
-            <separator class="groove" flex="1"/>
-          </hbox>
-          <iframe class="item-description"
-                  type="content"
-                  flex="1">
-          </iframe>
+          <splitter id="attendeeDescriptionSplitter"
+                    class="item-summary-splitter"
+                    collapse="after"
+                    orient="vertical"
+                    state="open"/>
+
+          <!-- Description -->
+          <box class="item-description-box" hidden="true" orient="vertical">
+            <hbox class="calendar-caption" align="center">
+              <label value="&read.only.description.label;"
+                    class="header"/>
+              <separator class="groove" flex="1"/>
+            </hbox>
+            <iframe class="item-description"
+                    type="content"
+                    flex="1"
+                    oncontextmenu="openDescriptionContextMenu(event);">
+            </iframe>
+          </box>
         </box>
 
         <!-- URL link -->
@@ -314,6 +325,11 @@
           (cal.acl.userCanModifyItem(item) ||
             (this.mIsInvitation && cal.acl.userCanRespondToInvitation(item)))
         );
+      }
+
+      if (!item.descriptionHTML || !item.getAttendees().length) {
+        // Hide the splitter when there is no description or attendees.
+        document.getElementById("attendeeDescriptionSplitter").setAttribute("hidden", "true");
       }
     }
 
@@ -578,6 +594,7 @@
         let link = document.createElementNS("http://www.w3.org/1999/xhtml", "a");
         link.setAttribute("class", "item-location-link text-link");
         link.setAttribute("href", url);
+        link.title = url;
         link.setAttribute("onclick", "launchBrowser(this.getAttribute('href'), event)");
         link.setAttribute("oncommand", "launchBrowser(this.getAttribute('href'), event)");
 
@@ -586,7 +603,7 @@
         label.textContent = location;
         link.appendChild(label);
 
-        itemLocation.replaceWith(link);
+        itemLocation.replaceChildren(link);
       } else {
         itemLocation.textContent = location;
       }
@@ -675,7 +692,7 @@
 
       // Make any links open in the user's default browser, not in Thunderbird.
       for (let anchor of docFragment.querySelectorAll("a")) {
-        anchor.addEventListener("click", function(event) {
+        anchor.addEventListener("click", function (event) {
           event.preventDefault();
           if (event.isTrusted) {
             launchBrowser(anchor.getAttribute("href"), event);
@@ -685,18 +702,10 @@
 
       itemDescription.contentDocument.body.appendChild(docFragment);
 
-      let link = itemDescription.contentDocument.createElement("link");
+      const link = itemDescription.contentDocument.createElement("link");
       link.rel = "stylesheet";
-      link.href = "chrome://messenger/content/messengercompose/EditorContent.css";
+      link.href = "chrome://messenger/skin/shared/editorContent.css";
       itemDescription.contentDocument.head.appendChild(link);
-
-      // Layout the dialog,...
-      requestAnimationFrame(() => {
-        // ... then resize the iframe to fit its content. I don't know why, but the scroll height
-        // seems to be a few pixels smaller than we need to avoid vertical scrolling.
-        itemDescription.style.height =
-          Math.min(itemDescription.contentDocument.documentElement.scrollHeight + 10, 500) + "px";
-      });
     }
 
     /**

@@ -5,9 +5,16 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-#include "js/Array.h"   // JS::GetArrayLength, JS::IsArrayObject
-#include "js/Object.h"  // JS::GetClass
+#include "js/Array.h"               // JS::GetArrayLength, JS::IsArrayObject
+#include "js/CallAndConstruct.h"    // JS::Construct
+#include "js/Object.h"              // JS::GetClass
+#include "js/PropertyAndElement.h"  // JS_GetElement, JS_SetElement
 #include "jsapi-tests/tests.h"
+#include "vm/PlainObject.h"  // js::PlainObject::class_
+
+#include "vm/NativeObject-inl.h"
+
+using namespace js;
 
 static bool constructHook(JSContext* cx, unsigned argc, JS::Value* vp) {
   JS::CallArgs args = CallArgsFromVp(argc, vp);
@@ -105,7 +112,6 @@ BEGIN_TEST(testNewObject_1) {
       nullptr,        // mayResolve
       nullptr,        // finalize
       nullptr,        // call
-      nullptr,        // hasInstance
       constructHook,  // construct
       nullptr,        // trace
   };
@@ -151,31 +157,20 @@ BEGIN_TEST(testNewObject_IsMapObject) {
 }
 END_TEST(testNewObject_IsMapObject)
 
-static const JSClassOps Base_classOps = {
-    nullptr,  // addProperty
-    nullptr,  // delProperty
-    nullptr,  // enumerate
-    nullptr,  // newEnumerate
-    nullptr,  // resolve
-    nullptr,  // mayResolve
-    nullptr,  // finalize
-    nullptr,  // call
-    nullptr,  // hasInstance
-    nullptr,  // construct
-    nullptr,  // trace
+static const JSClass Base_class = {
+    "Base",
+    JSCLASS_HAS_RESERVED_SLOTS(8),  // flags
 };
-
-static const JSClass Base_class = {"Base",
-                                   0,  // flags
-                                   &Base_classOps};
 
 BEGIN_TEST(testNewObject_Subclassing) {
   JSObject* proto =
-      JS_InitClass(cx, global, nullptr, &Base_class, Base_constructor, 0,
+      JS_InitClass(cx, global, nullptr, nullptr, "Base", Base_constructor, 0,
                    nullptr, nullptr, nullptr, nullptr);
   if (!proto) {
     return false;
   }
+
+  CHECK_EQUAL(JS::GetClass(proto), &PlainObject::class_);
 
   // Calling Base without `new` should fail with a TypeError.
   JS::RootedValue expectedError(cx);
@@ -210,6 +205,12 @@ BEGIN_TEST(testNewObject_Subclassing) {
   EVAL("myObj", &result);
   CHECK_EQUAL(JS::GetClass(&result.toObject()), &Base_class);
 
+  // All reserved slots are initialized to undefined.
+  for (uint32_t i = 0; i < JSCLASS_RESERVED_SLOTS(&Base_class); i++) {
+    CHECK_SAME(JS::GetReservedSlot(&result.toObject(), i),
+               JS::UndefinedValue());
+  }
+
   return true;
 }
 
@@ -224,3 +225,31 @@ static bool Base_constructor(JSContext* cx, unsigned argc, JS::Value* vp) {
 }
 
 END_TEST(testNewObject_Subclassing)
+
+static const JSClass TestClass = {"TestObject", JSCLASS_HAS_RESERVED_SLOTS(0)};
+
+BEGIN_TEST(testNewObject_elements) {
+  Rooted<NativeObject*> obj(
+      cx, NewBuiltinClassInstance(cx, &TestClass, GenericObject));
+  CHECK(obj);
+  CHECK(!obj->isTenured());
+  CHECK(obj->hasEmptyElements());
+  CHECK(!obj->hasFixedElements());
+  CHECK(!obj->hasDynamicElements());
+
+  CHECK(obj->ensureElements(cx, 1));
+  CHECK(!obj->hasEmptyElements());
+  CHECK(!obj->hasFixedElements());
+  CHECK(obj->hasDynamicElements());
+
+  RootedObject array(cx, NewArrayObject(cx, 1));
+  CHECK(array);
+  obj = &array->as<NativeObject>();
+  CHECK(!obj->isTenured());
+  CHECK(!obj->hasEmptyElements());
+  CHECK(obj->hasFixedElements());
+  CHECK(!obj->hasDynamicElements());
+
+  return true;
+}
+END_TEST(testNewObject_elements)

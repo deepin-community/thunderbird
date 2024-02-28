@@ -7,6 +7,7 @@
 #include "TemporaryAccessGrantObserver.h"
 
 #include "mozilla/PermissionManager.h"
+#include "mozilla/Services.h"
 #include "nsIObserverService.h"
 #include "nsTHashtable.h"
 #include "nsXULAppAPI.h"
@@ -24,7 +25,7 @@ TemporaryAccessGrantObserver::TemporaryAccessGrantObserver(
              "the parent process");
 }
 
-NS_IMPL_ISUPPORTS(TemporaryAccessGrantObserver, nsIObserver)
+NS_IMPL_ISUPPORTS(TemporaryAccessGrantObserver, nsIObserver, nsINamed)
 
 // static
 void TemporaryAccessGrantObserver::Create(PermissionManager* aPM,
@@ -86,5 +87,11 @@ TemporaryAccessGrantObserver::Observe(nsISupports* aSubject, const char* aTopic,
     sObservers.reset();
   }
 
+  return NS_OK;
+}
+
+NS_IMETHODIMP
+TemporaryAccessGrantObserver::GetName(nsACString& aName) {
+  aName.AssignLiteral("TemporaryAccessGrantObserver");
   return NS_OK;
 }

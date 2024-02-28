@@ -17,31 +17,39 @@ var {
   assert_selected_and_displayed,
   be_in_folder,
   create_folder,
+  get_about_message,
   select_click_row,
   select_none,
 } = ChromeUtils.import(
   "resource://testing-common/mozmill/FolderDisplayHelpers.jsm"
 );
 
+var {
+  close_compose_window,
+  open_compose_with_forward,
+  open_compose_with_reply,
+} = ChromeUtils.import("resource://testing-common/mozmill/ComposeHelpers.jsm");
+
 var { MailE10SUtils } = ChromeUtils.import(
   "resource:///modules/MailE10SUtils.jsm"
 );
 
-var folder = create_folder("jsContentPolicy");
+let aboutMessage = get_about_message();
+
+var folder;
 registerCleanupFunction(async () => {
   let promptPromise = BrowserTestUtils.promiseAlertDialog("accept");
   folder.deleteSelf(window.msgWindow);
   await promptPromise;
+
+  Services.focus.focusedWindow = window;
 });
 
 var url =
   "http://mochi.test:8888/browser/comm/mail/test/browser/content-policy/html/";
 
 function addToFolder(aSubject, aBody, aFolder) {
-  let msgId =
-    Cc["@mozilla.org/uuid-generator;1"]
-      .getService(Ci.nsIUUIDGenerator)
-      .generateUUID() + "@mozillamessaging.invalid";
+  let msgId = Services.uuid.generateUUID() + "@mozillamessaging.invalid";
 
   let source =
     "From - Sat Nov  1 12:39:54 2008\n" +
@@ -131,13 +139,17 @@ var jsMsgBody =
 
 var gMsgNo = 0;
 
-var messagePane = document.getElementById("messagepane");
+var messagePane = aboutMessage.document.getElementById("messagepane");
+
+add_setup(async function () {
+  folder = await create_folder("jsContentPolicy");
+});
 
 /**
  * Check JavaScript is disabled when loading messages in the message pane.
  */
 add_task(async function testJsInMail() {
-  be_in_folder(folder);
+  await be_in_folder(folder);
 
   let msgDbHdr = addToFolder("JS test message " + gMsgNo, jsMsgBody, folder);
 
@@ -194,7 +206,7 @@ add_task(async function testJsInRemoteContent() {
  * after remote content has been displayed there.
  */
 add_task(async function testJsInMailAgain() {
-  be_in_folder(folder);
+  await be_in_folder(folder);
 
   let msgDbHdr = addToFolder("JS test message " + gMsgNo, jsMsgBody, folder);
 
@@ -210,6 +222,63 @@ add_task(async function testJsInMailAgain() {
   assert_selected_and_displayed(gMsgNo);
 
   await SpecialPowers.spawn(messagePane, [], assertJSDisabled);
+
+  ++gMsgNo;
+  select_none();
+});
+
+/*
+ * Runs in the browser process via SpecialPowers.spawn to check JavaScript
+ * is disabled.
+ */
+function assertJSDisabledInEditor() {
+  Assert.ok(content.location.href);
+  Assert.ok(
+    !content.wrappedJSObject.jsIsTurnedOn,
+    "JS should not be turned on in editor."
+  );
+
+  // <noscript> is not shown in the editor, independent of whether scripts
+  // are on or off. So we can't check that like in assertJSDisabledIn.
+}
+
+/**
+ * Check JavaScript is disabled in the editor.
+ */
+add_task(async function testJsInMailReply() {
+  await be_in_folder(folder);
+
+  var body = jsMsgBody.replace(
+    "</body>",
+    "<img src=x onerror=alert(1)></body>"
+  );
+
+  let msgDbHdr = addToFolder("js msg reply " + gMsgNo, body, folder);
+
+  // select the newly created message
+  let msgHdr = select_click_row(gMsgNo);
+
+  Assert.equal(
+    msgDbHdr,
+    msgHdr,
+    "selected message header should be the same as generated header"
+  );
+
+  assert_selected_and_displayed(gMsgNo);
+
+  await SpecialPowers.spawn(messagePane, [], assertJSDisabledInEditor);
+
+  let replyWin = open_compose_with_reply();
+  // If JavaScript is on, loading the window will actually show an alert(1)
+  // so execution doesn't go further from here.
+  let editor = replyWin.window.document.getElementById("messageEditor");
+  await SpecialPowers.spawn(editor, [], assertJSDisabledInEditor);
+  close_compose_window(replyWin);
+
+  let fwdWin = open_compose_with_forward();
+  editor = fwdWin.window.document.getElementById("messageEditor");
+  await SpecialPowers.spawn(editor, [], assertJSDisabledInEditor);
+  close_compose_window(fwdWin);
 
   ++gMsgNo;
   select_none();

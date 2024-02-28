@@ -2,7 +2,7 @@
    - License, v. 2.0. If a copy of the MPL was not distributed with this
    - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
 
-<!ENTITY window.title "Filtres de missatge">
+<!ENTITY window.title "Filtres de missatges">
 <!ENTITY nameColumn.label "Nom del filtre">
 <!ENTITY activeColumn.label "Habilitat">
 <!ENTITY newButton.label "Nou…">
@@ -16,7 +16,7 @@
 <!ENTITY reorderTopButton "Mou a la part superior">
 <!ENTITY reorderTopButton.accessKey "o">
 <!ENTITY reorderTopButton.toolTip "Reorganitza el filtre perquè s'executi abans de tots els altres">
-<!ENTITY reorderUpButton.label "Mou cap amunt">
+<!ENTITY reorderUpButton.label "Mou amunt">
 <!ENTITY reorderUpButton.accesskey "M">
 <!ENTITY reorderDownButton.label "Mou cap avall">
 <!ENTITY reorderDownButton.accesskey "o">
@@ -36,6 +36,5 @@
 <!ENTITY folderPickerPrefix.accesskey "i">
 <!ENTITY helpButton.label "Ajuda">
 <!ENTITY helpButton.accesskey "j">
-<!ENTITY closeCmd.key "W"> 
+<!ENTITY closeCmd.key "W">
 <!ENTITY searchBox.emptyText "Cerca els filtres pel nom…">
-

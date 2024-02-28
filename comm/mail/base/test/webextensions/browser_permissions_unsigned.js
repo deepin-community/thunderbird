@@ -6,8 +6,12 @@ const WARNING_ICON = "chrome://browser/skin/warning.svg";
 add_task(async function test_unsigned() {
   await SpecialPowers.pushPrefEnv({
     set: [
+      ["extensions.InstallTrigger.enabled", true],
+      ["extensions.InstallTriggerImpl.enabled", true],
       ["extensions.webapi.testing", true],
       ["extensions.install.requireBuiltInCerts", false],
+      // Relax the user input requirements while running this test.
+      ["xpinstall.userActivation.required", false],
     ],
   });
 
@@ -16,7 +20,7 @@ add_task(async function test_unsigned() {
   registerCleanupFunction(() => PermissionTestUtils.remove(testURI, "install"));
 
   let tab = openContentTab("about:blank");
-  BrowserTestUtils.loadURI(
+  BrowserTestUtils.loadURIString(
     tab.linkedBrowser,
     `${BASE}/file_install_extensions.html`
   );
@@ -25,7 +29,7 @@ add_task(async function test_unsigned() {
   SpecialPowers.spawn(
     tab.linkedBrowser,
     [`${BASE}/browser_webext_unsigned.xpi`],
-    async function(url) {
+    async function (url) {
       content.wrappedJSObject.installTrigger(url);
     }
   );

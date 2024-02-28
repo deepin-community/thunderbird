@@ -1,32 +1,31 @@
-import { actionCreators as ac, actionTypes as at } from "common/Actions.jsm";
+import {
+  actionCreators as ac,
+  actionTypes as at,
+} from "common/Actions.sys.mjs";
 import { GlobalOverrider } from "test/unit/utils";
+import { MIN_RICH_FAVICON_SIZE } from "content-src/components/TopSites/TopSitesConstants";
 import {
-  MIN_CORNER_FAVICON_SIZE,
-  MIN_RICH_FAVICON_SIZE,
-} from "content-src/components/TopSites/TopSitesConstants";
-import {
-  INITIAL_STATE,
-  reducers,
   TOP_SITES_DEFAULT_ROWS,
   TOP_SITES_MAX_SITES_PER_ROW,
-} from "common/Reducers.jsm";
+} from "common/Reducers.sys.mjs";
 import {
   TopSite,
   TopSiteLink,
-  TopSiteList,
+  _TopSiteList as TopSiteList,
   TopSitePlaceholder,
 } from "content-src/components/TopSites/TopSite";
+import {
+  INTERSECTION_RATIO,
+  TopSiteImpressionWrapper,
+} from "content-src/components/TopSites/TopSiteImpressionWrapper";
 import { A11yLinkButton } from "content-src/components/A11yLinkButton/A11yLinkButton";
 import { LinkMenu } from "content-src/components/LinkMenu/LinkMenu";
 import React from "react";
-import { SectionMenu } from "content-src/components/SectionMenu/SectionMenu";
 import { mount, shallow } from "enzyme";
 import { TopSiteForm } from "content-src/components/TopSites/TopSiteForm";
 import { TopSiteFormInput } from "content-src/components/TopSites/TopSiteFormInput";
 import { _TopSites as TopSites } from "content-src/components/TopSites/TopSites";
 import { ContextMenuButton } from "content-src/components/ContextMenu/ContextMenuButton";
-import { Provider } from "react-redux";
-import { combineReducers, createStore } from "redux";
 
 const perfSvc = {
   mark() {},
@@ -58,43 +57,6 @@ describe("<TopSites>", () => {
   it("should render a TopSites element", () => {
     const wrapper = shallow(<TopSites {...DEFAULT_PROPS} />);
     assert.ok(wrapper.exists());
-  });
-  describe("context menu", () => {
-    function mountWithProps(props) {
-      const store = createStore(combineReducers(reducers), INITIAL_STATE);
-      return mount(
-        <Provider store={store}>
-          <TopSites {...props} />
-        </Provider>
-      );
-    }
-
-    it("should render a context menu button", () => {
-      const wrapper = mountWithProps(DEFAULT_PROPS);
-      assert.equal(
-        wrapper.find(".section-top-bar .context-menu-button").length,
-        1
-      );
-    });
-    it("should render a section menu when button is clicked", () => {
-      const wrapper = mountWithProps(DEFAULT_PROPS);
-      const button = wrapper.find(".section-top-bar .context-menu-button");
-      assert.equal(wrapper.find(SectionMenu).length, 0);
-      button.simulate("click", { preventDefault: () => {} });
-      assert.equal(wrapper.find(SectionMenu).length, 1);
-    });
-    it("should not render a section menu by default", () => {
-      const wrapper = mountWithProps(DEFAULT_PROPS);
-      assert.equal(wrapper.find(SectionMenu).length, 0);
-    });
-    it("should pass through the correct menu extraOptions to SectionMenu", () => {
-      const wrapper = mountWithProps(DEFAULT_PROPS);
-      wrapper
-        .find(".section-top-bar .context-menu-button")
-        .simulate("click", { preventDefault: () => {} });
-      const sectionMenuProps = wrapper.find(SectionMenu).props();
-      assert.deepEqual(sectionMenuProps.extraOptions, ["AddTopSite"]);
-    });
   });
   describe("#_dispatchTopSitesStats", () => {
     let globals;
@@ -137,7 +99,6 @@ describe("<TopSites>", () => {
           data: {
             topsites_icon_stats: {
               custom_screenshot: 0,
-              screenshot_with_icon: 0,
               screenshot: 0,
               tippytop: 0,
               rich_icon: 0,
@@ -162,7 +123,6 @@ describe("<TopSites>", () => {
           data: {
             topsites_icon_stats: {
               custom_screenshot: 0,
-              screenshot_with_icon: 0,
               screenshot: 1,
               tippytop: 0,
               rich_icon: 0,
@@ -187,32 +147,6 @@ describe("<TopSites>", () => {
           data: {
             topsites_icon_stats: {
               custom_screenshot: 1,
-              screenshot_with_icon: 0,
-              screenshot: 0,
-              tippytop: 0,
-              rich_icon: 0,
-              no_image: 0,
-            },
-            topsites_pinned: 0,
-            topsites_search_shortcuts: 0,
-          },
-        })
-      );
-    });
-    it("should correctly count TopSite images - screenshot + favicon", () => {
-      const rows = [{ screenshot: true, faviconSize: MIN_CORNER_FAVICON_SIZE }];
-      sandbox.stub(DEFAULT_PROPS.TopSites, "rows").value(rows);
-      wrapper.instance()._dispatchTopSitesStats();
-
-      assert.calledOnce(DEFAULT_PROPS.dispatch);
-      assert.calledWithExactly(
-        DEFAULT_PROPS.dispatch,
-        ac.AlsoToMain({
-          type: at.SAVE_SESSION_PERF_DATA,
-          data: {
-            topsites_icon_stats: {
-              custom_screenshot: 0,
-              screenshot_with_icon: 1,
               screenshot: 0,
               tippytop: 0,
               rich_icon: 0,
@@ -237,7 +171,6 @@ describe("<TopSites>", () => {
           data: {
             topsites_icon_stats: {
               custom_screenshot: 0,
-              screenshot_with_icon: 0,
               screenshot: 0,
               tippytop: 0,
               rich_icon: 1,
@@ -266,7 +199,6 @@ describe("<TopSites>", () => {
           data: {
             topsites_icon_stats: {
               custom_screenshot: 0,
-              screenshot_with_icon: 0,
               screenshot: 0,
               tippytop: 2,
               rich_icon: 0,
@@ -291,7 +223,6 @@ describe("<TopSites>", () => {
           data: {
             topsites_icon_stats: {
               custom_screenshot: 0,
-              screenshot_with_icon: 0,
               screenshot: 0,
               tippytop: 0,
               rich_icon: 0,
@@ -320,7 +251,6 @@ describe("<TopSites>", () => {
           data: {
             topsites_icon_stats: {
               custom_screenshot: 0,
-              screenshot_with_icon: 0,
               screenshot: 0,
               tippytop: 0,
               rich_icon: 0,
@@ -345,7 +275,6 @@ describe("<TopSites>", () => {
           data: {
             topsites_icon_stats: {
               custom_screenshot: 0,
-              screenshot_with_icon: 0,
               screenshot: 0,
               tippytop: 0,
               rich_icon: 0,
@@ -388,7 +317,6 @@ describe("<TopSites>", () => {
           data: {
             topsites_icon_stats: {
               custom_screenshot: 0,
-              screenshot_with_icon: 0,
               screenshot: 0,
               tippytop: 0,
               rich_icon: 0,
@@ -430,7 +358,6 @@ describe("<TopSites>", () => {
           data: {
             topsites_icon_stats: {
               custom_screenshot: 0,
-              screenshot_with_icon: 0,
               screenshot: 0,
               tippytop: 0,
               rich_icon: 0,
@@ -500,89 +427,9 @@ describe("<TopSiteLink>", () => {
     const wrapper = shallow(<TopSiteLink link={link} />);
     assert.equal(wrapper.find(".icon-pin-small").length, 0);
   });
-  it("should render the first letter of the title as a fallback for missing screenshots", () => {
+  it("should render the first letter of the title as a fallback for missing icons", () => {
     const wrapper = shallow(<TopSiteLink link={link} title={"foo"} />);
-    assert.equal(wrapper.find(".tile").prop("data-fallback"), "f");
-  });
-  it("should render a normal image screenshot with the .active class, if it is provided", () => {
-    const wrapper = shallow(<TopSiteLink link={link} />);
-    const screenshotEl = wrapper.find(".screenshot");
-
-    assert.propertyVal(
-      screenshotEl.props().style,
-      "backgroundImage",
-      "url(foo.jpg)"
-    );
-    assert.isTrue(screenshotEl.hasClass("active"));
-  });
-  it("should render a blob image screenshot with the .active class, if it is provided", () => {
-    link.screenshot = { path: "/test_path", data: new Blob([0]) };
-
-    const wrapper = shallow(<TopSiteLink link={link} />);
-    const screenshotEl = wrapper.find(".screenshot");
-
-    assert.propertyVal(
-      screenshotEl.props().style,
-      "backgroundImage",
-      `url(${DEFAULT_BLOB_URL})`
-    );
-    assert.isTrue(screenshotEl.hasClass("active"));
-  });
-  it("should render a small icon with fallback letter with the screenshot if the icon is smaller than 16x16", () => {
-    link.favicon = "too-small-icon.png";
-    link.faviconSize = 10;
-    const wrapper = shallow(<TopSiteLink link={link} title="foo" />);
-    const screenshotEl = wrapper.find(".screenshot");
-    const defaultIconEl = wrapper.find(".default-icon");
-
-    assert.propertyVal(
-      screenshotEl.props().style,
-      "backgroundImage",
-      "url(foo.jpg)"
-    );
-    assert.isTrue(screenshotEl.hasClass("active"));
-    assert.lengthOf(defaultIconEl, 1);
-    assert.equal(defaultIconEl.prop("data-fallback"), "f");
-  });
-  it("should render a small icon with fallback letter with the screenshot if the icon is missing", () => {
-    const wrapper = shallow(<TopSiteLink link={link} title="foo" />);
-    const screenshotEl = wrapper.find(".screenshot");
-    const defaultIconEl = wrapper.find(".default-icon");
-
-    assert.propertyVal(
-      screenshotEl.props().style,
-      "backgroundImage",
-      "url(foo.jpg)"
-    );
-    assert.isTrue(screenshotEl.hasClass("active"));
-    assert.lengthOf(defaultIconEl, 1);
-    assert.equal(defaultIconEl.prop("data-fallback"), "f");
-  });
-  it("should render a small icon with the screenshot if the icon is bigger than 32x32", () => {
-    link.favicon = "small-icon.png";
-    link.faviconSize = 32;
-
-    const wrapper = shallow(<TopSiteLink link={link} />);
-    const screenshotEl = wrapper.find(".screenshot");
-    const defaultIconEl = wrapper.find(".default-icon");
-
-    assert.propertyVal(
-      screenshotEl.props().style,
-      "backgroundImage",
-      "url(foo.jpg)"
-    );
-    assert.isTrue(screenshotEl.hasClass("active"));
-    assert.propertyVal(
-      defaultIconEl.props().style,
-      "backgroundImage",
-      `url(${link.favicon})`
-    );
-    assert.lengthOf(wrapper.find(".rich-icon"), 0);
-  });
-  it("should not add the .active class to the screenshot element if no screenshot prop is provided", () => {
-    link.screenshot = null;
-    const wrapper = shallow(<TopSiteLink link={link} />);
-    assert.isFalse(wrapper.find(".screenshot").hasClass("active"));
+    assert.equal(wrapper.find(".icon-wrapper").prop("data-fallback"), "f");
   });
   it("should render the tippy top icon if provided and not a small icon", () => {
     link.tippyTopIcon = "foo.png";
@@ -618,7 +465,7 @@ describe("<TopSiteLink>", () => {
     link.faviconSize = 48;
     link.backgroundColor = "#FFFFFF";
     const wrapper = shallow(<TopSiteLink link={link} />);
-    assert.equal(wrapper.find(".screenshot").length, 1);
+    assert.lengthOf(wrapper.find(".default-icon"), 1);
     assert.equal(wrapper.find(".rich-icon").length, 0);
   });
   it("should apply just the default class name to the outer link if props.className is falsey", () => {
@@ -628,6 +475,34 @@ describe("<TopSiteLink>", () => {
   it("should add props.className to the outer link element", () => {
     const wrapper = shallow(<TopSiteLink className="foo bar" />);
     assert.ok(wrapper.find("li").hasClass("top-site-outer foo bar"));
+  });
+  describe("#_allowDrop", () => {
+    let wrapper;
+    let event;
+    beforeEach(() => {
+      event = {
+        dataTransfer: {
+          types: ["text/topsite-index"],
+        },
+      };
+      wrapper = shallow(
+        <TopSiteLink isDraggable={true} onDragEvent={() => {}} />
+      );
+    });
+    it("should be droppable for basic case", () => {
+      const result = wrapper.instance()._allowDrop(event);
+      assert.isTrue(result);
+    });
+    it("should not be droppable for sponsored_position", () => {
+      wrapper.setProps({ link: { sponsored_position: 1 } });
+      const result = wrapper.instance()._allowDrop(event);
+      assert.isFalse(result);
+    });
+    it("should not be droppable for link.type", () => {
+      wrapper.setProps({ link: { type: "SPOC" } });
+      const result = wrapper.instance()._allowDrop(event);
+      assert.isFalse(result);
+    });
   });
   describe("#onDragEvent", () => {
     let simulate;
@@ -685,6 +560,32 @@ describe("<TopSiteLink>", () => {
 
       assert.notOk(event.prevented);
     });
+    it("should prevent dragging with sponsored_position from dragstart", () => {
+      const preventDefault = sinon.stub();
+      const blur = sinon.stub();
+      wrapper.setProps({ link: { sponsored_position: 1 } });
+      wrapper.instance().onDragEvent({
+        type: "dragstart",
+        preventDefault,
+        target: { blur },
+      });
+      assert.calledOnce(preventDefault);
+      assert.calledOnce(blur);
+      assert.isUndefined(wrapper.instance().dragged);
+    });
+    it("should prevent dragging with link.shim from dragstart", () => {
+      const preventDefault = sinon.stub();
+      const blur = sinon.stub();
+      wrapper.setProps({ link: { type: "SPOC" } });
+      wrapper.instance().onDragEvent({
+        type: "dragstart",
+        preventDefault,
+        target: { blur },
+      });
+      assert.calledOnce(preventDefault);
+      assert.calledOnce(blur);
+      assert.isUndefined(wrapper.instance().dragged);
+    });
   });
 
   describe("#generateColor", () => {
@@ -695,12 +596,7 @@ describe("<TopSiteLink>", () => {
 
     it("should generate a random color but always pick the same color for the same string", async () => {
       let wrapper = shallow(
-        <TopSiteLink
-          newNewtabExperienceEnabled={true}
-          colors={colors}
-          title={"food"}
-          link={link}
-        />
+        <TopSiteLink colors={colors} title={"food"} link={link} />
       );
 
       assert.equal(wrapper.find(".icon-wrapper").prop("data-fallback"), "f");
@@ -713,12 +609,7 @@ describe("<TopSiteLink>", () => {
 
     it("should generate a different random color", async () => {
       let wrapper = shallow(
-        <TopSiteLink
-          newNewtabExperienceEnabled={true}
-          colors={colors}
-          title={"fam"}
-          link={link}
-        />
+        <TopSiteLink colors={colors} title={"fam"} link={link} />
       );
 
       assert.equal(
@@ -729,13 +620,7 @@ describe("<TopSiteLink>", () => {
     });
 
     it("should generate a third random color", async () => {
-      let wrapper = shallow(
-        <TopSiteLink
-          newNewtabExperienceEnabled={true}
-          colors={colors}
-          title={"foo"}
-        />
-      );
+      let wrapper = shallow(<TopSiteLink colors={colors} title={"foo"} />);
 
       assert.equal(wrapper.find(".icon-wrapper").prop("data-fallback"), "f");
       assert.equal(
@@ -752,6 +637,21 @@ describe("<TopSite>", () => {
   beforeEach(() => {
     link = { url: "https://foo.com", screenshot: "foo.jpg", hostname: "foo" };
   });
+
+  // Build IntersectionObserver class with the arg `entries` for the intersect callback.
+  function buildIntersectionObserver(entries) {
+    return class {
+      constructor(callback) {
+        this.callback = callback;
+      }
+
+      observe() {
+        this.callback(entries);
+      }
+
+      unobserve() {}
+    };
+  }
 
   it("should render a TopSite", () => {
     const wrapper = shallow(<TopSite link={link} />);
@@ -782,13 +682,7 @@ describe("<TopSite>", () => {
     const wrapper = shallow(<TopSite link={link} index={1} activeIndex={1} />);
     wrapper.setState({ showContextMenu: true });
 
-    assert.equal(
-      wrapper
-        .find(TopSiteLink)
-        .props()
-        .className.trim(),
-      "active"
-    );
+    assert.equal(wrapper.find(TopSiteLink).props().className.trim(), "active");
   });
   it("should not add .active class, on top-site-outer if context menu is closed", () => {
     const wrapper = shallow(<TopSite link={link} index={1} />);
@@ -824,6 +718,85 @@ describe("<TopSite>", () => {
       "DeleteUrl",
     ]);
   });
+  it("should record impressions for visible organic Top Sites", () => {
+    const dispatch = sinon.stub();
+    const wrapper = shallow(
+      <TopSite
+        link={link}
+        index={3}
+        dispatch={dispatch}
+        IntersectionObserver={buildIntersectionObserver([
+          {
+            isIntersecting: true,
+            intersectionRatio: INTERSECTION_RATIO,
+          },
+        ])}
+        document={{
+          visibilityState: "visible",
+          addEventListener: sinon.stub(),
+          removeEventListener: sinon.stub(),
+        }}
+      />
+    );
+    const linkWrapper = wrapper.find(TopSiteLink).dive();
+    assert.ok(linkWrapper.exists());
+    const impressionWrapper = linkWrapper.find(TopSiteImpressionWrapper).dive();
+    assert.ok(impressionWrapper.exists());
+
+    assert.calledOnce(dispatch);
+
+    let [action] = dispatch.firstCall.args;
+    assert.equal(action.type, at.TOP_SITES_ORGANIC_IMPRESSION_STATS);
+
+    assert.propertyVal(action.data, "type", "impression");
+    assert.propertyVal(action.data, "source", "newtab");
+    assert.propertyVal(action.data, "position", 3);
+  });
+  it("should record impressions for visible sponsored Top Sites", () => {
+    const dispatch = sinon.stub();
+    const wrapper = shallow(
+      <TopSite
+        link={Object.assign({}, link, {
+          sponsored_position: 2,
+          sponsored_tile_id: 12345,
+          sponsored_impression_url: "http://impression.example.com/",
+        })}
+        index={3}
+        dispatch={dispatch}
+        IntersectionObserver={buildIntersectionObserver([
+          {
+            isIntersecting: true,
+            intersectionRatio: INTERSECTION_RATIO,
+          },
+        ])}
+        document={{
+          visibilityState: "visible",
+          addEventListener: sinon.stub(),
+          removeEventListener: sinon.stub(),
+        }}
+      />
+    );
+    const linkWrapper = wrapper.find(TopSiteLink).dive();
+    assert.ok(linkWrapper.exists());
+    const impressionWrapper = linkWrapper.find(TopSiteImpressionWrapper).dive();
+    assert.ok(impressionWrapper.exists());
+
+    assert.calledOnce(dispatch);
+
+    let [action] = dispatch.firstCall.args;
+    assert.equal(action.type, at.TOP_SITES_SPONSORED_IMPRESSION_STATS);
+
+    assert.propertyVal(action.data, "type", "impression");
+    assert.propertyVal(action.data, "tile_id", 12345);
+    assert.propertyVal(action.data, "source", "newtab");
+    assert.propertyVal(action.data, "position", 3);
+    assert.propertyVal(
+      action.data,
+      "reporting_url",
+      "http://impression.example.com/"
+    );
+    assert.propertyVal(action.data, "advertiser", "foo");
+  });
 
   describe("#onLinkClick", () => {
     it("should call dispatch when the link is clicked", () => {
@@ -834,7 +807,23 @@ describe("<TopSite>", () => {
 
       wrapper.find(TopSiteLink).simulate("click", { preventDefault() {} });
 
-      assert.calledTwice(dispatch);
+      let [action] = dispatch.firstCall.args;
+      assert.isUserEventAction(action);
+
+      assert.propertyVal(action.data, "event", "CLICK");
+      assert.propertyVal(action.data, "source", "TOP_SITES");
+      assert.propertyVal(action.data, "action_position", 3);
+
+      [action] = dispatch.secondCall.args;
+      assert.propertyVal(action, "type", at.OPEN_LINK);
+
+      // Organic Top Site click event.
+      [action] = dispatch.thirdCall.args;
+      assert.equal(action.type, at.TOP_SITES_ORGANIC_IMPRESSION_STATS);
+
+      assert.propertyVal(action.data, "type", "click");
+      assert.propertyVal(action.data, "source", "newtab");
+      assert.propertyVal(action.data, "position", 3);
     });
     it("should dispatch a UserEventAction with the right data", () => {
       const dispatch = sinon.stub();
@@ -892,8 +881,11 @@ describe("<TopSite>", () => {
     it("should dispatch a UserEventAction with the right data for SPOC top site", () => {
       const dispatch = sinon.stub();
       const siteInfo = {
+        id: 1,
         iconType: "custom_screenshot",
         type: "SPOC",
+        pos: 1,
+        label: "test advertiser",
       };
       const wrapper = shallow(
         <TopSite
@@ -905,7 +897,7 @@ describe("<TopSite>", () => {
 
       wrapper.find(TopSiteLink).simulate("click", { preventDefault() {} });
 
-      const [action] = dispatch.firstCall.args;
+      let [action] = dispatch.firstCall.args;
       assert.isUserEventAction(action);
 
       assert.propertyVal(action.data, "event", "CLICK");
@@ -913,6 +905,23 @@ describe("<TopSite>", () => {
       assert.propertyVal(action.data, "action_position", 0);
       assert.propertyVal(action.data.value, "card_type", "spoc");
       assert.propertyVal(action.data.value, "icon_type", "custom_screenshot");
+
+      // Pocket SPOC click event.
+      [action] = dispatch.getCall(2).args;
+      assert.equal(action.type, at.TELEMETRY_IMPRESSION_STATS);
+
+      assert.propertyVal(action.data, "click", 0);
+      assert.propertyVal(action.data, "source", "TOP_SITES");
+
+      // Topsite SPOC click event.
+      [action] = dispatch.getCall(3).args;
+      assert.equal(action.type, at.TOP_SITES_SPONSORED_IMPRESSION_STATS);
+
+      assert.propertyVal(action.data, "type", "click");
+      assert.propertyVal(action.data, "tile_id", 1);
+      assert.propertyVal(action.data, "source", "newtab");
+      assert.propertyVal(action.data, "position", 1);
+      assert.propertyVal(action.data, "advertiser", "test advertiser");
     });
     it("should dispatch OPEN_LINK with the right data", () => {
       const dispatch = sinon.stub();
@@ -1063,20 +1072,19 @@ describe("<TopSiteForm>", () => {
       assert.equal(wrapper.find(TopSiteLink).length, 1);
     });
 
-    it("should display the preview screenshot", () => {
+    it("should display an icon for tippyTop sites", () => {
       wrapper.setProps({ site: { tippyTopIcon: "bar" } });
 
       assert.equal(
         wrapper.find(".top-site-icon").getDOMNode().style["background-image"],
         'url("bar")'
       );
+    });
 
+    it("should not display a preview screenshot", () => {
       wrapper.setProps({ previewResponse: "foo", previewUrl: "foo" });
 
-      assert.equal(
-        wrapper.find(".top-site-icon").getDOMNode().style["background-image"],
-        'url("foo")'
-      );
+      assert.lengthOf(wrapper.find(".screenshot"), 0);
     });
 
     it("should not render any icon on error", () => {
@@ -1107,7 +1115,7 @@ describe("<TopSiteForm>", () => {
         wrapper.findWhere(
           n =>
             n.length &&
-            n.prop("data-l10n-id") === "newtab-topsites-add-topsites-header"
+            n.prop("data-l10n-id") === "newtab-topsites-add-shortcut-header"
         ).length,
         1
       );
@@ -1204,7 +1212,7 @@ describe("<TopSiteForm>", () => {
     it("should have the correct header", () => {
       assert.equal(
         wrapper.findWhere(
-          n => n.prop("data-l10n-id") === "newtab-topsites-edit-topsites-header"
+          n => n.prop("data-l10n-id") === "newtab-topsites-edit-shortcut-header"
         ).length,
         1
       );
@@ -1429,14 +1437,16 @@ describe("<TopSiteForm>", () => {
 });
 
 describe("<TopSiteList>", () => {
+  const APP = { isForStartupCache: false };
+
   it("should render a TopSiteList element", () => {
-    const wrapper = shallow(<TopSiteList {...DEFAULT_PROPS} />);
+    const wrapper = shallow(<TopSiteList {...DEFAULT_PROPS} App={{ APP }} />);
     assert.ok(wrapper.exists());
   });
   it("should render a TopSite for each link with the right url", () => {
     const rows = [{ url: "https://foo.com" }, { url: "https://bar.com" }];
     const wrapper = shallow(
-      <TopSiteList {...DEFAULT_PROPS} TopSites={{ rows }} />
+      <TopSiteList {...DEFAULT_PROPS} TopSites={{ rows }} App={{ APP }} />
     );
     const links = wrapper.find(TopSite);
     assert.lengthOf(links, 2);
@@ -1458,6 +1468,7 @@ describe("<TopSiteList>", () => {
         {...DEFAULT_PROPS}
         TopSites={{ rows }}
         TopSitesRows={TOP_SITES_DEFAULT_ROWS}
+        App={{ APP }}
       />
     );
     const links = wrapper.find(TopSite);
@@ -1469,7 +1480,35 @@ describe("<TopSiteList>", () => {
   it("should fill with placeholders if TopSites rows is less than TopSitesRows", () => {
     const rows = [{ url: "https://foo.com" }, { url: "https://bar.com" }];
     const wrapper = shallow(
-      <TopSiteList {...DEFAULT_PROPS} TopSites={{ rows }} TopSitesRows={1} />
+      <TopSiteList
+        {...DEFAULT_PROPS}
+        TopSites={{ rows }}
+        TopSitesRows={1}
+        App={{ APP }}
+      />
+    );
+    assert.lengthOf(wrapper.find(TopSite), 2, "topSites");
+    assert.lengthOf(
+      wrapper.find(TopSitePlaceholder),
+      TOP_SITES_MAX_SITES_PER_ROW - 2,
+      "placeholders"
+    );
+  });
+  it("should fill sponsored top sites with placeholders while rendering for startup cache", () => {
+    const rows = [
+      { url: "https://sponsored01.com", sponsored_position: 1 },
+      { url: "https://sponsored02.com", sponsored_position: 2 },
+      { url: "https://sponsored03.com", type: "SPOC" },
+      { url: "https://foo.com" },
+      { url: "https://bar.com" },
+    ];
+    const wrapper = shallow(
+      <TopSiteList
+        {...DEFAULT_PROPS}
+        TopSites={{ rows }}
+        TopSitesRows={1}
+        App={{ isForStartupCache: true }}
+      />
     );
     assert.lengthOf(wrapper.find(TopSite), 2, "topSites");
     assert.lengthOf(
@@ -1482,7 +1521,12 @@ describe("<TopSiteList>", () => {
     const rows = [{ url: "https://foo.com" }];
     rows[3] = { url: "https://bar.com" };
     const wrapper = shallow(
-      <TopSiteList {...DEFAULT_PROPS} TopSites={{ rows }} TopSitesRows={1} />
+      <TopSiteList
+        {...DEFAULT_PROPS}
+        TopSites={{ rows }}
+        TopSitesRows={1}
+        App={{ APP }}
+      />
     );
     assert.lengthOf(wrapper.find(TopSite), 2, "topSites");
     assert.lengthOf(
@@ -1492,7 +1536,7 @@ describe("<TopSiteList>", () => {
     );
   });
   it("should update state onDragStart and clear it onDragEnd", () => {
-    const wrapper = shallow(<TopSiteList {...DEFAULT_PROPS} />);
+    const wrapper = shallow(<TopSiteList {...DEFAULT_PROPS} App={{ APP }} />);
     const instance = wrapper.instance();
     const index = 7;
     const link = { url: "https://foo.com" };
@@ -1509,7 +1553,7 @@ describe("<TopSiteList>", () => {
     const site2 = { url: "https://bar.com" };
     const rows = [site1, site2];
     const wrapper = shallow(
-      <TopSiteList {...DEFAULT_PROPS} TopSites={{ rows }} />
+      <TopSiteList {...DEFAULT_PROPS} TopSites={{ rows }} App={{ APP }} />
     );
     const instance = wrapper.instance();
     instance.setState({
@@ -1524,7 +1568,7 @@ describe("<TopSiteList>", () => {
   it("should dispatch events on drop", () => {
     const dispatch = sinon.spy();
     const wrapper = shallow(
-      <TopSiteList {...DEFAULT_PROPS} dispatch={dispatch} />
+      <TopSiteList {...DEFAULT_PROPS} dispatch={dispatch} App={{ APP }} />
     );
     const instance = wrapper.instance();
     const index = 7;
@@ -1554,7 +1598,7 @@ describe("<TopSiteList>", () => {
     });
   });
   it("should make a topSitesPreview onDragEnter", () => {
-    const wrapper = shallow(<TopSiteList {...DEFAULT_PROPS} />);
+    const wrapper = shallow(<TopSiteList {...DEFAULT_PROPS} App={{ APP }} />);
     const instance = wrapper.instance();
     const site = { url: "https://foo.com" };
     instance.setState({
@@ -1576,7 +1620,12 @@ describe("<TopSiteList>", () => {
     const site3 = { url: "https://baz.com" };
     const rows = [site1, site2, site3];
     let wrapper = shallow(
-      <TopSiteList {...DEFAULT_PROPS} TopSites={{ rows }} TopSitesRows={1} />
+      <TopSiteList
+        {...DEFAULT_PROPS}
+        TopSites={{ rows }}
+        TopSitesRows={1}
+        App={{ APP }}
+      />
     );
     let instance = wrapper.instance();
     instance.setState({
@@ -1708,6 +1757,41 @@ describe("<TopSiteList>", () => {
       null,
       null,
     ]);
+    site2.type = "SPOC";
+    instance.setState({
+      draggedIndex: 2,
+      draggedSite: site3,
+      draggedTitle: "baz",
+    });
+    draggedSite = Object.assign({}, site3, { isPinned: true, isDragged: true });
+    assert.deepEqual(instance._makeTopSitesPreview(0), [
+      draggedSite,
+      site2,
+      site1,
+      null,
+      null,
+      null,
+      null,
+      null,
+    ]);
+    site2.type = "";
+    site2.sponsored_position = 2;
+    instance.setState({
+      draggedIndex: 2,
+      draggedSite: site3,
+      draggedTitle: "baz",
+    });
+    draggedSite = Object.assign({}, site3, { isPinned: true, isDragged: true });
+    assert.deepEqual(instance._makeTopSitesPreview(0), [
+      draggedSite,
+      site2,
+      site1,
+      null,
+      null,
+      null,
+      null,
+      null,
+    ]);
   });
   it("should add a className hide-for-narrow to sites after 6/row", () => {
     const rows = [];
@@ -1715,7 +1799,12 @@ describe("<TopSiteList>", () => {
       rows.push({ url: `https://foo${i}.com` });
     }
     const wrapper = mount(
-      <TopSiteList {...DEFAULT_PROPS} TopSites={{ rows }} TopSitesRows={1} />
+      <TopSiteList
+        {...DEFAULT_PROPS}
+        TopSites={{ rows }}
+        TopSitesRows={1}
+        App={{ APP }}
+      />
     );
     assert.lengthOf(wrapper.find("li.hide-for-narrow"), 2);
   });
@@ -1728,10 +1817,7 @@ describe("TopSitePlaceholder", () => {
       <TopSitePlaceholder dispatch={dispatch} index={7} />
     );
 
-    wrapper
-      .find(".edit-button")
-      .first()
-      .simulate("click");
+    wrapper.find(".edit-button").first().simulate("click");
 
     assert.calledOnce(dispatch);
     assert.calledWithExactly(dispatch, {

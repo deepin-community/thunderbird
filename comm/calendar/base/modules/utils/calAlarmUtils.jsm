@@ -2,23 +2,23 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-var { XPCOMUtils } = ChromeUtils.import("resource://gre/modules/XPCOMUtils.jsm");
-
-ChromeUtils.defineModuleGetter(this, "cal", "resource:///modules/calendar/calUtils.jsm");
-
-XPCOMUtils.defineLazyModuleGetters(this, {
-  CalAlarm: "resource:///modules/CalAlarm.jsm",
-});
-
-/*
+/**
  * Helpers for manipulating calendar alarms
  */
 
 // NOTE: This module should not be loaded directly, it is available when
 // including calUtils.jsm under the cal.alarm namespace.
 
-const EXPORTED_SYMBOLS = ["calalarms"]; /* exported calalarms */
+const EXPORTED_SYMBOLS = ["calalarms"];
+
+var { XPCOMUtils } = ChromeUtils.importESModule("resource://gre/modules/XPCOMUtils.sys.mjs");
+
+const lazy = {};
+
+ChromeUtils.defineModuleGetter(lazy, "cal", "resource:///modules/calendar/calUtils.jsm");
+XPCOMUtils.defineLazyModuleGetters(lazy, {
+  CalAlarm: "resource:///modules/CalAlarm.jsm",
+});
 
 var calalarms = {
   /**
@@ -31,8 +31,8 @@ var calalarms = {
   setDefaultValues(aItem) {
     let type = aItem.isEvent() ? "event" : "todo";
     if (Services.prefs.getIntPref("calendar.alarms.onfor" + type + "s", 0) == 1) {
-      let alarmOffset = cal.createDuration();
-      let alarm = new CalAlarm();
+      let alarmOffset = lazy.cal.createDuration();
+      let alarm = new lazy.CalAlarm();
       let units = Services.prefs.getStringPref("calendar.alarms." + type + "alarmunit", "minutes");
 
       // Make sure the alarm pref is valid, default to minutes otherwise
@@ -45,7 +45,7 @@ var calalarms = {
       alarmOffset.isNegative = true;
       if (type == "todo" && !aItem.entryDate) {
         // You can't have an alarm if the entryDate doesn't exist.
-        aItem.entryDate = cal.dtz.now();
+        aItem.entryDate = lazy.cal.dtz.now();
       }
       alarm.related = Ci.calIAlarm.ALARM_RELATED_START;
       alarm.offset = alarmOffset;
@@ -65,7 +65,7 @@ var calalarms = {
    *
    * @param aItem     The item used to calculate the alarm date.
    * @param aAlarm    The alarm to calculate the date for.
-   * @return          The alarm date.
+   * @returns The alarm date.
    */
   calculateAlarmDate(aItem, aAlarm) {
     if (aAlarm.related == Ci.calIAlarm.ALARM_RELATED_ABSOLUTE) {
@@ -73,9 +73,9 @@ var calalarms = {
     }
     let returnDate;
     if (aAlarm.related == Ci.calIAlarm.ALARM_RELATED_START) {
-      returnDate = aItem[cal.dtz.startDateProp(aItem)];
+      returnDate = aItem[lazy.cal.dtz.startDateProp(aItem)];
     } else if (aAlarm.related == Ci.calIAlarm.ALARM_RELATED_END) {
-      returnDate = aItem[cal.dtz.endDateProp(aItem)];
+      returnDate = aItem[lazy.cal.dtz.endDateProp(aItem)];
     }
 
     if (returnDate && aAlarm.offset) {
@@ -83,12 +83,12 @@ var calalarms = {
       // have a well defined startTime.  We just consider the start/end
       // to be midnight in the user's timezone.
       if (returnDate.isDate) {
-        let timezone = cal.dtz.defaultTimezone;
+        let timezone = lazy.cal.dtz.defaultTimezone;
         // This returns a copy, so no extra cloning needed.
         returnDate = returnDate.getInTimezone(timezone);
         returnDate.isDate = false;
       } else if (returnDate.timezone.tzid == "floating") {
-        let timezone = cal.dtz.defaultTimezone;
+        let timezone = lazy.cal.dtz.defaultTimezone;
         returnDate = returnDate.getInTimezone(timezone);
       } else {
         // Clone the date to correctly add the duration.
@@ -100,34 +100,6 @@ var calalarms = {
     }
 
     return null;
-  },
-
-  /**
-   * Calculate the alarm offset for a calIAlarm. The resulting offset is
-   * related to either start or end of the event, depending on the aRelated
-   * parameter.
-   *
-   * @param aItem     The item to calculate the offset for.
-   * @param aAlarm    The alarm to calculate the offset for.
-   * @param aRelated  (optional) A relation constant from calIAlarm. If not
-   *                    passed, ALARM_RELATED_START will be assumed.
-   * @return          The alarm offset.
-   */
-  calculateAlarmOffset(aItem, aAlarm, aRelated) {
-    let offset = aAlarm.offset;
-    if (aAlarm.related == Ci.calIAlarm.ALARM_RELATED_ABSOLUTE) {
-      let returnDate;
-      if (aRelated === undefined || aRelated == Ci.calIAlarm.ALARM_RELATED_START) {
-        returnDate = aItem[cal.dtz.startDateProp(aItem)];
-      } else if (aRelated == Ci.calIAlarm.ALARM_RELATED_END) {
-        returnDate = aItem[cal.dtz.endDateProp(aItem)];
-      }
-
-      if (returnDate && aAlarm.alarmDate) {
-        offset = aAlarm.alarmDate.subtractDate(returnDate);
-      }
-    }
-    return offset;
   },
 
   /**
@@ -157,19 +129,19 @@ var calalarms = {
       switch (reminder.action) {
         case "DISPLAY":
           if (suppressed) {
-            src = "chrome://calendar/skin/shared/icons/alarm-no.svg";
+            src = "chrome://messenger/skin/icons/new/bell-disabled.svg";
             l10nId = "calendar-editable-item-reminder-icon-suppressed-alarm";
           } else {
-            src = "chrome://calendar/skin/shared/icons/alarm.svg";
+            src = "chrome://messenger/skin/icons/new/bell.svg";
             l10nId = "calendar-editable-item-reminder-icon-alarm";
           }
           break;
         case "EMAIL":
-          src = "chrome://calendar/skin/shared/icons/email.svg";
+          src = "chrome://messenger/skin/icons/new/mail-sm.svg";
           l10nId = "calendar-editable-item-reminder-icon-email";
           break;
         case "AUDIO":
-          src = "chrome://global/skin/media/audio.svg";
+          src = "chrome://messenger/skin/icons/new/bell-ring.svg";
           l10nId = "calendar-editable-item-reminder-icon-audio";
           break;
         default:

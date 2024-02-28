@@ -6,12 +6,16 @@
 
 #include "Compatibility.h"
 
+#include "mozilla/a11y/Platform.h"
 #include "mozilla/ScopeExit.h"
 #include "mozilla/Telemetry.h"
 #include "mozilla/UniquePtrExtensions.h"
 #include "mozilla/WindowsVersion.h"
+#include "mozilla/UniquePtr.h"
+#include "nsdefs.h"
 #include "nspr/prenv.h"
 
+#include "nsIFile.h"
 #include "nsTHashMap.h"
 #include "nsTHashSet.h"
 #include "nsPrintfCString.h"
@@ -19,6 +23,7 @@
 #include "nsString.h"
 #include "nsTHashtable.h"
 #include "nsUnicharUtils.h"
+#include "nsWindowsHelpers.h"
 #include "nsWinUtils.h"
 
 #include "NtUndoc.h"
@@ -37,6 +42,8 @@
 #  define LOG_ERROR(FuncName)
 
 #endif  // defined(UIA_LOGGING)
+
+using namespace mozilla;
 
 struct ByteArrayDeleter {
   void operator()(void* aBuf) { delete[] reinterpret_cast<char*>(aBuf); }
@@ -57,7 +64,7 @@ static bool FindNamedObject(const ComparatorFnT& aComparator) {
   }
 
   nsAutoString path;
-  path.AppendPrintf("\\Sessions\\%u\\BaseNamedObjects", sessionId);
+  path.AppendPrintf("\\Sessions\\%lu\\BaseNamedObjects", sessionId);
 
   UNICODE_STRING baseNamedObjectsName;
   ::RtlInitUnicodeString(&baseNamedObjectsName, path.get());
@@ -169,8 +176,8 @@ Maybe<bool> Compatibility::OnUIAMessage(WPARAM aWParam, LPARAM aLParam) {
   // The section name always ends with this suffix, which is derived from the
   // current thread id and the UIA message's WPARAM and LPARAM.
   nsAutoString partialSectionSuffix;
-  partialSectionSuffix.AppendPrintf("_%08x_%08x_%08x", ::GetCurrentThreadId(),
-                                    static_cast<DWORD>(aLParam), aWParam);
+  partialSectionSuffix.AppendPrintf("_%08lx_%08" PRIxLPTR "_%08zx",
+                                    ::GetCurrentThreadId(), aLParam, aWParam);
 
   // Find any named Section that matches the naming convention of the UIA shared
   // memory.

@@ -9,6 +9,7 @@
 
 #include <stdint.h>  // for int32_t, uint64_t
 #include "gfxTypes.h"
+#include "mozilla/dom/ipc/IdType.h"
 #include "mozilla/ipc/ProtocolUtils.h"
 #include "mozilla/layers/LayersMessages.h"  // for Edit, etc
 #include "mozilla/layers/LayersTypes.h"     // for LayersBackend
@@ -74,10 +75,10 @@ class TextureForwarder : public LayersIPCChannel {
    * parent side.
    */
   virtual PTextureChild* CreateTexture(
-      const SurfaceDescriptor& aSharedData, const ReadLockDescriptor& aReadLock,
-      LayersBackend aLayersBackend, TextureFlags aFlags, uint64_t aSerial,
-      wr::MaybeExternalImageId& aExternalImageId,
-      nsISerialEventTarget* aTarget = nullptr) = 0;
+      const SurfaceDescriptor& aSharedData, ReadLockDescriptor&& aReadLock,
+      LayersBackend aLayersBackend, TextureFlags aFlags,
+      const dom::ContentParentId& aContentId, uint64_t aSerial,
+      wr::MaybeExternalImageId& aExternalImageId) = 0;
 
   /**
    * Returns the CanvasChild for this TextureForwarder.

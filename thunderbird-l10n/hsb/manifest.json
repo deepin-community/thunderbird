@@ -1,29 +1,28 @@
 {
   "langpack_id": "hsb",
   "manifest_version": 2,
-  "applications": {
+  "browser_specific_settings": {
     "gecko": {
       "id": "langpack-hsb@thunderbird.mozilla.org",
-      "strict_min_version": "91.0",
-      "strict_max_version": "91.*"
+      "strict_min_version": "115.0",
+      "strict_max_version": "115.*"
     }
   },
-  "name": "Hornjoserbšćina Language Pack",
-  "description": "Language pack for Thunderbird for hsb",
-  "version": "91.0buildid20211101223011",
+  "name": "Language: Hornjoserbšćina (Upper Sorbian)",
+  "description": "Thunderbird Language Pack for Hornjoserbšćina (hsb) – Upper Sorbian",
+  "version": "115.8.20240216.174500",
   "languages": {
     "hsb": {
-      "version": "20211017205351",
+      "version": "20240216183902",
       "chrome_resources": {
         "alerts": "chrome/hsb/locale/hsb/alerts/",
         "autoconfig": "chrome/hsb/locale/hsb/autoconfig/",
-        "branding": "chrome/hsb/locale/hsb/branding/",
+        "branding": "chrome/hsb/locale/branding/",
         "calendar": "chrome/hsb/locale/hsb/calendar/",
         "chat": "chrome/hsb/locale/hsb/chat/",
         "communicator": "chrome/hsb/locale/hsb/communicator/",
         "devtools": "chrome/hsb/locale/hsb/devtools/client/",
         "devtools-shared": "chrome/hsb/locale/hsb/devtools/shared/",
-        "devtools-startup": "chrome/hsb/locale/hsb/devtools/startup/",
         "global": "chrome/hsb/locale/hsb/global/",
         "global-platform": {
           "macosx": "chrome/hsb/locale/hsb/global-platform/mac/",

@@ -13,10 +13,11 @@ interface imIMessage;
 interface nsIURI;
 interface prplIChatRoomFieldValues;
 
-/*
- * This is the XPCOM purple conversation component, a proxy for PurpleConversation.
+/**
+ * This interface represents a conversation as implemented by a protocol. It
+ * contains the properties and methods shared between direct (IM) and multi
+ * user (chat) conversations.
  */
-
 [scriptable, uuid(f71c58d6-2c47-4468-934b-b1c61462c01a)]
 interface prplIConversation: nsISupports {
 
@@ -49,9 +50,42 @@ interface prplIConversation: nsISupports {
   readonly attribute AUTF8String convIconFilename;
 
   /**
-   * Send a message in the conversation
+   * The user can not enable encryption for this room (another participant may
+   * be able to enable encryption however)
    */
-  void sendMsg(in AUTF8String aMsg);
+  const short ENCRYPTION_NOT_SUPPORTED = 0;
+  /**
+   * Encryption can be initialized in this conversation.
+   */
+  const short ENCRYPTION_AVAILABLE = 1;
+  /**
+   * New messages in this conversation are end-to-end encrypted.
+   */
+  const short ENCRYPTION_ENABLED = 2;
+  /**
+   * Indicates that the encryption with the other side should be trusted, for
+   * example because the user has verified their public keys. Implies
+   * ENCRYPTION_ENABLED.
+   */
+  const short ENCRYPTION_TRUSTED = 3;
+
+  /**
+   * State of encryption for this conversation, as available via the protocol.
+   * update-conv-encryption is observed when this changes.
+   */
+  readonly attribute short encryptionState;
+
+  /**
+   * When encryptionState is ENCRYPTION_AVAILABLE this tries to initialize
+   * encryption for all new messages in the conversation.
+   */
+  void initializeEncryption();
+
+  /**
+   * Send a message in the conversation. Protocols should consider resetting
+   * the typing state with this call, similar to |sendTyping("")|.
+   */
+  void sendMsg(in AUTF8String aMsg, in boolean aAction, in boolean aNotice);
 
   /**
    * Preprocess messages before they are sent (eg. split long messages).
@@ -96,8 +130,15 @@ interface prplIConversation: nsISupports {
   void addObserver(in nsIObserver aObserver);
   void removeObserver(in nsIObserver aObserver);
 
-  /* Observers will be all receive new-text notifications.
-     aSubject will contain the message (prplIMessage) */
+  /**
+   * Observers will all receive new-text and update-text notifications.
+   * aSubject will contain the message (prplIMessage). For update-text the
+   * update applies to any message with the same |remoteId| in the same
+   * conversation.
+   * The remove-text notification has no subject, but a remote ID as data.
+   * It indicates that the message should be removed from the conversation.
+   * Neither update-text nor remove-text affect unread counts.
+   */
 };
 
 [scriptable, uuid(c0b5b647-b0ec-4dc6-9e53-31a762a30a6e)]
@@ -120,7 +161,7 @@ interface prplIConvIM: prplIConversation {
   readonly attribute short typingState;
 };
 
-/* This represents a participant in a chat room */
+/** This represents a participant in a chat room */
 [scriptable, uuid(b0e9177b-40f6-420b-9918-04bbbb9ce44f)]
 interface prplIConvChatBuddy: nsISupports {
 
@@ -149,6 +190,21 @@ interface prplIConvChatBuddy: nsISupports {
 
   /* Whether the participant is currently typing. */
   readonly attribute boolean typing;
+
+  /** Whether we can verify the identity of this participant. */
+  readonly attribute boolean canVerifyIdentity;
+
+  /**
+   * True if we trust the encryption with this participant in E2EE chats. Can
+   * only be true if |canVerifyIdentity| is true.
+   */
+  readonly attribute boolean identityVerified;
+
+  /**
+   * Initialize identity verification with this participant.
+   * @returns {Promise<imISessionVerification>}
+   */
+  Promise verifyIdentity();
 };
 
 [scriptable, uuid(72c17398-639f-4141-a19c-78cbdeb39fba)]

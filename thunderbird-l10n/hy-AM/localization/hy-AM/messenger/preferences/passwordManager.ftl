@@ -4,8 +4,13 @@
 
 saved-logins =
     .title = Պահպանված մուտքեր
+saved-logins-title = Պահպանված մուտքեր
 window-close =
     .key = w
+focus-search-primary-shortcut =
+    .key = f
+focus-search-alt-shortcut =
+    .key = k
 copy-provider-url-cmd =
     .label = Պատճենել URL
     .accesskey = y

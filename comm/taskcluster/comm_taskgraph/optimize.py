@@ -5,30 +5,27 @@
 Thunderbird specific taskgraph optimizers.
 """
 
-from __future__ import absolute_import, print_function, unicode_literals
-
 import logging
 
-from six import text_type
+from taskgraph.optimize.base import Any, OptimizationStrategy, register_strategy
+from taskgraph.util.memoize import memoize
+from taskgraph.util.path import join as join_path
+from taskgraph.util.path import match as match_path
+from taskgraph.util.yaml import load_yaml
+from voluptuous import Optional, Required
 
-from taskgraph.optimize import (
-    register_strategy,
-    Any,
-    OptimizationStrategy,
-)
-from taskgraph.optimize.schema import (
-    default_optimizations,
-)
-from mozbuild.util import memoize
-from mozpack.path import match as mozpackmatch
-from taskgraph.files_changed import get_changed_files
+from gecko_taskgraph import GECKO
+from gecko_taskgraph.optimize.schema import default_optimizations
+from mozlint.pathutils import filterpaths
+
+from comm_taskgraph import files_changed
 
 logger = logging.getLogger(__name__)
 
 
 def is_excluded(check_path, file_patterns):
     for pattern in file_patterns:
-        if mozpackmatch(check_path, pattern):
+        if match_path(check_path, pattern):
             return True
     return False
 
@@ -45,8 +42,26 @@ def get_non_suite_changed_files(repository, revision):
     with suite/** and editor/** files removed.
     """
     return {
-        file for file in get_changed_files(repository, revision) if not is_suite(file)
+        file
+        for file in files_changed.get_changed_files(repository, revision)
+        if not is_suite(file)
     }
+
+
+@register_strategy("comm-skip-unless-changed")
+class SkipUnlessChanged(OptimizationStrategy):
+    def should_remove_task(self, task, params, file_patterns):
+        # pushlog_id == -1 - this is the case when run from a cron.yml job
+        if params.get("pushlog_id") == -1:
+            return False
+
+        changed = files_changed.check(params, file_patterns)
+        if not changed:
+            logger.debug(
+                "no files found matching a pattern in `skip-unless-changed` for " + task.label
+            )
+            return True
+        return False
 
 
 @register_strategy("skip-suite-only")
@@ -54,6 +69,10 @@ class SkipSuiteOnly(OptimizationStrategy):
     def should_remove_task(self, task, params, arg):
         # pushlog_id == -1 - this is the case when run from a cron.yml job
         if params.get("pushlog_id") == -1:
+            return False
+
+        if params.get("project") == "try-comm-central":
+            # Do not try to use this optimization on try-c-c builds
             return False
 
         repository = params.get("comm_head_repository")
@@ -66,18 +85,67 @@ class SkipSuiteOnly(OptimizationStrategy):
         return False
 
 
+@register_strategy("skip-unless-mozlint")
+class SkipUnlessMozlint(OptimizationStrategy):
+    schema = {
+        "root-path": Optional(str),
+        "mozlint-config": Required(str),
+    }
+
+    def should_remove_task(self, task, params, args):
+        include = []
+        exclude = []
+        extensions = []
+        support_files = []
+
+        root_path = join_path(GECKO, args.get("root-path", ""))
+        mozlint_root = join_path(root_path, "tools", "lint")
+        mozlint_yaml = join_path(mozlint_root, args["mozlint-config"])
+
+        logger.info(f"Loading file patterns for {task.label} from {mozlint_yaml}.")
+        linter_config = load_yaml(mozlint_yaml)
+        for check, config in linter_config.items():
+            include += config.get("include", [])
+            exclude += config.get("exclude", [])
+            extensions += [e.strip(".") for e in config.get("extensions", [])]
+            support_files += config.get("support-files", [])
+
+        changed_files = files_changed.get_files_changed_extended(params)
+
+        # Support files may not be part of "include" patterns, so check first
+        # Do not remove (return False) if any changed
+        for pattern in support_files:
+            for path in changed_files:
+                if match_path(path, pattern):
+                    return False
+
+        to_lint, to_exclude = filterpaths(
+            GECKO,
+            list(changed_files),
+            include=include,
+            exclude=exclude,
+            extensions=extensions,
+        )
+
+        # to_lint should be an empty list if there is nothing to check
+        if not to_lint:
+            return True
+        return False
+
+
 register_strategy(
     "skip-unless-backstop-no-suite", args=("skip-unless-backstop", "skip-suite-only")
 )(Any)
 
 register_strategy(
-    "skip-unless-changed-no-suite", args=("skip-unless-changed", "skip-suite-only")
+    "skip-unless-changed-no-suite", args=("comm-skip-unless-changed", "skip-suite-only")
 )(Any)
 
 optimizations = (
     {"skip-suite-only": None},
     {"skip-unless-backstop-no-suite": None},
-    {"skip-unless-changed-no-suite": [text_type]},
+    {"skip-unless-changed-no-suite": [str]},
+    {"skip-unless-mozlint": SkipUnlessMozlint.schema},
 )
 
 thunderbird_optimizations = default_optimizations + optimizations

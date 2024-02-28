@@ -15,7 +15,6 @@
 #include "nsIMsgDBView.h"
 #include "nsServiceManagerUtils.h"
 #include "nsImapCore.h"
-#include "mozilla/Services.h"
 
 static const char* kDBFolderInfoScope = "ns:msg:db:row:scope:dbfolderinfo:all";
 static const char* kDBFolderInfoTableKind = "ns:msg:db:table:kind:dbfolderinfo";
@@ -58,7 +57,10 @@ nsDBFolderInfo::QueryInterface(REFNSIID iid, void** result) {
 }
 
 nsDBFolderInfo::nsDBFolderInfo(nsMsgDatabase* mdb)
-    : m_flags(0), m_expiredMark(0), m_expiredMarkColumnToken(0) {
+    : m_flags(0),
+      m_expiredMark(0),
+      m_tableKindToken(0),
+      m_expiredMarkColumnToken(0) {
   m_mdbTable = NULL;
   m_mdbRow = NULL;
   m_version = 1;                 // for upgrading...
@@ -564,7 +566,7 @@ NS_IMETHODIMP nsDBFolderInfo::GetProperty(const char* propertyName,
 NS_IMETHODIMP nsDBFolderInfo::SetCharProperty(
     const char* aPropertyName, const nsACString& aPropertyValue) {
   return m_mdb->SetProperty(m_mdbRow, aPropertyName,
-                            nsCString(aPropertyValue).get());
+                            PromiseFlatCString(aPropertyValue).get());
 }
 
 NS_IMETHODIMP nsDBFolderInfo::GetCharProperty(const char* propertyName,
@@ -695,9 +697,9 @@ nsTransferDBFolderInfo::~nsTransferDBFolderInfo() {}
 /* void GetTransferInfo (out nsIDBFolderInfo transferInfo); */
 NS_IMETHODIMP nsDBFolderInfo::GetTransferInfo(nsIDBFolderInfo** transferInfo) {
   NS_ENSURE_ARG_POINTER(transferInfo);
+  NS_ENSURE_STATE(m_mdbRow);
 
-  nsTransferDBFolderInfo* newInfo = new nsTransferDBFolderInfo;
-  NS_ADDREF(*transferInfo = newInfo);
+  RefPtr<nsTransferDBFolderInfo> newInfo = new nsTransferDBFolderInfo;
 
   mdb_count numCells;
   mdbYarn cellYarn;
@@ -705,7 +707,6 @@ NS_IMETHODIMP nsDBFolderInfo::GetTransferInfo(nsIDBFolderInfo** transferInfo) {
   char columnName[100];
   mdbYarn cellName = {columnName, 0, sizeof(columnName), 0, 0, nullptr};
 
-  NS_ASSERTION(m_mdbRow, "null row in getTransferInfo");
   m_mdbRow->GetCount(m_mdb->GetEnv(), &numCells);
   // iterate over the cells in the dbfolderinfo remembering attribute names and
   // values.
@@ -727,6 +728,7 @@ NS_IMETHODIMP nsDBFolderInfo::GetTransferInfo(nsIDBFolderInfo** transferInfo) {
     }
   }
 
+  newInfo.forget(transferInfo);
   return NS_OK;
 }
 

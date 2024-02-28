@@ -14,6 +14,8 @@ policy-3rdparty = Állítson be házirendeket, amelyeket a WebExtensionök a chr
 
 policy-AppAutoUpdate = Az automatikus alkalmazásfrissítés engedélyezése vagy letiltása.
 
+policy-AppUpdatePin = A { -brand-short-name } megakadályozása abban, hogy a megadott verzión túl frissüljön.
+
 policy-AppUpdateURL = Egyéni alkalmazásfrissítési URL beállítása.
 
 policy-Authentication = Az integrált hitelesítés beállítása az azt támogató webhelyek számára.

@@ -7,7 +7,6 @@
 #include "nsMsgBiffManager.h"
 #include "nsIMsgMailSession.h"
 #include "nsIMsgAccountManager.h"
-#include "nsMsgBaseCID.h"
 #include "nsIObserverService.h"
 #include "nsIWindowMediator.h"
 #include "nsIMsgMailSession.h"
@@ -52,7 +51,7 @@ nsresult nsStatusBarBiffManager::Init() {
   nsresult rv;
 
   nsCOMPtr<nsIMsgMailSession> mailSession =
-      do_GetService(NS_MSGMAILSESSION_CONTRACTID, &rv);
+      do_GetService("@mozilla.org/messenger/services/session;1", &rv);
   if (NS_SUCCEEDED(rv))
     mailSession->AddFolderListener(this, nsIFolderListener::intPropertyChanged);
 
@@ -101,7 +100,9 @@ nsresult nsStatusBarBiffManager::PlayBiffSound(const char* aPrefBranch) {
   rv = pref->GetIntPref(PREF_SOUND_TYPE, &soundType);
   NS_ENSURE_SUCCESS(rv, rv);
 
+#ifndef XP_MACOSX
   bool customSoundPlayed = false;
+#endif
 
   if (soundType == CUSTOM_SOUND_TYPE) {
     nsCString soundURLSpec;
@@ -121,7 +122,9 @@ nsresult nsStatusBarBiffManager::PlayBiffSound(const char* aPrefBranch) {
             rv = soundFile->Exists(&soundFileExists);
             if (NS_SUCCEEDED(rv) && soundFileExists) {
               rv = mSound->Play(soundURL);
+#ifndef XP_MACOSX
               if (NS_SUCCEEDED(rv)) customSoundPlayed = true;
+#endif
             }
           }
         }
@@ -142,30 +145,41 @@ nsresult nsStatusBarBiffManager::PlayBiffSound(const char* aPrefBranch) {
 
 // nsIFolderListener methods....
 NS_IMETHODIMP
-nsStatusBarBiffManager::OnItemAdded(nsIMsgFolder* parentItem,
-                                    nsISupports* item) {
+nsStatusBarBiffManager::OnFolderAdded(nsIMsgFolder* parent,
+                                      nsIMsgFolder* child) {
   return NS_OK;
 }
 
 NS_IMETHODIMP
-nsStatusBarBiffManager::OnItemRemoved(nsIMsgFolder* parentItem,
-                                      nsISupports* item) {
+nsStatusBarBiffManager::OnMessageAdded(nsIMsgFolder* parent, nsIMsgDBHdr* msg) {
   return NS_OK;
 }
 
 NS_IMETHODIMP
-nsStatusBarBiffManager::OnItemPropertyChanged(nsIMsgFolder* item,
-                                              const nsACString& property,
-                                              const nsACString& oldValue,
-                                              const nsACString& newValue) {
+nsStatusBarBiffManager::OnFolderRemoved(nsIMsgFolder* parent,
+                                        nsIMsgFolder* child) {
   return NS_OK;
 }
 
 NS_IMETHODIMP
-nsStatusBarBiffManager::OnItemIntPropertyChanged(nsIMsgFolder* item,
-                                                 const nsACString& property,
-                                                 int64_t oldValue,
-                                                 int64_t newValue) {
+nsStatusBarBiffManager::OnMessageRemoved(nsIMsgFolder* parent,
+                                         nsIMsgDBHdr* msg) {
+  return NS_OK;
+}
+
+NS_IMETHODIMP
+nsStatusBarBiffManager::OnFolderPropertyChanged(nsIMsgFolder* folder,
+                                                const nsACString& property,
+                                                const nsACString& oldValue,
+                                                const nsACString& newValue) {
+  return NS_OK;
+}
+
+NS_IMETHODIMP
+nsStatusBarBiffManager::OnFolderIntPropertyChanged(nsIMsgFolder* folder,
+                                                   const nsACString& property,
+                                                   int64_t oldValue,
+                                                   int64_t newValue) {
   if (property.Equals(kBiffState) && mCurrentBiffState != newValue) {
     // if we got new mail, attempt to play a sound.
     // if we fail along the way, don't return.
@@ -173,7 +187,7 @@ nsStatusBarBiffManager::OnItemIntPropertyChanged(nsIMsgFolder* item,
     if (newValue == nsIMsgFolder::nsMsgBiffState_NewMail) {
       // Get the folder's server type.
       nsCOMPtr<nsIMsgIncomingServer> server;
-      nsresult rv = item->GetServer(getter_AddRefs(server));
+      nsresult rv = folder->GetServer(getter_AddRefs(server));
       if (NS_SUCCEEDED(rv) && server) server->GetType(mServerType);
 
       // if we fail to play the biff sound, keep going.
@@ -196,31 +210,31 @@ nsStatusBarBiffManager::OnItemIntPropertyChanged(nsIMsgFolder* item,
 }
 
 NS_IMETHODIMP
-nsStatusBarBiffManager::OnItemBoolPropertyChanged(nsIMsgFolder* item,
-                                                  const nsACString& property,
-                                                  bool oldValue,
-                                                  bool newValue) {
+nsStatusBarBiffManager::OnFolderBoolPropertyChanged(nsIMsgFolder* folder,
+                                                    const nsACString& property,
+                                                    bool oldValue,
+                                                    bool newValue) {
   return NS_OK;
 }
 
 NS_IMETHODIMP
-nsStatusBarBiffManager::OnItemUnicharPropertyChanged(
-    nsIMsgFolder* item, const nsACString& property, const nsAString& oldValue,
+nsStatusBarBiffManager::OnFolderUnicharPropertyChanged(
+    nsIMsgFolder* folder, const nsACString& property, const nsAString& oldValue,
     const nsAString& newValue) {
   return NS_OK;
 }
 
 NS_IMETHODIMP
-nsStatusBarBiffManager::OnItemPropertyFlagChanged(nsIMsgDBHdr* item,
-                                                  const nsACString& property,
-                                                  uint32_t oldFlag,
-                                                  uint32_t newFlag) {
+nsStatusBarBiffManager::OnFolderPropertyFlagChanged(nsIMsgDBHdr* msg,
+                                                    const nsACString& property,
+                                                    uint32_t oldFlag,
+                                                    uint32_t newFlag) {
   return NS_OK;
 }
 
 NS_IMETHODIMP
-nsStatusBarBiffManager::OnItemEvent(nsIMsgFolder* item,
-                                    const nsACString& event) {
+nsStatusBarBiffManager::OnFolderEvent(nsIMsgFolder* folder,
+                                      const nsACString& event) {
   return NS_OK;
 }
 

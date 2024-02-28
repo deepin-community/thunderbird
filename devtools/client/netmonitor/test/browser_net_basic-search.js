@@ -8,10 +8,10 @@
  * Search panel is visible and number of expected results are returned.
  */
 
-add_task(async function() {
+add_task(async function () {
   await pushPref("devtools.netmonitor.features.search", true);
 
-  const { tab, monitor } = await initNetMonitor(CUSTOM_GET_URL, {
+  const { tab, monitor } = await initNetMonitor(HTTPS_CUSTOM_GET_URL, {
     requestCount: 1,
   });
   info("Starting test... ");
@@ -23,10 +23,10 @@ add_task(async function() {
   store.dispatch(Actions.batchEnable(false));
 
   // Execute two XHRs (the same URL) and wait till it's finished.
-  const URL = SEARCH_SJS + "?value=test";
+  const URL = HTTPS_SEARCH_SJS + "?value=test";
   const wait = waitForNetworkEvents(monitor, 2);
 
-  await SpecialPowers.spawn(tab.linkedBrowser, [URL], async function(url) {
+  await SpecialPowers.spawn(tab.linkedBrowser, [URL], async function (url) {
     content.wrappedJSObject.performRequests(2, url);
   });
   await wait;
@@ -34,16 +34,9 @@ add_task(async function() {
   // Open the Search panel
   store.dispatch(Actions.openSearch());
 
-  // Helper for keyboard typing
-  const type = string => {
-    for (const ch of string) {
-      EventUtils.synthesizeKey(ch, {}, monitor.panelWin);
-    }
-  };
-
   // Fill Filter input with text and check displayed messages.
   // The filter should be focused automatically.
-  type("test");
+  typeInNetmonitor("test", monitor);
   EventUtils.synthesizeKey("KEY_Enter");
 
   // Wait till there are two resources rendered in the results.

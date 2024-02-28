@@ -7,6 +7,8 @@
 #include "mozilla/EMEUtils.h"
 
 #include "jsfriendapi.h"
+#include "mozilla/StaticPrefs_media.h"
+#include "mozilla/dom/KeySystemNames.h"
 #include "mozilla/dom/UnionTypes.h"
 
 namespace mozilla {
@@ -52,22 +54,66 @@ void CopyArrayBufferViewOrArrayBufferData(
 }
 
 bool IsClearkeyKeySystem(const nsAString& aKeySystem) {
-  return aKeySystem.EqualsLiteral(EME_KEY_SYSTEM_CLEARKEY);
+  if (StaticPrefs::media_clearkey_test_key_systems_enabled()) {
+    return aKeySystem.EqualsLiteral(kClearKeyKeySystemName) ||
+           aKeySystem.EqualsLiteral(kClearKeyWithProtectionQueryKeySystemName);
+  }
+  return aKeySystem.EqualsLiteral(kClearKeyKeySystemName);
 }
 
 bool IsWidevineKeySystem(const nsAString& aKeySystem) {
-  return aKeySystem.EqualsLiteral(EME_KEY_SYSTEM_WIDEVINE);
+  return aKeySystem.EqualsLiteral(kWidevineKeySystemName);
 }
 
-nsString KeySystemToGMPName(const nsAString& aKeySystem) {
+#ifdef MOZ_WMF_CDM
+bool IsPlayReadyKeySystemAndSupported(const nsAString& aKeySystem) {
+  if (!StaticPrefs::media_eme_playready_enabled()) {
+    return false;
+  }
+  // 1=enabled encrypted and clear, 2=enabled encrytped.
+  if (StaticPrefs::media_wmf_media_engine_enabled() != 1 &&
+      StaticPrefs::media_wmf_media_engine_enabled() != 2) {
+    return false;
+  }
+  return aKeySystem.EqualsLiteral(kPlayReadyKeySystemName) ||
+         aKeySystem.EqualsLiteral(kPlayReadyKeySystemHardware);
+}
+#endif
+
+nsString KeySystemToProxyName(const nsAString& aKeySystem) {
   if (IsClearkeyKeySystem(aKeySystem)) {
     return u"gmp-clearkey"_ns;
   }
   if (IsWidevineKeySystem(aKeySystem)) {
     return u"gmp-widevinecdm"_ns;
   }
-  MOZ_ASSERT(false, "We should only call this for known GMPs");
+#ifdef MOZ_WMF_CDM
+  if (IsPlayReadyKeySystemAndSupported(aKeySystem)) {
+    return u"mfcdm-playready"_ns;
+  }
+#endif
+  MOZ_ASSERT_UNREACHABLE("Not supported key system!");
   return u""_ns;
 }
+
+#define ENUM_TO_STR(enumVal) \
+  case enumVal:              \
+    return #enumVal
+
+const char* ToMediaKeyStatusStr(dom::MediaKeyStatus aStatus) {
+  switch (aStatus) {
+    ENUM_TO_STR(dom::MediaKeyStatus::Usable);
+    ENUM_TO_STR(dom::MediaKeyStatus::Expired);
+    ENUM_TO_STR(dom::MediaKeyStatus::Released);
+    ENUM_TO_STR(dom::MediaKeyStatus::Output_restricted);
+    ENUM_TO_STR(dom::MediaKeyStatus::Output_downscaled);
+    ENUM_TO_STR(dom::MediaKeyStatus::Status_pending);
+    ENUM_TO_STR(dom::MediaKeyStatus::Internal_error);
+    default:
+      return "Undefined MediaKeyStatus!";
+  }
+}
+
+#undef ENUM_TO_STR
 
 }  // namespace mozilla

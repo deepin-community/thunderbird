@@ -4,11 +4,36 @@
 
 var EXPORTED_SYMBOLS = ["MailServices"];
 
-const { XPCOMUtils } = ChromeUtils.import(
-  "resource://gre/modules/XPCOMUtils.jsm"
+const { XPCOMUtils } = ChromeUtils.importESModule(
+  "resource://gre/modules/XPCOMUtils.sys.mjs"
 );
 
-var MailServices = {};
+var MailServices = {
+  /**
+   * Gets the `nsIMsgMessageService` for a given message URI. This should have
+   * the same behaviour as `GetMessageServiceFromURI` (nsMsgUtils.cpp).
+   *
+   * @param {string} uri - The URI of a folder or message.
+   * @returns {nsIMsgMessageService}
+   */
+  messageServiceFromURI(uri) {
+    let index = uri.indexOf(":");
+    if (index == -1) {
+      throw new Components.Exception(
+        `Bad message URI: ${uri}`,
+        Cr.NS_ERROR_FAILURE
+      );
+    }
+
+    let protocol = uri.substring(0, index);
+    if (protocol == "file") {
+      protocol = "mailbox";
+    }
+    return Cc[
+      `@mozilla.org/messenger/messageservice;1?type=${protocol}`
+    ].getService(Ci.nsIMsgMessageService);
+  },
+};
 
 XPCOMUtils.defineLazyServiceGetter(
   MailServices,
@@ -127,4 +152,18 @@ XPCOMUtils.defineLazyServiceGetter(
   "folderLookup",
   "@mozilla.org/mail/folder-lookup;1",
   "nsIFolderLookupService"
+);
+
+// Clean up all of these references at shutdown, so that they don't appear as
+// a memory leak in test logs.
+Services.obs.addObserver(
+  {
+    observe() {
+      for (let key of Object.keys(MailServices)) {
+        delete MailServices[key];
+      }
+      Services.obs.removeObserver(this, "xpcom-shutdown");
+    },
+  },
+  "xpcom-shutdown"
 );

@@ -3,16 +3,15 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-var { AddonManager } = ChromeUtils.import(
-  "resource://gre/modules/AddonManager.jsm"
+var { AddonManager } = ChromeUtils.importESModule(
+  "resource://gre/modules/AddonManager.sys.mjs"
 );
 
 var AutoHideMenubar = {
   get _node() {
     delete this._node;
     return (this._node =
-      document.getElementById("mail-toolbar-menubar2") ||
+      document.getElementById("toolbar-menubar") ||
       document.getElementById("compose-toolbar-menubar2") ||
       document.getElementById("addrbook-toolbar-menubar2"));
   },
@@ -131,7 +130,14 @@ var AutoHideMenubar = {
 var ToolbarContextMenu = {
   _getExtensionId(popup) {
     let node = popup.triggerNode;
-    return node && node.getAttribute("data-extensionid");
+    if (!node) {
+      return null;
+    }
+    if (node.hasAttribute("data-extensionid")) {
+      return node.getAttribute("data-extensionid");
+    }
+    const extensionButton = node.closest('[item-id^="ext-"]');
+    return extensionButton?.getAttribute("item-id").slice(4);
   },
 
   async updateExtension(popup) {

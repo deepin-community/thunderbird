@@ -7,9 +7,9 @@
 var originalWindowWidth;
 
 // Drag to overflow chevron should open the overflow panel.
-add_task(async function() {
+add_task(async function () {
   // Load a page so the identity box can be dragged.
-  BrowserTestUtils.loadURI(gBrowser, "http://mochi.test:8888/");
+  BrowserTestUtils.loadURIString(gBrowser, "http://mochi.test:8888/");
   await BrowserTestUtils.browserLoaded(gBrowser.selectedBrowser);
 
   originalWindowWidth = window.outerWidth;
@@ -20,7 +20,7 @@ add_task(async function() {
   );
   ok(CustomizableUI.inDefaultState, "Should start in default state.");
   window.resizeTo(kForceOverflowWidthPx, window.outerHeight);
-  await waitForCondition(() => navbar.hasAttribute("overflowing"));
+  await TestUtils.waitForCondition(() => navbar.hasAttribute("overflowing"));
   ok(navbar.hasAttribute("overflowing"), "Should have an overflowing toolbar.");
 
   let widgetOverflowPanel = document.getElementById("widget-overflow");
@@ -68,10 +68,10 @@ add_task(async function() {
   await panelHiddenPromise;
 });
 
-add_task(async function() {
+add_task(async function () {
   window.resizeTo(originalWindowWidth, window.outerHeight);
   let navbar = document.getElementById(CustomizableUI.AREA_NAVBAR);
-  await waitForCondition(() => !navbar.hasAttribute("overflowing"));
+  await TestUtils.waitForCondition(() => !navbar.hasAttribute("overflowing"));
   ok(
     !navbar.hasAttribute("overflowing"),
     "Should not have an overflowing toolbar."

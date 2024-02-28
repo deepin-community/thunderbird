@@ -1,13 +1,12 @@
-/* -*- Mode: Java; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 var { MailServices } = ChromeUtils.import(
   "resource:///modules/MailServices.jsm"
 );
 
+window.addEventListener("DOMContentLoaded", onLoad);
 document.addEventListener("dialogaccept", onOk);
 
 // pull stuff out of window.arguments
@@ -146,8 +145,7 @@ function onOk(event) {
 
 // Set radio element choices and picker states
 function updateInboxAccount(enablePicker) {
-  document.getElementById(
-    "deferredServerFolderPicker"
-  ).disabled = !enablePicker;
+  document.getElementById("deferredServerFolderPicker").disabled =
+    !enablePicker;
   document.getElementById("deferGetNewMail").disabled = !enablePicker;
 }

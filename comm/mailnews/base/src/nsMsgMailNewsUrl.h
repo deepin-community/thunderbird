@@ -6,6 +6,7 @@
 #ifndef nsMsgMailNewsUrl_h___
 #define nsMsgMailNewsUrl_h___
 
+#include "msgCore.h"
 #include "nscore.h"
 #include "nsISupports.h"
 #include "nsIUrlListener.h"
@@ -21,7 +22,6 @@
 #include "nsILoadGroup.h"
 #include "nsIMsgSearchSession.h"
 #include "nsICacheEntry.h"
-#include "nsIMimeMiscStatus.h"
 #include "nsIWeakReferenceUtils.h"
 #include "nsString.h"
 #include "nsIURIMutator.h"
@@ -111,8 +111,8 @@ class NS_MSG_BASE nsMsgMailNewsUrl : public nsIMsgMailNewsUrl,
   nsCOMPtr<nsIMimeHeaders> mMimeHeaders;
   nsCOMPtr<nsIMsgSearchSession> m_searchSession;
   nsCOMPtr<nsICacheEntry> m_memCacheEntry;
-  nsCOMPtr<nsIMsgHeaderSink> mMsgHeaderSink;
   nsCString m_errorCode;
+  nsCString m_seeOtherURI;
   nsString m_errorMessage;
   nsString m_errorParameters;
   int64_t mMaxProgress;

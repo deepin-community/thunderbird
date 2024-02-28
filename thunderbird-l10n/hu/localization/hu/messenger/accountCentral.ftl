@@ -42,7 +42,7 @@ newsgroups-label = Hírcsoportok
 newsgroups-description = A { -brand-short-name } segítségével csatlakozhat az összes kívánt hírcsoporthoz.
 
 import-title = Importálás egy másik programból…
-import-paragraph = A { -brand-short-name } lehetővé teszi, hogy leveleket, címjegyzékeket, beállításokat és levélszűrőket importáljon más levelezőprogramokból vagy elterjedt címjegyzékformátumokból.
+import-paragraph2 = A { -brand-short-name } lehetővé teszi, hogy leveleket, címjegyzékeket, beállításokat és levélszűrőket importáljon más levelezőprogramokból vagy elterjedt címjegyzékformátumokból.
 
 import-label = Importálás
     .aria-label = Adatimportálás más programokból

@@ -451,7 +451,8 @@ DecodedStream::DecodedStream(
     nsMainThreadPtrHandle<SharedDummyTrack> aDummyTrack,
     CopyableTArray<RefPtr<ProcessedMediaTrack>> aOutputTracks, double aVolume,
     double aPlaybackRate, bool aPreservesPitch,
-    MediaQueue<AudioData>& aAudioQueue, MediaQueue<VideoData>& aVideoQueue)
+    MediaQueue<AudioData>& aAudioQueue, MediaQueue<VideoData>& aVideoQueue,
+    RefPtr<AudioDeviceInfo> aAudioDevice)
     : mOwnerThread(aStateMachine->OwnerThread()),
       mDummyTrack(std::move(aDummyTrack)),
       mWatchManager(this, mOwnerThread),
@@ -464,7 +465,8 @@ DecodedStream::DecodedStream(
       mPlaybackRate(aPlaybackRate),
       mPreservesPitch(aPreservesPitch),
       mAudioQueue(aAudioQueue),
-      mVideoQueue(aVideoQueue) {}
+      mVideoQueue(aVideoQueue),
+      mAudioDevice(std::move(aAudioDevice)) {}
 
 DecodedStream::~DecodedStream() {
   MOZ_ASSERT(mStartTime.isNothing(), "playback should've ended.");
@@ -476,7 +478,8 @@ RefPtr<DecodedStream::EndedPromise> DecodedStream::OnEnded(TrackType aType) {
 
   if (aType == TrackInfo::kAudioTrack && mInfo.HasAudio()) {
     return mAudioEndedPromise;
-  } else if (aType == TrackInfo::kVideoTrack && mInfo.HasVideo()) {
+  }
+  if (aType == TrackInfo::kVideoTrack && mInfo.HasVideo()) {
     return mVideoEndedPromise;
   }
   return nullptr;
@@ -488,7 +491,7 @@ nsresult DecodedStream::Start(const TimeUnit& aStartTime,
   MOZ_ASSERT(mStartTime.isNothing(), "playback already started.");
 
   AUTO_PROFILER_LABEL(FUNCTION_SIGNATURE, MEDIA_PLAYBACK);
-  if (profiler_can_accept_markers()) {
+  if (profiler_thread_is_being_profiled_for_markers()) {
     nsPrintfCString markerString("StartTime=%" PRId64,
                                  aStartTime.ToMicroseconds());
     PLAYBACK_PROFILER_MARKER(markerString);
@@ -606,7 +609,7 @@ void DecodedStream::Stop() {
   AssertOwnerThread();
   MOZ_ASSERT(mStartTime.isSome(), "playback not started.");
 
-  TRACE();
+  TRACE("DecodedStream::Stop");
   LOG_DS(LogLevel::Debug, "Stop()");
 
   DisconnectListener();
@@ -648,7 +651,7 @@ void DecodedStream::DestroyData(UniquePtr<DecodedStreamData>&& aData) {
     return;
   }
 
-  TRACE();
+  TRACE("DecodedStream::DestroyData");
   mOutputListener.Disconnect();
 
   aData->Close();
@@ -665,7 +668,7 @@ void DecodedStream::SetPlaying(bool aPlaying) {
     return;
   }
 
-  if (profiler_can_accept_markers()) {
+  if (profiler_thread_is_being_profiled_for_markers()) {
     nsPrintfCString markerString("Playing=%s", aPlaying ? "true" : "false");
     PLAYBACK_PROFILER_MARKER(markerString);
   }
@@ -675,7 +678,7 @@ void DecodedStream::SetPlaying(bool aPlaying) {
 
 void DecodedStream::SetVolume(double aVolume) {
   AssertOwnerThread();
-  if (profiler_can_accept_markers()) {
+  if (profiler_thread_is_being_profiled_for_markers()) {
     nsPrintfCString markerString("Volume=%f", aVolume);
     PLAYBACK_PROFILER_MARKER(markerString);
   }
@@ -690,7 +693,7 @@ void DecodedStream::SetVolume(double aVolume) {
 
 void DecodedStream::SetPlaybackRate(double aPlaybackRate) {
   AssertOwnerThread();
-  if (profiler_can_accept_markers()) {
+  if (profiler_thread_is_being_profiled_for_markers()) {
     nsPrintfCString markerString("PlaybackRate=%f", aPlaybackRate);
     PLAYBACK_PROFILER_MARKER(markerString);
   }
@@ -705,7 +708,7 @@ void DecodedStream::SetPlaybackRate(double aPlaybackRate) {
 
 void DecodedStream::SetPreservesPitch(bool aPreservesPitch) {
   AssertOwnerThread();
-  if (profiler_can_accept_markers()) {
+  if (profiler_thread_is_being_profiled_for_markers()) {
     nsPrintfCString markerString("PreservesPitch=%s",
                                  aPreservesPitch ? "true" : "false");
     PLAYBACK_PROFILER_MARKER(markerString);
@@ -735,7 +738,7 @@ void DecodedStream::SendAudio(const PrincipalHandle& aPrincipalHandle) {
     return;
   }
 
-  TRACE();
+  TRACE("DecodedStream::SendAudio");
   // It's OK to hold references to the AudioData because AudioData
   // is ref-counted.
   AutoTArray<RefPtr<AudioData>, 10> audio;
@@ -788,7 +791,7 @@ already_AddRefed<AudioData> DecodedStream::CreateSilenceDataIfGapExists(
     NS_WARNING("OOM in DecodedStream::CreateSilenceDataIfGapExists");
     return nullptr;
   }
-  auto duration = FramesToTimeUnit(missingFrames.value(), aNextAudio->mRate);
+  auto duration = media::TimeUnit(missingFrames.value(), aNextAudio->mRate);
   if (!duration.IsValid()) {
     NS_WARNING("Int overflow in DecodedStream::CreateSilenceDataIfGapExists");
     return nullptr;
@@ -818,16 +821,14 @@ void DecodedStreamData::WriteVideoToSegment(
     VideoSegment* aOutput, const PrincipalHandle& aPrincipalHandle,
     double aPlaybackRate) {
   RefPtr<layers::Image> image = aImage;
-  auto end =
-      mVideoTrack->MicrosecondsToTrackTimeRoundDown(aEnd.ToMicroseconds());
-  auto start =
-      mVideoTrack->MicrosecondsToTrackTimeRoundDown(aStart.ToMicroseconds());
   aOutput->AppendFrame(image.forget(), aIntrinsicSize, aPrincipalHandle, false,
                        aTimeStamp);
   // Extend this so we get accurate durations for all frames.
   // Because this track is pushed, we need durations so the graph can track
   // when playout of the track has finished.
   MOZ_ASSERT(aPlaybackRate > 0);
+  TrackTime start = aStart.ToTicksAtRate(mVideoTrack->mSampleRate);
+  TrackTime end = aEnd.ToTicksAtRate(mVideoTrack->mSampleRate);
   aOutput->ExtendLastFrameBy(
       static_cast<TrackTime>((float)(end - start) / aPlaybackRate));
 
@@ -856,7 +857,7 @@ void DecodedStream::ResetAudio() {
     return;
   }
 
-  TRACE();
+  TRACE("DecodedStream::ResetAudio");
   mData->mAudioTrack->ClearFutureData();
   if (const RefPtr<AudioData>& v = mAudioQueue.PeekFront()) {
     mData->mNextAudioTime = v->mTime;
@@ -875,7 +876,7 @@ void DecodedStream::ResetVideo(const PrincipalHandle& aPrincipalHandle) {
     return;
   }
 
-  TRACE();
+  TRACE("DecodedStream::ResetVideo");
   TrackTime cleared = mData->mVideoTrack->ClearFutureData();
   mData->mVideoTrackWritten -= cleared;
   if (mData->mHaveSentFinishVideo && cleared > 0) {
@@ -925,7 +926,7 @@ void DecodedStream::SendVideo(const PrincipalHandle& aPrincipalHandle) {
     return;
   }
 
-  TRACE();
+  TRACE("DecodedStream::SendVideo");
   VideoSegment output;
   AutoTArray<RefPtr<VideoData>, 10> video;
 
@@ -1008,20 +1009,25 @@ void DecodedStream::SendVideo(const PrincipalHandle& aPrincipalHandle) {
       forceBlack = true;
       // Override the frame's size (will be 0x0 otherwise)
       mData->mLastVideoImageDisplaySize = mInfo.mVideo.mDisplay;
+      LOG_DS(LogLevel::Debug, "No mLastVideoImage");
     }
     if (compensateEOS) {
       VideoSegment endSegment;
-      // Calculate the deviation clock time from DecodedStream.
-      // We round the nr of microseconds up, because WriteVideoToSegment
-      // will round the conversion from microseconds to TrackTime down.
-      auto deviation = TimeUnit::FromMicroseconds(
-          mData->mVideoTrack->TrackTimeToMicroseconds(1) + 1);
       auto start = mData->mLastVideoEndTime.valueOr(mStartTime.ref());
       mData->WriteVideoToSegment(
-          mData->mLastVideoImage, start, start + deviation,
+          mData->mLastVideoImage, start, start,
           mData->mLastVideoImageDisplaySize,
-          currentTime + (start + deviation - currentPosition).ToTimeDuration(),
-          &endSegment, aPrincipalHandle, mPlaybackRate);
+          currentTime + (start - currentPosition).ToTimeDuration(), &endSegment,
+          aPrincipalHandle, mPlaybackRate);
+      // ForwardedInputTrack drops zero duration frames, even at the end of
+      // the track.  Give the frame a minimum duration so that it is not
+      // dropped.
+      endSegment.ExtendLastFrameBy(1);
+      LOG_DS(LogLevel::Debug,
+             "compensateEOS: start %s, duration %" PRId64
+             ", mPlaybackRate %lf, sample rate %" PRId32,
+             start.ToString().get(), endSegment.GetDuration(), mPlaybackRate,
+             mData->mVideoTrack->mSampleRate);
       MOZ_ASSERT(endSegment.GetDuration() > 0);
       if (forceBlack) {
         endSegment.ReplaceWithDisabled();
@@ -1053,10 +1059,10 @@ void DecodedStream::SendData() {
 
 TimeUnit DecodedStream::GetEndTime(TrackType aType) const {
   AssertOwnerThread();
-  TRACE();
+  TRACE("DecodedStream::GetEndTime");
   if (aType == TrackInfo::kAudioTrack && mInfo.HasAudio() && mData) {
     auto t = mStartTime.ref() +
-             FramesToTimeUnit(mData->mAudioFramesWritten, mInfo.mAudio.mRate);
+             media::TimeUnit(mData->mAudioFramesWritten, mInfo.mAudio.mRate);
     if (t.IsValid()) {
       return t;
     }
@@ -1066,9 +1072,9 @@ TimeUnit DecodedStream::GetEndTime(TrackType aType) const {
   return TimeUnit::Zero();
 }
 
-TimeUnit DecodedStream::GetPosition(TimeStamp* aTimeStamp) const {
+TimeUnit DecodedStream::GetPosition(TimeStamp* aTimeStamp) {
   AssertOwnerThread();
-  TRACE();
+  TRACE("DecodedStream::GetPosition");
   // This is only called after MDSM starts playback. So mStartTime is
   // guaranteed to be something.
   MOZ_ASSERT(mStartTime.isSome());
@@ -1088,7 +1094,7 @@ void DecodedStream::NotifyOutput(int64_t aTime) {
   mLastOutputTime = time;
   auto currentTime = GetPosition();
 
-  if (profiler_can_accept_markers()) {
+  if (profiler_thread_is_being_profiled_for_markers()) {
     nsPrintfCString markerString("OutputTime=%" PRId64,
                                  currentTime.ToMicroseconds());
     PLAYBACK_PROFILER_MARKER(markerString);
@@ -1108,7 +1114,7 @@ void DecodedStream::NotifyOutput(int64_t aTime) {
 
 void DecodedStream::PlayingChanged() {
   AssertOwnerThread();
-  TRACE();
+  TRACE("DecodedStream::PlayingChanged");
 
   if (!mPlaying) {
     // On seek or pause we discard future frames.
@@ -1153,7 +1159,8 @@ void DecodedStream::GetDebugInfo(dom::MediaSinkDebugInfo& aInfo) {
   aInfo.mDecodedStream.mLastAudio =
       lastAudio ? lastAudio->GetEndTime().ToMicroseconds() : -1;
   aInfo.mDecodedStream.mAudioQueueFinished = mAudioQueue.IsFinished();
-  aInfo.mDecodedStream.mAudioQueueSize = mAudioQueue.GetSize();
+  aInfo.mDecodedStream.mAudioQueueSize =
+      AssertedCast<int>(mAudioQueue.GetSize());
   if (mData) {
     mData->GetDebugInfo(aInfo.mDecodedStream.mData);
   }

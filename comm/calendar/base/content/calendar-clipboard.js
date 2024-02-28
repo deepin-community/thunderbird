@@ -2,12 +2,10 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-/* import-globals-from item-editing/calendar-item-editing.js */
-/* import-globals-from calendar-command-controller.js */
-/* import-globals-from calendar-management.js */
-/* import-globals-from calendar-views-utils.js */
+/* globals getSelectedCalendar, getSelectedItems, promptOccurrenceModification,
+   calendarViewController, currentView, startBatchTransaction, doTransaction,
+   endBatchTransaction */
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 var { cal } = ChromeUtils.import("resource:///modules/calendar/calUtils.jsm");
 
 /* exported cutToClipboard, pasteFromClipboard */
@@ -15,9 +13,9 @@ var { cal } = ChromeUtils.import("resource:///modules/calendar/calUtils.jsm");
 /**
  * Test if a writable calendar is selected, and if the clipboard has items that
  * can be pasted into Calendar. The data must be of type "text/calendar" or
- * "text/unicode".
+ * "text/plain".
  *
- * @return          If true, pasting is currently possible.
+ * @returns If true, pasting is currently possible.
  */
 function canPaste() {
   if (Services.prefs.getBoolPref("calendar.paste.intoSelectedCalendar", false)) {
@@ -30,8 +28,7 @@ function canPaste() {
       return false;
     }
   } else {
-    let calendars = cal
-      .getCalendarManager()
+    let calendars = cal.manager
       .getCalendars()
       .filter(cal.acl.isCalendarWritable)
       .filter(cal.acl.userCanAddItemsToCalendar);
@@ -40,7 +37,7 @@ function canPaste() {
     }
   }
 
-  const flavors = ["text/calendar", "text/unicode"];
+  const flavors = ["text/calendar", "text/plain"];
   return Services.clipboard.hasDataMatchingFlavors(flavors, Ci.nsIClipboard.kGlobalClipboard);
 }
 
@@ -106,7 +103,7 @@ function copyToClipboard(aCalendarItemArray = null, aCutMode = false) {
     // Register supported data flavors
     trans.init(null);
     trans.addDataFlavor("text/calendar");
-    trans.addDataFlavor("text/unicode");
+    trans.addDataFlavor("text/plain");
 
     // Create the data objects
     let icsWrapper = Cc["@mozilla.org/supports-string;1"].createInstance(Ci.nsISupportsString);
@@ -116,7 +113,7 @@ function copyToClipboard(aCalendarItemArray = null, aCutMode = false) {
     // Both Outlook 2000 client and Lotus Organizer use text/unicode
     // when pasting iCalendar data.
     trans.setTransferData("text/calendar", icsWrapper);
-    trans.setTransferData("text/unicode", icsWrapper);
+    trans.setTransferData("text/plain", icsWrapper);
 
     clipboard.setData(trans, null, Ci.nsIClipboard.kGlobalClipboard);
     if (aCutMode) {
@@ -146,7 +143,7 @@ function pasteFromClipboard() {
   // Register the wanted data flavors (highest fidelity first!)
   trans.init(null);
   trans.addDataFlavor("text/calendar");
-  trans.addDataFlavor("text/unicode");
+  trans.addDataFlavor("text/plain");
 
   // Get transferable from clipboard
   clipboard.getData(trans, Ci.nsIClipboard.kGlobalClipboard);
@@ -158,7 +155,7 @@ function pasteFromClipboard() {
   data = data.value.QueryInterface(Ci.nsISupportsString).data;
   switch (flavor.value) {
     case "text/calendar":
-    case "text/unicode": {
+    case "text/plain": {
       let icsParser = Cc["@mozilla.org/calendar/ics-parser;1"].createInstance(Ci.calIIcsParser);
       try {
         icsParser.parseString(data);
@@ -232,8 +229,7 @@ function pasteFromClipboard() {
         let validPasteText = pasteText != "paste" && !pasteText.endsWith("Item");
         pasteText += items.length == withAttendees.length ? "Only" : "Also";
 
-        let calendars = cal
-          .getCalendarManager()
+        let calendars = cal.manager
           .getCalendars()
           .filter(cal.acl.isCalendarWritable)
           .filter(cal.acl.userCanAddItemsToCalendar)

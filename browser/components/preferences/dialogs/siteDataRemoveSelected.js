@@ -11,10 +11,10 @@
  **/
 let gSiteDataRemoveSelected = {
   init() {
-    document.addEventListener("dialogaccept", function() {
+    document.addEventListener("dialogaccept", function () {
       window.arguments[0].allowed = true;
     });
-    document.addEventListener("dialogcancel", function() {
+    document.addEventListener("dialogcancel", function () {
       window.arguments[0].allowed = false;
     });
 
@@ -25,7 +25,19 @@ let gSiteDataRemoveSelected = {
     if (!hosts) {
       throw new Error("Must specify hosts option in arguments.");
     }
-
+    let dialog = document.getElementById("SiteDataRemoveSelectedDialog");
+    if (hosts.length == 1) {
+      dialog.classList.add("single-entry");
+      document.l10n.setAttributes(
+        document.getElementById("removing-description"),
+        "site-data-removing-single-desc",
+        {
+          baseDomain: hosts[0],
+        }
+      );
+      return;
+    }
+    dialog.classList.add("multi-entry");
     hosts.sort();
     let fragment = document.createDocumentFragment();
     for (let host of hosts) {

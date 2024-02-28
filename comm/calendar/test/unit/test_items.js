@@ -2,7 +2,7 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-var { XPCOMUtils } = ChromeUtils.import("resource://gre/modules/XPCOMUtils.jsm");
+var { XPCOMUtils } = ChromeUtils.importESModule("resource://gre/modules/XPCOMUtils.sys.mjs");
 
 var { CalendarTestUtils } = ChromeUtils.import(
   "resource://testing-common/calendar/CalendarTestUtils.jsm"
@@ -211,7 +211,7 @@ function test_immutable() {
   let event = new CalEvent();
 
   let date = cal.createDateTime();
-  date.timezone = cal.getTimezoneService().getTimezone("Europe/Berlin");
+  date.timezone = cal.timezoneService.getTimezone("Europe/Berlin");
   event.alarmLastAck = date;
 
   let org = new CalAttendee();
@@ -315,9 +315,9 @@ function test_isTodo() {
  * Function for testing that the "properties" property of each supplied
  * calItemBase occurrence includes those inherited from the parent.
  *
- * @param {calItemBase[]} items  - A list of item occurrences to test.
- * @param {calItemBase} parent   - The item to use as the parent.
- * @param {object} [overrides]   - A set of key value pairs than can be passed
+ * @param {calItemBase[]} items - A list of item occurrences to test.
+ * @param {calItemBase} parent - The item to use as the parent.
+ * @param {object} [overrides] - A set of key value pairs than can be passed
  *                                 to indicate what to expect for some properties.
  */
 function doPropertiesTest(items, parent, overrides = {}) {

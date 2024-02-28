@@ -24,8 +24,6 @@
 <!ENTITY moveToNewWindow.accesskey "ח">
 <!ENTITY newVirtualFolderCmd.label "חיפוש שמור…">
 <!ENTITY newVirtualFolderCmd.accesskey "פ">
-<!ENTITY newOtherAccountsCmd.label "חשבונות אחרים…">
-<!ENTITY newOtherAccountsCmd.accesskey "א">
 <!ENTITY newCreateEmailAccountCmd.label "קבלת חשבון דואר חדש…">
 <!ENTITY newCreateEmailAccountCmd.accesskey "ח">
 <!ENTITY newExistingEmailAccountCmd.label "חשבון דואר קיים…">
@@ -38,12 +36,12 @@
 <!ENTITY newIMContactCmd.accesskey "ק">
 <!ENTITY  newMessageCmd.label "הודעה">
 <!ENTITY  newMessageCmd.accesskey "ד">
+<!ENTITY openMenuCmd.label "פתיחה">
+<!ENTITY openMenuCmd.accesskey "פ">
 <!ENTITY openMessageFileCmd.label "פתח הודעה שמורה…">
 <!ENTITY openMessageFileCmd.accesskey "ת">
 <!ENTITY saveAsMenu.label "שמור">
 <!ENTITY saveAsMenu.accesskey "מ">
-<!ENTITY saveAsFileCmd.label "כקובץ">
-<!ENTITY saveAsFileCmd.accesskey "כ">
 <!ENTITY saveAsFileCmd.key "s">
 <!ENTITY saveAsTemplateCmd.label "כתבנית">
 <!ENTITY saveAsTemplateCmd.accesskey "נ">
@@ -275,6 +273,8 @@
 <!ENTITY searchMailCmd.label "חפש בהודעות...">
 <!ENTITY searchMailCmd.accesskey "ה">
 <!ENTITY searchMailCmd.key "f">
+<!ENTITY glodaSearchCmd.label "חיפוש גלובלי…">
+<!ENTITY glodaSearchCmd.accesskey "ג">
 <!ENTITY searchAddressesCmd.label "חפש בכתובות...">
 <!ENTITY searchAddressesCmd.accesskey "כ">
 
@@ -472,6 +472,8 @@
 <!ENTITY deleteJunk.accesskey "ח">
 <!ENTITY importCmd.label "ייבוא…">
 <!ENTITY importCmd.accesskey "י">
+<!ENTITY exportCmd.label "ייצוא…">
+<!ENTITY exportCmd.accesskey "י">
 <!ENTITY clearRecentHistory.label "ניקוי היסטוריה אחרונה…">
 <!ENTITY clearRecentHistory.accesskey "ה">
 <!ENTITY accountManagerCmd2.label "הגדרות חשבון">
@@ -674,7 +676,7 @@
 <!ENTITY attachmentColumn.label "נספחים">
 
 <!-- Thread Pane Tooltips -->
-<!ENTITY columnChooser2.tooltip "נא לבחור עמודות להצגה">
+<!ENTITY columnChooser2.tooltip "בחירת עמודות להצגה">
 <!ENTITY threadColumn2.tooltip "הצגת נושאי דיון של הודעות">
 <!ENTITY fromColumn2.tooltip "מיון לפי מאת">
 <!ENTITY recipientColumn2.tooltip "מיון לפי נמען">
@@ -904,18 +906,15 @@
 <!ENTITY writeNewMessageDock.label      "כתיבת הודעה חדשה">
 <!ENTITY openAddressBookDock.label      "פתיחת פנקס כתובות">
 
+<!-- Content tab Navigation buttons -->
+
 
 <!ENTITY  newMessageCmd2.key "N">
 <!ENTITY  newMessageCmd.key "M">
 <!ENTITY  newContactCmd.label "Address Book Contact…">
 <!ENTITY  newContactCmd.accesskey "C">
-<!ENTITY openMenuCmd.label "Open">
-<!ENTITY openMenuCmd.accesskey "O">
 <!ENTITY sortByCorrespondentCmd.label "Correspondents">
 <!ENTITY sortByCorrespondentCmd.accesskey "n">
-<!ENTITY glodaSearchCmd.label "Global Search…">
-<!ENTITY glodaSearchCmd.accesskey "G">
-<!ENTITY goChatCmd2.key "H">
 <!ENTITY replyNewsgroupCmd2.label "Followup to Newsgroup">
 <!ENTITY replyNewsgroupCmd2.accesskey "u">
 <!ENTITY openInConversationCmd.label "Open in Conversation">

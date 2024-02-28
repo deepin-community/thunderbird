@@ -4,23 +4,24 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-"use strict";
-
-var EXPORTED_SYMBOLS = ["EnigmailFuncs"];
-
 /*
  * Common Enigmail crypto-related GUI functionality
- *
  */
 
-const { XPCOMUtils } = ChromeUtils.import(
-  "resource://gre/modules/XPCOMUtils.jsm"
+"use strict";
+
+const EXPORTED_SYMBOLS = ["EnigmailFuncs"];
+
+const { MailServices } = ChromeUtils.import(
+  "resource:///modules/MailServices.jsm"
+);
+const { XPCOMUtils } = ChromeUtils.importESModule(
+  "resource://gre/modules/XPCOMUtils.sys.mjs"
 );
 
-XPCOMUtils.defineLazyModuleGetters(this, {
+const lazy = {};
+XPCOMUtils.defineLazyModuleGetters(lazy, {
   EnigmailLog: "chrome://openpgp/content/modules/log.jsm",
-  MailServices: "resource:///modules/MailServices.jsm",
-  Services: "resource://gre/modules/Services.jsm",
 });
 
 var gTxtConverter = null;
@@ -28,10 +29,11 @@ var gTxtConverter = null;
 var EnigmailFuncs = {
   /**
    * get a list of plain email addresses without name or surrounding <>
+   *
    * @param mailAddrs |string| - address-list encdoded in Unicode as specified in RFC 2822, 3.4
    *                             separated by , or ;
    *
-   * @return |string|          - list of pure email addresses separated by ","
+   * @returns |string|          - list of pure email addresses separated by ","
    */
   stripEmail(mailAddresses) {
     // EnigmailLog.DEBUG("funcs.jsm: stripEmail(): mailAddresses=" + mailAddresses + "\n");
@@ -48,7 +50,7 @@ var EnigmailFuncs = {
     while ((qStart = mailAddrs.indexOf('"')) >= 0) {
       qEnd = mailAddrs.indexOf('"', qStart + 1);
       if (qEnd < 0) {
-        EnigmailLog.ERROR(
+        lazy.EnigmailLog.ERROR(
           "funcs.jsm: stripEmail: Unmatched quote in mail address: '" +
             mailAddresses +
             "'\n"
@@ -72,7 +74,7 @@ var EnigmailFuncs = {
 
     // having two <..> <..> in one email, or things like <a@b.c,><d@e.f> is an error
     if (mailAddrs.search(MatchAddr) < 0) {
-      EnigmailLog.ERROR(
+      lazy.EnigmailLog.ERROR(
         "funcs.jsm: stripEmail: Invalid <..> brackets in mail address: '" +
           mailAddresses +
           "'\n"
@@ -102,10 +104,11 @@ var EnigmailFuncs = {
 
   /**
    * get an array of email object (email, name) from an address string
+   *
    * @param mailAddrs |string| - address-list as specified in RFC 2822, 3.4
    *                             separated by ","; encoded according to RFC 2047
    *
-   * @return |array| of msgIAddressObject
+   * @returns |array| of msgIAddressObject
    */
   parseEmails(mailAddrs, encoded = true) {
     try {
@@ -134,7 +137,7 @@ var EnigmailFuncs = {
    */
 
   collapseAdvanced(obj, attribute, dummy) {
-    EnigmailLog.DEBUG("funcs.jsm: collapseAdvanced:\n");
+    lazy.EnigmailLog.DEBUG("funcs.jsm: collapseAdvanced:\n");
 
     var advancedUser = Services.prefs.getBoolPref("temp.openpgp.advancedUser");
 
@@ -177,7 +180,7 @@ var EnigmailFuncs = {
 
     var fontStyle = "";
 
-    // set the style stuff according to perferences
+    // set the style stuff according to preferences
 
     switch (Services.prefs.getIntPref("mail.quoted_style")) {
       case 1:
@@ -276,12 +279,13 @@ var EnigmailFuncs = {
   /**
    * extract the data fields following a header.
    * e.g. ContentType: xyz; Aa=b; cc=d
+   *
    * @data: |string| containing a single header
    *
-   * @return |array| of |arrays| containing pairs of aa/b and cc/d
+   * @returns |array| of |arrays| containing pairs of aa/b and cc/d
    */
   getHeaderData(data) {
-    EnigmailLog.DEBUG(
+    lazy.EnigmailLog.DEBUG(
       "funcs.jsm: getHeaderData: " + data.substr(0, 100) + "\n"
     );
     var a = data.split(/\n/);
@@ -298,7 +302,7 @@ var EnigmailFuncs = {
         if (m) {
           // m[2]: identifier / m[6]: data
           res[m[2].toLowerCase()] = m[6].replace(/\s*$/, "");
-          EnigmailLog.DEBUG(
+          lazy.EnigmailLog.DEBUG(
             "funcs.jsm: getHeaderData: " +
               m[2].toLowerCase() +
               " = " +
@@ -364,7 +368,7 @@ var EnigmailFuncs = {
    *
    * @param  mime1, mime2 - String the two mime part numbers to compare.
    *
-   * @return Number (one of -2, -1, 0, 1 , 2)
+   * @returns Number (one of -2, -1, 0, 1 , 2)
    *        - Negative number if mime1 is before mime2
    *        - Positive number if mime1 is after mime2
    *        - 0 if mime1 and mime2 are equal
@@ -446,14 +450,6 @@ var EnigmailFuncs = {
   },
 
   /**
-   * Strip extended email parts such as "+xyz" from "abc+xyz@gmail.com" for known domains
-   * Currently supported domains: gmail.com, googlemail.com
-   */
-  getBaseEmail(emailAddr) {
-    return emailAddr.replace(/\+.{1,999}@(gmail|googlemail).com$/i, "");
-  },
-
-  /**
    * Get a list of all own email addresses, taken from all identities
    * and all reply-to addresses
    */
@@ -463,7 +459,7 @@ var EnigmailFuncs = {
     // Determine all sorts of own email addresses
     for (let id of MailServices.accounts.allIdentities) {
       if (id.email && id.email.length > 0) {
-        ownEmails[this.getBaseEmail(id.email.toLowerCase())] = 1;
+        ownEmails[id.email.toLowerCase()] = 1;
       }
       if (id.replyTo && id.replyTo.length > 0) {
         try {
@@ -471,7 +467,7 @@ var EnigmailFuncs = {
             .toLowerCase()
             .split(/,/);
           for (let j in replyEmails) {
-            ownEmails[this.getBaseEmail(replyEmails[j])] = 1;
+            ownEmails[replyEmails[j]] = 1;
           }
         } catch (ex) {}
       }
@@ -496,8 +492,8 @@ var EnigmailFuncs = {
     let emails = allAddr.split(/,+/);
 
     for (let i = 0; i < emails.length; i++) {
-      let r = this.getBaseEmail(emails[i]);
-      if (r.length > 0 && !(r in ownEmails)) {
+      let r = emails[i];
+      if (r && !(r in ownEmails)) {
         recipients[r] = 1;
       }
     }
@@ -510,7 +506,7 @@ var EnigmailFuncs = {
    *
    * @param {string} uriSpec - URL spec of the desired message.
    *
-   * @return {nsIURL|nsIMsgMailNewsUrl|null} The necko url.
+   * @returns {nsIURL|nsIMsgMailNewsUrl|null} The necko url.
    */
   getUrlFromUriSpec(uriSpec) {
     try {
@@ -518,11 +514,7 @@ var EnigmailFuncs = {
         return null;
       }
 
-      let messenger = Cc["@mozilla.org/messenger;1"].getService(
-        Ci.nsIMessenger
-      );
-      let msgService = messenger.messageServiceFromURI(uriSpec);
-
+      let msgService = MailServices.messageServiceFromURI(uriSpec);
       let url = msgService.getUrlForUri(uriSpec);
 
       if (url.scheme == "file") {

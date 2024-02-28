@@ -9,10 +9,17 @@
 #include "mozilla/gfx/Logging.h"
 #include "mozilla/widget/CompositorWidget.h"
 
+#ifdef MOZ_WIDGET_GTK
+#  include "mozilla/WidgetUtilsGtk.h"
+#endif
+
 namespace mozilla {
 using namespace gfx;
 
 namespace wr {
+
+extern LazyLogModule gRenderThreadLog;
+#define LOG(...) MOZ_LOG(gRenderThreadLog, LogLevel::Debug, (__VA_ARGS__))
 
 /* static */
 UniquePtr<RenderCompositor> RenderCompositorSWGL::Create(
@@ -29,9 +36,12 @@ RenderCompositorSWGL::RenderCompositorSWGL(
     const RefPtr<widget::CompositorWidget>& aWidget, void* aContext)
     : RenderCompositor(aWidget), mContext(aContext) {
   MOZ_ASSERT(mContext);
+  LOG("RenderCompositorSWGL::RenderCompositorSWGL()");
 }
 
 RenderCompositorSWGL::~RenderCompositorSWGL() {
+  LOG("RenderCompositorSWGL::~RenderCompositorSWGL()");
+
   wr_swgl_destroy_context(mContext);
 }
 
@@ -47,6 +57,13 @@ bool RenderCompositorSWGL::MakeCurrent() {
 }
 
 bool RenderCompositorSWGL::BeginFrame() {
+  mRenderWidgetSize = Some(mWidget->GetClientSize());
+#ifdef MOZ_WAYLAND
+  if (mLastRenderWidgetSize != mRenderWidgetSize.value()) {
+    mLastRenderWidgetSize = mRenderWidgetSize.value();
+    mRequestFullRender = true;
+  }
+#endif
   // Set up a temporary region representing the entire window surface in case a
   // dirty region is not supplied.
   ClearMappedBuffer();
@@ -231,7 +248,10 @@ void RenderCompositorSWGL::CommitMappedBuffer(bool aDirty) {
   ClearMappedBuffer();
 }
 
-void RenderCompositorSWGL::CancelFrame() { CommitMappedBuffer(false); }
+void RenderCompositorSWGL::CancelFrame() {
+  CommitMappedBuffer(false);
+  mRenderWidgetSize = Nothing();
+}
 
 RenderedFrameId RenderCompositorSWGL::EndFrame(
     const nsTArray<DeviceIntRect>& aDirtyRects) {
@@ -240,6 +260,7 @@ RenderedFrameId RenderCompositorSWGL::EndFrame(
   // to EndRemoteDrawingInRegion as for StartRemoteDrawingInRegion.
   RenderedFrameId frameId = GetNextRenderFrameId();
   CommitMappedBuffer();
+  mRenderWidgetSize = Nothing();
   return frameId;
 }
 
@@ -247,17 +268,32 @@ bool RenderCompositorSWGL::RequestFullRender() {
 #ifdef MOZ_WIDGET_ANDROID
   // XXX Add partial present support.
   return true;
-#else
-  return false;
 #endif
+#ifdef MOZ_WAYLAND
+  // We're requested to do full render after Resume() on Wayland.
+  if (mRequestFullRender) {
+    mRequestFullRender = false;
+    return true;
+  }
+#endif
+  return false;
 }
 
 void RenderCompositorSWGL::Pause() {}
 
-bool RenderCompositorSWGL::Resume() { return true; }
+bool RenderCompositorSWGL::Resume() {
+#ifdef MOZ_WAYLAND
+  mRequestFullRender = true;
+#endif
+  return true;
+}
 
 LayoutDeviceIntSize RenderCompositorSWGL::GetBufferSize() {
-  return mWidget->GetClientSize();
+  // If we're between BeginFrame() and EndFrame()/CancelFrame() calls
+  // return recent rendering size instead of actual underlying widget
+  // size. It prevents possible rendering artifacts if widget size was changed.
+  return mRenderWidgetSize ? mRenderWidgetSize.value()
+                           : mWidget->GetClientSize();
 }
 
 void RenderCompositorSWGL::GetCompositorCapabilities(
@@ -265,8 +301,14 @@ void RenderCompositorSWGL::GetCompositorCapabilities(
   // Always support a single update rect for SwCompositor
   aCaps->max_update_rects = 1;
 
-  // When the window contents may be damaged, we need to force a full redraw.
+  // On uncomposited desktops such as X11 without compositor or Window 7 with
+  // Aero disabled we need to force a full redraw when the window contents may
+  // be damaged.
+#ifdef MOZ_WIDGET_GTK
+  aCaps->redraw_on_invalidation = widget::GdkIsX11Display();
+#else
   aCaps->redraw_on_invalidation = true;
+#endif
 }
 
 }  // namespace wr

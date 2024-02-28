@@ -11,6 +11,7 @@
 #include <stdint.h>
 
 #include "mozilla/widget/IMEData.h"
+#include "mozilla/ipc/IPCForwards.h"
 #include "mozilla/Assertions.h"
 #include "mozilla/CheckedInt.h"
 #include "mozilla/EventForwards.h"
@@ -44,9 +45,11 @@ class ContentCache {
 
   ContentCache() = default;
 
+  [[nodiscard]] bool IsValid() const;
+
  protected:
   // Whole text in the target
-  nsString mText;
+  Maybe<nsString> mText;
 
   // Start offset of the composition string.
   Maybe<uint32_t> mCompositionStart;
@@ -60,6 +63,8 @@ class ContentCache {
 
     WritingMode mWritingMode;
 
+    bool mHasRange;
+
     // Character rects at previous and next character of mAnchor and mFocus.
     // The reason why ContentCache needs to store each previous character of
     // them is IME may query character rect of the last character of a line
@@ -71,11 +76,28 @@ class ContentCache {
     // Whole rect of selected text. This is empty if the selection is collapsed.
     LayoutDeviceIntRect mRect;
 
-    explicit Selection(uint32_t aAnchorOffset, uint32_t aFocusOffset,
-                       const WritingMode& aWritingMode)
-        : mAnchor(aAnchorOffset),
-          mFocus(aFocusOffset),
-          mWritingMode(aWritingMode) {}
+    Selection() : mAnchor(UINT32_MAX), mFocus(UINT32_MAX), mHasRange(false) {
+      ClearRects();
+    };
+
+    explicit Selection(
+        const IMENotification::SelectionChangeDataBase& aSelectionChangeData)
+        : mAnchor(UINT32_MAX),
+          mFocus(UINT32_MAX),
+          mWritingMode(aSelectionChangeData.GetWritingMode()),
+          mHasRange(aSelectionChangeData.HasRange()) {
+      if (mHasRange) {
+        mAnchor = aSelectionChangeData.AnchorOffset();
+        mFocus = aSelectionChangeData.FocusOffset();
+      }
+    }
+
+    [[nodiscard]] bool IsValidIn(const nsAString& aText) const {
+      return !mHasRange ||
+             (mAnchor <= aText.Length() && mFocus <= aText.Length());
+    }
+
+    explicit Selection(const WidgetQueryContentEvent& aQuerySelectedTextEvent);
 
     void ClearRects() {
       for (auto& rect : mAnchorCharRects) {
@@ -100,11 +122,21 @@ class ContentCache {
       return !mRect.IsEmpty();
     }
 
-    bool Collapsed() const { return mFocus == mAnchor; }
-    bool Reversed() const { return mFocus < mAnchor; }
-    uint32_t StartOffset() const { return Reversed() ? mFocus : mAnchor; }
-    uint32_t EndOffset() const { return Reversed() ? mAnchor : mFocus; }
+    bool IsCollapsed() const { return !mHasRange || mFocus == mAnchor; }
+    bool Reversed() const {
+      MOZ_ASSERT(mHasRange);
+      return mFocus < mAnchor;
+    }
+    uint32_t StartOffset() const {
+      MOZ_ASSERT(mHasRange);
+      return Reversed() ? mFocus : mAnchor;
+    }
+    uint32_t EndOffset() const {
+      MOZ_ASSERT(mHasRange);
+      return Reversed() ? mAnchor : mFocus;
+    }
     uint32_t Length() const {
+      MOZ_ASSERT(mHasRange);
       return Reversed() ? mAnchor - mFocus : mFocus - mAnchor;
     }
     LayoutDeviceIntRect StartCharRect() const {
@@ -118,9 +150,14 @@ class ContentCache {
 
     friend std::ostream& operator<<(std::ostream& aStream,
                                     const Selection& aSelection) {
-      aStream << "{ mAnchor=" << aSelection.mAnchor
-              << ", mFocus=" << aSelection.mFocus
-              << ", mWritingMode=" << ToString(aSelection.mWritingMode).c_str();
+      aStream << "{ ";
+      if (!aSelection.mHasRange) {
+        aStream << "HasRange()=false";
+      } else {
+        aStream << "mAnchor=" << aSelection.mAnchor
+                << ", mFocus=" << aSelection.mFocus << ", mWritingMode="
+                << ToString(aSelection.mWritingMode).c_str();
+      }
       if (aSelection.HasRects()) {
         if (aSelection.mAnchor > 0) {
           aStream << ", mAnchorCharRects[ePrevCharRect]="
@@ -136,25 +173,19 @@ class ContentCache {
                 << aSelection.mFocusCharRects[ContentCache::eNextCharRect]
                 << ", mRect=" << aSelection.mRect;
       }
-      aStream << ", Reversed()=" << (aSelection.Reversed() ? "true" : "false")
-              << ", StartOffset()=" << aSelection.StartOffset()
-              << ", EndOffset()=" << aSelection.EndOffset()
-              << ", Collapsed()=" << (aSelection.Collapsed() ? "true" : "false")
-              << ", Length()=" << aSelection.Length() << " }";
+      if (aSelection.mHasRange) {
+        aStream << ", Reversed()=" << (aSelection.Reversed() ? "true" : "false")
+                << ", StartOffset()=" << aSelection.StartOffset()
+                << ", EndOffset()=" << aSelection.EndOffset()
+                << ", IsCollapsed()="
+                << (aSelection.IsCollapsed() ? "true" : "false")
+                << ", Length()=" << aSelection.Length();
+      }
+      aStream << " }";
       return aStream;
     }
-
-   private:
-    Selection() = default;
-
-    friend struct IPC::ParamTraits<ContentCache::Selection>;
-    friend struct IPC::ParamTraits<Maybe<ContentCache::Selection>>;
   };
   Maybe<Selection> mSelection;
-
-  bool IsSelectionValid() const {
-    return mSelection.isSome() && mSelection->EndOffset() <= mText.Length();
-  }
 
   // Stores first char rect because Yosemite's Japanese IME sometimes tries
   // to query it.  If there is no text, this is caret rect.
@@ -170,6 +201,10 @@ class ContentCache {
     uint32_t Offset() const { return mOffset; }
     bool HasRect() const { return !mRect.IsEmpty(); }
 
+    [[nodiscard]] bool IsValidIn(const nsAString& aText) const {
+      return mOffset <= aText.Length();
+    }
+
     friend std::ostream& operator<<(std::ostream& aStream,
                                     const Caret& aCaret) {
       aStream << "{ mOffset=" << aCaret.mOffset;
@@ -183,7 +218,7 @@ class ContentCache {
     Caret() = default;
 
     friend struct IPC::ParamTraits<ContentCache::Caret>;
-    friend struct IPC::ParamTraits<Maybe<ContentCache::Caret>>;
+    ALLOW_DEPRECATED_READPARAM
   };
   Maybe<Caret> mCaret;
 
@@ -256,7 +291,7 @@ class ContentCache {
     TextRectArray() = default;
 
     friend struct IPC::ParamTraits<ContentCache::TextRectArray>;
-    friend struct IPC::ParamTraits<Maybe<ContentCache::TextRectArray>>;
+    ALLOW_DEPRECATED_READPARAM
   };
   Maybe<TextRectArray> mTextRectArray;
   Maybe<TextRectArray> mLastCommitStringTextRectArray;
@@ -271,6 +306,7 @@ class ContentCache {
   friend std::ostream& operator<<(
       std::ostream& aStream,
       const Selection& aSelection);  // For e(Prev|Next)CharRect
+  ALLOW_DEPRECATED_READPARAM
 };
 
 class ContentCacheInChild final : public ContentCache {
@@ -291,13 +327,15 @@ class ContentCacheInChild final : public ContentCache {
 
   /**
    * Cache*() retrieves the latest content information and store them.
-   * Be aware, CacheSelection() calls CacheTextRects(), and also CacheText()
-   * calls CacheSelection().  So, related data is also retrieved automatically.
+   * Be aware, CacheSelection() calls CacheCaretAndTextRects(),
+   * CacheCaretAndTextRects() calls CacheCaret() and CacheTextRects(), and
+   * CacheText() calls CacheSelection().  So, related data is also retrieved
+   * automatically.
    */
   bool CacheEditorRect(nsIWidget* aWidget,
                        const IMENotification* aNotification = nullptr);
-  bool CacheSelection(nsIWidget* aWidget,
-                      const IMENotification* aNotification = nullptr);
+  bool CacheCaretAndTextRects(nsIWidget* aWidget,
+                              const IMENotification* aNotification = nullptr);
   bool CacheText(nsIWidget* aWidget,
                  const IMENotification* aNotification = nullptr);
 
@@ -307,15 +345,20 @@ class ContentCacheInChild final : public ContentCache {
   /**
    * SetSelection() modifies selection with specified raw data. And also this
    * tries to retrieve text rects too.
+   *
+   * @return true if the selection is cached.  Otherwise, false.
    */
-  void SetSelection(nsIWidget* aWidget, uint32_t aStartOffset, uint32_t aLength,
-                    bool aReversed, const WritingMode& aWritingMode);
+  [[nodiscard]] bool SetSelection(
+      nsIWidget* aWidget,
+      const IMENotification::SelectionChangeDataBase& aSelectionChangeData);
 
  private:
   bool QueryCharRect(nsIWidget* aWidget, uint32_t aOffset,
                      LayoutDeviceIntRect& aCharRect) const;
   bool QueryCharRectArray(nsIWidget* aWidget, uint32_t aOffset,
                           uint32_t aLength, RectArray& aCharRectArray) const;
+  bool CacheSelection(nsIWidget* aWidget,
+                      const IMENotification* aNotification = nullptr);
   bool CacheCaret(nsIWidget* aWidget,
                   const IMENotification* aNotification = nullptr);
   bool CacheTextRects(nsIWidget* aWidget,

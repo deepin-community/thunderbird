@@ -10,9 +10,11 @@
 <?xml-stylesheet href="chrome://messenger/skin/tagColors.css" type="text/css"?>
 <?xml-stylesheet href="chrome://messenger/skin/input-fields.css" type="text/css"?>
 <?xml-stylesheet href="chrome://messenger/skin/themeableDialog.css" type="text/css"?>
+<?xml-stylesheet href="chrome://messenger/skin/colors.css" type="text/css"?>
 <?xml-stylesheet href="chrome://messenger/skin/folderMenus.css" type="text/css"?>
+<?xml-stylesheet href="chrome://messenger/skin/contextMenu.css" type="text/css"?>
 
-<!DOCTYPE window [
+<!DOCTYPE html [
   <!ENTITY % messengerDTD SYSTEM "chrome://messenger/locale/messenger.dtd" >
   %messengerDTD;
   <!ENTITY % SearchDialogDTD SYSTEM "chrome://messenger/locale/SearchDialog.dtd">
@@ -20,38 +22,32 @@
   <!ENTITY % searchTermDTD SYSTEM "chrome://messenger/locale/searchTermOverlay.dtd">
   %searchTermDTD;
 ]>
-
-<window id="searchMailWindow"
-        xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul"
-        xmlns:html="http://www.w3.org/1999/xhtml"
-        onload="searchOnLoad();"
-        onunload="onSearchStop(); searchOnUnload();"
-        windowtype="mailnews:search"
-        title="&searchDialogTitle.label;"
-        style="width: 52em; height: 34em;"
-        lightweightthemes="true"
-        persist="screenX screenY width height sizemode">
-
-  <stringbundle id="bundle_search" src="chrome://messenger/locale/search.properties"/>
+<html id="searchMailWindow" xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:xul="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul"
+      xmlns:html="http://www.w3.org/1999/xhtml"
+      windowtype="mailnews:search"
+      scrolling="false"
+      style="min-width:52em; min-height:34em;"
+      lightweightthemes="true"
+      persist="screenX screenY width height sizemode">
+<head>
+  <title>&searchDialogTitle.label;</title>
+  <script defer="defer" src="chrome://messenger/content/globalOverlay.js"></script>
+  <script defer="defer" src="chrome://global/content/editMenuOverlay.js"></script>
+  <script defer="defer" src="chrome://messenger/content/searchWidgets.js"></script>
+  <script defer="defer" src="chrome://messenger/content/mailWindow.js"></script>
+  <script defer="defer" src="chrome://messenger/content/folderDisplay.js"></script>
+  <script defer="defer" src="chrome://messenger/content/threadPane.js"></script>
+  <script defer="defer" src="chrome://communicator/content/utilityOverlay.js"></script>
+  <script defer="defer" src="chrome://messenger-newsblog/content/newsblogOverlay.js"></script>
+  <script defer="defer" src="chrome://messenger/content/searchTerm.js"></script>
+  <script defer="defer" src="chrome://messenger/content/dateFormat.js"></script>
+  <script defer="defer" src="chrome://messenger/content/messenger.js"></script>
+  <script defer="defer" src="chrome://messenger/content/SearchDialog.js"></script>
+</head>
+<html:body xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul">
   <stringbundle id="bundle_messenger" src="chrome://messenger/locale/messenger.properties"/>
   <stringbundle id="bundle_brand" src="chrome://branding/locale/brand.properties"/>
-
-  <script src="chrome://messenger/content/searchWidgets.js"/>
-  <script src="chrome://messenger/content/mailWindow.js"/>
-  <script src="chrome://messenger/content/folderDisplay.js"/>
-  <script src="chrome://messenger/content/messageDisplay.js"/>
-  <script src="chrome://messenger/content/threadPane.js"/>
-  <script src="chrome://communicator/content/utilityOverlay.js"/>
-  <script src="chrome://messenger/content/msgMail3PaneWindow.js"/>
-  <script src="chrome://global/content/globalOverlay.js"/>
-  <script src="chrome://global/content/editMenuOverlay.js"/>
-  <script src="chrome://messenger/content/mailCommands.js"/>
-  <script src="chrome://messenger/content/mailWindowOverlay.js"/>
-  <script src="chrome://messenger/content/commandglue.js"/>
-  <script src="chrome://messenger/content/SearchDialog.js"/>
-  <script src="chrome://messenger-newsblog/content/newsblogOverlay.js"/>
-  <script src="chrome://messenger/content/searchTerm.js"/>
-  <script src="chrome://messenger/content/dateFormat.js"/>
 
   <commands id="commands">
     <commandset id="mailSearchItems"
@@ -85,18 +81,18 @@
 #endif
   </keyset>
 
-    <vbox id="searchTerms" class="themeable-brighttext" flex="3" persist="height">
+    <vbox id="searchTerms" class="themeable-brighttext" persist="height">
       <vbox>
         <hbox align="center">
           <label value="&searchHeading.label;" accesskey="&searchHeading.accesskey;"
                  control="searchableFolders"/>
-          <menulist id="searchableFolders" flex="2" class="folderMenuItem"
+          <menulist id="searchableFolders" class="folderMenuItem"
                     displayformat="verbose">
             <menupopup is="folder-menupopup" class="menulist-menupopup"
                        mode="search" showAccountsFileHere="true" showFileHereLabel="true"
                        oncommand="updateSearchFolderPicker(event.target._folder);"/>
           </menulist>
-          <spacer flex="10"/>
+          <spacer style="flex: 10 10;"/>
           <button id="search-button" oncommand="onSearchButton(event);" default="true"/>
         </hbox>
 
@@ -106,7 +102,7 @@
                     accesskey="&searchSubfolders.accesskey;"
                     checked="true"
                     persist="checked"/>
-          <spacer flex="10"/>
+          <spacer style="flex: 10 10;"/>
           <button label="&resetButton.label;" oncommand="onResetSearch(event);" accesskey="&resetButton.accesskey;"/>
         </hbox>
         <hbox align="center">
@@ -118,7 +114,7 @@
         </hbox>
       </vbox>
 
-      <hbox flex="1">
+      <hbox style="flex: 1 1 0; min-height: 0;">
         <vbox id="searchTermListBox" flex="1">
 #include ../../../mailnews/search/content/searchTerm.inc.xhtml
       </hbox>
@@ -126,7 +122,7 @@
 
     <splitter id="gray_horizontal_splitter" persist="state" orient="vertical"/>
 
-    <vbox id="searchResults" flex="4" persist="height">
+    <vbox id="searchResults" persist="height">
       <vbox id="searchResultListBox" flex="1">
 #include threadTree.inc.xhtml
       </vbox>
@@ -151,5 +147,5 @@
       <html:progress class="progressmeter-statusbar" id="statusbar-icon" value="0" max="100"/>
     </hbox>
   </hbox>
-
-</window>
+</html:body>
+</html>

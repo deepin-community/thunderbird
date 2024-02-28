@@ -4,10 +4,14 @@
 
 /* import-globals-from preferences.js */
 
-var jsProtoHelper = {};
-ChromeUtils.import("resource:///modules/jsProtoHelper.jsm", jsProtoHelper);
-var { getThemeByName, getThemeVariants } = ChromeUtils.import(
-  "resource:///modules/imThemes.jsm"
+var { GenericConvIMPrototype, GenericMessagePrototype } =
+  ChromeUtils.importESModule("resource:///modules/jsProtoHelper.sys.mjs");
+var { getThemeByName, getThemeVariants } = ChromeUtils.importESModule(
+  "resource:///modules/imThemes.sys.mjs"
+);
+
+var { IMServices } = ChromeUtils.importESModule(
+  "resource:///modules/IMServices.sys.mjs"
 );
 
 function Conversation(aName) {
@@ -19,20 +23,22 @@ function Conversation(aName) {
     1000;
 }
 Conversation.prototype = {
-  __proto__: jsProtoHelper.GenericConvIMPrototype,
+  __proto__: GenericConvIMPrototype,
   account: {
     protocol: { name: "Fake Protocol" },
     alias: "",
     name: "Fake Account",
-    statusInfo: Services.core.globalUserStatus,
+    get statusInfo() {
+      return IMServices.core.globalUserStatus;
+    },
   },
 };
 
-function Message(aWho, aMessage, aObject) {
-  this._init(aWho, aMessage, aObject);
+function Message(aWho, aMessage, aObject, aConversation) {
+  this._init(aWho, aMessage, aObject, aConversation);
 }
 Message.prototype = {
-  __proto__: jsProtoHelper.GenericMessagePrototype,
+  __proto__: GenericMessagePrototype,
   get displayMessage() {
     return this.originalMessage;
   },
@@ -46,7 +52,7 @@ function getBrowser() {
 var previewObserver = {
   _loaded: false,
   load() {
-    let makeDate = function(aDateString) {
+    let makeDate = function (aDateString) {
       let array = aDateString.split(":");
       let now = new Date();
       return (
@@ -70,29 +76,41 @@ var previewObserver = {
       "message1",
       "message2",
       "message3",
-    ].forEach(function(aText) {
+    ].forEach(function (aText) {
       msg[aText] = bundle.getString(aText);
     });
     let conv = new Conversation(msg.nick2);
     conv.messages = [
-      new Message(msg.buddy1, msg.message1, {
-        outgoing: true,
-        _alias: msg.nick1,
-        time: makeDate("10:42:22"),
-        _conversation: conv,
-      }),
-      new Message(msg.buddy1, msg.message2, {
-        outgoing: true,
-        _alias: msg.nick1,
-        time: makeDate("10:42:25"),
-        _conversation: conv,
-      }),
-      new Message(msg.buddy2, msg.message3, {
-        incoming: true,
-        _alias: msg.nick2,
-        time: makeDate("10:43:01"),
-        _conversation: conv,
-      }),
+      new Message(
+        msg.buddy1,
+        msg.message1,
+        {
+          outgoing: true,
+          _alias: msg.nick1,
+          time: makeDate("10:42:22"),
+        },
+        conv
+      ),
+      new Message(
+        msg.buddy1,
+        msg.message2,
+        {
+          outgoing: true,
+          _alias: msg.nick1,
+          time: makeDate("10:42:25"),
+        },
+        conv
+      ),
+      new Message(
+        msg.buddy2,
+        msg.message3,
+        {
+          incoming: true,
+          _alias: msg.nick2,
+          time: makeDate("10:43:01"),
+        },
+        conv
+      ),
     ];
     previewObserver.conv = conv;
 
@@ -182,7 +200,7 @@ var previewObserver = {
     popup.appendChild(menuitem);
     popup.appendChild(document.createXULElement("menuseparator"));
 
-    variants.sort().forEach(function(aVariantName) {
+    variants.sort().forEach(function (aVariantName) {
       let displayName = aVariantName.replace(/_/g, " ");
       if (displayName != defaultVariant) {
         let menuitem = document.createXULElement("menuitem");
@@ -230,7 +248,7 @@ var previewObserver = {
 
     // Display all queued messages. Use a timeout so that message text
     // modifiers can be added with observers for this notification.
-    setTimeout(function() {
+    setTimeout(function () {
       for (let message of previewObserver.conv.messages) {
         aSubject.appendMessage(message, false);
       }

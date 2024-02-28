@@ -151,7 +151,7 @@ CalRecurrenceInfo.prototype = {
    * Get the item ending date (end date for an event, due date or entry date if available for a task).
    *
    * @param {calIEvent | calITodo} item - The item.
-   * @return {calIDateTime | null} The ending date or null.
+   * @returns {calIDateTime | null} The ending date or null.
    */
   getItemEndingDate(item) {
     if (item.isEvent()) {
@@ -172,8 +172,8 @@ CalRecurrenceInfo.prototype = {
   get recurrenceEndDate() {
     // The lowest and highest possible values of a PRTime (64-bit integer) when in javascript,
     // which stores them as floating-point values.
-    const MIN_PRTIME = -0x7ffffffffffffdff;
-    const MAX_PRTIME = 0x7ffffffffffffdff;
+    const MIN_PRTIME = -9223372036854775000;
+    const MAX_PRTIME = 9223372036854775000;
 
     // If this object is mutable, skip this optimisation, so that we don't have to work out every
     // possible modification and invalidate the cached value. Immutable objects are unlikely to
@@ -247,6 +247,7 @@ CalRecurrenceInfo.prototype = {
     this.ensureMutable();
     this.ensureSortedRecurrenceRules();
 
+    aItem = cal.unwrapInstance(aItem);
     this.mRecurrenceItems.push(aItem);
     if (aItem.isNegative) {
       this.mNegativeRules.push(aItem);
@@ -273,17 +274,9 @@ CalRecurrenceInfo.prototype = {
   },
 
   deleteRecurrenceItem(aItem) {
-    // Because xpcom objects can be wrapped in various ways, testing for
-    // mere == sometimes returns false even when it should be true.  Use
-    // the interface pointer returned by sip to avoid that problem.
-    let sip1 = Cc["@mozilla.org/supports-interface-pointer;1"].createInstance(
-      Ci.nsISupportsInterfacePointer
-    );
-    sip1.data = aItem;
-    sip1.dataIID = Ci.calIRecurrenceItem;
-
-    let pos;
-    if ((pos = this.mRecurrenceItems.indexOf(sip1.data)) > -1) {
+    aItem = cal.unwrapInstance(aItem);
+    let pos = this.mRecurrenceItems.indexOf(aItem);
+    if (pos > -1) {
       this.deleteRecurrenceItemAt(pos);
     } else {
       throw Components.Exception("", Cr.NS_ERROR_INVALID_ARG);
@@ -299,6 +292,7 @@ CalRecurrenceInfo.prototype = {
       throw Components.Exception("", Cr.NS_ERROR_INVALID_ARG);
     }
 
+    aItem = cal.unwrapInstance(aItem);
     if (aItem.isNegative) {
       this.mNegativeRules.push(aItem);
     } else {
@@ -463,10 +457,6 @@ CalRecurrenceInfo.prototype = {
   },
 
   getPreviousOccurrence(aTime) {
-    // TODO libical currently does not provide us with easy means of
-    // getting the previous occurrence. This could be fixed to improve
-    // performance greatly. Filed as libical feature request 1944020.
-
     // HACK We never know how early an RDATE might be before the actual
     // recurrence start. Since rangeStart cannot be null for recurrence
     // items like calIRecurrenceRule, we need to work around by supplying a
@@ -484,10 +474,6 @@ CalRecurrenceInfo.prototype = {
   calculateDates(aRangeStart, aRangeEnd, aMaxCount) {
     this.ensureBaseItem();
     this.ensureSortedRecurrenceRules();
-
-    function ridDateSortComptor(a, b) {
-      return a.rstart.compare(b.rstart);
-    }
 
     // workaround for UTC- timezones
     let rangeStart = cal.dtz.ensureDateTime(aRangeStart);
@@ -524,11 +510,7 @@ CalRecurrenceInfo.prototype = {
       let occDate = cal.item.checkIfInRange(item, aRangeStart, aRangeEnd, true);
       occurrenceMap[ex] = true;
       if (occDate) {
-        cal.data.binaryInsert(
-          dates,
-          { id: item.recurrenceId, rstart: occDate },
-          ridDateSortComptor
-        );
+        dates.push({ id: item.recurrenceId, rstart: occDate });
       }
     }
 
@@ -538,7 +520,7 @@ CalRecurrenceInfo.prototype = {
     let baseOccDateKey = getRidKey(baseOccDate);
     if (baseOccDate && !occurrenceMap[baseOccDateKey]) {
       occurrenceMap[baseOccDateKey] = true;
-      cal.data.binaryInsert(dates, { id: baseOccDate, rstart: baseOccDate }, ridDateSortComptor);
+      dates.push({ id: baseOccDate, rstart: baseOccDate });
     }
 
     // if both range start and end are specified, we ask for all of the occurrences,
@@ -582,12 +564,12 @@ CalRecurrenceInfo.prototype = {
           // already added before)
           continue;
         }
-        // TODO if cur_dates[] is also sorted, then this binary
-        // search could be optimized further
-        cal.data.binaryInsert(dates, { id: date, rstart: date }, ridDateSortComptor);
+        dates.push({ id: date, rstart: date });
         occurrenceMap[dateKey] = true;
       }
     }
+
+    dates.sort((a, b) => a.rstart.compare(b.rstart));
 
     // Apply negative rules
     for (let ritem of this.mNegativeRules) {
@@ -670,7 +652,7 @@ CalRecurrenceInfo.prototype = {
     this.ensureBaseItem();
     this.ensureMutable();
 
-    let rdate = Cc["@mozilla.org/calendar/recurrence-date;1"].createInstance(Ci.calIRecurrenceDate);
+    let rdate = cal.createRecurrenceDate();
     rdate.isNegative = true;
     rdate.date = aRecurrenceId.clone();
 

@@ -29,6 +29,7 @@
 #include "nsServiceManagerUtils.h"
 #include "mozilla/dom/Document.h"
 #include "nsIWeakReferenceUtils.h"
+#include "js/PropertyAndElement.h"  // JS_GetProperty, JS_SetProperty
 
 using mozilla::Unused;  // <snicker>
 using namespace mozilla::dom;
@@ -39,11 +40,13 @@ namespace mozilla::dom {
 
 class ContentPermissionRequestParent : public PContentPermissionRequestParent {
  public:
-  ContentPermissionRequestParent(const nsTArray<PermissionRequest>& aRequests,
-                                 Element* aElement, nsIPrincipal* aPrincipal,
-                                 nsIPrincipal* aTopLevelPrincipal,
-                                 const bool aIsHandlingUserInput,
-                                 const bool aMaybeUnsafePermissionDelegate);
+  // @param aIsRequestDelegatedToUnsafeThirdParty see
+  // mIsRequestDelegatedToUnsafeThirdParty.
+  ContentPermissionRequestParent(
+      const nsTArray<PermissionRequest>& aRequests, Element* aElement,
+      nsIPrincipal* aPrincipal, nsIPrincipal* aTopLevelPrincipal,
+      const bool aHasValidTransientUserGestureActivation,
+      const bool aIsRequestDelegatedToUnsafeThirdParty);
   virtual ~ContentPermissionRequestParent();
 
   bool IsBeingDestroyed();
@@ -51,8 +54,11 @@ class ContentPermissionRequestParent : public PContentPermissionRequestParent {
   nsCOMPtr<nsIPrincipal> mPrincipal;
   nsCOMPtr<nsIPrincipal> mTopLevelPrincipal;
   nsCOMPtr<Element> mElement;
-  bool mIsHandlingUserInput;
-  bool mMaybeUnsafePermissionDelegate;
+  bool mHasValidTransientUserGestureActivation;
+
+  // See nsIPermissionDelegateHandler.maybeUnsafePermissionDelegate.
+  bool mIsRequestDelegatedToUnsafeThirdParty;
+
   RefPtr<nsContentPermissionRequestProxy> mProxy;
   nsTArray<PermissionRequest> mRequests;
 
@@ -67,16 +73,17 @@ class ContentPermissionRequestParent : public PContentPermissionRequestParent {
 ContentPermissionRequestParent::ContentPermissionRequestParent(
     const nsTArray<PermissionRequest>& aRequests, Element* aElement,
     nsIPrincipal* aPrincipal, nsIPrincipal* aTopLevelPrincipal,
-    const bool aIsHandlingUserInput,
-    const bool aMaybeUnsafePermissionDelegate) {
+    const bool aHasValidTransientUserGestureActivation,
+    const bool aIsRequestDelegatedToUnsafeThirdParty) {
   MOZ_COUNT_CTOR(ContentPermissionRequestParent);
 
   mPrincipal = aPrincipal;
   mTopLevelPrincipal = aTopLevelPrincipal;
   mElement = aElement;
   mRequests = aRequests.Clone();
-  mIsHandlingUserInput = aIsHandlingUserInput;
-  mMaybeUnsafePermissionDelegate = aMaybeUnsafePermissionDelegate;
+  mHasValidTransientUserGestureActivation =
+      aHasValidTransientUserGestureActivation;
+  mIsRequestDelegatedToUnsafeThirdParty = aIsRequestDelegatedToUnsafeThirdParty;
 }
 
 ContentPermissionRequestParent::~ContentPermissionRequestParent() {
@@ -169,7 +176,7 @@ uint32_t nsContentPermissionUtils::ConvertPermissionRequestToArray(
 }
 
 /* static */
-uint32_t nsContentPermissionUtils::ConvertArrayToPermissionRequest(
+void nsContentPermissionUtils::ConvertArrayToPermissionRequest(
     nsIArray* aSrcArray, nsTArray<PermissionRequest>& aDesArray) {
   uint32_t len = 0;
   aSrcArray->GetLength(&len);
@@ -197,7 +204,6 @@ uint32_t nsContentPermissionUtils::ConvertArrayToPermissionRequest(
 
     aDesArray.AppendElement(PermissionRequest(type, options));
   }
-  return len;
 }
 
 static std::map<PContentPermissionRequestParent*, TabId>&
@@ -234,11 +240,12 @@ PContentPermissionRequestParent*
 nsContentPermissionUtils::CreateContentPermissionRequestParent(
     const nsTArray<PermissionRequest>& aRequests, Element* aElement,
     nsIPrincipal* aPrincipal, nsIPrincipal* aTopLevelPrincipal,
-    const bool aIsHandlingUserInput, const bool aMaybeUnsafePermissionDelegate,
-    const TabId& aTabId) {
+    const bool aHasValidTransientUserGestureActivation,
+    const bool aIsRequestDelegatedToUnsafeThirdParty, const TabId& aTabId) {
   PContentPermissionRequestParent* parent = new ContentPermissionRequestParent(
-      aRequests, aElement, aPrincipal, aTopLevelPrincipal, aIsHandlingUserInput,
-      aMaybeUnsafePermissionDelegate);
+      aRequests, aElement, aPrincipal, aTopLevelPrincipal,
+      aHasValidTransientUserGestureActivation,
+      aIsRequestDelegatedToUnsafeThirdParty);
   ContentPermissionRequestParentMap()[parent] = aTabId;
 
   return parent;
@@ -274,23 +281,21 @@ nsresult nsContentPermissionUtils::AskPermission(
     rv = aRequest->GetTopLevelPrincipal(getter_AddRefs(topLevelPrincipal));
     NS_ENSURE_SUCCESS(rv, rv);
 
-    bool isHandlingUserInput;
-    rv = aRequest->GetIsHandlingUserInput(&isHandlingUserInput);
+    bool hasValidTransientUserGestureActivation;
+    rv = aRequest->GetHasValidTransientUserGestureActivation(
+        &hasValidTransientUserGestureActivation);
     NS_ENSURE_SUCCESS(rv, rv);
 
-    bool maybeUnsafePermissionDelegate;
-    rv = aRequest->GetMaybeUnsafePermissionDelegate(
-        &maybeUnsafePermissionDelegate);
+    bool isRequestDelegatedToUnsafeThirdParty;
+    rv = aRequest->GetIsRequestDelegatedToUnsafeThirdParty(
+        &isRequestDelegatedToUnsafeThirdParty);
     NS_ENSURE_SUCCESS(rv, rv);
-
-    ContentChild::GetSingleton()->SetEventTargetForActor(
-        req, aWindow->EventTargetFor(TaskCategory::Other));
 
     req->IPDLAddRef();
     ContentChild::GetSingleton()->SendPContentPermissionRequestConstructor(
-        req, permArray, IPC::Principal(principal),
-        IPC::Principal(topLevelPrincipal), isHandlingUserInput,
-        maybeUnsafePermissionDelegate, child->GetTabId());
+        req, permArray, principal, topLevelPrincipal,
+        hasValidTransientUserGestureActivation,
+        isRequestDelegatedToUnsafeThirdParty, child->GetTabId());
     ContentPermissionRequestChildMap()[req.get()] = child->GetTabId();
 
     req->Sendprompt();
@@ -392,8 +397,8 @@ ContentPermissionRequestBase::ContentPermissionRequestBase(
       mWindow(aWindow),
       mPrefName(aPrefName),
       mType(aType),
-      mIsHandlingUserInput(false),
-      mMaybeUnsafePermissionDelegate(false) {
+      mHasValidTransientUserGestureActivation(false),
+      mIsRequestDelegatedToUnsafeThirdParty(false) {
   if (!aWindow) {
     return;
   }
@@ -403,14 +408,15 @@ ContentPermissionRequestBase::ContentPermissionRequestBase(
     return;
   }
 
-  mIsHandlingUserInput = doc->HasValidTransientUserGestureActivation();
+  mHasValidTransientUserGestureActivation =
+      doc->HasValidTransientUserGestureActivation();
 
   mPermissionHandler = doc->GetPermissionDelegateHandler();
   if (mPermissionHandler) {
     nsTArray<nsCString> types;
     types.AppendElement(mType);
     mPermissionHandler->MaybeUnsafePermissionDelegate(
-        types, &mMaybeUnsafePermissionDelegate);
+        types, &mIsRequestDelegatedToUnsafeThirdParty);
   }
 }
 
@@ -429,9 +435,10 @@ ContentPermissionRequestBase::GetDelegatePrincipal(
 }
 
 NS_IMETHODIMP
-ContentPermissionRequestBase::GetMaybeUnsafePermissionDelegate(
-    bool* aMaybeUnsafePermissionDelegate) {
-  *aMaybeUnsafePermissionDelegate = mMaybeUnsafePermissionDelegate;
+ContentPermissionRequestBase::GetIsRequestDelegatedToUnsafeThirdParty(
+    bool* aIsRequestDelegatedToUnsafeThirdParty) {
+  *aIsRequestDelegatedToUnsafeThirdParty =
+      mIsRequestDelegatedToUnsafeThirdParty;
   return NS_OK;
 }
 
@@ -461,9 +468,10 @@ ContentPermissionRequestBase::GetElement(Element** aElement) {
 }
 
 NS_IMETHODIMP
-ContentPermissionRequestBase::GetIsHandlingUserInput(
-    bool* aIsHandlingUserInput) {
-  *aIsHandlingUserInput = mIsHandlingUserInput;
+ContentPermissionRequestBase::GetHasValidTransientUserGestureActivation(
+    bool* aHasValidTransientUserGestureActivation) {
+  *aHasValidTransientUserGestureActivation =
+      mHasValidTransientUserGestureActivation;
   return NS_OK;
 }
 
@@ -475,7 +483,7 @@ ContentPermissionRequestBase::GetTypes(nsIArray** aTypes) {
 }
 
 ContentPermissionRequestBase::PromptResult
-ContentPermissionRequestBase::CheckPromptPrefs() {
+ContentPermissionRequestBase::CheckPromptPrefs() const {
   MOZ_ASSERT(!mPrefName.IsEmpty(),
              "This derived class must support checking pref types");
 
@@ -492,7 +500,7 @@ ContentPermissionRequestBase::CheckPromptPrefs() {
   return PromptResult::Pending;
 }
 
-bool ContentPermissionRequestBase::CheckPermissionDelegate() {
+bool ContentPermissionRequestBase::CheckPermissionDelegate() const {
   // There is case that ContentPermissionRequestBase is constructed without
   // window, then mPermissionHandler will be null. So we only check permission
   // delegate if we have non-null mPermissionHandler
@@ -582,7 +590,7 @@ void ContentPermissionRequestBase::RequestDelayedTask(
 }
 
 nsresult TranslateChoices(
-    JS::HandleValue aChoices,
+    JS::Handle<JS::Value> aChoices,
     const nsTArray<PermissionRequest>& aPermissionRequests,
     nsTArray<PermissionChoice>& aTranslatedChoices) {
   if (aChoices.isNullOrUndefined()) {
@@ -683,7 +691,7 @@ nsContentPermissionRequestProxy::GetPrincipal(
     return NS_ERROR_FAILURE;
   }
 
-  NS_ADDREF(*aRequestingPrincipal = mParent->mPrincipal);
+  NS_IF_ADDREF(*aRequestingPrincipal = mParent->mPrincipal);
   return NS_OK;
 }
 
@@ -695,12 +703,7 @@ nsContentPermissionRequestProxy::GetTopLevelPrincipal(
     return NS_ERROR_FAILURE;
   }
 
-  if (!mParent->mTopLevelPrincipal) {
-    *aRequestingPrincipal = nullptr;
-    return NS_OK;
-  }
-
-  NS_ADDREF(*aRequestingPrincipal = mParent->mTopLevelPrincipal);
+  NS_IF_ADDREF(*aRequestingPrincipal = mParent->mTopLevelPrincipal);
   return NS_OK;
 }
 
@@ -729,24 +732,26 @@ nsContentPermissionRequestProxy::GetElement(Element** aRequestingElement) {
 }
 
 NS_IMETHODIMP
-nsContentPermissionRequestProxy::GetIsHandlingUserInput(
-    bool* aIsHandlingUserInput) {
-  NS_ENSURE_ARG_POINTER(aIsHandlingUserInput);
+nsContentPermissionRequestProxy::GetHasValidTransientUserGestureActivation(
+    bool* aHasValidTransientUserGestureActivation) {
+  NS_ENSURE_ARG_POINTER(aHasValidTransientUserGestureActivation);
   if (mParent == nullptr) {
     return NS_ERROR_FAILURE;
   }
-  *aIsHandlingUserInput = mParent->mIsHandlingUserInput;
+  *aHasValidTransientUserGestureActivation =
+      mParent->mHasValidTransientUserGestureActivation;
   return NS_OK;
 }
 
 NS_IMETHODIMP
-nsContentPermissionRequestProxy::GetMaybeUnsafePermissionDelegate(
-    bool* aMaybeUnsafePermissionDelegate) {
-  NS_ENSURE_ARG_POINTER(aMaybeUnsafePermissionDelegate);
+nsContentPermissionRequestProxy::GetIsRequestDelegatedToUnsafeThirdParty(
+    bool* aIsRequestDelegatedToUnsafeThirdParty) {
+  NS_ENSURE_ARG_POINTER(aIsRequestDelegatedToUnsafeThirdParty);
   if (mParent == nullptr) {
     return NS_ERROR_FAILURE;
   }
-  *aMaybeUnsafePermissionDelegate = mParent->mMaybeUnsafePermissionDelegate;
+  *aIsRequestDelegatedToUnsafeThirdParty =
+      mParent->mIsRequestDelegatedToUnsafeThirdParty;
   return NS_OK;
 }
 
@@ -769,7 +774,7 @@ nsContentPermissionRequestProxy::Cancel() {
 }
 
 NS_IMETHODIMP
-nsContentPermissionRequestProxy::Allow(JS::HandleValue aChoices) {
+nsContentPermissionRequestProxy::Allow(JS::Handle<JS::Value> aChoices) {
   if (mParent == nullptr) {
     return NS_ERROR_FAILURE;
   }
@@ -811,7 +816,7 @@ void RemotePermissionRequest::DoCancel() {
   request->Cancel();
 }
 
-void RemotePermissionRequest::DoAllow(JS::HandleValue aChoices) {
+void RemotePermissionRequest::DoAllow(JS::Handle<JS::Value> aChoices) {
   NS_ASSERTION(mRequest, "We need a request");
   nsCOMPtr<nsIContentPermissionRequest> request(mRequest);
   request->Allow(aChoices);
@@ -849,7 +854,7 @@ mozilla::ipc::IPCResult RemotePermissionRequest::RecvNotifyResult(
         return IPC_FAIL_NO_REASON(this);
       }
     }
-    JS::RootedValue val(cx, JS::ObjectValue(*obj));
+    JS::Rooted<JS::Value> val(cx, JS::ObjectValue(*obj));
     DoAllow(val);
   } else {
     DoCancel();

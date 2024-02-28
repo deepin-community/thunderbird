@@ -8,7 +8,7 @@
 const TEST_URI = URL_ROOT + "doc_pseudoelement.html";
 const PSEUDO_PREF = "devtools.inspector.show_pseudo_elements";
 
-add_task(async function() {
+add_task(async function () {
   await pushPref(PSEUDO_PREF, true);
 
   await addTab(TEST_URI);
@@ -21,6 +21,7 @@ add_task(async function() {
   await testParagraph(inspector, view);
   await testBody(inspector, view);
   await testList(inspector, view);
+  await testDialogBackdrop(inspector, view);
 });
 
 async function testTopLeft(inspector, view) {
@@ -283,6 +284,15 @@ async function testList(inspector, view) {
   assertGutters(view);
 }
 
+async function testDialogBackdrop(inspector, view) {
+  await assertPseudoElementRulesNumbers("dialog", inspector, view, {
+    elementRulesNb: 3,
+    backdropRules: 1,
+  });
+
+  assertGutters(view);
+}
+
 function convertTextPropsToString(textProps) {
   return textProps.map(t => t.name + ": " + t.value).join("; ");
 }
@@ -304,59 +314,62 @@ async function assertPseudoElementRulesNumbers(
   const rules = {
     elementRules: elementStyle.rules.filter(rule => !rule.pseudoElement),
     firstLineRules: elementStyle.rules.filter(
-      rule => rule.pseudoElement === ":first-line"
+      rule => rule.pseudoElement === "::first-line"
     ),
     firstLetterRules: elementStyle.rules.filter(
-      rule => rule.pseudoElement === ":first-letter"
+      rule => rule.pseudoElement === "::first-letter"
     ),
     selectionRules: elementStyle.rules.filter(
-      rule => rule.pseudoElement === ":selection"
+      rule => rule.pseudoElement === "::selection"
     ),
     markerRules: elementStyle.rules.filter(
-      rule => rule.pseudoElement === ":marker"
+      rule => rule.pseudoElement === "::marker"
     ),
     beforeRules: elementStyle.rules.filter(
-      rule => rule.pseudoElement === ":before"
+      rule => rule.pseudoElement === "::before"
     ),
     afterRules: elementStyle.rules.filter(
-      rule => rule.pseudoElement === ":after"
+      rule => rule.pseudoElement === "::after"
+    ),
+    backdropRules: elementStyle.rules.filter(
+      rule => rule.pseudoElement === "::backdrop"
     ),
   };
 
   is(
     rules.elementRules.length,
-    ruleNbs.elementRulesNb,
+    ruleNbs.elementRulesNb || 0,
     selector + " has the correct number of non pseudo element rules"
   );
   is(
     rules.firstLineRules.length,
-    ruleNbs.firstLineRulesNb,
-    selector + " has the correct number of :first-line rules"
+    ruleNbs.firstLineRulesNb || 0,
+    selector + " has the correct number of ::first-line rules"
   );
   is(
     rules.firstLetterRules.length,
-    ruleNbs.firstLetterRulesNb,
-    selector + " has the correct number of :first-letter rules"
+    ruleNbs.firstLetterRulesNb || 0,
+    selector + " has the correct number of ::first-letter rules"
   );
   is(
     rules.selectionRules.length,
-    ruleNbs.selectionRulesNb,
-    selector + " has the correct number of :selection rules"
+    ruleNbs.selectionRulesNb || 0,
+    selector + " has the correct number of ::selection rules"
   );
   is(
     rules.markerRules.length,
-    ruleNbs.markerRulesNb,
-    selector + " has the correct number of :marker rules"
+    ruleNbs.markerRulesNb || 0,
+    selector + " has the correct number of ::marker rules"
   );
   is(
     rules.beforeRules.length,
-    ruleNbs.beforeRulesNb,
-    selector + " has the correct number of :before rules"
+    ruleNbs.beforeRulesNb || 0,
+    selector + " has the correct number of ::before rules"
   );
   is(
     rules.afterRules.length,
-    ruleNbs.afterRulesNb,
-    selector + " has the correct number of :after rules"
+    ruleNbs.afterRulesNb || 0,
+    selector + " has the correct number of ::after rules"
   );
 
   return rules;

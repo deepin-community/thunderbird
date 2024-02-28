@@ -11,6 +11,7 @@
 #include "mozilla/dom/Element.h"
 #include "mozilla/dom/HTMLProgressElement.h"
 #include "nsIContent.h"
+#include "nsLayoutUtils.h"
 #include "nsPresContext.h"
 #include "nsGkAtoms.h"
 #include "nsNameSpaceManager.h"
@@ -36,13 +37,12 @@ nsProgressFrame::nsProgressFrame(ComputedStyle* aStyle,
 
 nsProgressFrame::~nsProgressFrame() = default;
 
-void nsProgressFrame::DestroyFrom(nsIFrame* aDestructRoot,
-                                  PostDestroyData& aPostDestroyData) {
+void nsProgressFrame::Destroy(DestroyContext& aContext) {
   NS_ASSERTION(!GetPrevContinuation(),
                "nsProgressFrame should not have continuations; if it does we "
                "need to call RegUnregAccessKey only for the first.");
-  aPostDestroyData.AddAnonymousContent(mBarDiv.forget());
-  nsContainerFrame::DestroyFrom(aDestructRoot, aPostDestroyData);
+  aContext.AddAnonymousContent(mBarDiv.forget());
+  nsContainerFrame::Destroy(aContext);
 }
 
 nsresult nsProgressFrame::CreateAnonymousContent(
@@ -108,8 +108,6 @@ void nsProgressFrame::Reflow(nsPresContext* aPresContext,
   FinishAndStoreOverflow(&aDesiredSize);
 
   aStatus.Reset();  // This type of frame can't be split.
-
-  NS_FRAME_SET_TRUNCATION(aStatus, aReflowInput, aDesiredSize);
 }
 
 void nsProgressFrame::ReflowChildFrame(nsIFrame* aChild,
@@ -186,7 +184,7 @@ nsresult nsProgressFrame::AttributeChanged(int32_t aNameSpaceID,
       (aAttribute == nsGkAtoms::value || aAttribute == nsGkAtoms::max)) {
     auto presShell = PresShell();
     for (auto childFrame : PrincipalChildList()) {
-      presShell->FrameNeedsReflow(childFrame, IntrinsicDirty::Resize,
+      presShell->FrameNeedsReflow(childFrame, IntrinsicDirty::None,
                                   NS_FRAME_IS_DIRTY);
     }
     InvalidateFrame();
@@ -243,11 +241,8 @@ bool nsProgressFrame::ShouldUseNativeStyle() const {
   //   background.
   return StyleDisplay()->EffectiveAppearance() ==
              StyleAppearance::ProgressBar &&
-         !PresContext()->HasAuthorSpecifiedRules(
-             this, NS_AUTHOR_SPECIFIED_BORDER_OR_BACKGROUND) &&
-         barFrame &&
+         !Style()->HasAuthorSpecifiedBorderOrBackground() && barFrame &&
          barFrame->StyleDisplay()->EffectiveAppearance() ==
              StyleAppearance::Progresschunk &&
-         !PresContext()->HasAuthorSpecifiedRules(
-             barFrame, NS_AUTHOR_SPECIFIED_BORDER_OR_BACKGROUND);
+         !barFrame->Style()->HasAuthorSpecifiedBorderOrBackground();
 }

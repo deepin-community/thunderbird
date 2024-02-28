@@ -13,11 +13,11 @@ var {
   create_folder,
   delete_via_popup,
   enter_folder,
+  get_about_3pane,
   make_display_grouped,
   make_display_threaded,
   make_display_unthreaded,
-  make_new_sets_in_folder,
-  make_new_sets_in_folders,
+  make_message_sets_in_folders,
   mc,
   open_folder_in_new_tab,
   press_delete,
@@ -37,20 +37,20 @@ var {
 var folder = null,
   folder2 = null;
 
-add_task(function setupModule(module) {
-  folder = create_folder("SelectionA");
-  folder2 = create_folder("SelectionB");
-  make_new_sets_in_folders([folder, folder2], [{ count: 50 }]);
+add_setup(async function () {
+  folder = await create_folder("SelectionA");
+  folder2 = await create_folder("SelectionB");
+  await make_message_sets_in_folders([folder, folder2], [{ count: 50 }]);
 });
 
 // https://bugzilla.mozilla.org/show_bug.cgi?id=474701#c80
-add_task(function test_selection_on_entry() {
-  enter_folder(folder);
+add_task(async function test_selection_on_entry() {
+  await enter_folder(folder);
   assert_nothing_selected();
 });
 
-add_task(function test_selection_extension() {
-  be_in_folder(folder);
+add_task(async function test_selection_extension() {
+  await be_in_folder(folder);
 
   // https://bugzilla.mozilla.org/show_bug.cgi?id=474701#c79 (was good)
   select_click_row(1);
@@ -68,9 +68,9 @@ add_task(function test_selection_extension() {
   assert_selected_and_displayed(1);
 });
 
-add_task(function test_selection_select_column() {
-  be_in_folder(folder);
-  mc.e("selectCol").removeAttribute("hidden");
+add_task(async function test_selection_select_column() {
+  await be_in_folder(folder);
+  mc.window.document.getElementById("selectCol").removeAttribute("hidden");
   select_none();
   select_column_click_row(0);
   assert_selected_and_displayed(0);
@@ -87,10 +87,10 @@ add_task(function test_selection_select_column() {
   assert_selected_and_displayed(4);
   select_column_click_row(4);
   assert_nothing_selected();
-});
+}).skip();
 
 add_task(async function test_selection_select_column_deselection() {
-  be_in_folder(folder);
+  await be_in_folder(folder);
   select_none();
   select_column_click_row(3);
   select_column_click_row(3);
@@ -98,20 +98,18 @@ add_task(async function test_selection_select_column_deselection() {
   await right_click_on_row(7);
   await delete_via_popup();
   assert_nothing_selected();
-  mc.e("selectCol").setAttribute("hidden", true);
-});
+  mc.window.document.getElementById("selectCol").setAttribute("hidden", true);
+}).skip();
 
-// https://bugzilla.mozilla.org/show_bug.cgi?id=474701#c87 last bit
-add_task(function test_selection_last_message_deleted() {
-  be_in_folder(folder);
+add_task(async function test_selection_last_message_deleted() {
+  await be_in_folder(folder);
   select_click_row(-1);
   press_delete();
   assert_selected_and_displayed(-1);
-}).__skipMe =
-  AppConstants.platform == "linux" || AppConstants.platform == "macosx";
+});
 
-add_task(function test_selection_persists_through_threading_changes() {
-  be_in_folder(folder);
+add_task(async function test_selection_persists_through_threading_changes() {
+  await be_in_folder(folder);
 
   make_display_unthreaded();
   let message = select_click_row(3);
@@ -122,8 +120,8 @@ add_task(function test_selection_persists_through_threading_changes() {
 });
 
 // https://bugzilla.mozilla.org/show_bug.cgi?id=474701#c82 2nd half
-add_task(function test_no_selection_persists_through_threading_changes() {
-  be_in_folder(folder);
+add_task(async function test_no_selection_persists_through_threading_changes() {
+  await be_in_folder(folder);
 
   make_display_unthreaded();
   select_none();
@@ -134,64 +132,64 @@ add_task(function test_no_selection_persists_through_threading_changes() {
   make_display_unthreaded();
 });
 
-add_task(function test_selection_persists_through_folder_tab_changes() {
-  let tab1 = be_in_folder(folder);
+add_task(async function test_selection_persists_through_folder_tab_changes() {
+  let tab1 = await be_in_folder(folder);
 
   select_click_row(2);
 
-  let tab2 = open_folder_in_new_tab(folder2);
+  let tab2 = await open_folder_in_new_tab(folder2);
   wait_for_blank_content_pane();
   assert_nothing_selected();
 
-  switch_tab(tab1);
+  await switch_tab(tab1);
   assert_selected_and_displayed(2);
 
-  switch_tab(tab2);
+  await switch_tab(tab2);
   assert_nothing_selected();
   select_click_row(3);
 
-  switch_tab(tab1);
+  await switch_tab(tab1);
   assert_selected_and_displayed(2);
   select_shift_click_row(4); // 2-4 selected
   assert_selected_and_displayed([2, 4]); // ensures multi-message summary
 
-  switch_tab(tab2);
+  await switch_tab(tab2);
   assert_selected_and_displayed(3);
 
   close_tab(tab2);
   assert_selected_and_displayed([2, 4]);
 });
 
-// https://bugzilla.mozilla.org/show_bug.cgi?id=474701#c87
+// https://bugzilla.mozilla.org/show_bug.cgi?id=1850190
 /**
  * Verify that we scroll to new messages when we enter a folder.
  */
-add_task(function test_enter_scroll_to_new() {
-  // be in the folder
-  be_in_folder(folder);
-  // make sure the sort is ascending...
-  mc.folderDisplay.view.sortAscending();
-  // leave the folder so that the messages get marked as read
-  enter_folder(folder.rootFolder);
-  // add a new message, and make sure it is new
-  make_new_sets_in_folder(folder, [{ count: 1 }]);
-  // enter the folder
-  enter_folder(folder);
-  // make sure it (which must be the last row) is visible
-  assert_visible(-1);
-}).skip(); // Bug 1602436.
+add_task(async function test_enter_scroll_to_new() {
+  // This should be the default anyway:
+  Services.prefs.setBoolPref("mailnews.scroll_to_new_message", true);
+  await be_in_folder(folder);
+  get_about_3pane().sortController.sortAscending();
+  await select_click_row(1);
+  await enter_folder(folder2);
+  // When a folder is switched to, a new message should be visible and
+  // selections are not restored:
+  await make_message_sets_in_folders([folder], [{ count: 1 }]);
+  await enter_folder(folder);
+  await assert_visible(-1);
+  await assert_nothing_selected();
+});
 
 /**
  * Test that the last selected message persists through folder changes.
  */
-add_task(function test_selection_persists_through_folder_changes() {
+add_task(async function test_selection_persists_through_folder_changes() {
   // be in the folder
-  be_in_folder(folder);
+  await be_in_folder(folder);
   // select a message
   select_click_row(3);
   // leave and re-enter the folder
-  enter_folder(folder.rootFolder);
-  enter_folder(folder);
+  await enter_folder(folder.rootFolder);
+  await enter_folder(folder);
   // make sure it is selected and displayed
   assert_selected_and_displayed(3);
 

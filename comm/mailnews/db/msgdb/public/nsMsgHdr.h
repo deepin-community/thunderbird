@@ -76,13 +76,10 @@ class nsMsgHdr : public nsIMsgDBHdr {
   nsMsgKey m_messageKey;  // news: article number, local mail: key, imap: uid...
   nsMsgKey m_threadParent;  // message this is a reply to, in thread.
   PRTime m_date;
-  uint32_t m_messageSize;   // lines for news articles, bytes for mail messages
-  uint32_t m_statusOffset;  // offset in a local mail message of the
-                            // x-mozilla-status header
+  uint32_t m_messageSize;  // lines for news articles, bytes for mail messages
   uint32_t m_flags;
   // avoid parsing references every time we want one
   nsTArray<nsCString> m_references;
-  nsMsgPriorityValue m_priority;
 
   // nsMsgHdrs will have to know what db and row they belong to, since they are
   // really just a wrapper around the msg row in the mdb. This could cause

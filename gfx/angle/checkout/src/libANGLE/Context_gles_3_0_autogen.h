@@ -60,10 +60,12 @@
     void genSamplers(GLsizei count, SamplerID *samplersPacked);                                    \
     void genTransformFeedbacks(GLsizei n, TransformFeedbackID *idsPacked);                         \
     void genVertexArrays(GLsizei n, VertexArrayID *arraysPacked);                                  \
-    void getActiveUniformBlockName(ShaderProgramID programPacked, GLuint uniformBlockIndex,        \
-                                   GLsizei bufSize, GLsizei *length, GLchar *uniformBlockName);    \
-    void getActiveUniformBlockiv(ShaderProgramID programPacked, GLuint uniformBlockIndex,          \
-                                 GLenum pname, GLint *params);                                     \
+    void getActiveUniformBlockName(ShaderProgramID programPacked,                                  \
+                                   UniformBlockIndex uniformBlockIndexPacked, GLsizei bufSize,     \
+                                   GLsizei *length, GLchar *uniformBlockName);                     \
+    void getActiveUniformBlockiv(ShaderProgramID programPacked,                                    \
+                                 UniformBlockIndex uniformBlockIndexPacked, GLenum pname,          \
+                                 GLint *params);                                                   \
     void getActiveUniformsiv(ShaderProgramID programPacked, GLsizei uniformCount,                  \
                              const GLuint *uniformIndices, GLenum pname, GLint *params);           \
     void getBufferParameteri64v(BufferBinding targetPacked, GLenum pname, GLint64 *params);        \
@@ -72,7 +74,7 @@
     void getInteger64i_v(GLenum target, GLuint index, GLint64 *data);                              \
     void getInteger64v(GLenum pname, GLint64 *data);                                               \
     void getIntegeri_v(GLenum target, GLuint index, GLint *data);                                  \
-    void getInternalformativ(GLenum target, GLenum internalformat, GLenum pname, GLsizei bufSize,  \
+    void getInternalformativ(GLenum target, GLenum internalformat, GLenum pname, GLsizei count,    \
                              GLint *params);                                                       \
     void getProgramBinary(ShaderProgramID programPacked, GLsizei bufSize, GLsizei *length,         \
                           GLenum *binaryFormat, void *binary);                                     \
@@ -81,7 +83,7 @@
     void getSamplerParameterfv(SamplerID samplerPacked, GLenum pname, GLfloat *params);            \
     void getSamplerParameteriv(SamplerID samplerPacked, GLenum pname, GLint *params);              \
     const GLubyte *getStringi(GLenum name, GLuint index);                                          \
-    void getSynciv(GLsync sync, GLenum pname, GLsizei bufSize, GLsizei *length, GLint *values);    \
+    void getSynciv(GLsync sync, GLenum pname, GLsizei count, GLsizei *length, GLint *values);      \
     void getTransformFeedbackVarying(ShaderProgramID programPacked, GLuint index, GLsizei bufSize, \
                                      GLsizei *length, GLsizei *size, GLenum *type, GLchar *name);  \
     GLuint getUniformBlockIndex(ShaderProgramID programPacked, const GLchar *uniformBlockName);    \
@@ -134,7 +136,8 @@
     void uniform3uiv(UniformLocation locationPacked, GLsizei count, const GLuint *value);          \
     void uniform4ui(UniformLocation locationPacked, GLuint v0, GLuint v1, GLuint v2, GLuint v3);   \
     void uniform4uiv(UniformLocation locationPacked, GLsizei count, const GLuint *value);          \
-    void uniformBlockBinding(ShaderProgramID programPacked, GLuint uniformBlockIndex,              \
+    void uniformBlockBinding(ShaderProgramID programPacked,                                        \
+                             UniformBlockIndex uniformBlockIndexPacked,                            \
                              GLuint uniformBlockBinding);                                          \
     void uniformMatrix2x3fv(UniformLocation locationPacked, GLsizei count, GLboolean transpose,    \
                             const GLfloat *value);                                                 \

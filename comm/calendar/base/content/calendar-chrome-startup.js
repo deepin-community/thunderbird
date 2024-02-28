@@ -6,28 +6,23 @@
  *          initViewCalendarPaneMenu, loadCalendarComponent,
  */
 
-/* import-globals-from ../../../mail/base/content/mailCore.js */
-/* import-globals-from ../../../mail/base/content/mailWindowOverlay.js */
-/* import-globals-from calendar-command-controller.js */
-/* import-globals-from calendar-invitations-manager.js */
-/* import-globals-from calendar-management.js */
-/* import-globals-from calendar-modes.js */
-/* import-globals-from calendar-task-tree-utils.js */
-/* import-globals-from calendar-task-view.js */
-/* import-globals-from calendar-ui-utils.js */
-/* import-globals-from calendar-unifinder.js */
-/* import-globals-from calendar-views-utils.js */
-/* import-globals-from today-pane.js */
+/* globals loadCalendarManager, injectCalendarCommandController, getViewBox,
+   observeViewDaySelect, getViewBox, calendarController, calendarUpdateNewItemsCommand,
+   TodayPane, setUpInvitationsManager, changeMode,
+   prepareCalendarUnifinder, taskViewOnLoad, taskEdit, tearDownInvitationsManager,
+   unloadCalendarManager, removeCalendarCommandController, finishCalendarUnifinder,
+   PanelUI, changeMenuForTask, setupDeleteMenuitem, getMinimonth, currentView,
+   refreshEventTree, gCurrentMode, InitMessageMenu, onViewToolbarsPopupShowing,
+   onCommandCustomize, CustomizeMailToolbar */
 
-/* globals PanelUI, taskEdit */
-
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-var { AddonManager } = ChromeUtils.import("resource://gre/modules/AddonManager.jsm");
-var { AppConstants } = ChromeUtils.import("resource://gre/modules/AppConstants.jsm");
+var { AddonManager } = ChromeUtils.importESModule("resource://gre/modules/AddonManager.sys.mjs");
+var { AppConstants } = ChromeUtils.importESModule("resource://gre/modules/AppConstants.sys.mjs");
 var { cal } = ChromeUtils.import("resource:///modules/calendar/calUtils.jsm");
 var { calendarDeactivator } = ChromeUtils.import(
   "resource:///modules/calendar/calCalendarDeactivator.jsm"
 );
+
+ChromeUtils.defineModuleGetter(this, "CalMetronome", "resource:///modules/CalMetronome.jsm");
 
 /**
  * Does calendar initialization steps for a given chrome window. Called at
@@ -40,7 +35,7 @@ async function loadCalendarComponent() {
   }
   loadCalendarComponent.hasBeenCalled = true;
 
-  if (cal.getCalendarManager().wrappedJSObject.mCache) {
+  if (cal.manager.wrappedJSObject.mCache) {
     cal.ASSERT(
       [...Services.wm.getEnumerator("mail:3pane")].length > 1,
       "Calendar manager initialised calendars before loadCalendarComponent ran on the first " +
@@ -59,17 +54,11 @@ async function loadCalendarComponent() {
   // Load the Calendar Manager
   await loadCalendarManager();
 
-  // Make sure we update ourselves if the program stays open over midnight
-  scheduleMidnightUpdate(doMidnightUpdate);
+  CalMetronome.on("day", doMidnightUpdate);
+  CalMetronome.on("minute", updateTimeIndicatorPosition);
 
   // Set up the command controller from calendar-command-controller.js
   injectCalendarCommandController();
-
-  // Set up calendar appmenu buttons.
-  setUpCalendarAppMenuButtons();
-
-  // Set up calendar menu items in the appmenu.
-  setUpCalendarAppMenuItems();
 
   // Set up calendar deactivation for this window.
   calendarDeactivator.registerWindow(window);
@@ -86,24 +75,14 @@ async function loadCalendarComponent() {
   document.getElementById("calendar-view-splitter").addEventListener("command", () => {
     window.dispatchEvent(new CustomEvent("viewresize"));
   });
-  window.addEventListener("resize", () => {
-    window.dispatchEvent(new CustomEvent("viewresize"));
+  window.addEventListener("resize", event => {
+    if (event.target == window) {
+      window.dispatchEvent(new CustomEvent("viewresize"));
+    }
   });
 
   // Set calendar color CSS on this window
   cal.view.colorTracker.registerWindow(window);
-
-  // Set up window pref observers
-  calendarWindowPrefs.init();
-
-  // Set up the available modifiers for each platform.
-  let keys = document.querySelectorAll("#calendar-keys > key");
-  let platform = AppConstants.platform;
-  for (let key of keys) {
-    if (key.hasAttribute("modifiers-" + platform)) {
-      key.setAttribute("modifiers", key.getAttribute("modifiers-" + platform));
-    }
-  }
 
   /* Ensure the new items commands state can be setup properly even when no
    * calendar support refreshes (i.e. the "onLoad" notification) or when none
@@ -136,22 +115,16 @@ async function loadCalendarComponent() {
     changeMode("mail");
   }
 
-  // Set up customizeDone handlers for our toolbars.
-  let toolbox = document.getElementById("calendar-toolbox");
-  toolbox.customizeDone = function(aEvent) {
-    MailToolboxCustomizeDone(aEvent, "CustomizeCalendarToolbar");
-  };
-  toolbox = document.getElementById("task-toolbox");
-  toolbox.customizeDone = function(aEvent) {
-    MailToolboxCustomizeDone(aEvent, "CustomizeTaskToolbar");
-  };
-
   updateTodayPaneButton();
 
   prepareCalendarUnifinder();
 
   taskViewOnLoad();
   taskEdit.onLoad();
+
+  document.getElementById("calSidebar").style.width = `${document
+    .getElementById("calSidebar")
+    .getAttribute("width")}px`;
 
   Services.obs.notifyObservers(window, "calendar-startup-done");
 }
@@ -168,12 +141,12 @@ function unloadCalendarComponent() {
   // Remove the command controller
   removeCalendarCommandController();
 
-  // Clean up window pref observers
-  calendarWindowPrefs.cleanup();
-
   finishCalendarUnifinder();
 
   taskEdit.onUnload();
+
+  CalMetronome.off("minute", updateTimeIndicatorPosition);
+  CalMetronome.off("day", doMidnightUpdate);
 }
 
 /**
@@ -189,109 +162,6 @@ async function uninstallLightningAddon() {
     console.error("Error while attempting to uninstall Lightning addon:", err);
   }
 }
-
-/**
- * TODO: The systemcolors pref observer really only needs to be set up once, so
- * ideally this code should go into a component. This should be taken care of when
- * there are more prefs that need to be observed on a global basis that don't fit
- * into the calendar manager.
- */
-var calendarWindowPrefs = {
-  /** nsISupports QueryInterface */
-  QueryInterface: ChromeUtils.generateQI(["nsIObserver"]),
-
-  /** Initialize the preference observers */
-  init() {
-    Services.prefs.addObserver("calendar.view.useSystemColors", this);
-    Services.ww.registerNotification(this);
-
-    // Trigger setting pref on all open windows
-    this.observe(null, "nsPref:changed", "calendar.view.useSystemColors");
-  },
-
-  /**  Cleanup the preference observers */
-  cleanup() {
-    Services.prefs.removeObserver("calendar.view.useSystemColors", this);
-    Services.ww.unregisterNotification(this);
-  },
-
-  /**
-   * Observer function called when a pref has changed
-   *
-   * @see nsIObserver
-   */
-  observe(aSubject, aTopic, aData) {
-    if (aTopic == "nsPref:changed") {
-      switch (aData) {
-        case "calendar.view.useSystemColors": {
-          let useSystemColors =
-            Services.prefs.getBoolPref("calendar.view.useSystemColors", false) && "true";
-          for (let win of Services.ww.getWindowEnumerator()) {
-            win.document.documentElement.toggleAttribute("systemcolors", useSystemColors);
-          }
-          break;
-        }
-      }
-    } else if (aTopic == "domwindowopened") {
-      let win = aSubject;
-      win.addEventListener("load", () => {
-        let useSystemColors =
-          Services.prefs.getBoolPref("calendar.view.useSystemColors", false) && "true";
-        win.document.documentElement.toggleAttribute("systemcolors", useSystemColors);
-      });
-    }
-  },
-};
-
-/**
- * Set up calendar appmenu buttons by adding event listeners to the buttons.
- */
-function setUpCalendarAppMenuButtons() {
-  PanelUI.initAppMenuButton("calendar-appmenu-button", "calendar-toolbox");
-  PanelUI.initAppMenuButton("task-appmenu-button", "task-toolbox");
-  PanelUI.initAppMenuButton("calendar-item-appmenu-button", "event-toolbox");
-}
-
-/**
- * Event listener used to refresh the "Events and Tasks" menu/view in the appmenu.
- */
-function refreshEventsAndTasksMenu(event) {
-  changeMenuForTask(event);
-  setupDeleteMenuitem("appmenu_calDeleteSelectedCalendar");
-
-  // Refresh the "disabled" property of the Progress and Priority menu items. Needed because if
-  // the menu items (toolbarbuttons) are given a "command" or "observes" attribute that is set to
-  // their respective commands, then their "oncommand" attribute is automatically overwritten
-  // (because the commands have an oncommand attribute).  And then the sub-menus will not open.
-  document.getElementById(
-    "appmenu_calTaskActionsPriorityMenuitem"
-  ).disabled = document
-    .getElementById("calendar_general-priority_command")
-    .hasAttribute("disabled");
-
-  document.getElementById(
-    "appmenu_calTaskActionsProgressMenuitem"
-  ).disabled = document
-    .getElementById("calendar_general-progress_command")
-    .hasAttribute("disabled");
-}
-
-/**
- * Set up calendar menu items that are in the appmenu. (Needed because there is no "onpopupshowing"
- * event for appmenu menus/views.)
- */
-function setUpCalendarAppMenuItems() {
-  // Refresh the "Events and Tasks" menu when it is shown.
-  document
-    .getElementById("appmenu_Event_Task_View")
-    .addEventListener("ViewShowing", refreshEventsAndTasksMenu);
-
-  // Refresh the "View" / "Calendar" / "Calendar Pane" menu when it is shown.
-  document
-    .getElementById("appmenu_calCalendarPaneView")
-    .addEventListener("ViewShowing", initViewCalendarPaneMenu);
-}
-
 /**
  * Migrate calendar UI. This function is called at each startup and can be used
  * to change UI items that require js code intervention
@@ -304,12 +174,6 @@ function migrateCalendarUI() {
   }
 
   try {
-    if (currentUIVersion < 1) {
-      let calbar = document.getElementById("calendar-toolbar2");
-      calbar.insertItem("calendar-appmenu-button");
-      let taskbar = document.getElementById("task-toolbar2");
-      taskbar.insertItem("task-appmenu-button");
-    }
     if (currentUIVersion < 2) {
       // If the user has customized the event/task window dialog toolbar,
       // we copy that custom set of toolbar items to the event/task tab
@@ -319,9 +183,9 @@ function migrateCalendarUI() {
 
       if (xulStore.hasValue(uri, "event-toolbar", "currentset")) {
         let windowSet = xulStore.getValue(uri, "event-toolbar", "currentset");
-        let items = "calendar-item-appmenu-button";
+        let items = "";
         if (!windowSet.includes("spring")) {
-          items = "spring," + items;
+          items = "spring";
         }
         let previousSet = windowSet == "__empty" ? "" : windowSet + ",";
         let tabSet = previousSet + items;
@@ -365,24 +229,19 @@ function migrateCalendarUI() {
 
 function setLocaleDefaultPreferences() {
   function setDefaultLocaleValue(aName) {
-    let startDefault = calendarInfo.firstDayOfWeek - 1;
+    // Shift encoded days from 1=Monday ... 7=Sunday to 0=Sunday ... 6=Saturday
+    let startDefault = calendarInfo.firstDayOfWeek % 7;
+
     if (aName == "calendar.categories.names" && defaultBranch.getStringPref(aName) == "") {
       cal.category.setupDefaultCategories();
     } else if (aName == "calendar.week.start" && defaultBranch.getIntPref(aName) != startDefault) {
       defaultBranch.setIntPref(aName, startDefault);
     } else if (aName.startsWith("calendar.week.d")) {
-      let weStart = calendarInfo.weekendStart - 1;
-      let weEnd = calendarInfo.weekendEnd - 1;
-      if (weStart > weEnd) {
-        weEnd += 7;
+      let dayNumber = parseInt(aName[15], 10);
+      if (dayNumber == 0) {
+        dayNumber = 7;
       }
-      let weekend = [];
-      for (let i = weStart; i <= weEnd; i++) {
-        weekend.push(i > 6 ? i - 7 : i);
-      }
-      if (defaultBranch.getBoolPref(aName) === weekend.includes(aName[15])) {
-        defaultBranch.setBoolPref(aName, weekend.includes(aName[15]));
-      }
+      defaultBranch.setBoolPref(aName, calendarInfo.weekend.includes(dayNumber));
     }
   }
 
@@ -410,8 +269,7 @@ function setLocaleDefaultPreferences() {
 }
 
 /**
- * Called at midnight to tell us to redraw date-specific widgets.  Do NOT call
- * this for normal refresh, since it also calls scheduleMidnightUpdate.
+ * Called at midnight to tell us to redraw date-specific widgets.
  */
 function doMidnightUpdate() {
   try {
@@ -440,9 +298,22 @@ function doMidnightUpdate() {
   } catch (exc) {
     cal.ASSERT(false, exc);
   }
+}
 
-  // Schedule the next update.
-  scheduleMidnightUpdate(doMidnightUpdate);
+/**
+ * Update the position of the current view's indicator of the current time, if
+ * any.
+ */
+function updateTimeIndicatorPosition() {
+  const view = currentView();
+  if (!view?.isInitialized) {
+    // Ensure that we don't attempt to update a view that isn't ready. Calendar
+    // chrome is always loaded at startup, but the view isn't initialized until
+    // the user switches to the calendar tab.
+    return;
+  }
+
+  view.updateTimeIndicatorPosition();
 }
 
 /**
@@ -457,7 +328,7 @@ function updateTodayPaneButton() {
 
   let iconBegin = document.createElement("img");
   iconBegin.setAttribute("alt", "");
-  iconBegin.setAttribute("src", "chrome://calendar/skin/shared/icons/pane.svg");
+  iconBegin.setAttribute("src", "chrome://messenger/skin/icons/new/calendar-empty.svg");
   iconBegin.classList.add("toolbarbutton-icon-begin");
 
   let iconLabel = document.createXULElement("label");
@@ -471,7 +342,7 @@ function updateTodayPaneButton() {
 
   let iconEnd = document.createElement("img");
   iconEnd.setAttribute("alt", "");
-  iconEnd.setAttribute("src", "chrome://calendar/skin/shared/todayButton-arrow.svg");
+  iconEnd.setAttribute("src", "chrome://messenger/skin/icons/new/nav-up-sm.svg");
   iconEnd.classList.add("toolbarbutton-icon-end");
 
   let oldImage = todaypane.querySelector(".toolbarbutton-icon");
@@ -492,27 +363,16 @@ function updateTodayPaneButtonDate() {
   todaypane.querySelector(".toolbarbutton-day-text").textContent = dayNumber;
 }
 
-// Overwrite the InitMessageMenu function, since we never know in which order
-// the popupshowing event will be processed. This function takes care of
-// disabling the message menu when in calendar or task mode.
-function calInitMessageMenu() {
-  calInitMessageMenu.origFunc();
-
-  document.getElementById("markMenu").disabled = gCurrentMode != "mail";
-}
-calInitMessageMenu.origFunc = InitMessageMenu;
-InitMessageMenu = calInitMessageMenu;
-
 /**
  * Get the toolbox id for the current tab type.
  *
- * @return {string}  A toolbox id.
+ * @returns {string} A toolbox id.
  */
 function getToolboxIdForCurrentTabType() {
   // A mapping from calendar tab types to toolbox ids.
   const calendarToolboxIds = {
-    calendar: "calendar-toolbox",
-    tasks: "task-toolbox",
+    calendar: null,
+    tasks: null,
     calendarEvent: "event-toolbox",
     calendarTask: "event-toolbox",
   };
@@ -522,15 +382,15 @@ function getToolboxIdForCurrentTabType() {
   }
   let tabType = tabmail.currentTabInfo.mode.type;
 
-  return calendarToolboxIds[tabType] || "mail-toolbox";
+  return calendarToolboxIds[tabType] || null;
 }
 
 /**
  * Modify the contents of the "Toolbars" context menu for the current
  * tab type.  Menu items are inserted before (appear above) aInsertPoint.
  *
- * @param {MouseEvent} aEvent              The popupshowing event
- * @param {nsIDOMXULElement} aInsertPoint  (optional) menuitem node
+ * @param {MouseEvent} aEvent - The popupshowing event
+ * @param {nsIDOMXULElement} aInsertPoint - (optional) menuitem node
  */
 function calendarOnToolbarsPopupShowing(aEvent, aInsertPoint) {
   if (onViewToolbarsPopupShowing.length < 3) {
@@ -539,16 +399,12 @@ function calendarOnToolbarsPopupShowing(aEvent, aInsertPoint) {
     return;
   }
 
-  let toolboxes = [];
+  let toolboxes = ["navigation-toolbox"];
   let toolboxId = getToolboxIdForCurrentTabType();
 
-  // We add navigation-toolbox ("Menu Bar") for all tab types except
-  // mail tabs because mail-toolbox already includes navigation-toolbox,
-  // so we do not need to add it separately in that case.
-  if (toolboxId != "mail-toolbox") {
-    toolboxes.push("navigation-toolbox");
+  if (toolboxId) {
+    toolboxes.push(toolboxId);
   }
-  toolboxes.push(toolboxId);
 
   onViewToolbarsPopupShowing(aEvent, toolboxes, aInsertPoint);
 }
@@ -558,6 +414,9 @@ function calendarOnToolbarsPopupShowing(aEvent, aInsertPoint) {
  */
 function customizeMailToolbarForTabType() {
   let toolboxId = getToolboxIdForCurrentTabType();
+  if (!toolboxId) {
+    return;
+  }
   if (toolboxId == "event-toolbox") {
     onCommandCustomize();
   } else {

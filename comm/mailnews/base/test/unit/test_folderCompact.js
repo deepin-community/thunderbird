@@ -40,7 +40,10 @@ var gMsgHdrs = [];
 var gExpectedInboxSize;
 var gExpectedFolder2Size;
 var gExpectedFolder3Size;
-var gMsgLinebreak = "";
+// Use this to account for the size of the separating line after the message
+// body. The compactor tries to preserve the convention already in the mbox,
+// and we know that our test messages have CRLFs, so that's what we'll use.
+var gSeparatorLine = "\r\n";
 
 // Transfer message keys between function calls.
 var gMsgKeys = [];
@@ -113,26 +116,16 @@ function deleteMessages(srcFolder, items) {
 
 function calculateFolderSize(folder) {
   let msgDB = folder.msgDatabase;
-  let enumerator = msgDB.EnumerateMessages();
   let totalSize = 0;
-  if (enumerator) {
-    if (gMsgLinebreak == "") {
-      // Figure out what the linebreak sequence is on the platform running the tests.
-      gMsgLinebreak =
-        "@mozilla.org/windows-registry-key;1" in Cc ? "\r\n" : "\n";
-    }
-    for (let header of enumerator) {
-      if (header instanceof Ci.nsIMsgDBHdr) {
-        totalSize += header.messageSize + gMsgLinebreak.length;
-      }
-    }
+  for (let header of msgDB.enumerateMessages()) {
+    totalSize += header.messageSize + gSeparatorLine.length;
   }
   return totalSize;
 }
 
 function verifyMsgOffsets(folder) {
   let msgDB = folder.msgDatabase;
-  let enumerator = msgDB.EnumerateMessages();
+  let enumerator = msgDB.enumerateMessages();
   if (enumerator) {
     for (let header of enumerator) {
       if (header instanceof Ci.nsIMsgDBHdr) {
@@ -245,8 +238,8 @@ var gTestArray = [
 
     // Save the first message key, which will change after compact with
     // rebuild.
-    let f2m2Key = gLocalFolder2.msgDatabase.getMsgHdrForMessageID(gMsg2ID)
-      .messageKey;
+    let f2m2Key =
+      gLocalFolder2.msgDatabase.getMsgHdrForMessageID(gMsg2ID).messageKey;
 
     // force expunged bytes count to get cached.
     gLocalFolder2.expungedBytes;
@@ -262,9 +255,10 @@ var gTestArray = [
     showMessages(localAccountUtils.inboxFolder, "before compactAll");
     // Save the key for the inbox message, we'll check after compact that it
     // did not change.
-    let preInboxMsg3Key = localAccountUtils.inboxFolder.msgDatabase.getMsgHdrForMessageID(
-      gMsg3ID
-    ).messageKey;
+    let preInboxMsg3Key =
+      localAccountUtils.inboxFolder.msgDatabase.getMsgHdrForMessageID(
+        gMsg3ID
+      ).messageKey;
 
     // We used to check here that the keys did not change during rebuild.
     // But that is no true in general, it was only conicidental since the
@@ -278,16 +272,17 @@ var gTestArray = [
       },
     };
     let listener = new PromiseTestUtils.PromiseUrlListener(checkResult);
-    localAccountUtils.inboxFolder.compactAll(listener, null, true);
+    localAccountUtils.inboxFolder.compactAll(listener, null);
     await listener.promise;
 
     showMessages(localAccountUtils.inboxFolder, "after compactAll");
     showMessages(gLocalFolder2, "after compactAll");
 
     // For the inbox, which was compacted but not rebuild, key is unchanged.
-    let postInboxMsg3Key = localAccountUtils.inboxFolder.msgDatabase.getMsgHdrForMessageID(
-      gMsg3ID
-    ).messageKey;
+    let postInboxMsg3Key =
+      localAccountUtils.inboxFolder.msgDatabase.getMsgHdrForMessageID(
+        gMsg3ID
+      ).messageKey;
     Assert.equal(preInboxMsg3Key, postInboxMsg3Key);
 
     // For folder2, which was rebuilt, keys change but all messages should exist.
@@ -331,16 +326,10 @@ function run_test() {
 
 // debug utility to show the key/offset/ID relationship of messages in a folder
 function showMessages(folder, text) {
-  dump("Show messages for folder <" + folder.name + "> " + text + "\n");
-  for (let header of folder.messages) {
+  dump(`***** Show messages for folder <${folder.name}> "${text} *****\n`);
+  for (let hdr of folder.messages) {
     dump(
-      "key: " +
-        header.messageKey +
-        " offset: " +
-        header.messageOffset +
-        " ID: " +
-        header.messageId +
-        "\n"
+      `  key: ${hdr.messageKey} offset: ${hdr.messageOffset} size: ${hdr.messageSize} ID: ${hdr.messageId}\n`
     );
   }
 }

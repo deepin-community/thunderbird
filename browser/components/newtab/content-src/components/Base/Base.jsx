@@ -2,7 +2,10 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this file,
  * You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-import { actionCreators as ac, actionTypes as at } from "common/Actions.jsm";
+import {
+  actionCreators as ac,
+  actionTypes as at,
+} from "common/Actions.sys.mjs";
 import { ASRouterAdmin } from "content-src/components/ASRouterAdmin/ASRouterAdmin";
 import { ASRouterUISurface } from "../../asrouter/asrouter-content";
 import { ConfirmDialog } from "content-src/components/ConfirmDialog/ConfirmDialog";
@@ -108,7 +111,7 @@ export class BaseContent extends React.PureComponent {
     this.handleOnKeyDown = this.handleOnKeyDown.bind(this);
     this.onWindowScroll = debounce(this.onWindowScroll.bind(this), 5);
     this.setPref = this.setPref.bind(this);
-    this.state = { fixedSearch: false, customizeMenuVisible: false };
+    this.state = { fixedSearch: false };
   }
 
   componentDidMount() {
@@ -137,13 +140,13 @@ export class BaseContent extends React.PureComponent {
   }
 
   openCustomizationMenu() {
-    this.setState({ customizeMenuVisible: true });
+    this.props.dispatch({ type: at.SHOW_PERSONALIZE });
     this.props.dispatch(ac.UserEvent({ event: "SHOW_PERSONALIZE" }));
   }
 
   closeCustomizationMenu() {
-    if (this.state.customizeMenuVisible) {
-      this.setState({ customizeMenuVisible: false });
+    if (this.props.App.customizeMenuVisible) {
+      this.props.dispatch({ type: at.HIDE_PERSONALIZE });
       this.props.dispatch(ac.UserEvent({ event: "HIDE_PERSONALIZE" }));
     }
   }
@@ -161,11 +164,8 @@ export class BaseContent extends React.PureComponent {
   render() {
     const { props } = this;
     const { App } = props;
-    const { initialized } = App;
+    const { initialized, customizeMenuVisible } = App;
     const prefs = props.Prefs.values;
-
-    // Values from experiment data
-    const { prefsButtonIcon } = prefs.featureConfig || {};
 
     const isDiscoveryStream =
       props.DiscoveryStream.config && props.DiscoveryStream.config.enabled;
@@ -180,20 +180,16 @@ export class BaseContent extends React.PureComponent {
       !pocketEnabled &&
       filteredSections.filter(section => section.enabled).length === 0;
     const searchHandoffEnabled = prefs["improvesearch.handoffToAwesomebar"];
-    const { customizationMenuEnabled, newNewtabExperienceEnabled } =
-      prefs.featureConfig || {};
-    const canShowCustomizationMenu =
-      customizationMenuEnabled || newNewtabExperienceEnabled;
-    const showCustomizationMenu =
-      canShowCustomizationMenu && this.state.customizeMenuVisible;
     const enabledSections = {
       topSitesEnabled: prefs["feeds.topsites"],
       pocketEnabled: prefs["feeds.section.topstories"],
       highlightsEnabled: prefs["feeds.section.highlights"],
       showSponsoredTopSitesEnabled: prefs.showSponsoredTopSites,
       showSponsoredPocketEnabled: prefs.showSponsored,
+      showRecentSavesEnabled: prefs.showRecentSaves,
       topSitesRowsCount: prefs.topSitesRows,
     };
+
     const pocketRegion = prefs["feeds.system.topstories"];
     const { mayHaveSponsoredTopSites } = prefs;
 
@@ -207,7 +203,6 @@ export class BaseContent extends React.PureComponent {
         "fixed-search",
       prefs.showSearch && noSectionsEnabled && "only-search",
       prefs["logowordmark.alwaysVisible"] && "visible-logo",
-      newNewtabExperienceEnabled && "newtab-experience",
     ]
       .filter(v => v)
       .join(" ");
@@ -220,20 +215,16 @@ export class BaseContent extends React.PureComponent {
 
     return (
       <div>
-        {canShowCustomizationMenu ? (
-          <CustomizeMenu
-            onClose={this.closeCustomizationMenu}
-            onOpen={this.openCustomizationMenu}
-            openPreferences={this.openPreferences}
-            setPref={this.setPref}
-            enabledSections={enabledSections}
-            pocketRegion={pocketRegion}
-            mayHaveSponsoredTopSites={mayHaveSponsoredTopSites}
-            showing={showCustomizationMenu}
-          />
-        ) : (
-          <PrefsButton onClick={this.openPreferences} icon={prefsButtonIcon} />
-        )}
+        <CustomizeMenu
+          onClose={this.closeCustomizationMenu}
+          onOpen={this.openCustomizationMenu}
+          openPreferences={this.openPreferences}
+          setPref={this.setPref}
+          enabledSections={enabledSections}
+          pocketRegion={pocketRegion}
+          mayHaveSponsoredTopSites={mayHaveSponsoredTopSites}
+          showing={customizeMenuVisible}
+        />
         {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions*/}
         <div className={outerClassName} onClick={this.closeCustomizationMenu}>
           <main className={hasSnippet ? "has-snippet" : ""}>

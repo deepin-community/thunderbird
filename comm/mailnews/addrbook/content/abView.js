@@ -429,11 +429,28 @@ function abViewCard(card, directoryHint) {
     );
   }
 }
+abViewCard.listFormatter = new Services.intl.ListFormat(
+  Services.appinfo.name == "xpcshell" ? "en-US" : undefined,
+  { type: "unit" }
+);
 abViewCard.prototype = {
   _getText(columnID) {
     try {
+      let { getProperty, supportsVCard, vCardProperties } = this.card;
+
+      if (this.card.isMailList) {
+        if (columnID == "GeneratedName") {
+          return this.card.displayName;
+        }
+        if (["NickName", "Notes"].includes(columnID)) {
+          return getProperty(columnID, "");
+        }
+        return "";
+      }
+
       switch (columnID) {
         case "addrbook":
+        case "Addrbook":
           return this._directory.dirName;
         case "GeneratedName":
           return this.card.generateName(ABView.nameFormat);
@@ -441,10 +458,55 @@ abViewCard.prototype = {
           return this.card.generatePhoneticName(true);
         case "ChatName":
           return this.card.isMailList ? "" : this.card.generateChatName();
+        case "EmailAddresses":
+          return abViewCard.listFormatter.format(this.card.emailAddresses);
+        case "PhoneNumbers": {
+          let phoneNumbers;
+          if (supportsVCard) {
+            phoneNumbers = vCardProperties.getAllValues("tel");
+          } else {
+            phoneNumbers = [
+              getProperty("WorkPhone", ""),
+              getProperty("HomePhone", ""),
+              getProperty("CellularNumber", ""),
+              getProperty("FaxNumber", ""),
+              getProperty("PagerNumber", ""),
+            ];
+          }
+          return abViewCard.listFormatter.format(phoneNumbers.filter(Boolean));
+        }
+        case "JobTitle":
+        case "Title":
+          if (supportsVCard) {
+            return vCardProperties.getFirstValue("title");
+          }
+          return getProperty("JobTitle", "");
+        case "Department":
+          if (supportsVCard) {
+            let vCardValue = vCardProperties.getFirstValue("org");
+            if (Array.isArray(vCardValue)) {
+              return vCardValue[1] || "";
+            }
+            return "";
+          }
+          return getProperty(columnID, "");
+        case "Company":
+        case "Organization":
+          if (supportsVCard) {
+            let vCardValue = vCardProperties.getFirstValue("org");
+            if (Array.isArray(vCardValue)) {
+              return vCardValue[0] || "";
+            }
+            return vCardValue;
+          }
+          return getProperty("Company", "");
+        case "NickName":
+          if (supportsVCard) {
+            return vCardProperties.getFirstValue("nickname");
+          }
+          return getProperty(columnID, "");
         default:
-          return this.card.isMailList
-            ? ""
-            : this.card.getPropertyAsAString(columnID);
+          return getProperty(columnID, "");
       }
     } catch (ex) {
       return "";
@@ -452,7 +514,7 @@ abViewCard.prototype = {
   },
   getText(columnID) {
     if (!(columnID in this._getTextCache)) {
-      this._getTextCache[columnID] = this._getText(columnID);
+      this._getTextCache[columnID] = this._getText(columnID)?.trim() ?? "";
     }
     return this._getTextCache[columnID];
   },

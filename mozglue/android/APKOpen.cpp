@@ -173,13 +173,11 @@ static void EnsureBaseProfilerInitialized() {
     return;
   }
 
-#ifdef MOZ_GECKO_PROFILER
   // The stack depth we observe here will be determined by the stack of
   // whichever caller enters this code first. In practice this means that we may
   // miss some root-most frames, which hopefully shouldn't ruin profiling.
   int stackBase = 5;
   mozilla::baseprofiler::profiler_init(&stackBase);
-#endif
   sInitialized = true;
 }
 
@@ -358,7 +356,7 @@ static void FreeArgv(char** argv, int argc) {
     // String was allocated with strndup, so need to use free to deallocate.
     free(argv[ix]);
   }
-  delete[](argv);
+  delete[] (argv);
 }
 
 extern "C" APKOPEN_EXPORT void MOZ_JNICALL

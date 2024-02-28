@@ -14,7 +14,6 @@
 #include "nsMsgSearchTerm.h"
 #include "nsMsgResultElement.h"
 #include "nsIDBFolderInfo.h"
-#include "nsMsgBaseCID.h"
 #include "nsMsgSearchValue.h"
 #include "nsIMsgLocalMailFolder.h"
 #include "nsIMsgWindow.h"
@@ -411,7 +410,7 @@ nsresult nsMsgSearchOfflineMail::ProcessSearchTerm(
       err = aTerm->MatchRfc822String(matchString, charset, &result);
       break;
     case nsMsgSearchAttrib::Subject: {
-      msgToMatch->GetSubject(getter_Copies(matchString) /* , true */);
+      msgToMatch->GetSubject(matchString /* , true */);
       if (msgFlags & nsMsgMessageFlags::HasRe) {
         // Make sure we pass along the "Re: " part of the subject if this is a
         // reply.
@@ -502,28 +501,15 @@ nsresult nsMsgSearchOfflineMail::ProcessSearchTerm(
       err = aTerm->MatchAge(date, &result);
       break;
     }
-    case nsMsgSearchAttrib::Label: {
-      nsMsgLabelValue label;
-      msgToMatch->GetLabel(&label);
-      err = aTerm->MatchLabel(label, &result);
-      break;
-    }
     case nsMsgSearchAttrib::Keywords: {
       nsCString keywords;
-      nsMsgLabelValue label;
-      msgToMatch->GetStringProperty("keywords", getter_Copies(keywords));
-      msgToMatch->GetLabel(&label);
-      if (label >= 1) {
-        if (!keywords.IsEmpty()) keywords.Append(' ');
-        keywords.AppendLiteral("$label");
-        keywords.Append(label + '0');
-      }
+      msgToMatch->GetStringProperty("keywords", keywords);
       err = aTerm->MatchKeyword(keywords, &result);
       break;
     }
     case nsMsgSearchAttrib::JunkStatus: {
       nsCString junkScoreStr;
-      msgToMatch->GetStringProperty("junkscore", getter_Copies(junkScoreStr));
+      msgToMatch->GetStringProperty("junkscore", junkScoreStr);
       err = aTerm->MatchJunkStatus(junkScoreStr.get(), &result);
       break;
     }
@@ -535,17 +521,15 @@ nsresult nsMsgSearchOfflineMail::ProcessSearchTerm(
       nsresult rv;
       nsCString junkScoreOriginStr;
       nsCString junkPercentStr;
-      msgToMatch->GetStringProperty("junkscoreorigin",
-                                    getter_Copies(junkScoreOriginStr));
-      msgToMatch->GetStringProperty("junkpercent",
-                                    getter_Copies(junkPercentStr));
+      msgToMatch->GetStringProperty("junkscoreorigin", junkScoreOriginStr);
+      msgToMatch->GetStringProperty("junkpercent", junkPercentStr);
       if (junkScoreOriginStr.EqualsLiteral("plugin") &&
           !junkPercentStr.IsEmpty()) {
         junkPercent = junkPercentStr.ToInteger(&rv);
         NS_ENSURE_SUCCESS(rv, rv);
       } else {
         nsCString junkScoreStr;
-        msgToMatch->GetStringProperty("junkscore", getter_Copies(junkScoreStr));
+        msgToMatch->GetStringProperty("junkscore", junkScoreStr);
         // When junk status is not set (uncertain) we'll set the value to ham.
         if (junkScoreStr.IsEmpty())
           junkPercent = nsIJunkMailPlugin::IS_HAM_SCORE;
@@ -559,8 +543,7 @@ nsresult nsMsgSearchOfflineMail::ProcessSearchTerm(
     }
     case nsMsgSearchAttrib::JunkScoreOrigin: {
       nsCString junkScoreOriginStr;
-      msgToMatch->GetStringProperty("junkscoreorigin",
-                                    getter_Copies(junkScoreOriginStr));
+      msgToMatch->GetStringProperty("junkscoreorigin", junkScoreOriginStr);
       err = aTerm->MatchJunkScoreOrigin(junkScoreOriginStr.get(), &result);
       break;
     }
@@ -662,8 +645,8 @@ nsresult nsMsgSearchOfflineMail::Search(bool* aDone) {
         nsCOMPtr<nsIMsgDBHdr> msgDBHdr;
         dbErr = m_listContext->GetNext(getter_AddRefs(msgDBHdr));
         if (NS_FAILED(dbErr))
-          *aDone = true;  //###phil dbErr is dropped on the floor. just note
-                          // that we did have an error so we'll clean up later
+          *aDone = true;  // ###phil dbErr is dropped on the floor. just note
+                          //  that we did have an error so we'll clean up later
         else {
           bool match = false;
           nsAutoString nullCharset, folderCharset;

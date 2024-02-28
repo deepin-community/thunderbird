@@ -32,7 +32,7 @@ async function onLoad() {
 
   var keyList = window.arguments[0].keyList;
 
-  let onClickFunc = function(event) {
+  let onClickFunc = function (event) {
     let keyId = event.target.getAttribute("keyid");
     EnigmailWindows.openKeyDetails(window, keyId, false);
   };
@@ -72,7 +72,8 @@ async function onLoad() {
     return;
   }
 
-  setTimeout(resizeDlg, 0);
+  setTimeout(resizeDlg);
+  setTimeout(() => window.sizeToContent());
 }
 
 function buildKeyGroupBox(keyObj) {
@@ -146,7 +147,7 @@ function resizeDlg() {
   }
 
   txt.style["white-space"] = "pre-wrap";
-  window.outerWidth = newWidth;
+  window.resizeTo(newWidth, window.outerHeight);
 
   var textHeight = txt.scrollHeight;
   var boxHeight = box.clientHeight;
@@ -158,7 +159,7 @@ function resizeDlg() {
     newHeight = window.screen.height - 100;
   }
 
-  window.outerHeight = newHeight;
+  window.resizeTo(newWidth, newHeight);
 }
 
 function dlgClose(buttonNumber) {
@@ -166,6 +167,6 @@ function dlgClose(buttonNumber) {
   window.close();
 }
 
-document.addEventListener("dialogaccept", function(event) {
+document.addEventListener("dialogaccept", function (event) {
   dlgClose(0);
 });

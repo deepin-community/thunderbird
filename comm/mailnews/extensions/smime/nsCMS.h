@@ -12,6 +12,7 @@
 #include "nsICMSMessage.h"
 #include "nsICMSEncoder.h"
 #include "nsICMSDecoder.h"
+#include "nsICMSDecoderJS.h"
 #include "sechash.h"
 #include "cms.h"
 
@@ -39,15 +40,15 @@ class nsCMSMessage : public nsICMSMessage {
   nsCOMPtr<nsIInterfaceRequestor> m_ctx;
   NSSCMSMessage* m_cmsMsg;
   NSSCMSSignerInfo* GetTopLevelSignerInfo();
-  nsresult CommonVerifySignature(const nsTArray<uint8_t>& aDigestData,
+  nsresult CommonVerifySignature(int32_t verifyFlags,
+                                 const nsTArray<uint8_t>& aDigestData,
                                  int16_t aDigestType);
 
-  nsresult CommonAsyncVerifySignature(nsISMimeVerificationListener* aListener,
+  nsresult CommonAsyncVerifySignature(int32_t verifyFlags,
+                                      nsISMimeVerificationListener* aListener,
                                       const nsTArray<uint8_t>& aDigestData,
                                       int16_t aDigestType);
   bool IsAllowedHash(const int16_t aCryptoHashInt);
-
-  void destructorSafeDestroyNSSReference();
 };
 
 // ===============================================
@@ -73,7 +74,26 @@ class nsCMSDecoder : public nsICMSDecoder {
   virtual ~nsCMSDecoder();
   nsCOMPtr<nsIInterfaceRequestor> m_ctx;
   NSSCMSDecoderContext* m_dcx;
-  void destructorSafeDestroyNSSReference();
+};
+
+class nsCMSDecoderJS : public nsICMSDecoderJS {
+ public:
+  NS_DECL_THREADSAFE_ISUPPORTS
+  NS_DECL_NSICMSDECODERJS
+
+  nsCMSDecoderJS();
+  nsresult Init();
+
+ private:
+  virtual ~nsCMSDecoderJS();
+  nsCOMPtr<nsIInterfaceRequestor> m_ctx;
+  NSSCMSDecoderContext* m_dcx;
+
+  nsTArray<uint8_t> mDecryptedData;
+  nsCOMPtr<nsICMSMessage> mCMSMessage;
+
+  static void content_callback(void* arg, const char* input,
+                               unsigned long length);
 };
 
 // ===============================================
@@ -98,7 +118,6 @@ class nsCMSEncoder : public nsICMSEncoder {
   virtual ~nsCMSEncoder();
   nsCOMPtr<nsIInterfaceRequestor> m_ctx;
   NSSCMSEncoderContext* m_ecx;
-  void destructorSafeDestroyNSSReference();
 };
 
 #endif

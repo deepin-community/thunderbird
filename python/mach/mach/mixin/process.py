@@ -4,19 +4,17 @@
 
 # This module provides mixins to perform process execution.
 
-from __future__ import absolute_import, unicode_literals
-
 import logging
 import os
 import signal
 import subprocess
 import sys
+from pathlib import Path
+from typing import Optional
 
-from mozbuild.util import ensure_subprocess_env
 from mozprocess.processhandler import ProcessHandlerMixin
 
 from .logging import LoggingMixin
-
 
 # Perform detection of operating system environment. This is used by command
 # execution. We only do this once to save redundancy. Yes, this can fail module
@@ -24,7 +22,11 @@ from .logging import LoggingMixin
 if "SHELL" in os.environ:
     _current_shell = os.environ["SHELL"]
 elif "MOZILLABUILD" in os.environ:
-    _current_shell = os.environ["MOZILLABUILD"] + "/msys/bin/sh.exe"
+    mozillabuild = os.environ["MOZILLABUILD"]
+    if (Path(mozillabuild) / "msys2").exists():
+        _current_shell = mozillabuild + "/msys2/usr/bin/sh.exe"
+    else:
+        _current_shell = mozillabuild + "/msys/bin/sh.exe"
 elif "COMSPEC" in os.environ:
     _current_shell = os.environ["COMSPEC"]
 elif sys.platform != "win32":
@@ -35,11 +37,18 @@ else:
 
 _in_msys = False
 
-if os.environ.get("MSYSTEM", None) in ("MINGW32", "MINGW64"):
+if (
+    os.environ.get("MSYSTEM", None) in ("MINGW32", "MINGW64")
+    or "MOZILLABUILD" in os.environ
+):
     _in_msys = True
 
     if not _current_shell.lower().endswith(".exe"):
         _current_shell += ".exe"
+
+
+class LineHandlingEarlyReturn(Exception):
+    pass
 
 
 class ProcessExecutionMixin(LoggingMixin):
@@ -48,7 +57,7 @@ class ProcessExecutionMixin(LoggingMixin):
     def run_process(
         self,
         args=None,
-        cwd=None,
+        cwd: Optional[str] = None,
         append_env=None,
         explicit_env=None,
         log_name=None,
@@ -106,7 +115,10 @@ class ProcessExecutionMixin(LoggingMixin):
                 line = line.decode(sys.stdout.encoding or "utf-8", "replace")
 
             if line_handler:
-                line_handler(line)
+                try:
+                    line_handler(line)
+                except LineHandlingEarlyReturn:
+                    return
 
             if line.startswith("BUILDTASK") or not log_name:
                 return
@@ -127,7 +139,6 @@ class ProcessExecutionMixin(LoggingMixin):
 
         self.log(logging.DEBUG, "process", {"env": str(use_env)}, "Environment: {env}")
 
-        use_env = ensure_subprocess_env(use_env)
         if pass_thru:
             proc = subprocess.Popen(args, cwd=cwd, env=use_env, close_fds=False)
             status = None

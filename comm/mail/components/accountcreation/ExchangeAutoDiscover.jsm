@@ -1,4 +1,3 @@
-/* -*- Mode: Java; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
@@ -8,17 +7,21 @@ const EXPORTED_SYMBOLS = ["fetchConfigFromExchange", "getAddonsList"];
 var { AccountCreationUtils } = ChromeUtils.import(
   "resource:///modules/accountcreation/AccountCreationUtils.jsm"
 );
-var { XPCOMUtils } = ChromeUtils.import(
-  "resource://gre/modules/XPCOMUtils.jsm"
+var { XPCOMUtils } = ChromeUtils.importESModule(
+  "resource://gre/modules/XPCOMUtils.sys.mjs"
 );
 
-XPCOMUtils.defineLazyModuleGetters(this, {
+const lazy = {};
+
+ChromeUtils.defineESModuleGetters(lazy, {
+  setTimeout: "resource://gre/modules/Timer.sys.mjs",
+});
+
+XPCOMUtils.defineLazyModuleGetters(lazy, {
   AccountConfig: "resource:///modules/accountcreation/AccountConfig.jsm",
   FetchHTTP: "resource:///modules/accountcreation/FetchHTTP.jsm",
   GuessConfig: "resource:///modules/accountcreation/GuessConfig.jsm",
   Sanitizer: "resource:///modules/accountcreation/Sanitizer.jsm",
-  Services: "resource://gre/modules/Services.jsm",
-  setTimeout: "resource://gre/modules/Timer.jsm",
 });
 
 var {
@@ -85,13 +88,15 @@ function fetchConfigFromExchange(
   // <https://docs.microsoft.com/en-us/previous-versions/office/developer/exchange-server-interoperability-guidance/hh352638(v%3Dexchg.140)>, search for "The Autodiscover service uses one of these four methods"
   let url1 =
     "https://autodiscover." +
-    Sanitizer.hostname(domain) +
+    lazy.Sanitizer.hostname(domain) +
     "/autodiscover/autodiscover.xml";
   let url2 =
-    "https://" + Sanitizer.hostname(domain) + "/autodiscover/autodiscover.xml";
+    "https://" +
+    lazy.Sanitizer.hostname(domain) +
+    "/autodiscover/autodiscover.xml";
   let url3 =
     "http://autodiscover." +
-    Sanitizer.hostname(domain) +
+    lazy.Sanitizer.hostname(domain) +
     "/autodiscover/autodiscover.xml";
   let body = `<?xml version="1.0" encoding="utf-8"?>
     <Autodiscover xmlns="http://schemas.microsoft.com/exchange/autodiscover/outlook/requestschema/2006">
@@ -117,7 +122,7 @@ function fetchConfigFromExchange(
   let fetch3;
 
   let successive = new SuccessiveAbortable();
-  let priority = new PriorityOrderAbortable(function(xml, call) {
+  let priority = new PriorityOrderAbortable(function (xml, call) {
     // success
     readAutoDiscoverResponse(
       xml,
@@ -136,7 +141,7 @@ function fetchConfigFromExchange(
 
   call = priority.addCall();
   call.foundMsg = "url1";
-  fetch = new FetchHTTP(
+  fetch = new lazy.FetchHTTP(
     url1,
     callArgs,
     call.successCallback(),
@@ -147,7 +152,7 @@ function fetchConfigFromExchange(
 
   call = priority.addCall();
   call.foundMsg = "url2";
-  fetch = new FetchHTTP(
+  fetch = new lazy.FetchHTTP(
     url2,
     callArgs,
     call.successCallback(),
@@ -163,7 +168,7 @@ function fetchConfigFromExchange(
   let call3Args = deepCopy(callArgs);
   delete call3Args.username;
   delete call3Args.password;
-  fetch3 = new FetchHTTP(url3, call3Args, call.successCallback(), ex => {
+  fetch3 = new lazy.FetchHTTP(url3, call3Args, call.successCallback(), ex => {
     // url3 is an HTTP URL that will redirect to the real one, usually a
     // HTTPS URL of the hoster. XMLHttpRequest unfortunately loses the call
     // parameters, drops the auth, drops the body, and turns POST into GET,
@@ -180,7 +185,7 @@ function fetchConfigFromExchange(
 
     function fetchRedirect() {
       let fetchCall = priority.addCall();
-      let fetch = new FetchHTTP(
+      let fetch = new lazy.FetchHTTP(
         redirectURL,
         callArgs, // now with auth
         fetchCall.successCallback(),
@@ -205,7 +210,7 @@ function fetchConfigFromExchange(
       dialogCall.setAbortable(dialogSuccessive);
       call3ErrorCallback(new Exception("Redirected"));
       dialogSuccessive.current = new TimeoutAbortable(
-        setTimeout(() => {
+        lazy.setTimeout(() => {
           dialogSuccessive.current = confirmCallback(
             redirectDomain,
             () => {
@@ -262,7 +267,7 @@ function readAutoDiscoverResponse(
     "RedirectAddr" in autoDiscoverXML.Autodiscover.Response.Account
   ) {
     // <https://docs.microsoft.com/en-us/openspecs/exchange_server_protocols/ms-oxdscli/49083e77-8dc2-4010-85c6-f40e090f3b17>
-    let redirectEmailAddress = Sanitizer.emailAddress(
+    let redirectEmailAddress = lazy.Sanitizer.emailAddress(
       autoDiscoverXML.Autodiscover.Response.Account.RedirectAddr
     );
     let domain = redirectEmailAddress.split("@").pop();
@@ -321,10 +326,10 @@ function readAutoDiscoverXML(autoDiscoverXML, username) {
     return value === undefined ? [] : value;
   }
 
-  var config = new AccountConfig();
-  config.source = AccountConfig.kSourceExchange;
+  var config = new lazy.AccountConfig();
+  config.source = lazy.AccountConfig.kSourceExchange;
   config.incoming.username = username || "%EMAILADDRESS%";
-  config.incoming.socketType = 2; // only https supported
+  config.incoming.socketType = Ci.nsMsgSocketType.SSL; // only https supported
   config.incoming.port = 443;
   config.incoming.auth = Ci.nsMsgAuthMethod.passwordCleartext;
   config.incoming.authAlternatives = [Ci.nsMsgAuthMethod.OAuth2];
@@ -333,7 +338,7 @@ function readAutoDiscoverXML(autoDiscoverXML, username) {
 
   for (let protocolX of array_or_undef(xml.$Protocol)) {
     try {
-      let type = Sanitizer.enum(
+      let type = lazy.Sanitizer.enum(
         protocolX.Type,
         ["WEB", "EXHTTP", "EXCH", "EXPR", "POP3", "IMAP", "SMTP"],
         "unknown"
@@ -346,31 +351,33 @@ function readAutoDiscoverXML(autoDiscoverXML, username) {
           urlsX = protocolX.Internal;
         }
         if (urlsX) {
-          config.incoming.owaURL = Sanitizer.url(urlsX.OWAUrl.value);
+          config.incoming.owaURL = lazy.Sanitizer.url(urlsX.OWAUrl.value);
           if (
             !config.incoming.ewsURL &&
             "Protocol" in urlsX &&
             "ASUrl" in urlsX.Protocol
           ) {
-            config.incoming.ewsURL = Sanitizer.url(urlsX.Protocol.ASUrl);
+            config.incoming.ewsURL = lazy.Sanitizer.url(urlsX.Protocol.ASUrl);
           }
           config.incoming.type = "exchange";
           let parsedURL = new URL(config.incoming.owaURL);
-          config.incoming.hostname = Sanitizer.hostname(parsedURL.hostname);
+          config.incoming.hostname = lazy.Sanitizer.hostname(
+            parsedURL.hostname
+          );
           if (parsedURL.port) {
-            config.incoming.port = Sanitizer.integer(parsedURL.port);
+            config.incoming.port = lazy.Sanitizer.integer(parsedURL.port);
           }
         }
       } else if (type == "EXHTTP" || type == "EXCH") {
-        config.incoming.ewsURL = Sanitizer.url(protocolX.EwsUrl);
+        config.incoming.ewsURL = lazy.Sanitizer.url(protocolX.EwsUrl);
         if (!config.incoming.ewsURL) {
-          config.incoming.ewsURL = Sanitizer.url(protocolX.ASUrl);
+          config.incoming.ewsURL = lazy.Sanitizer.url(protocolX.ASUrl);
         }
         config.incoming.type = "exchange";
         let parsedURL = new URL(config.incoming.ewsURL);
-        config.incoming.hostname = Sanitizer.hostname(parsedURL.hostname);
+        config.incoming.hostname = lazy.Sanitizer.hostname(parsedURL.hostname);
         if (parsedURL.port) {
-          config.incoming.port = Sanitizer.integer(parsedURL.port);
+          config.incoming.port = lazy.Sanitizer.integer(parsedURL.port);
         }
       } else if (type == "POP3" || type == "IMAP" || type == "SMTP") {
         let server;
@@ -380,14 +387,14 @@ function readAutoDiscoverXML(autoDiscoverXML, username) {
           server = config.createNewIncoming();
         }
 
-        server.type = Sanitizer.translate(type, {
+        server.type = lazy.Sanitizer.translate(type, {
           POP3: "pop3",
           IMAP: "imap",
           SMTP: "smtp",
         });
-        server.hostname = Sanitizer.hostname(protocolX.Server);
-        server.port = Sanitizer.integer(protocolX.Port);
-        server.socketType = 1; // plain
+        server.hostname = lazy.Sanitizer.hostname(protocolX.Server);
+        server.port = lazy.Sanitizer.integer(protocolX.Port);
+        server.socketType = Ci.nsMsgSocketType.plain;
         if (
           "SSL" in protocolX &&
           protocolX.SSL.toLowerCase() == "on" // "On" or "Off"
@@ -399,14 +406,14 @@ function readAutoDiscoverXML(autoDiscoverXML, username) {
             case 110: // POP3 standard
             case 25: // SMTP standard
             case 587: // SMTP standard
-              server.socketType = 3; // STARTTLS
+              server.socketType = Ci.nsMsgSocketType.alwaysSTARTTLS;
               break;
             case 993: // IMAP SSL
             case 995: // POP3 SSL
             case 465: // SMTP SSL
             default:
               // if non-standard port, assume normal TLS, not STARTTLS
-              server.socketType = 2; // normal TLS
+              server.socketType = Ci.nsMsgSocketType.SSL;
               break;
           }
         }
@@ -419,7 +426,7 @@ function readAutoDiscoverXML(autoDiscoverXML, username) {
           server.auth = Ci.nsMsgAuthMethod.secure;
         }
         if ("LoginName" in protocolX) {
-          server.username = Sanitizer.nonemptystring(protocolX.LoginName);
+          server.username = lazy.Sanitizer.nonemptystring(protocolX.LoginName);
         } else {
           server.username = username || "%EMAILADDRESS%";
         }
@@ -440,7 +447,7 @@ function readAutoDiscoverXML(autoDiscoverXML, username) {
 
       // else unknown or unsupported protocol
     } catch (e) {
-      Cu.reportError(e);
+      console.error(e);
     }
   }
 
@@ -462,6 +469,7 @@ function readAutoDiscoverXML(autoDiscoverXML, username) {
 
 /**
  * Ask server which addons can handle this config.
+ *
  * @param {AccountConfig} config
  * @param {Function(config {AccountConfig})} successCallback
  * @returns {Abortable}
@@ -479,10 +487,10 @@ function getAddonsList(config, successCallback, errorCallback) {
     errorCallback(new Exception("no URL for addons list configured"));
     return new Abortable();
   }
-  let fetch = new FetchHTTP(
+  let fetch = new lazy.FetchHTTP(
     url,
     { allowCache: true, timeout: 10000 },
-    function(json) {
+    function (json) {
       let addons = readAddonsJSON(json);
       addons = addons.filter(addon => {
         // Find types matching the current config.
@@ -568,9 +576,9 @@ function readAddonsJSON(json) {
       let addon = {
         id: addonJSON.id,
         minVersion: addonJSON.minVersion,
-        xpiURL: Sanitizer.url(addonJSON.xpiURL),
-        websiteURL: Sanitizer.url(addonJSON.websiteURL),
-        icon32: addonJSON.icon32 ? Sanitizer.url(addonJSON.icon32) : null,
+        xpiURL: lazy.Sanitizer.url(addonJSON.xpiURL),
+        websiteURL: lazy.Sanitizer.url(addonJSON.websiteURL),
+        icon32: addonJSON.icon32 ? lazy.Sanitizer.url(addonJSON.icon32) : null,
         supportedTypes: [],
       };
       assert(
@@ -586,9 +594,11 @@ function readAddonsJSON(json) {
       for (let typeJSON of ensureArray(addonJSON.accountTypes)) {
         try {
           addon.supportedTypes.push({
-            generalType: Sanitizer.alphanumdash(typeJSON.generalType),
-            protocolType: Sanitizer.alphanumdash(typeJSON.protocolType),
-            addonAccountType: Sanitizer.alphanumdash(typeJSON.addonAccountType),
+            generalType: lazy.Sanitizer.alphanumdash(typeJSON.generalType),
+            protocolType: lazy.Sanitizer.alphanumdash(typeJSON.protocolType),
+            addonAccountType: lazy.Sanitizer.alphanumdash(
+              typeJSON.addonAccountType
+            ),
           });
         } catch (e) {
           ddump(e);
@@ -625,7 +635,7 @@ function detectStandardProtocols(config, domain, successCallback) {
   // Autodiscover is known not to advertise all that it supports. Let's see
   // if there really isn't any IMAP/POP3 support by probing the Exchange
   // server. Use the server hostname already found.
-  let config2 = new AccountConfig();
+  let config2 = new lazy.AccountConfig();
   config2.incoming.hostname = config.incoming.hostname;
   config2.incoming.username = config.incoming.username || "%EMAILADDRESS%";
   // For Exchange 2013+ Kerberos/GSSAPI and NTLM options do not work by
@@ -643,18 +653,18 @@ function detectStandardProtocols(config, domain, successCallback) {
     config2.outgoingAlternatives.push(config.outgoing);
   }
 
-  GuessConfig.guessConfig(
+  lazy.GuessConfig.guessConfig(
     domain,
-    function(type, hostname, port, ssl, done, config) {
+    function (type, hostname, port, ssl, done, config) {
       gAccountSetupLogger.info(
         `Probing exchange server ${hostname} for ${type} protocol support.`
       );
     },
-    function(probedConfig) {
+    function (probedConfig) {
       // Probing succeeded: found open protocols, yay!
       successCallback(probedConfig);
     },
-    function(e, probedConfig) {
+    function (e, probedConfig) {
       // Probing didn't find any open protocols.
       // Let's use the exchange (only) config that was listed then.
       config.subSource += "-guess";

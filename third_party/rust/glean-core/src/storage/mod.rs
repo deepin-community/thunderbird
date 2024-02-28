@@ -15,6 +15,9 @@ use crate::database::Database;
 use crate::metrics::Metric;
 use crate::Lifetime;
 
+// An internal ping name, not to be touched by anything else
+pub(crate) const INTERNAL_STORAGE: &str = "glean_internal_info";
+
 /// Snapshot metrics from the underlying database.
 pub struct StorageManager;
 
@@ -31,9 +34,8 @@ fn snapshot_labeled_metrics(
     let ping_section = format!("labeled_{}", metric.ping_section());
     let map = snapshot.entry(ping_section).or_insert_with(HashMap::new);
 
-    let mut s = metric_id.splitn(2, '/');
-    let metric_id = s.next().unwrap(); // Safe unwrap, the function is only called when the id does contain a '/'
-    let label = s.next().unwrap(); // Safe unwrap, the function is only called when the name does contain a '/'
+    // Safe unwrap, the function is only called when the id does contain a '/'
+    let (metric_id, label) = metric_id.split_once('/').unwrap();
 
     let obj = map.entry(metric_id.into()).or_insert_with(|| json!({}));
     let obj = obj.as_object_mut().unwrap(); // safe unwrap, we constructed the object above
@@ -86,7 +88,7 @@ impl StorageManager {
         let mut snapshotter = |metric_id: &[u8], metric: &Metric| {
             let metric_id = String::from_utf8_lossy(metric_id).into_owned();
             if metric_id.contains('/') {
-                snapshot_labeled_metrics(&mut snapshot, &metric_id, &metric);
+                snapshot_labeled_metrics(&mut snapshot, &metric_id, metric);
             } else {
                 let map = snapshot
                     .entry(metric.ping_section().into())
@@ -95,9 +97,9 @@ impl StorageManager {
             }
         };
 
-        storage.iter_store_from(Lifetime::Ping, &store_name, None, &mut snapshotter);
-        storage.iter_store_from(Lifetime::Application, &store_name, None, &mut snapshotter);
-        storage.iter_store_from(Lifetime::User, &store_name, None, &mut snapshotter);
+        storage.iter_store_from(Lifetime::Ping, store_name, None, &mut snapshotter);
+        storage.iter_store_from(Lifetime::Application, store_name, None, &mut snapshotter);
+        storage.iter_store_from(Lifetime::User, store_name, None, &mut snapshotter);
 
         if clear_store {
             if let Err(e) = storage.clear_ping_lifetime_storage(store_name) {
@@ -139,7 +141,7 @@ impl StorageManager {
             }
         };
 
-        storage.iter_store_from(metric_lifetime, &store_name, None, &mut snapshotter);
+        storage.iter_store_from(metric_lifetime, store_name, None, &mut snapshotter);
 
         snapshot
     }
@@ -203,7 +205,7 @@ impl StorageManager {
         let mut snapshotter = |metric_id: &[u8], metric: &Metric| {
             let metric_id = String::from_utf8_lossy(metric_id).into_owned();
             if metric_id.ends_with("#experiment") {
-                let name = metric_id.splitn(2, '#').next().unwrap(); // safe unwrap, first field of a split always valid
+                let (name, _) = metric_id.split_once('#').unwrap(); // safe unwrap, we ensured there's a `#` in the string
                 snapshot.insert(name.to_string(), metric.as_json());
             }
         };
@@ -239,7 +241,7 @@ mod test {
 
         let metric = ExperimentMetric::new(&glean, "some-experiment".to_string());
 
-        metric.set_active(&glean, "test-branch".to_string(), Some(extra));
+        metric.set_active_sync(&glean, "test-branch".to_string(), extra);
         let snapshot = StorageManager
             .snapshot_experiments_as_json(glean.storage(), "glean_internal_info")
             .unwrap();
@@ -248,7 +250,7 @@ mod test {
             snapshot
         );
 
-        metric.set_inactive(&glean);
+        metric.set_inactive_sync(&glean);
 
         let empty_snapshot =
             StorageManager.snapshot_experiments_as_json(glean.storage(), "glean_internal_info");
@@ -263,7 +265,7 @@ mod test {
 
         let metric = ExperimentMetric::new(&glean, "some-experiment".to_string());
 
-        metric.set_active(&glean, "test-branch".to_string(), None);
+        metric.set_active_sync(&glean, "test-branch".to_string(), HashMap::new());
         let snapshot = StorageManager
             .snapshot_experiments_as_json(glean.storage(), "glean_internal_info")
             .unwrap();
@@ -272,7 +274,7 @@ mod test {
             snapshot
         );
 
-        metric.set_inactive(&glean);
+        metric.set_inactive_sync(&glean);
 
         let empty_snapshot =
             StorageManager.snapshot_experiments_as_json(glean.storage(), "glean_internal_info");

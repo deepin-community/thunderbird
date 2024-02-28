@@ -3,27 +3,22 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 "use strict";
 
-const { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-const { XPCOMUtils } = ChromeUtils.import(
-  "resource://gre/modules/XPCOMUtils.jsm"
-);
-const { actionTypes: at, actionCreators: ac } = ChromeUtils.import(
-  "resource://activity-stream/common/Actions.jsm"
+const { actionTypes: at, actionCreators: ac } = ChromeUtils.importESModule(
+  "resource://activity-stream/common/Actions.sys.mjs"
 );
 
 const HTML_NS = "http://www.w3.org/1999/xhtml";
 const PREFERENCES_LOADED_EVENT = "home-pane-loaded";
 
-XPCOMUtils.defineLazyModuleGetters(this, {
-  NimbusFeatures: "resource://nimbus/ExperimentAPI.jsm",
+const lazy = {};
+
+ChromeUtils.defineESModuleGetters(lazy, {
+  NimbusFeatures: "resource://nimbus/ExperimentAPI.sys.mjs",
 });
 
 // These "section" objects are formatted in a way to be similar to the ones from
 // SectionsManager to construct the preferences view.
-const PREFS_BEFORE_SECTIONS = ({
-  newNewtabExperienceEnabled,
-  customizationMenuEnabled,
-}) => [
+const PREFS_BEFORE_SECTIONS = () => [
   {
     id: "search",
     pref: {
@@ -36,56 +31,41 @@ const PREFS_BEFORE_SECTIONS = ({
     id: "topsites",
     pref: {
       feed: "feeds.topsites",
-      titleString:
-        newNewtabExperienceEnabled || customizationMenuEnabled
-          ? "home-prefs-shortcuts-header"
-          : "home-prefs-topsites-header",
-      descString:
-        newNewtabExperienceEnabled || customizationMenuEnabled
-          ? "home-prefs-shortcuts-description"
-          : "home-prefs-topsites-description",
+      titleString: "home-prefs-shortcuts-header",
+      descString: "home-prefs-shortcuts-description",
       get nestedPrefs() {
         return Services.prefs.getBoolPref("browser.topsites.useRemoteSetting")
           ? [
               {
                 name: "showSponsoredTopSites",
-                titleString:
-                  newNewtabExperienceEnabled || customizationMenuEnabled
-                    ? "home-prefs-shortcuts-by-option-sponsored"
-                    : "home-prefs-topsites-by-option-sponsored",
+                titleString: "home-prefs-shortcuts-by-option-sponsored",
                 eventSource: "SPONSORED_TOP_SITES",
               },
             ]
           : [];
       },
     },
-    icon: "topsites",
+    icon: "chrome://browser/skin/topsites.svg",
     maxRows: 4,
     rowsPref: "topSitesRows",
     eventSource: "TOP_SITES",
   },
 ];
 
-const PREFS_AFTER_SECTIONS = ({
-  newNewtabExperienceEnabled,
-  customizationMenuEnabled,
-}) => [
+const PREFS_AFTER_SECTIONS = () => [
   {
     id: "snippets",
     pref: {
       feed: "feeds.snippets",
       titleString: "home-prefs-snippets-header",
-      descString:
-        newNewtabExperienceEnabled || customizationMenuEnabled
-          ? "home-prefs-snippets-description-new"
-          : "home-prefs-snippets-description",
+      descString: "home-prefs-snippets-description-new",
     },
     icon: "chrome://global/skin/icons/info.svg",
     eventSource: "SNIPPETS",
   },
 ];
 
-this.AboutPreferences = class AboutPreferences {
+class AboutPreferences {
   init() {
     Services.obs.addObserver(this, PREFERENCES_LOADED_EVENT);
   }
@@ -148,7 +128,7 @@ this.AboutPreferences = class AboutPreferences {
       sections = this.handleDiscoverySettings(sections);
     }
 
-    const featureConfig = NimbusFeatures.newtab.getValue() || {};
+    const featureConfig = lazy.NimbusFeatures.newtab.getAllVariables() || {};
 
     this.renderPreferences(window, [
       ...PREFS_BEFORE_SECTIONS(featureConfig),
@@ -191,12 +171,12 @@ this.AboutPreferences = class AboutPreferences {
     const homeHeader = createAppend("label", contentsGroup).appendChild(
       document.createElementNS(HTML_NS, "h2")
     );
-    document.l10n.setAttributes(homeHeader, "home-prefs-content-header");
+    document.l10n.setAttributes(homeHeader, "home-prefs-content-header2");
 
     const homeDescription = createAppend("description", contentsGroup);
     document.l10n.setAttributes(
       homeDescription,
-      "home-prefs-content-description"
+      "home-prefs-content-description2"
     );
 
     // Add preferences for each section
@@ -210,8 +190,12 @@ this.AboutPreferences = class AboutPreferences {
         shouldHidePref,
         eventSource,
       } = sectionData;
-      const { feed: name, titleString = {}, descString, nestedPrefs = [] } =
-        prefData || {};
+      const {
+        feed: name,
+        titleString = {},
+        descString,
+        nestedPrefs = [],
+      } = prefData || {};
 
       // Don't show any sections that we don't want to expose in preferences UI
       if (shouldHidePref) {
@@ -323,7 +307,6 @@ this.AboutPreferences = class AboutPreferences {
     // Update the visibility of the Restore Defaults btn based on checked prefs
     gHomePane.toggleRestoreDefaultsBtn();
   }
-};
+}
 
-this.PREFERENCES_LOADED_EVENT = PREFERENCES_LOADED_EVENT;
 const EXPORTED_SYMBOLS = ["AboutPreferences", "PREFERENCES_LOADED_EVENT"];

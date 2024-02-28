@@ -3,8 +3,6 @@
  * You can obtain one at http://mozilla.org/MPL/2.0/. */
 // vim:set ts=2 sw=2 sts=2 et ft=javascript:
 
-const { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-
 /**
  * This file exports the JSMime code, polyfilling code as appropriate for use in
  * Gecko.
@@ -60,7 +58,7 @@ function MimeTextDecoder(charset, options) {
 
 // The following code loads custom MIME encoders.
 var CATEGORY_NAME = "custom-mime-encoder";
-Services.obs.addObserver(function(subject, topic, data) {
+Services.obs.addObserver(function (subject, topic, data) {
   subject = subject.QueryInterface(Ci.nsISupportsCString).data;
   if (data == CATEGORY_NAME) {
     let url = Services.catMan.getCategoryEntry(CATEGORY_NAME, subject);

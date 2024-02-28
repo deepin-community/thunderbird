@@ -49,9 +49,9 @@ var DEBUG = false; // non-const *only* so tweakable in server tests
 /** True if debugging output should be timestamped. */
 var DEBUG_TIMESTAMP = false; // non-const so tweakable in server tests
 
-var gGlobalObject = Cu.getGlobalForObject(this);
-
-const { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
+const { AppConstants } = ChromeUtils.importESModule(
+  "resource://gre/modules/AppConstants.sys.mjs"
+);
 
 /**
  * Asserts that the given condition holds.  If it doesn't, the given message is
@@ -68,7 +68,7 @@ function NS_ASSERT(cond, msg) {
     var stack = new Error().stack.split(/\n/);
     dumpn(
       stack
-        .map(function(val) {
+        .map(function (val) {
           return "###!!!   " + val;
         })
         .join("\n")
@@ -154,6 +154,8 @@ const HIDDEN_CHAR = "^";
  * a requested file.
  */
 const HEADERS_SUFFIX = HIDDEN_CHAR + "headers" + HIDDEN_CHAR;
+const INFORMATIONAL_RESPONSE_SUFFIX =
+  HIDDEN_CHAR + "informationalResponse" + HIDDEN_CHAR;
 
 /** Type used to denote SJS scripts for CGI-like functionality. */
 const SJS_TYPE = "sjs";
@@ -209,6 +211,11 @@ const ServerSocketIPv6 = CC(
   "@mozilla.org/network/server-socket;1",
   "nsIServerSocket",
   "initIPv6"
+);
+const ServerSocketDualStack = CC(
+  "@mozilla.org/network/server-socket;1",
+  "nsIServerSocket",
+  "initDualStack"
 );
 const ScriptableInputStream = CC(
   "@mozilla.org/scriptableinputstream;1",
@@ -347,7 +354,7 @@ function printObj(o, showMembers) {
   var s = "******************************\n";
   s += "o = {\n";
   for (var i in o) {
-    if (typeof i != "string" || showMembers || (i.length > 0 && i[0] != "_")) {
+    if (typeof i != "string" || showMembers || (!!i.length && i[0] != "_")) {
       s += "      " + i + ": " + o[i] + ",\n";
     }
   }
@@ -520,7 +527,11 @@ nsHttpServer.prototype = {
     this._start(port, "[::1]");
   },
 
-  _start(port, host) {
+  start_dualStack(port) {
+    this._start(port, "[::1]", true);
+  },
+
+  _start(port, host, dualStack) {
     if (this._socket) {
       throw Components.Exception("", Cr.NS_ERROR_ALREADY_INITIALIZED);
     }
@@ -564,7 +575,9 @@ nsHttpServer.prototype = {
       var socket;
       for (var i = 100; i; i--) {
         var temp = null;
-        if (this._host.includes(":")) {
+        if (dualStack) {
+          temp = new ServerSocketDualStack(this._port, maxConnections);
+        } else if (this._host.includes(":")) {
           temp = new ServerSocketIPv6(
             this._port,
             loopback, // true = localhost, false = everybody
@@ -605,7 +618,7 @@ nsHttpServer.prototype = {
 
       socket.asyncListen(this);
       this._port = socket.port;
-      this._identity._initialize(socket.port, host, true);
+      this._identity._initialize(socket.port, host, true, dualStack);
       this._socket = socket;
       dumpn(
         ">>> listening on port " +
@@ -639,7 +652,7 @@ nsHttpServer.prototype = {
     this._stopCallback =
       typeof callback === "function"
         ? callback
-        : function() {
+        : function () {
             callback.onStopped();
           };
 
@@ -917,20 +930,20 @@ class NodeServer {
   // Issues a request to the node server (handler defined in moz-http2.js)
   // This method should not be called directly.
   static sendCommand(command, path) {
-    let env = Cc["@mozilla.org/process/environment;1"].getService(
-      Ci.nsIEnvironment
-    );
-    let h2Port = env.get("MOZNODE_EXEC_PORT");
+    let h2Port = Services.env.get("MOZNODE_EXEC_PORT");
     if (!h2Port) {
       throw new Error("Could not find MOZNODE_EXEC_PORT");
     }
 
     let req = new XMLHttpRequest();
-    req.open("POST", `http://127.0.0.1:${h2Port}${path}`);
+    const serverIP =
+      AppConstants.platform == "android" ? "10.0.2.2" : "127.0.0.1";
+    req.open("POST", `http://${serverIP}:${h2Port}${path}`);
+    req.channel.QueryInterface(Ci.nsIHttpChannelInternal).bypassProxy = true;
 
     // Passing a function to NodeServer.execute will define that function
     // in node. It can be called in a later execute command.
-    let isFunction = function(obj) {
+    let isFunction = function (obj) {
       return !!(obj && obj.constructor && obj.call && obj.apply);
     };
     let payload = command;
@@ -980,16 +993,28 @@ class NodeServer {
 // toplabel    = alpha | alpha *( alphanum | "-" ) alphanum
 // IPv4address = 1*digit "." 1*digit "." 1*digit "." 1*digit
 //
+// IPv6 addresses are notably lacking in the above definition of 'host'.
+// RFC 2732 section 3 extends the host definition:
+// host          = hostname | IPv4address | IPv6reference
+// ipv6reference = "[" IPv6address "]"
+//
+// RFC 3986 supersedes RFC 2732 and offers a more precise definition of a IPv6
+// address. For simplicity, the regexp below captures all canonical IPv6
+// addresses (e.g. [::1]), but may also match valid non-canonical IPv6 addresses
+// (e.g. [::127.0.0.1]) and even invalid bracketed addresses ([::], [99999::]).
 
 const HOST_REGEX = new RegExp(
   "^(?:" +
     // *( domainlabel "." )
     "(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\\.)*" +
-    // toplabel
-    "[a-z](?:[a-z0-9-]*[a-z0-9])?" +
+    // toplabel [ "." ]
+    "[a-z](?:[a-z0-9-]*[a-z0-9])?\\.?" +
     "|" +
     // IPv4 address
     "\\d+\\.\\d+\\.\\d+\\.\\d+" +
+    "|" +
+    // IPv6 addresses (e.g. [::1])
+    "\\[[:0-9a-f]+\\]" +
     ")$",
   "i"
 );
@@ -1165,7 +1190,7 @@ ServerIdentity.prototype = {
    * Initializes the primary name for the corresponding server, based on the
    * provided port number.
    */
-  _initialize(port, host, addSecondaryDefault) {
+  _initialize(port, host, addSecondaryDefault, dualStack) {
     this._host = host;
     if (this._primaryPort !== -1) {
       this.add("http", host, port);
@@ -1178,6 +1203,9 @@ ServerIdentity.prototype = {
     if (addSecondaryDefault && host != "127.0.0.1") {
       if (host.includes(":")) {
         this.add("http", "[::1]", port);
+        if (dualStack) {
+          this.add("http", "127.0.0.1", port);
+        }
       } else {
         this.add("http", "127.0.0.1", port);
       }
@@ -1228,7 +1256,7 @@ ServerIdentity.prototype = {
       dumpStack();
       throw Components.Exception("", Cr.NS_ERROR_ILLEGAL_VALUE);
     }
-    if (!HOST_REGEX.test(host) && host != "[::1]") {
+    if (!HOST_REGEX.test(host)) {
       dumpn("*** unexpected host: '" + host + "'");
       throw Components.Exception("", Cr.NS_ERROR_ILLEGAL_VALUE);
     }
@@ -1325,7 +1353,7 @@ Connection.prototype = {
 
     // If an error triggered a server shutdown, act on it now
     if (server._doQuit) {
-      server.stop(function() {
+      server.stop(function () {
         /* not like we can do anything better */
       });
     }
@@ -1691,10 +1719,7 @@ RequestReader.prototype = {
         // NB: We allow an empty port here because, oddly, a colon may be
         //     present even without a port number, e.g. "example.com:"; in this
         //     case the default port applies.
-        if (
-          (!HOST_REGEX.test(host) && host != "[::1]") ||
-          !/^\d*$/.test(port)
-        ) {
+        if (!HOST_REGEX.test(host) || !/^\d*$/.test(port)) {
           dumpn(
             "*** malformed hostname (" +
               hostPort +
@@ -1861,7 +1886,15 @@ RequestReader.prototype = {
         var uri = Services.io.newURI(fullPath);
         fullPath = uri.pathQueryRef;
         scheme = uri.scheme;
-        host = metadata._host = uri.asciiHost;
+        host = uri.asciiHost;
+        if (host.includes(":")) {
+          // If the host still contains a ":", then it is an IPv6 address.
+          // IPv6 addresses-as-host are registered with brackets, so we need to
+          // wrap the host in brackets because nsIURI's host lacks them.
+          // This inconsistency in nsStandardURL is tracked at bug 1195459.
+          host = `[${host}]`;
+        }
+        metadata._host = host;
         port = uri.port;
         if (port === -1) {
           if (scheme === "http") {
@@ -2079,7 +2112,7 @@ LineData.prototype = {
       // But if our data ends in a CR, we have to back up one, because
       // the first byte in the next packet might be an LF and if we
       // start looking at data.length we won't find it.
-      if (data.length > 0 && data[data.length - 1] === CR) {
+      if (data.length && data[data.length - 1] === CR) {
         --this._start;
       }
 
@@ -2123,7 +2156,7 @@ LineData.prototype = {
  * Creates a request-handling function for an nsIHttpRequestHandler object.
  */
 function createHandlerFunc(handler) {
-  return function(metadata, response) {
+  return function (metadata, response) {
     handler.handle(metadata, response);
   };
 }
@@ -2201,7 +2234,8 @@ function defaultIndexHandler(metadata, response) {
     }
   }
 
-  body += "    </ol>\
+  body +=
+    "    </ol>\
                 </body>\
               </html>";
 
@@ -2269,14 +2303,23 @@ const PERMS_READONLY = (4 << 6) | (4 << 3) | 4;
  * @throws HTTP_500
  *   if an error occurred while processing custom-specified headers
  */
-function maybeAddHeaders(file, metadata, response) {
+function maybeAddHeadersInternal(
+  file,
+  metadata,
+  response,
+  informationalResponse
+) {
   var name = file.leafName;
   if (name.charAt(name.length - 1) == HIDDEN_CHAR) {
     name = name.substring(0, name.length - 1);
   }
 
   var headerFile = file.parent;
-  headerFile.append(name + HEADERS_SUFFIX);
+  if (!informationalResponse) {
+    headerFile.append(name + HEADERS_SUFFIX);
+  } else {
+    headerFile.append(name + INFORMATIONAL_RESPONSE_SUFFIX);
+  }
 
   if (!headerFile.exists()) {
     return;
@@ -2316,14 +2359,25 @@ function maybeAddHeaders(file, metadata, response) {
         description = status.substring(space + 1, status.length);
       }
 
-      response.setStatusLine(
-        metadata.httpVersion,
-        parseInt(code, 10),
-        description
-      );
+      if (!informationalResponse) {
+        response.setStatusLine(
+          metadata.httpVersion,
+          parseInt(code, 10),
+          description
+        );
+      } else {
+        response.setInformationalResponseStatusLine(
+          metadata.httpVersion,
+          parseInt(code, 10),
+          description
+        );
+      }
 
       line.value = "";
       more = lis.readLine(line);
+    } else if (informationalResponse) {
+      // An informational response must have a status line.
+      return;
     }
 
     // headers
@@ -2331,11 +2385,19 @@ function maybeAddHeaders(file, metadata, response) {
       var header = line.value;
       var colon = header.indexOf(":");
 
-      response.setHeader(
-        header.substring(0, colon),
-        header.substring(colon + 1, header.length),
-        false
-      ); // allow overriding server-set headers
+      if (!informationalResponse) {
+        response.setHeader(
+          header.substring(0, colon),
+          header.substring(colon + 1, header.length),
+          false
+        ); // allow overriding server-set headers
+      } else {
+        response.setInformationalResponseHeader(
+          header.substring(0, colon),
+          header.substring(colon + 1, header.length),
+          false
+        ); // allow overriding server-set headers
+      }
 
       line.value = "";
       more = lis.readLine(line);
@@ -2346,6 +2408,14 @@ function maybeAddHeaders(file, metadata, response) {
   } finally {
     fis.close();
   }
+}
+
+function maybeAddHeaders(file, metadata, response) {
+  maybeAddHeadersInternal(file, metadata, response, false);
+}
+
+function maybeAddInformationalResponse(file, metadata, response) {
+  maybeAddHeadersInternal(file, metadata, response, true);
 }
 
 /**
@@ -2460,7 +2530,7 @@ ServerHandler.prototype = {
               longestPrefix = prefix;
             }
           }
-          if (longestPrefix.length > 0) {
+          if (longestPrefix.length) {
             dumpn("calling prefix override for " + longestPrefix);
             this._overridePrefixes[longestPrefix](request, response);
           } else {
@@ -2545,7 +2615,7 @@ ServerHandler.prototype = {
     file = file.clone();
 
     var self = this;
-    this._overridePaths[path] = function(request, response) {
+    this._overridePaths[path] = function (request, response) {
       if (!file.exists()) {
         throw HTTP_404;
       }
@@ -2564,7 +2634,7 @@ ServerHandler.prototype = {
   // see nsIHttpServer.registerPathHandler
   //
   registerPathHandler(path, handler) {
-    if (path.length == 0) {
+    if (!path.length) {
       throw Components.Exception(
         "Handler path cannot be empty",
         Cr.NS_ERROR_INVALID_ARG
@@ -2770,7 +2840,7 @@ ServerHandler.prototype = {
 
       if (start !== undefined && start >= file.fileSize) {
         var HTTP_416 = new HttpError(416, "Requested Range Not Satisfiable");
-        HTTP_416.customErrorHandling = function(errorResponse) {
+        HTTP_416.customErrorHandling = function (errorResponse) {
           maybeAddHeaders(file, metadata, errorResponse);
         };
         throw HTTP_416;
@@ -2833,10 +2903,15 @@ ServerHandler.prototype = {
       );
 
       try {
-        var s = Cu.Sandbox(gGlobalObject);
+        // If you update the list of imports, please update the list in
+        // tools/lint/eslint/eslint-plugin-mozilla/lib/environments/sjs.js
+        // as well.
+        var s = Cu.Sandbox(globalThis);
         s.importFunction(dump, "dump");
         s.importFunction(atob, "atob");
         s.importFunction(btoa, "btoa");
+        s.importFunction(ChromeUtils, "ChromeUtils");
+        s.importFunction(Services, "Services");
 
         // Define a basic key-value state-preservation API across requests, with
         // keys initially corresponding to the empty string.
@@ -2912,8 +2987,14 @@ ServerHandler.prototype = {
       }
 
       response.setHeader("Content-Type", type, false);
+      maybeAddInformationalResponse(file, metadata, response);
       maybeAddHeaders(file, metadata, response);
-      response.setHeader("Content-Length", "" + count, false);
+      // Allow overriding Content-Length
+      try {
+        response.getHeader("Content-Length");
+      } catch (e) {
+        response.setHeader("Content-Length", "" + count, false);
+      }
 
       let fis = new FileInputStream(
         file,
@@ -2943,7 +3024,7 @@ ServerHandler.prototype = {
         throw e;
       }
 
-      let writeMore = function() {
+      let writeMore = function () {
         gThreadManager.currentThread.dispatch(
           writeData,
           Ci.nsIThread.DISPATCH_NORMAL
@@ -3176,7 +3257,7 @@ ServerHandler.prototype = {
         //     redirect here instead
         if (
           tmp == path.substring(1) &&
-          tmp.length != 0 &&
+          !!tmp.length &&
           tmp.charAt(tmp.length - 1) != "/"
         ) {
           file = null;
@@ -3466,7 +3547,7 @@ ServerHandler.prototype = {
    * Contains handlers for the default set of URIs contained in this server.
    */
   _defaultPaths: {
-    "/": function(metadata, response) {
+    "/": function (metadata, response) {
       response.setStatusLine(metadata.httpVersion, 200, "OK");
       response.setHeader("Content-Type", "text/html;charset=utf-8", false);
 
@@ -3484,7 +3565,7 @@ ServerHandler.prototype = {
       response.bodyOutputStream.write(body, body.length);
     },
 
-    "/trace": function(metadata, response) {
+    "/trace": function (metadata, response) {
       response.setStatusLine(metadata.httpVersion, 200, "OK");
       response.setHeader("Content-Type", "text/plain;charset=utf-8", false);
 
@@ -3508,8 +3589,9 @@ ServerHandler.prototype = {
 
       var headEnum = metadata.headers;
       while (headEnum.hasMoreElements()) {
-        var fieldName = headEnum.getNext().QueryInterface(Ci.nsISupportsString)
-          .data;
+        var fieldName = headEnum
+          .getNext()
+          .QueryInterface(Ci.nsISupportsString).data;
         body += fieldName + ": " + metadata.getHeader(fieldName) + "\r\n";
       }
 
@@ -3753,6 +3835,16 @@ function Response(connection) {
   this._headers = new nsHttpHeaders();
 
   /**
+   * Informational response:
+   * For example 103 Early Hint
+   **/
+  this._informationalResponseHttpVersion = nsHttpVersion.HTTP_1_1;
+  this._informationalResponseHttpCode = 0;
+  this._informationalResponseHttpDescription = "";
+  this._informationalResponseHeaders = new nsHttpHeaders();
+  this._informationalResponseSet = false;
+
+  /**
    * Set to true when this response is ended (completely constructed if possible
    * and the connection closed); further actions on this will then fail.
    */
@@ -3843,8 +3935,16 @@ Response.prototype = {
   //
   // see nsIHttpResponse.setStatusLine
   //
-  setStatusLine(httpVersion, code, description) {
-    if (!this._headers || this._finished || this._powerSeized) {
+  setStatusLineInternal(httpVersion, code, description, informationalResponse) {
+    if (this._finished || this._powerSeized) {
+      throw Components.Exception("", Cr.NS_ERROR_NOT_AVAILABLE);
+    }
+
+    if (!informationalResponse) {
+      if (!this._headers) {
+        throw Components.Exception("", Cr.NS_ERROR_NOT_AVAILABLE);
+      }
+    } else if (!this._informationalResponseHeaders) {
       throw Components.Exception("", Cr.NS_ERROR_NOT_AVAILABLE);
     }
     this._ensureAlive();
@@ -3882,9 +3982,27 @@ Response.prototype = {
     }
 
     // set the values only after validation to preserve atomicity
-    this._httpDescription = description;
-    this._httpCode = code;
-    this._httpVersion = httpVer;
+    if (!informationalResponse) {
+      this._httpDescription = description;
+      this._httpCode = code;
+      this._httpVersion = httpVer;
+    } else {
+      this._informationalResponseSet = true;
+      this._informationalResponseHttpDescription = description;
+      this._informationalResponseHttpCode = code;
+      this._informationalResponseHttpVersion = httpVer;
+    }
+  },
+
+  //
+  // see nsIHttpResponse.setStatusLine
+  //
+  setStatusLine(httpVersion, code, description) {
+    this.setStatusLineInternal(httpVersion, code, description, false);
+  },
+
+  setInformationalResponseStatusLine(httpVersion, code, description) {
+    this.setStatusLineInternal(httpVersion, code, description, true);
   },
 
   //
@@ -3899,6 +4017,19 @@ Response.prototype = {
     this._headers.setHeader(name, value, merge);
   },
 
+  setInformationalResponseHeader(name, value, merge) {
+    if (
+      !this._informationalResponseHeaders ||
+      this._finished ||
+      this._powerSeized
+    ) {
+      throw Components.Exception("", Cr.NS_ERROR_NOT_AVAILABLE);
+    }
+    this._ensureAlive();
+
+    this._informationalResponseHeaders.setHeader(name, value, merge);
+  },
+
   setHeaderNoCheck(name, value) {
     if (!this._headers || this._finished || this._powerSeized) {
       throw Components.Exception("", Cr.NS_ERROR_NOT_AVAILABLE);
@@ -3906,6 +4037,15 @@ Response.prototype = {
     this._ensureAlive();
 
     this._headers.setHeaderNoCheck(name, value);
+  },
+
+  setInformationalHeaderNoCheck(name, value) {
+    if (!this._headers || this._finished || this._powerSeized) {
+      throw Components.Exception("", Cr.NS_ERROR_NOT_AVAILABLE);
+    }
+    this._ensureAlive();
+
+    this._informationalResponseHeaders.setHeaderNoCheck(name, value);
   },
 
   //
@@ -4215,7 +4355,39 @@ Response.prototype = {
     dumpn("*** _sendHeaders()");
 
     NS_ASSERT(this._headers);
+    NS_ASSERT(this._informationalResponseHeaders);
     NS_ASSERT(!this._powerSeized);
+
+    var preambleData = [];
+
+    // Informational response, e.g. 103
+    if (this._informationalResponseSet) {
+      // request-line
+      let statusLine =
+        "HTTP/" +
+        this._informationalResponseHttpVersion +
+        " " +
+        this._informationalResponseHttpCode +
+        " " +
+        this._informationalResponseHttpDescription +
+        "\r\n";
+      preambleData.push(statusLine);
+
+      // headers
+      let headEnum = this._informationalResponseHeaders.enumerator;
+      while (headEnum.hasMoreElements()) {
+        let fieldName = headEnum
+          .getNext()
+          .QueryInterface(Ci.nsISupportsString).data;
+        let values =
+          this._informationalResponseHeaders.getHeaderValues(fieldName);
+        for (let i = 0, sz = values.length; i < sz; i++) {
+          preambleData.push(fieldName + ": " + values[i] + "\r\n");
+        }
+      }
+      // end request-line/headers
+      preambleData.push("\r\n");
+    }
 
     // request-line
     var statusLine =
@@ -4256,13 +4428,14 @@ Response.prototype = {
     dumpn("*** header post-processing completed, sending response head...");
 
     // request-line
-    var preambleData = [statusLine];
+    preambleData.push(statusLine);
 
     // headers
     var headEnum = headers.enumerator;
     while (headEnum.hasMoreElements()) {
-      var fieldName = headEnum.getNext().QueryInterface(Ci.nsISupportsString)
-        .data;
+      var fieldName = headEnum
+        .getNext()
+        .QueryInterface(Ci.nsISupportsString).data;
       var values = headers.getHeaderValues(fieldName);
       for (var i = 0, sz = values.length; i < sz; i++) {
         preambleData.push(fieldName + ": " + values[i] + "\r\n");
@@ -4557,9 +4730,9 @@ WriteThroughCopier.prototype = {
     var pendingData = this._pendingData;
 
     NS_ASSERT(bytesConsumed > 0);
-    NS_ASSERT(pendingData.length > 0, "no pending data somehow?");
+    NS_ASSERT(!!pendingData.length, "no pending data somehow?");
     NS_ASSERT(
-      pendingData[pendingData.length - 1].length > 0,
+      !!pendingData[pendingData.length - 1].length,
       "buffered zero bytes of data?"
     );
 
@@ -4634,7 +4807,7 @@ WriteThroughCopier.prototype = {
       return;
     }
 
-    NS_ASSERT(pendingData[0].length > 0, "queued up an empty quantum?");
+    NS_ASSERT(!!pendingData[0].length, "queued up an empty quantum?");
 
     //
     // Write out the first pending quantum of data.  The possible errors here
@@ -4669,11 +4842,11 @@ WriteThroughCopier.prototype = {
     } catch (e) {
       if (wouldBlock(e)) {
         NS_ASSERT(
-          pendingData.length > 0,
+          !!pendingData.length,
           "stream-blocking exception with no data to write?"
         );
         NS_ASSERT(
-          pendingData[0].length > 0,
+          !!pendingData[0].length,
           "stream-blocking exception with empty quantum?"
         );
         this._waitToWriteData();
@@ -4693,7 +4866,7 @@ WriteThroughCopier.prototype = {
     // The day is ours!  Quantum written, now let's see if we have more data
     // still to write.
     try {
-      if (pendingData.length > 0) {
+      if (pendingData.length) {
         this._waitToWriteData();
         return;
       }
@@ -4874,8 +5047,8 @@ WriteThroughCopier.prototype = {
     dumpn("*** _waitToWriteData");
 
     var pendingData = this._pendingData;
-    NS_ASSERT(pendingData.length > 0, "no pending data to write?");
-    NS_ASSERT(pendingData[0].length > 0, "buffered an empty write?");
+    NS_ASSERT(!!pendingData.length, "no pending data to write?");
+    NS_ASSERT(!!pendingData[0].length, "buffered an empty write?");
 
     this._sink.asyncWait(
       this,

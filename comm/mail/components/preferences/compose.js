@@ -7,19 +7,20 @@
 
 /* import-globals-from preferences.js */
 
-var { InlineSpellChecker } = ChromeUtils.import(
-  "resource://gre/modules/InlineSpellChecker.jsm"
+var { InlineSpellChecker } = ChromeUtils.importESModule(
+  "resource://gre/modules/InlineSpellChecker.sys.mjs"
 );
 
 // CloudFile account tools used by gCloudFile.
 var { cloudFileAccounts } = ChromeUtils.import(
   "resource:///modules/cloudFileAccounts.jsm"
 );
-var { E10SUtils } = ChromeUtils.import("resource://gre/modules/E10SUtils.jsm");
-var { ExtensionParent } = ChromeUtils.import(
-  "resource://gre/modules/ExtensionParent.jsm"
+var { E10SUtils } = ChromeUtils.importESModule(
+  "resource://gre/modules/E10SUtils.sys.mjs"
 );
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
+var { ExtensionParent } = ChromeUtils.importESModule(
+  "resource://gre/modules/ExtensionParent.sys.mjs"
+);
 
 Preferences.addAll([
   { id: "mail.forward_message_mode", type: "int" },
@@ -45,16 +46,17 @@ Preferences.addAll([
   { id: "mail.compose.default_to_paragraph", type: "bool" },
   { id: "mail.compose.big_attachments.notify", type: "bool" },
   { id: "mail.compose.big_attachments.threshold_kb", type: "int" },
+  { id: "mail.default_send_format", type: "int" },
+  { id: "mail.compose.add_link_preview", type: "bool" },
 ]);
 
 var gComposePane = {
   mSpellChecker: null,
-  mDictCount: 0,
 
   init() {
     this.enableAutocomplete();
 
-    this.initLanguageMenu();
+    this.initLanguages();
 
     this.populateFonts();
 
@@ -82,10 +84,6 @@ var gComposePane = {
     gCloudFile.init();
   },
 
-  sendOptionsDialog() {
-    gSubDialog.open("chrome://messenger/content/preferences/sendoptions.xhtml");
-  },
-
   attachmentReminderOptionsDialog() {
     gSubDialog.open(
       "chrome://messenger/content/preferences/attachmentReminder.xhtml",
@@ -101,8 +99,9 @@ var gComposePane = {
   },
 
   updateUseReaderDefaults() {
-    let useReaderDefaultsChecked = Preferences.get("msgcompose.default_colors")
-      .value;
+    let useReaderDefaultsChecked = Preferences.get(
+      "msgcompose.default_colors"
+    ).value;
     gComposePane.enableElement(
       document.getElementById("textColorLabel"),
       !useReaderDefaultsChecked
@@ -204,28 +203,15 @@ var gComposePane = {
     }
   },
 
-  async initLanguageMenu() {
-    var languageMenuList = document.getElementById("languageMenuList");
+  async initLanguages() {
+    let languageList = document.getElementById("dictionaryList");
     this.mSpellChecker = Cc["@mozilla.org/spellchecker/engine;1"].getService(
       Ci.mozISpellCheckingEngine
     );
 
-    // Get the list of dictionaries from
-    // the spellchecker.
+    // Get the list of dictionaries from the spellchecker.
 
-    var dictList = this.mSpellChecker.getDictionaryList();
-    var count = dictList.length;
-
-    // if we don't have any dictionaries installed, disable the menu list
-    languageMenuList.disabled = !count;
-
-    // If dictionary count hasn't changed then no need to update the menu.
-    if (this.mDictCount == count) {
-      return;
-    }
-
-    // Store current dictionary count.
-    this.mDictCount = count;
+    let dictList = this.mSpellChecker.getDictionaryList();
 
     // HACK: calling sortDictionaryList may fail the first time due to
     // synchronous loading of the .ftl files. If we load the files and wait
@@ -234,22 +220,37 @@ var gComposePane = {
       "toolkit/intl/languageNames.ftl",
       "toolkit/intl/regionNames.ftl",
     ]).formatValue("language-name-en");
-
-    var inlineSpellChecker = new InlineSpellChecker();
-    var sortedList = inlineSpellChecker.sortDictionaryList(dictList);
-
-    // Remove any languages from the list.
-    languageMenuList.removeAllItems();
-
-    // append the dictionaries to the menu list...
-    for (var i = 0; i < count; i++) {
-      languageMenuList.appendItem(
-        sortedList[i].displayName,
-        sortedList[i].localeCode
-      );
-    }
-
-    languageMenuList.setInitialSelection();
+    let sortedList = new InlineSpellChecker().sortDictionaryList(dictList);
+    let activeDictionaries = Services.prefs
+      .getCharPref("spellchecker.dictionary")
+      .split(",");
+    let template = document.getElementById("dictionaryListItem");
+    languageList.replaceChildren(
+      ...sortedList.map(({ displayName, localeCode }) => {
+        let item = template.content.cloneNode(true).firstElementChild;
+        item.querySelector(".checkbox-label").textContent = displayName;
+        let input = item.querySelector("input");
+        input.setAttribute("value", localeCode);
+        input.addEventListener("change", event => {
+          let language = event.target.value;
+          let dicts = Services.prefs
+            .getCharPref("spellchecker.dictionary")
+            .split(",")
+            .filter(Boolean);
+          if (!event.target.checked) {
+            dicts = dicts.filter(item => item != language);
+          } else {
+            dicts.push(language);
+          }
+          Services.prefs.setCharPref(
+            "spellchecker.dictionary",
+            dicts.join(",")
+          );
+        });
+        input.checked = activeDictionaries.includes(localeCode);
+        return item;
+      })
+    );
   },
 
   populateFonts() {
@@ -394,8 +395,7 @@ var gCloudFile = {
   _onAccountConfigured(event, account) {
     for (let item of this._list.children) {
       if (item.value == account.accountKey) {
-        item.querySelector("image.configuredWarning").hidden =
-          account.configured;
+        item.querySelector(".configuredWarning").hidden = account.configured;
       }
     }
   },
@@ -451,17 +451,16 @@ var gCloudFile = {
 
   makeRichListItemForAccount(aAccount) {
     let rli = document.createXULElement("richlistitem");
-    rli.value = aAccount.accountKey;
     rli.setAttribute("align", "center");
     rli.classList.add("cloudfileAccount", "input-container");
     rli.setAttribute("value", aAccount.accountKey);
 
+    let icon = document.createElement("img");
+    icon.classList.add("typeIcon");
     if (aAccount.iconURL) {
-      rli.style.listStyleImage = "url('" + aAccount.iconURL + "')";
+      icon.setAttribute("src", aAccount.iconURL);
     }
-
-    let icon = document.createXULElement("image");
-    icon.setAttribute("class", "typeIcon");
+    icon.setAttribute("alt", "");
     rli.appendChild(icon);
 
     let label = document.createXULElement("label");
@@ -481,11 +480,12 @@ var gCloudFile = {
     input.addEventListener("keypress", this);
     rli.appendChild(input);
 
-    let warningIcon = document.createXULElement("image");
+    let warningIcon = document.createElement("img");
     warningIcon.setAttribute("class", "configuredWarning typeIcon");
     warningIcon.setAttribute("src", "chrome://global/skin/icons/warning.svg");
+    // "title" provides the accessible name, not "alt".
     warningIcon.setAttribute(
-      "tooltiptext",
+      "title",
       this._strings.GetStringFromName("notConfiguredYet")
     );
     if (aAccount.configured) {
@@ -620,7 +620,7 @@ var gCloudFile = {
       : {};
     browser.messageManager.sendAsyncMessage("Extension:InitBrowser", options);
 
-    browser.loadURI(url, {
+    browser.fixupAndLoadURIString(url, {
       triggeringPrincipal: Services.scriptSecurityManager.getSystemPrincipal(),
     });
   },

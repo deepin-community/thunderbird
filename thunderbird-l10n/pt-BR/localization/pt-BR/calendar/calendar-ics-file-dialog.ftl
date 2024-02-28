@@ -4,6 +4,7 @@
 
 calendar-ics-file-window-2 =
     .title = Importar eventos e tarefas da agenda
+calendar-ics-file-window-title = Importar eventos e tarefas da agenda
 calendar-ics-file-dialog-import-event-button-label = Importar eventos
 calendar-ics-file-dialog-import-task-button-label = Importar tarefas
 calendar-ics-file-dialog-2 =
@@ -32,11 +33,15 @@ calendar-ics-file-dialog-progress-message = Importando…
 calendar-ics-file-import-success = Importado com sucesso!
 calendar-ics-file-import-error = Houve um erro e a importação falhou.
 calendar-ics-file-import-complete = Importação concluída.
+# Variables:
+# $duplicatesCount (Number) - Number of items already existing in the target calendar.
 calendar-ics-file-import-duplicates =
     { $duplicatesCount ->
         [one] Um item foi ignorado porque já existe na agenda de destino.
        *[other] { $duplicatesCount } itens foram ignorados porque já existem na agenda de destino.
     }
+# Variables:
+# $errorsCount (Number) - Number of errors while importing ics file.
 calendar-ics-file-import-errors =
     { $errorsCount ->
         [one] Falhou a importação de um item. Veja detalhes no console de erros.

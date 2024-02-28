@@ -3,15 +3,34 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-/* import-globals-from commandglue.js */
-/* import-globals-from folderDisplay.js */
-/* import-globals-from mailWindow.js */
 /* import-globals-from utilityOverlay.js */
+
+/* globals msgWindow, messenger */ // From mailWindow.js
+/* globals openComposeWindowForRSSArticle */ // From newsblogOverlay.js
 
 var { MailServices } = ChromeUtils.import(
   "resource:///modules/MailServices.jsm"
 );
-var { MailUtils } = ChromeUtils.import("resource:///modules/MailUtils.jsm");
+ChromeUtils.defineModuleGetter(
+  this,
+  "FeedUtils",
+  "resource:///modules/FeedUtils.jsm"
+);
+ChromeUtils.defineModuleGetter(
+  this,
+  "MailUtils",
+  "resource:///modules/MailUtils.jsm"
+);
+ChromeUtils.defineModuleGetter(
+  this,
+  "MsgHdrToMimeMessage",
+  "resource:///modules/gloda/MimeMessage.jsm"
+);
+ChromeUtils.defineModuleGetter(
+  this,
+  "EnigmailMime",
+  "chrome://openpgp/content/modules/mime.jsm"
+);
 
 function GetNextNMessages(folder) {
   if (folder) {
@@ -24,12 +43,12 @@ function GetNextNMessages(folder) {
 
 /**
  * Figure out the message key from the message uri.
+ *
  * @param uri string defining internal storage
  */
 function GetMsgKeyFromURI(uri) {
   // Format of 'uri' : protocol://email/folder#key?params
   //                   '?params' are optional
-  //   ex : mailbox-message://john%2Edoe@pop.isp.invalid/Drafts#123456?fetchCompleteMessage=true
   //   ex : mailbox-message://john%2Edoe@pop.isp.invalid/Drafts#12345
   // We keep only the part after '#' and before an optional '?'.
   // The regexp expects 'key' to be an integer (a series of digits) : '\d+'.
@@ -41,17 +60,41 @@ function GetMsgKeyFromURI(uri) {
 /**
  * Compose a message.
  *
- * @param type   nsIMsgCompType    Type of composition (new message, reply, draft, etc.)
- * @param format nsIMsgCompFormat  Requested format (plain text, html, default)
- * @param folder nsIMsgFolder      Folder where the original message is stored
- * @param messageArray             Array of messages to process, often only holding one element.
+ * @param {nsIMsgCompType} type - Type of composition (new message, reply, draft, etc.)
+ * @param {nsIMsgCompFormat} format - Requested format (plain text, html, default)
+ * @param {nsIMsgFolder} folder - Folder where the original message is stored
+ * @param {string[]} messageArray - Array of message URIs to process, often only
+ *   holding one element.
+ * @param {Selection} [selection=null] - A DOM selection to be quoted, or null
+ *   to quote the whole message, if quoting is appropriate (e.g. in a reply).
+ * @param {boolean} [autodetectCharset=false] - If quoting the whole message,
+ *   whether automatic character set detection should be used.
  */
-async function ComposeMessage(type, format, folder, messageArray) {
+async function ComposeMessage(
+  type,
+  format,
+  folder,
+  messageArray,
+  selection = null,
+  autodetectCharset = false
+) {
+  let aboutMessage =
+    document.getElementById("tabmail")?.currentAboutMessage ||
+    document.getElementById("messageBrowser")?.contentWindow;
+  let currentHeaderData = aboutMessage?.currentHeaderData;
+
+  function isCurrentlyDisplayed(hdr) {
+    return (
+      currentHeaderData && // ignoring enclosing brackets:
+      currentHeaderData["message-id"]?.headerValue.includes(hdr.messageId)
+    );
+  }
+
   function findDeliveredToIdentityEmail(hdr) {
     // This function reads from currentHeaderData, which is only useful if we're
     // looking at the currently-displayed message. Otherwise, just return
     // immediately so we don't waste time.
-    if (hdr != gMessageDisplay.displayedMessage) {
+    if (!isCurrentlyDisplayed(hdr)) {
       return "";
     }
 
@@ -85,37 +128,13 @@ async function ComposeMessage(type, format, folder, messageArray) {
     return "";
   }
 
-  let msgComposeType = Ci.nsIMsgCompType;
-  let suppressReplyQuote = false;
   let msgKey;
   if (messageArray && messageArray.length == 1) {
     msgKey = GetMsgKeyFromURI(messageArray[0]);
-    if (msgKey != gMessageDisplay.keyForCharsetOverride) {
-      msgWindow.charsetOverride = false;
-    }
-    if (
-      type == msgComposeType.Reply ||
-      type == msgComposeType.ReplyAll ||
-      type == msgComposeType.ReplyToSender ||
-      type == msgComposeType.ReplyToGroup ||
-      type == msgComposeType.ReplyToSenderAndGroup ||
-      type == msgComposeType.ReplyToList
-    ) {
-      let displayKey =
-        gMessageDisplay.displayedMessage &&
-        "messageKey" in gMessageDisplay.displayedMessage
-          ? gMessageDisplay.displayedMessage.messageKey
-          : null;
-      if (msgKey != displayKey) {
-        // Not replying to the displayed message, so remove the selection
-        // in order not to quote from the wrong message.
-        suppressReplyQuote = true;
-      }
-    }
   }
 
   // Check if the draft is already open in another window. If it is, just focus the window.
-  if (type == msgComposeType.Draft && messageArray.length == 1) {
+  if (type == Ci.nsIMsgCompType.Draft && messageArray.length == 1) {
     // We'll search this uri in the opened windows.
     for (let win of Services.wm.getEnumerator("")) {
       // Check if it is a compose window.
@@ -150,9 +169,9 @@ async function ComposeMessage(type, format, folder, messageArray) {
       if (
         !folder.isServer &&
         server.type == "nntp" &&
-        type == msgComposeType.New
+        type == Ci.nsIMsgCompType.New
       ) {
-        type = msgComposeType.NewsPost;
+        type = Ci.nsIMsgCompType.NewsPost;
         newsgroup = folder.folderURL;
       }
 
@@ -169,7 +188,7 @@ async function ComposeMessage(type, format, folder, messageArray) {
   // dump("\nComposeMessage from XUL: " + identity + "\n");
 
   switch (type) {
-    case msgComposeType.New: // new message
+    case Ci.nsIMsgCompType.New: // new message
       // dump("OpenComposeWindow with " + identity + "\n");
 
       MailServices.compose.OpenComposeWindow(
@@ -183,7 +202,7 @@ async function ComposeMessage(type, format, folder, messageArray) {
         msgWindow
       );
       return;
-    case msgComposeType.NewsPost:
+    case Ci.nsIMsgCompType.NewsPost:
       // dump("OpenComposeWindow with " + identity + " and " + newsgroup + "\n");
       MailServices.compose.OpenComposeWindow(
         null,
@@ -196,7 +215,7 @@ async function ComposeMessage(type, format, folder, messageArray) {
         msgWindow
       );
       return;
-    case msgComposeType.ForwardAsAttachment:
+    case Ci.nsIMsgCompType.ForwardAsAttachment:
       if (messageArray && messageArray.length) {
         // If we have more than one ForwardAsAttachment then pass null instead
         // of the header to tell the compose service to work out the attachment
@@ -237,7 +256,8 @@ async function ComposeMessage(type, format, folder, messageArray) {
             Ci.nsIMsgCompType.Reply,
             Ci.nsIMsgCompType.ReplyAll,
             Ci.nsIMsgCompType.ReplyToSender,
-            Ci.nsIMsgCompType.ReplyToGroup,
+            // Author's address doesn't matter for followup to a newsgroup.
+            // Ci.nsIMsgCompType.ReplyToGroup,
             Ci.nsIMsgCompType.ReplyToSenderAndGroup,
             Ci.nsIMsgCompType.ReplyWithTemplate,
             Ci.nsIMsgCompType.ReplyToList,
@@ -250,7 +270,10 @@ async function ComposeMessage(type, format, folder, messageArray) {
             null
           );
           let email = fromAddrs[0]?.email;
-          if (type == msgComposeType.ReplyToList) {
+          if (
+            type == Ci.nsIMsgCompType.ReplyToList &&
+            isCurrentlyDisplayed(hdr)
+          ) {
             // ReplyToList is only enabled for current message (if at all), so
             // using currentHeaderData is ok.
             // List-Post value is of the format <mailto:list@example.com>
@@ -263,15 +286,12 @@ async function ComposeMessage(type, format, folder, messageArray) {
           if (
             /^(.*[._-])?(do[._-]?not|no)[._-]?reply([._-].*)?@/i.test(email)
           ) {
-            let [
-              title,
-              message,
-              replyAnywayButton,
-            ] = await document.l10n.formatValues([
-              { id: "no-reply-title" },
-              { id: "no-reply-message", args: { email } },
-              { id: "no-reply-reply-anyway-button" },
-            ]);
+            let [title, message, replyAnywayButton] =
+              await document.l10n.formatValues([
+                { id: "no-reply-title" },
+                { id: "no-reply-message", args: { email } },
+                { id: "no-reply-reply-anyway-button" },
+              ]);
 
             let buttonFlags =
               Ci.nsIPrompt.BUTTON_TITLE_IS_STRING * Ci.nsIPrompt.BUTTON_POS_0 +
@@ -331,7 +351,7 @@ async function ComposeMessage(type, format, folder, messageArray) {
             MsgHdrToMimeMessage(
               hdr,
               null,
-              function(hdr, mimeMsg) {
+              function (hdr, mimeMsg) {
                 let catchAllHeaders = Services.prefs
                   .getStringPref("mail.compose.catchAllHeaders")
                   .split(",")
@@ -359,23 +379,25 @@ async function ComposeMessage(type, format, folder, messageArray) {
                 if (identity.catchAll && matchingHint) {
                   // If name is not set in matchingHint, search trough other hints.
                   if (matchingHint.email && !matchingHint.name) {
-                    let hints = MailServices.headerParser.makeFromDisplayAddress(
-                      hdr.recipients +
-                        "," +
-                        hdr.ccList +
-                        "," +
-                        collectedHeaderAddresses
-                    );
+                    let hints =
+                      MailServices.headerParser.makeFromDisplayAddress(
+                        hdr.recipients +
+                          "," +
+                          hdr.ccList +
+                          "," +
+                          collectedHeaderAddresses
+                      );
                     for (let hint of hints) {
                       if (
                         hint.name &&
                         hint.email.toLowerCase() ==
                           matchingHint.email.toLowerCase()
                       ) {
-                        matchingHint = MailServices.headerParser.makeMailboxObject(
-                          hint.name,
-                          matchingHint.email
-                        );
+                        matchingHint =
+                          MailServices.headerParser.makeMailboxObject(
+                            hint.name,
+                            matchingHint.email
+                          );
                         break;
                       }
                     }
@@ -397,11 +419,12 @@ async function ComposeMessage(type, format, folder, messageArray) {
                   identity,
                   matchingHint.toString(),
                   msgWindow,
-                  suppressReplyQuote
+                  selection,
+                  autodetectCharset
                 );
               },
               true,
-              { saneBodySize: true, partsOnDemand: true }
+              { saneBodySize: true }
             );
           } else {
             // Fall back to traditional behavior.
@@ -419,7 +442,8 @@ async function ComposeMessage(type, format, folder, messageArray) {
               hdrIdentity,
               null,
               msgWindow,
-              suppressReplyQuote
+              selection,
+              autodetectCharset
             );
           }
         }
@@ -474,7 +498,8 @@ function SaveAsFile(uris) {
   let filenames = [];
 
   for (let uri of uris) {
-    let msgHdr = messenger.messageServiceFromURI(uri).messageURIToMsgHdr(uri);
+    let msgHdr =
+      MailServices.messageServiceFromURI(uri).messageURIToMsgHdr(uri);
     let nameBase = GenerateFilenameFromMsgHdr(msgHdr);
     let name = GenerateValidFilename(nameBase, ".eml");
 
@@ -561,55 +586,82 @@ function SaveAsTemplate(uri) {
   }
 }
 
-function MarkSelectedMessagesRead(markRead) {
-  ClearPendingReadTimer();
-  gDBView.doCommand(
-    markRead
-      ? Ci.nsMsgViewCommandType.markMessagesRead
-      : Ci.nsMsgViewCommandType.markMessagesUnread
-  );
-  if (markRead) {
-    reportMsgRead({ isNewRead: true });
-  }
-}
-
-function MarkSelectedMessagesFlagged(markFlagged) {
-  gDBView.doCommand(
-    markFlagged
-      ? Ci.nsMsgViewCommandType.flagMessages
-      : Ci.nsMsgViewCommandType.unflagMessages
-  );
-}
-
-function ViewPageSource(messages) {
-  var numMessages = messages.length;
-
-  if (numMessages == 0) {
-    dump("MsgViewPageSource(): No messages selected.\n");
-    return false;
-  }
-
+function viewEncryptedPart(message) {
+  let url;
   try {
-    for (var i = 0; i < numMessages; i++) {
-      // Now, we need to get a URL from a URI
-      var url = MailServices.mailSession.ConvertMsgURIToMsgURL(
-        messages[i],
-        msgWindow
-      );
-
-      // Strip out the message-display parameter to ensure that attached emails
-      // display the message source, not the processed HTML.
-      url = url.replace(/type=application\/x-message-display&/, "");
-      window.openDialog(
-        "chrome://messenger/content/viewSource.xhtml",
-        "_blank",
-        "all,dialog=no",
-        { URL: url }
-      );
-    }
-    return true;
+    url = MailServices.mailSession.ConvertMsgURIToMsgURL(message, msgWindow);
   } catch (e) {
+    console.debug(e);
     // Couldn't get mail session
     return false;
   }
+
+  // Strip out the message-display parameter to ensure that attached emails
+  // display the message source, not the processed HTML.
+  url = url.replace(/type=application\/x-message-display&/, "");
+
+  /**
+   * Save the given string to a file, then open it as an .eml file.
+   *
+   * @param {string} data - The message data.
+   */
+  let msgOpenMessageFromString = function (data) {
+    let tempFile = Services.dirsvc.get("TmpD", Ci.nsIFile);
+    tempFile.append("subPart.eml");
+    tempFile.createUnique(0, 0o600);
+
+    let outputStream = Cc[
+      "@mozilla.org/network/file-output-stream;1"
+    ].createInstance(Ci.nsIFileOutputStream);
+    outputStream.init(tempFile, 2, 0x200, false); // open as "write only"
+    outputStream.write(data, data.length);
+    outputStream.close();
+
+    // Delete file on exit, because Windows locks the file
+    let extAppLauncher = Cc[
+      "@mozilla.org/uriloader/external-helper-app-service;1"
+    ].getService(Ci.nsPIExternalAppLauncher);
+    extAppLauncher.deleteTemporaryFileOnExit(tempFile);
+
+    let url = Services.io
+      .getProtocolHandler("file")
+      .QueryInterface(Ci.nsIFileProtocolHandler)
+      .newFileURI(tempFile);
+
+    MailUtils.openEMLFile(window, tempFile, url);
+  };
+
+  function recursiveEmitEncryptedParts(mimeTree) {
+    for (let part of mimeTree.subParts) {
+      const ct = part.headers.contentType.type;
+      if (ct == "multipart/encrypted") {
+        const boundary = part.headers.contentType.get("boundary");
+        let full = `${part.headers.rawHeaderText}\n\n`;
+        for (let subPart of part.subParts) {
+          full += `${boundary}\n${subPart.headers.rawHeaderText}\n\n${subPart.body}\n`;
+        }
+        full += `${boundary}--\n`;
+        msgOpenMessageFromString(full);
+        continue;
+      }
+      recursiveEmitEncryptedParts(part);
+    }
+  }
+
+  EnigmailMime.getMimeTreeFromUrl(url, true, recursiveEmitEncryptedParts);
+  return true;
+}
+
+function viewEncryptedParts(messages) {
+  if (!messages?.length) {
+    dump("viewEncryptedParts(): No messages selected.\n");
+    return false;
+  }
+
+  if (messages.length > 1) {
+    dump("viewEncryptedParts(): Too many messages selected.\n");
+    return false;
+  }
+
+  return viewEncryptedPart(messages[0]);
 }

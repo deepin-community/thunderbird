@@ -8,20 +8,13 @@ var { cal } = ChromeUtils.import("resource:///modules/calendar/calUtils.jsm");
 var { CalendarTestUtils } = ChromeUtils.import(
   "resource://testing-common/calendar/CalendarTestUtils.jsm"
 );
-var {
-  controller,
-  goToToday,
-  handleOccurrencePrompt,
-  invokeEditingRepeatEventDialog,
-  invokeNewEventDialog,
-} = ChromeUtils.import("resource://testing-common/calendar/CalendarUtils.jsm");
-var { PromiseUtils } = ChromeUtils.import("resource://gre/modules/PromiseUtils.jsm");
+var { handleDeleteOccurrencePrompt } = ChromeUtils.import(
+  "resource://testing-common/calendar/CalendarUtils.jsm"
+);
+
 var { saveAndCloseItemDialog, setData } = ChromeUtils.import(
   "resource://testing-common/calendar/ItemEditingHelpers.jsm"
 );
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-
-let manager = cal.getCalendarManager();
 
 let calendarObserver = {
   QueryInterface: ChromeUtils.generateQI(["calIObserver"]),
@@ -32,15 +25,23 @@ let calendarObserver = {
   _batchRequired: true,
   onStartBatch(calendar) {
     info(`onStartBatch ${calendar?.id} ${++this._batchCount}`);
-    Assert.equal(calendar, this._expectedCalendar);
+    Assert.equal(
+      calendar,
+      this._expectedCalendar,
+      "onStartBatch should occur on the expected calendar"
+    );
   },
   onEndBatch(calendar) {
     info(`onEndBatch ${calendar?.id} ${this._batchCount--}`);
-    Assert.equal(calendar, this._expectedCalendar);
+    Assert.equal(
+      calendar,
+      this._expectedCalendar,
+      "onEndBatch should occur on the expected calendar"
+    );
   },
   onLoad(calendar) {
     info(`onLoad ${calendar.id}`);
-    Assert.equal(calendar, this._expectedCalendar);
+    Assert.equal(calendar, this._expectedCalendar, "onLoad should occur on the expected calendar");
     if (this._onLoadPromise) {
       this._onLoadPromise.resolve();
     }
@@ -74,13 +75,14 @@ let calendarObserver = {
  * @returns {calICalendar}
  */
 function createCalendar(type, url, useCache) {
-  let calendar = manager.createCalendar(type, Services.io.newURI(url));
+  let calendar = cal.manager.createCalendar(type, Services.io.newURI(url));
   calendar.name = type + (useCache ? " with cache" : " without cache");
   calendar.id = cal.getUUID();
   calendar.setProperty("cache.enabled", useCache);
+  calendar.setProperty("calendar-main-default", true);
 
-  manager.registerCalendar(calendar);
-  calendar = manager.getCalendarById(calendar.id);
+  cal.manager.registerCalendar(calendar);
+  calendar = cal.manager.getCalendarById(calendar.id);
   calendarObserver._expectedCalendar = calendar;
   calendar.addObserver(calendarObserver);
 
@@ -95,7 +97,7 @@ function createCalendar(type, url, useCache) {
  */
 function removeCalendar(calendar) {
   calendar.removeObserver(calendarObserver);
-  manager.removeCalendar(calendar);
+  cal.manager.removeCalendar(calendar);
 }
 
 let alarmService = Cc["@mozilla.org/calendar/alarm-service;1"].getService(Ci.calIAlarmService);
@@ -136,7 +138,7 @@ async function runTestAlarms() {
   repeatUntil.day += 15;
 
   await CalendarTestUtils.setCalendarView(window, "multiweek");
-  goToToday(controller);
+  await CalendarTestUtils.goToToday(window);
   Assert.equal(window.unifinderTreeView.rowCount, 0, "unifinder event count");
 
   alarmObserver._alarmCount = 0;
@@ -161,24 +163,23 @@ async function runTestAlarms() {
       },
     }
   );
-  await invokeNewEventDialog(window, null, async (eventWindow, iframeWindow) => {
-    await setData(eventWindow, iframeWindow, {
-      title: "test event",
-      startdate: start,
-      starttime: start,
-      enddate: end,
-      endtime: end,
-      reminder: "2days",
-      repeat: "weekly",
-    });
-
-    await saveAndCloseItemDialog(eventWindow);
+  let { dialogWindow, iframeWindow } = await CalendarTestUtils.editNewEvent(window);
+  await setData(dialogWindow, iframeWindow, {
+    title: "test event",
+    startdate: start,
+    starttime: start,
+    enddate: end,
+    endtime: end,
+    reminder: "2days",
+    repeat: "weekly",
   });
+
+  await saveAndCloseItemDialog(dialogWindow);
   await alarmDialogPromise;
   info("Alarm dialog closed");
 
   await new Promise(r => setTimeout(r, 2000));
-  Assert.equal(window.unifinderTreeView.rowCount, 1, "unifinder event count");
+  Assert.equal(window.unifinderTreeView.rowCount, 1, "there should be one event in the unifinder");
 
   Assert.equal(
     [...Services.wm.getEnumerator("Calendar:AlarmWindow")].length,
@@ -196,32 +197,26 @@ async function runTestAlarms() {
   );
   Assert.ok(!!eventBox.item.parentItem.alarmLastAck);
 
-  await invokeEditingRepeatEventDialog(
-    window,
-    eventBox,
-    async (eventWindow, iframeWindow) => {
-      await setData(eventWindow, iframeWindow, {
-        title: "modified test event",
-        repeat: "weekly",
-        repeatuntil: repeatUntil,
-      });
+  ({ dialogWindow, iframeWindow } = await CalendarTestUtils.editItemOccurrences(window, eventBox));
+  await setData(dialogWindow, iframeWindow, {
+    title: "modified test event",
+    repeat: "weekly",
+    repeatuntil: repeatUntil,
+  });
 
-      await saveAndCloseItemDialog(eventWindow);
-    },
-    true
-  );
+  await saveAndCloseItemDialog(dialogWindow);
 
-  Assert.equal(window.unifinderTreeView.rowCount, 1, "unifinder event count");
+  Assert.equal(window.unifinderTreeView.rowCount, 1, "there should be one event in the unifinder");
 
   Services.focus.focusedWindow = window;
 
-  controller.sleep(2000);
+  await new Promise(resolve => setTimeout(resolve, 2000));
   Assert.equal(
     [...Services.wm.getEnumerator("Calendar:AlarmWindow")].length,
     0,
-    "alarm dialog did not reappear"
+    "alarm dialog should not reappear"
   );
-  Assert.equal(alarmObserver._alarmCount, 0, "only one alarm");
+  Assert.equal(alarmObserver._alarmCount, 0, "there should not be any remaining alarms");
   alarmObserver._alarmCount = 0;
 
   eventBox = await CalendarTestUtils.multiweekView.waitForItemAt(
@@ -232,10 +227,10 @@ async function runTestAlarms() {
   );
   Assert.ok(!!eventBox.item.parentItem.alarmLastAck);
 
-  controller.click(eventBox);
+  EventUtils.synthesizeMouseAtCenter(eventBox, {}, window);
   eventBox.focus();
   window.calendarController.onSelectionChanged({ detail: window.currentView().getSelectedItems() });
-  handleOccurrencePrompt(controller, window.currentView(), "delete", true);
+  await handleDeleteOccurrencePrompt(window, window.currentView(), true);
 
   await CalendarTestUtils.multiweekView.waitForNoItemAt(
     window,
@@ -243,11 +238,16 @@ async function runTestAlarms() {
     start.weekday + 1,
     1
   );
-  Assert.equal(window.unifinderTreeView.rowCount, 0, "unifinder event count");
+  Assert.equal(window.unifinderTreeView.rowCount, 0, "there should be no events in the unifinder");
 }
+
+const syncItem1Name = "holy cow, a new item!";
+const syncItem2Name = "a changed item";
 
 let syncChangesTest = {
   async setUp() {
+    await CalendarTestUtils.openCalendarTab(window);
+
     if (document.getElementById("today-pane-panel").collapsed) {
       EventUtils.synthesizeMouseAtCenter(
         document.getElementById("calendar-status-todaypane-button"),
@@ -257,10 +257,6 @@ let syncChangesTest = {
 
     if (document.getElementById("agenda-panel").collapsed) {
       EventUtils.synthesizeMouseAtCenter(document.getElementById("today-pane-cycler-next"), {});
-    }
-
-    if (document.getElementById("nextweek-header").getAttribute("checked") != "true") {
-      EventUtils.synthesizeMouseAtCenter(document.querySelector("#nextweek-header > checkbox"), {});
     }
   },
 
@@ -277,7 +273,7 @@ let syncChangesTest = {
       BEGIN:VCALENDAR
       BEGIN:VEVENT
       UID:ad0850e5-8020-4599-86a4-86c90af4e2cd
-      SUMMARY:holy cow, a new item!
+      SUMMARY:${syncItem1Name}
       DTSTART:${start.icalString}
       DTEND:${end.icalString}
       END:VEVENT
@@ -287,19 +283,33 @@ let syncChangesTest = {
 
   async runPart1() {
     await CalendarTestUtils.setCalendarView(window, "multiweek");
-    goToToday(controller);
+    await CalendarTestUtils.goToToday(window);
 
-    Assert.ok(!CalendarTestUtils.multiweekView.getItemAt(window, 2, 3, 1), "no existing item");
-
-    EventUtils.synthesizeMouseAtCenter(document.getElementById("calendar-synchronize-button"), {});
-    let item = await CalendarTestUtils.multiweekView.waitForItemAt(window, 2, 3, 1);
-    Assert.equal(item.item.title, "holy cow, a new item!");
-
-    let agendaItem = await TestUtils.waitForCondition(() =>
-      document.querySelector(`#nextweek-header + richlistitem[is="agenda-richlistitem"]`)
+    // Sanity check that we have not already synchronized and that there is no
+    // existing item.
+    Assert.ok(
+      !CalendarTestUtils.multiweekView.getItemAt(window, 2, 3, 1),
+      "there should be no existing item in the calendar"
     );
-    Assert.equal(agendaItem.occurrence.title, "holy cow, a new item!");
-    Assert.ok(!agendaItem.nextElementSibling);
+
+    // Synchronize.
+    EventUtils.synthesizeMouseAtCenter(document.getElementById("refreshCalendar"), {});
+
+    // Verify that the item we added appears in the calendar view.
+    let item = await CalendarTestUtils.multiweekView.waitForItemAt(window, 2, 3, 1);
+    Assert.equal(item.item.title, syncItem1Name, "view should include newly-added item");
+
+    // Verify that the today pane updates and shows the item we added.
+    await TestUtils.waitForCondition(() => window.TodayPane.agenda.rowCount == 1);
+    Assert.equal(
+      getTodayPaneItemTitle(0),
+      syncItem1Name,
+      "today pane should include newly-added item"
+    );
+    Assert.ok(
+      !window.TodayPane.agenda.rows[0].nextElementSibling,
+      "there should be no additional items in the today pane"
+    );
   },
 
   get part2Item() {
@@ -315,7 +325,7 @@ let syncChangesTest = {
       BEGIN:VCALENDAR
       BEGIN:VEVENT
       UID:ad0850e5-8020-4599-86a4-86c90af4e2cd
-      SUMMARY:a changed item
+      SUMMARY:${syncItem2Name}
       DTSTART:${start.icalString}
       DTEND:${end.icalString}
       END:VEVENT
@@ -324,29 +334,69 @@ let syncChangesTest = {
   },
 
   async runPart2() {
-    Assert.ok(!CalendarTestUtils.multiweekView.getItemAt(window, 2, 4, 1), "no existing item");
+    // Sanity check that we have not already synchronized and that there is no
+    // existing item.
+    Assert.ok(
+      !CalendarTestUtils.multiweekView.getItemAt(window, 2, 4, 1),
+      "there should be no existing item on the specified day"
+    );
 
-    EventUtils.synthesizeMouseAtCenter(document.getElementById("calendar-synchronize-button"), {});
-    await new Promise(resolve => setTimeout(resolve, 500));
+    // Synchronize.
+    EventUtils.synthesizeMouseAtCenter(document.getElementById("refreshCalendar"), {});
 
+    // Verify that the item has updated in the calendar view.
     await CalendarTestUtils.multiweekView.waitForNoItemAt(window, 2, 3, 1);
     let item = await CalendarTestUtils.multiweekView.waitForItemAt(window, 2, 4, 1);
-    Assert.equal(item.item.title, "a changed item");
+    Assert.equal(item.item.title, syncItem2Name, "view should show updated item");
 
-    let agendaItem = await TestUtils.waitForCondition(() =>
-      document.querySelector(`#nextweek-header + richlistitem[is="agenda-richlistitem"]`)
+    // Verify that the today pane updates and shows the updated item.
+    await TestUtils.waitForCondition(
+      () => window.TodayPane.agenda.rowCount == 1 && getTodayPaneItemTitle(0) != syncItem1Name
     );
-    Assert.equal(agendaItem.occurrence.title, "a changed item");
-    Assert.ok(!agendaItem.nextElementSibling);
+    Assert.equal(getTodayPaneItemTitle(0), syncItem2Name, "today pane should show updated item");
+    Assert.ok(
+      !window.TodayPane.agenda.rows[0].nextElementSibling,
+      "there should be no additional items in the today pane"
+    );
   },
 
   async runPart3() {
-    EventUtils.synthesizeMouseAtCenter(document.getElementById("calendar-synchronize-button"), {});
+    // Synchronize via the calendar context menu.
+    await calendarListContextMenu(
+      document.querySelector("#calendar-list > li:nth-child(2)"),
+      "list-calendar-context-reload"
+    );
+
+    // Verify that the item is removed from the calendar view.
     await CalendarTestUtils.multiweekView.waitForNoItemAt(window, 2, 3, 1);
     await CalendarTestUtils.multiweekView.waitForNoItemAt(window, 2, 4, 1);
 
-    await TestUtils.waitForCondition(
-      () => !document.querySelector(`#nextweek-header + richlistitem[is="agenda-richlistitem"]`)
-    );
+    // Verify that the item is removed from the today pane.
+    await TestUtils.waitForCondition(() => window.TodayPane.agenda.rowCount == 0);
   },
 };
+
+function getTodayPaneItemTitle(idx) {
+  const row = window.TodayPane.agenda.rows[idx];
+  return row.querySelector(".agenda-listitem-title").textContent;
+}
+
+async function calendarListContextMenu(target, menuItem) {
+  await new Promise(r => setTimeout(r));
+  window.focus();
+  await TestUtils.waitForCondition(
+    () => Services.focus.focusedWindow == window,
+    "waiting for window to be focused"
+  );
+
+  let contextMenu = document.getElementById("list-calendars-context-menu");
+  let shownPromise = BrowserTestUtils.waitForEvent(contextMenu, "popupshown");
+  EventUtils.synthesizeMouseAtCenter(target, { type: "contextmenu" });
+  await shownPromise;
+
+  if (menuItem) {
+    let hiddenPromise = BrowserTestUtils.waitForEvent(contextMenu, "popuphidden");
+    contextMenu.activateItem(document.getElementById(menuItem));
+    await hiddenPromise;
+  }
+}

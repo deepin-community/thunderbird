@@ -5,7 +5,7 @@
 
 // Test that navigating the page closes the autocomplete popup.
 
-const TEST_URI = `data:text/html;charset=utf-8,
+const TEST_URI = `data:text/html;charset=utf-8,<!DOCTYPE html>
 <head>
   <script>
     /* Create a prototype-less object so popup does not contain native
@@ -19,7 +19,7 @@ const TEST_URI = `data:text/html;charset=utf-8,
 </head>
 <body>Test autocomplete close on content navigation</body>`;
 
-add_task(async function() {
+add_task(async function () {
   const hud = await openNewTabAndConsole(TEST_URI);
   const { jsterm } = hud;
   info("web console opened");
@@ -39,7 +39,7 @@ add_task(async function() {
 
   info("reload the page to close the popup");
   const onPopupClose = popup.once("popup-closed");
-  await refreshTab();
+  await reloadBrowser();
   await onPopupClose;
 
   ok(!popup.isOpen, "popup is not open after reloading the page");

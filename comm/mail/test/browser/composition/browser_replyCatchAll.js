@@ -23,14 +23,10 @@ var {
 } = ChromeUtils.import(
   "resource://testing-common/mozmill/FolderDisplayHelpers.jsm"
 );
-var {
-  assert_notification_displayed,
-  wait_for_notification_to_show,
-} = ChromeUtils.import(
-  "resource://testing-common/mozmill/NotificationBoxHelpers.jsm"
-);
-
-var { Assert } = ChromeUtils.import("resource://testing-common/Assert.jsm");
+var { assert_notification_displayed, wait_for_notification_to_show } =
+  ChromeUtils.import(
+    "resource://testing-common/mozmill/NotificationBoxHelpers.jsm"
+  );
 
 var { MailServices } = ChromeUtils.import(
   "resource:///modules/MailServices.jsm"
@@ -51,13 +47,12 @@ var identity2;
 var gAccount;
 var gFolder;
 
-add_task(function setupModule(module) {
+add_setup(function () {
   requestLongerTimeout(4);
 
   // Now set up an account with some identities.
-  let acctMgr = MailServices.accounts;
-  gAccount = acctMgr.createAccount();
-  gAccount.incomingServer = acctMgr.createIncomingServer(
+  gAccount = MailServices.accounts.createAccount();
+  gAccount.incomingServer = MailServices.accounts.createIncomingServer(
     "nobody",
     "Reply Identity Testing",
     "pop3"
@@ -67,12 +62,12 @@ add_task(function setupModule(module) {
     .QueryInterface(Ci.nsIMsgLocalMailFolder)
     .createLocalSubfolder("Msgs4Reply");
 
-  identity1 = acctMgr.createIdentity();
+  identity1 = MailServices.accounts.createIdentity();
   identity1.email = myIdentityEmail1;
   gAccount.addIdentity(identity1);
   info(`Added identity1; key=${identity1.key}, email=${identity1.email}`);
 
-  identity2 = acctMgr.createIdentity();
+  identity2 = MailServices.accounts.createIdentity();
   identity2.email = myIdentityEmail2;
   gAccount.addIdentity(identity2);
   info(`Added identity2; key=${identity2.key}, email=${identity2.email}`);
@@ -81,7 +76,7 @@ add_task(function setupModule(module) {
 /**
  * Create and select a new message to do a reply with.
  */
-function create_replyMsg(aTo, aEnvelopeTo) {
+async function create_replyMsg(aTo, aEnvelopeTo) {
   let msg0 = create_message({
     from: "Tester <test@example.com>",
     to: aTo,
@@ -90,9 +85,9 @@ function create_replyMsg(aTo, aEnvelopeTo) {
       "envelope-to": aEnvelopeTo,
     },
   });
-  add_message_to_folder(gFolder, msg0);
+  await add_message_to_folder([gFolder], msg0);
 
-  be_in_folder(gFolder);
+  await be_in_folder(gFolder);
   let msg = select_click_row(i++);
   assert_selected_and_displayed(mc, msg);
 }
@@ -100,7 +95,7 @@ function create_replyMsg(aTo, aEnvelopeTo) {
 /**
  * The tests.
  */
-add_task(function test_reply_identity_selection() {
+add_task(async function test_reply_identity_selection() {
   let tests = [
     {
       desc: "No catchAll, 'From' will be set to recipient",
@@ -115,8 +110,7 @@ add_task(function test_reply_identity_selection() {
       warning: false,
     },
     {
-      desc:
-        "No catchAll, 'From' will be set to second id's email (without name).",
+      desc: "No catchAll, 'From' will be set to second id's email (without name).",
       to: "Mr.X <" + myIdentityEmail2 + ">",
       envelopeTo: "",
       catchAllId1: false,
@@ -140,8 +134,7 @@ add_task(function test_reply_identity_selection() {
       warning: false,
     },
     {
-      desc:
-        "With catchAll #2, 'From' will be set to senders address (with name).",
+      desc: "With catchAll #2, 'From' will be set to senders address (with name).",
       to: myIdentityEmail2,
       envelopeTo: "Mr.X <" + myIdentityEmail2 + ">",
       catchAllId1: false,
@@ -202,7 +195,7 @@ add_task(function test_reply_identity_selection() {
 
   for (let test of tests) {
     info(`Running test: ${test.desc}`);
-    test.replyIndex = create_replyMsg(test.to, test.envelopeTo);
+    test.replyIndex = await create_replyMsg(test.to, test.envelopeTo);
 
     identity1.catchAll = test.catchAllId1;
     identity1.catchAllHint = test.catchAllHintId1;
@@ -223,13 +216,13 @@ add_task(function test_reply_identity_selection() {
 
     if (test.warning) {
       wait_for_notification_to_show(
-        cwc,
+        cwc.window,
         "compose-notification-bottom",
         "identityWarning"
       );
     } else {
       assert_notification_displayed(
-        cwc,
+        cwc.window,
         "compose-notification-bottom",
         "identityWarning",
         false
@@ -261,12 +254,11 @@ function checkCompIdentity(cwc, identityKey, from) {
   );
 }
 
-registerCleanupFunction(function teardownModule(module) {
-  be_in_folder(gFolder);
-  let count;
-  while ((count = gFolder.getTotalMessages(false)) > 0) {
+registerCleanupFunction(async function () {
+  await be_in_folder(gFolder);
+  while (gFolder.getTotalMessages(false) > 0) {
+    select_click_row(0);
     press_delete();
-    mc.waitFor(() => gFolder.getTotalMessages(false) < count);
   }
 
   gAccount.removeIdentity(identity2);

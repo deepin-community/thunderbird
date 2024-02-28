@@ -1,6 +1,4 @@
-/* -*- Mode: Java; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*-
- *
- * This Source Code Form is subject to the terms of the Mozilla Public
+/* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
@@ -8,6 +6,7 @@ var FOLDERS = 1;
 var MESSAGES = 2;
 var dialog;
 
+window.addEventListener("DOMContentLoaded", onLoad);
 document.addEventListener("dialogaccept", onOK);
 
 function onLoad() {
@@ -78,6 +77,6 @@ function onMessagesOnly() {
 }
 
 function doEnabling() {
-  document.querySelector("dialog").getButton("accept").disabled = !dialog
-    .nameField.value;
+  document.querySelector("dialog").getButton("accept").disabled =
+    !dialog.nameField.value;
 }

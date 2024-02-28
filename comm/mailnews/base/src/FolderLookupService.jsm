@@ -16,6 +16,7 @@ var gCreated = false;
 /**
  * FolderLookupService maintains an index of folders and provides
  * lookup by folder URI.
+ *
  * @class
  */
 function FolderLookupService() {
@@ -34,7 +35,7 @@ FolderLookupService.prototype = {
    * Will only return folders which already exist and have a parent. If this
    * not the case then null is returned.
    *
-   * @param {String} uri - URI of folder to get.
+   * @param {string} uri - URI of folder to get.
    * @returns {nsIMsgFolder|null}
    */
   getFolderForURL(uri) {
@@ -53,7 +54,7 @@ FolderLookupService.prototype = {
    * A lot of code relies on this behaviour, but for new code this
    * call should probably be avoided.
    *
-   * @param {String} uri - URI of folder to get.
+   * @param {string} uri - URI of folder to get.
    * @returns {nsIMsgFolder}
    */
   getOrCreateFolderForURL(uri) {
@@ -73,7 +74,7 @@ FolderLookupService.prototype = {
     let scheme = schemeMatch[1];
     let contractID = "@mozilla.org/mail/folder-factory;1?name=" + scheme;
     if (!(contractID in Cc)) {
-      Cu.reportError(
+      console.error(
         "getOrCreateFolderForURL: factory not registered for " + uri
       );
       return null;
@@ -84,13 +85,13 @@ FolderLookupService.prototype = {
       Ci.nsIFactory
     );
     if (!factory) {
-      Cu.reportError(
+      console.error(
         "getOrCreateFolderForURL: failed to get factory for " + uri
       );
       return null;
     }
 
-    folder = factory.createInstance(null, Ci.nsIMsgFolder);
+    folder = factory.createInstance(Ci.nsIMsgFolder);
     if (folder) {
       folder.Init(uri);
       // Add the new folder to our map. Store a weak reference instead, so that
@@ -104,12 +105,25 @@ FolderLookupService.prototype = {
     return folder;
   },
 
+  /**
+   * Set pretty name again from original name on all folders,
+   * typically used when locale changes.
+   */
+  setPrettyNameFromOriginalAllFolders() {
+    for (const val of this._map.values()) {
+      try {
+        let folder = val.QueryReferent(Ci.nsIMsgFolder);
+        folder.setPrettyNameFromOriginal();
+      } catch (e) {}
+    }
+  },
+
   // "private" stuff starts here.
 
   /**
    * Internal helper to find a folder (which may or may not be dangling).
    *
-   * @param {String} uri - URI of folder to look up.
+   * @param {string} uri - URI of folder to look up.
    *
    * @returns {nsIMsgFolder|null} - The folder, if in the index, else null.
    */
@@ -137,7 +151,7 @@ FolderLookupService.prototype = {
    * an exception if we attempted to create a server that doesn't exist, so we
    * need to guard for that error.
    *
-   * @returns {Boolean} - true if folder valid (and parented).
+   * @returns {boolean} - true if folder valid (and parented).
    */
   _isValidFolder(folder) {
     try {

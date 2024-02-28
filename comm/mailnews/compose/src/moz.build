@@ -5,16 +5,16 @@
 
 EXPORTS += [
     "nsComposeStrings.h",
-    "nsMsgAttachmentHandler.h",
+    "nsMsgAttachmentData.h",
     "nsMsgCompFields.h",
     "nsMsgCompose.h",
-    "nsMsgSend.h",
 ]
 
 SOURCES += [
     "nsComposeStrings.cpp",
+    "nsMsgAttachedFile.cpp",
     "nsMsgAttachment.cpp",
-    "nsMsgAttachmentHandler.cpp",
+    "nsMsgAttachmentData.cpp",
     "nsMsgCompFields.cpp",
     "nsMsgCompose.cpp",
     "nsMsgComposeContentHandler.cpp",
@@ -25,29 +25,13 @@ SOURCES += [
     "nsMsgCopy.cpp",
     "nsMsgPrompts.cpp",
     "nsMsgQuote.cpp",
-    "nsMsgSend.cpp",
     "nsMsgSendLater.cpp",
-    "nsMsgSendPart.cpp",
     "nsMsgSendReport.cpp",
-    "nsSmtpProtocol.cpp",
-    "nsSmtpServer.cpp",
-    "nsSmtpService.cpp",
     "nsSmtpUrl.cpp",
-    "nsURLFetcher.cpp",
 ]
 
-if CONFIG["MOZ_WIDGET_TOOLKIT"] == "cocoa":
-    SOURCES += [
-        "nsMsgAppleDoubleEncode.cpp",
-        "nsMsgAppleEncode.cpp",
-    ]
-    EXPORTS += [
-        "nsMsgAppleCodes.h",
-        "nsMsgAppleDouble.h",
-    ]
-
 LOCAL_INCLUDES += [
-    "/%s/dom/base" % CONFIG["mozreltopsrcdir"],
+    "/dom/base",
 ]
 
 include("/ipc/chromium/chromium-config.mozbuild")
@@ -59,14 +43,13 @@ if CONFIG["CC_TYPE"] == "clang-cl":
     CXXFLAGS += ["-Wno-switch"]
 
 EXTRA_JS_MODULES += [
+    "MailtoProtocolHandler.jsm",
     "MessageSend.jsm",
     "MimeEncoder.jsm",
     "MimeMessage.jsm",
     "MimeMessageUtils.jsm",
     "MimePart.jsm",
-    "MsgSendModuleLoader.jsm",
     "SmtpClient.jsm",
-    "SmtpModuleLoader.jsm",
     "SMTPProtocolHandler.jsm",
     "SmtpServer.jsm",
     "SmtpService.jsm",

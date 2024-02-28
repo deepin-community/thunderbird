@@ -7,12 +7,13 @@
 
 #include "ipc/WebGPUChild.h"
 #include "mozilla/webgpu/ffi/wgpu.h"
-#include "mozilla/dom/HTMLCanvasElement.h"
+#include "mozilla/webgpu/CanvasContext.h"
 #include "mozilla/dom/WebGPUBinding.h"
+#include "mozilla/webgpu/WebGPUTypes.h"
 #include "TextureView.h"
+#include "Utility.h"
 
-namespace mozilla {
-namespace webgpu {
+namespace mozilla::webgpu {
 
 GPU_IMPL_CYCLE_COLLECTION(Texture, mParent)
 GPU_IMPL_JS_WRAP(Texture)
@@ -45,6 +46,7 @@ static Maybe<uint8_t> GetBytesPerBlock(dom::GPUTextureFormat format) {
     case dom::GPUTextureFormat::Rgba8sint:
     case dom::GPUTextureFormat::Bgra8unorm:
     case dom::GPUTextureFormat::Bgra8unorm_srgb:
+    case dom::GPUTextureFormat::Rgb9e5ufloat:
     case dom::GPUTextureFormat::Rgb10a2unorm:
     case dom::GPUTextureFormat::Rg11b10float:
       return Some<uint8_t>(4u);
@@ -79,6 +81,7 @@ static Maybe<uint8_t> GetBytesPerBlock(dom::GPUTextureFormat format) {
       return Some<uint8_t>(16u);
     case dom::GPUTextureFormat::Depth24plus:
     case dom::GPUTextureFormat::Depth24plus_stencil8:
+    case dom::GPUTextureFormat::Depth32float_stencil8:
     case dom::GPUTextureFormat::EndGuard_:
       return Nothing();
   }
@@ -89,7 +92,13 @@ Texture::Texture(Device* const aParent, RawId aId,
                  const dom::GPUTextureDescriptor& aDesc)
     : ChildOf(aParent),
       mId(aId),
-      mBytesPerBlock(GetBytesPerBlock(aDesc.mFormat)) {}
+      mFormat(aDesc.mFormat),
+      mBytesPerBlock(GetBytesPerBlock(aDesc.mFormat)),
+      mSize(ConvertExtent(aDesc.mSize)),
+      mMipLevelCount(aDesc.mMipLevelCount),
+      mSampleCount(aDesc.mSampleCount),
+      mDimension(aDesc.mDimension),
+      mUsage(aDesc.mUsage) {}
 
 Texture::~Texture() { Cleanup(); }
 
@@ -105,7 +114,12 @@ void Texture::Cleanup() {
 
 already_AddRefed<TextureView> Texture::CreateView(
     const dom::GPUTextureViewDescriptor& aDesc) {
-  RawId id = mParent->GetBridge()->TextureCreateView(mId, mParent->mId, aDesc);
+  auto bridge = mParent->GetBridge();
+  RawId id = 0;
+  if (bridge->IsOpen()) {
+    id = bridge->TextureCreateView(mId, mParent->mId, aDesc);
+  }
+
   RefPtr<TextureView> view = new TextureView(this, id);
   return view.forget();
 }
@@ -115,5 +129,4 @@ void Texture::Destroy() {
   // examples
 }
 
-}  // namespace webgpu
-}  // namespace mozilla
+}  // namespace mozilla::webgpu

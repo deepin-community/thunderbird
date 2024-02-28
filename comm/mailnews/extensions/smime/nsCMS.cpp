@@ -25,6 +25,7 @@
 #include "secerr.h"
 #include "smime.h"
 #include "mozilla/StaticMutex.h"
+#include "nsIPrefBranch.h"
 
 using namespace mozilla;
 using namespace mozilla::psm;
@@ -37,7 +38,11 @@ NS_IMPL_ISUPPORTS(nsCMSMessage, nsICMSMessage)
 nsCMSMessage::nsCMSMessage() { m_cmsMsg = nullptr; }
 nsCMSMessage::nsCMSMessage(NSSCMSMessage* aCMSMsg) { m_cmsMsg = aCMSMsg; }
 
-nsCMSMessage::~nsCMSMessage() { destructorSafeDestroyNSSReference(); }
+nsCMSMessage::~nsCMSMessage() {
+  if (m_cmsMsg) {
+    NSS_CMSMessage_Destroy(m_cmsMsg);
+  }
+}
 
 nsresult nsCMSMessage::Init() {
   nsresult rv;
@@ -46,14 +51,8 @@ nsresult nsCMSMessage::Init() {
   return rv;
 }
 
-void nsCMSMessage::destructorSafeDestroyNSSReference() {
-  if (m_cmsMsg) {
-    NSS_CMSMessage_Destroy(m_cmsMsg);
-  }
-}
-
-NS_IMETHODIMP nsCMSMessage::VerifySignature() {
-  return CommonVerifySignature({}, 0);
+NS_IMETHODIMP nsCMSMessage::VerifySignature(int32_t verifyFlags) {
+  return CommonVerifySignature(verifyFlags, {}, 0);
 }
 
 NSSCMSSignerInfo* nsCMSMessage::GetTopLevelSignerInfo() {
@@ -148,12 +147,30 @@ NS_IMETHODIMP nsCMSMessage::GetEncryptionCert(nsIX509Cert**) {
   return NS_ERROR_NOT_IMPLEMENTED;
 }
 
+NS_IMETHODIMP nsCMSMessage::GetSigningTime(PRTime* aTime) {
+  MOZ_LOG(gCMSLog, LogLevel::Debug, ("nsCMSMessage::GetSigningTime"));
+  NS_ENSURE_ARG(aTime);
+
+  NSSCMSSignerInfo* si = GetTopLevelSignerInfo();
+  if (!si) {
+    return NS_ERROR_FAILURE;
+  }
+
+  SECStatus getSigningTimeResult = NSS_CMSSignerInfo_GetSigningTime(si, aTime);
+  MOZ_LOG(gCMSLog, LogLevel::Debug,
+          ("nsCMSMessage::GetSigningTime result: %s",
+           (getSigningTimeResult ? "ok" : "fail")));
+
+  return getSigningTimeResult == SECSuccess ? NS_OK : NS_ERROR_FAILURE;
+}
+
 NS_IMETHODIMP
-nsCMSMessage::VerifyDetachedSignature(const nsTArray<uint8_t>& aDigestData,
+nsCMSMessage::VerifyDetachedSignature(int32_t verifyFlags,
+                                      const nsTArray<uint8_t>& aDigestData,
                                       int16_t aDigestType) {
   if (aDigestData.IsEmpty()) return NS_ERROR_FAILURE;
 
-  return CommonVerifySignature(aDigestData, aDigestType);
+  return CommonVerifySignature(verifyFlags, aDigestData, aDigestType);
 }
 
 // This is an exact copy of NSS_CMSArray_Count from NSS' cmsarray.c,
@@ -240,12 +257,16 @@ static SECStatus myExtraVerificationOnCert(CERTCertificate* cert,
       return SECFailure;
   }
 
-  UniqueCERTCertList builtChain;
+  nsTArray<uint8_t> certBytes(cert->derCert.data, cert->derCert.len);
+  nsTArray<nsTArray<uint8_t>> builtChain;
+  // This code is used when verifying incoming certificates, including
+  // a signature certificate. Performing OCSP is necessary.
+  // Allowing OCSP in blocking mode should be fine, because all our
+  // callers run this code on a separate thread, using
+  // SMimeVerificationTask/CryptoTask.
   mozilla::pkix::Result result = certVerifier->VerifyCert(
-      cert, usageForPkix, Now(), nullptr /*XXX pinarg*/, nullptr /*hostname*/,
-      builtChain,
-      // Only local checks can run on the main thread.
-      CertVerifier::FLAG_LOCAL_ONLY);
+      certBytes, usageForPkix, Now(), nullptr /*XXX pinarg*/,
+      nullptr /*hostname*/, builtChain);
   if (result != mozilla::pkix::Success) {
     return SECFailure;
   }
@@ -389,7 +410,8 @@ loser:
 }
 
 nsresult nsCMSMessage::CommonVerifySignature(
-    const nsTArray<uint8_t>& aDigestData, int16_t aDigestType) {
+    int32_t verifyFlags, const nsTArray<uint8_t>& aDigestData,
+    int16_t aDigestType) {
   MOZ_LOG(gCMSLog, LogLevel::Debug,
           ("nsCMSMessage::CommonVerifySignature, content level count %d",
            NSS_CMSMessage_ContentLevelCount(m_cmsMsg)));
@@ -398,6 +420,7 @@ nsresult nsCMSMessage::CommonVerifySignature(
   NSSCMSSignerInfo* si;
   int32_t nsigners;
   nsresult rv = NS_ERROR_FAILURE;
+  SECOidTag sigAlgTag;
 
   if (!NSS_CMSMessage_IsSigned(m_cmsMsg)) {
     MOZ_LOG(gCMSLog, LogLevel::Debug,
@@ -496,6 +519,30 @@ nsresult nsCMSMessage::CommonVerifySignature(
     goto loser;
   }
 
+  sigAlgTag = NSS_CMSSignerInfo_GetDigestAlgTag(si);
+  switch (sigAlgTag) {
+    case SEC_OID_SHA256:
+    case SEC_OID_SHA384:
+    case SEC_OID_SHA512:
+      break;
+
+    case SEC_OID_SHA1:
+      if (verifyFlags & nsICMSVerifyFlags::VERIFY_ALLOW_WEAK_SHA1) {
+        break;
+      }
+      // else fall through to failure
+#if defined(__clang__)
+      [[clang::fallthrough]];
+#endif
+
+    default:
+      MOZ_LOG(
+          gCMSLog, LogLevel::Debug,
+          ("nsCMSMessage::CommonVerifySignature - unsupported digest algo"));
+      rv = NS_ERROR_CMS_VERIFY_UNSUPPORTED_ALGO;
+      goto loser;
+  };
+
   // We verify the first signer info,  only //
   // XXX: NSS_CMSSignedData_VerifySignerInfo calls CERT_VerifyCert, which
   // requires NSS's certificate verification configuration to be done in
@@ -565,28 +612,30 @@ loser:
 }
 
 NS_IMETHODIMP nsCMSMessage::AsyncVerifySignature(
-    nsISMimeVerificationListener* aListener) {
-  return CommonAsyncVerifySignature(aListener, {}, 0);
+    int32_t verifyFlags, nsISMimeVerificationListener* aListener) {
+  return CommonAsyncVerifySignature(verifyFlags, aListener, {}, 0);
 }
 
 NS_IMETHODIMP nsCMSMessage::AsyncVerifyDetachedSignature(
-    nsISMimeVerificationListener* aListener,
+    int32_t verifyFlags, nsISMimeVerificationListener* aListener,
     const nsTArray<uint8_t>& aDigestData, int16_t aDigestType) {
   if (aDigestData.IsEmpty()) return NS_ERROR_FAILURE;
 
-  return CommonAsyncVerifySignature(aListener, aDigestData, aDigestType);
+  return CommonAsyncVerifySignature(verifyFlags, aListener, aDigestData,
+                                    aDigestType);
 }
 
 class SMimeVerificationTask final : public CryptoTask {
  public:
-  SMimeVerificationTask(nsICMSMessage* aMessage,
+  SMimeVerificationTask(nsICMSMessage* aMessage, int32_t verifyFlags,
                         nsISMimeVerificationListener* aListener,
                         const nsTArray<uint8_t>& aDigestData,
                         int16_t aDigestType)
       : mMessage(aMessage),
         mListener(aListener),
         mDigestData(aDigestData.Clone()),
-        mDigestType(aDigestType) {
+        mDigestType(aDigestType),
+        mVerifyFlags(verifyFlags) {
     MOZ_ASSERT(NS_IsMainThread());
   }
 
@@ -594,12 +643,16 @@ class SMimeVerificationTask final : public CryptoTask {
   virtual nsresult CalculateResult() override {
     MOZ_ASSERT(!NS_IsMainThread());
 
+    // Because the S/MIME code and related certificate processing isn't
+    // sufficiently threadsafe (see bug 1529003), we want this code to
+    // never run in parallel (see bug 1386601).
     mozilla::StaticMutexAutoLock lock(sMutex);
     nsresult rv;
     if (mDigestData.IsEmpty()) {
-      rv = mMessage->VerifySignature();
+      rv = mMessage->VerifySignature(mVerifyFlags);
     } else {
-      rv = mMessage->VerifyDetachedSignature(mDigestData, mDigestType);
+      rv = mMessage->VerifyDetachedSignature(mVerifyFlags, mDigestData,
+                                             mDigestType);
     }
 
     return rv;
@@ -613,6 +666,7 @@ class SMimeVerificationTask final : public CryptoTask {
   nsCOMPtr<nsISMimeVerificationListener> mListener;
   nsTArray<uint8_t> mDigestData;
   int16_t mDigestType;
+  int32_t mVerifyFlags;
 
   static mozilla::StaticMutex sMutex;
 };
@@ -620,10 +674,10 @@ class SMimeVerificationTask final : public CryptoTask {
 mozilla::StaticMutex SMimeVerificationTask::sMutex;
 
 nsresult nsCMSMessage::CommonAsyncVerifySignature(
-    nsISMimeVerificationListener* aListener,
+    int32_t verifyFlags, nsISMimeVerificationListener* aListener,
     const nsTArray<uint8_t>& aDigestData, int16_t aDigestType) {
-  RefPtr<CryptoTask> task =
-      new SMimeVerificationTask(this, aListener, aDigestData, aDigestType);
+  RefPtr<CryptoTask> task = new SMimeVerificationTask(
+      this, verifyFlags, aListener, aDigestData, aDigestType);
   return task->Dispatch();
 }
 
@@ -631,9 +685,7 @@ class nsZeroTerminatedCertArray {
  public:
   nsZeroTerminatedCertArray() : mCerts(nullptr), mPoolp(nullptr), mSize(0) {}
 
-  ~nsZeroTerminatedCertArray() { destructorSafeDestroyNSSReference(); }
-
-  void destructorSafeDestroyNSSReference() {
+  ~nsZeroTerminatedCertArray() {
     if (mCerts) {
       for (uint32_t i = 0; i < mSize; i++) {
         if (mCerts[i]) {
@@ -962,10 +1014,24 @@ loser:
 }
 
 NS_IMPL_ISUPPORTS(nsCMSDecoder, nsICMSDecoder)
+NS_IMPL_ISUPPORTS(nsCMSDecoderJS, nsICMSDecoderJS)
 
 nsCMSDecoder::nsCMSDecoder() : m_dcx(nullptr) {}
+nsCMSDecoderJS::nsCMSDecoderJS() : m_dcx(nullptr) {}
 
-nsCMSDecoder::~nsCMSDecoder() { destructorSafeDestroyNSSReference(); }
+nsCMSDecoder::~nsCMSDecoder() {
+  if (m_dcx) {
+    NSS_CMSDecoder_Cancel(m_dcx);
+    m_dcx = nullptr;
+  }
+}
+
+nsCMSDecoderJS::~nsCMSDecoderJS() {
+  if (m_dcx) {
+    NSS_CMSDecoder_Cancel(m_dcx);
+    m_dcx = nullptr;
+  }
+}
 
 nsresult nsCMSDecoder::Init() {
   nsresult rv;
@@ -974,11 +1040,11 @@ nsresult nsCMSDecoder::Init() {
   return rv;
 }
 
-void nsCMSDecoder::destructorSafeDestroyNSSReference() {
-  if (m_dcx) {
-    NSS_CMSDecoder_Cancel(m_dcx);
-    m_dcx = nullptr;
-  }
+nsresult nsCMSDecoderJS::Init() {
+  nsresult rv;
+  nsCOMPtr<nsISupports> nssInitialized =
+      do_GetService("@mozilla.org/psm;1", &rv);
+  return rv;
 }
 
 /* void start (in NSSCMSContentCallback cb, in voidPtr arg); */
@@ -1018,21 +1084,59 @@ NS_IMETHODIMP nsCMSDecoder::Finish(nsICMSMessage** aCMSMsg) {
   return NS_OK;
 }
 
+void nsCMSDecoderJS::content_callback(void* arg, const char* input,
+                                      unsigned long length) {
+  nsCMSDecoderJS* self = reinterpret_cast<nsCMSDecoderJS*>(arg);
+  self->mDecryptedData.AppendElements(input, length);
+}
+
+NS_IMETHODIMP nsCMSDecoderJS::Decrypt(const nsTArray<uint8_t>& aInput,
+                                      nsTArray<uint8_t>& _retval) {
+  if (aInput.IsEmpty()) {
+    return NS_ERROR_FAILURE;
+  }
+
+  m_ctx = new PipUIContext();
+
+  m_dcx = NSS_CMSDecoder_Start(0, nsCMSDecoderJS::content_callback, this, 0,
+                               m_ctx, 0, 0);
+  if (!m_dcx) {
+    MOZ_LOG(gCMSLog, LogLevel::Debug,
+            ("nsCMSDecoderJS::Start - can't start decoder"));
+    return NS_ERROR_FAILURE;
+  }
+
+  NSS_CMSDecoder_Update(m_dcx, (char*)aInput.Elements(), aInput.Length());
+
+  NSSCMSMessage* cmsMsg;
+  cmsMsg = NSS_CMSDecoder_Finish(m_dcx);
+  m_dcx = nullptr;
+  if (cmsMsg) {
+    nsCMSMessage* obj = new nsCMSMessage(cmsMsg);
+    // The NSS object cmsMsg still carries a reference to the context
+    // we gave it on construction.
+    // Make sure the context will live long enough.
+    obj->referenceContext(m_ctx);
+    mCMSMessage = obj;
+  }
+
+  _retval = mDecryptedData.Clone();
+  return NS_OK;
+}
+
 NS_IMPL_ISUPPORTS(nsCMSEncoder, nsICMSEncoder)
 
 nsCMSEncoder::nsCMSEncoder() : m_ecx(nullptr) {}
 
-nsCMSEncoder::~nsCMSEncoder() { destructorSafeDestroyNSSReference(); }
+nsCMSEncoder::~nsCMSEncoder() {
+  if (m_ecx) NSS_CMSEncoder_Cancel(m_ecx);
+}
 
 nsresult nsCMSEncoder::Init() {
   nsresult rv;
   nsCOMPtr<nsISupports> nssInitialized =
       do_GetService("@mozilla.org/psm;1", &rv);
   return rv;
-}
-
-void nsCMSEncoder::destructorSafeDestroyNSSReference() {
-  if (m_ecx) NSS_CMSEncoder_Cancel(m_ecx);
 }
 
 /* void start (); */

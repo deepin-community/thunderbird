@@ -2,9 +2,9 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-cookies-window-dialog =
+cookies-window-dialog2 =
     .title = Cookies
-    .style = width: 36em;
+cookies-dialog-title = Cookies
 window-close-key =
     .key = w
 window-focus-search-key =

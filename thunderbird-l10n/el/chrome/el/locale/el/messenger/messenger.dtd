@@ -24,8 +24,6 @@
 <!ENTITY moveToNewWindow.accesskey "θ">
 <!ENTITY newVirtualFolderCmd.label "Αποθηκευμένη αναζήτηση…">
 <!ENTITY newVirtualFolderCmd.accesskey "θ">
-<!ENTITY newOtherAccountsCmd.label "Άλλοι λογαριασμοί…">
-<!ENTITY newOtherAccountsCmd.accesskey "λ">
 <!ENTITY newCreateEmailAccountCmd.label "Απόκτηση νέου λογαριασμού email…">
 <!ENTITY newCreateEmailAccountCmd.accesskey "γ">
 <!ENTITY newExistingEmailAccountCmd.label "Υπάρχων λογαριασμός email…">
@@ -48,8 +46,6 @@
 <!ENTITY openMessageFileCmd.accesskey "ν">
 <!ENTITY saveAsMenu.label "Αποθήκευση ως">
 <!ENTITY saveAsMenu.accesskey "θ">
-<!ENTITY saveAsFileCmd.label "Αρχείο">
-<!ENTITY saveAsFileCmd.accesskey "χ">
 <!ENTITY saveAsFileCmd.key "s">
 <!ENTITY saveAsTemplateCmd.label "Πρότυπο">
 <!ENTITY saveAsTemplateCmd.accesskey "Π">
@@ -91,18 +87,6 @@
 <!ENTITY printCmd.key "p">
 
 <!-- Edit Menu -->
-<!ENTITY deleteMsgCmd.label "Διαγραφή μηνύματος">
-<!ENTITY deleteMsgCmd.accesskey "Δ">
-<!ENTITY undeleteMsgCmd.label "Αναίρεση διαγραφής μηνύματος">
-<!ENTITY undeleteMsgCmd.accesskey "ν">
-<!ENTITY deleteMsgsCmd.label "Διαγραφή επιλεγμένων μηνυμάτων">
-<!ENTITY deleteMsgsCmd.accesskey "Δ">
-<!ENTITY undeleteMsgsCmd.label "Αναίρεση διαγραφής επιλεγμένων μηνυμάτων">
-<!ENTITY undeleteMsgsCmd.accesskey "ν">
-<!ENTITY deleteFolderCmd.label "Διαγραφή φακέλου">
-<!ENTITY deleteFolderCmd.accesskey "Δ">
-<!ENTITY unsubscribeNewsgroupCmd.label "Κατάργηση εγγραφής">
-<!ENTITY unsubscribeNewsgroupCmd.accesskey "ρ">
 <!ENTITY selectMenu.label "Επιλογή">
 <!ENTITY selectMenu.accesskey "Ε">
 <!ENTITY all.label "Όλα">
@@ -114,10 +98,6 @@
 <!ENTITY selectFlaggedCmd.accesskey "σ">
 <!ENTITY menuFavoriteFolder.label "Αγαπημένος φάκελος">
 <!ENTITY menuFavoriteFolder.accesskey "γ">
-<!ENTITY folderPropsCmd2.label "Ιδιότητες">
-<!ENTITY folderPropsFolderCmd2.label "Ιδιότητες φακέλου">
-<!ENTITY folderPropsNewsgroupCmd2.label "Ιδιότητες ομάδας συζητήσεων">
-<!ENTITY folderPropsCmd.accesskey "δ">
 <!ENTITY undoDeleteMsgCmd.label "Αναίρεση διαγραφής μηνύματος">
 <!ENTITY redoDeleteMsgCmd.label "Επανάληψη διαγραφής μηνύματος">
 <!ENTITY undoMoveMsgCmd.label "Αναίρεση μετακίνησης μηνύματος">
@@ -147,10 +127,8 @@
 <!ENTITY messagePaneWide.accesskey "Ε">
 <!ENTITY messagePaneVertical.label "Κάθετη προβολή">
 <!ENTITY messagePaneVertical.accesskey "θ">
-<!ENTITY showFolderPaneCmd.label "Προβολή φακέλων">
+<!ENTITY showFolderPaneCmd.label "Περιοχή φακέλων">
 <!ENTITY showFolderPaneCmd.accesskey "φ">
-<!ENTITY showFolderPaneColsCmd.label "Στήλες προβολής φακέλων">
-<!ENTITY showFolderPaneColsCmd.accesskey "Φ">
 <!ENTITY showMessageCmd.label "Περιοχή μηνύματος">
 <!ENTITY showMessageCmd.accesskey "μ">
 
@@ -254,7 +232,7 @@
 <!ENTITY bodyMenuFeed.accesskey "η">
 <!ENTITY viewFeedWebPage.label "Ιστοσελίδα">
 <!ENTITY viewFeedWebPage.accesskey "σ">
-<!ENTITY viewFeedSummary.label "Περίληψη">
+<!ENTITY viewFeedSummary.label "Σύνοψη">
 <!ENTITY viewFeedSummary.accesskey "ψ">
 <!ENTITY viewFeedSummaryFeedPropsPref.label "Προεπιλεγμένη μορφή">
 <!ENTITY viewFeedSummaryFeedPropsPref.accesskey "μ">
@@ -320,7 +298,6 @@
 <!ENTITY goBackCmd.commandKey "[">
 <!ENTITY goChatCmd.label "Συνομιλία">
 <!ENTITY goChatCmd.accesskey "σ">
-<!ENTITY goChatCmd2.key "H">
 <!ENTITY prevStarredMsgCmd.label "Μήνυμα με αστέρι">
 <!ENTITY prevStarredMsgCmd.accesskey "σ">
 <!ENTITY folderMenu.label "Φάκελος">
@@ -446,9 +423,9 @@
 <!ENTITY openFeedMessage1.accesskey "ν">
 <!ENTITY openFeedWebPage.label "Άνοιγμα ως ιστοσελίδα">
 <!ENTITY openFeedWebPage.accesskey "σ">
-<!ENTITY openFeedSummary.label "Άνοιγμα ως περίληψη">
+<!ENTITY openFeedSummary.label "Άνοιγμα ως σύνοψη">
 <!ENTITY openFeedSummary.accesskey "ψ">
-<!ENTITY openFeedWebPageInMP.label "Εναλλαγή ιστοσελίδας και περίληψης στα μηνύματα">
+<!ENTITY openFeedWebPageInMP.label "Εναλλαγή ιστοσελίδας και σύνοψης στην προβολή μηνυμάτων">
 <!ENTITY openFeedWebPageInMP.accesskey "γ">
 
 <!-- Windows Menu -->
@@ -457,7 +434,7 @@
 <!-- Tools Menu -->
 <!ENTITY tasksMenu.label "Εργαλεία">
 <!ENTITY tasksMenu.accesskey "γ">
-<!ENTITY messengerCmd.label "Ταχυδρομείο &amp; ομάδες συζητήσεων">
+<!ENTITY messengerCmd.label "Ταχυδρομείο και ομάδες συζητήσεων">
 <!ENTITY messengerCmd.accesskey "Α">
 <!ENTITY addressBookCmd.label "Ευρετήριο">
 <!ENTITY addressBookCmd.accesskey "ρ">
@@ -572,7 +549,7 @@
 <!ENTITY markButton.tooltip "Επισήμανση μηνυμάτων">
 <!ENTITY printButton.tooltip "Εκτύπωση μηνύματος">
 <!ENTITY stopButton.tooltip "Διακοπή της τρέχουσας μεταφοράς">
-<!ENTITY addressBookButton.tooltip "Μετάβαση στο ευρετήριο διευθύνσεων">
+<!ENTITY addressBookButton.tooltip "Μετάβαση στο ευρετήριο">
 <!ENTITY chatButton.tooltip "Εμφάνιση καρτέλας «Συνομιλία»">
 <!ENTITY tagButton.tooltip "Ετικέτα σε μηνύματα">
 <!ENTITY compactButton.tooltip "Αφαίρεση διαγραμμένων μηνυμάτων από τον επιλεγμένο φάκελο">
@@ -601,10 +578,7 @@
 <!-- AppMenu Popup -->
 <!ENTITY appmenuNewMsgCmd.label "Νέο μήνυμα">
 <!ENTITY appmenuNewContactCmd.label "Επαφή ευρετηρίου…">
-<!ENTITY appmenuEditMenu.label "Επεξεργασία">
 <!ENTITY appmenuToolbarLayout.label "Διάταξη γραμμής εργαλείων…">
-<!ENTITY appmenuSelectThread.label "Επιλογή νήματος">
-<!ENTITY appmenuSelectFlagged.label "Επιλογή μηνυμάτων με αστέρι">
 
 <!-- Tags Menu Popup -->
 <!ENTITY addNewTag.label "Νέα ετικέτα…">
@@ -701,7 +675,7 @@
 <!ENTITY deleteColumn.label "Διαγραφή">
 
 <!-- Thread Pane Tooltips -->
-<!ENTITY columnChooser2.tooltip "Επιλογή στηλών για προβολή">
+<!ENTITY columnChooser2.tooltip "Επιλέξτε στήλες προς εμφάνιση">
 <!ENTITY selectColumn.tooltip "Εναλλαγή επιλογής όλων των μηνυμάτων">
 <!ENTITY threadColumn2.tooltip "Προβολή νημάτων μηνυμάτων">
 <!ENTITY fromColumn2.tooltip "Ταξινόμηση κατά αποστολέα">
@@ -869,7 +843,7 @@
 <!ENTITY search.keyLabel.mac "&lt;&#x2318;K&gt;">
 
 <!-- Message Header Context Menu -->
-<!ENTITY AddToAddressBook.label "Προσθήκη στο ευρετήριο διευθύνσεων…">
+<!ENTITY AddToAddressBook.label "Προσθήκη στο ευρετήριο…">
 <!ENTITY AddToAddressBook.accesskey "σ">
 <!ENTITY AddDirectlyToAddressBook.label "Προσθήκη στο ευρετήριο">
 <!ENTITY AddDirectlyToAddressBook.accesskey "υ">
@@ -909,10 +883,6 @@
 <!ENTITY copyImageAllCmd.accesskey "ι">
 <!ENTITY copyEmailCmd.label "Αντιγραφή διεύθυνσης email">
 <!ENTITY copyEmailCmd.accesskey "Ε">
-<!ENTITY stopCmd.label "Διακοπή">
-<!ENTITY stopCmd.accesskey "Δ">
-<!ENTITY reloadCmd.label "Ανανέωση">
-<!ENTITY reloadCmd.accesskey "ν">
 <!ENTITY openInBrowser.label "Άνοιγμα σε πρόγραμμα περιήγησης">
 <!ENTITY openInBrowser.accesskey "ο">
 <!ENTITY openLinkInBrowser.label "Άνοιγμα συνδέσμου σε πρόγραμμα περιήγησης">

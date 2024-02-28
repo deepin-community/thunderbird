@@ -4,17 +4,15 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-from __future__ import absolute_import
-
 import os
 import shutil
 
+from logger.logger import RaptorLogger
 from mozpower import MozPower
 from mozrunner import runners
-
-from logger.logger import RaptorLogger
 from outputhandler import OutputHandler
 from perftest import PerftestDesktop
+
 from .base import WebExtension
 
 LOG = RaptorLogger(component="raptor-webext-desktop")
@@ -40,12 +38,6 @@ class WebExtensionDesktop(PerftestDesktop, WebExtension):
 
         # Force Firefox to immediately exit for content crashes
         self.runner.env["MOZ_CRASHREPORTER_SHUTDOWN"] = "1"
-
-        if self.config["enable_webrender"]:
-            self.runner.env["MOZ_WEBRENDER"] = "1"
-            self.runner.env["MOZ_ACCELERATED"] = "1"
-        else:
-            self.runner.env["MOZ_WEBRENDER"] = "0"
 
         self.runner.env.update(self.config.get("environment", {}))
 

@@ -5,18 +5,19 @@
 
 const {
   webExtensionDescriptorSpec,
-} = require("devtools/shared/specs/descriptors/webextension");
+} = require("resource://devtools/shared/specs/descriptors/webextension.js");
 const {
   FrontClassWithSpec,
   registerFront,
-} = require("devtools/shared/protocol");
+} = require("resource://devtools/shared/protocol.js");
 const {
   DescriptorMixin,
-} = require("devtools/client/fronts/descriptors/descriptor-mixin");
+} = require("resource://devtools/client/fronts/descriptors/descriptor-mixin.js");
+const DESCRIPTOR_TYPES = require("resource://devtools/client/fronts/descriptors/descriptor-types.js");
 loader.lazyRequireGetter(
   this,
-  "BrowsingContextTargetFront",
-  "devtools/client/fronts/targets/browsing-context",
+  "WindowGlobalTargetFront",
+  "resource://devtools/client/fronts/targets/window-global.js",
   true
 );
 
@@ -28,12 +29,18 @@ class WebExtensionDescriptorFront extends DescriptorMixin(
     this.traits = {};
   }
 
+  descriptorType = DESCRIPTOR_TYPES.EXTENSION;
+
   form(json) {
     this.actorID = json.actor;
 
     // Do not use `form` name to avoid colliding with protocol.js's `form` method
     this._form = json;
     this.traits = json.traits || {};
+  }
+
+  get backgroundScriptStatus() {
+    return this._form.backgroundScriptStatus;
   }
 
   get debuggable() {
@@ -76,6 +83,10 @@ class WebExtensionDescriptorFront extends DescriptorMixin(
     return this._form.name;
   }
 
+  get persistentBackgroundScript() {
+    return this._form.persistentBackgroundScript;
+  }
+
   get temporarilyInstalled() {
     return this._form.temporarilyInstalled;
   }
@@ -88,15 +99,33 @@ class WebExtensionDescriptorFront extends DescriptorMixin(
     return this._form.warnings;
   }
 
+  isServerTargetSwitchingEnabled() {
+    // For now, we don't expose any target out of the WatcherActor.
+    // And the top level target is still manually instantiated by the descriptor.
+    // We most likely need to wait for full enabling of EFT before being able to spawn
+    // the extension target from the server side as doing this would most likely break
+    // the iframe dropdown. It would break it as spawning the targets from the server
+    // would probably mean getting rid of the usage of WindowGlobalTargetActor._setWindow
+    // and instead spawn one target per extension document.
+    // That, instead of having a unique target for all the documents.
+    return false;
+  }
+
+  getWatcher() {
+    return super.getWatcher({
+      isServerTargetSwitchingEnabled: this.isServerTargetSwitchingEnabled(),
+    });
+  }
+
   _createWebExtensionTarget(form) {
-    const front = new BrowsingContextTargetFront(this.conn, null, this);
+    const front = new WindowGlobalTargetFront(this.conn, null, this);
     front.form(form);
     this.manage(front);
     return front;
   }
 
   /**
-   * Retrieve the BrowsingContextTargetFront representing a
+   * Retrieve the WindowGlobalTargetFront representing a
    * WebExtensionTargetActor if this addon is a webextension.
    *
    * WebExtensionDescriptors will be created for any type of addon type
@@ -127,7 +156,6 @@ class WebExtensionDescriptorFront extends DescriptorMixin(
       try {
         const targetForm = await super.getTarget();
         targetFront = this._createWebExtensionTarget(targetForm);
-        await targetFront.attach();
       } catch (e) {
         console.log(
           `Request to connect to WebExtensionDescriptor "${this.id}" failed: ${e}`

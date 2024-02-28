@@ -29,8 +29,8 @@ var gTests = [
   },
 ];
 
-add_task(async function() {
-  let daemon = new imapDaemon();
+add_task(async function () {
+  let daemon = new ImapDaemon();
   server = makeServer(daemon, "", {
     // Make username of server match the singons.txt file
     // (pw there is intentionally invalid)
@@ -53,7 +53,7 @@ add_task(async function() {
   server.resetTest();
 });
 
-registerCleanupFunction(function() {
+registerCleanupFunction(function () {
   incomingServer.closeCachedConnections();
   server.stop();
 

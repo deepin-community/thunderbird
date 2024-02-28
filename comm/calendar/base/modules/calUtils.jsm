@@ -2,14 +2,19 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-var { XPCOMUtils } = ChromeUtils.import("resource://gre/modules/XPCOMUtils.jsm");
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-var { ConsoleAPI } = ChromeUtils.import("resource://gre/modules/Console.jsm");
+var { XPCOMUtils } = ChromeUtils.importESModule("resource://gre/modules/XPCOMUtils.sys.mjs");
+var { ConsoleAPI } = ChromeUtils.importESModule("resource://gre/modules/Console.sys.mjs");
 
-// Usually the backend loader gets loaded via profile-after-change, but in case
-// a calendar component hooks in earlier, its very likely it will use calUtils.
-// Getting the service here will load if its not already loaded
-Cc["@mozilla.org/calendar/backend-loader;1"].getService();
+const { ICAL } = ChromeUtils.import("resource:///modules/calendar/Ical.jsm");
+ICAL.design.strict = false;
+
+const lazy = {};
+XPCOMUtils.defineLazyModuleGetters(lazy, {
+  CalDateTime: "resource:///modules/CalDateTime.jsm",
+  CalDuration: "resource:///modules/CalDuration.jsm",
+  CalRecurrenceDate: "resource:///modules/CalRecurrenceDate.jsm",
+  CalRecurrenceRule: "resource:///modules/CalRecurrenceRule.jsm",
+});
 
 // The calendar console instance
 var gCalendarConsole = new ConsoleAPI({
@@ -18,34 +23,38 @@ var gCalendarConsole = new ConsoleAPI({
   maxLogLevel: Services.prefs.getBoolPref("calendar.debug.log", false) ? "all" : "warn",
 });
 
-// Cache services to avoid calling getService over and over again. The cache is
-// a separate object to avoid polluting `cal`, and is defined here since a call
-// to `_service` will require it to already exist.
-var gServiceCache = {};
-
 const EXPORTED_SYMBOLS = ["cal"];
 var cal = {
   // These functions exist to reduce boilerplate code for creating instances
   // as well as getting services and other (cached) objects.
-  createDateTime: _instance("@mozilla.org/calendar/datetime;1", Ci.calIDateTime, "icalString"),
-  createDuration: _instance("@mozilla.org/calendar/duration;1", Ci.calIDuration, "icalString"),
-  createRecurrenceDate: _instance(
-    "@mozilla.org/calendar/recurrence-date;1",
-    Ci.calIRecurrenceDate,
-    "icalString"
-  ),
-  createRecurrenceRule: _instance(
-    "@mozilla.org/calendar/recurrence-rule;1",
-    Ci.calIRecurrenceRule,
-    "icalString"
-  ),
-
-  getCalendarManager: _service("@mozilla.org/calendar/manager;1", "calICalendarManager"),
-  getIcsService: _service("@mozilla.org/calendar/ics-service;1", "calIICSService"),
-  getTimezoneService: _service("@mozilla.org/calendar/timezone-service;1", "calITimezoneService"),
-  getFreeBusyService: _service("@mozilla.org/calendar/freebusy-service;1", "calIFreeBusyService"),
-  getWeekInfoService: _service("@mozilla.org/calendar/weekinfo-service;1", "calIWeekInfoService"),
-  getDragService: _service("@mozilla.org/widget/dragservice;1", "nsIDragService"),
+  createDateTime(value) {
+    let instance = new lazy.CalDateTime();
+    if (value) {
+      instance.icalString = value;
+    }
+    return instance;
+  },
+  createDuration(value) {
+    let instance = new lazy.CalDuration();
+    if (value) {
+      instance.icalString = value;
+    }
+    return instance;
+  },
+  createRecurrenceDate(value) {
+    let instance = new lazy.CalRecurrenceDate();
+    if (value) {
+      instance.icalString = value;
+    }
+    return instance;
+  },
+  createRecurrenceRule(value) {
+    let instance = new lazy.CalRecurrenceRule();
+    if (value) {
+      instance.icalString = value;
+    }
+    return instance;
+  },
 
   /**
    * The calendar console instance
@@ -118,7 +127,7 @@ var cal = {
       let rescode = aCritical === true ? Cr.NS_ERROR_UNEXPECTED : aCritical;
       throw new Components.Exception(string, rescode);
     } else {
-      Cu.reportError(string);
+      console.error(string);
     }
   },
 
@@ -128,8 +137,8 @@ var cal = {
    * nsIClassInfo, which causes xpconnect/xpcom to make all methods available, e.g. for an event
    * both calIItemBase and calIEvent.
    *
-   * @param {Array<String|nsIIDRef>} aInterfaces      The interfaces to generate QI for.
-   * @return {Function}                               The QueryInterface function
+   * @param {Array<string | nsIIDRef>} aInterfaces      The interfaces to generate QI for.
+   * @returns {Function} The QueryInterface function
    */
   generateQI(aInterfaces) {
     if (aInterfaces.length == 1) {
@@ -189,24 +198,13 @@ var cal = {
   },
 
   /**
-   * Schedules execution of the passed function to the current thread's queue.
-   */
-  postPone(func) {
-    if (this.threadingEnabled) {
-      Services.tm.currentThread.dispatch({ run: func }, Ci.nsIEventTarget.DISPATCH_NORMAL);
-    } else {
-      func();
-    }
-  },
-
-  /**
    * Create an adapter for the given interface. If passed, methods will be
    * added to the template object, otherwise a new object will be returned.
    *
    * @param iface     The interface to adapt, either using
    *                    Components.interfaces or the name as a string.
    * @param template  (optional) A template object to extend
-   * @return          If passed the adapted template object, otherwise a
+   * @returns If passed the adapted template object, otherwise a
    *                    clean adapter.
    *
    * Currently supported interfaces are:
@@ -248,7 +246,7 @@ var cal = {
 
     for (let method of methods) {
       if (!(method in template)) {
-        adapter[method] = function() {};
+        adapter[method] = function () {};
       }
     }
     adapter.QueryInterface = ChromeUtils.generateQI([iface]);
@@ -259,16 +257,12 @@ var cal = {
   /**
    * Make a UUID, without enclosing brackets, e.g. 0d3950fd-22e5-4508-91ba-0489bdac513f
    *
-   * @return {String}         The generated UUID
+   * @returns {string} The generated UUID
    */
   getUUID() {
-    let uuidGen = Cc["@mozilla.org/uuid-generator;1"].getService(Ci.nsIUUIDGenerator);
     // generate uuids without braces to avoid problems with
     // CalDAV servers that don't support filenames with {}
-    return uuidGen
-      .generateUUID()
-      .toString()
-      .replace(/[{}]/g, "");
+    return Services.uuid.generateUUID().toString().replace(/[{}]/g, "");
   },
 
   /**
@@ -330,7 +324,7 @@ var cal = {
    * passed object.
    *
    * @param aObj  The object under consideration
-   * @return      The possibly unwrapped object.
+   * @returns The possibly unwrapped object.
    */
   unwrapInstance(aObj) {
     return aObj && aObj.wrappedJSObject ? aObj.wrappedJSObject : aObj;
@@ -392,6 +386,44 @@ XPCOMUtils.defineLazyPreferenceGetter(
   false
 );
 
+// Services
+XPCOMUtils.defineLazyServiceGetter(
+  cal,
+  "manager",
+  "@mozilla.org/calendar/manager;1",
+  "calICalendarManager"
+);
+XPCOMUtils.defineLazyServiceGetter(
+  cal,
+  "icsService",
+  "@mozilla.org/calendar/ics-service;1",
+  "calIICSService"
+);
+XPCOMUtils.defineLazyServiceGetter(
+  cal,
+  "timezoneService",
+  "@mozilla.org/calendar/timezone-service;1",
+  "calITimezoneService"
+);
+XPCOMUtils.defineLazyServiceGetter(
+  cal,
+  "freeBusyService",
+  "@mozilla.org/calendar/freebusy-service;1",
+  "calIFreeBusyService"
+);
+XPCOMUtils.defineLazyServiceGetter(
+  cal,
+  "weekInfoService",
+  "@mozilla.org/calendar/weekinfo-service;1",
+  "calIWeekInfoService"
+);
+XPCOMUtils.defineLazyServiceGetter(
+  cal,
+  "dragService",
+  "@mozilla.org/widget/dragservice;1",
+  "nsIDragService"
+);
+
 // Sub-modules for calUtils
 XPCOMUtils.defineLazyModuleGetter(
   cal,
@@ -404,12 +436,6 @@ XPCOMUtils.defineLazyModuleGetter(
   "alarms",
   "resource:///modules/calendar/utils/calAlarmUtils.jsm",
   "calalarms"
-);
-XPCOMUtils.defineLazyModuleGetter(
-  cal,
-  "async",
-  "resource:///modules/calendar/utils/calAsyncUtils.jsm",
-  "calasync"
 );
 XPCOMUtils.defineLazyModuleGetter(
   cal,
@@ -508,41 +534,6 @@ XPCOMUtils.defineLazyModuleGetter(
   "calxml"
 );
 
-/**
- * Returns a function that provides access to the given service.
- *
- * @param cid           The contract id to create
- * @param iid           The interface id to create with
- * @return {function}   A function that returns the given service
- */
-function _service(cid, iid) {
-  let name = `_${iid}`;
-  XPCOMUtils.defineLazyServiceGetter(gServiceCache, name, cid, iid);
-  return function() {
-    return gServiceCache[name];
-  };
-}
-
-/**
- * Returns a function that creates an instance of the given component and
- * optionally initializes it using the property name passed.
- *
- * @param cid           The contract id to create
- * @param iid           The interface id to create with
- * @param prop          The property name used for initialization
- * @return {function}   A function that creates the given instance, which takes an
- *                          initialization value.
- */
-function _instance(cid, iid, prop) {
-  return function(propval) {
-    let thing = Cc[cid].createInstance(iid);
-    if (propval) {
-      thing[prop] = propval;
-    }
-    return thing;
-  };
-}
-
 // will be used to clean up global objects on shutdown
 // some objects have cyclic references due to wrappers
 function shutdownCleanup(obj, prop) {
@@ -563,13 +554,13 @@ function shutdownCleanup(obj, prop) {
 }
 
 /**
- * This is the makeQI function from XPCOMUtils.jsm, it is separate to avoid leaks
+ * This is the makeQI function from XPCOMUtils.sys.mjs, it is separate to avoid leaks
  *
- * @param {Array<String|nsIIDRef>} aInterfaces      The interfaces to make QI for.
- * @return {Function}                               The QueryInterface function.
+ * @param {Array<string | nsIIDRef>} aInterfaces      The interfaces to make QI for.
+ * @returns {Function} The QueryInterface function.
  */
 function makeQI(aInterfaces) {
-  return function(iid) {
+  return function (iid) {
     if (iid.equals(Ci.nsISupports)) {
       return this;
     }

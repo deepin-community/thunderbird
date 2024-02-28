@@ -55,11 +55,11 @@ nsresult CacheObserver::Init() {
 
   obs->AddObserver(sSelf, "prefservice:after-app-defaults", true);
   obs->AddObserver(sSelf, "profile-do-change", true);
-  obs->AddObserver(sSelf, "browser-delayed-startup-finished", true);
   obs->AddObserver(sSelf, "profile-before-change", true);
   obs->AddObserver(sSelf, "xpcom-shutdown", true);
   obs->AddObserver(sSelf, "last-pb-context-exited", true);
   obs->AddObserver(sSelf, "memory-pressure", true);
+  obs->AddObserver(sSelf, "browser-delayed-startup-finished", true);
 
   return NS_OK;
 }
@@ -208,11 +208,6 @@ CacheObserver::Observe(nsISupports* aSubject, const char* aTopic,
     return NS_OK;
   }
 
-  if (!strcmp(aTopic, "browser-delayed-startup-finished")) {
-    CacheStorageService::CleaupCacheDirectories();
-    return NS_OK;
-  }
-
   if (!strcmp(aTopic, "profile-change-net-teardown") ||
       !strcmp(aTopic, "profile-before-change") ||
       !strcmp(aTopic, "xpcom-shutdown")) {
@@ -244,6 +239,11 @@ CacheObserver::Observe(nsISupports* aSubject, const char* aTopic,
       service->PurgeFromMemory(nsICacheStorageService::PURGE_EVERYTHING);
     }
 
+    return NS_OK;
+  }
+
+  if (!strcmp(aTopic, "browser-delayed-startup-finished")) {
+    CacheFileIOManager::OnDelayedStartupFinished();
     return NS_OK;
   }
 

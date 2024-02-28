@@ -10,20 +10,14 @@ const DISTRIBUTION_CUSTOMIZATION_COMPLETE_TOPIC =
 const PREF_CACHED_FILE_EXISTENCE = "distribution.iniFile.exists.value";
 const PREF_CACHED_FILE_APPVERSION = "distribution.iniFile.exists.appversion";
 
-const { AppConstants } = ChromeUtils.import(
-  "resource://gre/modules/AppConstants.jsm"
+const { AppConstants } = ChromeUtils.importESModule(
+  "resource://gre/modules/AppConstants.sys.mjs"
 );
-const { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-ChromeUtils.defineModuleGetter(
-  this,
-  "Preferences",
-  "resource://gre/modules/Preferences.jsm"
-);
-ChromeUtils.defineModuleGetter(
-  this,
-  "PlacesUtils",
-  "resource://gre/modules/PlacesUtils.jsm"
-);
+const lazy = {};
+ChromeUtils.defineESModuleGetters(lazy, {
+  AddonManager: "resource://gre/modules/AddonManager.sys.mjs",
+  PlacesUtils: "resource://gre/modules/PlacesUtils.sys.mjs",
+});
 
 function DistributionCustomizer() {}
 
@@ -95,7 +89,7 @@ DistributionCustomizer.prototype = {
         Services.prefs.clearUserPref(PREF_CACHED_FILE_EXISTENCE);
       } else {
         // Unable to parse INI.
-        Cu.reportError("Unable to parse distribution.ini");
+        console.error("Unable to parse distribution.ini");
       }
     }
     this.__defineGetter__("_ini", () => ini);
@@ -112,6 +106,19 @@ DistributionCustomizer.prototype = {
     let language = this._locale.split("-")[0];
     this.__defineGetter__("_language", () => language);
     return this._language;
+  },
+
+  async _removeDistributionBookmarks() {
+    await lazy.PlacesUtils.bookmarks.fetch(
+      { guidPrefix: this.BOOKMARK_GUID_PREFIX },
+      bookmark => lazy.PlacesUtils.bookmarks.remove(bookmark).catch()
+    );
+    await lazy.PlacesUtils.bookmarks.fetch(
+      { guidPrefix: this.FOLDER_GUID_PREFIX },
+      folder => {
+        lazy.PlacesUtils.bookmarks.remove(folder).catch();
+      }
+    );
   },
 
   async _parseBookmarksSection(parentGuid, section) {
@@ -160,7 +167,7 @@ DistributionCustomizer.prototype = {
         continue;
       }
 
-      let index = PlacesUtils.bookmarks.DEFAULT_INDEX;
+      let index = lazy.PlacesUtils.bookmarks.DEFAULT_INDEX;
       let item = items[itemIndex];
 
       switch (item.type) {
@@ -172,9 +179,11 @@ DistributionCustomizer.prototype = {
             index = prependIndex++;
           }
 
-          let folder = await PlacesUtils.bookmarks.insert({
-            type: PlacesUtils.bookmarks.TYPE_FOLDER,
-            guid: PlacesUtils.generateGuidWithPrefix(this.FOLDER_GUID_PREFIX),
+          let folder = await lazy.PlacesUtils.bookmarks.insert({
+            type: lazy.PlacesUtils.bookmarks.TYPE_FOLDER,
+            guid: lazy.PlacesUtils.generateGuidWithPrefix(
+              this.FOLDER_GUID_PREFIX
+            ),
             parentGuid,
             index,
             title: item.title,
@@ -191,8 +200,8 @@ DistributionCustomizer.prototype = {
             index = prependIndex++;
           }
 
-          await PlacesUtils.bookmarks.insert({
-            type: PlacesUtils.bookmarks.TYPE_SEPARATOR,
+          await lazy.PlacesUtils.bookmarks.insert({
+            type: lazy.PlacesUtils.bookmarks.TYPE_SEPARATOR,
             parentGuid,
             index,
           });
@@ -208,7 +217,7 @@ DistributionCustomizer.prototype = {
             index = prependIndex++;
           }
 
-          await PlacesUtils.bookmarks.insert({
+          await lazy.PlacesUtils.bookmarks.insert({
             parentGuid,
             index,
             title: item.title,
@@ -222,8 +231,10 @@ DistributionCustomizer.prototype = {
             index = prependIndex++;
           }
 
-          await PlacesUtils.bookmarks.insert({
-            guid: PlacesUtils.generateGuidWithPrefix(this.BOOKMARK_GUID_PREFIX),
+          await lazy.PlacesUtils.bookmarks.insert({
+            guid: lazy.PlacesUtils.generateGuidWithPrefix(
+              this.BOOKMARK_GUID_PREFIX
+            ),
             parentGuid,
             index,
             title: item.title,
@@ -233,23 +244,23 @@ DistributionCustomizer.prototype = {
           if (item.icon && item.iconData) {
             try {
               let faviconURI = Services.io.newURI(item.icon);
-              PlacesUtils.favicons.replaceFaviconDataFromDataURL(
+              lazy.PlacesUtils.favicons.replaceFaviconDataFromDataURL(
                 faviconURI,
                 item.iconData,
                 0,
                 Services.scriptSecurityManager.getSystemPrincipal()
               );
 
-              PlacesUtils.favicons.setAndFetchFaviconForPage(
+              lazy.PlacesUtils.favicons.setAndFetchFaviconForPage(
                 Services.io.newURI(item.link),
                 faviconURI,
                 false,
-                PlacesUtils.favicons.FAVICON_LOAD_NON_PRIVATE,
+                lazy.PlacesUtils.favicons.FAVICON_LOAD_NON_PRIVATE,
                 null,
                 Services.scriptSecurityManager.getSystemPrincipal()
               );
             } catch (e) {
-              Cu.reportError(e);
+              console.error(e);
             }
           }
 
@@ -278,7 +289,30 @@ DistributionCustomizer.prototype = {
 
   _bookmarksApplied: false,
   async applyBookmarks() {
-    await this._doApplyBookmarks();
+    let prefs = Services.prefs
+      .getChildList("distribution.yandex")
+      .concat(Services.prefs.getChildList("distribution.mailru"))
+      .concat(Services.prefs.getChildList("distribution.okru"));
+    if (prefs.length) {
+      let extensionIDs = [
+        "sovetnik-yandex@yandex.ru",
+        "vb@yandex.ru",
+        "ntp-mail@corp.mail.ru",
+        "ntp-okru@corp.mail.ru",
+      ];
+      for (let extensionID of extensionIDs) {
+        let addon = await lazy.AddonManager.getAddonByID(extensionID);
+        if (addon) {
+          await addon.disable();
+        }
+      }
+      for (let pref of prefs) {
+        Services.prefs.clearUserPref(pref);
+      }
+      await this._removeDistributionBookmarks();
+    } else {
+      await this._doApplyBookmarks();
+    }
     this._bookmarksApplied = true;
     this._checkCustomizationComplete();
   },
@@ -318,10 +352,9 @@ DistributionCustomizer.prototype = {
       return;
     }
 
-    let ProfileAge = ChromeUtils.import(
-      "resource://gre/modules/ProfileAge.jsm",
-      {}
-    ).ProfileAge;
+    let { ProfileAge } = ChromeUtils.importESModule(
+      "resource://gre/modules/ProfileAge.sys.mjs"
+    );
     let profileAge = await ProfileAge();
     let resetDate = await profileAge.reset;
 
@@ -329,13 +362,13 @@ DistributionCustomizer.prototype = {
     if (!resetDate) {
       if (sections.BookmarksMenu) {
         await this._parseBookmarksSection(
-          PlacesUtils.bookmarks.menuGuid,
+          lazy.PlacesUtils.bookmarks.menuGuid,
           "BookmarksMenu"
         );
       }
       if (sections.BookmarksToolbar) {
         await this._parseBookmarksSection(
-          PlacesUtils.bookmarks.toolbarGuid,
+          lazy.PlacesUtils.bookmarks.toolbarGuid,
           "BookmarksToolbar"
         );
       }
@@ -366,13 +399,23 @@ DistributionCustomizer.prototype = {
       return this._checkCustomizationComplete();
     }
 
-    let defaults = new Preferences({ defaultBranch: true });
+    let defaults = Services.prefs.getDefaultBranch(null);
 
     // Global really contains info we set as prefs.  They're only
     // separate because they are "special" (read: required)
 
-    defaults.set("distribution.id", distroID);
-    defaults.set(
+    defaults.setStringPref("distribution.id", distroID);
+
+    if (
+      distroID.startsWith("yandex") ||
+      distroID.startsWith("mailru") ||
+      distroID.startsWith("okru")
+    ) {
+      this.__defineGetter__("_ini", () => null);
+      return this._checkCustomizationComplete();
+    }
+
+    defaults.setStringPref(
       "distribution.version",
       this._ini.getString("Global", "version")
     );
@@ -386,64 +429,72 @@ DistributionCustomizer.prototype = {
       } else {
         partnerAbout = this._ini.getString("Global", "about");
       }
-      defaults.set("distribution.about", partnerAbout);
+      defaults.setStringPref("distribution.about", partnerAbout);
     } catch (e) {
       /* ignore bad prefs due to bug 895473 and move on */
-      Cu.reportError(e);
     }
 
-    var usedPreferences = [];
+    /* order of precedence is locale->language->default */
 
-    if (sections["Preferences-" + this._locale]) {
-      for (let key of this._ini.getKeys("Preferences-" + this._locale)) {
-        try {
-          let value = this._ini.getString("Preferences-" + this._locale, key);
-          if (value) {
-            defaults.set(key, parseValue(value));
-          }
-          usedPreferences.push(key);
-        } catch (e) {
-          /* ignore bad prefs and move on */
+    let preferences = new Map();
+
+    if (sections.Preferences) {
+      for (let key of this._ini.getKeys("Preferences")) {
+        let value = this._ini.getString("Preferences", key);
+        if (value) {
+          preferences.set(key, value);
         }
       }
     }
 
     if (sections["Preferences-" + this._language]) {
       for (let key of this._ini.getKeys("Preferences-" + this._language)) {
-        if (usedPreferences.indexOf(key) > -1) {
-          continue;
-        }
-        try {
-          let value = this._ini.getString("Preferences-" + this._language, key);
-          if (value) {
-            defaults.set(key, parseValue(value));
-          }
-          usedPreferences.push(key);
-        } catch (e) {
-          /* ignore bad prefs and move on */
+        let value = this._ini.getString("Preferences-" + this._language, key);
+        if (value) {
+          preferences.set(key, value);
+        } else {
+          // If something was set by Preferences, but it's empty in language,
+          // it should be removed.
+          preferences.delete(key);
         }
       }
     }
 
-    if (sections.Preferences) {
-      for (let key of this._ini.getKeys("Preferences")) {
-        if (usedPreferences.indexOf(key) > -1) {
-          continue;
+    if (sections["Preferences-" + this._locale]) {
+      for (let key of this._ini.getKeys("Preferences-" + this._locale)) {
+        let value = this._ini.getString("Preferences-" + this._locale, key);
+        if (value) {
+          preferences.set(key, value);
+        } else {
+          // If something was set by Preferences, but it's empty in locale,
+          // it should be removed.
+          preferences.delete(key);
         }
-        try {
-          let value = this._ini.getString("Preferences", key);
-          if (value) {
-            value = value.replace(/%LOCALE%/g, this._locale);
-            value = value.replace(/%LANGUAGE%/g, this._language);
-            if (key == "general.useragent.locale") {
-              defaults.set("intl.locale.requested", parseValue(value));
-            } else {
-              defaults.set(key, parseValue(value));
-            }
+      }
+    }
+
+    for (let [prefName, prefValue] of preferences) {
+      prefValue = prefValue.replace(/%LOCALE%/g, this._locale);
+      prefValue = prefValue.replace(/%LANGUAGE%/g, this._language);
+      prefValue = parseValue(prefValue);
+      try {
+        if (prefName == "general.useragent.locale") {
+          defaults.setStringPref("intl.locale.requested", prefValue);
+        } else {
+          switch (typeof prefValue) {
+            case "boolean":
+              defaults.setBoolPref(prefName, prefValue);
+              break;
+            case "number":
+              defaults.setIntPref(prefName, prefValue);
+              break;
+            case "string":
+              defaults.setStringPref(prefName, prefValue);
+              break;
           }
-        } catch (e) {
-          /* ignore bad prefs and move on */
         }
+      } catch (e) {
+        /* ignore bad prefs and move on */
       }
     }
 
@@ -452,7 +503,7 @@ DistributionCustomizer.prototype = {
       // so we're using an internal preference to name them correctly.
       // This is needed for search to work properly.
       try {
-        defaults.set(
+        defaults.setStringPref(
           "distribution.id",
           defaults
             .get("extensions.yasearch@yandex.ru.clids.vendor")
@@ -467,29 +518,13 @@ DistributionCustomizer.prototype = {
       Ci.nsIPrefLocalizedString
     );
 
-    var usedLocalizablePreferences = [];
+    let localizablePreferences = new Map();
 
-    if (sections["LocalizablePreferences-" + this._locale]) {
-      for (let key of this._ini.getKeys(
-        "LocalizablePreferences-" + this._locale
-      )) {
-        try {
-          let value = this._ini.getString(
-            "LocalizablePreferences-" + this._locale,
-            key
-          );
-          if (value) {
-            value = parseValue(value);
-            localizedStr.data = "data:text/plain," + key + "=" + value;
-            defaults._prefBranch.setComplexValue(
-              key,
-              Ci.nsIPrefLocalizedString,
-              localizedStr
-            );
-          }
-          usedLocalizablePreferences.push(key);
-        } catch (e) {
-          /* ignore bad prefs and move on */
+    if (sections.LocalizablePreferences) {
+      for (let key of this._ini.getKeys("LocalizablePreferences")) {
+        let value = this._ini.getString("LocalizablePreferences", key);
+        if (value) {
+          localizablePreferences.set(key, value);
         }
       }
     }
@@ -498,51 +533,51 @@ DistributionCustomizer.prototype = {
       for (let key of this._ini.getKeys(
         "LocalizablePreferences-" + this._language
       )) {
-        if (usedLocalizablePreferences.indexOf(key) > -1) {
-          continue;
-        }
-        try {
-          let value = this._ini.getString(
-            "LocalizablePreferences-" + this._language,
-            key
-          );
-          if (value) {
-            value = parseValue(value);
-            localizedStr.data = "data:text/plain," + key + "=" + value;
-            defaults._prefBranch.setComplexValue(
-              key,
-              Ci.nsIPrefLocalizedString,
-              localizedStr
-            );
-          }
-          usedLocalizablePreferences.push(key);
-        } catch (e) {
-          /* ignore bad prefs and move on */
+        let value = this._ini.getString(
+          "LocalizablePreferences-" + this._language,
+          key
+        );
+        if (value) {
+          localizablePreferences.set(key, value);
+        } else {
+          // If something was set by Preferences, but it's empty in language,
+          // it should be removed.
+          localizablePreferences.delete(key);
         }
       }
     }
 
-    if (sections.LocalizablePreferences) {
-      for (let key of this._ini.getKeys("LocalizablePreferences")) {
-        if (usedLocalizablePreferences.indexOf(key) > -1) {
-          continue;
+    if (sections["LocalizablePreferences-" + this._locale]) {
+      for (let key of this._ini.getKeys(
+        "LocalizablePreferences-" + this._locale
+      )) {
+        let value = this._ini.getString(
+          "LocalizablePreferences-" + this._locale,
+          key
+        );
+        if (value) {
+          localizablePreferences.set(key, value);
+        } else {
+          // If something was set by Preferences, but it's empty in locale,
+          // it should be removed.
+          localizablePreferences.delete(key);
         }
-        try {
-          let value = this._ini.getString("LocalizablePreferences", key);
-          if (value) {
-            value = parseValue(value);
-            value = value.replace(/%LOCALE%/g, this._locale);
-            value = value.replace(/%LANGUAGE%/g, this._language);
-            localizedStr.data = "data:text/plain," + key + "=" + value;
-            defaults._prefBranch.setComplexValue(
-              key,
-              Ci.nsIPrefLocalizedString,
-              localizedStr
-            );
-          }
-        } catch (e) {
-          /* ignore bad prefs and move on */
-        }
+      }
+    }
+
+    for (let [prefName, prefValue] of localizablePreferences) {
+      prefValue = parseValue(prefValue);
+      prefValue = prefValue.replace(/%LOCALE%/g, this._locale);
+      prefValue = prefValue.replace(/%LANGUAGE%/g, this._language);
+      localizedStr.data = "data:text/plain," + prefName + "=" + prefValue;
+      try {
+        defaults.setComplexValue(
+          prefName,
+          Ci.nsIPrefLocalizedString,
+          localizedStr
+        );
+      } catch (e) {
+        /* ignore bad prefs and move on */
       }
     }
 

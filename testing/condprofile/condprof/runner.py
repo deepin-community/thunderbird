@@ -3,17 +3,18 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 """ Script that launches profiles creation.
 """
-from __future__ import absolute_import
 import os
 import shutil
 import asyncio
+
+import mozversion
 
 from condprof.creator import ProfileCreator
 from condprof.desktop import DesktopEnv
 from condprof.android import AndroidEnv
 from condprof.changelog import Changelog
 from condprof.scenarii import scenarii
-from condprof.util import logger, get_version, get_current_platform, extract_from_dmg
+from condprof.util import logger, get_current_platform, extract_from_dmg
 from condprof.customization import get_customizations, find_customization
 from condprof.client import read_changelog, ProfileNotFoundError
 
@@ -30,6 +31,7 @@ class Runner:
         force_new,
         visible,
         skip_logs=False,
+        remote_test_root="/sdcard/test_root/",
     ):
         self.force_new = force_new
         self.profile = profile
@@ -39,6 +41,7 @@ class Runner:
         self.strict = strict
         self.visible = visible
         self.skip_logs = skip_logs
+        self.remote_test_root = remote_test_root
         self.env = {}
         # unpacking a dmg
         # XXX do something similar if we get an apk (but later)
@@ -79,8 +82,7 @@ class Runner:
             if not os.path.exists(self.firefox):
                 raise IOError("Cannot find %s" % self.firefox)
 
-            version = get_version(self.firefox)
-            logger.info("Working with Firefox %s" % version)
+            mozversion.get_version(self.firefox)
 
         logger.info(os.environ)
         if self.archive:
@@ -124,8 +126,9 @@ class Runner:
 
     def display_error(self, scenario, customization):
         logger.error("%s x %s failed." % (scenario, customization), exc_info=True)
-        if self.strict:
-            raise
+        # TODO: this might avoid the exceptions that slip through in automation
+        # if self.strict:
+        #     raise
 
     async def one_run(self, scenario, customization):
         """Runs one single conditioned profile.
@@ -141,6 +144,7 @@ class Runner:
             self.force_new,
             self.env,
             skip_logs=self.skip_logs,
+            remote_test_root=self.remote_test_root,
         ).run(not self.visible)
 
     async def run_all(self):
@@ -202,5 +206,7 @@ def run(
         runner.save()
         if failures > 0:
             raise Exception("At least one scenario failed")
+    except Exception as e:
+        raise e
     finally:
         loop.close()

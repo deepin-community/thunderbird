@@ -6,6 +6,7 @@
  * Tests for drag and drop on the today pane.
  */
 const { cal } = ChromeUtils.import("resource:///modules/calendar/calUtils.jsm");
+const { MailServices } = ChromeUtils.import("resource:///modules/MailServices.jsm");
 const {
   add_message_to_folder,
   be_in_folder,
@@ -18,8 +19,8 @@ const { SyntheticPartLeaf } = ChromeUtils.import(
   "resource://testing-common/mailnews/MessageGenerator.jsm"
 );
 
-const calendar = CalendarTestUtils.createProxyCalendar("Mochitest", "memory");
-registerCleanupFunction(() => CalendarTestUtils.removeProxyCalendar(calendar));
+const calendar = CalendarTestUtils.createCalendar("Mochitest", "memory");
+registerCleanupFunction(() => CalendarTestUtils.removeCalendar(calendar));
 
 /**
  * Ensures the today pane is visible for each test.
@@ -38,15 +39,17 @@ async function ensureTodayPane() {
  * up the new event dialog.
  */
 add_task(async function testDropMozMessage() {
-  let folder = create_folder("Mochitest");
+  let folder = await create_folder("Mochitest");
   let subject = "The Grand Event";
   let body = "Parking is available.";
-  be_in_folder(folder);
-  add_message_to_folder(folder, create_message({ subject, body: { body } }));
+  await be_in_folder(folder);
+  await add_message_to_folder([folder], create_message({ subject, body: { body } }));
   select_click_row(0);
 
-  let [msgStr] = window.gFolderDisplay.selectedMessageUris;
-  let msgUrl = window.messenger.messageServiceFromURI(msgStr).getUrlForUri(msgStr);
+  let about3PaneTab = document.getElementById("tabmail").currentTabInfo;
+  let msg = about3PaneTab.message;
+  let msgStr = about3PaneTab.folder.getUriForMsg(msg);
+  let msgUrl = MailServices.messageServiceFromURI(msgStr).getUrlForUri(msgStr);
 
   // Setup a DataTransfer to mimic what ThreadPaneOnDragStart sends.
   let dataTransfer = new DataTransfer();
@@ -65,9 +68,7 @@ add_task(async function testDropMozMessage() {
 
   let promise = CalendarTestUtils.waitForEventDialog("edit");
   await ensureTodayPane();
-  window.document
-    .querySelector("#agenda-listbox")
-    .dispatchEvent(new DragEvent("drop", { dataTransfer }));
+  document.querySelector("#agenda").dispatchEvent(new DragEvent("drop", { dataTransfer }));
 
   let eventWindow = await promise;
   let iframe = eventWindow.document.querySelector("#calendar-item-panel-iframe");
@@ -85,7 +86,7 @@ add_task(async function testDropMozMessage() {
   );
 
   await BrowserTestUtils.closeWindow(eventWindow);
-  be_in_folder(inboxFolder);
+  await be_in_folder(inboxFolder);
   folder.deleteSelf(null);
 });
 
@@ -110,7 +111,7 @@ add_task(async function testMozAddressDrop() {
   let dataTransfer = new DataTransfer();
   dataTransfer.setData("moz/abcard", "0");
   dataTransfer.setData("text/x-moz-address", address);
-  dataTransfer.setData("text/unicode", address);
+  dataTransfer.setData("text/plain", address);
   dataTransfer.setData("text/vcard", decodeURIComponent(vcard));
   dataTransfer.setData("application/x-moz-file-promise-dest-filename", "person.vcf");
   dataTransfer.setData("application/x-moz-file-promise-url", "data:text/vcard," + vcard);
@@ -118,9 +119,7 @@ add_task(async function testMozAddressDrop() {
 
   let promise = CalendarTestUtils.waitForEventDialog("edit");
   await ensureTodayPane();
-  window.document
-    .querySelector("#agenda-listbox")
-    .dispatchEvent(new DragEvent("drop", { dataTransfer }));
+  document.querySelector("#agenda").dispatchEvent(new DragEvent("drop", { dataTransfer }));
 
   let eventWindow = await promise;
   let iframe = eventWindow.document.querySelector("#calendar-item-panel-iframe");
@@ -162,24 +161,24 @@ add_task(async function testPlainTextICSDrop() {
 
   let promise = CalendarTestUtils.waitForEventDialog("edit");
   await ensureTodayPane();
-  window.document
-    .querySelector("#agenda-listbox")
-    .dispatchEvent(new DragEvent("drop", { dataTransfer }));
+  document.querySelector("#agenda").dispatchEvent(new DragEvent("drop", { dataTransfer }));
 
   let eventWindow = await promise;
   let iframe = eventWindow.document.querySelector("#calendar-item-panel-iframe");
   let iframeDoc = iframe.contentDocument;
   Assert.equal(iframeDoc.querySelector("#item-title").value, "An Event");
 
-  let startTime = iframeDoc.querySelector("#event-starttime").value;
-  Assert.equal(startTime.getUTCFullYear(), 2021);
-  Assert.equal(startTime.getUTCMonth(), 2);
-  Assert.equal(startTime.getUTCDate(), 25);
+  let startTime = iframeDoc.querySelector("#event-starttime");
+  Assert.equal(
+    startTime._datepicker._inputBoxValue,
+    cal.dtz.formatter.formatDateShort(cal.createDateTime("20210325T110000Z"))
+  );
 
-  let endTime = iframeDoc.querySelector("#event-endtime").value;
-  Assert.equal(endTime.getUTCFullYear(), 2021);
-  Assert.equal(endTime.getUTCMonth(), 2);
-  Assert.equal(endTime.getUTCDate(), 25);
+  let endTime = iframeDoc.querySelector("#event-endtime");
+  Assert.equal(
+    endTime._datepicker._inputBoxValue,
+    cal.dtz.formatter.formatDateShort(cal.createDateTime("20210325T120000Z"))
+  );
 
   Assert.equal(
     iframeDoc.querySelector("#item-description").contentDocument.body.innerText,
@@ -210,15 +209,17 @@ add_task(async function testICSFileDrop() {
 
   Assert.equal(iframeDoc.querySelector("#item-title").value, "An Event");
 
-  let startTime = iframeDoc.querySelector("#event-starttime").value;
-  Assert.equal(startTime.getUTCFullYear(), 2021);
-  Assert.equal(startTime.getUTCMonth(), 2);
-  Assert.equal(startTime.getUTCDate(), 25);
+  let startTime = iframeDoc.querySelector("#event-starttime");
+  Assert.equal(
+    startTime._datepicker._inputBoxValue,
+    cal.dtz.formatter.formatDateShort(cal.createDateTime("20210325T110000Z"))
+  );
 
-  let endTime = iframeDoc.querySelector("#event-endtime").value;
-  Assert.equal(endTime.getUTCFullYear(), 2021);
-  Assert.equal(endTime.getUTCMonth(), 2);
-  Assert.equal(endTime.getUTCDate(), 25);
+  let endTime = iframeDoc.querySelector("#event-endtime");
+  Assert.equal(
+    endTime._datepicker._inputBoxValue,
+    cal.dtz.formatter.formatDateShort(cal.createDateTime("20210325T120000Z"))
+  );
 
   Assert.equal(
     iframeDoc.querySelector("#item-description").contentDocument.body.innerText,
@@ -241,9 +242,7 @@ add_task(async function testOtherFileDrop() {
 
   let promise = CalendarTestUtils.waitForEventDialog("edit");
   await ensureTodayPane();
-  window.document
-    .querySelector("#agenda-listbox")
-    .dispatchEvent(new DragEvent("drop", { dataTransfer }));
+  document.querySelector("#agenda").dispatchEvent(new DragEvent("drop", { dataTransfer }));
 
   let eventWindow = await promise;
   let iframe = eventWindow.document.querySelector("#calendar-item-panel-iframe");

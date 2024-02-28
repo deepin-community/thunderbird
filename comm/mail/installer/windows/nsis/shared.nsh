@@ -76,7 +76,16 @@
   ${EndIf}
 
   ; Adds a pinned Task Bar shortcut (see MigrateTaskBarShortcut for details).
-  ${MigrateTaskBarShortcut}
+  ; When we enabled this feature for Windows 10 & 11 we decided _not_ to pin
+  ; during an update (even once) because we already offered to do when the
+  ; the user originally installed, and we don't want to go against their
+  ; explicit wishes.
+  ; For Windows 7 and 8, we've been doing this ~forever, and those users may
+  ; not have experienced the onboarding offer to pin to taskbar, so we're
+  ; leaving it enabled there.
+  ${If} ${AtMostWin2012R2}
+    ${MigrateTaskBarShortcut} "$AddTaskbarSC"
+  ${EndIf}
 
   ; Update the name/icon/AppModelID of our shortcuts as needed, then update the
   ; lastwritetime of the Start Menu shortcut to clear the tile icon cache.
@@ -111,9 +120,6 @@
   ${CleanVirtualStore}
 
   RmDir /r /REBOOTOK "$INSTDIR\${TO_BE_DELETED}"
-
-  ; Register AccessibleHandler.dll with COM (this requires write access to HKLM)
-  ${RegisterAccessibleHandler}
 
   ; Register AccessibleMarshal.dll with COM (this requires write access to HKLM)
   ${RegisterAccessibleMarshal}
@@ -171,8 +177,8 @@
 ; Update the last modified time on the Start Menu shortcut, so that its icon
 ; gets refreshed. Should be called on Win8+ after UpdateShortcutBranding.
 !macro TouchStartMenuShortcut
-  ${If} ${FileExists} "$SMPROGRAMS\${BrandFullName}.lnk"
-    FileOpen $0 "$SMPROGRAMS\${BrandFullName}.lnk" a
+  ${If} ${FileExists} "$SMPROGRAMS\${BrandShortName}.lnk"
+    FileOpen $0 "$SMPROGRAMS\${BrandShortName}.lnk" a
     ${IfNot} ${Errors}
       System::Call '*(i, i) p .r1'
       System::Call 'kernel32::GetSystemTimeAsFileTime(p r1)'
@@ -211,51 +217,51 @@
   ${EndIf}
 
   SetShellVarContext all  ; Set $DESKTOP to All Users
-  ${Unless} ${FileExists} "$DESKTOP\${BrandFullName}.lnk"
+  ${Unless} ${FileExists} "$DESKTOP\${BrandShortName}.lnk"
     SetShellVarContext current  ; Set $DESKTOP to the current user's desktop
   ${EndUnless}
 
-  ${If} ${FileExists} "$DESKTOP\${BrandFullName}.lnk"
-    ShellLink::GetShortCutArgs "$DESKTOP\${BrandFullName}.lnk"
+  ${If} ${FileExists} "$DESKTOP\${BrandShortName}.lnk"
+    ShellLink::GetShortCutArgs "$DESKTOP\${BrandShortName}.lnk"
     Pop $0
     ${If} "$0" == ""
-      ShellLink::GetShortCutTarget "$DESKTOP\${BrandFullName}.lnk"
+      ShellLink::GetShortCutTarget "$DESKTOP\${BrandShortName}.lnk"
       Pop $0
       ${GetLongPath} "$0" $0
       ${If} "$0" == "$INSTDIR\${FileMainEXE}"
-        Delete "$DESKTOP\${BrandFullName}.lnk"
+        Delete "$DESKTOP\${BrandShortName}.lnk"
       ${EndIf}
     ${EndIf}
   ${EndIf}
 
   SetShellVarContext all  ; Set $SMPROGRAMS to All Users
-  ${Unless} ${FileExists} "$SMPROGRAMS\${BrandFullName}.lnk"
+  ${Unless} ${FileExists} "$SMPROGRAMS\${BrandShortName}.lnk"
     SetShellVarContext current  ; Set $SMPROGRAMS to the current user's Start
                                 ; Menu Programs directory
   ${EndUnless}
 
-  ${If} ${FileExists} "$SMPROGRAMS\${BrandFullName}.lnk"
-    ShellLink::GetShortCutArgs "$SMPROGRAMS\${BrandFullName}.lnk"
+  ${If} ${FileExists} "$SMPROGRAMS\${BrandShortName}.lnk"
+    ShellLink::GetShortCutArgs "$SMPROGRAMS\${BrandShortName}.lnk"
     Pop $0
     ${If} "$0" == ""
-      ShellLink::GetShortCutTarget "$SMPROGRAMS\${BrandFullName}.lnk"
+      ShellLink::GetShortCutTarget "$SMPROGRAMS\${BrandShortName}.lnk"
       Pop $0
       ${GetLongPath} "$0" $0
       ${If} "$0" == "$INSTDIR\${FileMainEXE}"
-        Delete "$SMPROGRAMS\${BrandFullName}.lnk"
+        Delete "$SMPROGRAMS\${BrandShortName}.lnk"
       ${EndIf}
     ${EndIf}
   ${EndIf}
 
-  ${If} ${FileExists} "$QUICKLAUNCH\${BrandFullName}.lnk"
-    ShellLink::GetShortCutArgs "$QUICKLAUNCH\${BrandFullName}.lnk"
+  ${If} ${FileExists} "$QUICKLAUNCH\${BrandShortName}.lnk"
+    ShellLink::GetShortCutArgs "$QUICKLAUNCH\${BrandShortName}.lnk"
     Pop $0
     ${If} "$0" == ""
-      ShellLink::GetShortCutTarget "$QUICKLAUNCH\${BrandFullName}.lnk"
+      ShellLink::GetShortCutTarget "$QUICKLAUNCH\${BrandShortName}.lnk"
       Pop $0
       ${GetLongPath} "$0" $0
       ${If} "$0" == "$INSTDIR\${FileMainEXE}"
-        Delete "$QUICKLAUNCH\${BrandFullName}.lnk"
+        Delete "$QUICKLAUNCH\${BrandShortName}.lnk"
       ${EndIf}
     ${EndIf}
   ${EndIf}
@@ -272,24 +278,24 @@
   ${EndIf}
 
   SetShellVarContext all  ; Set $DESKTOP to All Users
-  ${Unless} ${FileExists} "$DESKTOP\${BrandFullName}.lnk"
-    CreateShortCut "$DESKTOP\${BrandFullName}.lnk" "$INSTDIR\${FileMainEXE}"
-    ${If} ${FileExists} "$DESKTOP\${BrandFullName}.lnk"
-      ShellLink::SetShortCutWorkingDirectory "$DESKTOP\${BrandFullName}.lnk" "$INSTDIR"
+  ${Unless} ${FileExists} "$DESKTOP\${BrandShortName}.lnk"
+    CreateShortCut "$DESKTOP\${BrandShortName}.lnk" "$INSTDIR\${FileMainEXE}"
+    ${If} ${FileExists} "$DESKTOP\${BrandShortName}.lnk"
+      ShellLink::SetShortCutWorkingDirectory "$DESKTOP\${BrandShortName}.lnk" "$INSTDIR"
       ${If} ${AtLeastWin7}
       ${AndIf} "$AppUserModelID" != ""
-        ApplicationID::Set "$DESKTOP\${BrandFullName}.lnk" "$AppUserModelID" "true"
+        ApplicationID::Set "$DESKTOP\${BrandShortName}.lnk" "$AppUserModelID" "true"
       ${EndIf}
     ${Else}
       SetShellVarContext current  ; Set $DESKTOP to the current user's desktop
-      ${Unless} ${FileExists} "$DESKTOP\${BrandFullName}.lnk"
-        CreateShortCut "$DESKTOP\${BrandFullName}.lnk" "$INSTDIR\${FileMainEXE}"
-        ${If} ${FileExists} "$DESKTOP\${BrandFullName}.lnk"
-          ShellLink::SetShortCutWorkingDirectory "$DESKTOP\${BrandFullName}.lnk" \
+      ${Unless} ${FileExists} "$DESKTOP\${BrandShortName}.lnk"
+        CreateShortCut "$DESKTOP\${BrandShortName}.lnk" "$INSTDIR\${FileMainEXE}"
+        ${If} ${FileExists} "$DESKTOP\${BrandShortName}.lnk"
+          ShellLink::SetShortCutWorkingDirectory "$DESKTOP\${BrandShortName}.lnk" \
                                                  "$INSTDIR"
           ${If} ${AtLeastWin7}
           ${AndIf} "$AppUserModelID" != ""
-            ApplicationID::Set "$DESKTOP\${BrandFullName}.lnk" "$AppUserModelID" "true"
+            ApplicationID::Set "$DESKTOP\${BrandShortName}.lnk" "$AppUserModelID" "true"
           ${EndIf}
         ${EndIf}
       ${EndUnless}
@@ -297,26 +303,26 @@
   ${EndUnless}
 
   SetShellVarContext all  ; Set $SMPROGRAMS to All Users
-  ${Unless} ${FileExists} "$SMPROGRAMS\${BrandFullName}.lnk"
-    CreateShortCut "$SMPROGRAMS\${BrandFullName}.lnk" "$INSTDIR\${FileMainEXE}"
-    ${If} ${FileExists} "$SMPROGRAMS\${BrandFullName}.lnk"
-      ShellLink::SetShortCutWorkingDirectory "$SMPROGRAMS\${BrandFullName}.lnk" \
+  ${Unless} ${FileExists} "$SMPROGRAMS\${BrandShortName}.lnk"
+    CreateShortCut "$SMPROGRAMS\${BrandShortName}.lnk" "$INSTDIR\${FileMainEXE}"
+    ${If} ${FileExists} "$SMPROGRAMS\${BrandShortName}.lnk"
+      ShellLink::SetShortCutWorkingDirectory "$SMPROGRAMS\${BrandShortName}.lnk" \
                                              "$INSTDIR"
       ${If} ${AtLeastWin7}
       ${AndIf} "$AppUserModelID" != ""
-        ApplicationID::Set "$SMPROGRAMS\${BrandFullName}.lnk" "$AppUserModelID" "true"
+        ApplicationID::Set "$SMPROGRAMS\${BrandShortName}.lnk" "$AppUserModelID" "true"
       ${EndIf}
     ${Else}
       SetShellVarContext current  ; Set $SMPROGRAMS to the current user's Start
                                   ; Menu Programs directory
-      ${Unless} ${FileExists} "$SMPROGRAMS\${BrandFullName}.lnk"
-        CreateShortCut "$SMPROGRAMS\${BrandFullName}.lnk" "$INSTDIR\${FileMainEXE}"
-        ${If} ${FileExists} "$SMPROGRAMS\${BrandFullName}.lnk"
-          ShellLink::SetShortCutWorkingDirectory "$SMPROGRAMS\${BrandFullName}.lnk" \
+      ${Unless} ${FileExists} "$SMPROGRAMS\${BrandShortName}.lnk"
+        CreateShortCut "$SMPROGRAMS\${BrandShortName}.lnk" "$INSTDIR\${FileMainEXE}"
+        ${If} ${FileExists} "$SMPROGRAMS\${BrandShortName}.lnk"
+          ShellLink::SetShortCutWorkingDirectory "$SMPROGRAMS\${BrandShortName}.lnk" \
                                                  "$INSTDIR"
           ${If} ${AtLeastWin7}
           ${AndIf} "$AppUserModelID" != ""
-            ApplicationID::Set "$SMPROGRAMS\${BrandFullName}.lnk" "$AppUserModelID" "true"
+            ApplicationID::Set "$SMPROGRAMS\${BrandShortName}.lnk" "$AppUserModelID" "true"
           ${EndIf}
         ${EndIf}
       ${EndUnless}
@@ -325,11 +331,11 @@
 
   ; Windows 7 doesn't use the QuickLaunch directory
   ${Unless} ${AtLeastWin7}
-  ${AndUnless} ${FileExists} "$QUICKLAUNCH\${BrandFullName}.lnk"
-    CreateShortCut "$QUICKLAUNCH\${BrandFullName}.lnk" \
+  ${AndUnless} ${FileExists} "$QUICKLAUNCH\${BrandShortName}.lnk"
+    CreateShortCut "$QUICKLAUNCH\${BrandShortName}.lnk" \
                    "$INSTDIR\${FileMainEXE}"
-    ${If} ${FileExists} "$QUICKLAUNCH\${BrandFullName}.lnk"
-      ShellLink::SetShortCutWorkingDirectory "$QUICKLAUNCH\${BrandFullName}.lnk" \
+    ${If} ${FileExists} "$QUICKLAUNCH\${BrandShortName}.lnk"
+      ShellLink::SetShortCutWorkingDirectory "$QUICKLAUNCH\${BrandShortName}.lnk" \
                                              "$INSTDIR"
     ${EndIf}
   ${EndUnless}
@@ -496,7 +502,7 @@
   ; If the IconsVisible name value pair doesn't exist add it otherwise the
   ; application won't be displayed in Set Program Access and Defaults.
   ${If} ${Errors}
-    ${If} ${FileExists} "$QUICKLAUNCH\${BrandFullName}.lnk"
+    ${If} ${FileExists} "$QUICKLAUNCH\${BrandShortName}.lnk"
       WriteRegDWORD ${RegKey} "$0\InstallInfo" "IconsVisible" 1
     ${Else}
       WriteRegDWORD ${RegKey} "$0\InstallInfo" "IconsVisible" 0
@@ -921,11 +927,6 @@
 !define AddMaintCertKeys "!insertmacro AddMaintCertKeys"
 !endif
 
-!macro RegisterAccessibleHandler
-  ${RegisterDLL} "$INSTDIR\AccessibleHandler.dll"
-!macroend
-!define RegisterAccessibleHandler "!insertmacro RegisterAccessibleHandler"
-
 !macro RegisterAccessibleMarshal
   ${RegisterDLL} "$INSTDIR\AccessibleMarshal.dll"
 !macroend
@@ -996,17 +997,21 @@
   StrCpy $0 "Software\Clients\Mail\${ClientsRegName}"
   DeleteRegValue HKLM $0 "SupportUTF8"
 
+  ; Unregister deprecated AccessibleHandler.dll.
+  ${If} ${FileExists} "$INSTDIR\AccessibleHandler.dll"
+    ${UnregisterDLL} "$INSTDIR\AccessibleHandler.dll"
+  ${EndIf}
 !macroend
 !define RemoveDeprecatedKeys "!insertmacro RemoveDeprecatedKeys"
 
-; Adds a pinned shortcut to Task Bar on update for Windows 7 and above if this
-; macro has never been called before and the application is default (see
-; PinToTaskBar for more details).
-; Since defaults handling is handled by Windows in Win8 and later, we always
-; attempt to pin a taskbar on that OS.  If Windows sets the defaults at
-; installation time, then we don't get the opportunity to run this code at
-; that time.
-!macro MigrateTaskBarShortcut
+; For updates, adds a pinned shortcut to Task Bar on update for Windows 7
+; and 8 if this macro has never been called before and the application
+; is default (see PinToTaskBar for more details). This doesn't get called
+; for Windows 10 and 11 on updates, so we will never pin on update there.
+;
+; For installs, adds a taskbar pin if SHOULD_PIN is 1. (Defaults to 1,
+; but is controllable through the UI, ini file, and command line flags.)
+!macro MigrateTaskBarShortcut SHOULD_PIN
   ${GetShortcutsLogPath} $0
   ${If} ${FileExists} "$0"
     ClearErrors
@@ -1018,53 +1023,110 @@
         "Software\Mozilla\${AppName}\Installer\$AppUserModelID" \
         "WasPinnedToTaskbar" 1
       ${If} ${AtLeastWin7}
-        ; If we didn't run the stub installer, AddTaskbarSC will be empty.
-        ; We determine whether to pin based on whether we're the default
-        ; browser, or if we're on win8 or later, we always pin.
-        ${If} $AddTaskbarSC == ""
-          ; No need to check the default on Win8 and later
-          ${If} ${AtMostWin2008R2}
-            ; Check if the Thunderbird is the mailto handler for this user
-            SetShellVarContext current ; Set SHCTX to the current user
-            ${IsHandlerForInstallDir} "mailto" $R9
-            ${If} $TmpVal == "HKLM"
-              SetShellVarContext all ; Set SHCTX to all users
-            ${EndIf}
-          ${EndIf}
-          ${If} "$R9" == "true"
-          ${OrIf} ${AtLeastWin8}
-            ${PinToTaskBar}
-          ${EndIf}
-        ${ElseIf} $AddTaskbarSC == "1"
+        ${If} "${SHOULD_PIN}" == "1"
           ${PinToTaskBar}
-        ${EndIf}
-      ${EndIf}
-    ${ElseIf} ${AtLeastWin10}
-      ${GetInstallerRegistryPref} "Software\Mozilla\${AppName}" \
-        "installer.taskbarpin.win10.enabled" $2
-      ${If} $2 == "true"
-        ; On Windows 10, we may have previously tried to make a taskbar pin
-        ; and failed because the API we tried to use was blocked by the OS.
-        ; We have an option that works in more cases now, so we're going to try
-        ; again, but also record that we've done so by writing a particular
-        ; registry value, so that we don't continue to do this repeatedly.
-        ClearErrors
-        ReadRegDWORD $2 HKCU \
-            "Software\Mozilla\${AppName}\Installer\$AppUserModelID" \
-            "WasPinnedToTaskbar"
-        ${If} ${Errors}
-          WriteRegDWORD HKCU \
-            "Software\Mozilla\${AppName}\Installer\$AppUserModelID" \
-            "WasPinnedToTaskbar" 1
-          ${If} $AddTaskbarSC != "0"
-            ${PinToTaskBar}
-          ${EndIf}
         ${EndIf}
       ${EndIf}
     ${EndIf}
   ${EndIf}
 !macroend
 !define MigrateTaskBarShortcut "!insertmacro MigrateTaskBarShortcut"
+
+!define GetPinningSupportedByWindowsVersionWithoutSystemPopup "!insertmacro GetPinningSupportedByWindowsVersionWithoutSystemPopup "
+
+; Starting with a version of Windows 11 (10.0.22621), the OS will show a system popup
+; when trying to pin to the taskbar.
+;
+; Pass in the variable to put the output into. A '1' means pinning is supported on this
+; OS without generating a popup, a '0' means pinning will generate a system popup.
+;
+;
+; More info: a version of Windows was released that introduced a system popup when
+; an exe (such as setup.exe) attempts to pin an app to the taskbar.
+; We already handle pinning in the onboarding process once Firefox
+; launches so we don't want to also attempt to pin it in the installer
+; and have the OS ask the user for confirmation without the full context.
+;
+; The number for that version of windows is still unclear (it might be 22H2 or 23H2)
+; and it's not supported by the version of WinVer.nsh we have anyways,
+; so instead we are confirming that it's a build of Windows that is less
+; than 10.0 BuildNumber: 22621 to do pinning in the installer.
+!macro GetPinningSupportedByWindowsVersionWithoutSystemPopup outvar
+  !define pin_lbl lbl_GPSBWVWSP_${__COUNTER__}
+
+  Push $0
+  Push $1
+  Push $2
+  Push $3
+
+  ${WinVerGetMajor} $0
+  ${WinVerGetMinor} $1
+  ${WinVerGetBuild} $2
+
+  ; Get the UBR; only documented way I could figure out how to get this reliably
+  ClearErrors
+  ReadRegDWORD $3 HKLM \
+    "Software\Microsoft\Windows NT\CurrentVersion" \
+    "UBR"
+
+  ; It's not obvious how to use LogicLib itself within a LogicLib custom
+  ; operator, so we do everything by hand with `IntCmp`.  The below lines
+  ; translate to:
+  ; StrCpy ${outvar} '0'  ; default to false
+  ; ${If} $0 <= 10
+  ;   ${If} $1 <= 0
+  ;     ${If} $2 < 22621
+  ;       StrCpy ${outvar} '1'
+  ;     ${ElseIf} $2 == 22621
+  ;       ${If} $3 < 2361
+  ;         StrCpy ${outvar} '1'
+  ;       ${Endif}
+  ;     ${EndIf}
+  ;  ${Endif}
+  ; ${EndIf}
+
+  StrCpy ${outvar} '0' ; default to false on pinning
+
+  ; If the major version is greater than 10, no pinning in setup
+  IntCmp $0 10 "" "" ${pin_lbl}_bad
+
+  ; If the minor version is greater than 0, no pinning in setup
+  IntCmp $1 0 "" "" ${pin_lbl}_bad
+
+  ; If the build number is less than 22621, jump to pinning; if greater than, no pinning
+  IntCmp $2 22621 "" ${pin_lbl}_good ${pin_lbl}_bad
+
+  ; Only if the version is 10.0.22621 do we fall through to here
+  ; If the UBR is greater than or equal to 2361, jump to no pinning
+  IntCmp $3 2361 ${pin_lbl}_bad "" ${pin_lbl}_bad
+
+  ${pin_lbl}_good:
+
+  StrCpy ${outvar} '1'
+
+  ${pin_lbl}_bad:
+  !undef pin_lbl
+
+  Pop $3
+  Pop $2
+  Pop $1
+  Pop $0
+!macroend
+
+!macro _PinningSupportedByWindowsVersionWithoutSystemPopup _ignore _ignore2 _t _f
+  !insertmacro _LOGICLIB_TEMP
+  ${GetPinningSupportedByWindowsVersionWithoutSystemPopup} $_LOGICLIB_TEMP
+  !insertmacro _= $_LOGICLIB_TEMP "1" `${_t}` `${_f}`
+!macroend
+
+; The following is to make if statements for the functionality easier. When using an if statement,
+; Use IsPinningSupportedByWindowsVersionWithoutSystemPopup like so, instead of GetPinningSupportedByWindowsVersionWithoutSystemPopup:
+;
+; ${If} ${IsPinningSupportedByWindowsVersionWithoutSystemPopup}
+;    ; do something
+; ${EndIf}
+;
+!define IsPinningSupportedByWindowsVersionWithoutSystemPopup `"" PinningSupportedByWindowsVersionWithoutSystemPopup "" `
 
 ; Adds a pinned Task Bar shortcut on Windows 7 if there isn't one for the main
 ; application executable already. Existing pinned shortcuts for the same
@@ -1127,17 +1189,24 @@
               ; Pin the shortcut to the TaskBar. 5386 is the shell32.dll
               ; resource id for the "Pin to Taskbar" string.
               InvokeShellVerb::DoIt "$SMPROGRAMS" "$1" "5386"
-            ${Else}
+            ${ElseIf} ${AtMostWaaS} 1809
               ; In Windows 10 the "Pin to Taskbar" resource was removed, so we
               ; can't access the verb that way anymore. We have a create a
               ; command key using the GUID that's assigned to this action and
-              ; then invoke that as a verb.
+              ; then invoke that as a verb. This works up until build 1809.
               ReadRegStr $R9 HKLM \
                 "Software\Microsoft\Windows\CurrentVersion\Explorer\CommandStore\shell\Windows.taskbarpin" \
                 "ExplorerCommandHandler"
               WriteRegStr HKCU "Software\Classes\*\shell\${AppRegNameMail}-$AppUserModelID" "ExplorerCommandHandler" $R9
               InvokeShellVerb::DoIt "$SMPROGRAMS" "$1" "${AppRegNameMail}-$AppUserModelID"
               DeleteRegKey HKCU "Software\Classes\*\shell\${AppRegNameMail}-$AppUserModelID"
+            ${Else}
+              ; In Windows 10 1903 and up, and Windows 11 prior to 22H2, the above no
+              ; longer works. We have yet another method for these versions
+              ; which is detailed in the PinToTaskbar plugin code.
+              ${If} ${IsPinningSupportedByWindowsVersionWithoutSystemPopup}
+                PinToTaskbar::Pin "$SMPROGRAMS\$1"
+              ${EndIf}
             ${EndIf}
 
             ; Delete the shortcut if it was created
@@ -1219,9 +1288,9 @@
 !macro CreateShortcutsLog
   ${GetShortcutsLogPath} $0
   ${Unless} ${FileExists} "$0"
-    ${LogStartMenuShortcut} "${BrandFullName}.lnk"
-    ${LogQuickLaunchShortcut} "${BrandFullName}.lnk"
-    ${LogDesktopShortcut} "${BrandFullName}.lnk"
+    ${LogStartMenuShortcut} "${BrandShortName}.lnk"
+    ${LogQuickLaunchShortcut} "${BrandShortName}.lnk"
+    ${LogDesktopShortcut} "${BrandShortName}.lnk"
   ${EndUnless}
 !macroend
 !define CreateShortcutsLog "!insertmacro CreateShortcutsLog"
@@ -1258,9 +1327,7 @@
   ; should be ${FileMainEXE} so if it is in use the CheckForFilesInUse macro
   ; returns after the first check.
   Push "end"
-  Push "AccessibleHandler.dll"
   Push "AccessibleMarshal.dll"
-  Push "IA2Marshal.dll"
   Push "freebl3.dll"
   Push "nssckbi.dll"
   Push "nspr4.dll"
@@ -1295,6 +1362,11 @@ FunctionEnd
 !ifdef NO_LOG
 
 Function SetAsDefaultAppUser
+  ; AddTaskbarSC is needed by MigrateTaskBarShortcut, which is called by
+  ; SetAsDefaultAppUserHKCU. If this is called via ExecCodeSegment,
+  ; MigrateTaskBarShortcut will not see the value of AddTaskbarSC, so we
+  ; send it via a register instead.
+  StrCpy $R0 $AddTaskbarSC
   ; It is only possible to set this installation of the application as the
   ; Mail handler if it was added to the HKLM Mail
   ; registry keys.
@@ -1396,7 +1468,7 @@ Function SetAsDefaultAppUser
   ${SetClientsCalendar} "HKLM"
 
   ${RemoveDeprecatedKeys}
-  ${MigrateTaskBarShortcut}
+  ${MigrateTaskBarShortcut} "$R0"
 
   ClearErrors
   ${GetParameters} $0

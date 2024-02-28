@@ -11,6 +11,7 @@
 <!ENTITY newMenu.label "Neu">
 <!ENTITY newMenu.accesskey "N">
 <!ENTITY newMessage.label "Nachricht">
+<!ENTITY newMessage.accesskey "N">
 <!ENTITY newMessageCmd2.key "N">
 <!ENTITY newContact.label "Kontakt…">
 <!ENTITY newContact.accesskey "K">
@@ -18,11 +19,8 @@
 <!ENTITY attachMenu.accesskey "h">
 <!ENTITY attachCloudCmd.label "Filelink">
 <!ENTITY attachCloudCmd.accesskey "F">
-<!ENTITY attachPageCmd.label "Webseite anhängen…">
+<!ENTITY attachPageCmd.label "Webseite…">
 <!ENTITY attachPageCmd.accesskey "W">
-<!--LOCALIZATION NOTE attachVCardCmd.label Don't translate the term 'vCard' -->
-<!ENTITY attachVCardCmd.label "Visitenkarte">
-<!ENTITY attachVCardCmd.accesskey "V">
 <!ENTITY remindLater.label "Mich später erinnern">
 <!ENTITY remindLater.accesskey "M">
 <!ENTITY closeCmd.label "Schließen">
@@ -141,23 +139,13 @@
 <!ENTITY quoteCmd.accesskey "N">
 
 <!--LOCALIZATION NOTE attachVCard.label Don't translate the term 'vCard' -->
-<!ENTITY attachVCard.label "Visitenkarte anhängen">
+<!ENTITY attachVCard.label "Visitenkarte (vCard) anhängen">
 <!ENTITY attachVCard.accesskey "v">
 
 <!ENTITY returnReceiptMenu.label "Empfangsbestätigung (MDN) anfordern">
 <!ENTITY returnReceiptMenu.accesskey "M">
 <!ENTITY dsnMenu.label "Übermittlungsstatus (DSN) anfordern">
 <!ENTITY dsnMenu.accesskey "D">
-<!ENTITY deliveryFormatMenu.label "E-Mail-Format">
-<!ENTITY deliveryFormatMenu.accesskey "F">
-<!ENTITY autoFormatCmd.label "Autom. bestimmen">
-<!ENTITY autoFormatCmd.accesskey "a">
-<!ENTITY plainTextFormatCmd.label "Nur Reintext">
-<!ENTITY plainTextFormatCmd.accesskey "t">
-<!ENTITY htmlFormatCmd.label "Nur HTML">
-<!ENTITY htmlFormatCmd.accesskey "H">
-<!ENTITY bothFormatCmd.label "Reintext und HTML">
-<!ENTITY bothFormatCmd.accesskey "u">
 <!ENTITY priorityMenu.label "Priorität">
 <!ENTITY priorityMenu.accesskey "p">
 <!ENTITY priorityButton.title "Priorität">
@@ -221,7 +209,6 @@
 <!--LOCALIZATION NOTE headersSpaces.style is for aligning  the From:, To: and
     Subject: rows. It should be larger than the largest Header label  -->
 <!ENTITY headersSpace2.style "width: 9em;">
-<!ENTITY extraRecipients.tooltip "Andere Arten von Adressfeldern">
 <!ENTITY fromAddr2.label "Von">
 <!ENTITY fromAddr.accesskey "V">
 <!ENTITY replyAddr2.label "Antwort-An">
@@ -229,10 +216,9 @@
 <!ENTITY followupAddr2.label "Followup an">
 <!ENTITY subject2.label "Betreff">
 <!ENTITY subject.accesskey "r">
-
 <!ENTITY attachmentBucketCloseButton.tooltip "Anhangbereich ausblenden">
 
-<!-- Format Toolbar, imported from editorAppShell.xul -->
+<!-- Format Toolbar, imported from editorAppShell.xhtml -->
 <!ENTITY SmileButton.tooltip "Einen Smiley einfügen">
 <!ENTITY smiley1Cmd.label "Lächeln">
 <!ENTITY smiley2Cmd.label "Stirn runzeln">

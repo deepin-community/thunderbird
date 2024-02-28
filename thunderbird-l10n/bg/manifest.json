@@ -1,29 +1,28 @@
 {
   "langpack_id": "bg",
   "manifest_version": 2,
-  "applications": {
+  "browser_specific_settings": {
     "gecko": {
       "id": "langpack-bg@thunderbird.mozilla.org",
-      "strict_min_version": "91.0",
-      "strict_max_version": "91.*"
+      "strict_min_version": "115.0",
+      "strict_max_version": "115.*"
     }
   },
-  "name": "Български Language Pack",
-  "description": "Language pack for Thunderbird for bg",
-  "version": "91.0buildid20211101223011",
+  "name": "Language: Български (Bulgarian)",
+  "description": "Thunderbird Language Pack for Български (bg) – Bulgarian",
+  "version": "115.8.20240216.174500",
   "languages": {
     "bg": {
-      "version": "20211013101853",
+      "version": "20240216183915",
       "chrome_resources": {
         "alerts": "chrome/bg/locale/bg/alerts/",
         "autoconfig": "chrome/bg/locale/bg/autoconfig/",
-        "branding": "chrome/bg/locale/bg/branding/",
+        "branding": "chrome/bg/locale/branding/",
         "calendar": "chrome/bg/locale/bg/calendar/",
         "chat": "chrome/bg/locale/bg/chat/",
         "communicator": "chrome/bg/locale/bg/communicator/",
         "devtools": "chrome/bg/locale/bg/devtools/client/",
         "devtools-shared": "chrome/bg/locale/bg/devtools/shared/",
-        "devtools-startup": "chrome/bg/locale/bg/devtools/startup/",
         "global": "chrome/bg/locale/bg/global/",
         "global-platform": {
           "macosx": "chrome/bg/locale/bg/global-platform/mac/",

@@ -44,6 +44,13 @@ pub enum CheckIsObjectKind {
 }
 
 #[derive(Debug, Clone, Copy)]
+pub enum CompletionKind {
+    Normal = 0,
+    Return = 1,
+    Throw = 2,
+}
+
+#[derive(Debug, Clone, Copy)]
 pub enum FunctionPrefixKind {
     None = 0,
     Get = 1,
@@ -63,9 +70,11 @@ pub enum ThrowMsgKind {
     IteratorNoThrow = 1,
     CantDeleteSuper = 2,
     PrivateDoubleInit = 3,
-    MissingPrivateOnGet = 4,
-    MissingPrivateOnSet = 5,
-    AssignToPrivateMethod = 6,
+    PrivateBrandDoubleInit = 4,
+    MissingPrivateOnGet = 5,
+    MissingPrivateOnSet = 6,
+    AssignToPrivateMethod = 7,
+    DecoratorInvalidReturnType = 8,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -256,9 +265,7 @@ impl InstructionWriter {
             | Opcode::CallIgnoresRv
             | Opcode::Eval
             | Opcode::CallIter
-            | Opcode::StrictEval
-            | Opcode::FunCall
-            | Opcode::FunApply => {
+            | Opcode::StrictEval => {
                 // callee, this, arguments...
                 2 + (argc as usize)
             }
@@ -498,8 +505,16 @@ impl InstructionWriter {
         self.emit_op(Opcode::ToString);
     }
 
+    pub fn is_null_or_undefined(&mut self) {
+        self.emit_op(Opcode::IsNullOrUndefined);
+    }
+
     pub fn global_this(&mut self) {
         self.emit_op(Opcode::GlobalThis);
+    }
+
+    pub fn non_syntactic_global_this(&mut self) {
+        self.emit_op(Opcode::NonSyntacticGlobalThis);
     }
 
     pub fn new_target(&mut self) {
@@ -518,9 +533,9 @@ impl InstructionWriter {
         self.emit_op(Opcode::NewInit);
     }
 
-    pub fn new_object(&mut self, baseobj_index: GCThingIndex) {
+    pub fn new_object(&mut self, shape_index: GCThingIndex) {
         self.emit_op(Opcode::NewObject);
-        self.write_g_c_thing_index(baseobj_index);
+        self.write_g_c_thing_index(shape_index);
     }
 
     pub fn object(&mut self, object_index: GCThingIndex) {
@@ -650,6 +665,11 @@ impl InstructionWriter {
         self.write_u8(msg_kind as u8);
     }
 
+    pub fn new_private_name(&mut self, name_index: GCThingIndex) {
+        self.emit_op(Opcode::NewPrivateName);
+        self.write_g_c_thing_index(name_index);
+    }
+
     pub fn super_base(&mut self) {
         self.emit_op(Opcode::SuperBase);
     }
@@ -697,6 +717,11 @@ impl InstructionWriter {
         self.emit_op(Opcode::EndIter);
     }
 
+    pub fn close_iter(&mut self, kind: CompletionKind) {
+        self.emit_op(Opcode::CloseIter);
+        self.write_u8(kind as u8);
+    }
+
     pub fn check_is_obj(&mut self, kind: CheckIsObjectKind) {
         self.emit_op(Opcode::CheckIsObj);
         self.write_u8(kind as u8);
@@ -742,11 +767,6 @@ impl InstructionWriter {
         self.write_g_c_thing_index(func_index);
     }
 
-    pub fn lambda_arrow(&mut self, func_index: GCThingIndex) {
-        self.emit_op(Opcode::LambdaArrow);
-        self.write_g_c_thing_index(func_index);
-    }
-
     pub fn set_fun_name(&mut self, prefix_kind: FunctionPrefixKind) {
         self.emit_op(Opcode::SetFunName);
         self.write_u8(prefix_kind as u8);
@@ -775,18 +795,18 @@ impl InstructionWriter {
         self.write_u16(argc);
     }
 
+    pub fn call_content(&mut self, argc: u16) {
+        self.emit_argc_op(Opcode::CallContent, argc);
+        self.write_u16(argc);
+    }
+
     pub fn call_iter(&mut self, argc: u16) {
         self.emit_argc_op(Opcode::CallIter, argc);
         self.write_u16(argc);
     }
 
-    pub fn fun_apply(&mut self, argc: u16) {
-        self.emit_argc_op(Opcode::FunApply, argc);
-        self.write_u16(argc);
-    }
-
-    pub fn fun_call(&mut self, argc: u16) {
-        self.emit_argc_op(Opcode::FunCall, argc);
+    pub fn call_content_iter(&mut self, argc: u16) {
+        self.emit_argc_op(Opcode::CallContentIter, argc);
         self.write_u16(argc);
     }
 
@@ -826,11 +846,6 @@ impl InstructionWriter {
         self.write_g_c_thing_index(name_index);
     }
 
-    pub fn g_implicit_this(&mut self, name_index: GCThingIndex) {
-        self.emit_op(Opcode::GImplicitThis);
-        self.write_g_c_thing_index(name_index);
-    }
-
     pub fn call_site_obj(&mut self, object_index: GCThingIndex) {
         self.emit_op(Opcode::CallSiteObj);
         self.write_g_c_thing_index(object_index);
@@ -842,6 +857,11 @@ impl InstructionWriter {
 
     pub fn new_(&mut self, argc: u16) {
         self.emit_argc_op(Opcode::New, argc);
+        self.write_u16(argc);
+    }
+
+    pub fn new_content(&mut self, argc: u16) {
+        self.emit_argc_op(Opcode::NewContent, argc);
         self.write_u16(argc);
     }
 
@@ -1025,22 +1045,8 @@ impl InstructionWriter {
         self.emit_op(Opcode::Exception);
     }
 
-    pub fn resume_index(&mut self, resume_index: u24) {
-        self.emit_op(Opcode::ResumeIndex);
-        self.write_u24(resume_index);
-    }
-
-    pub fn gosub(&mut self, forward_offset: BytecodeOffsetDiff) {
-        self.emit_op(Opcode::Gosub);
-        self.write_bytecode_offset_diff(forward_offset);
-    }
-
     pub fn finally(&mut self) {
         self.emit_op(Opcode::Finally);
-    }
-
-    pub fn retsub(&mut self) {
-        self.emit_op(Opcode::Retsub);
     }
 
     pub fn uninitialized(&mut self) {
@@ -1198,12 +1204,14 @@ impl InstructionWriter {
         self.emit_op(Opcode::DebugLeaveLexicalEnv);
     }
 
-    pub fn recreate_lexical_env(&mut self) {
+    pub fn recreate_lexical_env(&mut self, lexical_scope_index: GCThingIndex) {
         self.emit_op(Opcode::RecreateLexicalEnv);
+        self.write_g_c_thing_index(lexical_scope_index);
     }
 
-    pub fn freshen_lexical_env(&mut self) {
+    pub fn freshen_lexical_env(&mut self, lexical_scope_index: GCThingIndex) {
         self.emit_op(Opcode::FreshenLexicalEnv);
+        self.write_g_c_thing_index(lexical_scope_index);
     }
 
     pub fn push_class_body_env(&mut self, lexical_scope_index: GCThingIndex) {

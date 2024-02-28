@@ -5,15 +5,12 @@
 // mail/base/content/specialTabs.js
 /* globals contentTabBaseType, DOMLinkHandler */
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-var { XPCOMUtils } = ChromeUtils.import(
-  "resource://gre/modules/XPCOMUtils.jsm"
+var { XPCOMUtils } = ChromeUtils.importESModule(
+  "resource://gre/modules/XPCOMUtils.sys.mjs"
 );
-var { ExtensionParent } = ChromeUtils.import(
-  "resource://gre/modules/ExtensionParent.jsm"
+var { ExtensionParent } = ChromeUtils.importESModule(
+  "resource://gre/modules/ExtensionParent.sys.mjs"
 );
-
-var gPrefTab = null;
 
 /**
  * A tab to show Preferences.
@@ -43,31 +40,26 @@ var preferencesTabType = {
     },
   },
 
-  initialize() {
-    let tabmail = document.getElementById("tabmail");
-    tabmail.registerTabType(this);
-  },
-
   shouldSwitchTo(aArgs) {
-    if (!gPrefTab) {
+    if (!this.tab) {
       return -1;
     }
-    gPrefTab.browser.contentWindow.selectPrefPane(
+    this.tab.browser.contentWindow.selectPrefPane(
       aArgs.paneID,
       aArgs.scrollPaneTo,
       aArgs.otherArgs
     );
-    return document.getElementById("tabmail").tabInfo.indexOf(gPrefTab);
+    return document.getElementById("tabmail").tabInfo.indexOf(this.tab);
   },
 
   closeTab(aTab) {
-    gPrefTab = null;
+    this.tab = null;
   },
 
   openTab(aTab, aArgs) {
-    if (!("url" in aArgs)) {
-      throw new Error("url must be specified");
-    }
+    aTab.tabNode.setIcon(
+      "chrome://messenger/skin/icons/new/compact/settings.svg"
+    );
 
     // First clone the page and set up the basics.
     let clone = document
@@ -89,16 +81,17 @@ var preferencesTabType = {
     aTab.browser.setAttribute("autocompletepopup", "PopupAutoComplete");
     aTab.browser.addEventListener("DOMLinkAdded", DOMLinkHandler);
 
-    aTab.findbar = aTab.panel.querySelector("findbar");
+    aTab.findbar = document.createXULElement("findbar");
     aTab.findbar.setAttribute(
       "browserid",
       "preferencesTabBrowser" + this.lastBrowserId
     );
+    aTab.panel.appendChild(aTab.findbar);
 
     // Default to reload being disabled.
     aTab.reloadEnabled = false;
 
-    aTab.url = aArgs.url;
+    aTab.url = "about:preferences";
     aTab.paneID = aArgs.paneID;
     aTab.scrollPaneTo = aArgs.scrollPaneTo;
     aTab.otherArgs = aArgs.otherArgs;
@@ -111,7 +104,7 @@ var preferencesTabType = {
     // Then run the given onload code.
     aTab.browser.addEventListener(
       "paneSelected",
-      function(event) {
+      function (event) {
         aTab.pageLoading = false;
         aTab.pageLoaded = true;
 
@@ -141,9 +134,9 @@ var preferencesTabType = {
       triggeringPrincipal: Services.scriptSecurityManager.getSystemPrincipal(),
       postData: aArgs.postData || null,
     };
-    aTab.browser.loadURI(aArgs.url, params);
+    aTab.browser.loadURI(Services.io.newURI("about:preferences"), params);
 
-    gPrefTab = aTab;
+    this.tab = aTab;
     this.lastBrowserId++;
   },
 
@@ -153,7 +146,6 @@ var preferencesTabType = {
     }
 
     return {
-      tabURI: aTab.url,
       paneID: aTab.paneID,
       scrollPaneTo: aTab.scrollPaneTo,
       otherArgs: aTab.otherArgs,
@@ -162,7 +154,6 @@ var preferencesTabType = {
 
   restoreTab(aTabmail, aPersistedState) {
     aTabmail.openTab("preferencesTab", {
-      url: aPersistedState.tabURI,
       paneID: aPersistedState.paneID,
       scrollPaneTo: aPersistedState.scrollPaneTo,
       otherArgs: aPersistedState.otherArgs,

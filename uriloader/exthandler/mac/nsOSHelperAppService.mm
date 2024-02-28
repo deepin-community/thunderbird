@@ -7,6 +7,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include "mozilla/net/NeckoCommon.h"
+#include "mozilla/StaticPrefs_browser.h"
 #include "nsComponentManagerUtils.h"
 #include "nsOSHelperAppService.h"
 #include "nsObjCExceptions.h"
@@ -16,7 +17,6 @@
 #include "nsIFile.h"
 #include "nsILocalFileMac.h"
 #include "nsMimeTypes.h"
-#include "nsMemory.h"
 #include "nsCRT.h"
 #include "nsMIMEInfoMac.h"
 #include "nsEmbedCID.h"
@@ -324,7 +324,7 @@ nsresult nsOSHelperAppService::GetMIMEInfoFromOS(const nsACString& aMIMEType,
   const nsCString& flatType = PromiseFlatCString(aMIMEType);
   const nsCString& flatExt = PromiseFlatCString(aFileExt);
 
-  MOZ_LOG(mLog, LogLevel::Debug,
+  MOZ_LOG(sLog, LogLevel::Debug,
           ("Mac: HelperAppService lookup for type '%s' ext '%s'\n", flatType.get(), flatExt.get()));
 
   // Create a Mac-specific MIME info so we can use Mac-specific members.
@@ -355,7 +355,7 @@ nsresult nsOSHelperAppService::GetMIMEInfoFromOS(const nsACString& aMIMEType,
       err = ::LSCopyApplicationForMIMEType(cfMIMEType, kLSRolesAll, &appURL);
       if ((err == noErr) && appURL && ::CFURLGetFSRef(appURL, &typeAppFSRef)) {
         haveAppForType = true;
-        MOZ_LOG(mLog, LogLevel::Debug,
+        MOZ_LOG(sLog, LogLevel::Debug,
                 ("LSCopyApplicationForMIMEType found a default application\n"));
       }
       if (appURL) {
@@ -374,7 +374,7 @@ nsresult nsOSHelperAppService::GetMIMEInfoFromOS(const nsACString& aMIMEType,
                                       &extAppFSRef, nullptr);
       if (err == noErr) {
         haveAppForExt = true;
-        MOZ_LOG(mLog, LogLevel::Debug, ("LSGetApplicationForInfo found a default application\n"));
+        MOZ_LOG(sLog, LogLevel::Debug, ("LSGetApplicationForInfo found a default application\n"));
       }
       ::CFRelease(cfExt);
     }
@@ -511,7 +511,8 @@ nsresult nsOSHelperAppService::GetMIMEInfoFromOS(const nsACString& aMIMEType,
     }
 
     mimeInfoMac->SetDefaultApplication(app);
-    mimeInfoMac->SetPreferredAction(nsIMIMEInfo::useSystemDefault);
+    mimeInfoMac->SetPreferredAction(nsIMIMEInfo::saveToDisk);
+
   } else {
     mimeInfoMac->SetPreferredAction(nsIMIMEInfo::saveToDisk);
   }
@@ -548,7 +549,7 @@ nsresult nsOSHelperAppService::GetMIMEInfoFromOS(const nsACString& aMIMEType,
     }
   }
 
-  MOZ_LOG(mLog, LogLevel::Debug, ("OS gave us: type '%s' found '%i'\n", mimeType.get(), *aFound));
+  MOZ_LOG(sLog, LogLevel::Debug, ("OS gave us: type '%s' found '%i'\n", mimeType.get(), *aFound));
 
   [localPool release];
   mimeInfoMac.forget(aMIMEInfo);

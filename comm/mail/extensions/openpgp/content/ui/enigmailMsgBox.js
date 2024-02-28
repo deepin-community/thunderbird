@@ -6,22 +6,19 @@
 
 "use strict";
 
-var { EnigmailClipboard } = ChromeUtils.import(
-  "chrome://openpgp/content/modules/clipboard.jsm"
-);
-var { AppConstants } = ChromeUtils.import(
-  "resource://gre/modules/AppConstants.jsm"
+var { AppConstants } = ChromeUtils.importESModule(
+  "resource://gre/modules/AppConstants.sys.mjs"
 );
 
 function onLoad() {
+  document.documentElement.style.minHeight = "120px";
   var dlg = document.getElementById("enigmailMsgBox");
-  dlg.getButton("help").setAttribute("hidden", "true");
   dlg.getButton("cancel").setAttribute("hidden", "true");
   dlg.getButton("extra1").setAttribute("hidden", "true");
   dlg.getButton("extra2").setAttribute("hidden", "true");
 
-  document.getElementById("filler").maxWidth = screen.availWidth - 50;
-  //dlg.maxHeight = screen.availHeight;
+  document.getElementById("filler").style.maxWidth =
+    screen.availWidth - 50 + "px";
 
   let args = window.arguments[0];
   let msgtext = args.msgtext;
@@ -105,7 +102,7 @@ function resizeDlg() {
       "height",
       boxHeight - btnHeight - (dlgHeight - availHeight)
     );
-    window.outerHeight = availHeight;
+    window.resizeTo(window.outerWidth, availHeight);
   }
 }
 
@@ -167,10 +164,9 @@ function checkboxCb() {
   // do nothing
 }
 
-function copyToClipbrd() {
+async function copyToClipbrd() {
   let s = window.getSelection().toString();
-
-  EnigmailClipboard.setClipboardContent(s);
+  return navigator.clipboard.writeText(s);
 }
 
 function onKeyPress(event) {
@@ -180,6 +176,6 @@ function onKeyPress(event) {
   }
 }
 
-document.addEventListener("dialogaccept", function(event) {
+document.addEventListener("dialogaccept", function (event) {
   dlgClose("accept");
 });

@@ -179,8 +179,14 @@ add_task(async function testCancel() {
       "chrome://messenger/content/messengercompose/messengercompose.xhtml",
     ],
     onLoadWindow(window) {
-      window.CompleteGenericSendMessage = function(msgType) {
+      window.CompleteGenericSendMessage = function (msgType) {
         didTryToSendMessage = true;
+        Services.obs.notifyObservers(
+          {
+            composeWindow: window,
+          },
+          "mail:composeSendProgressStop"
+        );
       };
     },
   });
@@ -194,7 +200,13 @@ add_task(async function testCancel() {
     let composeWindows = [...Services.wm.getEnumerator("msgcompose")];
     is(composeWindows.length, 1);
 
-    composeWindows[0].GenericSendMessage(Ci.nsIMsgCompDeliverMode.Now);
+    composeWindows[0]
+      .GenericSendMessage(Ci.nsIMsgCompDeliverMode.Now)
+      .catch(() => {
+        // This test is ignoring errors thrown by GenericSendMessage, but looks
+        // at didTryToSendMessage of the mocked CompleteGenericSendMessage to
+        // check if onBeforeSend aborted the send process.
+      });
     extension.sendMessage();
   });
 
@@ -375,7 +387,13 @@ add_task(async function testChangeDetails() {
     let composeWindows = [...Services.wm.getEnumerator("msgcompose")];
     is(composeWindows.length, 1);
 
-    composeWindows[0].GenericSendMessage(Ci.nsIMsgCompDeliverMode.Later);
+    composeWindows[0]
+      .GenericSendMessage(Ci.nsIMsgCompDeliverMode.Later)
+      .catch(() => {
+        // This test is ignoring errors thrown by GenericSendMessage, but looks
+        // at didTryToSendMessage of the mocked CompleteGenericSendMessage to
+        // check if onBeforeSend aborted the send process.
+      });
     extension.sendMessage();
   });
 
@@ -509,7 +527,13 @@ add_task(async function testChangeAttachments() {
       composeWindows[0],
       "aftersend"
     );
-    composeWindows[0].GenericSendMessage(Ci.nsIMsgCompDeliverMode.Later);
+    composeWindows[0]
+      .GenericSendMessage(Ci.nsIMsgCompDeliverMode.Later)
+      .catch(() => {
+        // This test is ignoring errors thrown by GenericSendMessage, but looks
+        // at didTryToSendMessage of the mocked CompleteGenericSendMessage to
+        // check if onBeforeSend aborted the send process.
+      });
     await sendPromise;
     extension.sendMessage();
   });
@@ -678,7 +702,13 @@ add_task(async function testListExpansion() {
     let composeWindows = [...Services.wm.getEnumerator("msgcompose")];
     is(composeWindows.length, 1);
 
-    composeWindows[0].GenericSendMessage(Ci.nsIMsgCompDeliverMode.Later);
+    composeWindows[0]
+      .GenericSendMessage(Ci.nsIMsgCompDeliverMode.Later)
+      .catch(() => {
+        // This test is ignoring errors thrown by GenericSendMessage, but looks
+        // at didTryToSendMessage of the mocked CompleteGenericSendMessage to
+        // check if onBeforeSend aborted the send process.
+      });
     extension.sendMessage();
   });
 
@@ -797,7 +827,13 @@ add_task(async function testMultipleListeners() {
   let composeWindows = [...Services.wm.getEnumerator("msgcompose")];
   Assert.equal(composeWindows.length, 1);
   Assert.equal(composeWindows[0].document.readyState, "complete");
-  composeWindows[0].GenericSendMessage(Ci.nsIMsgCompDeliverMode.Later);
+  composeWindows[0]
+    .GenericSendMessage(Ci.nsIMsgCompDeliverMode.Later)
+    .catch(() => {
+      // This test is ignoring errors thrown by GenericSendMessage, but looks
+      // at didTryToSendMessage of the mocked CompleteGenericSendMessage to
+      // check if onBeforeSend aborted the send process.
+    });
 
   let listener9Details = await extensionA.awaitMessage("listener9");
   Assert.equal(listener9Details.to.length, 1);
@@ -869,4 +905,106 @@ add_task(async function testMultipleListeners() {
       false
     );
   });
+});
+
+add_task(async function test_MV3_event_pages() {
+  let files = {
+    "background.js": async () => {
+      // Whenever the extension starts or wakes up, hasFired is set to false. In
+      // case of a wake-up, the first fired event is the one that woke up the background.
+      let hasFired = false;
+
+      browser.compose.onBeforeSend.addListener((tab, details) => {
+        // Only send the first event after background wake-up, this should be
+        // the only one expected.
+        if (!hasFired) {
+          hasFired = true;
+          browser.test.sendMessage("onBeforeSend received", details);
+        }
+
+        // Let us abort, so we do not have to re-open the compose window for
+        // multiple tests.
+        return {
+          cancel: true,
+        };
+      });
+
+      browser.test.sendMessage("background started");
+    },
+    "utils.js": await getUtilsJS(),
+  };
+  let extension = ExtensionTestUtils.loadExtension({
+    files,
+    manifest: {
+      manifest_version: 3,
+      background: { scripts: ["utils.js", "background.js"] },
+      permissions: ["compose"],
+      browser_specific_settings: {
+        gecko: { id: "compose.onBeforeSend@xpcshell.test" },
+      },
+    },
+  });
+
+  function checkPersistentListeners({ primed }) {
+    // A persistent event is referenced by its moduleName as defined in
+    // ext-mails.json, not by its actual namespace.
+    const persistent_events = ["compose.onBeforeSend"];
+
+    for (let event of persistent_events) {
+      let [moduleName, eventName] = event.split(".");
+      assertPersistentListeners(extension, moduleName, eventName, {
+        primed,
+      });
+    }
+  }
+
+  function beginSend() {
+    composeWindow.GenericSendMessage(Ci.nsIMsgCompDeliverMode.Now).catch(() => {
+      // This test is ignoring errors thrown by GenericSendMessage, but looks
+      // at didTryToSendMessage of the mocked CompleteGenericSendMessage to
+      // check if onBeforeSend aborted the send process.
+    });
+  }
+
+  let composeWindow = await openComposeWindow(account);
+  await focusWindow(composeWindow);
+
+  await extension.startup();
+  await extension.awaitMessage("background started");
+  // The listeners should be persistent, but not primed.
+  checkPersistentListeners({ primed: false });
+
+  // Trigger onBeforeSend without terminating the background first.
+
+  composeWindow.SetComposeDetails({ to: "first@invalid.net" });
+  beginSend();
+  let firstDetails = await extension.awaitMessage("onBeforeSend received");
+  Assert.equal(
+    "first@invalid.net",
+    firstDetails.to,
+    "Returned details should be correct"
+  );
+
+  // Terminate background and re-trigger onBeforeSend.
+
+  await extension.terminateBackground({ disableResetIdleForTest: true });
+  // The listeners should be primed.
+  checkPersistentListeners({ primed: true });
+
+  composeWindow.SetComposeDetails({ to: "second@invalid.net" });
+  beginSend();
+  let secondDetails = await extension.awaitMessage("onBeforeSend received");
+  Assert.equal(
+    "second@invalid.net",
+    secondDetails.to,
+    "Returned details should be correct"
+  );
+
+  // The background should have been restarted.
+  await extension.awaitMessage("background started");
+  // The listener should no longer be primed.
+  checkPersistentListeners({ primed: false });
+
+  await extension.unload();
+  composeWindow.close();
 });

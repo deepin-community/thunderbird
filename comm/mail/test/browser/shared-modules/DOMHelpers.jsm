@@ -18,13 +18,19 @@ const EXPORTED_SYMBOLS = [
   "collapse_panes",
 ];
 
+const lazy = {};
+
 ChromeUtils.defineModuleGetter(
-  this,
+  lazy,
   "mc",
   "resource://testing-common/mozmill/FolderDisplayHelpers.jsm"
 );
 
-var { Assert } = ChromeUtils.import("resource://testing-common/Assert.jsm");
+var { Assert } = ChromeUtils.importESModule(
+  "resource://testing-common/Assert.sys.mjs"
+);
+
+var utils = ChromeUtils.import("resource://testing-common/mozmill/utils.jsm");
 
 /**
  * This function takes either a string or an elementlibs.Elem, and returns
@@ -32,12 +38,12 @@ var { Assert } = ChromeUtils.import("resource://testing-common/Assert.jsm");
  * doesn't try to do anything smart, like is it not into view, or whatever.
  *
  * @param aElt The element to query.
- * @return Whether the element is visible or not.
+ * @returns Whether the element is visible or not.
  */
 function element_visible(aElt) {
   let e;
   if (typeof aElt == "string") {
-    e = mc.e(aElt);
+    e = lazy.mc.window.document.getElementById(aElt);
   } else {
     e = aElt;
   }
@@ -46,6 +52,7 @@ function element_visible(aElt) {
 
 /**
  * Assert that en element's visible.
+ *
  * @param aElt The element, an ID or an elementlibs.Elem
  * @param aWhy The error message in case of failure
  */
@@ -82,6 +89,7 @@ function element_visible_recursive(aElem) {
 
 /**
  * Assert that en element's not visible.
+ *
  * @param aElt The element, an ID or an elementlibs.Elem
  * @param aWhy The error message in case of failure
  */
@@ -97,7 +105,7 @@ function assert_element_not_visible(aElt, aWhy) {
  */
 function wait_for_element(aParent, aSelector) {
   let target = null;
-  mc.waitFor(function() {
+  utils.waitFor(function () {
     target = aParent.querySelector(aSelector);
     return target != null;
   }, "Timed out waiting for a target for selector: " + aSelector);
@@ -170,7 +178,7 @@ function wait_for_element_enabled(aController, aElement, aEnabled) {
     );
   }
 
-  aController.waitFor(
+  utils.waitFor(
     () => aElement.disabled != aEnabled,
     "Element should have eventually been " +
       (aEnabled ? "enabled" : "disabled") +
@@ -180,7 +188,7 @@ function wait_for_element_enabled(aController, aElement, aEnabled) {
 }
 
 function check_element_visible(aController, aId) {
-  let element = aController.e(aId);
+  let element = aController.window.document.getElementById(aId);
   if (!element) {
     return false;
   }
@@ -207,7 +215,7 @@ function check_element_visible(aController, aId) {
  * @param aId          id of the element to wait for
  */
 function wait_for_element_visible(aController, aId) {
-  mc.waitFor(function() {
+  utils.waitFor(function () {
     return check_element_visible(aController, aId);
   }, "Timed out waiting for element with ID=" + aId + " to become visible");
 }
@@ -219,7 +227,7 @@ function wait_for_element_visible(aController, aId) {
  * @param aId          id of the element to wait for
  */
 function wait_for_element_invisible(aController, aId) {
-  mc.waitFor(function() {
+  utils.waitFor(function () {
     return !check_element_visible(aController, aId);
   }, "Timed out waiting for element with ID=" + aId + " to become invisible");
 }
@@ -244,5 +252,5 @@ function collapse_panes(aElement, aShouldBeCollapsed) {
     }
   }
   // Spin the event loop once to let other window elements redraw.
-  mc.sleep(50);
+  utils.sleep(50);
 }

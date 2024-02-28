@@ -4,16 +4,22 @@
 
 var EXPORTED_SYMBOLS = ["MailUtils"];
 
-const { MailConsts } = ChromeUtils.import("resource:///modules/MailConsts.jsm");
-const { MailServices } = ChromeUtils.import(
-  "resource:///modules/MailServices.jsm"
-);
-const { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-const { PluralForm } = ChromeUtils.import(
-  "resource://gre/modules/PluralForm.jsm"
+const { XPCOMUtils } = ChromeUtils.importESModule(
+  "resource://gre/modules/XPCOMUtils.sys.mjs"
 );
 
-var MC = MailConsts;
+const lazy = {};
+
+XPCOMUtils.defineLazyModuleGetters(lazy, {
+  MailConsts: "resource:///modules/MailConsts.jsm",
+  MailServices: "resource:///modules/MailServices.jsm",
+  MimeParser: "resource:///modules/mimeParser.jsm",
+  NetUtil: "resource://gre/modules/NetUtil.jsm",
+});
+
+ChromeUtils.defineESModuleGetters(lazy, {
+  PluralForm: "resource://gre/modules/PluralForm.sys.mjs",
+});
 
 /**
  * This module has several utility functions for use by both core and
@@ -55,7 +61,7 @@ var MailUtils = {
    * open (the folder tree wouldn't have been initialized yet).
    */
   discoverFolders() {
-    for (let server of MailServices.accounts.allServers) {
+    for (let server of lazy.MailServices.accounts.allServers) {
       // Bug 466311 Sometimes this can throw file not found, we're unsure
       // why, but catch it and log the fact.
       try {
@@ -81,7 +87,7 @@ var MailUtils = {
    *          isn't found
    */
   getFolderForFileInProfile(aFile) {
-    for (let folder of MailServices.accounts.allFolders) {
+    for (let folder of lazy.MailServices.accounts.allFolders) {
       if (folder.filePath.equals(aFile)) {
         return folder;
       }
@@ -126,16 +132,16 @@ var MailUtils = {
    * @note Do not use this if you want to open multiple messages at once. Use
    *       |displayMessages| instead.
    *
-   * @param aMsgHdr the message header to display
-   * @param [aViewWrapperToClone] a view wrapper to clone. If null or not
-   *                              given, the message header's folder's default
-   *                              view will be used
-   * @param [aTabmail] a tabmail element to use in case we need to open tabs.
-   *                   If null or not given:
-   *                   - if one or more 3pane windows are open, the most recent
-   *                     one's tabmail is used
-   *                   - if no 3pane windows are open, a standalone window is
-   *                     opened instead of a tab
+   * @param {nsIMsgHdr} aMsgHdr - The message header to display.
+   * @param {DBViewWrapper} [aViewWrapperToClone] - A view wrapper to clone.
+   *   If null or not given, the message header's folder's default view will
+   *   be used.
+   * @param {Element} [aTabmail] - A tabmail element to use in case we need to
+   *   open tabs. If null or not given:
+   *    - if one or more 3pane windows are open, the most recent one's tabmail
+   *      is used, and the window is brought to the front
+   *    - if no 3pane windows are open, a standalone window is opened instead
+   *      of a tab
    */
   displayMessage(aMsgHdr, aViewWrapperToClone, aTabmail) {
     this.displayMessages([aMsgHdr], aViewWrapperToClone, aTabmail);
@@ -144,6 +150,7 @@ var MailUtils = {
   /**
    * Display the warning if the number of messages to be displayed is greater than
    * the limit set in preferences.
+   *
    * @param aNumMessages: number of messages to be displayed
    * @param aConfirmTitle: title ID
    * @param aConfirmMsg: message ID
@@ -156,7 +163,7 @@ var MailUtils = {
         "chrome://messenger/locale/messenger.properties"
       );
       let title = bundle.GetStringFromName(aConfirmTitle);
-      let message = PluralForm.get(
+      let message = lazy.PluralForm.get(
         aNumMessages,
         bundle.GetStringFromName(aConfirmMsg)
       ).replace("#1", aNumMessages);
@@ -173,27 +180,33 @@ var MailUtils = {
    * called when you'd like to display multiple messages to the user according
    * to the pref set.
    *
-   * @param aMsgHdrs an array containing the message headers to display. The
-   *                 array should contain at least one message header
-   * @param [aViewWrapperToClone] a DB view wrapper to clone for each of the
-   *                              tabs or windows
-   * @param [aTabmail] a tabmail element to use in case we need to open tabs.
-   *                   If given, the window containing the tabmail is assumed
-   *                   to be in front. If null or not given:
-   *                   - if one or more 3pane windows are open, the most recent
-   *                     one's tabmail is used, and the window is brought to the
-   *                     front
-   *                   - if no 3pane windows are open, standalone windows are
-   *                     opened instead of tabs
+   * @param {nsIMsgHdr[]} aMsgHdrs - An array containing the message headers to
+   *   display. The array should contain at least one message header.
+   * @param {DBViewWrapper} [aViewWrapperToClone] - A DB view wrapper to clone
+   *   for each of the tabs or windows.
+   * @param {Element} [aTabmail] - A tabmail element to use in case we need to
+   *   open tabs. If given, the window containing the tabmail is assumed to be
+   *   in front. If null or not given:
+   *    - if one or more 3pane windows are open, the most recent one's tabmail
+   *      is used, and the window is brought to the front
+   *    - if no 3pane windows are open, a standalone window is opened instead
+   *      of a tab
    */
-  displayMessages(aMsgHdrs, aViewWrapperToClone, aTabmail) {
+  displayMessages(
+    aMsgHdrs,
+    aViewWrapperToClone,
+    aTabmail,
+    useBackgroundPref = false
+  ) {
     let openMessageBehavior = Services.prefs.getIntPref(
       "mail.openMessageBehavior"
     );
 
-    if (openMessageBehavior == MC.OpenMessageBehavior.NEW_WINDOW) {
+    if (openMessageBehavior == lazy.MailConsts.OpenMessageBehavior.NEW_WINDOW) {
       this.openMessagesInNewWindows(aMsgHdrs, aViewWrapperToClone);
-    } else if (openMessageBehavior == MC.OpenMessageBehavior.EXISTING_WINDOW) {
+    } else if (
+      openMessageBehavior == lazy.MailConsts.OpenMessageBehavior.EXISTING_WINDOW
+    ) {
       // Try reusing an existing window. If we can't, fall back to opening new
       // windows
       if (
@@ -202,7 +215,9 @@ var MailUtils = {
       ) {
         this.openMessagesInNewWindows(aMsgHdrs, aViewWrapperToClone);
       }
-    } else if (openMessageBehavior == MC.OpenMessageBehavior.NEW_TAB) {
+    } else if (
+      openMessageBehavior == lazy.MailConsts.OpenMessageBehavior.NEW_TAB
+    ) {
       let mail3PaneWindow = null;
       if (!aTabmail) {
         // Try opening new tabs in a 3pane window
@@ -223,12 +238,16 @@ var MailUtils = {
         ) {
           return;
         }
+        const loadInBackground = useBackgroundPref
+          ? Services.prefs.getBoolPref("mail.tabs.loadInBackground")
+          : false;
+
         // Open all the tabs in the background, except for the last one
         for (let [i, msgHdr] of aMsgHdrs.entries()) {
-          aTabmail.openTab("message", {
-            msgHdr,
-            viewWrapperToClone: aViewWrapperToClone,
-            background: i < aMsgHdrs.length - 1,
+          aTabmail.openTab("mailMessageTab", {
+            messageURI: msgHdr.folder.getUriForMsg(msgHdr),
+            viewWrapper: aViewWrapperToClone,
+            background: i < aMsgHdrs.length - 1 || loadInBackground,
             disregardOpener: aMsgHdrs.length > 1,
           });
         }
@@ -246,11 +265,11 @@ var MailUtils = {
   /**
    * Show this message in an existing window.
    *
-   * @param aMsgHdr the message header to display
-   * @param [aViewWrapperToClone] a DB view wrapper to clone for the message
-   *                              window
-   * @returns true if an existing window was found and the message header was
-   *          displayed, false otherwise
+   * @param {nsIMsgHdr} aMsgHdr - The message header to display.
+   * @param {DBViewWrapper} [aViewWrapperToClone] - A DB view wrapper to clone
+   *   for the message window.
+   * @returns {boolean} true if an existing window was found and the message
+   *   header was displayed, false otherwise.
    */
   openMessageInExistingWindow(aMsgHdr, aViewWrapperToClone) {
     let messageWindow = Services.wm.getMostRecentWindow("mail:messageWindow");
@@ -264,16 +283,17 @@ var MailUtils = {
   /**
    * Open a new standalone message window with this header.
    *
-   * @param aMsgHdr the message header to display
-   * @param [aViewWrapperToClone] a DB view wrapper to clone for the message
-   *                              window
+   * @param {nsIMsgHdr} aMsgHdr the message header to display
+   * @param {DBViewWrapper} [aViewWrapperToClone] - A DB view wrapper to clone
+   *   for the message window.
+   * @returns {DOMWindow} the opened window
    */
   openMessageInNewWindow(aMsgHdr, aViewWrapperToClone) {
-    // It sucks that we have to go through XPCOM for this
+    // It sucks that we have to go through XPCOM for this.
     let args = { msgHdr: aMsgHdr, viewWrapperToClone: aViewWrapperToClone };
     args.wrappedJSObject = args;
 
-    Services.ww.openWindow(
+    return Services.ww.openWindow(
       null,
       "chrome://messenger/content/messageWindow.xhtml",
       "",
@@ -287,9 +307,10 @@ var MailUtils = {
    * for confirmation if the number of windows to be opened is greater than the
    * value of the mailnews.open_window_warning preference.
    *
-   * @param aMsgHdrs an array containing the message headers to display
-   * @param [aViewWrapperToClone] a DB view wrapper to clone for each message
-   *                              window
+   * @param {nsIMsgHdr[]} aMsgHdrs - An array containing the message headers
+   *   to display.
+   * @param {DBViewWrapper} [aViewWrapperToClone] - A DB view wrapper to clone
+   *   for each message window.
    */
   openMessagesInNewWindows(aMsgHdrs, aViewWrapperToClone) {
     if (
@@ -309,17 +330,45 @@ var MailUtils = {
   },
 
   /**
+   * Display the given folder in the 3pane of the most recent 3pane window.
+   *
+   * @param {string} folderURI - The URI of the folder to display
+   */
+  displayFolderIn3Pane(folderURI) {
+    // Try opening new tabs in a 3pane window
+    let win = Services.wm.getMostRecentWindow("mail:3pane");
+    let tabmail = win.document.getElementById("tabmail");
+    if (!tabmail.currentAbout3Pane) {
+      tabmail.switchToTab(tabmail.tabInfo[0]);
+      tabmail.updateCurrentTab();
+    }
+    tabmail.currentAbout3Pane.displayFolder(folderURI);
+    win.focus();
+  },
+
+  /**
    * Display this message header in a folder tab in a 3pane window. This is
    * useful when the message needs to be displayed in the context of its folder
    * or thread.
    *
-   * @param aMsgHdr the message header to display
+   * @param {nsIMsgHdr} msgHdr - The message header to display.
+   * @param {boolean} [openIfMessagePaneHidden] - If true, and the folder tab's
+   *   message pane is hidden, opens the message in a new tab or window.
+   *   Otherwise uses the folder tab.
    */
-  displayMessageInFolderTab(aMsgHdr) {
+  displayMessageInFolderTab(msgHdr, openIfMessagePaneHidden) {
     // Try opening new tabs in a 3pane window
     let mail3PaneWindow = Services.wm.getMostRecentWindow("mail:3pane");
     if (mail3PaneWindow) {
-      mail3PaneWindow.MsgDisplayMessageInFolderTab(aMsgHdr);
+      if (openIfMessagePaneHidden) {
+        let tab = mail3PaneWindow.document.getElementById("tabmail").tabInfo[0];
+        if (!tab.chromeBrowser.contentWindow.paneLayout.messagePaneVisible) {
+          this.displayMessage(msgHdr);
+          return;
+        }
+      }
+
+      mail3PaneWindow.MsgDisplayMessageInFolderTab(msgHdr);
       if (Ci.nsIMessengerWindowsIntegration) {
         Cc["@mozilla.org/messenger/osintegration;1"]
           .getService(Ci.nsIMessengerWindowsIntegration)
@@ -327,7 +376,7 @@ var MailUtils = {
       }
       mail3PaneWindow.focus();
     } else {
-      let args = { msgHdr: aMsgHdr };
+      let args = { msgHdr };
       args.wrappedJSObject = args;
       Services.ww.openWindow(
         null,
@@ -341,6 +390,7 @@ var MailUtils = {
 
   /**
    * Open a message from a message id.
+   *
    * @param {string} msgId - The message id string without the brackets.
    */
   openMessageByMessageId(msgId) {
@@ -363,8 +413,76 @@ var MailUtils = {
   },
 
   /**
+   * Open the given .eml file.
+   *
+   * @param {DOMWindow} win - The window which the file is being opened within.
+   * @param {nsIFile} aFile - The file being opened.
+   * @param {nsIURL} aURL - The full file URL.
+   */
+  openEMLFile(win, aFile, aURL) {
+    let url = aURL
+      .mutate()
+      .setQuery("type=application/x-message-display")
+      .finalize();
+
+    let fstream = null;
+    let headers = new Map();
+    // Read this eml and extract its headers to check for X-Unsent.
+    try {
+      fstream = Cc["@mozilla.org/network/file-input-stream;1"].createInstance(
+        Ci.nsIFileInputStream
+      );
+      fstream.init(aFile, -1, 0, 0);
+      let data = lazy.NetUtil.readInputStreamToString(
+        fstream,
+        fstream.available()
+      );
+      headers = lazy.MimeParser.extractHeaders(data);
+    } catch (e) {
+      // Ignore errors on reading the eml or extracting its headers. The test for
+      // the X-Unsent header below will fail and the message window will take care
+      // of any error handling.
+    } finally {
+      if (fstream) {
+        fstream.close();
+      }
+    }
+
+    if (headers.get("X-Unsent") == "1") {
+      let msgWindow = Cc["@mozilla.org/messenger/msgwindow;1"].createInstance(
+        Ci.nsIMsgWindow
+      );
+      lazy.MailServices.compose.OpenComposeWindow(
+        null,
+        {},
+        url.spec,
+        Ci.nsIMsgCompType.Draft,
+        Ci.nsIMsgCompFormat.Default,
+        null,
+        headers.get("from"),
+        msgWindow
+      );
+    } else if (
+      Services.prefs.getIntPref("mail.openMessageBehavior") ==
+        lazy.MailConsts.OpenMessageBehavior.NEW_TAB &&
+      win.document.getElementById("tabmail")
+    ) {
+      win.document
+        .getElementById("tabmail")
+        .openTab("mailMessageTab", { messageURI: url.spec });
+    } else {
+      win.openDialog(
+        "chrome://messenger/content/messageWindow.xhtml",
+        "_blank",
+        "all,chrome,dialog=no,status,toolbar",
+        url
+      );
+    }
+  },
+
+  /**
    * The number of milliseconds to wait between loading of folders in
-   * |setStringPropertyOnFolderAndDescendents|.  We wait at all because
+   * |takeActionOnFolderAndDescendents|.  We wait at all because
    * opening msf databases is a potentially expensive synchronous operation that
    * can approach the order of a second in pathological cases like gmail's
    * all mail folder.
@@ -394,7 +512,7 @@ var MailUtils = {
    * fashion; we invoke a callback when we have completed our work.
    *
    * Using this function will write the value into the folder cache
-   * (panacea.dat) as well as the folder itself.  Hopefully you want this; if
+   * as well as the folder itself.  Hopefully you want this; if
    * you do not, keep in mind that the only way to avoid that is to retrieve
    * the nsIMsgDatabase and then the nsIDbFolderInfo.  You would want to avoid
    * that as much as possible because once those are exposed to you, XPConnect
@@ -402,73 +520,53 @@ var MailUtils = {
    * in severe danger of extreme memory bloat unless you force garbage
    * collections after every time you close a database.
    *
-   * @param aPropertyName The name of the property to set.
-   * @param aPropertyValue The (string) value of the property to set.
-   *     Alternately, you can pass a function that takes the nsIMsgFolder and
-   *     returns a string value.
-   * @param aFolder The parent folder; we set the string property on it and all
+   * @param {nsIMsgFolder} folder - The parent folder; we take action on it and all
    *     of its descendents.
-   * @param [aCallback] The optional callback to invoke once we finish our work.
-   *     The callback is provided a boolean success value; true means we
-   *     managed to set the values on all folders, false means we encountered a
-   *     problem.
+   * @param {Function} action - the function to call on each folder.
    */
-  setStringPropertyOnFolderAndDescendents(
-    aPropertyName,
-    aPropertyValue,
-    aFolder,
-    aCallback
-  ) {
+  async takeActionOnFolderAndDescendents(folder, action) {
     // We need to add the base folder as it is not included by .descendants.
-    let allFolders = [aFolder, ...aFolder.descendants];
+    let allFolders = [folder, ...folder.descendants];
 
     // - worker function
-    function* folder_string_setter_worker() {
+    function* folderWorker() {
       for (let folder of allFolders) {
-        // set the property; this may open the database...
-        let value =
-          typeof aPropertyValue == "function"
-            ? aPropertyValue(folder)
-            : aPropertyValue;
-        folder.setStringProperty(aPropertyName, value);
-        // force the reference to be forgotten.
-        folder.msgDatabase = null;
+        action(folder);
         yield undefined;
       }
     }
-    let worker = folder_string_setter_worker();
+    let worker = folderWorker();
 
-    // - driver logic
-    let timer = Cc["@mozilla.org/timer;1"].createInstance(Ci.nsITimer);
-    function folder_string_setter_driver() {
-      try {
-        if (worker.next().done) {
-          timer.cancel();
-          if (aCallback) {
-            aCallback(true);
+    return new Promise((resolve, reject) => {
+      // - driver logic
+      let timer = Cc["@mozilla.org/timer;1"].createInstance(Ci.nsITimer);
+      function folderDriver() {
+        try {
+          if (worker.next().done) {
+            timer.cancel();
+            resolve();
           }
-        }
-      } catch (ex) {
-        // Any type of exception kills the generator.
-        timer.cancel();
-        if (aCallback) {
-          aCallback(false);
+        } catch (ex) {
+          // Any type of exception kills the generator.
+          timer.cancel();
+          reject(ex);
         }
       }
-    }
-    // make sure there is at least 100 ms of not us between doing things.
-    timer.initWithCallback(
-      folder_string_setter_driver,
-      this.INTER_FOLDER_PROCESSING_DELAY_MS,
-      Ci.nsITimer.TYPE_REPEATING_SLACK
-    );
+      // make sure there is at least 100 ms of not us between doing things.
+      timer.initWithCallback(
+        folderDriver,
+        this.INTER_FOLDER_PROCESSING_DELAY_MS,
+        Ci.nsITimer.TYPE_REPEATING_SLACK
+      );
+    });
   },
 
   /**
    * Get the identity that most likely is the best one to use, given the hint.
+   *
    * @param {nsIMsgIdentity[]} identities - The candidates to pick from.
-   * @param {String} [optionalHint] - String containing comma separated mailboxes.
-   * @param {Boolean} useDefault - If true, use the default identity of the
+   * @param {string} [optionalHint] - String containing comma separated mailboxes.
+   * @param {boolean} useDefault - If true, use the default identity of the
    *   account as last choice. This is useful when all default account as last
    *   choice. This is useful when all identities are passed in. Otherwise, use
    *   the first entity in the list.
@@ -484,9 +582,8 @@ var MailUtils = {
     // If we have a hint to help us pick one identity, search for a match.
     // Even if we only have one identity, check which hint might match.
     if (optionalHint) {
-      let hints = MailServices.headerParser.makeFromDisplayAddress(
-        optionalHint
-      );
+      let hints =
+        lazy.MailServices.headerParser.makeFromDisplayAddress(optionalHint);
 
       for (let hint of hints) {
         for (let identity of identities.filter(i => i.email)) {
@@ -518,7 +615,7 @@ var MailUtils = {
 
     // Still no matches? Give up and pick the default or the first one.
     if (useDefault) {
-      let defaultAccount = MailServices.accounts.defaultAccount;
+      let defaultAccount = lazy.MailServices.accounts.defaultAccount;
       if (defaultAccount && defaultAccount.defaultIdentity) {
         return [defaultAccount.defaultIdentity, null];
       }
@@ -528,14 +625,15 @@ var MailUtils = {
   },
 
   getIdentityForServer(server, optionalHint) {
-    let identities = MailServices.accounts.getIdentitiesForServer(server);
+    let identities = lazy.MailServices.accounts.getIdentitiesForServer(server);
     return this.getBestIdentity(identities, optionalHint);
   },
 
   /**
    * Get the identity for the given header.
-   * @param hdr nsIMsgHdr message header
-   * @param type nsIMsgCompType compose type the identity is used for.
+   *
+   * @param {nsIMsgHdr} hdr - Message header.
+   * @param {nsIMsgCompType} type - Compose type the identity is used for.
    * @returns {Array} - An array of two elements, [identity, matchingHint].
    *   identity is an nsIMsgIdentity and matchingHint is a string.
    */
@@ -555,7 +653,7 @@ var MailUtils = {
     if (!server) {
       let accountKey = hdr.accountKey;
       if (accountKey) {
-        let account = MailServices.accounts.getAccount(accountKey);
+        let account = lazy.MailServices.accounts.getAccount(accountKey);
         if (account) {
           server = account.incomingServer;
         }
@@ -584,7 +682,7 @@ var MailUtils = {
 
     if (!identity) {
       [identity, matchingHint] = this.getBestIdentity(
-        MailServices.accounts.allIdentities,
+        lazy.MailServices.accounts.allIdentities,
         hintForIdentity,
         true
       );
@@ -611,7 +709,7 @@ var MailUtils = {
    * @returns {nsIAbDirectory|null} - Found list or null.
    */
   findListInAddressBooks(entryName) {
-    for (let abDir of MailServices.ab.directories) {
+    for (let abDir of lazy.MailServices.ab.directories) {
       if (abDir.supportsMailingLists) {
         for (let dir of abDir.childNodes) {
           if (dir.isMailList && dir.dirName == entryName) {
@@ -626,6 +724,7 @@ var MailUtils = {
   /**
    * Recursively search for message id in a given folder and its subfolders,
    * return the first one found.
+   *
    * @param {string} msgId - The message id to find.
    * @param {nsIMsgFolder} folder - The folder to check.
    * @returns {nsIMsgDBHdr}
@@ -635,9 +734,14 @@ var MailUtils = {
 
     // Search in folder.
     if (!folder.isServer) {
-      msgHdr = folder.msgDatabase.getMsgHdrForMessageID(msgId);
-      if (msgHdr) {
-        return msgHdr;
+      try {
+        msgHdr = folder.msgDatabase.getMsgHdrForMessageID(msgId);
+        if (msgHdr) {
+          return msgHdr;
+        }
+        folder.closeDBIfFolderNotOpen(true);
+      } catch (ex) {
+        console.error(`Database for ${folder.name} not accessible`);
       }
     }
 
@@ -654,12 +758,13 @@ var MailUtils = {
   /**
    * Recursively search for message id in all msg folders, return the first one
    * found.
+   *
    * @param {string} msgId - The message id to search for.
    * @param {nsIMsgIncomingServer} [startServer] - The server to check first.
    * @returns {nsIMsgDBHdr}
    */
   getMsgHdrForMsgId(msgId, startServer) {
-    let allServers = MailServices.accounts.allServers;
+    let allServers = lazy.MailServices.accounts.allServers;
     if (startServer) {
       allServers = [startServer].concat(
         allServers.filter(s => s.key != startServer.key)
@@ -676,3 +781,40 @@ var MailUtils = {
     return null;
   },
 };
+
+/**
+ * A class that listens to notifications about folders, and deals with them
+ * appropriately.
+ * @implements {nsIObserver}
+ */
+class FolderNotificationManager {
+  QueryInterface = ChromeUtils.generateQI(["nsIObserver"]);
+
+  static #manager = null;
+
+  static init() {
+    if (FolderNotificationManager.#manager) {
+      return;
+    }
+    FolderNotificationManager.#manager = new FolderNotificationManager();
+  }
+
+  constructor() {
+    Services.obs.addObserver(this, "profile-before-change");
+    Services.obs.addObserver(this, "folder-attention");
+  }
+
+  observe(subject, topic, data) {
+    switch (topic) {
+      case "profile-before-change":
+        Services.obs.removeObserver(this, "profile-before-change");
+        Services.obs.removeObserver(this, "folder-attention");
+        return;
+      case "folder-attention":
+        MailUtils.displayFolderIn3Pane(
+          subject.QueryInterface(Ci.nsIMsgFolder).URI
+        );
+    }
+  }
+}
+FolderNotificationManager.init();

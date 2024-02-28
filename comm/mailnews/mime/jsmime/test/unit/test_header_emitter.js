@@ -1,14 +1,14 @@
 "use strict";
-define(function(require) {
+define(function (require) {
   var assert = require("assert");
   var jsmime = require("jsmime");
   var headeremitter = jsmime.headeremitter;
   var MockDate = require("test/mock_date");
 
   function arrayTest(data, fn) {
-    fn.toString = function() {
+    fn.toString = function () {
       let text = Function.prototype.toString.call(this);
-      text = text.replace(/data\[([0-9]*)\]/g, function(m, p) {
+      text = text.replace(/data\[([0-9]*)\]/g, function (m, p) {
         return JSON.stringify(data[p]);
       });
       return text;
@@ -16,8 +16,8 @@ define(function(require) {
     return test(JSON.stringify(data[0]), fn);
   }
 
-  suite("headeremitter", function() {
-    suite("addAddresses", function() {
+  suite("headeremitter", function () {
+    suite("addAddresses", function () {
       let handler = {
         reset(expected) {
           this.output = "";
@@ -148,8 +148,8 @@ define(function(require) {
           'Group: "u@d" <a@a.c>,\r\n "u@c" <b@b.c>;',
         ],
       ];
-      header_tests.forEach(function(data) {
-        arrayTest(data, function() {
+      header_tests.forEach(function (data) {
+        arrayTest(data, function () {
           let emitter = headeremitter.makeStreamingEmitter(handler, {
             softMargin: 30,
             useASCII: false,
@@ -160,7 +160,7 @@ define(function(require) {
         });
       });
     });
-    suite("addAddresses (RFC 2047)", function() {
+    suite("addAddresses (RFC 2047)", function () {
       let handler = {
         reset(expected) {
           this.output = "";
@@ -180,13 +180,13 @@ define(function(require) {
         [[{ name: "\u0436", email: "a@a.c" }], "=?UTF-8?B?0LY=?= <a@a.c>"],
         [
           [{ name: "dioxyg\u00e8ne", email: "a@a.c" }],
-          "=?UTF-8?Q?dioxyg=c3=a8ne?=\r\n <a@a.c>",
+          "=?UTF-8?Q?dioxyg=C3=A8ne?=\r\n <a@a.c>",
         ],
         // Prefer QP if base64 and QP are exactly the same length
         [
           [{ name: "oxyg\u00e8ne", email: "a@a.c" }],
           // =?UTF-8?B?b3h5Z8OobmU=?=
-          "=?UTF-8?Q?oxyg=c3=a8ne?=\r\n <a@a.c>",
+          "=?UTF-8?Q?oxyg=C3=A8ne?=\r\n <a@a.c>",
         ],
         [
           [
@@ -201,12 +201,12 @@ define(function(require) {
         // encode commas.
         [
           [{ name: "B\u00fcg 1088975, FirstName", email: "a@b.c" }],
-          "=?UTF-8?Q?B=c3=bcg_1088975?=\r\n" +
-            " =?UTF-8?Q?=2c_FirstName?=\r\n <a@b.c>",
+          "=?UTF-8?Q?B=C3=BCg_1088975?=\r\n" +
+            " =?UTF-8?Q?=2C_FirstName?=\r\n <a@b.c>",
         ],
       ];
-      header_tests.forEach(function(data) {
-        arrayTest(data, function() {
+      header_tests.forEach(function (data) {
+        arrayTest(data, function () {
           let emitter = headeremitter.makeStreamingEmitter(handler, {
             softMargin: 30,
             useASCII: true,
@@ -217,7 +217,7 @@ define(function(require) {
         });
       });
     });
-    suite("addUnstructured (RFC 2047)", function() {
+    suite("addUnstructured (RFC 2047)", function () {
       let handler = {
         reset(expected) {
           this.output = "";
@@ -239,27 +239,27 @@ define(function(require) {
         // Which of the 32 "special" characters need to be encoded in QP encoding?
         // Note: Encoding is forced by adding a \x7f at the end.
         // These 5 don't need encoding:
-        [" ! * + - / \x7f", "=?UTF-8?Q?_!_*_+_-_/_=7f?="],
+        [" ! * + - / \x7f", "=?UTF-8?Q?_!_*_+_-_/_=7F?="],
 
         // Bug 1438590: RFC2047 [5. (3)] requests the
         // encoding of these 27 "special" characters:
         // " # $ % & ' ( ) , . : ; < = > ? @ [ \ ] ^ _ ` { | } ~.
         // Note: If there are enough characters for padding,
         // QP is used and not base64.
-        ['Test " # \x7f', "=?UTF-8?Q?Test_=22_=23_=7f?="],
-        ["Test $ % \x7f", "=?UTF-8?Q?Test_=24_=25_=7f?="],
-        ["Test & ' \x7f", "=?UTF-8?Q?Test_=26_=27_=7f?="],
-        ["Test ( ) \x7f", "=?UTF-8?Q?Test_=28_=29_=7f?="],
-        ["Test , . \x7f", "=?UTF-8?Q?Test_=2c_=2e_=7f?="],
-        ["Test : ; \x7f", "=?UTF-8?Q?Test_=3a_=3b_=7f?="],
-        ["Test < = \x7f", "=?UTF-8?Q?Test_=3c_=3d_=7f?="],
-        ["Test > ? \x7f", "=?UTF-8?Q?Test_=3e_=3f_=7f?="],
-        ["Test @ [ \x7f", "=?UTF-8?Q?Test_=40_=5b_=7f?="],
-        ["Test \\ ] \x7f", "=?UTF-8?Q?Test_=5c_=5d_=7f?="],
-        ["Test ^ _ \x7f", "=?UTF-8?Q?Test_=5e_=5f_=7f?="],
-        ["Test ` { \x7f", "=?UTF-8?Q?Test_=60_=7b_=7f?="],
-        ["Test | } \x7f", "=?UTF-8?Q?Test_=7c_=7d_=7f?="],
-        ["Test ~ \x7f", "=?UTF-8?Q?Test_=7e_=7f?="],
+        ['Test " # \x7f', "=?UTF-8?Q?Test_=22_=23_=7F?="],
+        ["Test $ % \x7f", "=?UTF-8?Q?Test_=24_=25_=7F?="],
+        ["Test & ' \x7f", "=?UTF-8?Q?Test_=26_=27_=7F?="],
+        ["Test ( ) \x7f", "=?UTF-8?Q?Test_=28_=29_=7F?="],
+        ["Test , . \x7f", "=?UTF-8?Q?Test_=2C_=2E_=7F?="],
+        ["Test : ; \x7f", "=?UTF-8?Q?Test_=3A_=3B_=7F?="],
+        ["Test < = \x7f", "=?UTF-8?Q?Test_=3C_=3D_=7F?="],
+        ["Test > ? \x7f", "=?UTF-8?Q?Test_=3E_=3F_=7F?="],
+        ["Test @ [ \x7f", "=?UTF-8?Q?Test_=40_=5B_=7F?="],
+        ["Test \\ ] \x7f", "=?UTF-8?Q?Test_=5C_=5D_=7F?="],
+        ["Test ^ _ \x7f", "=?UTF-8?Q?Test_=5E_=5F_=7F?="],
+        ["Test ` { \x7f", "=?UTF-8?Q?Test_=60_=7B_=7F?="],
+        ["Test | } \x7f", "=?UTF-8?Q?Test_=7C_=7D_=7F?="],
+        ["Test ~ \x7f", "=?UTF-8?Q?Test_=7E_=7F?="],
 
         // But the 32 printable "special" characters don't need it in the first place!
         [
@@ -270,20 +270,20 @@ define(function(require) {
         ],
 
         // Test to make sure 2047-encoding chooses the right values.
-        ["\u001f", "=?UTF-8?Q?=1f?="],
-        ["\u001fa", "=?UTF-8?Q?=1fa?="],
+        ["\u001f", "=?UTF-8?Q?=1F?="],
+        ["\u001fa", "=?UTF-8?Q?=1Fa?="],
         ["\u001faa", "=?UTF-8?B?H2Fh?="],
-        ["\u001faaa", "=?UTF-8?Q?=1faaa?="],
+        ["\u001faaa", "=?UTF-8?Q?=1Faaa?="],
         ["\u001faaa\u001f", "=?UTF-8?B?H2FhYR8=?="],
         ["\u001faaa\u001fa", "=?UTF-8?B?H2FhYR9h?="],
-        ["\u001faaa\u001faa", "=?UTF-8?Q?=1faaa=1faa?="],
+        ["\u001faaa\u001faa", "=?UTF-8?Q?=1Faaa=1Faa?="],
         ["\u001faaa\u001faa\u001faaaa", "=?UTF-8?B?H2FhYR9hYR9hYWFh?="],
 
         // Make sure line breaking works right at the edge cases
-        ["\u001faaa\u001faaaaaaaaa", "=?UTF-8?Q?=1faaa=1faaaaaaaaa?="],
+        ["\u001faaa\u001faaaaaaaaa", "=?UTF-8?Q?=1Faaa=1Faaaaaaaaa?="],
         [
           "\u001faaa\u001faaaaaaaaaa",
-          "=?UTF-8?Q?=1faaa=1faaaaaaaaa?=\r\n =?UTF-8?Q?a?=",
+          "=?UTF-8?Q?=1Faaa=1Faaaaaaaaa?=\r\n =?UTF-8?Q?a?=",
         ],
 
         // Choose base64/qp independently for each word
@@ -311,8 +311,8 @@ define(function(require) {
             " =?UTF-8?B?w6huZXM=?=",
         ],
       ];
-      header_tests.forEach(function(data) {
-        arrayTest(data, function() {
+      header_tests.forEach(function (data) {
+        arrayTest(data, function () {
           let emitter = headeremitter.makeStreamingEmitter(handler, {
             softMargin: 30,
             useASCII: true,
@@ -323,7 +323,7 @@ define(function(require) {
         });
       });
     });
-    suite("addDate", function() {
+    suite("addDate", function () {
       let handler = {
         reset(expected) {
           this.output = "";
@@ -403,8 +403,8 @@ define(function(require) {
         // In addition, ES6 Date objects don't support leap seconds. Invalid dates
         // per RFC 5322 are handled in a later run of code.
       ];
-      header_tests.forEach(function(data) {
-        arrayTest(data, function() {
+      header_tests.forEach(function (data) {
+        arrayTest(data, function () {
           let emitter = headeremitter.makeStreamingEmitter(handler, {});
           handler.reset(data[1]);
           emitter.addDate(new MockDate(data[0]));
@@ -413,21 +413,21 @@ define(function(require) {
       });
 
       // An invalid date should throw an error instead of make a malformed header.
-      test("Invalid dates", function() {
+      test("Invalid dates", function () {
         let emitter = headeremitter.makeStreamingEmitter(handler, {});
-        assert.throws(function() {
+        assert.throws(function () {
           emitter.addDate(new Date(NaN));
         }, /Cannot encode an invalid date/);
-        assert.throws(function() {
+        assert.throws(function () {
           emitter.addDate(new Date("1850-01-01"));
         }, /Date year is out of encodable range/);
-        assert.throws(function() {
+        assert.throws(function () {
           emitter.addDate(new Date("10000-01-01"));
         }, /Cannot encode an invalid date/);
       });
 
       // Test preferred breaking for the date header.
-      test("Break spot", function() {
+      test("Break spot", function () {
         let emitter = headeremitter.makeStreamingEmitter(handler, {
           softMargin: 30,
         });
@@ -437,7 +437,7 @@ define(function(require) {
         emitter.finish();
       });
 
-      test("Correctness of date", function() {
+      test("Correctness of date", function () {
         let emitter = headeremitter.makeStreamingEmitter(handler, {});
         handler.reset();
         let now = new Date();
@@ -452,7 +452,7 @@ define(function(require) {
       });
     });
 
-    suite("Header lengths", function() {
+    suite("Header lengths", function () {
       let handler = {
         reset(expected) {
           this.output = "";
@@ -494,8 +494,8 @@ define(function(require) {
           new Error(),
         ],
       ];
-      header_tests.forEach(function(data) {
-        arrayTest(data, function() {
+      header_tests.forEach(function (data) {
+        arrayTest(data, function () {
           let emitter = headeremitter.makeStreamingEmitter(handler, {
             softMargin: 30,
             hardMargin: 50,
@@ -503,11 +503,11 @@ define(function(require) {
           });
           handler.reset(data[1]);
           if (data[1] instanceof Error) {
-            assert.throws(function() {
+            assert.throws(function () {
               emitter.addAddresses(data[0]);
             }, /Cannot encode/);
           } else {
-            assert.doesNotThrow(function() {
+            assert.doesNotThrow(function () {
               emitter.addAddresses(data[0]);
             });
             emitter.finish(true);

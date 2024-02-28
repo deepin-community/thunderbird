@@ -2,16 +2,17 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-ChromeUtils.defineModuleGetter(this, "cal", "resource:///modules/calendar/calUtils.jsm");
-
-/*
+/**
  * Data structures and algorithms used within the codebase
  */
 
 // NOTE: This module should not be loaded directly, it is available when
 // including calUtils.jsm under the cal.data namespace.
 
-const EXPORTED_SYMBOLS = ["caldata"]; /* exported caldata */
+const EXPORTED_SYMBOLS = ["caldata"];
+
+const lazy = {};
+ChromeUtils.defineModuleGetter(lazy, "cal", "resource:///modules/calendar/calUtils.jsm");
 
 class ListenerSet extends Set {
   constructor(iid, iterable) {
@@ -37,7 +38,7 @@ class ListenerSet extends Set {
       try {
         observer[func](...args);
       } catch (ex) {
-        Cu.reportError(ex);
+        console.error(ex);
       }
     }
   }
@@ -97,7 +98,7 @@ class OperationGroup {
   }
 
   constructor(aCancelFunc) {
-    this.mId = cal.getUUID() + "-" + OperationGroup.nextGroupId();
+    this.mId = lazy.cal.getUUID() + "-" + OperationGroup.nextGroupId();
     this.mIsPending = true;
 
     this.mCancelFunc = aCancelFunc;
@@ -131,7 +132,7 @@ class OperationGroup {
   }
 
   notifyCompleted(aStatus) {
-    cal.ASSERT(this.isPending, "[OperationGroup_notifyCompleted] this.isPending");
+    lazy.cal.ASSERT(this.isPending, "[OperationGroup_notifyCompleted] this.isPending");
     if (this.isPending) {
       this.mIsPending = false;
       if (aStatus) {
@@ -179,7 +180,7 @@ var caldata = {
    * @param itemArray             The array to search.
    * @param newItem               The item to search in the array.
    * @param comptor               A comparison function that can compare two items.
-   * @return                      The index of the new item.
+   * @returns The index of the new item.
    */
   binarySearch(itemArray, newItem, comptor) {
     function binarySearchInternal(low, high) {
@@ -202,7 +203,7 @@ var caldata = {
       return -1;
     }
     if (!comptor) {
-      comptor = function(a, b) {
+      comptor = function (a, b) {
         return (a > b) - (a < b);
       };
     }
@@ -258,7 +259,7 @@ var caldata = {
    * @param discardDuplicates     Use the comptor function to check if the item in
    *                                question is already in the array. If so, the
    *                                new item is not inserted.
-   * @return                      The index of the new item.
+   * @returns The index of the new item.
    */
   binaryInsert(itemArray, item, comptor, discardDuplicates) {
     let newIndex = caldata.binarySearch(itemArray, item, comptor);

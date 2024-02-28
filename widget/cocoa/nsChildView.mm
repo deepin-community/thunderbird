@@ -17,7 +17,9 @@
 #include "mozilla/Maybe.h"
 #include "mozilla/MiscEvents.h"
 #include "mozilla/MouseEvents.h"
+#include "mozilla/NativeKeyBindingsType.h"
 #include "mozilla/PresShell.h"
+#include "mozilla/SwipeTracker.h"
 #include "mozilla/TextEventDispatcher.h"
 #include "mozilla/TextEvents.h"
 #include "mozilla/TouchEvents.h"
@@ -61,9 +63,6 @@
 #include "gfxQuartzSurface.h"
 #include "gfxUtils.h"
 #include "nsRegion.h"
-#include "Layers.h"
-#include "ClientLayerManager.h"
-#include "mozilla/layers/LayerManagerComposite.h"
 #include "GfxTexturesReporter.h"
 #include "GLTextureImage.h"
 #include "GLContextProvider.h"
@@ -76,7 +75,6 @@
 #include "mozilla/layers/APZThreadUtils.h"
 #include "mozilla/layers/CompositorOGL.h"
 #include "mozilla/layers/CompositorBridgeParent.h"
-#include "mozilla/layers/BasicCompositor.h"
 #include "mozilla/layers/InputAPZContext.h"
 #include "mozilla/layers/IpcResourceUpdateQueue.h"
 #include "mozilla/layers/NativeLayerCA.h"
@@ -84,6 +82,7 @@
 #include "mozilla/layers/WebRenderLayerManager.h"
 #include "mozilla/webrender/WebRenderAPI.h"
 #include "mozilla/widget/CompositorWidget.h"
+#include "mozilla/widget/Screen.h"
 #include "gfxUtils.h"
 #include "mozilla/gfx/2D.h"
 #include "mozilla/gfx/BorrowedContext.h"
@@ -94,6 +93,7 @@
 
 #include "mozilla/Preferences.h"
 #include "mozilla/StaticPrefs_apz.h"
+#include "mozilla/StaticPrefs_browser.h"
 #include "mozilla/StaticPrefs_general.h"
 #include "mozilla/StaticPrefs_gfx.h"
 #include "mozilla/StaticPrefs_ui.h"
@@ -107,7 +107,6 @@
 #include "mozilla/layers/ChromeProcessController.h"
 #include "nsLayoutUtils.h"
 #include "InputData.h"
-#include "SwipeTracker.h"
 #include "VibrancyManager.h"
 #include "nsNativeThemeCocoa.h"
 #include "nsIDOMWindowUtils.h"
@@ -201,8 +200,6 @@ static uint32_t sUniqueKeyEventId = 0;
 
 - (bool)beginOrEndGestureForEventPhase:(NSEvent*)aEvent;
 
-- (bool)shouldConsiderStartingSwipeFromEvent:(NSEvent*)aEvent;
-
 @end
 
 #pragma mark -
@@ -212,19 +209,6 @@ static uint32_t sUniqueKeyEventId = 0;
 static inline void FlipCocoaScreenCoordinate(NSPoint& inPoint) {
   inPoint.y = nsCocoaUtils::FlippedScreenY(inPoint.y);
 }
-
-namespace mozilla {
-
-struct SwipeEventQueue {
-  SwipeEventQueue(uint32_t aAllowedDirections, uint64_t aInputBlockId)
-      : allowedDirections(aAllowedDirections), inputBlockId(aInputBlockId) {}
-
-  nsTArray<PanGestureInput> queuedEvents;
-  uint32_t allowedDirections;
-  uint64_t inputBlockId;
-};
-
-}  // namespace mozilla
 
 #pragma mark -
 
@@ -236,16 +220,11 @@ nsChildView::nsChildView()
       mCompositingLock("ChildViewCompositing"),
       mBackingScaleFactor(0.0),
       mVisible(false),
+      mSizeMode(nsSizeMode_Normal),
       mDrawing(false),
-      mIsDispatchPaint(false),
-      mCurrentPanGestureBelongsToSwipe{false} {}
+      mIsDispatchPaint(false) {}
 
 nsChildView::~nsChildView() {
-  if (mSwipeTracker) {
-    mSwipeTracker->Destroy();
-    mSwipeTracker = nullptr;
-  }
-
   // Notify the children that we're gone.  childView->ResetParent() can change
   // our list of children while it's being iterated, so the way we iterate the
   // list must allow for this.
@@ -276,7 +255,7 @@ nsChildView::~nsChildView() {
 }
 
 nsresult nsChildView::Create(nsIWidget* aParent, nsNativeWidget aNativeParent,
-                             const LayoutDeviceIntRect& aRect, nsWidgetInitData* aInitData) {
+                             const LayoutDeviceIntRect& aRect, widget::InitData* aInitData) {
   NS_OBJC_BEGIN_TRY_IGNORE_BLOCK;
 
   // Because the hidden window is created outside of an event loop,
@@ -390,17 +369,19 @@ nsCocoaWindow* nsChildView::GetAppWindowWidget() const {
 void nsChildView::Destroy() {
   NS_OBJC_BEGIN_TRY_IGNORE_BLOCK;
 
-  // Make sure that no composition is in progress while disconnecting
-  // ourselves from the view.
-  MutexAutoLock lock(mCompositingLock);
-
   if (mOnDestroyCalled) return;
   mOnDestroyCalled = true;
 
   // Stuff below may delete the last ref to this
   nsCOMPtr<nsIWidget> kungFuDeathGrip(this);
 
-  [mView widgetDestroyed];
+  {
+    // Make sure that no composition is in progress while disconnecting
+    // ourselves from the view.
+    MutexAutoLock lock(mCompositingLock);
+
+    [mView widgetDestroyed];
+  }
 
   nsBaseWidget::Destroy();
 
@@ -434,7 +415,6 @@ void* nsChildView::GetNativeData(uint32_t aDataType) {
 
   switch (aDataType) {
     case NS_NATIVE_WIDGET:
-    case NS_NATIVE_DISPLAY:
       retVal = (void*)mView;
       break;
 
@@ -637,8 +617,12 @@ void nsChildView::SetCursor(const Cursor& aCursor) {
 
   nsBaseWidget::SetCursor(aCursor);
 
-  if (NS_SUCCEEDED([[nsCursorManager sharedInstance] setCustomCursor:aCursor
-                                                   widgetScaleFactor:BackingScaleFactor()])) {
+  bool forceUpdate = mUpdateCursor;
+  mUpdateCursor = false;
+  if (mCustomCursorAllowed && NS_SUCCEEDED([[nsCursorManager sharedInstance]
+                                    setCustomCursor:aCursor
+                                  widgetScaleFactor:BackingScaleFactor()
+                                        forceUpdate:forceUpdate])) {
     return;
   }
 
@@ -729,7 +713,6 @@ void nsChildView::Move(double aX, double aY) {
     [mView setFrame:DevPixelsToCocoaPoints(mBounds)];
   });
 
-  NotifyRollupGeometryChange();
   ReportMoveEvent();
 
   NS_OBJC_END_TRY_IGNORE_BLOCK;
@@ -755,7 +738,6 @@ void nsChildView::Resize(double aWidth, double aHeight, bool aRepaint) {
     [[mView pixelHostingView] setNeedsDisplay:YES];
   }
 
-  NotifyRollupGeometryChange();
   ReportSizeEvent();
 
   NS_OBJC_END_TRY_IGNORE_BLOCK;
@@ -781,6 +763,10 @@ void nsChildView::Resize(double aX, double aY, double aWidth, double aHeight, bo
     SuspendAsyncCATransactions();
     mBounds.width = width;
     mBounds.height = height;
+
+    CALayer* layer = [mView rootCALayer];
+    double scale = BackingScaleFactor();
+    layer.bounds = CGRectMake(0, 0, width / scale, height / scale);
   }
 
   ManipulateViewWithoutNeedingDisplay(mView, ^{
@@ -791,7 +777,6 @@ void nsChildView::Resize(double aX, double aY, double aWidth, double aHeight, bo
     [[mView pixelHostingView] setNeedsDisplay:YES];
   }
 
-  NotifyRollupGeometryChange();
   if (isMoving) {
     ReportMoveEvent();
     if (mOnDestroyCalled) return;
@@ -854,6 +839,12 @@ void nsChildView::UnsuspendAsyncCATransactions() {
     // display, because this will schedule a main thread CATransaction, during
     // which HandleMainThreadCATransaction will call CommitToScreen().
     [mView markLayerForDisplay];
+  }
+}
+
+void nsChildView::UpdateFullscreen(bool aFullscreen) {
+  if (mNativeLayerRoot) {
+    mNativeLayerRoot->SetWindowIsFullscreen(aFullscreen);
   }
 }
 
@@ -1036,8 +1027,8 @@ nsresult nsChildView::SynthesizeNativeTouchPoint(
 
   LayoutDeviceIntPoint pointInWindow = aPoint - WidgetToScreenOffset();
   MultiTouchInput inputToDispatch = UpdateSynthesizedTouchState(
-      mSynthesizedTouchInput.get(), PR_IntervalNow(), TimeStamp::Now(), aPointerId, aPointerState,
-      pointInWindow, aPointerPressure, aPointerOrientation);
+      mSynthesizedTouchInput.get(), TimeStamp::Now(), aPointerId, aPointerState, pointInWindow,
+      aPointerPressure, aPointerOrientation);
   DispatchTouchInput(inputToDispatch);
   return NS_OK;
 
@@ -1088,6 +1079,19 @@ void nsChildView::PostHandleKeyEvent(mozilla::WidgetKeyboardEvent* aEvent) {
     return;
   }
 
+  // If the escape key is pressed, the expectations are as follows:
+  // 1. If the page is loading, interrupt loading.
+  // 2. Give a website an opportunity to handle the event and call
+  //    preventDefault() on it.
+  // 3. If the browser is fullscreen and the page isn't loading, exit
+  //    fullscreen.
+  // 4. Ignore.
+  // Case 1 and 2 are handled before we get here. Below, we handle case 3.
+  if (StaticPrefs::browser_fullscreen_exit_on_escape() && [cocoaEvent keyCode] == kVK_Escape &&
+      [[mView window] styleMask] & NSWindowStyleMaskFullScreen) {
+    [[mView window] toggleFullScreen:nil];
+  }
+
   if (SendEventToNativeMenuSystem(cocoaEvent)) {
     aEvent->PreventDefault();
   }
@@ -1114,6 +1118,9 @@ nsresult nsChildView::ActivateNativeMenuItemAt(const nsAString& indexString) {
     if (parent) {
       // NSLog(@"Performing action for native menu item titled: %@\n",
       //       [[currentSubmenu itemAtIndex:targetIndex] title]);
+      mozilla::AutoRestore<bool> autoRestore(
+          nsMenuUtilsX::gIsSynchronouslyActivatingNativeMenuItemDuringTest);
+      nsMenuUtilsX::gIsSynchronouslyActivatingNativeMenuItemDuringTest = true;
       [parent performActionForItemAtIndex:[parent indexOfItem:item]];
       return NS_OK;
     }
@@ -1190,7 +1197,7 @@ void nsChildView::Invalidate(const LayoutDeviceIntRect& aRect) {
 
   if (!mView || !mVisible) return;
 
-  NS_ASSERTION(GetLayerManager()->GetBackendType() != LayersBackend::LAYERS_CLIENT,
+  NS_ASSERTION(GetWindowRenderer()->GetBackendType() != LayersBackend::LAYERS_WR,
                "Shouldn't need to invalidate with accelerated OMTC layers!");
 
   EnsureContentLayerForMainThreadPainting();
@@ -1229,10 +1236,6 @@ bool nsChildView::ShouldUseOffMainThreadCompositing() {
 
 #pragma mark -
 
-nsresult nsChildView::ConfigureChildren(const nsTArray<Configuration>& aConfigurations) {
-  return NS_OK;
-}
-
 // Invokes callback and ProcessEvent methods on Event Listener object
 nsresult nsChildView::DispatchEvent(WidgetGUIEvent* event, nsEventStatus& aStatus) {
   RefPtr<nsChildView> kungFuDeathGrip(this);
@@ -1258,7 +1261,7 @@ nsresult nsChildView::DispatchEvent(WidgetGUIEvent* event, nsEventStatus& aStatu
   // listener from the parent popup instead.
   nsCOMPtr<nsIWidget> parentWidget = mParentWidget;
   if (!listener && parentWidget) {
-    if (parentWidget->WindowType() == eWindowType_popup) {
+    if (parentWidget->GetWindowType() == WindowType::Popup) {
       // Check just in case event->mWidget isn't this widget
       if (event->mWidget) {
         listener = event->mWidget->GetWidgetListener();
@@ -1275,15 +1278,9 @@ nsresult nsChildView::DispatchEvent(WidgetGUIEvent* event, nsEventStatus& aStatu
   return NS_OK;
 }
 
-bool nsChildView::DispatchWindowEvent(WidgetGUIEvent& event) {
-  nsEventStatus status;
-  DispatchEvent(&event, status);
-  return ConvertStatus(status);
-}
-
 nsIWidget* nsChildView::GetWidgetForListenerEvents() {
   // If there is no listener, use the parent popup's listener if that exists.
-  if (!mWidgetListener && mParentWidget && mParentWidget->WindowType() == eWindowType_popup) {
+  if (!mWidgetListener && mParentWidget && mParentWidget->GetWindowType() == WindowType::Popup) {
     return mParentWidget;
   }
 
@@ -1322,26 +1319,24 @@ bool nsChildView::PaintWindow(LayoutDeviceIntRegion aRegion) {
 bool nsChildView::PaintWindowInDrawTarget(gfx::DrawTarget* aDT,
                                           const LayoutDeviceIntRegion& aRegion,
                                           const gfx::IntSize& aSurfaceSize) {
-  RefPtr<gfxContext> targetContext = gfxContext::CreateOrNull(aDT);
-  MOZ_ASSERT(targetContext);
+  if (!aDT || !aDT->IsValid()) {
+    return false;
+  }
+  gfxContext targetContext(aDT);
 
   // Set up the clip region and clear existing contents in the backing surface.
-  targetContext->NewPath();
+  targetContext.NewPath();
   for (auto iter = aRegion.RectIter(); !iter.Done(); iter.Next()) {
     const LayoutDeviceIntRect& r = iter.Get();
-    targetContext->Rectangle(gfxRect(r.x, r.y, r.width, r.height));
+    targetContext.Rectangle(gfxRect(r.x, r.y, r.width, r.height));
     aDT->ClearRect(gfx::Rect(r.ToUnknownRect()));
   }
-  targetContext->Clip();
+  targetContext.Clip();
 
   nsAutoRetainCocoaObject kungFuDeathGrip(mView);
-  if (GetLayerManager()->GetBackendType() == LayersBackend::LAYERS_BASIC) {
-    nsBaseWidget::AutoLayerManagerSetup setupLayerManager(this, targetContext,
+  if (GetWindowRenderer()->GetBackendType() == LayersBackend::LAYERS_NONE) {
+    nsBaseWidget::AutoLayerManagerSetup setupLayerManager(this, &targetContext,
                                                           BufferMode::BUFFER_NONE);
-    return PaintWindow(aRegion);
-  }
-  if (GetLayerManager()->GetBackendType() == LayersBackend::LAYERS_CLIENT) {
-    // We only need this so that we actually get DidPaintWindow fired
     return PaintWindow(aRegion);
   }
   return false;
@@ -1386,7 +1381,7 @@ void nsChildView::PaintWindowInContentLayer() {
 void nsChildView::HandleMainThreadCATransaction() {
   WillPaintWindow();
 
-  if (GetLayerManager()->GetBackendType() == LayersBackend::LAYERS_BASIC) {
+  if (GetWindowRenderer()->GetBackendType() == LayersBackend::LAYERS_NONE) {
     // We're in BasicLayers mode, i.e. main thread software compositing.
     // Composite the window into our layer's surface.
     PaintWindowInContentLayer();
@@ -1578,7 +1573,7 @@ bool nsChildView::GetEditCommands(NativeKeyBindingsType aType, const WidgetKeybo
   Maybe<WritingMode> writingMode;
   if (aEvent.NeedsToRemapNavigationKey()) {
     if (RefPtr<TextEventDispatcher> dispatcher = GetTextEventDispatcher()) {
-      writingMode = dispatcher->MaybeWritingModeAtSelection();
+      writingMode = dispatcher->MaybeQueryWritingModeAtSelection();
     }
   }
 
@@ -1620,7 +1615,7 @@ void nsChildView::ConfigureAPZCTreeManager() { nsBaseWidget::ConfigureAPZCTreeMa
 
 void nsChildView::ConfigureAPZControllerThread() { nsBaseWidget::ConfigureAPZControllerThread(); }
 
-bool nsChildView::PreRender(WidgetRenderingContext* aContext) {
+bool nsChildView::PreRender(WidgetRenderingContext* aContext) MOZ_NO_THREAD_SAFETY_ANALYSIS {
   // The lock makes sure that we don't attempt to tear down the view while
   // compositing. That would make us unable to call postRender on it when the
   // composition is done, thus keeping the GL context locked forever.
@@ -1633,7 +1628,9 @@ bool nsChildView::PreRender(WidgetRenderingContext* aContext) {
   return true;
 }
 
-void nsChildView::PostRender(WidgetRenderingContext* aContext) { mCompositingLock.Unlock(); }
+void nsChildView::PostRender(WidgetRenderingContext* aContext) MOZ_NO_THREAD_SAFETY_ANALYSIS {
+  mCompositingLock.Unlock();
+}
 
 RefPtr<layers::NativeLayerRoot> nsChildView::GetNativeLayerRoot() { return mNativeLayerRoot; }
 
@@ -1641,10 +1638,8 @@ static int32_t FindTitlebarBottom(const nsTArray<nsIWidget::ThemeGeometry>& aThe
                                   int32_t aWindowWidth) {
   int32_t titlebarBottom = 0;
   for (auto& g : aThemeGeometries) {
-    if ((g.mType == eThemeGeometryTypeTitlebar ||
-         g.mType == eThemeGeometryTypeVibrantTitlebarLight ||
-         g.mType == eThemeGeometryTypeVibrantTitlebarDark) &&
-        g.mRect.X() <= 0 && g.mRect.XMost() >= aWindowWidth && g.mRect.Y() <= 0) {
+    if (g.mType == eThemeGeometryTypeTitlebar && g.mRect.X() <= 0 &&
+        g.mRect.XMost() >= aWindowWidth && g.mRect.Y() <= 0) {
       titlebarBottom = std::max(titlebarBottom, g.mRect.YMost());
     }
   }
@@ -1710,10 +1705,6 @@ void nsChildView::UpdateThemeGeometries(const nsTArray<ThemeGeometry>& aThemeGeo
 static Maybe<VibrancyType> ThemeGeometryTypeToVibrancyType(
     nsITheme::ThemeGeometryType aThemeGeometryType) {
   switch (aThemeGeometryType) {
-    case eThemeGeometryTypeVibrantTitlebarLight:
-      return Some(VibrancyType::TITLEBAR_LIGHT);
-    case eThemeGeometryTypeVibrantTitlebarDark:
-      return Some(VibrancyType::TITLEBAR_DARK);
     case eThemeGeometryTypeTooltip:
       return Some(VibrancyType::TOOLTIP);
     case eThemeGeometryTypeMenu:
@@ -1763,10 +1754,6 @@ static void MakeRegionsNonOverlapping(Region& aFirst, Regions&... aRest) {
 }
 
 void nsChildView::UpdateVibrancy(const nsTArray<ThemeGeometry>& aThemeGeometries) {
-  LayoutDeviceIntRegion vibrantTitlebarLightRegion =
-      GatherVibrantRegion(aThemeGeometries, VibrancyType::TITLEBAR_LIGHT);
-  LayoutDeviceIntRegion vibrantTitlebarDarkRegion =
-      GatherVibrantRegion(aThemeGeometries, VibrancyType::TITLEBAR_DARK);
   LayoutDeviceIntRegion menuRegion = GatherVibrantRegion(aThemeGeometries, VibrancyType::MENU);
   LayoutDeviceIntRegion tooltipRegion =
       GatherVibrantRegion(aThemeGeometries, VibrancyType::TOOLTIP);
@@ -1779,14 +1766,11 @@ void nsChildView::UpdateVibrancy(const nsTArray<ThemeGeometry>& aThemeGeometries
   LayoutDeviceIntRegion activeSourceListSelectionRegion =
       GatherVibrantRegion(aThemeGeometries, VibrancyType::ACTIVE_SOURCE_LIST_SELECTION);
 
-  MakeRegionsNonOverlapping(vibrantTitlebarLightRegion, vibrantTitlebarDarkRegion, menuRegion,
-                            tooltipRegion, highlightedMenuItemRegion, sourceListRegion,
+  MakeRegionsNonOverlapping(menuRegion, tooltipRegion, highlightedMenuItemRegion, sourceListRegion,
                             sourceListSelectionRegion, activeSourceListSelectionRegion);
 
   auto& vm = EnsureVibrancyManager();
   bool changed = false;
-  changed |= vm.UpdateVibrantRegion(VibrancyType::TITLEBAR_LIGHT, vibrantTitlebarLightRegion);
-  changed |= vm.UpdateVibrantRegion(VibrancyType::TITLEBAR_DARK, vibrantTitlebarDarkRegion);
   changed |= vm.UpdateVibrantRegion(VibrancyType::MENU, menuRegion);
   changed |= vm.UpdateVibrantRegion(VibrancyType::TOOLTIP, tooltipRegion);
   changed |= vm.UpdateVibrantRegion(VibrancyType::HIGHLIGHTED_MENUITEM, highlightedMenuItemRegion);
@@ -1807,53 +1791,6 @@ mozilla::VibrancyManager& nsChildView::EnsureVibrancyManager() {
   }
   return *mVibrancyManager;
 }
-
-nsChildView::SwipeInfo nsChildView::SendMayStartSwipe(
-    const mozilla::PanGestureInput& aSwipeStartEvent) {
-  nsCOMPtr<nsIWidget> kungFuDeathGrip(this);
-
-  uint32_t direction = (aSwipeStartEvent.mPanDisplacement.x > 0.0)
-                           ? (uint32_t)dom::SimpleGestureEvent_Binding::DIRECTION_RIGHT
-                           : (uint32_t)dom::SimpleGestureEvent_Binding::DIRECTION_LEFT;
-
-  // We're ready to start the animation. Tell Gecko about it, and at the same
-  // time ask it if it really wants to start an animation for this event.
-  // This event also reports back the directions that we can swipe in.
-  LayoutDeviceIntPoint position =
-      RoundedToInt(aSwipeStartEvent.mPanStartPoint * ScreenToLayoutDeviceScale(1));
-  WidgetSimpleGestureEvent geckoEvent = SwipeTracker::CreateSwipeGestureEvent(
-      eSwipeGestureMayStart, this, position, aSwipeStartEvent.mTimeStamp);
-  geckoEvent.mDirection = direction;
-  geckoEvent.mDelta = 0.0;
-  geckoEvent.mAllowedDirections = 0;
-  bool shouldStartSwipe = DispatchWindowEvent(geckoEvent);  // event cancelled == swipe should start
-
-  SwipeInfo result = {shouldStartSwipe, geckoEvent.mAllowedDirections};
-  return result;
-}
-
-void nsChildView::TrackScrollEventAsSwipe(const mozilla::PanGestureInput& aSwipeStartEvent,
-                                          uint32_t aAllowedDirections) {
-  // If a swipe is currently being tracked kill it -- it's been interrupted
-  // by another gesture event.
-  if (mSwipeTracker) {
-    mSwipeTracker->CancelSwipe(aSwipeStartEvent.mTimeStamp);
-    mSwipeTracker->Destroy();
-    mSwipeTracker = nullptr;
-  }
-
-  uint32_t direction = (aSwipeStartEvent.mPanDisplacement.x > 0.0)
-                           ? (uint32_t)dom::SimpleGestureEvent_Binding::DIRECTION_RIGHT
-                           : (uint32_t)dom::SimpleGestureEvent_Binding::DIRECTION_LEFT;
-
-  mSwipeTracker = new SwipeTracker(*this, aSwipeStartEvent, aAllowedDirections, direction);
-
-  if (!mAPZC) {
-    mCurrentPanGestureBelongsToSwipe = true;
-  }
-}
-
-void nsChildView::SwipeFinished() { mSwipeTracker = nullptr; }
 
 void nsChildView::UpdateBoundsFromView() {
   auto oldSize = mBounds.Size();
@@ -1923,19 +1860,6 @@ void nsChildView::UpdateWindowDraggingRegion(const LayoutDeviceIntRegion& aRegio
   }
 }
 
-void nsChildView::ReportSwipeStarted(uint64_t aInputBlockId, bool aStartSwipe) {
-  if (mSwipeEventQueue && mSwipeEventQueue->inputBlockId == aInputBlockId) {
-    if (aStartSwipe) {
-      PanGestureInput& startEvent = mSwipeEventQueue->queuedEvents[0];
-      TrackScrollEventAsSwipe(startEvent, mSwipeEventQueue->allowedDirections);
-      for (size_t i = 1; i < mSwipeEventQueue->queuedEvents.Length(); i++) {
-        mSwipeTracker->ProcessEvent(mSwipeEventQueue->queuedEvents[i]);
-      }
-    }
-    mSwipeEventQueue = nullptr;
-  }
-}
-
 nsEventStatus nsChildView::DispatchAPZInputEvent(InputData& aEvent) {
   APZEventResult result;
 
@@ -1962,7 +1886,7 @@ nsEventStatus nsChildView::DispatchAPZInputEvent(InputData& aEvent) {
   return result.GetStatus();
 }
 
-void nsChildView::DispatchAPZWheelInputEvent(InputData& aEvent, bool aCanTriggerSwipe) {
+void nsChildView::DispatchAPZWheelInputEvent(InputData& aEvent) {
   if (mSwipeTracker && aEvent.mInputType == PANGESTURE_INPUT) {
     // Give the swipe tracker a first pass at the event. If a new pan gesture
     // has been started since the beginning of the swipe, the swipe tracker
@@ -1985,36 +1909,7 @@ void nsChildView::DispatchAPZWheelInputEvent(InputData& aEvent, bool aCanTrigger
           return;
         }
 
-        PanGestureInput& panInput = aEvent.AsPanGestureInput();
-
-        event = panInput.ToWidgetEvent(this);
-        if (aCanTriggerSwipe && panInput.mOverscrollBehaviorAllowsSwipe) {
-          SwipeInfo swipeInfo = SendMayStartSwipe(panInput);
-          event.mCanTriggerSwipe = swipeInfo.wantsSwipe;
-          if (swipeInfo.wantsSwipe) {
-            if (result.GetStatus() == nsEventStatus_eIgnore) {
-              // APZ has determined and that scrolling horizontally in the
-              // requested direction is impossible, so it didn't do any
-              // scrolling for the event.
-              // We know now that MayStartSwipe wants a swipe, so we can start
-              // the swipe now.
-              TrackScrollEventAsSwipe(panInput, swipeInfo.allowedDirections);
-            } else {
-              // We don't know whether this event can start a swipe, so we need
-              // to queue up events and wait for a call to ReportSwipeStarted.
-              // APZ might already have started scrolling in response to the
-              // event if it knew that it's the right thing to do. In that case
-              // we'll still get a call to ReportSwipeStarted, and we will
-              // discard the queued events at that point.
-              mSwipeEventQueue =
-                  MakeUnique<SwipeEventQueue>(swipeInfo.allowedDirections, result.mInputBlockId);
-            }
-          }
-        }
-
-        if (mSwipeEventQueue && mSwipeEventQueue->inputBlockId == result.mInputBlockId) {
-          mSwipeEventQueue->queuedEvents.AppendElement(panInput);
-        }
+        event = MayStartSwipeForAPZ(aEvent.AsPanGestureInput(), result);
         break;
       }
       case SCROLLWHEEL_INPUT: {
@@ -2043,48 +1938,10 @@ void nsChildView::DispatchAPZWheelInputEvent(InputData& aEvent, bool aCanTrigger
   nsEventStatus status;
   switch (aEvent.mInputType) {
     case PANGESTURE_INPUT: {
-      PanGestureInput panInput = aEvent.AsPanGestureInput();
-      if (panInput.mType == PanGestureInput::PANGESTURE_MAYSTART ||
-          panInput.mType == PanGestureInput::PANGESTURE_START) {
-        mCurrentPanGestureBelongsToSwipe = false;
-      }
-      if (mCurrentPanGestureBelongsToSwipe) {
-        // Ignore this event. It's a momentum event from a scroll gesture
-        // that was processed as a swipe, and the swipe animation has
-        // already finished (so mSwipeTracker is already null).
-        MOZ_ASSERT(panInput.IsMomentum(),
-                   "If the fingers are still on the touchpad, we should still have a SwipeTracker, "
-                   "and it should have consumed this event.");
+      if (MayStartSwipeForNonAPZ(aEvent.AsPanGestureInput())) {
         return;
       }
-
-      event = panInput.ToWidgetEvent(this);
-      if (aCanTriggerSwipe) {
-        SwipeInfo swipeInfo = SendMayStartSwipe(panInput);
-
-        // We're in the non-APZ case here, but we still want to know whether
-        // the event was routed to a child process, so we use InputAPZContext
-        // to get that piece of information.
-        ScrollableLayerGuid guid;
-        InputAPZContext context(guid, 0, nsEventStatus_eIgnore);
-
-        event.mCanTriggerSwipe = swipeInfo.wantsSwipe;
-        DispatchEvent(&event, status);
-        if (swipeInfo.wantsSwipe) {
-          if (context.WasRoutedToChildProcess()) {
-            // We don't know whether this event can start a swipe, so we need
-            // to queue up events and wait for a call to ReportSwipeStarted.
-            mSwipeEventQueue = MakeUnique<SwipeEventQueue>(swipeInfo.allowedDirections, 0);
-          } else if (event.TriggersSwipe()) {
-            TrackScrollEventAsSwipe(panInput, swipeInfo.allowedDirections);
-          }
-        }
-
-        if (mSwipeEventQueue && mSwipeEventQueue->inputBlockId == 0) {
-          mSwipeEventQueue->queuedEvents.AppendElement(panInput);
-        }
-        return;
-      }
+      event = aEvent.AsPanGestureInput().ToWidgetEvent(this);
       break;
     }
     case SCROLLWHEEL_INPUT: {
@@ -2104,10 +1961,8 @@ void nsChildView::DispatchDoubleTapGesture(TimeStamp aEventTimeStamp,
                                            LayoutDeviceIntPoint aScreenPosition,
                                            mozilla::Modifiers aModifiers) {
   if (StaticPrefs::apz_mac_enable_double_tap_zoom_touchpad_gesture()) {
-    PRIntervalTime eventIntervalTime = PR_IntervalNow();
-
     TapGestureInput event{
-        TapGestureInput::TAPGESTURE_DOUBLE, eventIntervalTime, aEventTimeStamp,
+        TapGestureInput::TAPGESTURE_DOUBLE, aEventTimeStamp,
         ViewAs<ScreenPixel>(aScreenPosition,
                             PixelCastJustification::LayoutDeviceIsScreenForUntransformedEvent),
         aModifiers};
@@ -2119,7 +1974,6 @@ void nsChildView::DispatchDoubleTapGesture(TimeStamp aEventTimeStamp,
     // do what convertCocoaMouseEvent does basically.
     geckoEvent.mRefPoint = aScreenPosition;
     geckoEvent.mModifiers = aModifiers;
-    geckoEvent.mTime = PR_IntervalNow();
     geckoEvent.mTimeStamp = aEventTimeStamp;
     geckoEvent.mClickCount = 1;
 
@@ -2549,56 +2403,57 @@ NSEvent* gLastDragMouseDownEvent = nil;  // [strong]
   }
 
   nsCOMPtr<nsIWidget> rollupWidget = rollupListener->GetRollupWidget();
-  if (rollupWidget) {
-    NSWindow* currentPopup = static_cast<NSWindow*>(rollupWidget->GetNativeData(NS_NATIVE_WINDOW));
-    if (!nsCocoaUtils::IsEventOverWindow(theEvent, currentPopup)) {
-      // event is not over the rollup window, default is to roll up
-      bool shouldRollup = true;
+  if (!rollupWidget) {
+    return consumeEvent;
+  }
 
-      // check to see if scroll/zoom events should roll up the popup
-      if (isWheelTypeEvent) {
-        shouldRollup = rollupListener->ShouldRollupOnMouseWheelEvent();
-        // consume scroll events that aren't over the popup
-        // unless the popup is an arrow panel
-        consumeEvent = rollupListener->ShouldConsumeOnMouseWheelEvent();
-      }
+  NSWindow* currentPopup = static_cast<NSWindow*>(rollupWidget->GetNativeData(NS_NATIVE_WINDOW));
+  if (nsCocoaUtils::IsEventOverWindow(theEvent, currentPopup)) {
+    return consumeEvent;
+  }
 
-      // if we're dealing with menus, we probably have submenus and
-      // we don't want to rollup if the click is in a parent menu of
-      // the current submenu
-      uint32_t popupsToRollup = UINT32_MAX;
-      AutoTArray<nsIWidget*, 5> widgetChain;
-      uint32_t sameTypeCount = rollupListener->GetSubmenuWidgetChain(&widgetChain);
-      for (uint32_t i = 0; i < widgetChain.Length(); i++) {
-        nsIWidget* widget = widgetChain[i];
-        NSWindow* currWindow = (NSWindow*)widget->GetNativeData(NS_NATIVE_WINDOW);
-        if (nsCocoaUtils::IsEventOverWindow(theEvent, currWindow)) {
-          // don't roll up if the mouse event occurred within a menu of the
-          // same type. If the mouse event occurred in a menu higher than
-          // that, roll up, but pass the number of popups to Rollup so
-          // that only those of the same type close up.
-          if (i < sameTypeCount) {
-            shouldRollup = false;
-          } else {
-            popupsToRollup = sameTypeCount;
-          }
-          break;
-        }
-      }
-
-      if (shouldRollup) {
-        if ([theEvent type] == NSEventTypeLeftMouseDown) {
-          NSPoint point = [NSEvent mouseLocation];
-          FlipCocoaScreenCoordinate(point);
-          LayoutDeviceIntPoint devPoint = mGeckoChild->CocoaPointsToDevPixels(point);
-          consumeEvent = (BOOL)rollupListener->Rollup(popupsToRollup, true, &devPoint, nullptr);
-        } else {
-          consumeEvent = (BOOL)rollupListener->Rollup(popupsToRollup, true, nullptr, nullptr);
-        }
-      }
+  // Check to see if scroll/zoom events should roll up the popup
+  if (isWheelTypeEvent) {
+    // consume scroll events that aren't over the popup unless the popup is an
+    // arrow panel.
+    consumeEvent = rollupListener->ShouldConsumeOnMouseWheelEvent();
+    if (!rollupListener->ShouldRollupOnMouseWheelEvent()) {
+      return consumeEvent;
     }
   }
 
+  // if we're dealing with menus, we probably have submenus and
+  // we don't want to rollup if the click is in a parent menu of
+  // the current submenu
+  uint32_t popupsToRollup = UINT32_MAX;
+  AutoTArray<nsIWidget*, 5> widgetChain;
+  uint32_t sameTypeCount = rollupListener->GetSubmenuWidgetChain(&widgetChain);
+  for (uint32_t i = 0; i < widgetChain.Length(); i++) {
+    nsIWidget* widget = widgetChain[i];
+    NSWindow* currWindow = (NSWindow*)widget->GetNativeData(NS_NATIVE_WINDOW);
+    if (nsCocoaUtils::IsEventOverWindow(theEvent, currWindow)) {
+      // don't roll up if the mouse event occurred within a menu of the
+      // same type. If the mouse event occurred in a menu higher than
+      // that, roll up, but pass the number of popups to Rollup so
+      // that only those of the same type close up.
+      if (i < sameTypeCount) {
+        return consumeEvent;
+      }
+      popupsToRollup = sameTypeCount;
+      break;
+    }
+  }
+
+  LayoutDeviceIntPoint devPoint;
+  nsIRollupListener::RollupOptions rollupOptions{popupsToRollup,
+                                                 nsIRollupListener::FlushViews::Yes};
+  if ([theEvent type] == NSEventTypeLeftMouseDown) {
+    NSPoint point = [NSEvent mouseLocation];
+    FlipCocoaScreenCoordinate(point);
+    devPoint = mGeckoChild->CocoaPointsToDevPixels(point);
+    rollupOptions.mPoint = &devPoint;
+  }
+  consumeEvent = (BOOL)rollupListener->Rollup(rollupOptions);
   return consumeEvent;
 
   NS_OBJC_END_TRY_BLOCK_RETURN(NO);
@@ -2671,7 +2526,6 @@ NSEvent* gLastDragMouseDownEvent = nil;  // [strong]
       ViewAs<ExternalPixel>(mGeckoChild->WidgetToScreenOffset(),
                             PixelCastJustification::LayoutDeviceIsScreenForUntransformedEvent);
 
-  PRIntervalTime eventIntervalTime = PR_IntervalNow();
   TimeStamp eventTimeStamp = nsCocoaUtils::GetEventTimeStamp([anEvent timestamp]);
   NSEventPhase eventPhase = [anEvent phase];
   PinchGestureInput::PinchGestureType pinchGestureType;
@@ -2698,7 +2552,6 @@ NSEvent* gLastDragMouseDownEvent = nil;  // [strong]
 
   PinchGestureInput event{pinchGestureType,
                           PinchGestureInput::TRACKPAD,
-                          eventIntervalTime,
                           eventTimeStamp,
                           screenOffset,
                           position,
@@ -2867,36 +2720,6 @@ NSEvent* gLastDragMouseDownEvent = nil;  // [strong]
   mCumulativeRotation = 0.0;
 
   NS_OBJC_END_TRY_IGNORE_BLOCK;
-}
-
-- (bool)shouldConsiderStartingSwipeFromEvent:(NSEvent*)anEvent {
-  // This method checks whether the AppleEnableSwipeNavigateWithScrolls global
-  // preference is set.  If it isn't, fluid swipe tracking is disabled, and a
-  // horizontal two-finger gesture is always a scroll (even in Safari).  This
-  // preference can't (currently) be set from the Preferences UI -- only using
-  // 'defaults write'.
-  if (![NSEvent isSwipeTrackingFromScrollEventsEnabled]) {
-    return false;
-  }
-
-  // Only initiate horizontal tracking for gestures that have just begun --
-  // otherwise a scroll to one side of the page can have a swipe tacked on
-  // to it.
-  NSEventPhase eventPhase = [anEvent phase];
-  if ([anEvent type] != NSEventTypeScrollWheel || eventPhase != NSEventPhaseBegan ||
-      ![anEvent hasPreciseScrollingDeltas]) {
-    return false;
-  }
-
-  // Only initiate horizontal tracking for events whose horizontal element is
-  // at least eight times larger than its vertical element. This minimizes
-  // performance problems with vertical scrolls (by minimizing the possibility
-  // that they'll be misinterpreted as horizontal swipes), while still
-  // tolerating a small vertical element to a true horizontal swipe.  The number
-  // '8' was arrived at by trial and error.
-  CGFloat deltaX = [anEvent scrollingDeltaX];
-  CGFloat deltaY = [anEvent scrollingDeltaY];
-  return std::abs(deltaX) > std::abs(deltaY) * 8;
 }
 
 - (void)setUsingOMTCompositor:(BOOL)aUseOMTC {
@@ -3169,6 +2992,11 @@ NSEvent* gLastDragMouseDownEvent = nil;  // [strong]
   mGeckoChild->DispatchInputEvent(&geckoEvent);
 }
 
+static bool ShouldDispatchBackForwardCommandForMouseButton(int16_t aButton) {
+  return (aButton == MouseButton::eX1 && Preferences::GetBool("mousebutton.4th.enabled", true)) ||
+         (aButton == MouseButton::eX2 && Preferences::GetBool("mousebutton.5th.enabled", true));
+}
+
 - (void)otherMouseDown:(NSEvent*)theEvent {
   NS_OBJC_BEGIN_TRY_IGNORE_BLOCK;
 
@@ -3183,9 +3011,17 @@ NSEvent* gLastDragMouseDownEvent = nil;  // [strong]
     return;
   }
 
+  int16_t button = nsCocoaUtils::ButtonForEvent(theEvent);
+  if (ShouldDispatchBackForwardCommandForMouseButton(button)) {
+    WidgetCommandEvent appCommandEvent(
+        true, (button == MouseButton::eX2) ? nsGkAtoms::Forward : nsGkAtoms::Back, mGeckoChild);
+    mGeckoChild->DispatchWindowEvent(appCommandEvent);
+    return;
+  }
+
   WidgetMouseEvent geckoEvent(true, eMouseDown, mGeckoChild, WidgetMouseEvent::eReal);
   [self convertCocoaMouseEvent:theEvent toGeckoEvent:&geckoEvent];
-  geckoEvent.mButton = MouseButton::eMiddle;
+  geckoEvent.mButton = button;
   geckoEvent.mClickCount = [theEvent clickCount];
 
   mGeckoChild->DispatchInputEvent(&geckoEvent);
@@ -3199,9 +3035,14 @@ NSEvent* gLastDragMouseDownEvent = nil;  // [strong]
     return;
   }
 
+  int16_t button = nsCocoaUtils::ButtonForEvent(theEvent);
+  if (ShouldDispatchBackForwardCommandForMouseButton(button)) {
+    return;
+  }
+
   WidgetMouseEvent geckoEvent(true, eMouseUp, mGeckoChild, WidgetMouseEvent::eReal);
   [self convertCocoaMouseEvent:theEvent toGeckoEvent:&geckoEvent];
-  geckoEvent.mButton = MouseButton::eMiddle;
+  geckoEvent.mButton = button;
 
   nsAutoRetainCocoaObject kungFuDeathGrip(self);
   mGeckoChild->DispatchInputEvent(&geckoEvent);
@@ -3215,7 +3056,8 @@ NSEvent* gLastDragMouseDownEvent = nil;  // [strong]
 
   WidgetMouseEvent geckoEvent(true, eMouseMove, mGeckoChild, WidgetMouseEvent::eReal);
   [self convertCocoaMouseEvent:theEvent toGeckoEvent:&geckoEvent];
-  geckoEvent.mButton = MouseButton::eMiddle;
+  int16_t button = nsCocoaUtils::ButtonForEvent(theEvent);
+  geckoEvent.mButton = button;
 
   // send event into Gecko by going directly to the
   // the widget.
@@ -3237,36 +3079,6 @@ NSEvent* gLastDragMouseDownEvent = nil;  // [strong]
     [self sendWheelStartOrStop:first forEvent:theEvent];
   }
   [self sendWheelStartOrStop:second forEvent:theEvent];
-}
-
-static PanGestureInput::PanGestureType PanGestureTypeForEvent(NSEvent* aEvent) {
-  switch ([aEvent phase]) {
-    case NSEventPhaseMayBegin:
-      return PanGestureInput::PANGESTURE_MAYSTART;
-    case NSEventPhaseCancelled:
-      return PanGestureInput::PANGESTURE_CANCELLED;
-    case NSEventPhaseBegan:
-      return PanGestureInput::PANGESTURE_START;
-    case NSEventPhaseChanged:
-      return PanGestureInput::PANGESTURE_PAN;
-    case NSEventPhaseEnded:
-      return PanGestureInput::PANGESTURE_END;
-    case NSEventPhaseNone:
-      switch ([aEvent momentumPhase]) {
-        case NSEventPhaseBegan:
-          return PanGestureInput::PANGESTURE_MOMENTUMSTART;
-        case NSEventPhaseChanged:
-          return PanGestureInput::PANGESTURE_MOMENTUMPAN;
-        case NSEventPhaseEnded:
-          return PanGestureInput::PANGESTURE_MOMENTUMEND;
-        default:
-          NS_ERROR("unexpected event phase");
-          return PanGestureInput::PANGESTURE_PAN;
-      }
-    default:
-      NS_ERROR("unexpected event phase");
-      return PanGestureInput::PANGESTURE_PAN;
-  }
 }
 
 static int32_t RoundUp(double aDouble) {
@@ -3345,7 +3157,6 @@ static gfx::IntPoint GetIntegerDeltaForEvent(NSEvent* aEvent) {
 
   Modifiers modifiers = nsCocoaUtils::ModifiersForEvent(theEvent);
 
-  PRIntervalTime eventIntervalTime = PR_IntervalNow();
   TimeStamp eventTimeStamp = nsCocoaUtils::GetEventTimeStamp([theEvent timestamp]);
 
   ScreenPoint preciseDelta;
@@ -3357,52 +3168,35 @@ static gfx::IntPoint GetIntegerDeltaForEvent(NSEvent* aEvent) {
   }
 
   if (usePreciseDeltas && hasPhaseInformation) {
-    PanGestureInput panEvent(PanGestureTypeForEvent(theEvent), eventIntervalTime, eventTimeStamp,
-                             position, preciseDelta, modifiers);
-    panEvent.mLineOrPageDeltaX = lineOrPageDelta.x;
-    panEvent.mLineOrPageDeltaY = lineOrPageDelta.y;
+    PanGestureInput panEvent = nsCocoaUtils::CreatePanGestureEvent(
+        theEvent, eventTimeStamp, position, preciseDelta, lineOrPageDelta, modifiers);
 
-    if (panEvent.mType == PanGestureInput::PANGESTURE_END) {
-      // Check if there's a momentum start event in the event queue, so that we
-      // can annotate this event.
-      NSEvent* nextWheelEvent = [NSApp nextEventMatchingMask:NSEventMaskScrollWheel
-                                                   untilDate:[NSDate distantPast]
-                                                      inMode:NSDefaultRunLoopMode
-                                                     dequeue:NO];
-      if (nextWheelEvent &&
-          PanGestureTypeForEvent(nextWheelEvent) == PanGestureInput::PANGESTURE_MOMENTUMSTART) {
-        panEvent.mFollowedByMomentum = true;
-      }
-    }
-
-    bool canTriggerSwipe = [self shouldConsiderStartingSwipeFromEvent:theEvent];
-    panEvent.mRequiresContentResponseIfCannotScrollHorizontallyInStartDirection = canTriggerSwipe;
-    geckoChildDeathGrip->DispatchAPZWheelInputEvent(panEvent, canTriggerSwipe);
+    geckoChildDeathGrip->DispatchAPZWheelInputEvent(panEvent);
   } else if (usePreciseDeltas) {
     // This is on 10.6 or old touchpads that don't have any phase information.
-    ScrollWheelInput wheelEvent(
-        eventIntervalTime, eventTimeStamp, modifiers, ScrollWheelInput::SCROLLMODE_INSTANT,
-        ScrollWheelInput::SCROLLDELTA_PIXEL, position, preciseDelta.x, preciseDelta.y, false,
-        // This parameter is used for wheel delta
-        // adjustment, such as auto-dir scrolling,
-        // but we do't need to do anything special here
-        // since this wheel event is sent to
-        // DispatchAPZWheelInputEvent, which turns this
-        // ScrollWheelInput back into a WidgetWheelEvent
-        // and then it goes through the regular handling
-        // in APZInputBridge. So passing |eNone| won't
-        // pass up the necessary wheel delta adjustment.
-        WheelDeltaAdjustmentStrategy::eNone);
+    ScrollWheelInput wheelEvent(eventTimeStamp, modifiers, ScrollWheelInput::SCROLLMODE_INSTANT,
+                                ScrollWheelInput::SCROLLDELTA_PIXEL, position, preciseDelta.x,
+                                preciseDelta.y, false,
+                                // This parameter is used for wheel delta
+                                // adjustment, such as auto-dir scrolling,
+                                // but we do't need to do anything special here
+                                // since this wheel event is sent to
+                                // DispatchAPZWheelInputEvent, which turns this
+                                // ScrollWheelInput back into a WidgetWheelEvent
+                                // and then it goes through the regular handling
+                                // in APZInputBridge. So passing |eNone| won't
+                                // pass up the necessary wheel delta adjustment.
+                                WheelDeltaAdjustmentStrategy::eNone);
     wheelEvent.mLineOrPageDeltaX = lineOrPageDelta.x;
     wheelEvent.mLineOrPageDeltaY = lineOrPageDelta.y;
     wheelEvent.mIsMomentum = nsCocoaUtils::IsMomentumScrollEvent(theEvent);
-    geckoChildDeathGrip->DispatchAPZWheelInputEvent(wheelEvent, false);
+    geckoChildDeathGrip->DispatchAPZWheelInputEvent(wheelEvent);
   } else {
     ScrollWheelInput::ScrollMode scrollMode = ScrollWheelInput::SCROLLMODE_INSTANT;
     if (StaticPrefs::general_smoothScroll() && StaticPrefs::general_smoothScroll_mouseWheel()) {
       scrollMode = ScrollWheelInput::SCROLLMODE_SMOOTH;
     }
-    ScrollWheelInput wheelEvent(eventIntervalTime, eventTimeStamp, modifiers, scrollMode,
+    ScrollWheelInput wheelEvent(eventTimeStamp, modifiers, scrollMode,
                                 ScrollWheelInput::SCROLLDELTA_LINE, position, lineOrPageDelta.x,
                                 lineOrPageDelta.y, false,
                                 // This parameter is used for wheel delta
@@ -3417,7 +3211,7 @@ static gfx::IntPoint GetIntegerDeltaForEvent(NSEvent* aEvent) {
                                 WheelDeltaAdjustmentStrategy::eNone);
     wheelEvent.mLineOrPageDeltaX = lineOrPageDelta.x;
     wheelEvent.mLineOrPageDeltaY = lineOrPageDelta.y;
-    geckoChildDeathGrip->DispatchAPZWheelInputEvent(wheelEvent, false);
+    geckoChildDeathGrip->DispatchAPZWheelInputEvent(wheelEvent);
   }
 
   NS_OBJC_END_TRY_IGNORE_BLOCK;
@@ -3553,11 +3347,11 @@ static gfx::IntPoint GetIntegerDeltaForEvent(NSEvent* aEvent) {
     MOZ_ASSERT(aOutGeckoEvent->mPressure >= 0.0 && aOutGeckoEvent->mPressure <= 1.0);
   }
   aOutGeckoEvent->mInputSource = dom::MouseEvent_Binding::MOZ_SOURCE_PEN;
-  aOutGeckoEvent->tiltX = lround([aPointerEvent tilt].x * 90);
-  aOutGeckoEvent->tiltY = lround([aPointerEvent tilt].y * 90);
+  aOutGeckoEvent->tiltX = (int32_t)lround([aPointerEvent tilt].x * 90);
+  aOutGeckoEvent->tiltY = (int32_t)lround([aPointerEvent tilt].y * 90);
   aOutGeckoEvent->tangentialPressure = [aPointerEvent tangentialPressure];
   // Make sure the twist value is in the range of 0-359.
-  int32_t twist = fmod([aPointerEvent rotation], 360);
+  int32_t twist = (int32_t)fmod([aPointerEvent rotation], 360);
   aOutGeckoEvent->twist = twist >= 0 ? twist : twist + 360;
   NS_OBJC_END_TRY_IGNORE_BLOCK;
 }
@@ -3744,7 +3538,8 @@ static gfx::IntPoint GetIntegerDeltaForEvent(NSEvent* aEvent) {
     NSString* info = [NSString
         stringWithFormat:
             @"\nview [%@], window [%@], window is key %i, is fullscreen %i, app is active %i", self,
-            window, [window isKeyWindow], ([window styleMask] & (1 << 14)) != 0, [NSApp isActive]];
+            window, [window isKeyWindow], ([window styleMask] & NSWindowStyleMaskFullScreen) != 0,
+            [NSApp isActive]];
     nsAutoCString additionalInfo([info UTF8String]);
 
     if (mGeckoChild->GetInputContext().IsPasswordEditor() &&
@@ -4305,6 +4100,7 @@ static gfx::IntPoint GetIntegerDeltaForEvent(NSEvent* aEvent) {
           nsCOMPtr<nsIDragService> dragService = mDragService;
           dragService->EndDragSession(false, nsCocoaUtils::ModifiersForEvent([NSApp currentEvent]));
         }
+        break;
       }
       default:
         break;
@@ -4377,6 +4173,10 @@ static gfx::IntPoint GetIntegerDeltaForEvent(NSEvent* aEvent) {
               operation:(NSDragOperation)aOperation {
   NS_OBJC_BEGIN_TRY_IGNORE_BLOCK;
 
+#ifdef NIGHTLY_BUILD
+  MOZ_RELEASE_ASSERT(NS_IsMainThread());
+#endif
+
   gDraggedTransferables = nullptr;
 
   NSEvent* currentEvent = [NSApp currentEvent];
@@ -4389,14 +4189,16 @@ static gfx::IntPoint GetIntegerDeltaForEvent(NSEvent* aEvent) {
   }
 
   if (mDragService) {
-    // set the dragend point from the current mouse location
     RefPtr<nsDragService> dragService = static_cast<nsDragService*>(mDragService);
-    FlipCocoaScreenCoordinate(aPoint);
-    dragService->SetDragEndPoint(gfx::IntPoint::Round(aPoint.x, aPoint.y));
 
+    // Set the dragend point from the current mouse location
+    // FIXME(emilio): Weird that we wouldn't use aPoint instead? Seems to work
+    // locally as well...
+    // NSPoint pnt = aPoint;
     NSPoint pnt = [NSEvent mouseLocation];
+    NSPoint locationInWindow = nsCocoaUtils::ConvertPointFromScreen([self window], pnt);
     FlipCocoaScreenCoordinate(pnt);
-    dragService->SetDragEndPoint(gfx::IntPoint::Round(pnt.x, pnt.y));
+    dragService->SetDragEndPoint([self convertWindowCoordinates:locationInWindow]);
 
     // XXX: dropEffect should be updated per |aOperation|.
     // As things stand though, |aOperation| isn't well handled within "our"
@@ -4481,6 +4283,10 @@ static CFTypeRefPtr<CFURLRef> GetPasteLocation(NSPasteboard* aPasteboard) {
                   item:(NSPasteboardItem*)aItem
     provideDataForType:(NSString*)aType {
   NS_OBJC_BEGIN_TRY_IGNORE_BLOCK;
+
+#ifdef NIGHTLY_BUILD
+  MOZ_RELEASE_ASSERT(NS_IsMainThread());
+#endif
 
   if (!gDraggedTransferables) {
     return;
@@ -4587,9 +4393,17 @@ static CFTypeRefPtr<CFURLRef> GetPasteLocation(NSPasteboard* aPasteboard) {
 
 // Support for the "Services" menu. We currently only support sending strings
 // and HTML to system services.
-
+// This method can be called on any thread (see bug 1751687). We can only usefully
+// handle it on the main thread.
 - (id)validRequestorForSendType:(NSString*)sendType returnType:(NSString*)returnType {
   NS_OBJC_BEGIN_TRY_BLOCK_RETURN;
+
+  if (!NS_IsMainThread()) {
+    // We don't have any thread-safe ways of checking whether we can send
+    // or receive content. Just say no. In normal cases, we expect this
+    // method to be called on the main thread.
+    return [super validRequestorForSendType:sendType returnType:returnType];
+  }
 
   // sendType contains the type of data that the service would like this
   // application to send to it.  sendType is nil if the service is not
@@ -4706,7 +4520,7 @@ static CFTypeRefPtr<CFURLRef> GetPasteLocation(NSPasteboard* aPasteboard) {
   if (NS_FAILED(rv)) return NO;
   trans->Init(nullptr);
 
-  trans->AddDataFlavor(kUnicodeMime);
+  trans->AddDataFlavor(kTextMime);
   trans->AddDataFlavor(kHTMLMime);
 
   rv = nsClipboard::TransferableFromPasteboard(trans, pboard);
@@ -4767,6 +4581,22 @@ nsresult nsChildView::GetSelectionAsPlaintext(nsAString& aResult) {
 
   NS_OBJC_END_TRY_BLOCK_RETURN(NS_ERROR_FAILURE);
 }
+
+#ifdef DEBUG
+nsresult nsChildView::SetHiDPIMode(bool aHiDPI) {
+  nsCocoaUtils::InvalidateHiDPIState();
+  Preferences::SetInt("gfx.hidpi.enabled", aHiDPI ? 1 : 0);
+  BackingScaleFactorChanged();
+  return NS_OK;
+}
+
+nsresult nsChildView::RestoreHiDPIMode() {
+  nsCocoaUtils::InvalidateHiDPIState();
+  Preferences::ClearUser("gfx.hidpi.enabled");
+  BackingScaleFactorChanged();
+  return NS_OK;
+}
+#endif
 
 #pragma mark -
 
@@ -5060,21 +4890,21 @@ BOOL ChildViewMouseTracker::WindowAcceptsEvent(NSWindow* aWindow, NSEvent* aEven
 
   NSWindow* topLevelWindow = nil;
 
-  switch (windowWidget->WindowType()) {
-    case eWindowType_popup:
+  switch (windowWidget->GetWindowType()) {
+    case WindowType::Popup:
       // If this is a context menu, it won't have a parent. So we'll always
       // accept mouse move events on context menus even when none of our windows
       // is active, which is the right thing to do.
       // For panels, the parent window is the XUL window that owns the panel.
       return WindowAcceptsEvent([aWindow parentWindow], aEvent, aView, aIsClickThrough);
 
-    case eWindowType_toplevel:
-    case eWindowType_dialog:
+    case WindowType::TopLevel:
+    case WindowType::Dialog:
       if ([aWindow attachedSheet]) return NO;
 
       topLevelWindow = aWindow;
       break;
-    case eWindowType_sheet: {
+    case WindowType::Sheet: {
       nsIWidget* parentWidget = windowWidget->GetSheetWindowParent();
       if (!parentWidget) return YES;
 

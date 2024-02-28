@@ -3,7 +3,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 /*
- * Test the ability to swtich between multiple folder modes.
+ * Test the ability to switch between multiple folder modes.
  */
 
 "use strict";
@@ -11,29 +11,35 @@
 var {
   assert_folder_visible,
   inboxFolder,
-  make_new_sets_in_folder,
+  make_message_sets_in_folders,
   mc,
-  select_no_folders,
   toggle_main_menu,
 } = ChromeUtils.import(
   "resource://testing-common/mozmill/FolderDisplayHelpers.jsm"
 );
+var { MailTelemetryForTests } = ChromeUtils.import(
+  "resource:///modules/MailGlue.jsm"
+);
+var { TelemetryTestUtils } = ChromeUtils.importESModule(
+  "resource://testing-common/TelemetryTestUtils.sys.mjs"
+);
+var { click_menus_in_sequence, click_through_appmenu, close_popup_sequence } =
+  ChromeUtils.import("resource://testing-common/mozmill/WindowHelpers.jsm");
 
 var rootFolder;
 var unreadFolder;
 var favoriteFolder;
-var tree;
 var modeList_menu;
 var modeList_appmenu;
-var modeList_popupmenu;
 var view_menu;
 var view_menupopup;
 var appmenu_button;
 var appmenu_mainView;
 var appmenu_popup;
 var menu_state;
+var about3Pane;
 
-add_task(function setupModule(module) {
+add_setup(async function () {
   rootFolder = inboxFolder.server.rootFolder;
 
   // Create one folder with unread messages and one favorite folder.
@@ -43,28 +49,27 @@ add_task(function setupModule(module) {
   inboxFolder.createSubfolder("FavoriteFolder", null);
   favoriteFolder = inboxFolder.getChildNamed("FavoriteFolder");
 
-  make_new_sets_in_folder(unreadFolder, [{ count: 1 }]);
+  await make_message_sets_in_folders([unreadFolder], [{ count: 1 }]);
   favoriteFolder.setFlag(Ci.nsMsgFolderFlags.Favorite);
 
-  modeList_menu = mc.e("menu_FolderViewsPopup");
-  modeList_appmenu = mc.e("appMenu-foldersView");
-  modeList_popupmenu = mc.e("folderPaneOptionsPopup");
+  modeList_menu = mc.window.document.getElementById("menu_FolderViewsPopup");
+  modeList_appmenu = mc.window.document.getElementById("appMenu-foldersView");
 
-  view_menu = mc.e("menu_View");
-  view_menupopup = mc.e("menu_View_Popup");
+  view_menu = mc.window.document.getElementById("menu_View");
+  view_menupopup = mc.window.document.getElementById("menu_View_Popup");
   appmenu_button = mc.window.document.getElementById("button-appmenu");
-  appmenu_mainView = mc.e("appMenu-mainView");
-  appmenu_popup = mc.e("appMenu-popup");
-
-  tree = mc.folderTreeView;
-
-  select_no_folders();
+  appmenu_mainView = mc.window.document.getElementById("appMenu-mainView");
+  appmenu_popup = mc.window.document.getElementById("appMenu-popup");
 
   // Main menu is needed for this whole test file.
   menu_state = toggle_main_menu(true);
 
-  // Show the Folder Pane header toolbar.
-  mc.e("folderPaneHeader").removeAttribute("collapsed");
+  about3Pane = document.getElementById("tabmail").currentAbout3Pane;
+
+  Services.xulStore.removeDocument(
+    "chrome://messenger/content/messenger.xhtml"
+  );
+  Services.telemetry.clearScalars();
 });
 
 /**
@@ -73,31 +78,36 @@ add_task(function setupModule(module) {
  * @param {string} aMode - The name of the expected mode.
  */
 async function assert_mode_selected(aMode) {
-  Assert.ok(tree.activeModes.includes(aMode));
+  if (aMode != "compact") {
+    // "compact" isn't really a mode, we're just using this function because
+    // it tests everything we want to test.
+    Assert.ok(about3Pane.folderPane.activeModes.includes(aMode));
+  }
 
   // We need to open the menu because only then the right mode is set in them.
   if (["linux", "win"].includes(AppConstants.platform)) {
     // On OS X the main menu seems not accessible for clicking from tests.
-    mc.click(view_menu);
-    let popuplist = await mc.click_menus_in_sequence(
+    EventUtils.synthesizeMouseAtCenter(view_menu, { clickCount: 1 }, mc.window);
+    let popuplist = await click_menus_in_sequence(
       view_menupopup,
       [{ id: modeList_menu.parentNode.id }],
       true
     );
-    for (let mode of tree.activeModes) {
+    for (let mode of about3Pane.folderPane.activeModes) {
       Assert.ok(
         modeList_menu.querySelector(`[value="${mode}"]`).hasAttribute("checked")
       );
     }
-    mc.close_popup_sequence(popuplist);
+    close_popup_sequence(popuplist);
   }
 
   EventUtils.synthesizeMouseAtCenter(appmenu_button, {}, mc.window);
-  mc.click_through_appmenu([
-    { id: "appmenu_View" },
-    { id: "appmenu_FolderViews" },
-  ]);
-  for (let mode of tree.activeModes) {
+  click_through_appmenu(
+    [{ id: "appmenu_View" }, { id: "appmenu_FolderViews" }],
+    null,
+    mc.window
+  );
+  for (let mode of about3Pane.folderPane.activeModes) {
     Assert.ok(
       modeList_appmenu
         .querySelector(`[value="${mode}"]`)
@@ -105,21 +115,6 @@ async function assert_mode_selected(aMode) {
     );
   }
   appmenu_popup.hidePopup();
-
-  let shownPromise = BrowserTestUtils.waitForEvent(
-    modeList_popupmenu,
-    "popupshown"
-  );
-  mc.click(mc.e("folderPaneOptionsButton"));
-  await shownPromise;
-  for (let mode of tree.activeModes) {
-    Assert.ok(
-      modeList_popupmenu
-        .querySelector(`[value="${mode}"]`)
-        .hasAttribute("checked")
-    );
-  }
-  modeList_popupmenu.hidePopup();
 }
 
 /**
@@ -128,13 +123,13 @@ async function assert_mode_selected(aMode) {
  * @param {string} mode - The name of the missing mode.
  */
 async function assert_mode_not_selected(mode) {
-  Assert.ok(!tree.activeModes.includes(mode));
+  Assert.ok(!about3Pane.folderPane.activeModes.includes(mode));
 
   // We need to open the menu because only then the right mode is set in them.
   if (["linux", "win"].includes(AppConstants.platform)) {
     // On OS X the main menu seems not accessible for clicking from tests.
-    mc.click(view_menu);
-    let popuplist = await mc.click_menus_in_sequence(
+    EventUtils.synthesizeMouseAtCenter(view_menu, { clickCount: 1 }, mc.window);
+    let popuplist = await click_menus_in_sequence(
       view_menupopup,
       [{ id: modeList_menu.parentNode.id }],
       true
@@ -142,31 +137,19 @@ async function assert_mode_not_selected(mode) {
     Assert.ok(
       !modeList_menu.querySelector(`[value="${mode}"]`).hasAttribute("checked")
     );
-    mc.close_popup_sequence(popuplist);
+    close_popup_sequence(popuplist);
   }
 
   EventUtils.synthesizeMouseAtCenter(appmenu_button, {}, mc.window);
-  mc.click_through_appmenu([
-    { id: "appmenu_View" },
-    { id: "appmenu_FolderViews" },
-  ]);
+  click_through_appmenu(
+    [{ id: "appmenu_View" }, { id: "appmenu_FolderViews" }],
+    null,
+    mc.window
+  );
   Assert.ok(
     !modeList_appmenu.querySelector(`[value="${mode}"]`).hasAttribute("checked")
   );
   appmenu_popup.hidePopup();
-
-  let shownPromise = BrowserTestUtils.waitForEvent(
-    modeList_popupmenu,
-    "popupshown"
-  );
-  mc.click(mc.e("folderPaneOptionsButton"));
-  await shownPromise;
-  Assert.ok(
-    !modeList_popupmenu
-      .querySelector(`[value="${mode}"]`)
-      .hasAttribute("checked")
-  );
-  modeList_popupmenu.hidePopup();
 }
 
 /**
@@ -176,9 +159,10 @@ async function assert_mode_not_selected(mode) {
  */
 function select_mode_in_menu(mode) {
   EventUtils.synthesizeMouseAtCenter(appmenu_button, {}, mc.window);
-  mc.click_through_appmenu(
+  click_through_appmenu(
     [{ id: "appmenu_View" }, { id: "appmenu_FolderViews" }],
-    { value: mode }
+    { value: mode },
+    mc.window
   );
   appmenu_popup.hidePopup();
 }
@@ -264,28 +248,91 @@ async function subtest_toggle_smart_folders(show) {
 }
 
 /**
+ * Toggle the compact mode.
+ */
+async function subtest_toggle_compact(compact) {
+  let mode = "compact";
+  select_mode_in_menu(mode);
+
+  if (compact) {
+    await assert_mode_selected(mode);
+  } else {
+    await assert_mode_not_selected(mode);
+  }
+}
+
+/**
+ * Toggle the compact mode.
+ */
+async function subtest_toggle_tags(show) {
+  let mode = "tags";
+  select_mode_in_menu(mode);
+
+  if (show) {
+    await assert_mode_selected(mode);
+  } else {
+    await assert_mode_not_selected(mode);
+  }
+}
+
+/**
+ * Check that the current mode(s) are accurately recorded in telemetry.
+ * Note that `reportUIConfiguration` usually only runs at start-up.
+ */
+function check_scalars(expected) {
+  MailTelemetryForTests.reportUIConfiguration();
+  let scalarName = "tb.ui.configuration.folder_tree_modes";
+  let scalars = TelemetryTestUtils.getProcessScalars("parent");
+  if (expected) {
+    TelemetryTestUtils.assertScalar(scalars, scalarName, expected);
+  } else {
+    TelemetryTestUtils.assertScalarUnset(scalars, scalarName);
+  }
+}
+
+/**
  * Toggle folder modes through different means and sequences.
  */
 add_task(async function test_toggling_modes() {
+  check_scalars();
+
   await subtest_toggle_all_folders(true);
   await subtest_toggle_smart_folders(true);
+  check_scalars("all,smart");
+
+  await subtest_toggle_tags(true);
+  check_scalars("all,smart,tags");
+
   await subtest_toggle_unread_folders(true);
   await subtest_toggle_favorite_folders(true);
   await subtest_toggle_recent_folders(true);
+  check_scalars("all,smart,tags,unread,favorite,recent");
+
+  await subtest_toggle_compact(true);
+  check_scalars("all,smart,tags,unread,favorite,recent (compact)");
 
   await subtest_toggle_unread_folders(false);
+  check_scalars("all,smart,tags,favorite,recent (compact)");
+
+  await subtest_toggle_compact(false);
+  check_scalars("all,smart,tags,favorite,recent");
+
   await subtest_toggle_favorite_folders(false);
+  check_scalars("all,smart,tags,recent");
+
   await subtest_toggle_all_folders(false);
   await subtest_toggle_recent_folders(false);
   await subtest_toggle_smart_folders(false);
+  await subtest_toggle_tags(false);
 
   // Confirm that the all folders mode is visible even after all the modes have
   // been deselected in order to ensure that the Folder Pane is never empty.
   await assert_mode_selected("all");
+  check_scalars("all");
 });
 
-registerCleanupFunction(function teardownModule() {
-  inboxFolder.propagateDelete(unreadFolder, true, null);
-  inboxFolder.propagateDelete(favoriteFolder, true, null);
+registerCleanupFunction(function () {
+  inboxFolder.propagateDelete(unreadFolder, true);
+  inboxFolder.propagateDelete(favoriteFolder, true);
   toggle_main_menu(menu_state);
 });

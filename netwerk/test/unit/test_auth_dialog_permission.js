@@ -10,9 +10,7 @@
 
 const { HttpServer } = ChromeUtils.import("resource://testing-common/httpd.js");
 
-var prefs = Cc["@mozilla.org/preferences-service;1"].getService(
-  Ci.nsIPrefBranch
-);
+var prefs = Services.prefs;
 
 // Since this test creates a TYPE_DOCUMENT channel via javascript, it will
 // end up using the wrong LoadInfo constructor. Setting this pref will disable
@@ -30,12 +28,14 @@ function authHandler(metadata, response) {
   ) {
     response.setStatusLine(metadata.httpVersion, 200, "OK, authorized");
     response.setHeader("WWW-Authenticate", 'Basic realm="secret"', false);
+    response.setHeader("Content-Type", "text/javascript", false);
 
     body = "success";
   } else {
     // didn't know guest:guest, failure
     response.setStatusLine(metadata.httpVersion, 401, "Unauthorized");
     response.setHeader("WWW-Authenticate", 'Basic realm="secret"', false);
+    response.setHeader("Content-Type", "text/javascript", false);
 
     body = "failed";
   }
@@ -47,12 +47,8 @@ var httpserv = new HttpServer();
 httpserv.registerPathHandler("/auth", authHandler);
 httpserv.start(-1);
 
-XPCOMUtils.defineLazyGetter(this, "URL", function() {
+XPCOMUtils.defineLazyGetter(this, "URL", function () {
   return "http://localhost:" + httpserv.identity.primaryPort;
-});
-
-XPCOMUtils.defineLazyGetter(this, "PORT", function() {
-  return httpserv.identity.primaryPort;
 });
 
 function AuthPrompt(promptExpected) {
@@ -102,16 +98,15 @@ Requestor.prototype = {
 };
 
 function make_uri(url) {
-  var ios = Cc["@mozilla.org/network/io-service;1"].getService(Ci.nsIIOService);
-  return ios.newURI(url);
+  return Services.io.newURI(url);
 }
 
 function makeChan(loadingUrl, url, contentPolicy) {
-  var ssm = Cc["@mozilla.org/scriptsecuritymanager;1"].getService(
-    Ci.nsIScriptSecurityManager
-  );
   var uri = make_uri(loadingUrl);
-  var principal = ssm.createContentPrincipal(uri, {});
+  var principal = Services.scriptSecurityManager.createContentPrincipal(
+    uri,
+    {}
+  );
 
   return NetUtil.newChannel({
     uri: url,

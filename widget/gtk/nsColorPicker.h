@@ -12,10 +12,8 @@
 #include "nsIColorPicker.h"
 #include "nsString.h"
 
-// Don't activate the GTK3 color picker for now, because it is missing a few
-// things, mainly the ability to let the user select a color on the screen.
-// See bug 1198256.
-#undef ACTIVATE_GTK3_COLOR_PICKER
+// Enable Gtk3 system color picker.
+#define ACTIVATE_GTK3_COLOR_PICKER 1
 
 class nsIWidget;
 
@@ -67,6 +65,7 @@ class nsColorPicker final : public nsIColorPicker {
   nsString mTitle;
   nsString mColor;
   nsString mInitialColor;
+  nsTArray<nsString> mDefaultColors;
 };
 
 #endif  // nsColorPicker_h__

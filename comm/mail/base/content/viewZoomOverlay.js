@@ -9,9 +9,9 @@
 /** Document Zoom Management Code
  *
  * Forked from M-C since we don't provide a global gBrowser variable.
- **/
-
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
+ *
+ * TODO: Move to dedicated js module - see bug 1841768.
+ */
 
 var ZoomManager = {
   get MIN() {
@@ -59,18 +59,17 @@ var ZoomManager = {
     this.setZoomForBrowser(getBrowser(), aVal);
   },
 
-  setZoomForBrowser(aBrowser, aVal) {
-    if (aVal < this.MIN || aVal > this.MAX) {
-      throw Components.Exception("", Cr.NS_ERROR_INVALID_ARG);
+  setZoomForBrowser(browser, val) {
+    if (val < this.MIN || val > this.MAX) {
+      throw Components.Exception(
+        `invalid zoom value: ${val}`,
+        Cr.NS_ERROR_INVALID_ARG
+      );
     }
 
-    if (this.useFullZoomForBrowser(aBrowser)) {
-      aBrowser.textZoom = 1;
-      aBrowser.fullZoom = aVal;
-    } else {
-      aBrowser.textZoom = aVal;
-      aBrowser.fullZoom = 1;
-    }
+    let fullZoom = this.useFullZoomForBrowser(browser);
+    browser.textZoom = fullZoom ? 1 : val;
+    browser.fullZoom = fullZoom ? val : 1;
   },
 
   get zoomValues() {
@@ -92,29 +91,31 @@ var ZoomManager = {
     return (this.zoomValues = zoomValues);
   },
 
-  enlarge() {
-    var i = this.zoomValues.indexOf(this.snap(this.zoom)) + 1;
+  enlarge(browser = getBrowser()) {
+    const i =
+      this.zoomValues.indexOf(this.snap(this.getZoomForBrowser(browser))) + 1;
     if (i < this.zoomValues.length) {
-      this.zoom = this.zoomValues[i];
+      this.setZoomForBrowser(browser, this.zoomValues[i]);
     }
   },
 
-  reduce() {
-    var i = this.zoomValues.indexOf(this.snap(this.zoom)) - 1;
+  reduce(browser = getBrowser()) {
+    const i =
+      this.zoomValues.indexOf(this.snap(this.getZoomForBrowser(browser))) - 1;
     if (i >= 0) {
-      this.zoom = this.zoomValues[i];
+      this.setZoomForBrowser(browser, this.zoomValues[i]);
     }
   },
 
-  reset() {
-    this.zoom = 1;
+  reset(browser = getBrowser()) {
+    this.setZoomForBrowser(browser, 1);
   },
 
-  toggleZoom() {
-    var zoomLevel = this.zoom;
+  toggleZoom(browser = getBrowser()) {
+    const zoomLevel = this.getZoomForBrowser();
 
     this.useFullZoom = !this.useFullZoom;
-    this.zoom = zoomLevel;
+    this.setZoomForBrowser(browser, zoomLevel);
   },
 
   snap(aVal) {

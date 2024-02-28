@@ -1,23 +1,19 @@
-$status-green: #058B00;
-$status-dark-green: #7C6;
-
 .story-footer {
   color: var(--newtab-text-secondary-color);
   inset-inline-start: 0;
   margin-top: 12px;
   position: relative;
 
-  .story-sponsored-label,
-  .story-view-count,
-  .status-message {
-    @include dark-theme-only {
-      color: $grey-40;
-    }
+  .story-sponsored-label span {
+    display: inline-block;
+  }
 
+  .story-sponsored-label,
+  .status-message {
     -webkit-line-clamp: 1;
     font-size: 13px;
     line-height: 24px;
-    color: $grey-50;
+    color: var(--newtab-text-secondary-color);
   }
 
   .status-message {
@@ -26,11 +22,7 @@ $status-dark-green: #7C6;
     height: 24px;
 
     .story-badge-icon {
-      @include dark-theme-only {
-        fill: $grey-40;
-      }
-
-      fill: $grey-50;
+      fill: var(--newtab-text-secondary-color);
       height: 16px;
       margin-inline-end: 6px;
 
@@ -40,11 +32,7 @@ $status-dark-green: #7C6;
     }
 
     .story-context-label {
-      @include dark-theme-only {
-        color: $grey-40;
-      }
-
-      color: $grey-50;
+      color: var(--newtab-text-secondary-color);
       flex-grow: 1;
       font-size: 13px;
       line-height: 24px;
@@ -65,33 +53,17 @@ $status-dark-green: #7C6;
 
   .story-badge-icon,
   .story-context-label {
-    @include dark-theme-only {
-      animation: dark-color 3s ease-out 0.3s;
-    }
-
     animation: color 3s ease-out 0.3s;
 
     @keyframes color {
       0% {
-        color: $status-green;
-        fill: $status-green;
+        color: var(--newtab-status-success);
+        fill: var(--newtab-status-success);
       }
 
       100% {
-        color: $grey-50;
-        fill: $grey-50;
-      }
-    }
-
-    @keyframes dark-color {
-      0% {
-        color: $status-dark-green;
-        fill: $status-dark-green;
-      }
-
-      100% {
-        color: $grey-40;
-        fill: $grey-40;
+        color: var(--newtab-text-secondary-color);
+        fill: var(--newtab-text-secondary-color);
       }
     }
   }

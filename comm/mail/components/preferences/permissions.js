@@ -5,13 +5,9 @@
 // toolkit/content/treeUtils.js
 /* globals gTreeUtils */
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-var { AppConstants } = ChromeUtils.import(
-  "resource://gre/modules/AppConstants.jsm"
+var { AppConstants } = ChromeUtils.importESModule(
+  "resource://gre/modules/AppConstants.sys.mjs"
 );
-
-var nsIPermissionManager = Ci.nsIPermissionManager;
-var nsICookiePermission = Ci.nsICookiePermission;
 
 var NOTIFICATION_FLUSH_PERMISSIONS = "flush-pending-permissions";
 
@@ -85,16 +81,16 @@ var gPermissionManager = {
   async _getCapabilityString(aCapability) {
     var stringKey = null;
     switch (aCapability) {
-      case nsIPermissionManager.ALLOW_ACTION:
+      case Ci.nsIPermissionManager.ALLOW_ACTION:
         stringKey = "permission-can-label";
         break;
-      case nsIPermissionManager.DENY_ACTION:
+      case Ci.nsIPermissionManager.DENY_ACTION:
         stringKey = "permission-cannot-label";
         break;
-      case nsICookiePermission.ACCESS_ALLOW_FIRST_PARTY_ONLY:
+      case Ci.nsICookiePermission.ACCESS_ALLOW_FIRST_PARTY_ONLY:
         stringKey = "permission-can-access-first-party-label";
         break;
-      case nsICookiePermission.ACCESS_SESSION:
+      case Ci.nsICookiePermission.ACCESS_SESSION:
         stringKey = "permission-can-session-label";
         break;
     }
@@ -369,10 +365,10 @@ var gPermissionManager = {
       var p = removedPermissions[i];
       this._removePermission(p);
     }
-    document.getElementById("removePermission").disabled = !this._permissions
-      .length;
-    document.getElementById("removeAllPermissions").disabled = !this
-      ._permissions.length;
+    document.getElementById("removePermission").disabled =
+      !this._permissions.length;
+    document.getElementById("removeAllPermissions").disabled =
+      !this._permissions.length;
   },
 
   onAllPermissionsDeleted() {

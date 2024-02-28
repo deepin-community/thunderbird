@@ -14,7 +14,13 @@ pub const NRBITS: ioctl_num_type = 8;
 #[doc(hidden)]
 pub const TYPEBITS: ioctl_num_type = 8;
 
-#[cfg(any(target_arch = "mips", target_arch = "mips64", target_arch = "powerpc", target_arch = "powerpc64", target_arch = "sparc64"))]
+#[cfg(any(
+    target_arch = "mips",
+    target_arch = "mips64",
+    target_arch = "powerpc",
+    target_arch = "powerpc64",
+    target_arch = "sparc64"
+))]
 mod consts {
     #[doc(hidden)]
     pub const NONE: u8 = 1;
@@ -29,11 +35,15 @@ mod consts {
 }
 
 // "Generic" ioctl protocol
-#[cfg(any(target_arch = "x86",
-          target_arch = "arm",
-          target_arch = "s390x",
-          target_arch = "x86_64",
-          target_arch = "aarch64"))]
+#[cfg(any(
+    target_arch = "x86",
+    target_arch = "arm",
+    target_arch = "s390x",
+    target_arch = "x86_64",
+    target_arch = "aarch64",
+    target_arch = "riscv32",
+    target_arch = "riscv64"
+))]
 mod consts {
     #[doc(hidden)]
     pub const NONE: u8 = 0;
@@ -71,11 +81,20 @@ pub const DIRMASK: ioctl_num_type = (1 << DIRBITS) - 1;
 #[macro_export]
 #[doc(hidden)]
 macro_rules! ioc {
-    ($dir:expr, $ty:expr, $nr:expr, $sz:expr) => (
-        (($dir as $crate::sys::ioctl::ioctl_num_type & $crate::sys::ioctl::DIRMASK) << $crate::sys::ioctl::DIRSHIFT) |
-        (($ty as $crate::sys::ioctl::ioctl_num_type & $crate::sys::ioctl::TYPEMASK) << $crate::sys::ioctl::TYPESHIFT) |
-        (($nr as $crate::sys::ioctl::ioctl_num_type & $crate::sys::ioctl::NRMASK) << $crate::sys::ioctl::NRSHIFT) |
-        (($sz as $crate::sys::ioctl::ioctl_num_type & $crate::sys::ioctl::SIZEMASK) << $crate::sys::ioctl::SIZESHIFT))
+    ($dir:expr, $ty:expr, $nr:expr, $sz:expr) => {
+        (($dir as $crate::sys::ioctl::ioctl_num_type
+            & $crate::sys::ioctl::DIRMASK)
+            << $crate::sys::ioctl::DIRSHIFT)
+            | (($ty as $crate::sys::ioctl::ioctl_num_type
+                & $crate::sys::ioctl::TYPEMASK)
+                << $crate::sys::ioctl::TYPESHIFT)
+            | (($nr as $crate::sys::ioctl::ioctl_num_type
+                & $crate::sys::ioctl::NRMASK)
+                << $crate::sys::ioctl::NRSHIFT)
+            | (($sz as $crate::sys::ioctl::ioctl_num_type
+                & $crate::sys::ioctl::SIZEMASK)
+                << $crate::sys::ioctl::SIZESHIFT)
+    };
 }
 
 /// Generate an ioctl request code for a command that passes no data.
@@ -93,9 +112,11 @@ macro_rules! ioc {
 /// ioctl_write_int_bad!(kvm_create_vm, request_code_none!(KVMIO, 0x03));
 /// # fn main() {}
 /// ```
-#[macro_export]
+#[macro_export(local_inner_macros)]
 macro_rules! request_code_none {
-    ($ty:expr, $nr:expr) => (ioc!($crate::sys::ioctl::NONE, $ty, $nr, 0))
+    ($ty:expr, $nr:expr) => {
+        ioc!($crate::sys::ioctl::NONE, $ty, $nr, 0)
+    };
 }
 
 /// Generate an ioctl request code for a command that reads.
@@ -108,9 +129,11 @@ macro_rules! request_code_none {
 /// The read/write direction is relative to userland, so this
 /// command would be userland is reading and the kernel is
 /// writing.
-#[macro_export]
+#[macro_export(local_inner_macros)]
 macro_rules! request_code_read {
-    ($ty:expr, $nr:expr, $sz:expr) => (ioc!($crate::sys::ioctl::READ, $ty, $nr, $sz))
+    ($ty:expr, $nr:expr, $sz:expr) => {
+        ioc!($crate::sys::ioctl::READ, $ty, $nr, $sz)
+    };
 }
 
 /// Generate an ioctl request code for a command that writes.
@@ -123,9 +146,11 @@ macro_rules! request_code_read {
 /// The read/write direction is relative to userland, so this
 /// command would be userland is writing and the kernel is
 /// reading.
-#[macro_export]
+#[macro_export(local_inner_macros)]
 macro_rules! request_code_write {
-    ($ty:expr, $nr:expr, $sz:expr) => (ioc!($crate::sys::ioctl::WRITE, $ty, $nr, $sz))
+    ($ty:expr, $nr:expr, $sz:expr) => {
+        ioc!($crate::sys::ioctl::WRITE, $ty, $nr, $sz)
+    };
 }
 
 /// Generate an ioctl request code for a command that reads and writes.
@@ -134,7 +159,14 @@ macro_rules! request_code_write {
 ///
 /// You should only use this macro directly if the `ioctl` you're working
 /// with is "bad" and you cannot use `ioctl_readwrite!()` directly.
-#[macro_export]
+#[macro_export(local_inner_macros)]
 macro_rules! request_code_readwrite {
-    ($ty:expr, $nr:expr, $sz:expr) => (ioc!($crate::sys::ioctl::READ | $crate::sys::ioctl::WRITE, $ty, $nr, $sz))
+    ($ty:expr, $nr:expr, $sz:expr) => {
+        ioc!(
+            $crate::sys::ioctl::READ | $crate::sys::ioctl::WRITE,
+            $ty,
+            $nr,
+            $sz
+        )
+    };
 }

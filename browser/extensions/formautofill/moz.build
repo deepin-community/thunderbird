@@ -33,12 +33,17 @@ elif CONFIG["MOZ_WIDGET_TOOLKIT"] == "windows":
     ]
 
 BROWSER_CHROME_MANIFESTS += [
+    "test/browser/address/browser.ini",
     "test/browser/browser.ini",
     "test/browser/creditCard/browser.ini",
     "test/browser/focus-leak/browser.ini",
+    "test/browser/heuristics/browser.ini",
+    "test/browser/heuristics/third_party/browser.ini",
 ]
 
-XPCSHELL_TESTS_MANIFESTS += ["test/unit/xpcshell.ini"]
+XPCSHELL_TESTS_MANIFESTS += [
+    "test/unit/xpcshell.ini",
+]
 
 MOCHITEST_MANIFESTS += [
     "test/mochitest/creditCard/mochitest.ini",

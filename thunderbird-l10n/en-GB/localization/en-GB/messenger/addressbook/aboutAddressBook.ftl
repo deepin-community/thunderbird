@@ -21,11 +21,24 @@ about-addressbook-toolbar-import =
 
 ## Books
 
+all-address-books-row =
+    .title = All Address Books
 all-address-books = All Address Books
+# Variables:
+# $name (String) - The name of the selected book/list.
+# $count (Number) - The number of contacts in the selected book/list.
+about-addressbook-card-count = Total contacts in { $name }: { $count }
+# Variables:
+# $count (Number) - The number of contacts in all address books.
+about-addressbook-card-count-all = Total contacts in all address books: { $count }
 about-addressbook-books-context-properties =
     .label = Properties
+about-addressbook-books-context-edit-list =
+    .label = Edit list
 about-addressbook-books-context-synchronize =
     .label = Synchronise
+about-addressbook-books-context-edit =
+    .label = Edit
 about-addressbook-books-context-print =
     .label = Print…
 about-addressbook-books-context-export =
@@ -53,8 +66,8 @@ about-addressbook-search =
     .placeholder = Search { $name }
 about-addressbook-search-all =
     .placeholder = Search all address books
-about-addressbook-sort-button =
-    .title = Change the list order
+about-addressbook-sort-button2 =
+    .title = List display options
 about-addressbook-name-format-display =
     .label = Display Name
 about-addressbook-name-format-firstlast =
@@ -69,6 +82,76 @@ about-addressbook-sort-email-ascending =
     .label = Sort by e-mail address (A > Z)
 about-addressbook-sort-email-descending =
     .label = Sort by e-mail address (Z > A)
+about-addressbook-horizontal-layout =
+    .label = Switch to horizontal layout
+about-addressbook-vertical-layout =
+    .label = Switch to vertical layout
+about-addressbook-table-layout =
+    .label = Table layout
+
+## Card column headers
+## Each string is listed here twice, and the values should match.
+
+about-addressbook-column-header-generatedname = Name
+about-addressbook-column-label-generatedname =
+    .label = { about-addressbook-column-header-generatedname }
+about-addressbook-column-header-emailaddresses = Email Addresses
+about-addressbook-column-label-emailaddresses =
+    .label = { about-addressbook-column-header-emailaddresses }
+about-addressbook-column-header-phonenumbers = Phone Numbers
+about-addressbook-column-label-phonenumbers =
+    .label = { about-addressbook-column-header-phonenumbers }
+about-addressbook-column-header-addresses = Addresses
+about-addressbook-column-label-addresses =
+    .label = { about-addressbook-column-header-addresses }
+about-addressbook-column-header-title = Title
+about-addressbook-column-label-title =
+    .label = { about-addressbook-column-header-title }
+about-addressbook-column-header-department = Department
+about-addressbook-column-label-department =
+    .label = { about-addressbook-column-header-department }
+about-addressbook-column-header-organization = Organisation
+about-addressbook-column-label-organization =
+    .label = { about-addressbook-column-header-organization }
+about-addressbook-column-header-addrbook = Address Book
+about-addressbook-column-label-addrbook =
+    .label = { about-addressbook-column-header-addrbook }
+about-addressbook-column-header-generatedname2 = Name
+    .title = Sort by name
+about-addressbook-column-label-generatedname2 =
+    .label = Name
+about-addressbook-column-header-emailaddresses2 = Email Addresses
+    .title = Sort by email addresses
+about-addressbook-column-label-emailaddresses2 =
+    .label = Email Addresses
+about-addressbook-column-header-nickname2 = Nickname
+    .title = Sort by nickname
+about-addressbook-column-label-nickname2 =
+    .label = Nickname
+about-addressbook-column-header-phonenumbers2 = Phone Numbers
+    .title = Sort by phone numbers
+about-addressbook-column-label-phonenumbers2 =
+    .label = Phone Numbers
+about-addressbook-column-header-addresses2 = Addresses
+    .title = Sort by addresses
+about-addressbook-column-label-addresses2 =
+    .label = Addresses
+about-addressbook-column-header-title2 = Title
+    .title = Sort by title
+about-addressbook-column-label-title2 =
+    .label = Title
+about-addressbook-column-header-department2 = Department
+    .title = Sort by department
+about-addressbook-column-label-department2 =
+    .label = Department
+about-addressbook-column-header-organization2 = Organisation
+    .title = Sort by organisation
+about-addressbook-column-label-organization2 =
+    .label = Organisation
+about-addressbook-column-header-addrbook2 = Address Book
+    .title = Sort by address book
+about-addressbook-column-label-addrbook2 =
+    .label = Address Book
 about-addressbook-cards-context-write =
     .label = Write
 about-addressbook-confirm-delete-mixed-title = Delete Contacts and Lists
@@ -107,6 +190,17 @@ about-addressbook-confirm-remove-contacts =
        *[other] Are you sure you want to remove these { $count } contacts from { $list }?
     }
 # Variables:
+# $name (String) - The name of the contact to be removed.
+# $list (String) - The name of the list that contacts will be removed from.
+about-addressbook-confirm-remove-contacts-single = Are you sure you want to remove { $name } from { $list }?
+# Variables:
+# $count (Number) - The number of contacts to be removed.
+# $list (String) - The name of the list that contacts will be removed from.
+about-addressbook-confirm-remove-contacts-multi =
+    { $count ->
+       *[other] Are you sure you want to remove these { $count } contacts from { $list }?
+    }
+# Variables:
 # $count (Number) - The number of contacts to be deleted.
 about-addressbook-confirm-delete-contacts-title =
     { $count ->
@@ -121,16 +215,106 @@ about-addressbook-confirm-delete-contacts =
         [one] Are you sure you want to delete the contact { $name }?
        *[other] Are you sure you want to delete these { $count } contacts?
     }
+# Variables:
+# $name (String) - The name of the contact to be deleted.
+about-addressbook-confirm-delete-contacts-single = Are you sure you want to delete the contact { $name }?
+# Variables:
+# $count (Number) - The number of contacts to be deleted.
+about-addressbook-confirm-delete-contacts-multi =
+    { $count ->
+       *[other] Are you sure you want to delete these { $count } contacts?
+    }
+
+## Card list placeholder
+## Shown when there are no cards in the list
+
+about-addressbook-placeholder-empty-book = No contacts available
+about-addressbook-placeholder-new-contact = New Contact
+about-addressbook-placeholder-search-only = This address book shows contacts only after a search
+about-addressbook-placeholder-searching = Searching…
+about-addressbook-placeholder-no-search-results = No contacts found
 
 ## Details
 
+# Variables:
+# $count (Number) - The number of selected items (will never be fewer than two)
+about-addressbook-selection-mixed-header = { $count } selected contacts and lists
+# Variables:
+# $count (Number) - The number of selected contacts
+about-addressbook-selection-contacts-header = { $count } selected contacts
+# Variables:
+# $count (Number) - The number of selected lists
+about-addressbook-selection-lists-header = { $count } selected lists
+# Variables:
+# $count (Number) - The number of selected items (will never be fewer than 2).
+about-addressbook-selection-mixed-header2 =
+    { $count ->
+       *[other] { $count } selected address book entries
+    }
+# Variables:
+# $count (Number) - The number of selected contacts
+about-addressbook-selection-contacts-header2 =
+    { $count ->
+        [one] { $count } selected contact
+       *[other] { $count } selected contacts
+    }
+# Variables:
+# $count (Number) - The number of selected lists
+about-addressbook-selection-lists-header2 =
+    { $count ->
+        [one] { $count } selected list
+       *[other] { $count } selected lists
+    }
+about-addressbook-details-edit-photo =
+    .title = Edit contact photo
+about-addressbook-new-contact-header = New Contact
+about-addressbook-prefer-display-name = Prefer display name over message header
+about-addressbook-write-action-button = Write
+about-addressbook-event-action-button = Event
+about-addressbook-search-action-button = Search
+about-addressbook-new-list-action-button = New List
 about-addressbook-begin-edit-contact-button = Edit
+about-addressbook-delete-edit-contact-button = Delete
 about-addressbook-cancel-edit-contact-button = Cancel
 about-addressbook-save-edit-contact-button = Save
+about-addressbook-add-contact-to = Add to:
 about-addressbook-details-email-addresses-header = Email Addresses
 about-addressbook-details-phone-numbers-header = Phone Numbers
-about-addressbook-details-home-address-header = Home Address
-about-addressbook-details-work-address-header = Work Address
+about-addressbook-details-addresses-header = Addresses
+about-addressbook-details-notes-header = Notes
+about-addressbook-details-impp-header = Instant Messaging
+about-addressbook-details-websites-header = Web Sites
 about-addressbook-details-other-info-header = Other Information
-about-addressbook-prompt-to-save-title = Save Changes?
-about-addressbook-prompt-to-save = Do you want to save your changes?
+about-addressbook-entry-type-work = Work
+about-addressbook-entry-type-home = Home
+about-addressbook-entry-type-fax = Fax
+# Or "Mobile"
+about-addressbook-entry-type-cell = Mobile
+about-addressbook-entry-type-pager = Pager
+about-addressbook-entry-name-birthday = Birthday
+about-addressbook-entry-name-anniversary = Anniversary
+about-addressbook-entry-name-title = Title
+about-addressbook-entry-name-role = Role
+about-addressbook-entry-name-organization = Organisation
+about-addressbook-entry-name-website = Web site
+about-addressbook-entry-name-time-zone = Time Zone
+about-addressbook-entry-name-custom1 = Custom 1
+about-addressbook-entry-name-custom2 = Custom 2
+about-addressbook-entry-name-custom3 = Custom 3
+about-addressbook-entry-name-custom4 = Custom 4
+about-addressbook-unsaved-changes-prompt-title = Unsaved Changes
+about-addressbook-unsaved-changes-prompt = Do you want to save your changes before leaving the edit view?
+
+# Photo dialog
+
+about-addressbook-photo-drop-target = Drop or paste a photo here, or click to select a file.
+about-addressbook-photo-drop-loading = Loading photo…
+about-addressbook-photo-drop-error = Failed to load photo.
+about-addressbook-photo-filepicker-title = Select an image file
+about-addressbook-photo-discard = Discard existing photo
+about-addressbook-photo-cancel = Cancel
+about-addressbook-photo-save = Save
+
+# Keyboard shortcuts
+
+about-addressbook-new-contact-key = N

@@ -3,7 +3,6 @@
    - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
 
 <!ENTITY window.title "Úprava filtra">
-<!ENTITY filterEditorDialog.dimensions "width: 100ch;">
 <!ENTITY filterName.label "Názov filtra:">
 <!ENTITY filterName.accesskey "N">
 
@@ -27,7 +26,6 @@
 <!ENTITY contextOutgoing.accesskey "d">
 <!ENTITY contextArchive.label "Archivácii">
 <!ENTITY contextArchive.accesskey "A">
-
 <!ENTITY contextPeriodic.accesskey "e">
 
 <!ENTITY filterActionDesc.label "Vykonať tieto akcie:">
@@ -45,11 +43,11 @@
 <!ENTITY markMessageUnread.label "Označiť ako neprečítané">
 <!ENTITY markMessageStarred.label "Pridať hviezdičku">
 <!ENTITY setPriority.label "Zmeniť prioritu na">
-<!ENTITY addTag.label "Priradiť správe popis">
+<!ENTITY addTag.label "Priradiť správe štítok">
 <!ENTITY setJunkScore.label "Nastaviť druh správy na">
 <!ENTITY deleteMessage.label "Odstrániť správu">
 <!ENTITY deleteFromPOP.label "Odstrániť zo servera POP">
-<!ENTITY fetchFromPOP.label "Prevziať telo správy zo servera POP">
+<!ENTITY fetchFromPOP.label "Stiahnuť telo správy zo servera POP">
 <!ENTITY ignoreThread.label "Ignorovať vlákno">
 <!ENTITY ignoreSubthread.label "Ignorovať podvlákno">
 <!ENTITY watchThread.label "Sledovať vlákno">

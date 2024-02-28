@@ -2,6 +2,8 @@
  * http://creativecommons.org/publicdomain/zero/1.0/ */
 "use strict";
 
+/* eslint-disable @microsoft/sdl/no-insecure-url */
+
 const BASE_URL =
   "http://mochi.test:8888/browser/comm/mail/components/enterprisepolicies/tests/browser/";
 
@@ -51,11 +53,22 @@ function dismissNotification(win = window) {
       resolve();
     }
     PopupNotifications.panel.addEventListener("popuphidden", popuphidden);
-    executeSoon(function() {
+    executeSoon(function () {
       EventUtils.synthesizeKey("VK_ESCAPE", {}, win);
     });
   });
 }
+
+add_setup(async function setupTestEnvironment() {
+  await SpecialPowers.pushPrefEnv({
+    set: [
+      ["extensions.InstallTrigger.enabled", true],
+      ["extensions.InstallTriggerImpl.enabled", true],
+      // Relax the user input requirements while running this test.
+      ["xpinstall.userActivation.required", false],
+    ],
+  });
+});
 
 add_task(async function test_install_source_blocked_link() {
   await setupPolicyEngineWithJson({
@@ -68,7 +81,7 @@ add_task(async function test_install_source_blocked_link() {
     },
   });
   let popupPromise = promisePopupNotificationShown(
-    "addon-install-origin-blocked"
+    "addon-install-policy-blocked"
   );
   let tab = await openTab(`${BASE_URL}extensionsettings.html`);
 
@@ -92,7 +105,7 @@ add_task(async function test_install_source_blocked_installtrigger() {
     },
   });
   let popupPromise = promisePopupNotificationShown(
-    "addon-install-origin-blocked"
+    "addon-install-policy-blocked"
   );
   let tab = await openTab(`${BASE_URL}extensionsettings.html`);
 
@@ -120,7 +133,7 @@ add_task(async function test_install_source_blocked_otherdomain() {
     },
   });
   let popupPromise = promisePopupNotificationShown(
-    "addon-install-origin-blocked"
+    "addon-install-policy-blocked"
   );
   let tab = await openTab(`${BASE_URL}extensionsettings.html`);
 
@@ -143,14 +156,14 @@ add_task(async function test_install_source_blocked_direct() {
     },
   });
   let popupPromise = promisePopupNotificationShown(
-    "addon-install-origin-blocked"
+    "addon-install-policy-blocked"
   );
   let tab = await openTab(`${BASE_URL}extensionsettings.html`);
 
   await SpecialPowers.spawn(
     tab.linkedBrowser,
     [{ baseUrl: BASE_URL }],
-    async function({ baseUrl }) {
+    async function ({ baseUrl }) {
       content.document.location.href = baseUrl + "policytest_v0.1.xpi";
     }
   );
@@ -238,7 +251,7 @@ add_task(async function test_install_source_allowed_direct() {
   await SpecialPowers.spawn(
     tab.linkedBrowser,
     [{ baseUrl: BASE_URL }],
-    async function({ baseUrl }) {
+    async function ({ baseUrl }) {
       content.document.location.href = baseUrl + "policytest_v0.1.xpi";
     }
   );

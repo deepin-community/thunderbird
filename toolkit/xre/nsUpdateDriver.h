@@ -18,12 +18,23 @@ class nsIFile;
 
 #if defined(XP_WIN)
 #  include <windows.h>
+#  include "mozilla/WinHandleWatcher.h"
 typedef HANDLE ProcessType;
 #elif defined(XP_UNIX)
 typedef pid_t ProcessType;
 #else
 #  include "prproces.h"
 typedef PRProcess* ProcessType;
+#endif
+
+#ifdef XP_WIN
+#  define UPDATER_BIN "updater.exe"
+#  define MAINTENANCE_SVC_NAME L"MozillaMaintenance"
+#elif XP_MACOSX
+#  define UPDATER_APP "updater.app"
+#  define UPDATER_BIN "org.mozilla.updater"
+#else
+#  define UPDATER_BIN "updater"
 #endif
 
 /**
@@ -83,13 +94,19 @@ class nsUpdateProcessor final : public nsIUpdateProcessor {
 
  private:
   void StartStagedUpdate();
-  void WaitForProcess();
   void UpdateDone();
-  void ShutdownWatcherThread();
+  void ShutdownWorkerThread();
+
+#ifndef XP_WIN
+  void WaitForProcess();
+#endif
 
  private:
   ProcessType mUpdaterPID;
-  nsCOMPtr<nsIThread> mProcessWatcher;
+  nsCOMPtr<nsIThread> mWorkerThread;
+#ifdef XP_WIN
+  mozilla::HandleWatcher mProcessWatcher;
+#endif
   StagedUpdateInfo mInfo;
 };
 #endif  // nsUpdateDriver_h__

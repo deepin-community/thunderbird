@@ -31,11 +31,6 @@
 #  include "SharedSurfaceIO.h"
 #endif
 
-#ifdef MOZ_X11
-#  include "GLXLibrary.h"
-#  include "SharedSurfaceGLX.h"
-#endif
-
 #ifdef MOZ_WAYLAND
 #  include "gfxPlatformGtk.h"
 #  include "SharedSurfaceDMABUF.h"
@@ -82,6 +77,7 @@ void SharedSurface::UnlockProd() {
 UniquePtr<SurfaceFactory> SurfaceFactory::Create(
     GLContext* const pGl, const layers::TextureType consumerType) {
   auto& gl = *pGl;
+
   switch (consumerType) {
     case layers::TextureType::D3D11:
 #ifdef XP_WIN
@@ -101,19 +97,10 @@ UniquePtr<SurfaceFactory> SurfaceFactory::Create(
       return nullptr;
 #endif
 
-    case layers::TextureType::X11:
-#ifdef MOZ_X11
-      if (gl.GetContextType() != GLContextType::GLX) return nullptr;
-      if (!sGLXLibrary.UseTextureFromPixmap()) return nullptr;
-      return MakeUnique<SurfaceFactory_GLXDrawable>(gl);
-#else
-      return nullptr;
-#endif
-
     case layers::TextureType::DMABUF:
 #ifdef MOZ_WAYLAND
       if (gl.GetContextType() == GLContextType::EGL &&
-          gfxPlatformGtk::GetPlatform()->UseDMABufWebGL()) {
+          widget::DMABufDevice::IsDMABufWebGLEnabled()) {
         return SurfaceFactory_DMABUF::Create(gl);
       }
 #endif
@@ -128,10 +115,12 @@ UniquePtr<SurfaceFactory> SurfaceFactory::Create(
 
     case layers::TextureType::AndroidHardwareBuffer:
 #ifdef MOZ_WIDGET_ANDROID
-      return SurfaceFactory_AndroidHardwareBuffer::Create(gl);
-#else
-      return nullptr;
+      if (XRE_IsGPUProcess()) {
+        // Enable SharedSurface of AndroidHardwareBuffer only in GPU process.
+        return SurfaceFactory_AndroidHardwareBuffer::Create(gl);
+      }
 #endif
+      return nullptr;
 
     case layers::TextureType::EGLImage:
 #ifdef MOZ_WIDGET_ANDROID
@@ -142,10 +131,15 @@ UniquePtr<SurfaceFactory> SurfaceFactory::Create(
       return nullptr;
 
     case layers::TextureType::Unknown:
-    case layers::TextureType::DIB:
     case layers::TextureType::Last:
       break;
   }
+
+#ifdef MOZ_X11
+  // Silence a warning.
+  Unused << gl;
+#endif
+
   return nullptr;
 }
 

@@ -2,7 +2,7 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-var { XPCOMUtils } = ChromeUtils.import("resource://gre/modules/XPCOMUtils.jsm");
+var { XPCOMUtils } = ChromeUtils.importESModule("resource://gre/modules/XPCOMUtils.sys.mjs");
 
 XPCOMUtils.defineLazyModuleGetters(this, {
   CalEvent: "resource:///modules/CalEvent.jsm",
@@ -10,8 +10,8 @@ XPCOMUtils.defineLazyModuleGetters(this, {
 });
 
 function run_test() {
-  let evt = new CalEvent();
-  let rel = new CalRelation();
+  const evt = new CalEvent();
+  const rel = new CalRelation("RELATED-TO:2424d594-0453-49a1-b842-6faee483ca79");
   evt.addRelation(rel);
 
   equal(1, evt.icalString.match(/RELATED-TO/g).length);

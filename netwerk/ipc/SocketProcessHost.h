@@ -6,6 +6,7 @@
 #ifndef mozilla_net_SocketProcessHost_h
 #define mozilla_net_SocketProcessHost_h
 
+#include "mozilla/Maybe.h"
 #include "mozilla/UniquePtr.h"
 #include "mozilla/ipc/GeckoChildProcessHost.h"
 #include "mozilla/MemoryReportingProcess.h"
@@ -73,7 +74,7 @@ class SocketProcessHost final : public mozilla::ipc::GeckoChildProcessHost {
   }
 
   // Called on the IO thread.
-  void OnChannelConnected(int32_t peer_pid) override;
+  void OnChannelConnected(base::ProcessId peer_pid) override;
   void OnChannelError() override;
 
 #if defined(XP_MACOSX) && defined(MOZ_SANDBOX)
@@ -109,12 +110,12 @@ class SocketProcessHost final : public mozilla::ipc::GeckoChildProcessHost {
   DISALLOW_COPY_AND_ASSIGN(SocketProcessHost);
 
   RefPtr<Listener> mListener;
-  mozilla::ipc::TaskFactory<SocketProcessHost> mTaskFactory;
+  mozilla::Maybe<mozilla::ipc::TaskFactory<SocketProcessHost>> mTaskFactory;
 
   enum class LaunchPhase { Unlaunched, Waiting, Complete };
   LaunchPhase mLaunchPhase;
 
-  UniquePtr<SocketProcessParent> mSocketProcessParent;
+  RefPtr<SocketProcessParent> mSocketProcessParent;
   // mShutdownRequested is set to true only when Shutdown() is called.
   // If mShutdownRequested is false and the IPC channel is closed,
   // OnProcessUnexpectedShutdown will be invoked.

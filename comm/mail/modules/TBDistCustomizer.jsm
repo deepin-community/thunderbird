@@ -4,9 +4,8 @@
 
 const EXPORTED_SYMBOLS = ["TBDistCustomizer"];
 
-const { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-const { XPCOMUtils } = ChromeUtils.import(
-  "resource://gre/modules/XPCOMUtils.jsm"
+const { XPCOMUtils } = ChromeUtils.importESModule(
+  "resource://gre/modules/XPCOMUtils.sys.mjs"
 );
 
 var TBDistCustomizer = {
@@ -73,7 +72,7 @@ var TBDistCustomizer = {
               break;
           }
         } catch (e) {
-          Cu.reportError(e);
+          console.error(e);
         }
       }
     }
@@ -98,7 +97,7 @@ var TBDistCustomizer = {
             localizedStr
           );
         } catch (e) {
-          Cu.reportError(e);
+          console.error(e);
         }
       }
     }
@@ -117,7 +116,7 @@ var TBDistCustomizer = {
             localizedStr
           );
         } catch (e) {
-          Cu.reportError(e);
+          console.error(e);
         }
       }
     }
@@ -137,7 +136,7 @@ var TBDistCustomizer = {
   },
 };
 
-XPCOMUtils.defineLazyGetter(TBDistCustomizer, "_ini", function() {
+XPCOMUtils.defineLazyGetter(TBDistCustomizer, "_ini", function () {
   let ini = null;
   let iniFile = Services.dirsvc.get("XCurProcD", Ci.nsIFile);
   iniFile.append("distribution");
@@ -150,7 +149,7 @@ XPCOMUtils.defineLazyGetter(TBDistCustomizer, "_ini", function() {
   return ini;
 });
 
-XPCOMUtils.defineLazyGetter(TBDistCustomizer, "_locale", function() {
+XPCOMUtils.defineLazyGetter(TBDistCustomizer, "_locale", function () {
   return Services.locale.requestedLocale;
 });
 

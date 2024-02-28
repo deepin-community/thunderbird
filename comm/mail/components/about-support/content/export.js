@@ -7,12 +7,13 @@ createParentElement, getAccountsText, getLoadContext, MailServices, Services */
 
 "use strict";
 
-var { AppConstants } = ChromeUtils.import(
-  "resource://gre/modules/AppConstants.jsm"
+var { AppConstants } = ChromeUtils.importESModule(
+  "resource://gre/modules/AppConstants.sys.mjs"
 );
 
 /**
  * Create warning text to add to any private data.
+ *
  * @returns A HTML paragraph node containing the warning.
  */
 function createWarning() {
@@ -51,9 +52,9 @@ function getClipboardTransferable() {
   transferable.setTransferData("text/html", ssHtml);
 
   // Add the plain text flavor.
-  transferable.addDataFlavor("text/unicode");
+  transferable.addDataFlavor("text/plain");
   ssText.data = dataText;
-  transferable.setTransferData("text/unicode", ssText);
+  transferable.setTransferData("text/plain", ssText);
 
   return transferable;
 }

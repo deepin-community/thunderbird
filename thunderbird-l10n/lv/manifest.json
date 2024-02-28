@@ -1,29 +1,28 @@
 {
   "langpack_id": "lv",
   "manifest_version": 2,
-  "applications": {
+  "browser_specific_settings": {
     "gecko": {
       "id": "langpack-lv@thunderbird.mozilla.org",
-      "strict_min_version": "91.0",
-      "strict_max_version": "91.*"
+      "strict_min_version": "115.0",
+      "strict_max_version": "115.*"
     }
   },
-  "name": "Latviešu (LV) Language Pack",
-  "description": "Language pack for Thunderbird for lv",
-  "version": "91.0buildid20211101223011",
+  "name": "Language: Latviešu (Latvian)",
+  "description": "Thunderbird Language Pack for Latviešu (lv) – Latvian",
+  "version": "115.8.20240216.174500",
   "languages": {
     "lv": {
-      "version": "20211003055053",
+      "version": "20240216183640",
       "chrome_resources": {
         "alerts": "chrome/lv/locale/lv/alerts/",
         "autoconfig": "chrome/lv/locale/lv/autoconfig/",
-        "branding": "chrome/lv/locale/lv/branding/",
+        "branding": "chrome/lv/locale/branding/",
         "calendar": "chrome/lv/locale/lv/calendar/",
         "chat": "chrome/lv/locale/lv/chat/",
         "communicator": "chrome/lv/locale/lv/communicator/",
         "devtools": "chrome/lv/locale/lv/devtools/client/",
         "devtools-shared": "chrome/lv/locale/lv/devtools/shared/",
-        "devtools-startup": "chrome/lv/locale/lv/devtools/startup/",
         "global": "chrome/lv/locale/lv/global/",
         "global-platform": {
           "macosx": "chrome/lv/locale/lv/global-platform/mac/",

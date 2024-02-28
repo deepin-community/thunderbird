@@ -5,62 +5,103 @@
    - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
 
 <?xml-stylesheet href="chrome://messenger/skin/messenger.css" type="text/css"?>
+<?xml-stylesheet href="chrome://messenger/skin/icons.css" type="text/css"?>
+<?xml-stylesheet href="chrome://messenger/skin/colors.css" type="text/css"?>
 <?xml-stylesheet href="chrome://messenger/skin/folderMenus.css" type="text/css"?>
 <?xml-stylesheet href="chrome://messenger/skin/input-fields.css" type="text/css"?>
 <?xml-stylesheet href="chrome://messenger/skin/themeableDialog.css" type="text/css"?>
+<?xml-stylesheet href="chrome://messenger/skin/contextMenu.css" type="text/css"?>
 
-<!DOCTYPE window [
-<!ENTITY % newFolderDTD SYSTEM "chrome://messenger/locale/newFolderDialog.dtd">%newFolderDTD;
-]>
+<!DOCTYPE html [ <!ENTITY % newFolderDTD SYSTEM "chrome://messenger/locale/newFolderDialog.dtd">
+%newFolderDTD; ]>
 
-<window xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul"
-        xmlns:html="http://www.w3.org/1999/xhtml"
-        title="&newFolderDialog.title;"
-        lightweightthemes="true"
-        style="width: 25em;"
-        onload="onLoad();">
-<dialog buttonlabelaccept="&accept.label;"
-        buttonaccesskeyaccept="&accept.accesskey;">
-  <script src="chrome://global/content/globalOverlay.js"/>
-  <script src="chrome://global/content/editMenuOverlay.js"/>
-  <script src="chrome://messenger/content/newFolderDialog.js"/>
-  <script src="chrome://messenger/content/dialogShadowDom.js"/>
+<html
+  xmlns="http://www.w3.org/1999/xhtml"
+  xmlns:xul="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul"
+  xmlns:html="http://www.w3.org/1999/xhtml"
+  lightweightthemes="true"
+  scrolling="false"
+>
+  <head>
+    <title>&newFolderDialog.title;</title>
+    <script
+      defer="defer"
+      src="chrome://messenger/content/globalOverlay.js"
+    ></script>
+    <script
+      defer="defer"
+      src="chrome://global/content/editMenuOverlay.js"
+    ></script>
+    <script
+      defer="defer"
+      src="chrome://messenger/content/dialogShadowDom.js"
+    ></script>
+    <script
+      defer="defer"
+      src="chrome://messenger/content/newFolderDialog.js"
+    ></script>
+  </head>
+  <html:body
+    xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul"
+  >
+    <dialog
+      buttonlabelaccept="&accept.label;"
+      buttonaccesskeyaccept="&accept.accesskey;"
+    >
+      <label
+        id="nameLabel"
+        value="&name.label;"
+        accesskey="&name.accesskey;"
+        control="name"
+      />
+      <html:input
+        id="name"
+        type="text"
+        class="input-inline"
+        aria-labelledby="nameLabel"
+        oninput="doEnabling();"
+      />
 
-    <label id="nameLabel" value="&name.label;" accesskey="&name.accesskey;"
-           control="name"/>
-    <html:input id="name"
-                type="text"
-                class="input-inline"
-                aria-labelledby="nameLabel"
-                oninput="doEnabling();"/>
+      <separator />
 
-    <separator/>
+      <label
+        value="&description.label;"
+        accesskey="&description.accesskey;"
+        control="msgNewFolderPicker"
+      />
 
-    <label value="&description.label;" accesskey="&description.accesskey;" control="msgNewFolderPicker"/>
+      <menulist
+        id="msgNewFolderPicker"
+        class="folderMenuItem"
+        displayformat="verbose"
+      >
+        <menupopup
+          is="folder-menupopup"
+          id="MsgNewFolderPopup"
+          showFileHereLabel="true"
+          class="menulist-menupopup"
+          mode="newFolder"
+          oncommand="onFolderSelect(event)"
+        />
+      </menulist>
 
-    <menulist id="msgNewFolderPicker" class="folderMenuItem"
-                 displayformat="verbose">
-      <menupopup is="folder-menupopup" id="MsgNewFolderPopup"
-                 showFileHereLabel="true"
-                 class="menulist-menupopup"
-                 mode="newFolder"
-                 oncommand="onFolderSelect(event)"/>
-    </menulist>
+      <vbox id="newFolderTypeBox">
+        <separator class="thin" />
 
-    <vbox id="newFolderTypeBox">
+        <label value="&folderRestriction1.label;" />
+        <label value="&folderRestriction2.label;" />
 
-      <separator class="thin"/>
+        <separator class="thin" />
 
-      <label value="&folderRestriction1.label;"/>
-      <label value="&folderRestriction2.label;"/>
-
-      <separator class="thin"/>
-
-      <radiogroup id="folderGroup" orient="horizontal" class="indent">
-        <radio oncommand="onFoldersOnly();" label="&foldersOnly.label;"/>
-        <radio oncommand="onMessagesOnly();" label="&messagesOnly.label;" selected="true"/>
-      </radiogroup>
-
-    </vbox>
-</dialog>
-</window>
+        <radiogroup id="folderGroup" orient="horizontal" class="indent">
+          <radio oncommand="onFoldersOnly();" label="&foldersOnly.label;" />
+          <radio
+            oncommand="onMessagesOnly();"
+            label="&messagesOnly.label;"
+            selected="true"
+          />
+        </radiogroup>
+      </vbox>
+    </dialog>
+  </html:body>
+</html>

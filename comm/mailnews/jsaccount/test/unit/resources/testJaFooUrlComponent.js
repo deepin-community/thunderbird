@@ -5,11 +5,8 @@
   One of the goals of JsAccount is to be able to incrementally extend a base
   implementation, possibly adding a new interface. This code demonstrates
   a mailnews URL extended for a hypthetical account type "foo".
-**/
+*/
 
-var { ComponentUtils } = ChromeUtils.import(
-  "resource://gre/modules/ComponentUtils.jsm"
-);
 const { JSAccountUtils } = ChromeUtils.import(
   "resource:///modules/jsaccount/JSAccountUtils.jsm"
 );
@@ -31,13 +28,7 @@ var FooUrlProperties = {
 };
 
 // Constructor
-function FooUrlConstructor() {}
-
-// Constructor prototype (not instance prototype).
-FooUrlConstructor.prototype = {
-  classID: FooUrlProperties.classID,
-  _xpcom_factory: JSAccountUtils.jaFactory(FooUrlProperties, FooUrl),
-};
+var xpcomFactory = JSAccountUtils.jaFactory(FooUrlProperties, FooUrl);
 
 // Main class.
 function FooUrl(aDelegator, aBaseInterfaces) {
@@ -95,5 +86,3 @@ FooUrl.prototype = {
     return query && query.includes(ATTACHMENT_QUERY);
   },
 };
-
-this.NSGetFactory = ComponentUtils.generateNSGetFactory([FooUrlConstructor]);

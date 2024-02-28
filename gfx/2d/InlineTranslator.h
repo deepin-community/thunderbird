@@ -7,13 +7,11 @@
 #ifndef mozilla_layout_InlineTranslator_h
 #define mozilla_layout_InlineTranslator_h
 
-#include <istream>
 #include <string>
 
 #include "mozilla/gfx/2D.h"
 #include "mozilla/gfx/Filters.h"
 #include "mozilla/gfx/RecordedEvent.h"
-#include "nsRefPtrHashtable.h"
 
 namespace mozilla {
 namespace gfx {
@@ -40,10 +38,8 @@ class InlineTranslator : public Translator {
       nsRefPtrHashtable<nsUint64HashKey, SourceSurface>* aExternalSurfaces) {
     mExternalSurfaces = aExternalSurfaces;
   }
-  void SetDependentSurfaces(
-      nsRefPtrHashtable<nsUint64HashKey, RecordedDependentSurface>*
-          aDependentSurfaces) {
-    mDependentSurfaces = aDependentSurfaces;
+  void SetReferenceDrawTargetTransform(const Matrix& aTransform) {
+    mBaseDTTransform = aTransform;
   }
 
   DrawTarget* LookupDrawTarget(ReferencePtr aRefPtr) final {
@@ -103,7 +99,8 @@ class InlineTranslator : public Translator {
     mPaths.InsertOrUpdate(aRefPtr, RefPtr{aPath});
   }
 
-  void AddSourceSurface(ReferencePtr aRefPtr, SourceSurface* aSurface) final {
+  void AddSourceSurface(ReferencePtr aRefPtr,
+                        SourceSurface* aSurface) override {
     mSourceSurfaces.InsertOrUpdate(aRefPtr, RefPtr{aSurface});
   }
 
@@ -163,12 +160,14 @@ class InlineTranslator : public Translator {
     MOZ_ASSERT(mBaseDT, "mBaseDT has not been initialized.");
     return mBaseDT;
   }
+  Matrix GetReferenceDrawTargetTransform() final { return mBaseDTTransform; }
 
   void* GetFontContext() final { return mFontContext; }
   std::string GetError() { return mError; }
 
  protected:
   RefPtr<DrawTarget> mBaseDT;
+  Matrix mBaseDTTransform;
   nsRefPtrHashtable<nsPtrHashKey<void>, DrawTarget> mDrawTargets;
 
  private:
@@ -184,8 +183,6 @@ class InlineTranslator : public Translator {
   nsRefPtrHashtable<nsUint64HashKey, NativeFontResource> mNativeFontResources;
   nsRefPtrHashtable<nsUint64HashKey, SourceSurface>* mExternalSurfaces =
       nullptr;
-  nsRefPtrHashtable<nsUint64HashKey, RecordedDependentSurface>*
-      mDependentSurfaces = nullptr;
 };
 
 }  // namespace gfx

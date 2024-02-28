@@ -1,20 +1,31 @@
 "use strict";
-define(function(require) {
+define(function (require) {
   var headerparser = require("jsmime").headerparser;
   var assert = require("assert");
 
+  function smartDeepEqual(actual, expected) {
+    assert.deepEqual(actual, expected);
+    // XXX: instanceof Map don't work for actual. Unclear why.
+    if ("entries" in actual && "entries" in expected) {
+      assert.deepEqual(
+        Array.from(actual.entries()),
+        Array.from(expected.entries())
+      );
+    }
+  }
+
   function arrayTest(data, fn) {
-    fn.toString = function() {
+    fn.toString = function () {
       let text = Function.prototype.toString.call(this);
-      text = text.replace(/data\[([0-9]*)\]/g, function(m, p) {
+      text = text.replace(/data\[([0-9]*)\]/g, function (m, p) {
         return JSON.stringify(data[p]);
       });
       return text;
     };
     return test(data[0], fn);
   }
-  suite("headerparser", function() {
-    suite("parseParameterHeader", function() {
+  suite("headerparser", function () {
+    suite("parseParameterHeader", function () {
       let header_tests = [
         ["multipart/related", ["multipart/related", {}]],
         ["a ; b=v", ["a", { b: "v" }]],
@@ -30,8 +41,8 @@ define(function(require) {
         ["a;b", ["a", {}]],
         ['a;b=";";c=d', ["a", { b: ";", c: "d" }]],
       ];
-      header_tests.forEach(function(data) {
-        arrayTest(data, function() {
+      header_tests.forEach(function (data) {
+        arrayTest(data, function () {
           let testMap = new Map();
           for (let key in data[1][1]) {
             testMap.set(key, data[1][1][key]);
@@ -44,7 +55,7 @@ define(function(require) {
         });
       });
     });
-    suite("parseParameterHeader (2231/2047 support)", function() {
+    suite("parseParameterHeader (2231/2047 support)", function () {
       let header_tests = [
         // Copied from test_MIME_params.js and adapted
         ["attachment;", ["attachment", {}]],
@@ -212,7 +223,7 @@ define(function(require) {
         ],
         [
           "attachment; filename=IT839\x04\xB5(m8)2.pdf;",
-          ["attachment", { filename: "IT839\u0004\u00b5(m8)2.pdf" }],
+          ["attachment", { filename: "IT839\u00b5(m8)2.pdf" }],
         ],
         ["attachment; filename*=utf-8''%41", ["attachment", { filename: "A" }]],
         // See bug 651185 and bug 703015
@@ -289,22 +300,27 @@ define(function(require) {
             "-8''5987",
           ["attachment", { filename: "5987" }],
         ],
+        // ABC\u202Etxt.zip dir switch char in middle.
+        [
+          "attachment; filename*=UTF-8''%41%42%43%E2%80%AE%2E%74%78%74%2E%7A%69%70",
+          ["attachment", { filename: "ABC .txt.zip" }],
+        ],
       ];
-      header_tests.forEach(function(data) {
-        arrayTest(data, function() {
+      header_tests.forEach(function (data) {
+        arrayTest(data, function () {
           let testMap = new Map();
           for (let key in data[1][1]) {
             testMap.set(key, data[1][1][key]);
           }
           testMap.preSemi = data[1][0];
-          assert.deepEqual(
+          smartDeepEqual(
             headerparser.parseParameterHeader(data[0], true, true),
             testMap
           );
         });
       });
     });
-    suite("parseAddressingHeader", function() {
+    suite("parseAddressingHeader", function () {
       let header_tests = [
         ["", []],
         [
@@ -678,7 +694,7 @@ define(function(require) {
         ],
         // Collapse extraneous whitespace and make sure unexpected characters aren't there.
         [
-          'Friend "<friend@huhu.com>" \t \t  \u00A0\u00A0\u2003 \u00AD \x20\u200B\x20\u200B\x20 \t \u034F \u2028 \uDB40\uDD01 \t <ws@example.com>',
+          'Friend "<friend@huhu.com>" \t \t  \u00A0\u00A0\u2003 \u00AD \x20\u200B\x20\u200B\x20 \t \u034F \u2028 \uDB40\uDD01 \u2800 \t <ws@example.com>',
           [{ name: "Friend <friend@huhu.com>", email: "ws@example.com" }],
         ],
         // Collapse multiple "special" spaces like NBSP (\u00A0), EM space (\u2003), etc.
@@ -732,8 +748,8 @@ define(function(require) {
           ],
         ],
       ];
-      header_tests.forEach(function(data) {
-        arrayTest(data, function() {
+      header_tests.forEach(function (data) {
+        arrayTest(data, function () {
           assert.deepEqual(
             headerparser.parseAddressingHeader(data[0], false),
             data[1]
@@ -741,7 +757,7 @@ define(function(require) {
         });
       });
     });
-    suite("parseAddressingHeader (RFC 2047 support)", function() {
+    suite("parseAddressingHeader (RFC 2047 support)", function () {
       let header_tests = [
         ["Simple <a@b.c>", [{ name: "Simple", email: "a@b.c" }]],
         ["=?UTF-8?Q?Simple?= <a@b.c>", [{ name: "Simple", email: "a@b.c" }]],
@@ -784,8 +800,7 @@ define(function(require) {
             '[BCN-FC]" <Barcelona-Freecycle-noreply@yahoogroups.com>',
           [
             {
-              name:
-                "Jazzy Fern\u00E1ndez Nunoz jazzy.f.nunoz@example.com [BCN-FC]",
+              name: "Jazzy Fern\u00E1ndez Nunoz jazzy.f.nunoz@example.com [BCN-FC]",
               email: "Barcelona-Freecycle-noreply@yahoogroups.com",
             },
           ],
@@ -795,8 +810,7 @@ define(function(require) {
             '[BCN-FC]" <Barcelona-Freecycle-noreply@yahoogroups.com>',
           [
             {
-              name:
-                "Miriam Bernab\u00E9 Perell\u00F3 miriam@example.com [BCN-FC]",
+              name: "Miriam Bernab\u00E9 Perell\u00F3 miriam@example.com [BCN-FC]",
               email: "Barcelona-Freecycle-noreply@yahoogroups.com",
             },
           ],
@@ -836,8 +850,7 @@ define(function(require) {
             "<freecycle-berlin-noreply@yahoogroups.de>",
           [
             {
-              name:
-                '"Claudia Röhschicht" Claudia_Roehschicht@web.de [freecycle-berlin]',
+              name: '"Claudia Röhschicht" Claudia_Roehschicht@web.de [freecycle-berlin]',
               email: "freecycle-berlin-noreply@yahoogroups.de",
             },
           ],
@@ -879,8 +892,8 @@ define(function(require) {
           ],
         ],
       ];
-      header_tests.forEach(function(data) {
-        arrayTest(data, function() {
+      header_tests.forEach(function (data) {
+        arrayTest(data, function () {
           assert.deepEqual(
             headerparser.parseAddressingHeader(data[0], true),
             data[1]
@@ -888,7 +901,7 @@ define(function(require) {
         });
       });
     });
-    suite("parseDateHeader", function() {
+    suite("parseDateHeader", function () {
       let header_tests = [
         // Some basic tests, derived from searching for Date headers in a mailing
         // list archive.
@@ -975,8 +988,8 @@ define(function(require) {
         // A truly invalid date
         ["Coincident with the rapture", NaN],
       ];
-      header_tests.forEach(function(data) {
-        arrayTest(data, function() {
+      header_tests.forEach(function (data) {
+        arrayTest(data, function () {
           assert.equal(
             headerparser.parseDateHeader(data[0]).toString(),
             new Date(data[1]).toString()
@@ -985,7 +998,7 @@ define(function(require) {
       });
     });
 
-    suite("decodeRFC2047Words", function() {
+    suite("decodeRFC2047Words", function () {
       let header_tests = [
         // Some basic sanity tests for the test process
         ["Test", "Test"],
@@ -1164,13 +1177,13 @@ define(function(require) {
         ["=?us-ascii?B?VGVzdA==========?=", "Test"],
         ["=?us-ascii?B?VGVzdA===========?=", "Test"],
       ];
-      header_tests.forEach(function(data) {
-        arrayTest(data, function() {
+      header_tests.forEach(function (data) {
+        arrayTest(data, function () {
           assert.deepEqual(headerparser.decodeRFC2047Words(data[0]), data[1]);
         });
       });
     });
-    suite("8-bit header processing", function() {
+    suite("8-bit header processing", function () {
       let header_tests = [
         // Non-ASCII header values
         ["oxyg\xc3\xa8ne", "oxyg\u00e8ne", "UTF-8"],
@@ -1193,8 +1206,8 @@ define(function(require) {
         ["\xc3 =?UTF-8?Q?=a8?=", "\ufffd \ufffd", "UTF-8"],
         ["\xc3 =?UTF-8?Q?=a8?=", "\u00c3 \ufffd", "ISO-8859-1"],
       ];
-      header_tests.forEach(function(data) {
-        arrayTest(data, function() {
+      header_tests.forEach(function (data) {
+        arrayTest(data, function () {
           assert.deepEqual(
             headerparser.decodeRFC2047Words(
               headerparser.convert8BitHeader(

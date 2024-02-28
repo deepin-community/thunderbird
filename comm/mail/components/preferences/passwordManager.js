@@ -2,38 +2,21 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-/** * =================== SAVED SIGNONS CODE =================== ***/
+/** * =================== SAVED SIGNONS CODE =================== */
 /* eslint-disable-next-line no-var */
-var { AppConstants } = ChromeUtils.import(
-  "resource://gre/modules/AppConstants.jsm"
+var { AppConstants } = ChromeUtils.importESModule(
+  "resource://gre/modules/AppConstants.sys.mjs"
 );
 /* eslint-disable-next-line no-var */
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 /* eslint-disable-next-line no-var */
-var { XPCOMUtils } = ChromeUtils.import(
-  "resource://gre/modules/XPCOMUtils.jsm"
+var { XPCOMUtils } = ChromeUtils.importESModule(
+  "resource://gre/modules/XPCOMUtils.sys.mjs"
 );
 
-ChromeUtils.defineModuleGetter(
-  this,
-  "DeferredTask",
-  "resource://gre/modules/DeferredTask.jsm"
-);
-ChromeUtils.defineModuleGetter(
-  this,
-  "PlacesUtils",
-  "resource://gre/modules/PlacesUtils.jsm"
-);
-ChromeUtils.defineModuleGetter(
-  this,
-  "OSKeyStore",
-  "resource://gre/modules/OSKeyStore.jsm"
-);
-XPCOMUtils.defineLazyGetter(this, "L10n", () => {
-  return new Localization([
-    "branding/brand.ftl",
-    "messenger/preferences/passwordManager.ftl",
-  ]);
+ChromeUtils.defineESModuleGetters(this, {
+  DeferredTask: "resource://gre/modules/DeferredTask.sys.mjs",
+  OSKeyStore: "resource://gre/modules/OSKeyStore.sys.mjs",
+  PlacesUtils: "resource://gre/modules/PlacesUtils.sys.mjs",
 });
 
 // Default value for signon table sorting
@@ -320,6 +303,8 @@ function LoadSignons() {
   signons.forEach(login => login.QueryInterface(Ci.nsILoginMetaInfo));
   signonsTreeView.rowCount = signons.length;
 
+  // This is needed since bug 1839066.
+  signonsTree.rowCountChanged(0, signons.length);
   // sort and display the table
   signonsTree.view = signonsTreeView;
   // The sort column didn't change. SortTree (called by
@@ -776,7 +761,7 @@ async function masterPasswordLogin(noPasswordCallback) {
   );
   let token = tokendb.getInternalKeyToken();
 
-  // If there is no master password, still give the user a chance to opt-out of displaying passwords
+  // If there is no primary password, still give the user a chance to opt-out of displaying passwords
   if (token.checkPassword("")) {
     // The OS re-authentication on Linux isn't working (Bug 1527745),
     // still add the confirm dialog for Linux.
@@ -791,7 +776,7 @@ async function masterPasswordLogin(noPasswordCallback) {
         // See preferences.ftl for more information.
         messageId += "-macosx";
       }
-      let [messageText, captionText] = await L10n.formatMessages([
+      let [messageText, captionText] = await document.l10n.formatMessages([
         {
           id: messageId,
         },
@@ -814,9 +799,9 @@ async function masterPasswordLogin(noPasswordCallback) {
     return noPasswordCallback ? noPasswordCallback() : true;
   }
 
-  // So there's a master password. But since checkPassword didn't succeed, we're logged out (per nsIPK11Token.idl).
+  // So there's a primary password. But since checkPassword didn't succeed, we're logged out (per nsIPK11Token.idl).
   try {
-    // Relogin and ask for the master password.
+    // Relogin and ask for the primary password.
     token.login(true); // 'true' means always prompt for token password. User will be prompted until
     // clicking 'Cancel' or entering the correct password.
   } catch (e) {

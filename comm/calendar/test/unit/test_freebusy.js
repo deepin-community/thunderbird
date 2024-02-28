@@ -31,7 +31,7 @@ function test_freebusy() {
     "\n" +
     "END:VFREEBUSY\n" +
     "END:VCALENDAR\n";
-  let fbComp = icsService.parseICS(data, null).getFirstSubcomponent("VFREEBUSY");
+  let fbComp = icsService.parseICS(data).getFirstSubcomponent("VFREEBUSY");
   equal(fbComp.getFirstProperty("FREEBUSY").value, fbVal1);
   equal(fbComp.getNextProperty("FREEBUSY").value, fbVal2);
   equal(fbComp.getNextProperty("FREEBUSY").value, fbVal3);
@@ -58,23 +58,21 @@ function test_period() {
   equal(period.duration.icalString, "PT1S");
 
   period.makeImmutable();
-  if (!Services.prefs.getBoolPref("calendar.icaljs", false)) {
-    // ical.js doesn't support immutability yet
-    throws(
-      () => {
-        period.start = cal.createDateTime("20120202T020202");
-      },
-      /0x80460002/,
-      "Object is Immutable"
-    );
-    throws(
-      () => {
-        period.end = cal.createDateTime("20120202T020202");
-      },
-      /0x80460002/,
-      "Object is Immutable"
-    );
-  }
+  // ical.js doesn't support immutability yet
+  // throws(
+  //   () => {
+  //     period.start = cal.createDateTime("20120202T020202");
+  //   },
+  //   /0x80460002/,
+  //   "Object is Immutable"
+  // );
+  // throws(
+  //   () => {
+  //     period.end = cal.createDateTime("20120202T020202");
+  //   },
+  //   /0x80460002/,
+  //   "Object is Immutable"
+  // );
 
   let copy = period.clone();
   equal(copy.start.icalString, "20120101T010105");

@@ -16,6 +16,7 @@ info: |
      else let final be min(relativeEnd, len).
   ...
 includes: [compareArray.js]
+features: [exponentiation]
 ---*/
 
 var arrayLike = {
@@ -28,22 +29,22 @@ var arrayLike = {
 
 var result = Array.prototype.slice.call(arrayLike, 9007199254740989);
 assert.compareArray(result, ["9007199254740989", "9007199254740990"],
-  "slice(9007199254740989)");
+  'The value of result is expected to be ["9007199254740989", "9007199254740990"]');
 
 var result = Array.prototype.slice.call(arrayLike, 9007199254740989, 9007199254740990);
 assert.compareArray(result, ["9007199254740989"],
-  "slice(9007199254740989, 9007199254740990)");
+  'The value of result is expected to be ["9007199254740989"]');
 
 var result = Array.prototype.slice.call(arrayLike, 9007199254740989, 9007199254740996);
 assert.compareArray(result, ["9007199254740989", "9007199254740990"],
-  "slice(9007199254740989, 9007199254740996)");
+  'The value of result is expected to be ["9007199254740989", "9007199254740990"]');
 
 var result = Array.prototype.slice.call(arrayLike, -2);
 assert.compareArray(result, ["9007199254740989", "9007199254740990"],
-  "slice(-2)");
+  'The value of result is expected to be ["9007199254740989", "9007199254740990"]');
 
 var result = Array.prototype.slice.call(arrayLike, -2, -1);
 assert.compareArray(result, ["9007199254740989"],
-  "slice(-2, -1)");
+  'The value of result is expected to be ["9007199254740989"]');
 
 reportCompare(0, 0);

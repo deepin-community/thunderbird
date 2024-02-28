@@ -5,12 +5,12 @@
 var { close_compose_window, open_compose_new_mail } = ChromeUtils.import(
   "resource://testing-common/mozmill/ComposeHelpers.jsm"
 );
-var { onSpellCheck } = ChromeUtils.import(
-  "resource://testing-common/AsyncSpellCheckTestHelper.jsm"
+var { maybeOnSpellCheck } = ChromeUtils.importESModule(
+  "resource://testing-common/AsyncSpellCheckTestHelper.sys.mjs"
 );
 
 async function checkMisspelledWords(editor, ...words) {
-  await new Promise(resolve => onSpellCheck({ editor }, resolve));
+  await new Promise(resolve => maybeOnSpellCheck({ editor }, resolve));
 
   let selection = editor.selectionController.getSelection(
     Ci.nsISelectionController.SELECTION_SPELLCHECK
@@ -26,7 +26,7 @@ async function checkMisspelledWords(editor, ...words) {
   return selection;
 }
 
-add_task(async function() {
+add_task(async function () {
   // Install en-NZ dictionary.
 
   let dictionary = Cc["@mozilla.org/file/local;1"].createInstance(Ci.nsIFile);
@@ -43,11 +43,17 @@ add_task(async function() {
   let composeWindow = cwc.window;
   let composeDocument = composeWindow.document;
 
-  cwc.type(cwc.e("msgSubject"), "I went to the harbor in an aluminium boat");
-  cwc.type(cwc.e("content-frame"), "I maneuvered to the center.\n");
-  cwc.type(
-    cwc.e("content-frame"),
-    "The sky was the colour of ochre and the stars shone like jewelry.\n"
+  cwc.window.document.getElementById("msgSubject").focus();
+  EventUtils.sendString(
+    "I went to the harbor in an aluminium boat",
+    cwc.window
+  );
+  cwc.window.document.getElementById("messageEditor").focus();
+  EventUtils.sendString("I maneuvered to the center.\n", cwc.window);
+  cwc.window.document.getElementById("messageEditor").focus();
+  EventUtils.sendString(
+    "The sky was the colour of ochre and the stars shone like jewelry.\n",
+    cwc.window
   );
 
   // Check initial spelling.
@@ -116,6 +122,9 @@ add_task(async function() {
     "window unlocked after saving"
   );
 
+  // eslint-disable-next-line mozilla/no-arbitrary-setTimeout
+  await new Promise(resolve => setTimeout(resolve, 500));
+
   await checkMisspelledWords(subjectEditor);
   await checkMisspelledWords(bodyEditor);
 
@@ -169,7 +178,7 @@ add_task(async function() {
   await checkMisspelledWords(subjectEditor, "aluminium");
   await checkMisspelledWords(bodyEditor, "colour", "ochre");
 
-  // Switch language.
+  // Add language.
 
   let statusButton = composeDocument.getElementById("languageStatusButton");
   let languageList = composeDocument.getElementById("languageMenuList");
@@ -178,14 +187,73 @@ add_task(async function() {
   EventUtils.synthesizeMouseAtCenter(statusButton, {}, composeWindow);
   await shownPromise;
 
-  Assert.equal(languageList.childElementCount, 2);
+  Assert.equal(languageList.childElementCount, 4);
   Assert.equal(languageList.children[0].value, "en-NZ");
+  Assert.equal(languageList.children[0].getAttribute("checked"), "false");
   Assert.equal(languageList.children[1].value, "en-US");
+  Assert.equal(languageList.children[1].getAttribute("checked"), "true");
+  Assert.equal(languageList.children[2].localName, "menuseparator");
+  Assert.equal(
+    languageList.children[3].dataset.l10nId,
+    "spell-add-dictionaries"
+  );
 
   hiddenPromise = BrowserTestUtils.waitForEvent(languageList, "popuphidden");
   languageList.activateItem(languageList.children[0]);
+  await TestUtils.waitForCondition(
+    () => languageList.children[0].getAttribute("checked") == "true",
+    "en-NZ menu item checked"
+  );
+  await TestUtils.waitForCondition(
+    () => composeWindow.gActiveDictionaries.has("en-NZ"),
+    "en-NZ added to dictionaries"
+  );
+  languageList.hidePopup();
   await hiddenPromise;
 
+  Assert.deepEqual(
+    [...composeWindow.gActiveDictionaries],
+    ["en-US", "en-NZ"],
+    "correct dictionaries active"
+  );
+  await checkMisspelledWords(subjectEditor);
+  await checkMisspelledWords(bodyEditor);
+
+  // Remove language.
+
+  shownPromise = BrowserTestUtils.waitForEvent(languageList, "popupshown");
+  EventUtils.synthesizeMouseAtCenter(statusButton, {}, composeWindow);
+  await shownPromise;
+
+  Assert.equal(languageList.childElementCount, 4);
+  Assert.equal(languageList.children[0].value, "en-NZ");
+  Assert.equal(languageList.children[0].getAttribute("checked"), "true");
+  Assert.equal(languageList.children[1].value, "en-US");
+  Assert.equal(languageList.children[1].getAttribute("checked"), "true");
+  Assert.equal(languageList.children[2].localName, "menuseparator");
+  Assert.equal(
+    languageList.children[3].dataset.l10nId,
+    "spell-add-dictionaries"
+  );
+
+  hiddenPromise = BrowserTestUtils.waitForEvent(languageList, "popuphidden");
+  languageList.activateItem(languageList.children[1]);
+  await TestUtils.waitForCondition(
+    () => !languageList.children[1].hasAttribute("checked"),
+    "en-US menu item unchecked"
+  );
+  await TestUtils.waitForCondition(
+    () => !composeWindow.gActiveDictionaries.has("en-US"),
+    "en-US removed from dictionaries"
+  );
+  languageList.hidePopup();
+  await hiddenPromise;
+
+  Assert.deepEqual(
+    [...composeWindow.gActiveDictionaries],
+    ["en-NZ"],
+    "correct dictionaries active"
+  );
   await checkMisspelledWords(subjectEditor, "harbor");
   let words = await checkMisspelledWords(
     bodyEditor,

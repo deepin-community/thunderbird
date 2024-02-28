@@ -28,6 +28,7 @@ GMPContentParent::GMPContentParent(GMPParent* aParent)
   if (mParent) {
     SetDisplayName(mParent->GetDisplayName());
     SetPluginId(mParent->GetPluginId());
+    SetPluginType(mParent->GetPluginType());
   }
 }
 
@@ -117,7 +118,9 @@ void GMPContentParent::CloseIfUnused() {
       toClose = this;
       RefPtr<GeckoMediaPluginServiceChild> gmp(
           GeckoMediaPluginServiceChild::GetSingleton());
-      gmp->RemoveGMPContentParent(toClose);
+      if (gmp) {
+        gmp->RemoveGMPContentParent(toClose);
+      }
     }
     NS_DispatchToCurrentThread(NewRunnableMethod(
         "gmp::GMPContentParent::Close", toClose, &GMPContentParent::Close));
@@ -142,17 +145,19 @@ nsCOMPtr<nsISerialEventTarget> GMPContentParent::GMPEventTarget() {
     mps->GetThread(getter_AddRefs(gmpThread));
     MOZ_ASSERT(gmpThread);
 
-    mGMPEventTarget = gmpThread->SerialEventTarget();
+    mGMPEventTarget = gmpThread;
   }
 
   return mGMPEventTarget;
 }
 
-already_AddRefed<ChromiumCDMParent> GMPContentParent::GetChromiumCDM() {
-  GMP_LOG_DEBUG("GMPContentParent::GetChromiumCDM(this=%p)", this);
+already_AddRefed<ChromiumCDMParent> GMPContentParent::GetChromiumCDM(
+    const nsCString& aKeySystem) {
+  GMP_LOG_DEBUG("GMPContentParent::GetChromiumCDM(this=%p aKeySystem=%s)", this,
+                aKeySystem.get());
 
   RefPtr<ChromiumCDMParent> parent = new ChromiumCDMParent(this, GetPluginId());
-  if (!SendPChromiumCDMConstructor(parent)) {
+  if (!SendPChromiumCDMConstructor(parent, aKeySystem)) {
     return nullptr;
   }
 
@@ -162,12 +167,11 @@ already_AddRefed<ChromiumCDMParent> GMPContentParent::GetChromiumCDM() {
   return parent.forget();
 }
 
-nsresult GMPContentParent::GetGMPVideoDecoder(GMPVideoDecoderParent** aGMPVD,
-                                              uint32_t aDecryptorId) {
+nsresult GMPContentParent::GetGMPVideoDecoder(GMPVideoDecoderParent** aGMPVD) {
   GMP_LOG_DEBUG("GMPContentParent::GetGMPVideoDecoder(this=%p)", this);
 
   RefPtr<GMPVideoDecoderParent> vdp = new GMPVideoDecoderParent(this);
-  if (!SendPGMPVideoDecoderConstructor(vdp, aDecryptorId)) {
+  if (!SendPGMPVideoDecoderConstructor(vdp)) {
     return NS_ERROR_FAILURE;
   }
 

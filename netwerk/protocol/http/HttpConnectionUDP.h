@@ -13,7 +13,6 @@
 #include "nsCOMPtr.h"
 #include "nsProxyRelease.h"
 #include "prinrval.h"
-#include "TunnelUtils.h"
 #include "mozilla/Mutex.h"
 #include "ARefBase.h"
 #include "TimingStruct.h"
@@ -21,12 +20,14 @@
 
 #include "nsIAsyncInputStream.h"
 #include "nsIAsyncOutputStream.h"
+#include "nsISupportsPriority.h"
 #include "nsIInterfaceRequestor.h"
 #include "nsITimer.h"
 #include "Http3Session.h"
 
+class nsIDNSRecord;
 class nsISocketTransport;
-class nsISSLSocketControl;
+class nsITLSSocketControl;
 
 namespace mozilla {
 namespace net {
@@ -76,7 +77,6 @@ class HttpConnectionUDP final : public HttpConnectionBase,
 
   bool UsingHttp3() override { return true; }
 
-  static void OnQuicTimeout(nsITimer* aTimer, void* aClosure);
   void OnQuicTimeoutExpired();
 
   int64_t BytesWritten() override;
@@ -84,6 +84,8 @@ class HttpConnectionUDP final : public HttpConnectionBase,
   nsresult GetSelfAddr(NetAddr* addr) override;
   nsresult GetPeerAddr(NetAddr* addr) override;
   bool ResolvedByTRR() override;
+  nsIRequest::TRRMode EffectiveTRRMode() override;
+  TRRSkippedReason TRRSkipReason() override;
   bool GetEchConfigUsed() override { return false; }
 
  private:
@@ -116,6 +118,8 @@ class HttpConnectionUDP final : public HttpConnectionBase,
   nsCOMPtr<nsINetAddr> mSelfAddr;
   nsCOMPtr<nsINetAddr> mPeerAddr;
   bool mResolvedByTRR = false;
+  nsIRequest::TRRMode mEffectiveTRRMode = nsIRequest::TRR_DEFAULT_MODE;
+  TRRSkippedReason mTRRSkipReason = nsITRRSkipReason::TRR_UNSET;
 
  private:
   // Http3

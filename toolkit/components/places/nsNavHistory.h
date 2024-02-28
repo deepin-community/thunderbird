@@ -8,7 +8,6 @@
 
 #include "nsINavHistoryService.h"
 
-#include "nsICollation.h"
 #include "nsIStringBundle.h"
 #include "nsITimer.h"
 #include "nsMaybeWeakPtr.h"
@@ -23,12 +22,9 @@
 #include "Database.h"
 #include "mozilla/Atomics.h"
 #include "mozilla/Attributes.h"
+#include "mozilla/intl/Collator.h"
+#include "mozilla/UniquePtr.h"
 #include "mozIStorageVacuumParticipant.h"
-
-#ifdef XP_WIN
-#  include "WinUtils.h"
-#  include <wincrypt.h>
-#endif
 
 #define QUERYUPDATE_TIME 0
 #define QUERYUPDATE_SIMPLE 1
@@ -153,21 +149,11 @@ class nsNavHistory final : public nsSupportsWeakReference,
                                 nsCString& _GUID);
 
   /**
-   * Asynchronously recalculates frecency for a given page.
-   *
-   * @param aPlaceId
-   *        Place id to recalculate the frecency for.
-   * @note If the new frecency is a non-zero value it will also unhide the page,
-   *       otherwise will reuse the old hidden value.
-   */
-  nsresult UpdateFrecency(int64_t aPlaceId);
-
-  /**
    * These functions return non-owning references to the locale-specific
    * objects for places components.
    */
   nsIStringBundle* GetBundle();
-  nsICollation* GetCollation();
+  const mozilla::intl::Collator* GetCollator();
   void GetStringFromName(const char* aName, nsACString& aResult);
   void GetAgeInDaysString(int32_t aInt, const char* aName, nsACString& aResult);
   static void GetMonthName(const PRExplodedTime& aTime, nsACString& aResult);
@@ -282,21 +268,6 @@ class nsNavHistory final : public nsSupportsWeakReference,
     return mDefaultWeight;
   }
 
-  int32_t GetFrecencyBucketWeight(int32_t aBucketIndex) const {
-    switch (aBucketIndex) {
-      case 1:
-        return mFirstBucketWeight;
-      case 2:
-        return mSecondBucketWeight;
-      case 3:
-        return mThirdBucketWeight;
-      case 4:
-        return mFourthBucketWeight;
-      default:
-        return mDefaultWeight;
-    }
-  }
-
   int32_t GetFrecencyTransitionBonus(int32_t aTransitionType, bool aVisited,
                                      bool aRedirect = false) const {
     if (aRedirect) {
@@ -339,31 +310,22 @@ class nsNavHistory final : public nsSupportsWeakReference,
   void UpdateDaysOfHistory(PRTime visitTime);
 
   /**
-   * Returns true if frecency is currently being decayed.
-   *
-   * @return True if frecency is being decayed, false if not.
-   */
-  bool IsFrecencyDecaying() const;
-
-  /**
    * Store last insterted id for a table.
    */
   static mozilla::Atomic<int64_t> sLastInsertedPlaceId;
   static mozilla::Atomic<int64_t> sLastInsertedVisitId;
 
+  /**
+   * Tracks whether frecency is currently being decayed.
+   */
+  static mozilla::Atomic<bool> sIsFrecencyDecaying;
+  /**
+   * Tracks whether there's frecency to be recalculated.
+   */
+  static mozilla::Atomic<bool> sShouldStartFrecencyRecalculation;
+
   static void StoreLastInsertedId(const nsACString& aTable,
                                   const int64_t aLastInsertedId);
-
-#ifdef XP_WIN
-  /**
-   * Get the cached HCRYPTPROV initialized in the nsNavHistory constructor.
-   */
-  nsresult GetCryptoProvider(HCRYPTPROV& aCryptoProvider) const {
-    NS_ENSURE_STATE(mCryptoProviderInitialized);
-    aCryptoProvider = mCryptoProvider;
-    return NS_OK;
-  }
-#endif
 
   static nsresult FilterResultSet(
       nsNavHistoryQueryResultNode* aParentNode,
@@ -371,8 +333,6 @@ class nsNavHistory final : public nsSupportsWeakReference,
       nsCOMArray<nsNavHistoryResultNode>* aFiltered,
       const RefPtr<nsNavHistoryQuery>& aQuery,
       nsNavHistoryQueryOptions* aOptions);
-
-  void DecayFrecencyCompleted();
 
   static void InvalidateDaysOfHistory();
 
@@ -432,7 +392,7 @@ class nsNavHistory final : public nsSupportsWeakReference,
 
   // localization
   nsCOMPtr<nsIStringBundle> mBundle;
-  nsCOMPtr<nsICollation> mCollation;
+  mozilla::UniquePtr<const mozilla::intl::Collator> mCollator;
 
   // recent events
   typedef nsTHashMap<nsCStringHashKey, int64_t> RecentEventHash;
@@ -476,8 +436,6 @@ class nsNavHistory final : public nsSupportsWeakReference,
   int32_t mUnvisitedTypedBonus;
   int32_t mReloadVisitBonus;
 
-  uint32_t mDecayFrecencyPendingCount;
-
   nsresult RecalculateOriginFrecencyStatsInternal();
 
   // in nsNavHistoryQuery.cpp
@@ -489,13 +447,6 @@ class nsNavHistory final : public nsSupportsWeakReference,
 
   int64_t mLastCachedStartOfDay;
   int64_t mLastCachedEndOfDay;
-
-  // Used to cache the call to CryptAcquireContext, which is expensive
-  // when called thousands of times
-#ifdef XP_WIN
-  HCRYPTPROV mCryptoProvider;
-  bool mCryptoProviderInitialized;
-#endif
 };
 
 #define PLACES_URI_PREFIX "place:"

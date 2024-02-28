@@ -5,8 +5,6 @@ ac_add_options --disable-optimize
 #add-on signing is checked but not enforced
 MOZ_REQUIRE_SIGNING=
 
-. $topsrcdir/build/mozconfig.wasm-sandboxing
-
 # ASan specific options on Linux
 ac_add_options --enable-valgrind
 
@@ -17,8 +15,8 @@ ac_add_options --disable-elf-hack
 # globally in mozconfig.asan because it requires an unstable -Z flag.
 export RUSTFLAGS="$RUSTFLAGS -Zsanitizer=address"
 
-# gold is required for libFuzzer to work properly
-ac_add_options --enable-linker=gold
+# gold or lld is required for libFuzzer to work properly
+ac_add_options --enable-linker=lld
 
 ac_add_options --enable-fuzzing
 unset MOZ_STDCXX_COMPAT

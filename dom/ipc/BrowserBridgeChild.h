@@ -11,13 +11,7 @@
 #include "mozilla/dom/BrowserChild.h"
 #include "mozilla/dom/ipc/IdType.h"
 
-namespace mozilla {
-
-namespace a11y {
-class RemoteIframeDocRemoteAccessibleWrap;
-}
-
-namespace dom {
+namespace mozilla::dom {
 class BrowsingContext;
 class ContentChild;
 class BrowserBridgeHost;
@@ -53,15 +47,17 @@ class BrowserBridgeChild : public PBrowserBridgeChild {
 
   void Deactivate(bool aWindowLowering, uint64_t aActionId);
 
-  void SetIsUnderHiddenEmbedderElement(bool aIsUnderHiddenEmbedderElement);
-
   already_AddRefed<BrowserBridgeHost> FinishInit(nsFrameLoader* aFrameLoader);
 
-#if defined(ACCESSIBILITY) && defined(XP_WIN)
-  a11y::RemoteIframeDocRemoteAccessibleWrap* GetEmbeddedDocAccessible() {
-    return mEmbeddedDocAccessible;
+#if defined(ACCESSIBILITY)
+  void SetEmbedderAccessible(PDocAccessibleChild* aDoc, uint64_t aID) {
+    MOZ_ASSERT((aDoc && aID) || (!aDoc && !aID));
+    mEmbedderAccessibleID = aID;
+    Unused << SendSetEmbedderAccessible(aDoc, aID);
   }
-#endif
+
+  uint64_t GetEmbedderAccessibleID() { return mEmbedderAccessibleID; }
+#endif  // defined(ACCESSIBILITY)
 
   static BrowserBridgeChild* GetFrom(nsFrameLoader* aFrameLoader);
 
@@ -80,15 +76,16 @@ class BrowserBridgeChild : public PBrowserBridgeChild {
   mozilla::ipc::IPCResult RecvMoveFocus(const bool& aForward,
                                         const bool& aForDocumentNavigation);
 
-  mozilla::ipc::IPCResult RecvSetEmbeddedDocAccessibleCOMProxy(
-      const IDispatchHolder& aCOMProxy);
-
-  mozilla::ipc::IPCResult RecvMaybeFireEmbedderLoadEvents(
+  // TODO: Use MOZ_CAN_RUN_SCRIPT when it gains IPDL support (bug 1539864)
+  MOZ_CAN_RUN_SCRIPT_BOUNDARY mozilla::ipc::IPCResult
+  RecvMaybeFireEmbedderLoadEvents(
       EmbedderElementEventType aFireEventAtEmbeddingElement);
 
   mozilla::ipc::IPCResult RecvIntrinsicSizeOrRatioChanged(
       const Maybe<IntrinsicSize>& aIntrinsicSize,
       const Maybe<AspectRatio>& aIntrinsicRatio);
+
+  mozilla::ipc::IPCResult RecvImageLoadComplete(const nsresult& aResult);
 
   MOZ_CAN_RUN_SCRIPT_BOUNDARY
   mozilla::ipc::IPCResult RecvScrollRectIntoView(
@@ -110,12 +107,13 @@ class BrowserBridgeChild : public PBrowserBridgeChild {
   bool mHadInitialLoad = false;
   RefPtr<nsFrameLoader> mFrameLoader;
   RefPtr<BrowsingContext> mBrowsingContext;
-#if defined(ACCESSIBILITY) && defined(XP_WIN)
-  RefPtr<a11y::RemoteIframeDocRemoteAccessibleWrap> mEmbeddedDocAccessible;
-#endif
+#if defined(ACCESSIBILITY)
+  // We need to keep track of the embedder accessible id we last sent to the
+  // parent process.
+  uint64_t mEmbedderAccessibleID = 0;
+#endif  // defined(ACCESSIBILITY)
 };
 
-}  // namespace dom
-}  // namespace mozilla
+}  // namespace mozilla::dom
 
 #endif  // !defined(mozilla_dom_BrowserBridgeParent_h)

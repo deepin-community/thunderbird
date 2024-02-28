@@ -4,7 +4,7 @@
 
 const TEST_PATH = getRootDirectory(gTestPath).replace(
   "chrome://mochitests/content",
-  "http://example.com"
+  "https://example.com"
 );
 const TEST_URI = `view-source:${TEST_PATH}dummy_page.html`;
 
@@ -13,7 +13,7 @@ add_task(async function chrome_to_content_view_source() {
     is(browser.documentURI.spec, "about:mozilla");
 
     // This process switch would previously crash in debug builds due to assertion failures.
-    BrowserTestUtils.loadURI(browser, TEST_URI);
+    BrowserTestUtils.loadURIString(browser, TEST_URI);
     await BrowserTestUtils.browserLoaded(browser);
     is(browser.documentURI.spec, TEST_URI);
   });

@@ -10,7 +10,6 @@ richlistbox {
   margin: 2px 4px;
   background-color: Field;
   color: FieldText;
-  overflow: auto;
 }
 
 richlistbox[disabled="true"] {
@@ -23,8 +22,8 @@ richlistitem[selected="true"] {
 }
 
 richlistbox:where(:focus) > richlistitem[selected="true"] {
-  background-color: Highlight;
-  color: HighlightText;
+  background-color: SelectedItem;
+  color: SelectedItemText;
 }
 
 richlistbox.theme-listbox > richlistitem {

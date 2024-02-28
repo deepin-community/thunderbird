@@ -1,29 +1,28 @@
 {
   "langpack_id": "tr",
   "manifest_version": 2,
-  "applications": {
+  "browser_specific_settings": {
     "gecko": {
       "id": "langpack-tr@thunderbird.mozilla.org",
-      "strict_min_version": "91.0",
-      "strict_max_version": "91.*"
+      "strict_min_version": "115.0",
+      "strict_max_version": "115.*"
     }
   },
-  "name": "Türkçe (TR) Language Pack",
-  "description": "Language pack for Thunderbird for tr",
-  "version": "91.0buildid20211101223011",
+  "name": "Language: Türkçe (Turkish)",
+  "description": "Thunderbird Language Pack for Türkçe (tr) – Turkish",
+  "version": "115.8.20240216.174500",
   "languages": {
     "tr": {
-      "version": "20211011132813",
+      "version": "20240216183829",
       "chrome_resources": {
         "alerts": "chrome/tr/locale/tr/alerts/",
         "autoconfig": "chrome/tr/locale/tr/autoconfig/",
-        "branding": "chrome/tr/locale/tr/branding/",
+        "branding": "chrome/tr/locale/branding/",
         "calendar": "chrome/tr/locale/tr/calendar/",
         "chat": "chrome/tr/locale/tr/chat/",
         "communicator": "chrome/tr/locale/tr/communicator/",
         "devtools": "chrome/tr/locale/tr/devtools/client/",
         "devtools-shared": "chrome/tr/locale/tr/devtools/shared/",
-        "devtools-startup": "chrome/tr/locale/tr/devtools/startup/",
         "global": "chrome/tr/locale/tr/global/",
         "global-platform": {
           "macosx": "chrome/tr/locale/tr/global-platform/mac/",

@@ -5,7 +5,9 @@
 var { NetUtil } = ChromeUtils.import("resource://gre/modules/NetUtil.jsm");
 
 var { HttpServer } = ChromeUtils.import("resource://testing-common/httpd.js");
-var { MockRegistrar } = ChromeUtils.import("resource://testing-common/MockRegistrar.jsm");
+var { MockRegistrar } = ChromeUtils.importESModule(
+  "resource://testing-common/MockRegistrar.sys.mjs"
+);
 
 var {
   CalDavGenericRequest,
@@ -23,8 +25,8 @@ var { CalDavWebDavSyncHandler } = ChromeUtils.import(
 
 var { CalDavSession } = ChromeUtils.import("resource:///modules/caldav/CalDavSession.jsm");
 var { CalDavXmlns } = ChromeUtils.import("resource:///modules/caldav/CalDavUtils.jsm");
-var { Preferences } = ChromeUtils.import("resource://gre/modules/Preferences.jsm");
-var { XPCOMUtils } = ChromeUtils.import("resource://gre/modules/XPCOMUtils.jsm");
+var { Preferences } = ChromeUtils.importESModule("resource://gre/modules/Preferences.sys.mjs");
+var { XPCOMUtils } = ChromeUtils.importESModule("resource://gre/modules/XPCOMUtils.sys.mjs");
 
 XPCOMUtils.defineLazyModuleGetters(this, {
   CalEvent: "resource:///modules/CalEvent.jsm",
@@ -143,7 +145,7 @@ class CalDavServer {
 
       let headers = new LowerMap();
 
-      let headerIterator = function*(enumerator) {
+      let headerIterator = function* (enumerator) {
         while (enumerator.hasMoreElements()) {
           yield enumerator.getNext().QueryInterface(Ci.nsISupportsString);
         }
@@ -162,7 +164,7 @@ class CalDavServer {
 
   resetClient(client) {
     MockConflictPrompt.unregister();
-    cal.getCalendarManager().unregisterCalendar(client);
+    cal.manager.unregisterCalendar(client);
   }
 
   waitForLoad(aCalendar) {
@@ -185,8 +187,7 @@ class CalDavServer {
 
   getClient() {
     let uri = this.uri("/calendars/xpcshell/events");
-    let calmgr = cal.getCalendarManager();
-    let client = calmgr.createCalendar("caldav", uri);
+    let client = cal.manager.createCalendar("caldav", uri);
     let uclient = client.wrappedJSObject;
     client.name = "xpcshell";
     client.setProperty("cache.enabled", true);
@@ -202,9 +203,9 @@ class CalDavServer {
       });
     });
 
-    calmgr.registerCalendar(client);
+    cal.manager.registerCalendar(client);
 
-    let cachedCalendar = calmgr.getCalendarById(client.id);
+    let cachedCalendar = cal.manager.getCalendarById(client.id);
     return this.waitForLoad(cachedCalendar);
   }
 
@@ -491,11 +492,11 @@ function run_test() {
   do_get_profile();
   do_test_pending();
 
-  cal.getCalendarManager().startup({
+  cal.manager.startup({
     onResult() {
       gServer = new CalDavServer("xpcshell@example.com");
       gServer.start();
-      cal.getTimezoneService().startup({
+      cal.timezoneService.startup({
         onResult() {
           run_next_test();
           do_test_finished();
@@ -919,14 +920,7 @@ add_task(async function test_freebusy_request() {
   equal(results.headers.get("Originator"), "mailto:xpcshell@example.com");
   equal(results.headers.get("Recipient"), "mailto:recipient@example.com");
 
-  // The following assertion succeeds but causes "too much recursion" with
-  // icaljs. Assert.jsm calls JSON.stringify on the arguments to log the result
-  // of the assertion, and that causes the recursion error. (Then Assert.jsm
-  // just falls back to using toString instead.) See bug 1546606 starting at
-  // comment 23 and ical.js issue #410.
   let first = response.firstRecipient;
-  strictEqual(first, response.data["mailto:recipient1@example.com"]);
-
   equal(first.status, "2.0;Success");
   deepEqual(
     first.intervals.map(interval => interval.type),
@@ -945,12 +939,8 @@ add_task(async function test_freebusy_request() {
 
 add_task(async function test_caldav_client() {
   let client = await gServer.getClient();
-  let pclient = cal.async.promisifyCalendar(client);
+  let items = await client.getItemsAsArray(Ci.calICalendar.ITEM_FILTER_ALL_ITEMS, 0, null, null);
 
-  // TODO: Fix the problem that is causing this test to fail when the next line is removed.
-  await new Promise(resolve => executeSoon(resolve));
-
-  let items = await pclient.getAllItems();
   equal(items.length, 1);
   equal(items[0].title, "会議");
 });
@@ -965,4 +955,16 @@ add_task(async function test_caldav_sync() {
   let webDavSync = new CalDavWebDavSyncHandler(gMockCalendar, uri);
   await webDavSync.doWebDAVSync();
   ok(webDavSync.logXML.includes("イベント"), "Non-ASCII text should be parsed correctly");
+});
+
+add_task(function test_can_get_google_adapter() {
+  // Initialize a session with bogus values
+  const session = new CalDavSession("xpcshell@example.com", "xpcshell");
+
+  // We don't have a facility for actually testing our Google CalDAV requests,
+  // but we can at least verify that the adapter looks okay at a glance
+  equal(
+    session.authAdapters["apidata.googleusercontent.com"].authorizationEndpoint,
+    "https://accounts.google.com/o/oauth2/auth"
+  );
 });

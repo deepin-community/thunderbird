@@ -7,8 +7,6 @@
 /* import-globals-from ../calendar-ui-utils.js */
 /* globals Preferences */
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-
 Preferences.addAll([
   { id: "calendar.alarms.playsound", type: "bool" },
   { id: "calendar.alarms.soundURL", type: "string" },
@@ -50,7 +48,7 @@ var gAlarmsPane = {
    * Converts the given file url to a nsIFile
    *
    * @param aFileURL    A string with a file:// url.
-   * @return            The corresponding nsIFile.
+   * @returns The corresponding nsIFile.
    */
   convertURLToLocalFile(aFileURL) {
     // Convert the file url into a nsIFile

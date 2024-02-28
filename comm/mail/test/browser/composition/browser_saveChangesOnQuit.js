@@ -15,6 +15,7 @@ var {
   open_compose_new_mail,
   open_compose_with_forward,
   open_compose_with_reply,
+  wait_for_compose_window,
 } = ChromeUtils.import("resource://testing-common/mozmill/ComposeHelpers.jsm");
 var {
   add_message_to_folder,
@@ -22,6 +23,8 @@ var {
   be_in_folder,
   create_folder,
   create_message,
+  get_about_message,
+  get_special_folder,
   mc,
   select_click_row,
 } = ChromeUtils.import(
@@ -30,8 +33,12 @@ var {
 var { gMockPromptService } = ChromeUtils.import(
   "resource://testing-common/mozmill/PromptHelpers.jsm"
 );
-
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
+var { wait_for_notification_to_show, get_notification } = ChromeUtils.import(
+  "resource://testing-common/mozmill/NotificationBoxHelpers.jsm"
+);
+var { plan_for_new_window, wait_for_window_focused } = ChromeUtils.import(
+  "resource://testing-common/mozmill/WindowHelpers.jsm"
+);
 
 var SAVE = 0;
 var CANCEL = 1;
@@ -39,23 +46,22 @@ var DONT_SAVE = 2;
 
 var cwc = null; // compose window controller
 var folder = null;
+var gDraftFolder = null;
 
-add_task(function setupModule(module) {
+add_setup(async function () {
   requestLongerTimeout(3);
 
-  folder = create_folder("PromptToSaveTest");
+  folder = await create_folder("PromptToSaveTest");
 
-  add_message_to_folder(folder, create_message()); // row 0
+  await add_message_to_folder([folder], create_message()); // row 0
   let localFolder = folder.QueryInterface(Ci.nsIMsgLocalMailFolder);
   localFolder.addMessage(msgSource("content type: text", "text")); // row 1
   localFolder.addMessage(msgSource("content type missing", null)); // row 2
+  gDraftFolder = await get_special_folder(Ci.nsMsgFolderFlags.Drafts, true);
 });
 
 function msgSource(aSubject, aContentType) {
-  let msgId =
-    Cc["@mozilla.org/uuid-generator;1"]
-      .getService(Ci.nsIUUIDGenerator)
-      .generateUUID() + "@invalid";
+  let msgId = Services.uuid.generateUUID() + "@invalid";
 
   return (
     "From - Sun Apr 07 22:47:11 2013\r\n" +
@@ -94,7 +100,8 @@ add_task(function test_can_cancel_quit_on_changes() {
   cwc = open_compose_new_mail(mc);
 
   // Make some changes
-  cwc.type(cwc.e("content-frame"), "Hey check out this megalol link");
+  cwc.window.document.getElementById("messageEditor").focus();
+  EventUtils.sendString("Hey check out this megalol link", cwc.window);
 
   let cancelQuit = Cc["@mozilla.org/supports-PRBool;1"].createInstance(
     Ci.nsISupportsPRBool
@@ -137,7 +144,8 @@ add_task(function test_can_quit_on_changes() {
   cwc = open_compose_new_mail(mc);
 
   // Make some changes
-  cwc.type(cwc.e("content-frame"), "Hey check out this megalol link");
+  cwc.window.document.getElementById("messageEditor").focus();
+  EventUtils.sendString("Hey check out this megalol link", cwc.window);
 
   let cancelQuit = Cc["@mozilla.org/supports-PRBool;1"].createInstance(
     Ci.nsISupportsPRBool
@@ -171,7 +179,7 @@ add_task(function test_can_quit_on_changes() {
  * window's state is such that subsequent quit requests still cause the
  * Don't Save / Cancel / Save dialog to come up.
  */
-add_task(function test_window_quit_state_reset_on_aborted_quit() {
+add_task(async function test_window_quit_state_reset_on_aborted_quit() {
   // Register the Mock Prompt Service
   gMockPromptService.register();
 
@@ -180,8 +188,11 @@ add_task(function test_window_quit_state_reset_on_aborted_quit() {
   let cwc2 = open_compose_new_mail(mc);
 
   // Type something in each window.
-  cwc1.type(cwc1.e("content-frame"), "Marco!");
-  cwc2.type(cwc2.e("content-frame"), "Polo!");
+  cwc1.window.document.getElementById("messageEditor").focus();
+  EventUtils.sendString("Marco!", cwc1.window);
+
+  cwc2.window.document.getElementById("messageEditor").focus();
+  EventUtils.sendString("Polo!", cwc2.window);
 
   let cancelQuit = Cc["@mozilla.org/supports-PRBool;1"].createInstance(
     Ci.nsISupportsPRBool
@@ -190,7 +201,7 @@ add_task(function test_window_quit_state_reset_on_aborted_quit() {
   // This is a hacky method for making sure that the second window
   // receives a CANCEL click in the popup dialog.
   var numOfPrompts = 0;
-  gMockPromptService.onPromptCallback = function() {
+  gMockPromptService.onPromptCallback = function () {
     numOfPrompts++;
 
     if (numOfPrompts > 1) {
@@ -213,10 +224,17 @@ add_task(function test_window_quit_state_reset_on_aborted_quit() {
   // The first window should still prompt when attempting to close the
   // window.
   gMockPromptService.returnValue = DONT_SAVE;
-  cwc2.click(cwc2.e("menu_close"));
 
-  let promptState = gMockPromptService.promptState;
-  Assert.notEqual(null, promptState, "Expected a confirmEx prompt");
+  // Unclear why the timeout is needed.
+  // eslint-disable-next-line mozilla/no-arbitrary-setTimeout
+  await new Promise(resolve => setTimeout(resolve, 500));
+
+  cwc2.window.goDoCommand("cmd_close");
+
+  TestUtils.waitForCondition(
+    () => !!gMockPromptService.promptState,
+    "Expected a confirmEx prompt to come up"
+  );
 
   close_compose_window(cwc1);
 
@@ -227,8 +245,8 @@ add_task(function test_window_quit_state_reset_on_aborted_quit() {
  * Tests that we don't get a prompt to save if there has been no user input
  * into the message yet, when trying to close.
  */
-add_task(function test_no_prompt_on_close_for_unmodified() {
-  be_in_folder(folder);
+add_task(async function test_no_prompt_on_close_for_unmodified() {
+  await be_in_folder(folder);
   let msg = select_click_row(0);
   assert_selected_and_displayed(mc, msg);
 
@@ -246,21 +264,24 @@ add_task(function test_no_prompt_on_close_for_unmodified() {
  * Tests that we get a prompt to save if the user made changes to the message
  * before trying to close it.
  */
-add_task(function test_prompt_on_close_for_modified() {
-  be_in_folder(folder);
+add_task(async function test_prompt_on_close_for_modified() {
+  await be_in_folder(folder);
   let msg = select_click_row(0);
   assert_selected_and_displayed(mc, msg);
 
   let nwc = open_compose_new_mail();
-  nwc.type(nwc.e("content-frame"), "Hey hey hey!");
+  nwc.window.document.getElementById("messageEditor").focus();
+  EventUtils.sendString("Hey hey hey!", nwc.window);
   close_compose_window(nwc, true);
 
   let rwc = open_compose_with_reply();
-  rwc.type(rwc.e("content-frame"), "Howdy!");
+  rwc.window.document.getElementById("messageEditor").focus();
+  EventUtils.sendString("Howdy!", rwc.window);
   close_compose_window(rwc, true);
 
   let fwc = open_compose_with_forward();
-  fwc.type(fwc.e("content-frame"), "Greetings!");
+  fwc.window.document.getElementById("messageEditor").focus();
+  EventUtils.sendString("Greetings!", fwc.window);
   close_compose_window(fwc, true);
 });
 
@@ -268,40 +289,132 @@ add_task(function test_prompt_on_close_for_modified() {
  * Test there's no prompt on close when no changes was made in reply/forward
  * windows - for the case the original msg had content type "text".
  */
-add_task(function test_no_prompt_on_close_for_unmodified_content_type_text() {
-  be_in_folder(folder);
-  let msg = select_click_row(1); // row 1 is the one with content type text
-  assert_selected_and_displayed(mc, msg);
+add_task(
+  async function test_no_prompt_on_close_for_unmodified_content_type_text() {
+    await be_in_folder(folder);
+    let msg = select_click_row(1); // row 1 is the one with content type text
+    assert_selected_and_displayed(mc, msg);
 
-  let rwc = open_compose_with_reply();
-  close_compose_window(rwc, false);
+    let rwc = open_compose_with_reply();
+    close_compose_window(rwc, false);
 
-  let fwc = open_compose_with_forward();
-  Assert.equal(
-    fwc.e("attachmentBucket").getRowCount(),
-    0,
-    "forwarding msg created attachment"
-  );
-  close_compose_window(fwc, false);
-});
+    let fwc = open_compose_with_forward();
+    Assert.equal(
+      fwc.window.document.getElementById("attachmentBucket").getRowCount(),
+      0,
+      "forwarding msg created attachment"
+    );
+    close_compose_window(fwc, false);
+  }
+);
 
 /**
  * Test there's no prompt on close when no changes was made in reply/forward
  * windows - for the case the original msg had no content type.
  */
-add_task(function test_no_prompt_on_close_for_unmodified_no_content_type() {
-  be_in_folder(folder);
-  let msg = select_click_row(2); // row 2 is the one with no content type
+add_task(
+  async function test_no_prompt_on_close_for_unmodified_no_content_type() {
+    await be_in_folder(folder);
+    let msg = select_click_row(2); // row 2 is the one with no content type
+    assert_selected_and_displayed(mc, msg);
+
+    let rwc = open_compose_with_reply();
+    close_compose_window(rwc, false);
+
+    let fwc = open_compose_with_forward();
+    Assert.equal(
+      fwc.window.document.getElementById("attachmentBucket").getRowCount(),
+      0,
+      "forwarding msg created attachment"
+    );
+    close_compose_window(fwc, false);
+  }
+);
+
+add_task(async function test_prompt_save_on_pill_editing() {
+  cwc = open_compose_new_mail(mc);
+
+  // Focus should be on the To field, so just type an address.
+  EventUtils.sendString("test@foo.invalid", cwc.window);
+  let pillCreated = TestUtils.waitForCondition(
+    () => cwc.window.document.querySelectorAll("mail-address-pill").length == 1,
+    "One pill was created"
+  );
+  // Trigger the saving of the draft.
+  EventUtils.synthesizeKey("s", { accelKey: true }, cwc.window);
+  await pillCreated;
+  Assert.ok(cwc.window.gSaveOperationInProgress, "Should start save operation");
+  await TestUtils.waitForCondition(
+    () => !cwc.window.gSaveOperationInProgress && !cwc.window.gWindowLock,
+    "Waiting for the save operation to complete"
+  );
+
+  // All leftover text should have been cleared and pill should have been
+  // created before the draft is actually saved.
+  Assert.equal(
+    cwc.window.document.activeElement.id,
+    "toAddrInput",
+    "The input field is focused."
+  );
+  Assert.equal(
+    cwc.window.document.activeElement.value,
+    "",
+    "The input field is empty."
+  );
+
+  // Close the compose window after the saving operation is completed.
+  close_compose_window(cwc, false);
+
+  // Move to the drafts folder and select the recently saved message.
+  await be_in_folder(gDraftFolder);
+  let msg = select_click_row(0);
   assert_selected_and_displayed(mc, msg);
 
-  let rwc = open_compose_with_reply();
-  close_compose_window(rwc, false);
+  // Click on the "edit draft" notification.
+  let aboutMessage = get_about_message();
+  let kBoxId = "mail-notification-top";
+  wait_for_notification_to_show(aboutMessage, kBoxId, "draftMsgContent");
+  let box = get_notification(aboutMessage, kBoxId, "draftMsgContent");
 
-  let fwc = open_compose_with_forward();
-  Assert.equal(
-    fwc.e("attachmentBucket").getRowCount(),
-    0,
-    "forwarding msg created attachment"
+  plan_for_new_window("msgcompose");
+  // Click on the "Edit" button in the draft notification.
+  EventUtils.synthesizeMouseAtCenter(
+    box.buttonContainer.firstElementChild,
+    {},
+    aboutMessage
   );
-  close_compose_window(fwc, false);
+  cwc = wait_for_compose_window();
+
+  // Make sure the address was saved correctly.
+  let pill = cwc.window.document.querySelector("mail-address-pill");
+  Assert.equal(
+    pill.fullAddress,
+    "test@foo.invalid",
+    "the email address matches"
+  );
+  let isEditing = TestUtils.waitForCondition(
+    () => pill.isEditing,
+    "Pill is being edited"
+  );
+
+  let focusPromise = TestUtils.waitForCondition(
+    () => cwc.window.document.activeElement == pill,
+    "Pill is focused"
+  );
+  // The focus should be on the subject since we didn't write anything,
+  // so shift+tab to move the focus on the To field, and pressing Arrow Left
+  // should correctly focus the previously generated pill.
+  EventUtils.synthesizeKey("VK_TAB", { shiftKey: true }, cwc.window);
+  EventUtils.synthesizeKey("KEY_ArrowLeft", {}, cwc.window);
+  await focusPromise;
+  EventUtils.synthesizeKey("VK_RETURN", {}, cwc.window);
+  await isEditing;
+
+  let promptPromise = BrowserTestUtils.promiseAlertDialog("extra1");
+  // Try to quit after entering the pill edit mode, a "unsaved changes" dialog
+  // should be triggered.
+  cwc.window.goDoCommand("cmd_close");
+  await promptPromise;
+
+  close_compose_window(cwc);
 });

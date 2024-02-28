@@ -5,7 +5,7 @@
 // except according to those terms.
 
 use super::super::super::{ConnectionError, ERROR_AEAD_LIMIT_REACHED};
-use super::super::{Connection, Error, Output, State, StreamType, LOCAL_IDLE_TIMEOUT};
+use super::super::{Connection, ConnectionParameters, Error, Output, State, StreamType};
 use super::{
     connect, connect_force_idle, default_client, default_server, maybe_authenticate,
     send_and_receive, send_something, AT_LEAST_PTO,
@@ -18,13 +18,19 @@ use neqo_common::{qdebug, Datagram};
 use std::mem;
 use test_fixture::{self, now};
 
-fn check_discarded(peer: &mut Connection, pkt: Datagram, dropped: usize, dups: usize) {
+fn check_discarded(
+    peer: &mut Connection,
+    pkt: Datagram,
+    response: bool,
+    dropped: usize,
+    dups: usize,
+) {
     // Make sure to flush any saved datagrams before doing this.
     mem::drop(peer.process_output(now()));
 
     let before = peer.stats();
     let out = peer.process(Some(pkt), now());
-    assert!(out.as_dgram_ref().is_none());
+    assert_eq!(out.as_dgram_ref().is_some(), response);
     let after = peer.stats();
     assert_eq!(dropped, after.dropped_rx - before.dropped_rx);
     assert_eq!(dups, after.dups_rx - before.dups_rx);
@@ -34,7 +40,7 @@ fn assert_update_blocked(c: &mut Connection) {
     assert_eq!(
         c.initiate_key_update().unwrap_err(),
         Error::KeyUpdateBlocked
-    )
+    );
 }
 
 fn overwrite_invocations(n: PacketNumber) {
@@ -60,11 +66,12 @@ fn discarded_initial_keys() {
     let out = client.process(init_pkt_s.clone(), now()).dgram();
     assert!(out.is_some());
 
-    // The client has received handshake packet. It will remove the Initial keys.
+    // The client has received a handshake packet. It will remove the Initial keys.
     // We will check this by processing init_pkt_s a second time.
     // The initial packet should be dropped. The packet contains a Handshake packet as well, which
     // will be marked as dup.  And it will contain padding, which will be "dropped".
-    check_discarded(&mut client, init_pkt_s.unwrap(), 2, 1);
+    // The client will generate a Handshake packet here to avoid stalling.
+    check_discarded(&mut client, init_pkt_s.unwrap(), true, 2, 1);
 
     assert!(maybe_authenticate(&mut client));
 
@@ -72,7 +79,7 @@ fn discarded_initial_keys() {
     // packet from the client.
     // We will check this by processing init_pkt_c a second time.
     // The dropped packet is padding. The Initial packet has been mark dup.
-    check_discarded(&mut server, init_pkt_c.clone().unwrap(), 1, 1);
+    check_discarded(&mut server, init_pkt_c.clone().unwrap(), false, 1, 1);
 
     qdebug!("---- client: SH..FIN -> FIN");
     let out = client.process(None, now()).dgram();
@@ -87,7 +94,7 @@ fn discarded_initial_keys() {
     // We will check this by processing init_pkt_c a third time.
     // The Initial packet has been dropped and padding that follows it.
     // There is no dups, everything has been dropped.
-    check_discarded(&mut server, init_pkt_c.unwrap(), 1, 0);
+    check_discarded(&mut server, init_pkt_c.unwrap(), false, 1, 0);
 }
 
 #[test]
@@ -104,10 +111,8 @@ fn key_update_client() {
     assert_update_blocked(&mut client);
 
     // Initiating an update should only increase the write epoch.
-    assert_eq!(
-        Output::Callback(LOCAL_IDLE_TIMEOUT),
-        client.process(None, now)
-    );
+    let idle_timeout = ConnectionParameters::default().get_idle_timeout();
+    assert_eq!(Output::Callback(idle_timeout), client.process(None, now));
     assert_eq!(client.get_epochs(), (Some(4), Some(3)));
 
     // Send something to propagate the update.
@@ -117,7 +122,7 @@ fn key_update_client() {
     assert_eq!(server.get_epochs(), (Some(4), Some(3)));
     let res = server.process(None, now);
     if let Output::Callback(t) = res {
-        assert!(t < LOCAL_IDLE_TIMEOUT);
+        assert!(t < idle_timeout);
     } else {
         panic!("server should now be waiting to clear keys");
     }
@@ -149,7 +154,7 @@ fn key_update_client() {
     // This is the first packet that the client has received from the server
     // with new keys, so its read timer just started.
     if let Output::Callback(t) = res {
-        assert!(t < LOCAL_IDLE_TIMEOUT);
+        assert!(t < ConnectionParameters::default().get_idle_timeout());
     } else {
         panic!("client should now be waiting to clear keys");
     }
@@ -202,7 +207,7 @@ fn key_update_consecutive() {
 
     // However, as the server didn't wait long enough to update again, the
     // client hasn't rotated its keys, so the packet gets dropped.
-    check_discarded(&mut client, dgram, 1, 0);
+    check_discarded(&mut client, dgram, false, 1, 0);
 }
 
 // Key updates can't be initiated too early.

@@ -24,8 +24,6 @@
 <!ENTITY moveToNewWindow.accesskey "v">
 <!ENTITY newVirtualFolderCmd.label "Gueta guardada…">
 <!ENTITY newVirtualFolderCmd.accesskey "G">
-<!ENTITY newOtherAccountsCmd.label "Otres cuentes…">
-<!ENTITY newOtherAccountsCmd.accesskey "O">
 <!ENTITY newCreateEmailAccountCmd.label "Obtener cuenta de corréu nueva…">
 <!ENTITY newCreateEmailAccountCmd.accesskey "O">
 <!ENTITY newExistingEmailAccountCmd.label "Cuenta de corréu esistente…">
@@ -40,8 +38,6 @@
 <!ENTITY openMessageFileCmd.accesskey "A">
 <!ENTITY saveAsMenu.label "Guardar como">
 <!ENTITY saveAsMenu.accesskey "G">
-<!ENTITY saveAsFileCmd.label "Ficheru">
-<!ENTITY saveAsFileCmd.accesskey "r">
 <!ENTITY saveAsFileCmd.key "s">
 <!ENTITY saveAsTemplateCmd.label "Plantía">
 <!ENTITY saveAsTemplateCmd.accesskey "p">
@@ -920,7 +916,6 @@
 <!ENTITY getNextNMsgCmd2.accesskey "t">
 <!ENTITY glodaSearchCmd.label "Global Search…">
 <!ENTITY glodaSearchCmd.accesskey "G">
-<!ENTITY goChatCmd2.key "H">
 <!ENTITY editTemplateMsgCmd.label "Edit Template">
 <!ENTITY editTemplateMsgCmd.accesskey "T">
 <!ENTITY newMsgFromTemplateCmd.label "New Message from Template">
@@ -929,6 +924,8 @@
 <!ENTITY openInConversationCmd.accesskey "s">
 <!ENTITY openInConversationCmd.key "o">
 <!ENTITY addonNoPrefs.label "No Add-on settings found.">
+<!ENTITY exportCmd.label "Export…">
+<!ENTITY exportCmd.accesskey "x">
 <!ENTITY debugAddonsCmd.label "Debug Add-ons">
 <!ENTITY debugAddonsCmd.accesskey "A">
 <!ENTITY openMsgConversationButton.tooltip "Show conversation of selected message">

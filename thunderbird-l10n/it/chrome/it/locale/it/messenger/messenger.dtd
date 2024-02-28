@@ -24,8 +24,6 @@
 <!ENTITY moveToNewWindow.accesskey "S">
 <!ENTITY newVirtualFolderCmd.label "Ricerche salvate…">
 <!ENTITY newVirtualFolderCmd.accesskey "S">
-<!ENTITY newOtherAccountsCmd.label "Altri account…">
-<!ENTITY newOtherAccountsCmd.accesskey "t">
 <!ENTITY newCreateEmailAccountCmd.label "Crea un nuovo account email">
 <!ENTITY newCreateEmailAccountCmd.accesskey "r">
 <!ENTITY newExistingEmailAccountCmd.label "Account email esistente…">
@@ -48,8 +46,6 @@
 <!ENTITY openMessageFileCmd.accesskey "A">
 <!ENTITY saveAsMenu.label "Salva come">
 <!ENTITY saveAsMenu.accesskey "S">
-<!ENTITY saveAsFileCmd.label "File">
-<!ENTITY saveAsFileCmd.accesskey "F">
 <!ENTITY saveAsFileCmd.key "s">
 <!ENTITY saveAsTemplateCmd.label "Modello">
 <!ENTITY saveAsTemplateCmd.accesskey "M">
@@ -103,6 +99,8 @@
 <!ENTITY deleteFolderCmd.accesskey "E">
 <!ENTITY unsubscribeNewsgroupCmd.label "Annulla sottoscrizione">
 <!ENTITY unsubscribeNewsgroupCmd.accesskey "n">
+
+<!-- Edit Menu -->
 <!ENTITY selectMenu.label "Seleziona">
 <!ENTITY selectMenu.accesskey "S">
 <!ENTITY all.label "Tutti">
@@ -147,7 +145,7 @@
 <!ENTITY messagePaneWide.accesskey "e">
 <!ENTITY messagePaneVertical.label "Visualizzazione verticale">
 <!ENTITY messagePaneVertical.accesskey "V">
-<!ENTITY showFolderPaneCmd.label "Riquadro cartelle">
+<!ENTITY showFolderPaneCmd.label "Pannello cartelle">
 <!ENTITY showFolderPaneCmd.accesskey "R">
 <!ENTITY showFolderPaneColsCmd.label "Colonne del pannello delle cartelle">
 <!ENTITY showFolderPaneColsCmd.accesskey "P">
@@ -320,7 +318,6 @@
 <!ENTITY goBackCmd.commandKey "[">
 <!ENTITY goChatCmd.label "Chat">
 <!ENTITY goChatCmd.accesskey "c">
-<!ENTITY goChatCmd2.key "H">
 <!ENTITY prevStarredMsgCmd.label "Messaggio speciale">
 <!ENTITY prevStarredMsgCmd.accesskey "S">
 <!ENTITY folderMenu.label "Cartelle di posta">
@@ -448,7 +445,7 @@
 <!ENTITY openFeedWebPage.accesskey "W">
 <!ENTITY openFeedSummary.label "Aprire come sommario">
 <!ENTITY openFeedSummary.accesskey "S">
-<!ENTITY openFeedWebPageInMP.label "Scambia la pagina web e il sommario nel riquadro dell’anteprima">
+<!ENTITY openFeedWebPageInMP.label "Scambia la pagina web e il sommario nel pannello anteprima">
 <!ENTITY openFeedWebPageInMP.accesskey "S">
 
 <!-- Windows Menu -->
@@ -546,7 +543,7 @@
 <!ENTITY folderLocationToolbarItem.title "Posizione cartella">
 <!ENTITY tagButton.label "Etichetta">
 <!ENTITY compactButton.label "Compatta">
-<!ENTITY appmenuButton.label "AppMenu">
+<!ENTITY appmenuButton.label "Menu applicazione">
 
 <!-- Mail Toolbar Tooltips-->
 <!ENTITY advancedButton.tooltip "Ricerca avanzata">

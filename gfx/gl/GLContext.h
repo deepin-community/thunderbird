@@ -21,12 +21,13 @@
 #  undef GetClassName
 #endif
 
-// Define MOZ_GL_DEBUG unconditionally to enable GL debugging in opt
+// Define MOZ_GL_DEBUG_BUILD unconditionally to enable GL debugging in opt
 // builds.
 #ifdef DEBUG
-#  define MOZ_GL_DEBUG 1
+#  define MOZ_GL_DEBUG_BUILD 1
 #endif
 
+#include "mozilla/IntegerRange.h"
 #include "mozilla/RefPtr.h"
 #include "mozilla/UniquePtr.h"
 #include "mozilla/ThreadLocal.h"
@@ -36,6 +37,7 @@
 #include "GLConsts.h"
 #include "GLDefs.h"
 #include "GLTypes.h"
+#include "GLVendor.h"
 #include "nsRegionFwd.h"
 #include "nsString.h"
 #include "GLContextTypes.h"
@@ -52,7 +54,6 @@ namespace mozilla {
 
 namespace gl {
 class GLBlitHelper;
-class GLBlitTextureImageHelper;
 class GLLibraryEGL;
 class GLReadTexImageHelper;
 class SharedSurface;
@@ -79,6 +80,7 @@ enum class GLFeature {
   copy_buffer,
   depth_texture,
   draw_buffers,
+  draw_buffers_indexed,
   draw_instanced,
   element_index_uint,
   ES2_compatibility,
@@ -107,6 +109,7 @@ enum class GLFeature {
   packed_depth_stencil,
   prim_restart,
   prim_restart_fixed,
+  provoking_vertex,
   query_counter,
   query_objects,
   query_time_elapsed,
@@ -150,19 +153,6 @@ enum class ContextProfile : uint8_t {
   OpenGLES
 };
 
-enum class GLVendor {
-  Intel,
-  NVIDIA,
-  ATI,
-  Qualcomm,
-  Imagination,
-  Nouveau,
-  Vivante,
-  VMware,
-  ARM,
-  Other
-};
-
 enum class GLRenderer {
   Adreno200,
   Adreno205,
@@ -174,6 +164,7 @@ enum class GLRenderer {
   AdrenoTM420,
   Mali400MP,
   Mali450MP,
+  MaliT,
   SGX530,
   SGX540,
   SGX544MP,
@@ -187,12 +178,14 @@ enum class GLRenderer {
 
 class GLContext : public GenericAtomicRefCounted, public SupportsWeakPtr {
  public:
-  static MOZ_THREAD_LOCAL(uintptr_t) sCurrentContext;
+  static MOZ_THREAD_LOCAL(const GLContext*) sCurrentContext;
 
   const GLContextDesc mDesc;
 
   bool mImplicitMakeCurrent = false;
   bool mUseTLSIsCurrent;
+
+  static void ResetTLSCurrentContext();
 
   class TlsScope final {
     const WeakPtr<GLContext> mGL;
@@ -280,8 +273,8 @@ class GLContext : public GenericAtomicRefCounted, public SupportsWeakPtr {
   }
 
   GLVendor Vendor() const { return mVendor; }
-
   GLRenderer Renderer() const { return mRenderer; }
+  bool IsMesa() const { return mIsMesa; }
 
   bool IsContextLost() const { return mContextLost; }
 
@@ -335,6 +328,7 @@ class GLContext : public GenericAtomicRefCounted, public SupportsWeakPtr {
 
   GLVendor mVendor = GLVendor::Other;
   GLRenderer mRenderer = GLRenderer::Other;
+  bool mIsMesa = false;
 
   // -----------------------------------------------------------------------------
   // Extensions management
@@ -360,6 +354,7 @@ class GLContext : public GenericAtomicRefCounted, public SupportsWeakPtr {
     ANGLE_framebuffer_multisample,
     ANGLE_instanced_arrays,
     ANGLE_multiview,
+    ANGLE_provoking_vertex,
     ANGLE_texture_compression_dxt3,
     ANGLE_texture_compression_dxt5,
     ANGLE_timer_query,
@@ -387,6 +382,7 @@ class GLContext : public GenericAtomicRefCounted, public SupportsWeakPtr {
     ARB_map_buffer_range,
     ARB_occlusion_query2,
     ARB_pixel_buffer_object,
+    ARB_provoking_vertex,
     ARB_robust_buffer_access_behavior,
     ARB_robustness,
     ARB_sampler_objects,
@@ -428,12 +424,12 @@ class GLContext : public GenericAtomicRefCounted, public SupportsWeakPtr {
     EXT_multisampled_render_to_texture,
     EXT_occlusion_query_boolean,
     EXT_packed_depth_stencil,
+    EXT_provoking_vertex,
     EXT_read_format_bgra,
     EXT_robustness,
     EXT_sRGB,
     EXT_sRGB_write_control,
     EXT_shader_texture_lod,
-    EXT_texture3D,
     EXT_texture_compression_bptc,
     EXT_texture_compression_dxt1,
     EXT_texture_compression_rgtc,
@@ -473,6 +469,7 @@ class GLContext : public GenericAtomicRefCounted, public SupportsWeakPtr {
     OES_depth24,
     OES_depth32,
     OES_depth_texture,
+    OES_draw_buffers_indexed,
     OES_element_index_uint,
     OES_fbo_render_mipmap,
     OES_framebuffer_object,
@@ -623,7 +620,7 @@ class GLContext : public GenericAtomicRefCounted, public SupportsWeakPtr {
                                              const GLvoid* userParam);
 
   // -----------------------------------------------------------------------------
-  // MOZ_GL_DEBUG implementation
+  // Debugging implementation
  private:
 #ifndef MOZ_FUNCTION_NAME
 #  ifdef __GNUC__
@@ -691,7 +688,7 @@ class GLContext : public GenericAtomicRefCounted, public SupportsWeakPtr {
 
   static void AssertNotPassingStackBufferToTheGL(const void* ptr);
 
-#ifdef MOZ_GL_DEBUG
+#ifdef MOZ_GL_DEBUG_BUILD
 
 #  define TRACKING_CONTEXT(a) \
     do {                      \
@@ -712,7 +709,7 @@ class GLContext : public GenericAtomicRefCounted, public SupportsWeakPtr {
       }                                                                  \
     } while (0)
 
-#else  // ifdef MOZ_GL_DEBUG
+#else  // ifdef MOZ_GL_DEBUG_BUILD
 
 #  define TRACKING_CONTEXT(a) \
     do {                      \
@@ -724,7 +721,7 @@ class GLContext : public GenericAtomicRefCounted, public SupportsWeakPtr {
     do {                              \
     } while (0)
 
-#endif  // ifdef MOZ_GL_DEBUG
+#endif  // ifdef MOZ_GL_DEBUG_BUILD
 
   // Do whatever setup is necessary to draw to our offscreen FBO, if it's
   // bound.
@@ -2019,10 +2016,49 @@ class GLContext : public GenericAtomicRefCounted, public SupportsWeakPtr {
     AFTER_GL_CALL;
   }
 
-  void fBindFramebuffer(GLenum target, GLuint framebuffer) {
+ private:
+  mutable GLuint mCachedDrawFb = 0;
+  mutable GLuint mCachedReadFb = 0;
+
+ public:
+  bool mElideDuplicateBindFramebuffers = false;
+
+  void fBindFramebuffer(const GLenum target, const GLuint fb) const {
+    if (mElideDuplicateBindFramebuffers) {
+      MOZ_ASSERT(mCachedDrawFb ==
+                 GetIntAs<GLuint>(LOCAL_GL_DRAW_FRAMEBUFFER_BINDING));
+      MOZ_ASSERT(mCachedReadFb ==
+                 GetIntAs<GLuint>(LOCAL_GL_READ_FRAMEBUFFER_BINDING));
+
+      switch (target) {
+        case LOCAL_GL_FRAMEBUFFER:
+          if (mCachedDrawFb == fb && mCachedReadFb == fb) return;
+          break;
+        case LOCAL_GL_DRAW_FRAMEBUFFER:
+          if (mCachedDrawFb == fb) return;
+          break;
+        case LOCAL_GL_READ_FRAMEBUFFER:
+          if (mCachedReadFb == fb) return;
+          break;
+      }
+    }
+
     BEFORE_GL_CALL;
-    mSymbols.fBindFramebuffer(target, framebuffer);
+    mSymbols.fBindFramebuffer(target, fb);
     AFTER_GL_CALL;
+
+    switch (target) {
+      case LOCAL_GL_FRAMEBUFFER:
+        mCachedDrawFb = fb;
+        mCachedReadFb = fb;
+        break;
+      case LOCAL_GL_DRAW_FRAMEBUFFER:
+        mCachedDrawFb = fb;
+        break;
+      case LOCAL_GL_READ_FRAMEBUFFER:
+        mCachedReadFb = fb;
+        break;
+    }
   }
 
   void fBindRenderbuffer(GLenum target, GLuint renderbuffer) {
@@ -2286,6 +2322,16 @@ class GLContext : public GenericAtomicRefCounted, public SupportsWeakPtr {
     BEFORE_GL_CALL;
     mSymbols.fDeleteFramebuffers(n, names);
     AFTER_GL_CALL;
+
+    for (const auto i : IntegerRange(n)) {
+      const auto fb = names[i];
+      if (mCachedDrawFb == fb) {
+        mCachedDrawFb = 0;
+      }
+      if (mCachedReadFb == fb) {
+        mCachedReadFb = 0;
+      }
+    }
   }
 
   void raw_fDeleteRenderbuffers(GLsizei n, const GLuint* names) {
@@ -3311,6 +3357,53 @@ class GLContext : public GenericAtomicRefCounted, public SupportsWeakPtr {
     AFTER_GL_CALL;
   }
 
+  // -
+  // draw_buffers_indexed
+
+  void fBlendEquationSeparatei(GLuint i, GLenum modeRGB,
+                               GLenum modeAlpha) const {
+    BEFORE_GL_CALL;
+    mSymbols.fBlendEquationSeparatei(i, modeRGB, modeAlpha);
+    AFTER_GL_CALL;
+  }
+
+  void fBlendFuncSeparatei(GLuint i, GLenum sfactorRGB, GLenum dfactorRGB,
+                           GLenum sfactorAlpha, GLenum dfactorAlpha) const {
+    BEFORE_GL_CALL;
+    mSymbols.fBlendFuncSeparatei(i, sfactorRGB, dfactorRGB, sfactorAlpha,
+                                 dfactorAlpha);
+    AFTER_GL_CALL;
+  }
+
+  void fColorMaski(GLuint i, realGLboolean red, realGLboolean green,
+                   realGLboolean blue, realGLboolean alpha) const {
+    BEFORE_GL_CALL;
+    mSymbols.fColorMaski(i, red, green, blue, alpha);
+    AFTER_GL_CALL;
+  }
+
+  void fDisablei(GLenum capability, GLuint i) const {
+    BEFORE_GL_CALL;
+    mSymbols.fDisablei(capability, i);
+    AFTER_GL_CALL;
+  }
+
+  void fEnablei(GLenum capability, GLuint i) const {
+    BEFORE_GL_CALL;
+    mSymbols.fEnablei(capability, i);
+    AFTER_GL_CALL;
+  }
+
+  // -
+
+  void fProvokingVertex(GLenum mode) const {
+    BEFORE_GL_CALL;
+    mSymbols.fProvokingVertex(mode);
+    AFTER_GL_CALL;
+  }
+
+  // -
+
 #undef BEFORE_GL_CALL
 #undef AFTER_GL_CALL
 #undef ASSERT_SYMBOL_PRESENT
@@ -3354,7 +3447,7 @@ class GLContext : public GenericAtomicRefCounted, public SupportsWeakPtr {
    * Returns true if the thread on which this context was created is the
    * currently executing thread.
    */
-  bool IsOwningThreadCurrent();
+  bool IsValidOwningThread() const;
 
   static void PlatformStartup();
 
@@ -3480,9 +3573,11 @@ class GLContext : public GenericAtomicRefCounted, public SupportsWeakPtr {
  protected:
   RefPtr<GLContext> mSharedContext;
 
+ public:
   // The thread id which this context was created.
-  PlatformThreadId mOwningThreadId;
+  Maybe<PlatformThreadId> mOwningThreadId;
 
+ protected:
   GLContextSymbols mSymbols = {};
 
   UniquePtr<GLBlitHelper> mBlitHelper;
@@ -3490,7 +3585,6 @@ class GLContext : public GenericAtomicRefCounted, public SupportsWeakPtr {
 
  public:
   GLBlitHelper* BlitHelper();
-  GLBlitTextureImageHelper* BlitTextureImageHelper();
   GLReadTexImageHelper* ReadTexImageHelper();
 
   // Assumes shares are created by all sharing with the same global context.
@@ -3594,7 +3688,7 @@ class GLContext : public GenericAtomicRefCounted, public SupportsWeakPtr {
   auto MaxRenderbufferSize() const { return uint32_t(mMaxRenderbufferSize); }
   auto MaxTexOrRbSize() const { return mMaxTexOrRbSize; }
 
-#ifdef MOZ_GL_DEBUG
+#ifdef MOZ_GL_DEBUG_BUILD
   void CreatedProgram(GLContext* aOrigin, GLuint aName);
   void CreatedShader(GLContext* aOrigin, GLuint aName);
   void CreatedBuffers(GLContext* aOrigin, GLsizei aCount, GLuint* aNames);

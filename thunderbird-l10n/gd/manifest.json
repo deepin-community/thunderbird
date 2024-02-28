@@ -1,29 +1,28 @@
 {
   "langpack_id": "gd",
   "manifest_version": 2,
-  "applications": {
+  "browser_specific_settings": {
     "gecko": {
       "id": "langpack-gd@thunderbird.mozilla.org",
-      "strict_min_version": "91.0",
-      "strict_max_version": "91.*"
+      "strict_min_version": "115.0",
+      "strict_max_version": "115.*"
     }
   },
-  "name": "Gàidhlig Language Pack",
-  "description": "Language pack for Thunderbird for gd",
-  "version": "91.0buildid20211101223011",
+  "name": "Language: Gàidhlig (Scottish Gaelic)",
+  "description": "Thunderbird Language Pack for Gàidhlig (gd) – Scottish Gaelic",
+  "version": "115.8.20240216.174500",
   "languages": {
     "gd": {
-      "version": "20211011130915",
+      "version": "20240216183603",
       "chrome_resources": {
         "alerts": "chrome/gd/locale/gd/alerts/",
         "autoconfig": "chrome/gd/locale/gd/autoconfig/",
-        "branding": "chrome/gd/locale/gd/branding/",
+        "branding": "chrome/gd/locale/branding/",
         "calendar": "chrome/gd/locale/gd/calendar/",
         "chat": "chrome/gd/locale/gd/chat/",
         "communicator": "chrome/gd/locale/gd/communicator/",
         "devtools": "chrome/gd/locale/gd/devtools/client/",
         "devtools-shared": "chrome/gd/locale/gd/devtools/shared/",
-        "devtools-startup": "chrome/gd/locale/gd/devtools/startup/",
         "global": "chrome/gd/locale/gd/global/",
         "global-platform": {
           "macosx": "chrome/gd/locale/gd/global-platform/mac/",

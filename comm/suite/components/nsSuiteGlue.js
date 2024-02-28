@@ -23,6 +23,7 @@ XPCOMUtils.defineLazyModuleGetters(this, {
   PlacesBackups: "resource://gre/modules/PlacesBackups.jsm",
   AsyncShutdown: "resource://gre/modules/AsyncShutdown.jsm",
   AutoCompletePopup: "resource://gre/modules/AutoCompletePopup.jsm",
+  DateTimePickerHelper: "resource://gre/modules/DateTimePickerHelper.jsm",
   BookmarkHTMLUtils: "resource://gre/modules/BookmarkHTMLUtils.jsm",
   BookmarkJSONUtils: "resource://gre/modules/BookmarkJSONUtils.jsm",
   RecentWindow: "resource:///modules/RecentWindow.jsm",
@@ -411,7 +412,7 @@ SuiteGlue.prototype = {
    * level.
    */
   _migrateUI() {
-    const UI_VERSION = 8;
+    const UI_VERSION = 10;
 
     // If the pref is not set this is a new or pre SeaMonkey 2.49 profile.
     // We can't tell so we just run migration with version 0.
@@ -566,6 +567,57 @@ SuiteGlue.prototype = {
       Services.prefs.clearUserPref("privacy.sanitize.sanitizeOnShutdown");
     }
 
+    // Migrate mail tab options.
+    if (currentUIVersion < 9) {
+      const tabPrefs = [ "autoHide", "opentabfor.doubleclick",
+                         "opentabfor.middleclick" ];
+      for (let pref of tabPrefs) {
+        try {
+          let prefBT = "browser.tabs." + pref;
+
+          // Copy user value otherwise use default.
+          if (Services.prefs.prefHasUserValue(prefBT)) {
+            let prefMT = "mail.tabs." + pref;
+
+            // If it has a value this should never fail.
+            let valueBT = Services.prefs.getBoolPref(prefBT);
+            Services.prefs.setBoolPref(prefMT, valueBT);
+          }
+        } catch (ex) {
+          // Better safe than sorry.
+          Cu.reportError(ex);
+        }
+      }
+
+      // We might bring this back later but currently set to default.
+      Services.prefs.clearUserPref("browser.tabs.opentabfor.doubleclick");
+    }
+
+    // Migrate the old requested locales prefs to use the new model
+    if (currentUIVersion < 10) {
+      const SELECTED_LOCALE_PREF = "general.useragent.locale";
+      const MATCHOS_LOCALE_PREF = "intl.locale.matchOS";
+
+      if (Services.prefs.prefHasUserValue(MATCHOS_LOCALE_PREF) ||
+          Services.prefs.prefHasUserValue(SELECTED_LOCALE_PREF)) {
+        if (Services.prefs.getBoolPref(MATCHOS_LOCALE_PREF, false)) {
+          Services.locale.setRequestedLocales([]);
+        } else {
+          let locale = Services.prefs.getComplexValue(SELECTED_LOCALE_PREF,
+            Ci.nsIPrefLocalizedString);
+          if (locale) {
+            try {
+              Services.locale.setRequestedLocales([locale.data]);
+            } catch (e) {
+              /* Don't panic if the value is not a valid locale code. */
+            }
+          }
+        }
+        Services.prefs.clearUserPref(SELECTED_LOCALE_PREF);
+        Services.prefs.clearUserPref(MATCHOS_LOCALE_PREF);
+      }
+    }
+
     // Update the migration version.
     Services.prefs.setIntPref("suite.migration.version", UI_VERSION);
   },
@@ -702,6 +754,7 @@ SuiteGlue.prototype = {
   // First mail or browser window loaded.
   _onFirstWindowLoaded: function(aWindow) {
     AutoCompletePopup.init();
+    DateTimePickerHelper.init();
 
     if ("@mozilla.org/windows-taskbar;1" in Cc &&
         Cc["@mozilla.org/windows-taskbar;1"]
@@ -738,6 +791,7 @@ SuiteGlue.prototype = {
       this._setPrefToSaveSession();
     }
     AutoCompletePopup.uninit();
+    DateTimePickerHelper.uninit();
   },
 
   _promptForMasterPassword: function()

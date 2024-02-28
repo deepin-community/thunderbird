@@ -40,13 +40,12 @@ var { MailServices } = ChromeUtils.import(
   "resource:///modules/MailServices.jsm"
 );
 
-add_task(function setupModule(module) {
+add_setup(function () {
   requestLongerTimeout(4);
 
   // Now set up an account with some identities.
-  let acctMgr = MailServices.accounts;
-  let account = acctMgr.createAccount();
-  account.incomingServer = acctMgr.createIncomingServer(
+  let account = MailServices.accounts.createAccount();
+  account.incomingServer = MailServices.accounts.createIncomingServer(
     "nobody",
     "Reply Addresses Testing",
     "pop3"
@@ -56,11 +55,11 @@ add_task(function setupModule(module) {
     .QueryInterface(Ci.nsIMsgLocalMailFolder)
     .createLocalSubfolder("Msgs4Reply");
 
-  identity = acctMgr.createIdentity();
+  identity = MailServices.accounts.createIdentity();
   identity.email = myEmail;
   account.addIdentity(identity);
 
-  identity2 = acctMgr.createIdentity();
+  identity2 = MailServices.accounts.createIdentity();
   identity2.email = myEmail2;
   account.addIdentity(identity2);
 
@@ -75,6 +74,7 @@ add_task(function setupModule(module) {
 /**
  * Helper to open a reply, check the fields are as expected, and close the
  * reply window.
+ *
  * @param aReplyFunction which reply function to call
  * @param aExpectedFields the fields expected
  */
@@ -94,16 +94,12 @@ function checkToAddresses(replyWinController, expectedFields) {
 
   let obtainedFields = [];
   for (let row of rows) {
-    let addrTextbox = row.querySelector(
-      `input[is="autocomplete-input"][recipienttype]`
-    );
-
     let addresses = [];
     for (let pill of row.querySelectorAll("mail-address-pill")) {
       addresses.push(pill.fullAddress);
     }
 
-    obtainedFields[addrTextbox.getAttribute("recipienttype")] = addresses;
+    obtainedFields[row.dataset.recipienttype] = addresses;
   }
 
   // Check what we expect is there.
@@ -149,9 +145,7 @@ function checkToAddresses(replyWinController, expectedFields) {
   // Check if the input "aria-label" attribute was properly updated.
   for (let row of rows) {
     let addrLabel = row.querySelector(".address-label-container > label").value;
-    let addrTextbox = row.querySelector(
-      `input[is="autocomplete-input"][recipienttype]`
-    );
+    let addrTextbox = row.querySelector(".address-row-input");
     let ariaLabel = addrTextbox.getAttribute("aria-label");
     let pillCount = row.querySelectorAll("mail-address-pill").length;
 
@@ -230,7 +224,7 @@ function ensureNoAutoBcc(aIdentity) {
  * - reply all: includes From + the usual thing
  * - reply list: goes to the list
  */
-add_task(function testReplyToMungedReplyToList() {
+add_task(async function testReplyToMungedReplyToList() {
   let msg0 = create_message({
     from: "Tester <test@example.com>",
     to: "munged.list@example.com, someone.else@example.com",
@@ -240,9 +234,9 @@ add_task(function testReplyToMungedReplyToList() {
       "List-Post": "<mailto:munged.list@example.com>",
     },
   });
-  add_message_to_folder(folder, msg0);
+  await add_message_to_folder([folder], msg0);
 
-  be_in_folder(folder);
+  await be_in_folder(folder);
   let msg = select_click_row(i++);
   assert_selected_and_displayed(mc, msg);
 
@@ -268,16 +262,16 @@ add_task(function testReplyToMungedReplyToList() {
 /**
  * Tests that addresses get set properly when doing a normal reply.
  */
-add_task(function testToCcReply() {
+add_task(async function testToCcReply() {
   let msg0 = create_message({
     from: "Homer <homer@example.com>",
     to: "Mr Burns <mrburns@example.com>, workers@example.com, " + myEmail,
     cc: "Lisa <lisa@example.com>",
     subject: "testToCcReply - normal mail with to and cc (me in To)",
   });
-  add_message_to_folder(folder, msg0);
+  await add_message_to_folder([folder], msg0);
 
-  be_in_folder(folder);
+  await be_in_folder(folder);
   let msg = select_click_row(i++);
   assert_selected_and_displayed(mc, msg);
 
@@ -304,16 +298,16 @@ add_task(function testToCcReply() {
 /**
  * Tests that addresses get set properly when doing a normal reply to all.
  */
-add_task(function testToCcReplyAll() {
+add_task(async function testToCcReplyAll() {
   let msg0 = create_message({
     from: "Homer <homer@example.com>",
     to: "Mr Burns <mrburns@example.com>, workers@example.com, " + myEmail,
     cc: "Lisa <lisa@example.com>",
     subject: "testToCcReplyAll - normal mail with to and cc (me in To)",
   });
-  add_message_to_folder(folder, msg0);
+  await add_message_to_folder([folder], msg0);
 
-  be_in_folder(folder);
+  await be_in_folder(folder);
   let msg = select_click_row(i++);
   assert_selected_and_displayed(mc, msg);
 
@@ -353,10 +347,9 @@ add_task(function testToCcReplyAll() {
  * Tests that that addresses get set properly when doing a normal reply to all
  * where when recipients aren't all ascii.
  */
-add_task(function testToCcReplyAllInternational() {
+add_task(async function testToCcReplyAllInternational() {
   let msg0 = create_message({
-    from:
-      "Hideaki / =?iso-2022-jp?B?GyRCNUhGIzFRTEAbKEI=?= <hideaki@example.com>",
+    from: "Hideaki / =?iso-2022-jp?B?GyRCNUhGIzFRTEAbKEI=?= <hideaki@example.com>",
     to:
       "Mr Burns <mrburns@example.com>, =?UTF-8?B?w4VrZQ==?= <ake@example.com>, " +
       "=?KOI8-R?Q?=E9=D7=C1=CE?= <ivan@example.com>, " +
@@ -374,9 +367,9 @@ add_task(function testToCcReplyAllInternational() {
       body: "=CF=F0=E8=E2=E5=F2 =E8=E7 =CC=EE=F1=EA=E2=FB",
     },
   });
-  add_message_to_folder(folder, msg0);
+  await add_message_to_folder([folder], msg0);
 
-  be_in_folder(folder);
+  await be_in_folder(folder);
   let msg = select_click_row(i++);
   assert_selected_and_displayed(mc, msg);
 
@@ -418,7 +411,7 @@ add_task(function testToCcReplyAllInternational() {
  * Tests that that addresses get set properly when doing a reply to a mail with
  * reply-to set.
  */
-add_task(function testToCcReplyWhenReplyToSet() {
+add_task(async function testToCcReplyWhenReplyToSet() {
   let msg0 = create_message({
     from: "Homer <homer@example.com>",
     to: "workers@example.com",
@@ -429,9 +422,9 @@ add_task(function testToCcReplyWhenReplyToSet() {
       "Reply-To": "marge@example.com",
     },
   });
-  add_message_to_folder(folder, msg0);
+  await add_message_to_folder([folder], msg0);
 
-  be_in_folder(folder);
+  await be_in_folder(folder);
   let msg = select_click_row(i++);
   assert_selected_and_displayed(mc, msg);
 
@@ -459,7 +452,7 @@ add_task(function testToCcReplyWhenReplyToSet() {
  * Tests that addresses get set properly when doing a reply to all for a mail
  * w/ Reply-To.
  */
-add_task(function testToCcReplyAllWhenReplyToSet() {
+add_task(async function testToCcReplyAllWhenReplyToSet() {
   let msg0 = create_message({
     from: "Homer <homer@example.com>",
     to: "workers@example.com",
@@ -470,9 +463,9 @@ add_task(function testToCcReplyAllWhenReplyToSet() {
       "Reply-To": "marge@example.com",
     },
   });
-  add_message_to_folder(folder, msg0);
+  await add_message_to_folder([folder], msg0);
 
-  be_in_folder(folder);
+  await be_in_folder(folder);
   let msg = select_click_row(i++);
   assert_selected_and_displayed(mc, msg);
 
@@ -503,7 +496,7 @@ add_task(function testToCcReplyAllWhenReplyToSet() {
 /**
  * Tests that addresses get set properly when doing a reply to list.
  */
-add_task(function testReplyToList() {
+add_task(async function testReplyToList() {
   let msg0 = create_message({
     from: "Homer <homer@example.com>",
     to: "workers-list@example.com",
@@ -513,9 +506,9 @@ add_task(function testReplyToList() {
       "List-Post": "<mailto:workers-list@example.com>",
     },
   });
-  add_message_to_folder(folder, msg0);
+  await add_message_to_folder([folder], msg0);
 
-  be_in_folder(folder);
+  await be_in_folder(folder);
   let msg = select_click_row(i++);
   assert_selected_and_displayed(mc, msg);
 
@@ -543,7 +536,7 @@ add_task(function testReplyToList() {
  * Tests that addresses get set properly when doing a reply to sender for a
  * list post.
  */
-add_task(function testReplySenderForListPost() {
+add_task(async function testReplySenderForListPost() {
   let msg0 = create_message({
     from: "Homer <homer@example.com>",
     to: "workers-list@example.com",
@@ -553,9 +546,9 @@ add_task(function testReplySenderForListPost() {
       "List-Post": "<mailto:workers-list@example.com>",
     },
   });
-  add_message_to_folder(folder, msg0);
+  await add_message_to_folder([folder], msg0);
 
-  be_in_folder(folder);
+  await be_in_folder(folder);
   let msg = select_click_row(i++);
   assert_selected_and_displayed(mc, msg);
 
@@ -582,7 +575,7 @@ add_task(function testReplySenderForListPost() {
 /**
  * Tests that addresses get set properly when doing a reply all to a list post.
  */
-add_task(function testReplyToAllForListPost() {
+add_task(async function testReplyToAllForListPost() {
   let msg0 = create_message({
     from: "Homer <homer@example.com>",
     to: "workers-list@example.com",
@@ -592,9 +585,9 @@ add_task(function testReplyToAllForListPost() {
       "List-Post": "<mailto:workers-list@example.com>",
     },
   });
-  add_message_to_folder(folder, msg0);
+  await add_message_to_folder([folder], msg0);
 
-  be_in_folder(folder);
+  await be_in_folder(folder);
   let msg = select_click_row(i++);
   assert_selected_and_displayed(mc, msg);
 
@@ -626,7 +619,7 @@ add_task(function testReplyToAllForListPost() {
  * Tests that addresses get set properly when doing a reply to all for a list
  * post when also reply-to is set.
  */
-add_task(function testReplyToListWhenReplyToSet() {
+add_task(async function testReplyToListWhenReplyToSet() {
   let msg0 = create_message({
     from: "Homer <homer@example.com>",
     to: "workers-list@example.com, " + myEmail,
@@ -638,9 +631,9 @@ add_task(function testReplyToListWhenReplyToSet() {
       "List-Post": "<mailto:workers-list@example.com>",
     },
   });
-  add_message_to_folder(folder, msg0);
+  await add_message_to_folder([folder], msg0);
 
-  be_in_folder(folder);
+  await be_in_folder(folder);
   let msg = select_click_row(i++);
   assert_selected_and_displayed(mc, msg);
 
@@ -671,9 +664,10 @@ add_task(function testReplyToListWhenReplyToSet() {
 /**
  * Test that addresses get set properly for Mail-Reply-To. Mail-Reply-To should
  * be used for reply to author, if present.
+ *
  * @see http://cr.yp.to/proto/replyto.html
  */
-add_task(function testMailReplyTo() {
+add_task(async function testMailReplyTo() {
   let msg0 = create_message({
     from: "Homer <homer@example.com>",
     to: "workers-list@example.com",
@@ -684,9 +678,9 @@ add_task(function testMailReplyTo() {
       "Mail-Reply-To": "Homer S. <homer@example.com>",
     },
   });
-  add_message_to_folder(folder, msg0);
+  await add_message_to_folder([folder], msg0);
 
-  be_in_folder(folder);
+  await be_in_folder(folder);
   let msg = select_click_row(i++);
   assert_selected_and_displayed(mc, msg);
 
@@ -713,9 +707,10 @@ add_task(function testMailReplyTo() {
 /**
  * Test that addresses get set properly Mail-Followup-To. Mail-Followup-To
  * should be the default recipient list for reply-all, if present.
+ *
  * @see http://cr.yp.to/proto/replyto.html
  */
-add_task(function testMailFollowupTo() {
+add_task(async function testMailFollowupTo() {
   let msg0 = create_message({
     from: "Homer <homer@example.com>",
     to: "workers-list@example.com, " + myEmail,
@@ -727,9 +722,9 @@ add_task(function testMailFollowupTo() {
       "Mail-Followup-To": "workers-list@example.com",
     },
   });
-  add_message_to_folder(folder, msg0);
+  await add_message_to_folder([folder], msg0);
 
-  be_in_folder(folder);
+  await be_in_folder(folder);
   let msg = select_click_row(i++);
   assert_selected_and_displayed(mc, msg);
 
@@ -756,7 +751,7 @@ add_task(function testMailFollowupTo() {
 /**
  * Tests that addresses get set properly for reply to self.
  */
-add_task(function testReplyToSelfReply() {
+add_task(async function testReplyToSelfReply() {
   let msg0 = create_message({
     // Upper case just to make sure we don't care about case sensitivity.
     from: myEmail.toUpperCase(),
@@ -768,9 +763,9 @@ add_task(function testReplyToSelfReply() {
       "Reply-To": "Flanders <flanders@example.com>",
     },
   });
-  add_message_to_folder(folder, msg0);
+  await add_message_to_folder([folder], msg0);
 
-  be_in_folder(folder);
+  await be_in_folder(folder);
   let msg = select_click_row(i++);
   assert_selected_and_displayed(mc, msg);
 
@@ -804,7 +799,7 @@ add_task(function testReplyToSelfReply() {
  * Tests that addresses get set properly for a reply all to self - this should
  * be treated as a followup.
  */
-add_task(function testReplyToSelfReplyAll() {
+add_task(async function testReplyToSelfReplyAll() {
   let msg0 = create_message({
     from: myEmail,
     to: "Bart <bart@example.com>, Maggie <maggie@example.com>",
@@ -815,9 +810,9 @@ add_task(function testReplyToSelfReplyAll() {
       "Reply-To": "Flanders <flanders@example.com>",
     },
   });
-  add_message_to_folder(folder, msg0);
+  await add_message_to_folder([folder], msg0);
 
-  be_in_folder(folder);
+  await be_in_folder(folder);
   let msg = select_click_row(i++);
   assert_selected_and_displayed(mc, msg);
 
@@ -860,7 +855,7 @@ add_task(function testReplyToSelfReplyAll() {
  * message that is not really the original sent message. Like an auto-bcc:d copy
  * or from Gmail. This should be treated as a followup.
  */
-add_task(function testReplyToSelfNotOriginalSourceMsgReplyAll() {
+add_task(async function testReplyToSelfNotOriginalSourceMsgReplyAll() {
   let msg0 = create_message({
     from: myEmail2,
     to: "Bart <bart@example.com>, Maggie <maggie@example.com>",
@@ -870,9 +865,9 @@ add_task(function testReplyToSelfNotOriginalSourceMsgReplyAll() {
       "Reply-To": "Flanders <flanders@example.com>",
     },
   });
-  add_message_to_folder(folder, msg0);
+  await add_message_to_folder([folder], msg0);
 
-  be_in_folder(folder);
+  await be_in_folder(folder);
   let msg = select_click_row(i++);
   assert_selected_and_displayed(mc, msg);
 
@@ -932,7 +927,7 @@ add_task(function testReplyToSelfNotOriginalSourceMsgReplyAll() {
  * Tests that a reply to an other identity isn't treated as a reply to self
  * followup.
  */
-add_task(function testReplyToOtherIdentity() {
+add_task(async function testReplyToOtherIdentity() {
   let msg0 = create_message({
     from: myEmail,
     to: myEmail2 + ", barney@example.com",
@@ -942,9 +937,9 @@ add_task(function testReplyToOtherIdentity() {
       "Reply-To": "secretary@example.com",
     },
   });
-  add_message_to_folder(folder, msg0);
+  await add_message_to_folder([folder], msg0);
 
-  be_in_folder(folder);
+  await be_in_folder(folder);
   let msg = select_click_row(i++);
   assert_selected_and_displayed(mc, msg);
 
@@ -966,7 +961,7 @@ add_task(function testReplyToOtherIdentity() {
  * Tests that addresses get set properly for a reply all to self w/ bccs -
  * this should be treated as a followup.
  */
-add_task(function testReplyToSelfWithBccs() {
+add_task(async function testReplyToSelfWithBccs() {
   let msg0 = create_message({
     from: myEmail,
     to: myEmail,
@@ -977,9 +972,9 @@ add_task(function testReplyToSelfWithBccs() {
       "Reply-To": myEmail2,
     },
   });
-  add_message_to_folder(folder, msg0);
+  await add_message_to_folder([folder], msg0);
 
-  be_in_folder(folder);
+  await be_in_folder(folder);
   let msg = select_click_row(i++);
   assert_selected_and_displayed(mc, msg);
 
@@ -1003,7 +998,7 @@ add_task(function testReplyToSelfWithBccs() {
  * Tests that addresses get set properly for a reply all to other identity w/ bccs -
  * this be treated as a followup.
  */
-add_task(function testReplyToOtherIdentityWithBccs() {
+add_task(async function testReplyToOtherIdentityWithBccs() {
   let msg0 = create_message({
     from: myEmail,
     to: myEmail2,
@@ -1013,9 +1008,9 @@ add_task(function testReplyToOtherIdentityWithBccs() {
       Bcc: "Moe <moe@example.com>, Barney <barney@example.com>",
     },
   });
-  add_message_to_folder(folder, msg0);
+  await add_message_to_folder([folder], msg0);
 
-  be_in_folder(folder);
+  await be_in_folder(folder);
   let msg = select_click_row(i++);
   assert_selected_and_displayed(mc, msg);
 
@@ -1036,7 +1031,7 @@ add_task(function testReplyToOtherIdentityWithBccs() {
 /**
  * Tests that addresses get set properly for a nntp reply-all.
  */
-add_task(function testNewsgroupsReplyAll() {
+add_task(async function testNewsgroupsReplyAll() {
   let msg0 = create_message({
     from: "Homer <homer@example.com>",
     to: "test1-list@example.org",
@@ -1045,9 +1040,9 @@ add_task(function testNewsgroupsReplyAll() {
       Newsgroups: "example.test1, example.test2",
     },
   });
-  add_message_to_folder(folder, msg0);
+  await add_message_to_folder([folder], msg0);
 
-  be_in_folder(folder);
+  await be_in_folder(folder);
   let msg = select_click_row(i++);
   assert_selected_and_displayed(mc, msg);
 
@@ -1080,7 +1075,7 @@ add_task(function testNewsgroupsReplyAll() {
  * Tests that addresses get set properly for an nntp followup, when Followup-To
  * is set.
  */
-add_task(function testNewsgroupsReplyAllFollowupTo() {
+add_task(async function testNewsgroupsReplyAllFollowupTo() {
   let msg0 = create_message({
     from: "Homer <homer@example.com>",
     to: "test1-list@example.org, " + myEmail,
@@ -1090,9 +1085,9 @@ add_task(function testNewsgroupsReplyAllFollowupTo() {
       "Followup-To": "example.test2",
     },
   });
-  add_message_to_folder(folder, msg0);
+  await add_message_to_folder([folder], msg0);
 
-  be_in_folder(folder);
+  await be_in_folder(folder);
   let msg = select_click_row(i++);
   assert_selected_and_displayed(mc, msg);
 
@@ -1126,16 +1121,16 @@ add_task(function testNewsgroupsReplyAllFollowupTo() {
  * Tests that addresses get set properly when doing a reply where To=From
  * and a Reply-To exists.
  */
-add_task(function testToFromWithReplyTo() {
+add_task(async function testToFromWithReplyTo() {
   let msg0 = create_message({
     from: myEmail,
     to: myEmail,
     subject: "testToFromWithReplyTo - To=From w/ Reply-To set",
     clobberHeaders: { "Reply-To": "Flanders <flanders@example.com>" },
   });
-  add_message_to_folder(folder, msg0);
+  await add_message_to_folder([folder], msg0);
 
-  be_in_folder(folder);
+  await be_in_folder(folder);
   let msg = select_click_row(i++);
   assert_selected_and_displayed(mc, msg);
 

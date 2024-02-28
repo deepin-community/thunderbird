@@ -1,4 +1,3 @@
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 var { MailServices } = ChromeUtils.import(
   "resource:///modules/MailServices.jsm"
 );
@@ -14,6 +13,6 @@ var CC = Components.Constructor;
 // Ensure the profile directory is set up
 do_get_profile();
 
-registerCleanupFunction(function() {
+registerCleanupFunction(function () {
   load("../../../../../mailnews/resources/mailShutdown.js");
 });

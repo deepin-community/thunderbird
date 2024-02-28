@@ -20,12 +20,12 @@
 #include "nsCanvasFrame.h"
 #include "nsDisplayList.h"
 #include "nsIFrameInlines.h"
-#include "FrameLayerBuilder.h"
 #include "imgIContainer.h"
 #include "imgINotificationObserver.h"
 #include "Image.h"
 #include "mozilla/PresShell.h"
 #include "mozilla/ProfilerLabels.h"
+#include "mozilla/StaticPtr.h"
 #include "mozilla/SVGObserverUtils.h"
 #include "mozilla/layers/WebRenderUserData.h"
 #include "nsTHashSet.h"
@@ -73,7 +73,7 @@ using GlobalRequestTable =
 // We use the load id as the key since we can only access sImages on the
 // main thread, but LoadData objects might be destroyed from other threads,
 // and we don't want to leave dangling pointers around.
-static GlobalRequestTable* sImages = nullptr;
+static StaticAutoPtr<GlobalRequestTable> sImages;
 static StaticRefPtr<GlobalImageObserver> sImageObserver;
 
 /* static */
@@ -85,10 +85,15 @@ void ImageLoader::Init() {
 /* static */
 void ImageLoader::Shutdown() {
   for (const auto& entry : *sImages) {
-    entry.GetKey()->CancelAndForgetObserver(NS_BINDING_ABORTED);
+    imgIRequest* imgRequest = entry.GetKey();
+    // All the images we put in sImages are imgRequestProxy, see LoadImage, but
+    // it's non-trivial to make the hash table to use that without changing a
+    // lot of other code.
+    auto* req = static_cast<imgRequestProxy*>(imgRequest);
+    req->SetCancelable(true);
+    req->CancelAndForgetObserver(NS_BINDING_ABORTED);
   }
 
-  delete sImages;
   sImages = nullptr;
   sImageObserver = nullptr;
 }
@@ -445,6 +450,10 @@ already_AddRefed<imgRequestProxy> ImageLoader::LoadImage(
   if (NS_FAILED(rv) || !request) {
     return nullptr;
   }
+
+  // This image could be shared across documents, so its load cannot be
+  // canceled, see bug 1800979.
+  request->SetCancelable(false);
   sImages->GetOrInsertNew(request);
   return request.forget();
 }
@@ -468,6 +477,8 @@ void ImageLoader::UnloadImage(imgRequestProxy* aImage) {
     return;
   }
 
+  // Now we want to really cancel the request.
+  aImage->SetCancelable(true);
   aImage->CancelAndForgetObserver(NS_BINDING_ABORTED);
   MOZ_DIAGNOSTIC_ASSERT(lookup.Data()->mImageLoaders.IsEmpty(),
                         "Shouldn't be keeping references to any loader "
@@ -524,25 +535,6 @@ static void InvalidateImages(nsIFrame* aFrame, imgIRequest* aRequest,
   }
 
   bool invalidateFrame = aForcePaint;
-  if (auto* array = aFrame->DisplayItemData()) {
-    for (auto* did : *array) {
-      DisplayItemData* data = DisplayItemData::AssertDisplayItemData(did);
-      uint32_t displayItemKey = data->GetDisplayItemKey();
-
-      if (displayItemKey != 0 && !IsRenderNoImages(displayItemKey)) {
-        if (nsLayoutUtils::InvalidationDebuggingIsEnabled()) {
-          DisplayItemType type = GetDisplayItemTypeFromKey(displayItemKey);
-          printf_stderr(
-              "Invalidating display item(type=%d) based on frame %p \
-                         because it might contain an invalidated image\n",
-              static_cast<uint32_t>(type), aFrame);
-        }
-
-        data->Invalidate();
-        invalidateFrame = true;
-      }
-    }
-  }
 
   if (auto userDataTable =
           aFrame->GetProperty(layers::WebRenderUserDataProperty::Key())) {
@@ -556,9 +548,13 @@ static void InvalidateImages(nsIFrame* aFrame, imgIRequest* aRequest,
           // XXX: handle Blob data
           invalidateFrame = true;
           break;
-        case layers::WebRenderUserData::UserDataType::eImage:
-          if (static_cast<layers::WebRenderImageData*>(data.get())
-                  ->UsingSharedSurface(aRequest->GetProducerId())) {
+        case layers::WebRenderUserData::UserDataType::eMask:
+          static_cast<layers::WebRenderMaskData*>(data.get())->Invalidate();
+          invalidateFrame = true;
+          break;
+        case layers::WebRenderUserData::UserDataType::eImageProvider:
+          if (static_cast<layers::WebRenderImageProviderData*>(data.get())
+                  ->Invalidate(aRequest->GetProviderId())) {
             break;
           }
           [[fallthrough]];
@@ -677,8 +673,8 @@ void ImageLoader::Notify(imgIRequest* aRequest, int32_t aType,
     }
   }
 
-  AUTO_PROFILER_LABEL_DYNAMIC_NSCSTRING("ImageLoader::Notify", OTHER,
-                                        uriString);
+  AUTO_PROFILER_LABEL_DYNAMIC_CSTR("ImageLoader::Notify", OTHER,
+                                   uriString.get());
 
   if (aType == imgINotificationObserver::SIZE_AVAILABLE) {
     nsCOMPtr<imgIContainer> image;
@@ -728,7 +724,8 @@ void ImageLoader::OnSizeAvailable(imgIRequest* aRequest,
   for (const FrameWithFlags& fwf : *frameSet) {
     if (fwf.mFlags & Flags::RequiresReflowOnSizeAvailable) {
       fwf.mFrame->PresShell()->FrameNeedsReflow(
-          fwf.mFrame, IntrinsicDirty::StyleChange, NS_FRAME_IS_DIRTY);
+          fwf.mFrame, IntrinsicDirty::FrameAncestorsAndDescendants,
+          NS_FRAME_IS_DIRTY);
     }
   }
 }
@@ -785,8 +782,9 @@ void ImageLoader::ImageFrameChanged(imgIRequest* aRequest, bool aFirstFrame) {
       // has finished decoding its first frame.
       // FIXME(emilio): Why requesting reflow on the _parent_?
       nsIFrame* parent = fwf.mFrame->GetInFlowParent();
-      parent->PresShell()->FrameNeedsReflow(parent, IntrinsicDirty::StyleChange,
-                                            NS_FRAME_IS_DIRTY);
+      parent->PresShell()->FrameNeedsReflow(
+          parent, IntrinsicDirty::FrameAncestorsAndDescendants,
+          NS_FRAME_IS_DIRTY);
       // If we need to also potentially unblock onload, do it once reflow is
       // done, with a reflow callback.
       if (fwf.mFlags & Flags::IsBlockingLoadEvent) {

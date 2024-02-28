@@ -11,6 +11,7 @@
 #include "mozilla/gfx/GPUParent.h"
 #include "mozilla/gfx/Logging.h"
 #include "mozilla/ipc/Endpoint.h"
+#include "mozilla/layers/SharedSurfacesParent.h"
 #include "mozilla/layers/TextureClient.h"
 #include "mozilla/SyncRunnable.h"
 #include "mozilla/Telemetry.h"
@@ -127,15 +128,20 @@ void CanvasTranslator::Bind(Endpoint<PCanvasParent>&& aEndpoint) {
 
 mozilla::ipc::IPCResult CanvasTranslator::RecvInitTranslator(
     const TextureType& aTextureType,
-    const ipc::SharedMemoryBasic::Handle& aReadHandle,
-    const CrossProcessSemaphoreHandle& aReaderSem,
-    const CrossProcessSemaphoreHandle& aWriterSem) {
+    ipc::SharedMemoryBasic::Handle&& aReadHandle,
+    CrossProcessSemaphoreHandle&& aReaderSem,
+    CrossProcessSemaphoreHandle&& aWriterSem) {
+  if (mStream) {
+    return IPC_FAIL(this, "RecvInitTranslator called twice.");
+  }
+
   mTextureType = aTextureType;
 
   // We need to initialize the stream first, because it might be used to
   // communicate other failures back to the writer.
   mStream = MakeUnique<CanvasEventRingBuffer>();
-  if (!mStream->InitReader(aReadHandle, aReaderSem, aWriterSem,
+  if (!mStream->InitReader(std::move(aReadHandle), std::move(aReaderSem),
+                           std::move(aWriterSem),
                            MakeUnique<RingBufferReaderServices>(this))) {
     return IPC_FAIL(this, "Failed to initialize ring buffer reader.");
   }
@@ -403,7 +409,7 @@ bool CanvasTranslator::CheckForFreshCanvasDevice(int aLineNumber) {
 
   // It is safe to wait here because only the Compositor thread waits on us and
   // the main thread doesn't wait on the compositor thread in the GPU process.
-  SyncRunnable::DispatchToThread(GetMainThreadEventTarget(), runnable,
+  SyncRunnable::DispatchToThread(GetMainThreadSerialEventTarget(), runnable,
                                  /*aForceDispatch*/ true);
 
   mDevice = gfx::DeviceManagerDx::Get()->GetCanvasDevice();
@@ -501,19 +507,18 @@ UniquePtr<SurfaceDescriptor> CanvasTranslator::WaitForSurfaceDescriptor(
   return descriptor;
 }
 
-already_AddRefed<gfx::GradientStops> CanvasTranslator::GetOrCreateGradientStops(
-    gfx::GradientStop* aRawStops, uint32_t aNumStops,
-    gfx::ExtendMode aExtendMode) {
-  nsTArray<gfx::GradientStop> rawStopArray(aRawStops, aNumStops);
-  RefPtr<DrawTarget> drawTarget = GetReferenceDrawTarget();
-  if (!drawTarget) {
-    // We might end up with a null reference draw target due to a device
-    // failure, just return false so that we can recover.
-    return nullptr;
-  }
+already_AddRefed<gfx::SourceSurface> CanvasTranslator::LookupExternalSurface(
+    uint64_t aKey) {
+  return SharedSurfacesParent::Get(wr::ToExternalImageId(aKey));
+}
 
+already_AddRefed<gfx::GradientStops> CanvasTranslator::GetOrCreateGradientStops(
+    gfx::DrawTarget* aDrawTarget, gfx::GradientStop* aRawStops,
+    uint32_t aNumStops, gfx::ExtendMode aExtendMode) {
+  MOZ_ASSERT(aDrawTarget);
+  nsTArray<gfx::GradientStop> rawStopArray(aRawStops, aNumStops);
   return gfx::gfxGradientCache::GetOrCreateGradientStops(
-      drawTarget, rawStopArray, aExtendMode);
+      aDrawTarget, rawStopArray, aExtendMode);
 }
 
 gfx::DataSourceSurface* CanvasTranslator::LookupDataSurface(

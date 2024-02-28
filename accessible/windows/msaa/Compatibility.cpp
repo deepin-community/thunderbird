@@ -8,6 +8,7 @@
 
 #include "mozilla/WindowsVersion.h"
 #include "mozilla/WinHeaderOnlyUtils.h"
+#include "mozilla/StaticPrefs_accessibility.h"
 #include "nsExceptionHandler.h"
 #include "nsIXULRuntime.h"
 #include "nsPrintfCString.h"
@@ -15,6 +16,7 @@
 #include "nsWindowsDllInterceptor.h"
 #include "nsWinUtils.h"
 #include "Statistics.h"
+#include "AccessibleWrap.h"
 
 #include "mozilla/Preferences.h"
 
@@ -117,7 +119,8 @@ static DWORD WINAPI InSendMessageExHook(LPVOID lpReserved) {
 static LONG CALLBACK
 DetectInSendMessageExCompat(PEXCEPTION_POINTERS aExceptionInfo) {
   DWORD exceptionCode = aExceptionInfo->ExceptionRecord->ExceptionCode;
-  if (exceptionCode == RPC_E_CANTCALLOUT_ININPUTSYNCCALL && NS_IsMainThread()) {
+  if (exceptionCode == static_cast<DWORD>(RPC_E_CANTCALLOUT_ININPUTSYNCCALL) &&
+      NS_IsMainThread()) {
     sInSendMessageExHackEnabled = true;
     // We don't need this exception handler anymore, so remove it
     if (RemoveVectoredExceptionHandler(sVectoredExceptionHandler)) {
@@ -241,4 +244,41 @@ void Compatibility::GetHumanReadableConsumersStr(nsAString& aResult) {
       break;
     }
   }
+}
+
+// Time when SuppressA11yForClipboardCopy() was called, as returned by
+// ::GetTickCount().
+static DWORD sA11yClipboardCopySuppressionStartTime = 0;
+
+/* static */
+void Compatibility::SuppressA11yForClipboardCopy() {
+  // Bug 1774285: Windows Suggested Actions (introduced in Windows 11 22H2)
+  // might walk the a11y tree using UIA whenever anything is copied to the
+  // clipboard. This causes an unacceptable hang, particularly when the cache
+  // is disabled.
+  bool doSuppress = [&] {
+    switch (
+        StaticPrefs::accessibility_windows_suppress_after_clipboard_copy()) {
+      case 0:
+        return false;
+      case 1:
+        return true;
+      default:
+        return NeedsWindows11SuggestedActionsWorkaround();
+    }
+  }();
+
+  if (doSuppress) {
+    sA11yClipboardCopySuppressionStartTime = ::GetTickCount();
+  }
+}
+
+/* static */
+bool Compatibility::IsA11ySuppressedForClipboardCopy() {
+  constexpr DWORD kSuppressTimeout = 1500;  // ms
+  if (!sA11yClipboardCopySuppressionStartTime) {
+    return false;
+  }
+  return ::GetTickCount() - sA11yClipboardCopySuppressionStartTime <
+         kSuppressTimeout;
 }

@@ -8,10 +8,8 @@ This module contains a set of shortcut methods that create runners for commonly
 used Mozilla applications, such as Firefox, Firefox for Android or Thunderbird.
 """
 
-from __future__ import absolute_import
-
 from .application import get_app_context
-from .base import GeckoRuntimeRunner, FennecRunner, BlinkRuntimeRunner
+from .base import BlinkRuntimeRunner, FennecRunner, GeckoRuntimeRunner
 from .devices import EmulatorAVD
 
 
@@ -97,7 +95,7 @@ def ChromiumRunner(*args, **kwargs):
 
 
 def FennecEmulatorRunner(
-    avd="mozemulator-4.3",
+    avd="mozemulator-arm",
     adb_path=None,
     avd_home=None,
     logdir=None,

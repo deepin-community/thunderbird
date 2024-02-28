@@ -8,23 +8,22 @@
 
 // Wrap in a block to prevent leaking to window scope.
 {
-  const { Status } = ChromeUtils.import(
-    "resource:///modules/imStatusUtils.jsm"
+  const { Status } = ChromeUtils.importESModule(
+    "resource:///modules/imStatusUtils.sys.mjs"
   );
-  const { AppConstants } = ChromeUtils.import(
-    "resource://gre/modules/AppConstants.jsm"
+  const { AppConstants } = ChromeUtils.importESModule(
+    "resource://gre/modules/AppConstants.sys.mjs"
   );
-  const { Services } = ChromeUtils.import(
-    "resource://gre/modules/Services.jsm"
+  const { ChatIcons } = ChromeUtils.importESModule(
+    "resource:///modules/chatIcons.sys.mjs"
   );
-  const { ChatIcons } = ChromeUtils.import("resource:///modules/chatIcons.jsm");
 
   /**
    * The MozChatConvRichlistitem widget displays opened conversation information from the
    * contacts: i.e name and icon. It gets displayed under conversation expansion
    * twisty in the contactlist richlistbox.
    *
-   * @extends {MozElements.MozRichlistitem}
+   * @augments {MozElements.MozRichlistitem}
    */
   class MozChatConvRichlistitem extends MozElements.MozRichlistitem {
     static get inheritedAttributes() {
@@ -36,6 +35,32 @@
         ".convUnreadTargetedCountLabel": "value=unreadTargetedCount",
       };
     }
+
+    static get markup() {
+      return `
+      <vbox class="box-line"></vbox>
+      <button class="closeConversationButton close-icon"
+              tooltiptext="&closeConversationButton.tooltip;"></button>
+      <stack class="prplBuddyIcon">
+        <html:img class="protoIcon" alt="" />
+        <html:img class="smallStatusIcon" />
+      </stack>
+      <hbox flex="1" class="conv-hbox">
+        <label crop="end" class="convDisplayName blistDisplayName">
+        </label>
+        <label class="convUnreadCount" crop="end"></label>
+        <box class="convUnreadTargetedCount">
+          <label class="convUnreadTargetedCountLabel" crop="end"></label>
+        </box>
+        <spacer style="flex: 1000000 1000000;"></spacer>
+      </hbox>
+      `;
+    }
+
+    static get entities() {
+      return ["chrome://messenger/locale/chat.dtd"];
+    }
+
     connectedCallback() {
       if (this.delayConnectedCallback() || this.hasChildNodes()) {
         return;
@@ -55,29 +80,7 @@
         true
       );
 
-      this.appendChild(
-        MozXULElement.parseXULToFragment(
-          `
-          <vbox class="box-line"></vbox>
-          <button class="closeConversationButton close-icon"
-                  tooltiptext="&closeConversationButton.tooltip;"></button>
-          <stack class="prplBuddyIcon">
-            <html:img class="protoIcon" alt="" />
-            <html:img class="smallStatusIcon" />
-          </stack>
-          <hbox flex="1" class="conv-hbox">
-            <label crop="end" flex="1" class="convDisplayName blistDisplayName">
-            </label>
-            <label class="convUnreadCount" crop="end"></label>
-            <box class="convUnreadTargetedCount">
-              <label class="convUnreadTargetedCountLabel" crop="end"></label>
-            </box>
-            <spacer flex="1000000"></spacer>
-          </hbox>
-          `,
-          ["chrome://messenger/locale/chat.dtd"]
-        )
-      );
+      this.appendChild(this.constructor.fragment);
 
       this.convView = null;
 
@@ -97,7 +100,7 @@
       // @implements {nsIObserver}
       this.observer = {
         QueryInterface: ChromeUtils.generateQI(["nsIObserver"]),
-        observe: function(subject, topic, data) {
+        observe: function (subject, topic, data) {
           if (
             topic == "target-prpl-conversation-changed" ||
             topic == "unread-message-count-changed" ||
@@ -125,6 +128,8 @@
         icon.setAttribute("src", "chrome://global/skin/icons/search-glass.svg");
         let statusIcon = this.querySelector(".smallStatusIcon");
         statusIcon.hidden = true;
+        this.setAttribute("unreadCount", "0");
+        this.setAttribute("unreadTargetedCount", "0");
       }
 
       this.initializeAttributeInheritance();
@@ -157,6 +162,12 @@
       );
     }
 
+    /**
+     * Set the conversation this item should represent. Updates appearance and
+     * adds observers to keep it up to date.
+     *
+     * @param {imIConversation} conv - Conversation this item represents.
+     */
     build(conv) {
       this.conv = conv;
       this.conv.addObserver(this.observer);
@@ -325,6 +336,18 @@
         event.preventDefault();
       }
     }
+
+    /**
+     * Replace the conversation that this item represents.
+     *
+     * @param {imIConversation} conv - Updated conversation this should
+     *   represent.
+     */
+    changeConversation(conv) {
+      this.conv?.removeObserver(this.observer);
+      this.build(conv);
+    }
+
     disconnectedCallback() {
       if (this.conv) {
         this.conv.removeObserver(this.observer);

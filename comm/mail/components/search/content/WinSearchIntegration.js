@@ -29,8 +29,7 @@ var gRegKeys = [
   // This is the property handler
   {
     root: Ci.nsIWindowsRegKey.ROOT_KEY_LOCAL_MACHINE,
-    key:
-      "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\PropertySystem\\PropertyHandlers\\.wdseml",
+    key: "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\PropertySystem\\PropertyHandlers\\.wdseml",
     name: "",
     value: "{5FA29220-36A1-40f9-89C6-F4B384B7642E}",
   },
@@ -181,7 +180,7 @@ SearchIntegration = {
   /**
    * Add necessary hooks to Windows
    *
-   * @return false if registration did not succeed, because the elevation
+   * @returns false if registration did not succeed, because the elevation
    * request was denied
    */
   register() {
@@ -212,7 +211,7 @@ SearchIntegration = {
    * Remove integration from Windows. The only thing removed is the directory
    * from the index list. This will ask for elevation.
    *
-   * @return false if deregistration did not succeed, because the elevation
+   * @returns false if deregistration did not succeed, because the elevation
    * request was denied
    */
   deregister() {
@@ -260,7 +259,7 @@ SearchIntegration = {
         let folder = this._msgHdr.folder;
         let text = folder.getMsgTextFromStream(
           stringStream,
-          this._msgHdr.Charset,
+          this._msgHdr.charset,
           65536,
           50000,
           false,
@@ -308,7 +307,7 @@ SearchIntegration = {
           SearchIntegration._hdrIndexedProperty,
           this._reindexTime
         );
-        folder.msgDatabase.Commit(MSG_DB_LARGE_COMMIT);
+        folder.msgDatabase.commit(MSG_DB_LARGE_COMMIT);
 
         this._message = "";
         SearchIntegration._log.info("Successfully written file");

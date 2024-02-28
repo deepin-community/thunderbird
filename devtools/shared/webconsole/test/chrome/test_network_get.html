@@ -20,6 +20,13 @@ SimpleTest.waitForExplicitFinish();
 
 async function startTest()
 {
+  await SpecialPowers.pushPrefEnv({
+    'set': [
+      // Bug 1617611: Fix all the tests broken by "cookies SameSite=lax by default"
+      ['network.cookie.sameSite.laxByDefault', false],
+    ]
+  });
+
   const commands = await createCommandsForTab();
   const target = commands.targetCommand.targetFront;
   const resourceCommand = commands.resourceCommand;
@@ -45,7 +52,7 @@ async function startTest()
 
   info("checking request headers");
   const requestHeadersPacket = await webConsoleFront.getRequestHeaders(netActor);
-  ok(requestHeadersPacket.headers.length > 0, `request headers > 0 (${requestHeadersPacket.headers.length})`);
+  ok(!!requestHeadersPacket.headers.length, `request headers > 0 (${requestHeadersPacket.headers.length})`);
   ok(requestHeadersPacket.headersSize > 0, `request headersSize > 0 (${requestHeadersPacket.headersSize})`);
   ok(!!requestHeadersPacket.rawHeaders, "request rawHeaders available");
 
@@ -77,7 +84,7 @@ async function startTest()
   info("checking response headers");
   const responseHeaderPacket = await webConsoleFront.getResponseHeaders(netActor);
 
-  ok(responseHeaderPacket.headers.length > 0, "response headers > 0");
+  ok(!!responseHeaderPacket.headers.length, "response headers > 0");
   ok(responseHeaderPacket.headersSize > 0, "response headersSize > 0");
   ok(!!responseHeaderPacket.rawHeaders, "response rawHeaders available");
 
@@ -115,6 +122,7 @@ async function startTest()
   });
 
   await commands.destroy();
+  SpecialPowers.clearUserPref("network.cookie.sameSite.laxByDefault");
   SimpleTest.finish();
 }
 

@@ -2,7 +2,6 @@
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
-#include "nsAbBaseCID.h"
 #include "nsIAbDirectory.h"
 #include "nsIAbCard.h"
 #include "nsString.h"
@@ -18,6 +17,7 @@
 #include "prprf.h"
 #include "nsCRTGlue.h"
 #include "nsTArray.h"
+#include "nsIComponentManager.h"
 
 #include <ctype.h>
 
@@ -325,7 +325,8 @@ void nsAbLDIFService::AddLdifRowToDatabase(nsIAbDirectory* aDirectory,
     return;
   }
 
-  nsCOMPtr<nsIAbCard> newCard = do_CreateInstance(NS_ABCARDPROPERTY_CONTRACTID);
+  nsCOMPtr<nsIAbCard> newCard =
+      do_CreateInstance("@mozilla.org/addressbook/cardproperty;1");
   nsTArray<nsCString> members;
 
   char* cursor = ToNewCString(mLdifLine);
@@ -356,7 +357,7 @@ void nsAbLDIFService::AddLdifRowToDatabase(nsIAbDirectory* aDirectory,
 
   if (bIsList) {
     nsCOMPtr<nsIAbDirectory> newList =
-        do_CreateInstance(NS_ABDIRPROPERTY_CONTRACTID);
+        do_CreateInstance("@mozilla.org/addressbook/directoryproperty;1");
     newList->SetIsMailList(true);
 
     nsAutoString temp;
@@ -547,19 +548,6 @@ void nsAbLDIFService::AddLdifColToDatabase(nsIAbDirectory* aDirectory,
       else if (colType.EqualsLiteral("mozillasecondemail"))
         newCard->SetPropertyAsAString(k2ndEmailProperty, value);
 
-      else if (colType.EqualsLiteral("mozillausehtmlmail")) {
-        ToLowerCase(column);
-        if (-1 != column.Find("true"))
-          newCard->SetPropertyAsUint32(kPreferMailFormatProperty,
-                                       nsIAbPreferMailFormat::html);
-        else if (-1 != column.Find("false"))
-          newCard->SetPropertyAsUint32(kPreferMailFormatProperty,
-                                       nsIAbPreferMailFormat::plaintext);
-        else
-          newCard->SetPropertyAsUint32(kPreferMailFormatProperty,
-                                       nsIAbPreferMailFormat::unknown);
-      }
-
       else if (colType.EqualsLiteral("mozillaworkstreet2"))
         newCard->SetPropertyAsAString(kWorkAddress2Property, value);
 
@@ -667,19 +655,6 @@ void nsAbLDIFService::AddLdifColToDatabase(nsIAbDirectory* aDirectory,
     case 'x':
       if (colType.EqualsLiteral("xmozillanickname")) {
         newCard->SetPropertyAsAString(kNicknameProperty, value);
-      }
-
-      else if (colType.EqualsLiteral("xmozillausehtmlmail")) {
-        ToLowerCase(column);
-        if (-1 != column.Find("true"))
-          newCard->SetPropertyAsUint32(kPreferMailFormatProperty,
-                                       nsIAbPreferMailFormat::html);
-        else if (-1 != column.Find("false"))
-          newCard->SetPropertyAsUint32(kPreferMailFormatProperty,
-                                       nsIAbPreferMailFormat::plaintext);
-        else
-          newCard->SetPropertyAsUint32(kPreferMailFormatProperty,
-                                       nsIAbPreferMailFormat::unknown);
       }
 
       break;  // 'x'

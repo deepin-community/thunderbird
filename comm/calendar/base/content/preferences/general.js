@@ -13,15 +13,16 @@ Preferences.addAll([
   { id: "calendar.date.format", type: "int" },
   { id: "calendar.event.defaultlength", type: "int" },
   { id: "calendar.timezone.local", type: "string" },
+  { id: "calendar.timezone.useSystemTimezone", type: "bool" },
   { id: "calendar.task.defaultstart", type: "string" },
   { id: "calendar.task.defaultstartoffset", type: "int" },
   { id: "calendar.task.defaultstartoffsetunits", type: "string" },
   { id: "calendar.task.defaultdue", type: "string" },
   { id: "calendar.task.defaultdueoffset", type: "int" },
   { id: "calendar.task.defaultdueoffsetunits", type: "string" },
-  { id: "calendar.view.useSystemColors", type: "bool" },
-  { id: "calendar.agendaListbox.soondays", type: "int" },
+  { id: "calendar.agenda.days", type: "int" },
   { id: "calendar.item.editInTab", type: "bool" },
+  { id: "calendar.item.promptDelete", type: "bool" },
 ]);
 
 /**
@@ -33,6 +34,8 @@ var gCalendarGeneralPane = {
    * values set in prefs.
    */
   init() {
+    this.onChangedUseSystemTimezonePref();
+
     let formatter = cal.dtz.formatter;
     let dateFormattedLong = formatter.formatDateLong(cal.dtz.now());
     let dateFormattedShort = formatter.formatDateShort(cal.dtz.now());
@@ -57,12 +60,11 @@ var gCalendarGeneralPane = {
     let tzMenuList = document.getElementById("calendar-timezone-menulist");
     let tzMenuPopup = document.getElementById("calendar-timezone-menupopup");
 
-    let tzService = cal.getTimezoneService();
     let tzids = {};
     let displayNames = [];
     // don't rely on what order the timezone-service gives you
-    for (let timezoneId of tzService.timezoneIds) {
-      let timezone = tzService.getTimezone(timezoneId);
+    for (let timezoneId of cal.timezoneService.timezoneIds) {
+      let timezone = cal.timezoneService.getTimezone(timezoneId);
       if (timezone && !timezone.isFloating && !timezone.isUTC) {
         let displayName = timezone.displayName;
         displayNames.push(displayName);
@@ -81,7 +83,7 @@ var gCalendarGeneralPane = {
     }
     tzMenuList.value = prefValue;
 
-    // Set the soondays menulist preference
+    // Set the agenda length menulist.
     this.initializeTodaypaneMenu();
   },
 
@@ -107,8 +109,8 @@ var gCalendarGeneralPane = {
 
   initializeTodaypaneMenu() {
     // Assign the labels for the menuitem
-    let soondaysMenu = document.getElementById("soondays-menulist");
-    let items = soondaysMenu.getElementsByTagName("menuitem");
+    let menulist = document.getElementById("agenda-days-menulist");
+    let items = menulist.getElementsByTagName("menuitem");
     for (let menuItem of items) {
       let menuitemValue = Number(menuItem.value);
       if (menuitemValue > 7) {
@@ -118,19 +120,29 @@ var gCalendarGeneralPane = {
       }
     }
 
-    let pref = Preferences.get("calendar.agendaListbox.soondays");
-    let soonpref = pref.value || 5;
+    let pref = Preferences.get("calendar.agenda.days");
+    let value = pref.value;
 
-    // Check if soonDays preference has been edited with a wrong value.
-    if (soonpref > 0 && soonpref <= 28) {
-      if (soonpref % 7 != 0) {
-        let intSoonpref = Math.floor(soonpref / 7) * 7;
-        soonpref = intSoonpref == 0 ? soonpref : intSoonpref;
-        pref.value = soonpref;
+    // Check if the preference has been edited with a wrong value.
+    if (value > 0 && value <= 28) {
+      if (value % 7 != 0) {
+        let intValue = Math.floor(value / 7) * 7;
+        value = intValue == 0 ? value : intValue;
+        pref.value = value;
       }
     } else {
-      soonpref = soonpref > 28 ? 28 : 1;
-      pref.value = soonpref;
+      pref.value = 14;
     }
   },
+
+  onChangedUseSystemTimezonePref() {
+    let useSystemTimezonePref = Preferences.get("calendar.timezone.useSystemTimezone");
+
+    document.getElementById("calendar-timezone-menulist").disabled = useSystemTimezonePref.value;
+  },
 };
+
+Preferences.get("calendar.timezone.useSystemTimezone").on(
+  "change",
+  gCalendarGeneralPane.onChangedUseSystemTimezonePref
+);

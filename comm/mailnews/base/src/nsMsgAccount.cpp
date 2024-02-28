@@ -11,10 +11,9 @@
 #include "nsCRTGlue.h"
 #include "nsCOMPtr.h"
 #include "nsIMsgFolderNotificationService.h"
-
+#include "nsPrintfCString.h"
 #include "nsIPrefService.h"
 #include "nsIPrefBranch.h"
-#include "nsMsgBaseCID.h"
 #include "nsMsgAccount.h"
 #include "nsIMsgAccount.h"
 #include "nsIMsgAccountManager.h"
@@ -86,12 +85,22 @@ nsresult nsMsgAccount::createIncomingServer() {
 
   // get the server from the account manager
   nsCOMPtr<nsIMsgAccountManager> accountManager =
-      do_GetService(NS_MSGACCOUNTMANAGER_CONTRACTID, &rv);
+      do_GetService("@mozilla.org/messenger/account-manager;1", &rv);
   NS_ENSURE_SUCCESS(rv, rv);
 
   nsCOMPtr<nsIMsgIncomingServer> server;
   rv = accountManager->GetIncomingServer(serverKey, getter_AddRefs(server));
   NS_ENSURE_SUCCESS(rv, rv);
+
+  nsCString hostname;
+  rv = server->GetHostName(hostname);
+  NS_ENSURE_SUCCESS(rv, rv);
+  if (hostname.IsEmpty()) {
+    NS_WARNING(
+        nsPrintfCString("Server had no hostname; key=%s", serverKey.get())
+            .get());
+    return NS_ERROR_UNEXPECTED;
+  }
 
   // store the server in this structure
   m_incomingServer = server;
@@ -126,16 +135,16 @@ nsMsgAccount::SetIncomingServer(nsIMsgIncomingServer* aIncomingServer) {
     rv = aIncomingServer->GetRootFolder(getter_AddRefs(rootFolder));
     NS_ENSURE_SUCCESS(rv, rv);
     nsCOMPtr<nsIFolderListener> mailSession =
-        do_GetService(NS_MSGMAILSESSION_CONTRACTID, &rv);
+        do_GetService("@mozilla.org/messenger/services/session;1", &rv);
     NS_ENSURE_SUCCESS(rv, rv);
-    mailSession->OnItemAdded(nullptr, rootFolder);
+    mailSession->OnFolderAdded(nullptr, rootFolder);
     nsCOMPtr<nsIMsgFolderNotificationService> notifier(
-        do_GetService(NS_MSGNOTIFICATIONSERVICE_CONTRACTID, &rv));
+        do_GetService("@mozilla.org/messenger/msgnotificationservice;1", &rv));
     NS_ENSURE_SUCCESS(rv, rv);
     notifier->NotifyFolderAdded(rootFolder);
 
     nsCOMPtr<nsIMsgAccountManager> accountManager =
-        do_GetService(NS_MSGACCOUNTMANAGER_CONTRACTID, &rv);
+        do_GetService("@mozilla.org/messenger/account-manager;1", &rv);
     if (NS_SUCCEEDED(rv)) accountManager->NotifyServerLoaded(aIncomingServer);
 
     // Force built-in folders to be created and discovered. Then, notify
@@ -145,7 +154,7 @@ nsMsgAccount::SetIncomingServer(nsIMsgIncomingServer* aIncomingServer) {
     NS_ENSURE_SUCCESS(rv, rv);
 
     for (nsIMsgFolder* msgFolder : subFolders) {
-      mailSession->OnItemAdded(rootFolder, msgFolder);
+      mailSession->OnFolderAdded(rootFolder, msgFolder);
       notifier->NotifyFolderAdded(msgFolder);
     }
   }
@@ -182,7 +191,7 @@ nsresult nsMsgAccount::createIdentities() {
   }
   // get the server from the account manager
   nsCOMPtr<nsIMsgAccountManager> accountManager =
-      do_GetService(NS_MSGACCOUNTMANAGER_CONTRACTID, &rv);
+      do_GetService("@mozilla.org/messenger/account-manager;1", &rv);
   NS_ENSURE_SUCCESS(rv, rv);
 
   char* newStr = identityKey.BeginWriting();
@@ -239,7 +248,16 @@ nsMsgAccount::SetDefaultIdentity(nsIMsgIdentity* aDefaultIdentity) {
   m_identities.RemoveElementAt(position);
   m_identities.InsertElementAt(0, aDefaultIdentity);
 
-  return saveIdentitiesPref();
+  nsresult rv = saveIdentitiesPref();
+  NS_ENSURE_SUCCESS(rv, rv);
+
+  nsCOMPtr<nsIObserverService> obs = mozilla::services::GetObserverService();
+  if (obs) {
+    obs->NotifyObservers(aDefaultIdentity, "account-default-identity-changed",
+                         NS_ConvertUTF8toUTF16(m_accountKey).get());
+  }
+
+  return NS_OK;
 }
 
 /* void addIdentity (in nsIMsgIdentity identity); */
@@ -324,7 +342,7 @@ nsMsgAccount::RemoveIdentity(nsIMsgIdentity* aIdentity) {
   // update notifications.
   nsCOMPtr<nsIObserverService> obs = mozilla::services::GetObserverService();
   if (obs) {
-    obs->NotifyObservers(nullptr, "account-identity-removed",
+    obs->NotifyObservers(aIdentity, "account-identity-removed",
                          NS_ConvertUTF8toUTF16(key).get());
   }
 

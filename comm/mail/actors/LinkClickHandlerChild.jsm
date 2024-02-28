@@ -10,15 +10,14 @@ const EXPORTED_SYMBOLS = [
   "StrictLinkClickHandlerChild",
 ];
 
-const { XPCOMUtils } = ChromeUtils.import(
-  "resource://gre/modules/XPCOMUtils.jsm"
+const { XPCOMUtils } = ChromeUtils.importESModule(
+  "resource://gre/modules/XPCOMUtils.sys.mjs"
 );
 
-XPCOMUtils.defineLazyModuleGetters(this, {
-  Services: "resource://gre/modules/Services.jsm",
-});
+const lazy = {};
+
 XPCOMUtils.defineLazyServiceGetter(
-  this,
+  lazy,
   "protocolSvc",
   "@mozilla.org/uriloader/external-protocol-service;1",
   "nsIExternalProtocolService"
@@ -31,13 +30,13 @@ XPCOMUtils.defineLazyServiceGetter(
  * If the clicked element was a HTMLInputElement or HTMLButtonElement
  * we return the form action.
  *
- * @return the url and the text for the link being clicked.
+ * @returns the url and the text for the link being clicked.
  */
 function hRefForClickEvent(aEvent) {
   let target = aEvent.target;
 
   if (
-    target instanceof HTMLImageElement &&
+    HTMLImageElement.isInstance(target) &&
     target.hasAttribute("overflowing")
   ) {
     // Click on zoomed image.
@@ -46,9 +45,9 @@ function hRefForClickEvent(aEvent) {
 
   let href = null;
   if (
-    target instanceof HTMLAnchorElement ||
-    target instanceof HTMLAreaElement ||
-    target instanceof HTMLLinkElement
+    HTMLAnchorElement.isInstance(target) ||
+    HTMLAreaElement.isInstance(target) ||
+    HTMLLinkElement.isInstance(target)
   ) {
     if (target.hasAttribute("href") && !target.download) {
       href = target.href;
@@ -56,7 +55,7 @@ function hRefForClickEvent(aEvent) {
   } else {
     // We may be nested inside of a link node.
     let linkNode = aEvent.target;
-    while (linkNode && !(linkNode instanceof HTMLAnchorElement)) {
+    while (linkNode && !HTMLAnchorElement.isInstance(linkNode)) {
       linkNode = linkNode.parentNode;
     }
 
@@ -114,7 +113,7 @@ class LinkClickHandlerChild extends JSWindowActorChild {
         }
       } catch (ex) {
         if (ex.result != Cr.NS_ERROR_HOST_IS_IP_ADDRESS) {
-          Cu.reportError(ex);
+          console.error(ex);
         }
       }
     } catch (ex) {
@@ -123,7 +122,7 @@ class LinkClickHandlerChild extends JSWindowActorChild {
     }
 
     if (
-      !protocolSvc.isExposedProtocol(eventURI.scheme) ||
+      !lazy.protocolSvc.isExposedProtocol(eventURI.scheme) ||
       eventURI.schemeIs("http") ||
       eventURI.schemeIs("https")
     ) {
@@ -168,7 +167,7 @@ class StrictLinkClickHandlerChild extends JSWindowActorChild {
     }
 
     if (
-      !protocolSvc.isExposedProtocol(eventURI.scheme) ||
+      !lazy.protocolSvc.isExposedProtocol(eventURI.scheme) ||
       eventURI.schemeIs("http") ||
       eventURI.schemeIs("https")
     ) {

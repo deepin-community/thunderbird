@@ -22,10 +22,9 @@ class gfxContext;
 class gfxFontGroup;
 class gfxUserFontSet;
 class gfxTextPerfMetrics;
-class nsDeviceContext;
+class nsPresContext;
 class nsAtom;
 struct nsBoundingMetrics;
-struct FontMatchingStats;
 
 namespace mozilla {
 namespace gfx {
@@ -40,7 +39,7 @@ class DrawTarget;
  * nsFontList. The style system uses the nsFont struct for various
  * font properties, one of which is font-family, which can contain a
  * *list* of font names. The nsFont struct is "realized" by asking the
- * device context to cough up an nsFontMetrics object, which contains
+ * pres context to cough up an nsFontMetrics object, which contains
  * a list of real font handles, one for each font mentioned in
  * font-family (and for each fallback when we fall off the end of that
  * list).
@@ -63,122 +62,126 @@ class nsFontMetrics final {
     FontOrientation orientation = eHorizontal;
     gfxUserFontSet* userFontSet = nullptr;
     gfxTextPerfMetrics* textPerf = nullptr;
-    FontMatchingStats* fontStats = nullptr;
     gfxFontFeatureValueSet* featureValueLookup = nullptr;
   };
 
   nsFontMetrics(const nsFont& aFont, const Params& aParams,
-                nsDeviceContext* aContext);
+                nsPresContext* aContext);
 
   // Used by stylo
   NS_INLINE_DECL_THREADSAFE_REFCOUNTING(nsFontMetrics)
 
   /**
    * Destroy this font metrics. This breaks the association between
-   * the font metrics and the device context.
+   * the font metrics and the pres context.
    */
   void Destroy();
 
   /**
    * Return the font's x-height.
    */
-  nscoord XHeight();
+  nscoord XHeight() const;
 
   /**
    * Return the font's cap-height.
    */
-  nscoord CapHeight();
+  nscoord CapHeight() const;
 
   /**
    * Return the font's superscript offset (the distance from the
    * baseline to where a superscript's baseline should be placed).
    * The value returned will be positive.
    */
-  nscoord SuperscriptOffset();
+  nscoord SuperscriptOffset() const;
 
   /**
    * Return the font's subscript offset (the distance from the
    * baseline to where a subscript's baseline should be placed).
    * The value returned will be positive.
    */
-  nscoord SubscriptOffset();
+  nscoord SubscriptOffset() const;
 
   /**
    * Return the font's strikeout offset (the distance from the
    * baseline to where a strikeout should be placed) and size.
    * Positive values are above the baseline, negative below.
    */
-  void GetStrikeout(nscoord& aOffset, nscoord& aSize);
+  void GetStrikeout(nscoord& aOffset, nscoord& aSize) const;
 
   /**
    * Return the font's underline offset (the distance from the
    * baseline to where a underline should be placed) and size.
    * Positive values are above the baseline, negative below.
    */
-  void GetUnderline(nscoord& aOffset, nscoord& aSize);
+  void GetUnderline(nscoord& aOffset, nscoord& aSize) const;
 
   /**
    * Returns the amount of internal leading for the font.
    * This is normally the difference between the max ascent
    * and the em ascent.
    */
-  nscoord InternalLeading();
+  nscoord InternalLeading() const;
 
   /**
    * Returns the amount of external leading for the font.
    * em ascent(?) plus external leading is the font designer's
    * recommended line-height for this font.
    */
-  nscoord ExternalLeading();
+  nscoord ExternalLeading() const;
 
   /**
    * Returns the height of the em square.
    * This is em ascent plus em descent.
    */
-  nscoord EmHeight();
+  nscoord EmHeight() const;
 
   /**
    * Returns the ascent part of the em square.
    */
-  nscoord EmAscent();
+  nscoord EmAscent() const;
 
   /**
    * Returns the descent part of the em square.
    */
-  nscoord EmDescent();
+  nscoord EmDescent() const;
 
   /**
    * Returns the height of the bounding box.
    * This is max ascent plus max descent.
    */
-  nscoord MaxHeight();
+  nscoord MaxHeight() const;
 
   /**
    * Returns the maximum distance characters in this font extend
    * above the base line.
    */
-  nscoord MaxAscent();
+  nscoord MaxAscent() const;
 
   /**
    * Returns the maximum distance characters in this font extend
    * below the base line.
    */
-  nscoord MaxDescent();
+  nscoord MaxDescent() const;
 
   /**
    * Returns the maximum character advance for the font.
    */
-  nscoord MaxAdvance();
+  nscoord MaxAdvance() const;
 
   /**
    * Returns the average character width
    */
-  nscoord AveCharWidth();
+  nscoord AveCharWidth() const;
+
+  /**
+   * Returns width of the zero character, or AveCharWidth if no zero present.
+   */
+  nscoord ZeroOrAveCharWidth() const;
 
   /**
    * Returns the often needed width of the space character
    */
-  nscoord SpaceWidth();
+  nscoord SpaceWidth() const;
 
   /**
    * Returns the font associated with these metrics. The return value
@@ -196,32 +199,32 @@ class nsFontMetrics final {
    */
   FontOrientation Orientation() const { return mOrientation; }
 
-  int32_t GetMaxStringLength();
+  int32_t GetMaxStringLength() const;
 
   // Get the width for this string.  aWidth will be updated with the
   // width in points, not twips.  Callers must convert it if they
   // want it in another format.
   nscoord GetWidth(const char* aString, uint32_t aLength,
-                   DrawTarget* aDrawTarget);
+                   DrawTarget* aDrawTarget) const;
   nscoord GetWidth(const char16_t* aString, uint32_t aLength,
-                   DrawTarget* aDrawTarget);
+                   DrawTarget* aDrawTarget) const;
 
   // Draw a string using this font handle on the surface passed in.
   void DrawString(const char* aString, uint32_t aLength, nscoord aX, nscoord aY,
-                  gfxContext* aContext);
+                  gfxContext* aContext) const;
   void DrawString(const char16_t* aString, uint32_t aLength, nscoord aX,
                   nscoord aY, gfxContext* aContext,
-                  DrawTarget* aTextRunConstructionDrawTarget);
+                  DrawTarget* aTextRunConstructionDrawTarget) const;
 
   nsBoundingMetrics GetBoundingMetrics(const char16_t* aString,
                                        uint32_t aLength,
-                                       DrawTarget* aDrawTarget);
+                                       DrawTarget* aDrawTarget) const;
 
   // Returns the LOOSE_INK_EXTENTS bounds of the text for determing the
   // overflow area of the string.
   nsBoundingMetrics GetInkBoundsForInkOverflow(const char16_t* aString,
                                                uint32_t aLength,
-                                               DrawTarget* aDrawTarget);
+                                               DrawTarget* aDrawTarget) const;
 
   void SetTextRunRTL(bool aIsRTL) { mTextRunRTL = aIsRTL; }
   bool GetTextRunRTL() const { return mTextRunRTL; }
@@ -247,23 +250,23 @@ class nsFontMetrics final {
   // Private destructor, to discourage deletion outside of Release():
   ~nsFontMetrics();
 
-  nsFont mFont;
+  const nsFont mFont;
   RefPtr<gfxFontGroup> mFontGroup;
-  RefPtr<nsAtom> mLanguage;
-  // Pointer to the device context for which this fontMetrics object was
+  RefPtr<nsAtom> const mLanguage;
+  // Pointer to the pres context for which this fontMetrics object was
   // created.
-  nsDeviceContext* MOZ_NON_OWNING_REF mDeviceContext;
-  int32_t mP2A;
+  nsPresContext* MOZ_NON_OWNING_REF mPresContext;
+  const int32_t mP2A;
 
   // The font orientation (horizontal or vertical) for which these metrics
   // have been initialized. This determines which line metrics (ascent and
   // descent) they will return.
-  FontOrientation mOrientation;
+  const FontOrientation mOrientation;
 
   // Whether mLanguage comes from explicit markup (in which case it should be
   // used to tailor effects like case-conversion) or is an inferred/default
   // value.
-  bool mExplicitLanguage;
+  const bool mExplicitLanguage;
 
   // These fields may be set by clients to control the behavior of methods
   // like GetWidth and DrawString according to the writing mode, direction

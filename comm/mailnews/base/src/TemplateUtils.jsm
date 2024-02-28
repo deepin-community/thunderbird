@@ -4,10 +4,9 @@
 
 var EXPORTED_SYMBOLS = ["PluralStringFormatter", "makeFriendlyDateAgo"];
 
-var { PluralForm } = ChromeUtils.import(
-  "resource://gre/modules/PluralForm.jsm"
+var { PluralForm } = ChromeUtils.importESModule(
+  "resource://gre/modules/PluralForm.sys.mjs"
 );
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 
 function PluralStringFormatter(aBundleURI) {
   this._bundle = Services.strings.createBundle(aBundleURI);
@@ -53,12 +52,12 @@ const _weekdayFormatter = new Services.intl.DateTimeFormat(undefined, {
  * "yesterday" (localized).  If it's in the last week, it returns the day
  * of the week. If it's before that, it returns the date.
  *
- * @param time {Date}
- *        the time (better be in the past!)
- * @return {string}  A "human-friendly" representation of that time
- *                   relative to now.
+ * @param {Date} time - The time (better be in the past!)
+ * @returns {string} A "human-friendly" representation of that time
+ *   relative to now.
  */
 function makeFriendlyDateAgo(time) {
+  // TODO: use Intl.RelativeTimeFormat instead.
   // Figure out when today begins
   let now = new Date();
   let today = new Date(now.getFullYear(), now.getMonth(), now.getDate());

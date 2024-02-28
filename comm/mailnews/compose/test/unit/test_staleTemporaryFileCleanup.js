@@ -7,8 +7,6 @@
  * is initialized.
  */
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-
 var gExpectedFiles;
 
 function create_temporary_files_for(name) {
@@ -25,8 +23,9 @@ function collect_expected_temporary_files() {
   files.push(create_temporary_files_for("nsmail.tmp"));
   files.push(create_temporary_files_for("nsmail.tmp"));
   files.push(create_temporary_files_for("nsmail.tmp"));
-  files.push(create_temporary_files_for("nsemail.html"));
-  files.push(create_temporary_files_for("nsemail.html"));
+  files.push(create_temporary_files_for("nsemail.eml"));
+  files.push(create_temporary_files_for("nsemail.tmp"));
+  files.push(create_temporary_files_for("nsqmail.tmp"));
   files.push(create_temporary_files_for("nscopy.tmp"));
   files.push(create_temporary_files_for("nscopy.tmp"));
 
@@ -34,15 +33,15 @@ function collect_expected_temporary_files() {
 }
 
 function check_files_not_exist(files) {
-  files.forEach(function(file) {
+  files.forEach(function (file) {
     Assert.ok(!file.exists());
   });
 }
 
 function run_test() {
   gExpectedFiles = collect_expected_temporary_files();
-  registerCleanupFunction(function() {
-    gExpectedFiles.forEach(function(file) {
+  registerCleanupFunction(function () {
+    gExpectedFiles.forEach(function (file) {
       if (file.exists()) {
         file.remove(false);
       }

@@ -42,11 +42,7 @@ var urlListener = {
 
 function checkBusy() {
   // If the server hasn't quite finished, just delay a little longer.
-  if (
-    incomingServer.serverBusy ||
-    (incomingServer instanceof Ci.nsIPop3IncomingServer &&
-      incomingServer.runningProtocol)
-  ) {
+  if (incomingServer.serverBusy) {
     do_timeout(20, checkBusy);
     return;
   }
@@ -93,7 +89,7 @@ function run_test() {
     Services.prefs.setBoolPref("mail.biff.show_tray_icon", false);
     Services.prefs.setBoolPref("mail.biff.animate_dock_icon", false);
 
-    daemon = new pop3Daemon();
+    daemon = new Pop3Daemon();
     function createHandler(d) {
       return new CRAMFail_handler(d);
     }

@@ -35,6 +35,7 @@
 #include "mozilla/Telemetry.h"
 #include "nsNetworkLinkService.h"
 #include "../../base/IPv6Utils.h"
+#include "../LinkServiceCommon.h"
 #include "../NetworkLinkServiceDefines.h"
 
 #import <Cocoa/Cocoa.h>
@@ -85,7 +86,8 @@ static void CFReleaseSafe(CFTypeRef cf) {
   }
 }
 
-NS_IMPL_ISUPPORTS(nsNetworkLinkService, nsINetworkLinkService, nsIObserver, nsITimerCallback)
+NS_IMPL_ISUPPORTS(nsNetworkLinkService, nsINetworkLinkService, nsIObserver, nsITimerCallback,
+                  nsINamed)
 
 nsNetworkLinkService::nsNetworkLinkService()
     : mLinkUp(true),
@@ -246,11 +248,14 @@ static bool scanArp(char* ip, char* mac, size_t maclen) {
     if (st == 0 || errno != ENOMEM) {
       break;
     }
-    needed += needed / 8;
 
-    auto tmp = MakeUnique<char[]>(needed);
+    size_t increased = needed;
+    increased += increased / 8;
+
+    auto tmp = MakeUnique<char[]>(increased);
     memcpy(&tmp[0], &buf[0], needed);
     buf = std::move(tmp);
+    needed = increased;
   }
   if (st == -1) {
     return false;
@@ -582,6 +587,12 @@ nsNetworkLinkService::Notify(nsITimer* aTimer) {
   return NS_OK;
 }
 
+NS_IMETHODIMP
+nsNetworkLinkService::GetName(nsACString& aName) {
+  aName.AssignLiteral("nsNetworkLinkService");
+  return NS_OK;
+}
+
 void nsNetworkLinkService::calculateNetworkIdInternal(void) {
   MOZ_ASSERT(!NS_IsMainThread(), "Should not be called on the main thread");
   SHA1Sum sha1;
@@ -590,11 +601,8 @@ void nsNetworkLinkService::calculateNetworkIdInternal(void) {
   bool found6 = IPv6NetworkId(&sha1);
 
   if (found4 || found6) {
-    // This 'addition' could potentially be a fixed number from the
-    // profile or something.
-    nsAutoCString addition("local-rubbish");
     nsAutoCString output;
-    sha1.update(addition.get(), addition.Length());
+    SeedNetworkId(sha1);
     uint8_t digest[SHA1Sum::kHashSize];
     sha1.finish(digest);
     nsAutoCString newString(reinterpret_cast<char*>(digest), SHA1Sum::kHashSize);
@@ -685,10 +693,19 @@ void nsNetworkLinkService::DNSConfigChanged(uint32_t aDelayMs) {
     return;
   }
   if (aDelayMs) {
-    MOZ_ALWAYS_SUCCEEDS(target->DelayedDispatch(
-        NS_NewRunnableFunction("nsNetworkLinkService::GetDnsSuffixListInternal",
-                               [self = RefPtr{this}]() { self->GetDnsSuffixListInternal(); }),
-        aDelayMs));
+    MutexAutoLock lock(mMutex);
+    nsCOMPtr<nsITimer> timer;
+    MOZ_ALWAYS_SUCCEEDS(NS_NewTimerWithCallback(
+        getter_AddRefs(timer),
+        [self = RefPtr{this}](nsITimer* aTimer) {
+          self->GetDnsSuffixListInternal();
+
+          MutexAutoLock lock(self->mMutex);
+          self->mDNSConfigChangedTimers.RemoveElement(aTimer);
+        },
+        TimeDuration::FromMilliseconds(aDelayMs), nsITimer::TYPE_ONE_SHOT,
+        "nsNetworkLinkService::GetDnsSuffixListInternal", target));
+    mDNSConfigChangedTimers.AppendElement(timer);
   } else {
     MOZ_ALWAYS_SUCCEEDS(target->Dispatch(
         NS_NewRunnableFunction("nsNetworkLinkService::GetDnsSuffixListInternal",
@@ -840,6 +857,16 @@ nsresult nsNetworkLinkService::Shutdown() {
   if (mNetworkIdTimer) {
     mNetworkIdTimer->Cancel();
     mNetworkIdTimer = nullptr;
+  }
+
+  nsTArray<nsCOMPtr<nsITimer>> dnsConfigChangedTimers;
+  {
+    MutexAutoLock lock(mMutex);
+    dnsConfigChangedTimers = std::move(mDNSConfigChangedTimers);
+    mDNSConfigChangedTimers.Clear();
+  }
+  for (const auto& timer : dnsConfigChangedTimers) {
+    timer->Cancel();
   }
 
   return NS_OK;

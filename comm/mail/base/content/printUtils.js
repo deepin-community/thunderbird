@@ -2,14 +2,17 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, you can obtain one at http://mozilla.org/MPL/2.0/. */
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-var { XPCOMUtils } = ChromeUtils.import(
-  "resource://gre/modules/XPCOMUtils.jsm"
+var { XPCOMUtils } = ChromeUtils.importESModule(
+  "resource://gre/modules/XPCOMUtils.sys.mjs"
 );
 
-XPCOMUtils.defineLazyModuleGetters(this, {
-  SubDialogManager: "resource://gre/modules/SubDialog.jsm",
+ChromeUtils.defineESModuleGetters(this, {
+  SubDialogManager: "resource://gre/modules/SubDialog.sys.mjs",
 });
+
+var { MailE10SUtils } = ChromeUtils.import(
+  "resource:///modules/MailE10SUtils.jsm"
+);
 
 // Load PrintUtils lazily and modify it to suit.
 XPCOMUtils.defineLazyGetter(this, "PrintUtils", () => {
@@ -18,13 +21,13 @@ XPCOMUtils.defineLazyGetter(this, "PrintUtils", () => {
     "chrome://global/content/printUtils.js",
     scope
   );
-  scope.PrintUtils.getTabDialogBox = function(browser) {
+  scope.PrintUtils.getTabDialogBox = function (browser) {
     if (!browser.tabDialogBox) {
       browser.tabDialogBox = new TabDialogBox(browser);
     }
     return browser.tabDialogBox;
   };
-  scope.PrintUtils.createBrowser = function({
+  scope.PrintUtils.createBrowser = function ({
     remoteType,
     initialBrowsingContextGroupId,
     userContextId,
@@ -76,12 +79,10 @@ XPCOMUtils.defineLazyGetter(this, "PrintUtils", () => {
     let stack = document.createXULElement("stack");
     stack.className = "browserStack";
     stack.appendChild(b);
-    stack.setAttribute("flex", "10000");
 
     let browserContainer = document.createXULElement("vbox");
     browserContainer.className = "browserContainer";
     browserContainer.appendChild(stack);
-    browserContainer.setAttribute("flex", "10000");
 
     let browserSidebarContainer = document.createXULElement("hbox");
     browserSidebarContainer.className = "browserSidebarContainer";
@@ -94,6 +95,45 @@ XPCOMUtils.defineLazyGetter(this, "PrintUtils", () => {
     }
 
     return b;
+  };
+
+  scope.PrintUtils.__defineGetter__("printBrowser", () =>
+    document.getElementById("hiddenPrintContent")
+  );
+  scope.PrintUtils.loadPrintBrowser = async function (url) {
+    let printBrowser = this.printBrowser;
+    if (printBrowser.currentURI?.spec == url) {
+      return;
+    }
+
+    // The template page hasn't been loaded yet. Do that now.
+    await new Promise(resolve => {
+      // Store a strong reference to this progress listener.
+      printBrowser.progressListener = {
+        QueryInterface: ChromeUtils.generateQI([
+          "nsIWebProgressListener",
+          "nsISupportsWeakReference",
+        ]),
+
+        /** nsIWebProgressListener */
+        onStateChange(webProgress, request, stateFlags, status) {
+          if (
+            stateFlags & Ci.nsIWebProgressListener.STATE_STOP &&
+            printBrowser.currentURI.spec != "about:blank"
+          ) {
+            printBrowser.webProgress.removeProgressListener(this);
+            delete printBrowser.progressListener;
+            resolve();
+          }
+        },
+      };
+
+      printBrowser.webProgress.addProgressListener(
+        printBrowser.progressListener,
+        Ci.nsIWebProgress.NOTIFY_STATE_ALL
+      );
+      MailE10SUtils.loadURI(printBrowser, url);
+    });
   };
   return scope.PrintUtils;
 });
@@ -114,6 +154,12 @@ class TabDialogBox {
     let template = document.getElementById("dialogStackTemplate");
     this.dialogStack = template.content.cloneNode(true).firstElementChild;
     this.dialogStack.classList.add("tab-prompt-dialog");
+
+    while (browser.ownerDocument != document) {
+      // Find an ancestor <browser> in this document so that we can locate the
+      // print preview appropriately.
+      browser = browser.ownerGlobal.browsingContext.embedderElement;
+    }
 
     // This differs from Firefox by using a specific ancestor <stack> rather
     // than the parent of the <browser>, so that a larger area of the screen
@@ -146,21 +192,22 @@ class TabDialogBox {
 
   /**
    * Open a dialog on tab or content level.
-   * @param {String} aURL - URL of the dialog to load in the tab box.
-   * @param {Object} [aOptions]
-   * @param {String} [aOptions.features] - Comma separated list of window
+   *
+   * @param {string} aURL - URL of the dialog to load in the tab box.
+   * @param {object} [aOptions]
+   * @param {string} [aOptions.features] - Comma separated list of window
    *   features.
-   * @param {Boolean} [aOptions.allowDuplicateDialogs] - Whether to allow
+   * @param {boolean} [aOptions.allowDuplicateDialogs] - Whether to allow
    *   showing multiple dialogs with aURL at the same time. If false calls for
    *   duplicate dialogs will be dropped.
-   * @param {String} [aOptions.sizeTo] - Pass "available" to stretch dialog to
+   * @param {string} [aOptions.sizeTo] - Pass "available" to stretch dialog to
    *   roughly content size.
-   * @param {Boolean} [aOptions.keepOpenSameOriginNav] - By default dialogs are
+   * @param {boolean} [aOptions.keepOpenSameOriginNav] - By default dialogs are
    *   aborted on any navigation.
    *   Set to true to keep the dialog open for same origin navigation.
-   * @param {Number} [aOptions.modalType] - The modal type to create the dialog for.
+   * @param {number} [aOptions.modalType] - The modal type to create the dialog for.
    *   By default, we show the dialog for tab prompts.
-   * @returns {Object} [result] Returns an object { closedPromise, dialog }.
+   * @returns {object} [result] Returns an object { closedPromise, dialog }.
    * @returns {Promise} [result.closedPromise] Resolves once the dialog has been closed.
    * @returns {SubDialog} [result.dialog] A reference to the opened SubDialog.
    */
@@ -261,9 +308,8 @@ class TabDialogBox {
     contentDialogStack.classList.add("content-prompt-dialog");
 
     // Create a dialog manager for content prompts.
-    let tabPromptDialog = this.browser.parentNode.querySelector(
-      ".tab-prompt-dialog"
-    );
+    let tabPromptDialog =
+      this.browser.parentNode.querySelector(".tab-prompt-dialog");
     this.browser.parentNode.insertBefore(contentDialogStack, tabPromptDialog);
 
     let contentDialogTemplate = contentDialogStack.firstElementChild;

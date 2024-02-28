@@ -4,17 +4,15 @@
 
 /* globals createCalendarUsingDialog */
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 var { cal } = ChromeUtils.import("resource:///modules/calendar/calUtils.jsm");
 
 add_task(async function testBasicFunctionality() {
   const calendarName = "Mochitest";
-  let manager = cal.getCalendarManager();
 
   registerCleanupFunction(() => {
-    for (let calendar of manager.getCalendars()) {
+    for (let calendar of cal.manager.getCalendars()) {
       if (calendar.name == calendarName) {
-        manager.removeCalendar(calendar);
+        cal.manager.removeCalendar(calendar);
       }
     }
     Services.focus.focusedWindow = window;
@@ -41,25 +39,30 @@ add_task(async function testBasicFunctionality() {
   // There should be search field.
   Assert.ok(document.querySelector("#unifinder-search-field"), "unifinded search field exists");
 
-  let dayViewButton = document.querySelector("#calendar-day-view-button");
-  dayViewButton.click();
-  Assert.ok(dayViewButton.selected, "day view button is selected");
+  // Make sure the week view is the default selected view.
+  Assert.ok(
+    document
+      .querySelector(`.calview-toggle-item[aria-selected="true"]`)
+      .getAttribute("aria-controls") == "week-view",
+    "week-view toggle is the current default"
+  );
 
-  // Default view is day view which should have 09:00 label and box.
+  let dayViewButton = document.querySelector("#calTabDay");
+  dayViewButton.click();
+  Assert.ok(dayViewButton.getAttribute("aria-selected"), "day view button is selected");
+  await CalendarTestUtils.ensureViewLoaded(window);
+
+  // Day view should have 09:00 box.
   let someTime = cal.createDateTime();
   someTime.resetTo(someTime.year, someTime.month, someTime.day, 9, 0, 0, someTime.timezone);
   let label = cal.dtz.formatter.formatTime(someTime);
-  Assert.ok(
-    document.querySelector(`.calendar-time-bar-label[value='${label}']`),
-    "09:00 label exists"
-  );
-  Assert.ok(
-    document.querySelector("#day-view .daybox .multiday-column-bg-box").children[9],
-    "09:00 box exists"
-  );
+  let labelEl = document.querySelectorAll("#day-view .multiday-timebar .multiday-hour-box")[9];
+  Assert.ok(labelEl, "9th hour box should exist");
+  Assert.equal(labelEl.textContent, label, "9th hour box should show the correct time");
+  Assert.ok(CalendarTestUtils.dayView.getHourBoxAt(window, 9), "09:00 box exists");
 
   // Open tasks view.
-  document.querySelector("#task-tab-button").click();
+  document.querySelector("#tasksButton").click();
 
   // Should be possible to filter today's tasks.
   Assert.ok(document.querySelector("#opt_today_filter"), "show today radio button exists");

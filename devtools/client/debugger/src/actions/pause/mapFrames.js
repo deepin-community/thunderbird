@@ -2,45 +2,55 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at <http://mozilla.org/MPL/2.0/>. */
 
-import { getFrames, getSource, getSelectedFrame } from "../../selectors";
+import {
+  getFrames,
+  getBlackBoxRanges,
+  getSelectedFrame,
+} from "../../selectors";
+
+import { isFrameBlackBoxed } from "../../utils/source";
 
 import assert from "../../utils/assert";
-
-import { isGeneratedId } from "devtools-source-map";
-
-function isFrameBlackboxed(state, frame) {
-  const source = getSource(state, frame.location.sourceId);
-  return !!source?.isBlackBoxed;
-}
+import { getOriginalLocation } from "../../utils/source-maps";
+import {
+  debuggerToSourceMapLocation,
+  sourceMapToDebuggerLocation,
+} from "../../utils/location";
+import { isGeneratedId } from "devtools/client/shared/source-map-loader/index";
 
 function getSelectedFrameId(state, thread, frames) {
   let selectedFrame = getSelectedFrame(state, thread);
-  if (selectedFrame && !isFrameBlackboxed(state, selectedFrame)) {
+  const blackboxedRanges = getBlackBoxRanges(state);
+
+  if (selectedFrame && !isFrameBlackBoxed(selectedFrame, blackboxedRanges)) {
     return selectedFrame.id;
   }
 
-  selectedFrame = frames.find(frame => !isFrameBlackboxed(state, frame));
+  selectedFrame = frames.find(frame => {
+    return !isFrameBlackBoxed(frame, blackboxedRanges);
+  });
   return selectedFrame?.id;
 }
 
-export function updateFrameLocation(frame, sourceMaps) {
+async function updateFrameLocation(frame, thunkArgs) {
   if (frame.isOriginal) {
     return Promise.resolve(frame);
   }
-  return sourceMaps.getOriginalLocation(frame.location).then(loc => ({
+  const location = await getOriginalLocation(frame.location, thunkArgs, true);
+  return {
     ...frame,
-    location: loc,
+    location,
     generatedLocation: frame.generatedLocation || frame.location,
-  }));
+  };
 }
 
-function updateFrameLocations(frames, sourceMaps) {
-  if (!frames || frames.length == 0) {
+function updateFrameLocations(frames, thunkArgs) {
+  if (!frames || !frames.length) {
     return Promise.resolve(frames);
   }
 
   return Promise.all(
-    frames.map(frame => updateFrameLocation(frame, sourceMaps))
+    frames.map(frame => updateFrameLocation(frame, thunkArgs))
   );
 }
 
@@ -48,15 +58,11 @@ function isWasmOriginalSourceFrame(frame, getState) {
   if (isGeneratedId(frame.location.sourceId)) {
     return false;
   }
-  const generatedSource = getSource(
-    getState(),
-    frame.generatedLocation.sourceId
-  );
 
-  return Boolean(generatedSource?.isWasm);
+  return Boolean(frame.generatedLocation?.source.isWasm);
 }
 
-async function expandFrames(frames, sourceMaps, getState) {
+async function expandFrames(frames, { getState, sourceMapLoader }) {
   const result = [];
   for (let i = 0; i < frames.length; ++i) {
     const frame = frames[i];
@@ -64,15 +70,15 @@ async function expandFrames(frames, sourceMaps, getState) {
       result.push(frame);
       continue;
     }
-    const originalFrames = await sourceMaps.getOriginalStackFrames(
-      frame.generatedLocation
+    const originalFrames = await sourceMapLoader.getOriginalStackFrames(
+      debuggerToSourceMapLocation(frame.generatedLocation)
     );
     if (!originalFrames) {
       result.push(frame);
       continue;
     }
 
-    assert(originalFrames.length > 0, "Expected at least one original frame");
+    assert(!!originalFrames.length, "Expected at least one original frame");
     // First entry has not specific location -- use one from original frame.
     originalFrames[0] = {
       ...originalFrames[0],
@@ -90,7 +96,10 @@ async function expandFrames(frames, sourceMaps, getState) {
       result.push({
         id,
         displayName: originalFrame.displayName,
-        location: originalFrame.location,
+        location: sourceMapToDebuggerLocation(
+          getState(),
+          originalFrame.location
+        ),
         index: frame.index,
         source: null,
         thread: frame.thread,
@@ -120,16 +129,16 @@ async function expandFrames(frames, sourceMaps, getState) {
  * @static
  */
 export function mapFrames(cx) {
-  return async function(thunkArgs) {
-    const { dispatch, getState, sourceMaps } = thunkArgs;
+  return async function (thunkArgs) {
+    const { dispatch, getState } = thunkArgs;
     const frames = getFrames(getState(), cx.thread);
     if (!frames) {
       return;
     }
 
-    let mappedFrames = await updateFrameLocations(frames, sourceMaps);
+    let mappedFrames = await updateFrameLocations(frames, thunkArgs);
 
-    mappedFrames = await expandFrames(mappedFrames, sourceMaps, getState);
+    mappedFrames = await expandFrames(mappedFrames, thunkArgs);
 
     const selectedFrameId = getSelectedFrameId(
       getState(),

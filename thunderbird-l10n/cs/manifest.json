@@ -1,29 +1,28 @@
 {
   "langpack_id": "cs",
   "manifest_version": 2,
-  "applications": {
+  "browser_specific_settings": {
     "gecko": {
       "id": "langpack-cs@thunderbird.mozilla.org",
-      "strict_min_version": "91.0",
-      "strict_max_version": "91.*"
+      "strict_min_version": "115.0",
+      "strict_max_version": "115.*"
     }
   },
-  "name": "Czech (CZ) Language Pack",
-  "description": "Language pack for Thunderbird for cs",
-  "version": "91.0buildid20211101223011",
+  "name": "Language: Čeština (Czech)",
+  "description": "Thunderbird Language Pack for Čeština (cs) – Czech",
+  "version": "115.8.20240216.174500",
   "languages": {
     "cs": {
-      "version": "20211017134737",
+      "version": "20240216183754",
       "chrome_resources": {
         "alerts": "chrome/cs/locale/cs/alerts/",
         "autoconfig": "chrome/cs/locale/cs/autoconfig/",
-        "branding": "chrome/cs/locale/cs/branding/",
+        "branding": "chrome/cs/locale/branding/",
         "calendar": "chrome/cs/locale/cs/calendar/",
         "chat": "chrome/cs/locale/cs/chat/",
         "communicator": "chrome/cs/locale/cs/communicator/",
         "devtools": "chrome/cs/locale/cs/devtools/client/",
         "devtools-shared": "chrome/cs/locale/cs/devtools/shared/",
-        "devtools-startup": "chrome/cs/locale/cs/devtools/startup/",
         "global": "chrome/cs/locale/cs/global/",
         "global-platform": {
           "macosx": "chrome/cs/locale/cs/global-platform/mac/",
@@ -53,5 +52,5 @@
       "base_path": "browser/"
     }
   },
-  "author": "Mozilla.cz (contributors: Pavel Cvrček, Pavel Franc, Michal Stanke, Michal Vašíček)"
+  "author": "Mozilla.cz (contributors: Česká komunita dobrovolných překladatelů Mozilla.cz)"
 }

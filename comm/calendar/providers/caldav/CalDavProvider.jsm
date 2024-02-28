@@ -4,8 +4,6 @@
 
 var EXPORTED_SYMBOLS = ["CalDavProvider"];
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-
 var { cal } = ChromeUtils.import("resource:///modules/calendar/calUtils.jsm");
 var { DNS } = ChromeUtils.import("resource:///modules/DNS.jsm");
 
@@ -21,6 +19,7 @@ var { CalDavDetectionSession } = ChromeUtils.import("resource:///modules/caldav/
  */
 var CalDavProvider = {
   QueryInterface: ChromeUtils.generateQI(["calICalendarProvider"]),
+
   get type() {
     return "caldav";
   },
@@ -33,16 +32,8 @@ var CalDavProvider = {
     return "CalDAV";
   },
 
-  createCalendar(aName, aUri, aListener) {
-    throw Components.Exception("", Cr.NS_ERROR_NOT_IMPLEMENTED);
-  },
-
   deleteCalendar(aCalendar, aListener) {
     throw Components.Exception("", Cr.NS_ERROR_NOT_IMPLEMENTED);
-  },
-
-  getCalendar(aUri) {
-    return cal.getCalendarManager().createCalendar("caldav", aUri);
   },
 
   async detectCalendars(
@@ -121,9 +112,9 @@ class CalDavDetector {
   /**
    * Create a new caldav detector.
    *
-   * @param {string} username         A username.
-   * @param {string} password         A password.
-   * @param {boolean} savePassword    Whether to save the password or not.
+   * @param {string} username - A username.
+   * @param {string} password - A password.
+   * @param {boolean} savePassword - Whether to save the password or not.
    */
   constructor(username, password, savePassword) {
     this.username = username;
@@ -133,8 +124,8 @@ class CalDavDetector {
   /**
    * Attempt to detect calendars at the given location.
    *
-   * @param {nsIURI} location                   The location to attempt.
-   * @return {Promise<calICalendar[] | null>}   An array of calendars or null.
+   * @param {nsIURI} location - The location to attempt.
+   * @returns {Promise<calICalendar[] | null>} An array of calendars or null.
    */
   attemptLocation(location) {
     if (location.filePath == "/") {
@@ -148,8 +139,8 @@ class CalDavDetector {
   /**
    * Attempt to detect calendars at the given location using DNS lookups.
    *
-   * @param {nsIURI} location                   The location to attempt.
-   * @return {Promise<calICalendar[] | null>}   An array of calendars or null.
+   * @param {nsIURI} location - The location to attempt.
+   * @returns {Promise<calICalendar[] | null>} An array of calendars or null.
    */
   async dnsSRV(location) {
     if (location.filePath != "/") {
@@ -215,8 +206,8 @@ class CalDavDetector {
   /**
    * Attempt to detect calendars using a `.well-known` URI.
    *
-   * @param {nsIURI} location                   The location to attempt.
-   * @return {Promise<calICalendar[] | null>}   An array of calendars or null.
+   * @param {nsIURI} location - The location to attempt.
+   * @returns {Promise<calICalendar[] | null>} An array of calendars or null.
    */
   async wellKnown(location) {
     let wellKnownUri = Services.io.newURI("/.well-known/caldav", null, location);
@@ -227,8 +218,8 @@ class CalDavDetector {
   /**
    * Attempt to detect calendars using a root ("/") URI.
    *
-   * @param {nsIURI} location                   The location to attempt.
-   * @return {Promise<calICalendar[] | null>}   An array of calendars or null.
+   * @param {nsIURI} location - The location to attempt.
+   * @returns {Promise<calICalendar[] | null>} An array of calendars or null.
    */
   attemptRoot(location) {
     let rootUri = Services.io.newURI("/", null, location);
@@ -238,30 +229,28 @@ class CalDavDetector {
   /**
    * Attempt to detect calendars using Google OAuth.
    *
-   * @param {nsIURI} location                   The location to attempt.
-   * @return {Promise<calICalendar[] | null>}   An array of calendars or null.
+   * @param {nsIURI} calURI - The location to attempt.
+   * @returns {Promise<calICalendar[] | null>} An array of calendars or null.
    */
-  async attemptGoogleOauth(location) {
-    if (!this.username) {
-      return null;
-    }
-
-    let usesGoogleOAuth = cal.provider.detection.googleOAuthDomains.has(location.host);
-
+  async attemptGoogleOauth(calURI) {
+    let usesGoogleOAuth = cal.provider.detection.googleOAuthDomains.has(calURI.host);
     if (!usesGoogleOAuth) {
       // Not using Google OAuth that we know of, but we could check the mx entry.
       // If mail is handled by Google then this is likely a Google Apps domain.
-      let mxRecords = await DNS.mx(location.host);
+      let mxRecords = await DNS.mx(calURI.host);
       usesGoogleOAuth = mxRecords.some(r => /\bgoogle\.com$/.test(r.host));
     }
 
     if (usesGoogleOAuth) {
-      let uri = Services.io.newURI(
-        `https://apidata.googleusercontent.com/caldav/v2/${encodeURIComponent(this.username)}/user`
-      );
+      // If we were given a full URL to a calendar, try to use it.
+      let spec = this.username
+        ? `https://apidata.googleusercontent.com/caldav/v2/${encodeURIComponent(
+            this.username
+          )}/user`
+        : calURI.spec;
+      let uri = Services.io.newURI(spec);
       return this.handlePrincipal(uri);
     }
-
     return null;
   }
 
@@ -269,8 +258,8 @@ class CalDavDetector {
    * Utility function to detect whether a calendar collection exists at a given
    * location and return it if it exists.
    *
-   * @param {nsIURI} location                   The location to attempt.
-   * @return {Promise<calICalendar[] | null>}   An array of calendars or null.
+   * @param {nsIURI} location - The location to attempt.
+   * @returns {Promise<calICalendar[] | null>} An array of calendars or null.
    */
   async detectCollection(location) {
     let props = [
@@ -328,8 +317,8 @@ class CalDavDetector {
    * previous PROPFIND results contained either "D:current-user-principal"
    * or "D:owner" props.
    *
-   * @param {nsIURI} location                   The location to attempt.
-   * @return {Promise<calICalendar[] | null>}   An array of calendars or null.
+   * @param {nsIURI} location - The location to attempt.
+   * @returns {Promise<calICalendar[] | null>} An array of calendars or null.
    */
   async handlePrincipal(location) {
     let props = ["D:resourcetype", "C:calendar-home-set"];
@@ -367,8 +356,8 @@ class CalDavDetector {
    * Utility function to make a new attempt to detect calendars after the
    * previous PROPFIND results contained a "C:calendar-home-set" prop.
    *
-   * @param {nsIURI} location                   The location to attempt.
-   * @return {Promise<calICalendar[] | null>}   An array of calendars or null.
+   * @param {nsIURI} location - The location to attempt.
+   * @returns {Promise<calICalendar[] | null>} An array of calendars or null.
    */
   async handleHomeSet(location) {
     let props = [
@@ -402,27 +391,23 @@ class CalDavDetector {
   /**
    * Set up and return a new caldav calendar object.
    *
-   * @param {nsIURI} uri              The location of the calendar.
-   * @param {Set} props               The calendar properties parsed from the
+   * @param {nsIURI} uri - The location of the calendar.
+   * @param {Set} props - The calendar properties parsed from the
    *                                  response.
-   * @return {calICalendar}           A new calendar.
+   * @returns {calICalendar} A new calendar.
    */
   handleCalendar(uri, props) {
     let displayName = props["D:displayname"];
     let color = props["A:calendar-color"];
     if (!displayName) {
-      let fileName = decodeURI(uri.spec)
-        .split("/")
-        .filter(Boolean)
-        .pop();
+      let fileName = decodeURI(uri.spec).split("/").filter(Boolean).pop();
       displayName = fileName || uri.spec;
     }
 
     // Some servers provide colors as an 8-character hex string. Strip the alpha component.
     color = color?.replace(/^(#[0-9A-Fa-f]{6})[0-9A-Fa-f]{2}$/, "$1");
 
-    let calMgr = cal.getCalendarManager();
-    let calendar = calMgr.createCalendar("caldav", uri);
+    let calendar = cal.manager.createCalendar("caldav", uri);
     calendar.setProperty("color", color || cal.view.hashColor(uri.spec));
     calendar.name = displayName;
     calendar.id = cal.getUUID();
@@ -432,12 +417,9 @@ class CalDavDetector {
     // Attempt to discover if the user is allowed to write to this calendar.
     let privs = props["D:current-user-privilege-set"];
     if (privs && privs instanceof Set) {
-      calendar.readOnly = ![
-        "D:write",
-        "D:write-content",
-        "D:write-properties",
-        "D:all",
-      ].some(priv => privs.has(priv));
+      calendar.readOnly = !["D:write", "D:write-content", "D:write-properties", "D:all"].some(
+        priv => privs.has(priv)
+      );
     }
     return calendar;
   }

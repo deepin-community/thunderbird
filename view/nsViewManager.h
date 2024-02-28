@@ -14,6 +14,7 @@
 #include "nsDeviceContext.h"
 #include "nsTArray.h"
 #include "mozilla/Attributes.h"
+#include "mozilla/AlreadyAddRefed.h"
 #include "mozilla/EventForwards.h"
 
 class nsIWidget;
@@ -61,7 +62,7 @@ class nsViewManager final {
    * @result The new view.  Never null.
    */
   nsView* CreateView(const nsRect& aBounds, nsView* aParent,
-                     nsViewVisibility aVisibilityFlag = nsViewVisibility_kShow);
+                     ViewVisibility aVisibilityFlag = ViewVisibility::Show);
 
   /**
    * Get the root of the view tree.
@@ -98,7 +99,7 @@ class nsViewManager final {
   /**
    * Do any resizes that are pending.
    */
-  void FlushDelayedResize(bool aDoReflow);
+  void FlushDelayedResize();
 
   /**
    * Called to inform the view manager that the entire area of a view
@@ -197,7 +198,7 @@ class nsViewManager final {
    * @param aView view to change visibility state of
    * @param visible new visibility state
    */
-  void SetViewVisibility(nsView* aView, nsViewVisibility aVisible);
+  void SetViewVisibility(nsView* aView, ViewVisibility aVisible);
 
   /**
    * Set the z-index of a view. Positive z-indices mean that a view
@@ -281,7 +282,7 @@ class nsViewManager final {
    * Retrieve the widget at the root of the nearest enclosing
    * view manager whose root view has a widget.
    */
-  void GetRootWidget(nsIWidget** aWidget);
+  nsIWidget* GetRootWidget() const;
 
   /**
    * Indicate whether the viewmanager is currently painting
@@ -364,7 +365,7 @@ class nsViewManager final {
   LayoutDeviceIntRect ViewToWidget(nsView* aView, const nsRect& aRect) const;
 
   MOZ_CAN_RUN_SCRIPT_BOUNDARY
-  void DoSetWindowDimensions(nscoord aWidth, nscoord aHeight, bool aDoReflow);
+  void DoSetWindowDimensions(nscoord aWidth, nscoord aHeight);
   bool ShouldDelayResize() const;
 
   bool IsPainting() const { return RootViewManager()->mPainting; }
@@ -373,8 +374,11 @@ class nsViewManager final {
 
   void InvalidateView(nsView* aView, const nsRect& aRect);
 
-  nsViewManager* RootViewManager() const { return mRootViewManager; }
-  bool IsRootVM() const { return this == RootViewManager(); }
+  nsViewManager* RootViewManager() const {
+    return mRootViewManager ? mRootViewManager.get()
+                            : const_cast<nsViewManager*>(this);
+  }
+  bool IsRootVM() const { return !mRootViewManager; }
 
   // Whether synchronous painting is allowed at the moment. For example,
   // widget geometry changes can cause synchronous painting, so they need to
@@ -400,9 +404,12 @@ class nsViewManager final {
   nsSize mDelayedResize;
 
   nsView* mRootView;
-  // mRootViewManager is a strong ref unless it equals |this|.  It's
-  // never null (if we have no ancestors, it will be |this|).
-  nsViewManager* mRootViewManager;
+
+  // mRootViewManager is a strong reference to the root view manager, unless
+  // |this| is the root, in which case mRootViewManager is null.  Callers
+  // should use RootViewManager() (which handles that case) rather than using
+  // mRootViewManager directly.
+  RefPtr<nsViewManager> mRootViewManager;
 
   // The following members should not be accessed directly except by
   // the root view manager.  Some have accessor functions to enforce
@@ -417,7 +424,7 @@ class nsViewManager final {
   // from here to public should be static and locked... MMP
 
   // list of view managers
-  static nsTArray<nsViewManager*>* gViewManagers;
+  static mozilla::StaticAutoPtr<nsTArray<nsViewManager*>> gViewManagers;
 };
 
 /**

@@ -42,7 +42,7 @@ newsgroups-label = Interesne grupe
 newsgroups-description = { -brand-short-name } omogućuje povezivanje sa svim mogućim interesnim grupama.
 
 import-title = Uvezi iz jednog drugog programa
-import-paragraph = { -brand-short-name } omogućuje uvoz poruka e-pošte, kontakata adresara, pretplata na feedove, postavki i/ili filtera iz drugih programa za e-poštu kao i uobičajenih formata adresara.
+import-paragraph2 = { -brand-short-name } omogućuje uvoz poruka e-pošte, kontakata adresara, pretplata na feedove, postavki i/ili filtera iz drugih programa za e-poštu kao i uobičajenih formata adresara.
 
 import-label = Uvoz
     .aria-label = Uvezi podatke iz drugih programa
@@ -62,4 +62,4 @@ search = Pretraži poruke
 filter = Upravljanje filterima za poruke
 nntp-subscription = Upravljanje pretplatama na interesne grupe
 rss-subscription = Upravljanje pretplatama na kanale
-e2e = Potpuno šifriranje od pošiljatelja do primatelja
+e2e = Obostrano šifriranje

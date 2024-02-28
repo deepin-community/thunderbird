@@ -14,6 +14,7 @@ ast_enum_of_structs! {
     ///
     /// [syntax tree enum]: Expr#syntax-tree-enums
     #[cfg_attr(doc_cfg, doc(cfg(any(feature = "full", feature = "derive"))))]
+    #[cfg_attr(not(syn_no_non_exhaustive), non_exhaustive)]
     pub enum Type {
         /// A fixed size array type: `[T; n]`.
         Array(TypeArray),
@@ -53,7 +54,7 @@ ast_enum_of_structs! {
         /// A dynamically sized slice type: `[T]`.
         Slice(TypeSlice),
 
-        /// A trait object type `Bound1 + Bound2 + Bound3` where `Bound` is a
+        /// A trait object type `dyn Bound1 + Bound2 + Bound3` where `Bound` is a
         /// trait or a lifetime.
         TraitObject(TypeTraitObject),
 
@@ -63,18 +64,17 @@ ast_enum_of_structs! {
         /// Tokens in type position not interpreted by Syn.
         Verbatim(TokenStream),
 
-        // The following is the only supported idiom for exhaustive matching of
-        // this enum.
+        // Not public API.
         //
-        //     match expr {
-        //         Type::Array(e) => {...}
-        //         Type::BareFn(e) => {...}
+        // For testing exhaustiveness in downstream code, use the following idiom:
+        //
+        //     match ty {
+        //         Type::Array(ty) => {...}
+        //         Type::BareFn(ty) => {...}
         //         ...
-        //         Type::Verbatim(e) => {...}
+        //         Type::Verbatim(ty) => {...}
         //
-        //         #[cfg(test)]
-        //         Type::__TestExhaustive(_) => unimplemented!(),
-        //         #[cfg(not(test))]
+        //         #[cfg_attr(test, deny(non_exhaustive_omitted_patterns))]
         //         _ => { /* some sane fallback */ }
         //     }
         //
@@ -82,12 +82,9 @@ ast_enum_of_structs! {
         // a variant. You will be notified by a test failure when a variant is
         // added, so that you can add code to handle it, but your library will
         // continue to compile and work for downstream users in the interim.
-        //
-        // Once `deny(reachable)` is available in rustc, Type will be
-        // reimplemented as a non_exhaustive enum.
-        // https://github.com/rust-lang/rust/issues/44109#issuecomment-521781237
+        #[cfg(syn_no_non_exhaustive)]
         #[doc(hidden)]
-        __TestExhaustive(crate::private),
+        __NonExhaustive,
     }
 }
 
@@ -247,7 +244,7 @@ ast_struct! {
 }
 
 ast_struct! {
-    /// A trait object type `Bound1 + Bound2 + Bound3` where `Bound` is a
+    /// A trait object type `dyn Bound1 + Bound2 + Bound3` where `Bound` is a
     /// trait or a lifetime.
     ///
     /// *This type is available only if Syn is built with the `"derive"` or
@@ -340,13 +337,14 @@ pub mod parsing {
     use crate::ext::IdentExt;
     use crate::parse::{Parse, ParseStream, Result};
     use crate::path;
-    use proc_macro2::{Punct, Spacing, TokenTree};
+    use proc_macro2::{Punct, Spacing, Span, TokenTree};
 
     #[cfg_attr(doc_cfg, doc(cfg(feature = "parsing")))]
     impl Parse for Type {
         fn parse(input: ParseStream) -> Result<Self> {
             let allow_plus = true;
-            ambig_ty(input, allow_plus)
+            let allow_group_generic = true;
+            ambig_ty(input, allow_plus, allow_group_generic)
         }
     }
 
@@ -359,11 +357,16 @@ pub mod parsing {
         #[cfg_attr(doc_cfg, doc(cfg(feature = "parsing")))]
         pub fn without_plus(input: ParseStream) -> Result<Self> {
             let allow_plus = false;
-            ambig_ty(input, allow_plus)
+            let allow_group_generic = true;
+            ambig_ty(input, allow_plus, allow_group_generic)
         }
     }
 
-    fn ambig_ty(input: ParseStream, allow_plus: bool) -> Result<Type> {
+    pub(crate) fn ambig_ty(
+        input: ParseStream,
+        allow_plus: bool,
+        allow_group_generic: bool,
+    ) -> Result<Type> {
         let begin = input.fork();
 
         if input.peek(token::Group) {
@@ -384,7 +387,9 @@ pub mod parsing {
                         path: Path::parse_helper(input, false)?,
                     }));
                 }
-            } else if input.peek(Token![<]) || input.peek(Token![::]) && input.peek3(Token![<]) {
+            } else if input.peek(Token![<]) && allow_group_generic
+                || input.peek(Token![::]) && input.peek3(Token![<])
+            {
                 if let Type::Path(mut ty) = *group.elem {
                     let arguments = &mut ty.path.segments.last_mut().unwrap().arguments;
                     if let PathArguments::None = arguments {
@@ -412,6 +417,7 @@ pub mod parsing {
                 && !lookahead.peek(Token![self])
                 && !lookahead.peek(Token![Self])
                 && !lookahead.peek(Token![crate])
+                || input.peek(Token![dyn])
             {
                 return Err(lookahead.error());
             }
@@ -539,17 +545,19 @@ pub mod parsing {
             || lookahead.peek(Token![::])
             || lookahead.peek(Token![<])
         {
-            if input.peek(Token![dyn]) {
-                let mut trait_object: TypeTraitObject = input.parse()?;
-                if lifetimes.is_some() {
-                    match trait_object.bounds.iter_mut().next().unwrap() {
-                        TypeParamBound::Trait(trait_bound) => {
-                            trait_bound.lifetimes = lifetimes;
-                        }
-                        TypeParamBound::Lifetime(_) => unreachable!(),
-                    }
-                }
-                return Ok(Type::TraitObject(trait_object));
+            let dyn_token: Option<Token![dyn]> = input.parse()?;
+            if let Some(dyn_token) = dyn_token {
+                let dyn_span = dyn_token.span;
+                let star_token: Option<Token![*]> = input.parse()?;
+                let bounds = TypeTraitObject::parse_bounds(dyn_span, input, allow_plus)?;
+                return Ok(if star_token.is_some() {
+                    Type::Verbatim(verbatim::between(begin, input))
+                } else {
+                    Type::TraitObject(TypeTraitObject {
+                        dyn_token: Some(dyn_token),
+                        bounds,
+                    })
+                });
             }
 
             let ty: TypePath = input.parse()?;
@@ -593,7 +601,12 @@ pub mod parsing {
                 if allow_plus {
                     while input.peek(Token![+]) {
                         bounds.push_punct(input.parse()?);
-                        if input.peek(Token![>]) {
+                        if !(input.peek(Ident::peek_any)
+                            || input.peek(Token![::])
+                            || input.peek(Token![?])
+                            || input.peek(Lifetime)
+                            || input.peek(token::Paren))
+                        {
                             break;
                         }
                         bounds.push_value(input.parse()?);
@@ -630,7 +643,7 @@ pub mod parsing {
         } else if lookahead.peek(Token![!]) && !input.peek(Token![=]) {
             input.parse().map(Type::Never)
         } else if lookahead.peek(Token![impl]) {
-            input.parse().map(Type::ImplTrait)
+            TypeImplTrait::parse(input, allow_plus).map(Type::ImplTrait)
         } else if lookahead.peek(Token![_]) {
             input.parse().map(Type::Infer)
         } else if lookahead.peek(Lifetime) {
@@ -742,7 +755,10 @@ pub mod parsing {
                         break;
                     }
 
-                    inputs.push_punct(args.parse()?);
+                    let comma = args.parse()?;
+                    if !has_mut_self {
+                        inputs.push_punct(comma);
+                    }
                 }
 
                 inputs
@@ -821,12 +837,28 @@ pub mod parsing {
     #[cfg_attr(doc_cfg, doc(cfg(feature = "parsing")))]
     impl Parse for TypePath {
         fn parse(input: ParseStream) -> Result<Self> {
-            let (qself, mut path) = path::parsing::qpath(input, false)?;
+            let expr_style = false;
+            let (qself, mut path) = path::parsing::qpath(input, expr_style)?;
 
-            if path.segments.last().unwrap().arguments.is_empty() && input.peek(token::Paren) {
+            while path.segments.last().unwrap().arguments.is_empty()
+                && (input.peek(token::Paren) || input.peek(Token![::]) && input.peek3(token::Paren))
+            {
+                input.parse::<Option<Token![::]>>()?;
                 let args: ParenthesizedGenericArguments = input.parse()?;
+                let allow_associated_type = cfg!(feature = "full")
+                    && match &args.output {
+                        ReturnType::Default => true,
+                        ReturnType::Type(_, ty) => match **ty {
+                            // TODO: probably some of the other kinds allow this too.
+                            Type::Paren(_) => true,
+                            _ => false,
+                        },
+                    };
                 let parenthesized = PathArguments::Parenthesized(args);
                 path.segments.last_mut().unwrap().arguments = parenthesized;
+                if allow_associated_type {
+                    Path::parse_rest(input, &mut path, expr_style)?;
+                }
             }
 
             Ok(TypePath { qself, path })
@@ -834,16 +866,17 @@ pub mod parsing {
     }
 
     impl ReturnType {
+        #[cfg_attr(doc_cfg, doc(cfg(feature = "parsing")))]
         pub fn without_plus(input: ParseStream) -> Result<Self> {
             let allow_plus = false;
             Self::parse(input, allow_plus)
         }
 
-        #[doc(hidden)]
-        pub fn parse(input: ParseStream, allow_plus: bool) -> Result<Self> {
+        pub(crate) fn parse(input: ParseStream, allow_plus: bool) -> Result<Self> {
             if input.peek(Token![->]) {
                 let arrow = input.parse()?;
-                let ty = ambig_ty(input, allow_plus)?;
+                let allow_group_generic = true;
+                let ty = ambig_ty(input, allow_plus, allow_group_generic)?;
                 Ok(ReturnType::Type(arrow, Box::new(ty)))
             } else {
                 Ok(ReturnType::Default)
@@ -854,82 +887,105 @@ pub mod parsing {
     #[cfg_attr(doc_cfg, doc(cfg(feature = "parsing")))]
     impl Parse for ReturnType {
         fn parse(input: ParseStream) -> Result<Self> {
-            Self::parse(input, true)
+            let allow_plus = true;
+            Self::parse(input, allow_plus)
         }
     }
 
     #[cfg_attr(doc_cfg, doc(cfg(feature = "parsing")))]
     impl Parse for TypeTraitObject {
         fn parse(input: ParseStream) -> Result<Self> {
-            Self::parse(input, true)
+            let allow_plus = true;
+            Self::parse(input, allow_plus)
         }
-    }
-
-    fn at_least_one_type(bounds: &Punctuated<TypeParamBound, Token![+]>) -> bool {
-        for bound in bounds {
-            if let TypeParamBound::Trait(_) = *bound {
-                return true;
-            }
-        }
-        false
     }
 
     impl TypeTraitObject {
+        #[cfg_attr(doc_cfg, doc(cfg(feature = "parsing")))]
         pub fn without_plus(input: ParseStream) -> Result<Self> {
             let allow_plus = false;
             Self::parse(input, allow_plus)
         }
 
         // Only allow multiple trait references if allow_plus is true.
-        #[doc(hidden)]
-        pub fn parse(input: ParseStream, allow_plus: bool) -> Result<Self> {
-            Ok(TypeTraitObject {
-                dyn_token: input.parse()?,
-                bounds: {
-                    let mut bounds = Punctuated::new();
-                    if allow_plus {
-                        loop {
-                            bounds.push_value(input.parse()?);
-                            if !input.peek(Token![+]) {
-                                break;
-                            }
-                            bounds.push_punct(input.parse()?);
-                            if input.peek(Token![>]) {
-                                break;
-                            }
-                        }
-                    } else {
-                        bounds.push_value(input.parse()?);
+        pub(crate) fn parse(input: ParseStream, allow_plus: bool) -> Result<Self> {
+            let dyn_token: Option<Token![dyn]> = input.parse()?;
+            let dyn_span = match &dyn_token {
+                Some(token) => token.span,
+                None => input.span(),
+            };
+            let bounds = Self::parse_bounds(dyn_span, input, allow_plus)?;
+            Ok(TypeTraitObject { dyn_token, bounds })
+        }
+
+        fn parse_bounds(
+            dyn_span: Span,
+            input: ParseStream,
+            allow_plus: bool,
+        ) -> Result<Punctuated<TypeParamBound, Token![+]>> {
+            let bounds = TypeParamBound::parse_multiple(input, allow_plus)?;
+            let mut last_lifetime_span = None;
+            let mut at_least_one_trait = false;
+            for bound in &bounds {
+                match bound {
+                    TypeParamBound::Trait(_) => {
+                        at_least_one_trait = true;
+                        break;
                     }
-                    // Just lifetimes like `'a + 'b` is not a TraitObject.
-                    if !at_least_one_type(&bounds) {
-                        return Err(input.error("expected at least one type"));
+                    TypeParamBound::Lifetime(lifetime) => {
+                        last_lifetime_span = Some(lifetime.ident.span());
                     }
-                    bounds
-                },
-            })
+                }
+            }
+            // Just lifetimes like `'a + 'b` is not a TraitObject.
+            if !at_least_one_trait {
+                let msg = "at least one trait is required for an object type";
+                return Err(error::new2(dyn_span, last_lifetime_span.unwrap(), msg));
+            }
+            Ok(bounds)
         }
     }
 
     #[cfg_attr(doc_cfg, doc(cfg(feature = "parsing")))]
     impl Parse for TypeImplTrait {
         fn parse(input: ParseStream) -> Result<Self> {
-            Ok(TypeImplTrait {
-                impl_token: input.parse()?,
-                // NOTE: rust-lang/rust#34511 includes discussion about whether
-                // or not + should be allowed in ImplTrait directly without ().
-                bounds: {
-                    let mut bounds = Punctuated::new();
-                    loop {
-                        bounds.push_value(input.parse()?);
-                        if !input.peek(Token![+]) {
-                            break;
-                        }
-                        bounds.push_punct(input.parse()?);
+            let allow_plus = true;
+            Self::parse(input, allow_plus)
+        }
+    }
+
+    impl TypeImplTrait {
+        #[cfg_attr(doc_cfg, doc(cfg(feature = "parsing")))]
+        pub fn without_plus(input: ParseStream) -> Result<Self> {
+            let allow_plus = false;
+            Self::parse(input, allow_plus)
+        }
+
+        pub(crate) fn parse(input: ParseStream, allow_plus: bool) -> Result<Self> {
+            let impl_token: Token![impl] = input.parse()?;
+            let bounds = TypeParamBound::parse_multiple(input, allow_plus)?;
+            let mut last_lifetime_span = None;
+            let mut at_least_one_trait = false;
+            for bound in &bounds {
+                match bound {
+                    TypeParamBound::Trait(_) => {
+                        at_least_one_trait = true;
+                        break;
                     }
-                    bounds
-                },
-            })
+                    TypeParamBound::Lifetime(lifetime) => {
+                        last_lifetime_span = Some(lifetime.ident.span());
+                    }
+                }
+            }
+            if !at_least_one_trait {
+                let msg = "at least one trait must be specified";
+                return Err(error::new2(
+                    impl_token.span,
+                    last_lifetime_span.unwrap(),
+                    msg,
+                ));
+            }
+            Ok(TypeImplTrait { impl_token, bounds })
         }
     }
 
@@ -957,7 +1013,10 @@ pub mod parsing {
             let content;
             Ok(TypeParen {
                 paren_token: parenthesized!(content in input),
-                elem: Box::new(ambig_ty(&content, allow_plus)?),
+                elem: Box::new({
+                    let allow_group_generic = true;
+                    ambig_ty(&content, allow_plus, allow_group_generic)?
+                }),
             })
         }
     }
@@ -1150,7 +1209,7 @@ mod printing {
     #[cfg_attr(doc_cfg, doc(cfg(feature = "printing")))]
     impl ToTokens for TypePath {
         fn to_tokens(&self, tokens: &mut TokenStream) {
-            private::print_path(tokens, &self.qself, &self.path);
+            path::printing::print_path(tokens, &self.qself, &self.path);
         }
     }
 

@@ -1,12 +1,15 @@
-/* -*- Mode: Java; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*-
- * This Source Code Form is subject to the terms of the Mozilla Public
+/* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 /* import-globals-from preferences.js */
 
-var { Downloads } = ChromeUtils.import("resource://gre/modules/Downloads.jsm");
-var { FileUtils } = ChromeUtils.import("resource://gre/modules/FileUtils.jsm");
+var { Downloads } = ChromeUtils.importESModule(
+  "resource://gre/modules/Downloads.sys.mjs"
+);
+var { FileUtils } = ChromeUtils.importESModule(
+  "resource://gre/modules/FileUtils.sys.mjs"
+);
 
 Preferences.addAll([
   { id: "browser.download.useDownloadDir", type: "bool" },
@@ -113,7 +116,7 @@ var gDownloadDirSection = {
       let urlSpec = Services.io
         .getProtocolHandler("file")
         .QueryInterface(Ci.nsIFileProtocolHandler)
-        .getURLSpecFromFile(downloadDir);
+        .getURLSpecFromDir(downloadDir);
 
       downloadFolder.style.backgroundImage =
         "url(moz-icon://" + urlSpec + "?size=16)";

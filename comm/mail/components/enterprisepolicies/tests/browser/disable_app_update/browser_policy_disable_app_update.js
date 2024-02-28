@@ -62,13 +62,22 @@ add_task(async function test_update_about_ui() {
     "The About Dialog panel Id should equal " + panelId
   );
 
+  // Make sure that we still remain on the "disabled by policy" panel after
+  // `AppUpdater.stop()` is called.
+  aboutDialog.gAppUpdater._appUpdater.stop();
+  is(
+    aboutDialog.gAppUpdater.selectedPanel.id,
+    panelId,
+    "The About Dialog panel Id should still equal " + panelId
+  );
+
   aboutDialog.close();
 });
 
 /**
  * Waits for the About Dialog to load.
  *
- * @return A promise that returns the domWindow for the About Dialog and
+ * @returns A promise that returns the domWindow for the About Dialog and
  *         resolves when the About Dialog loads.
  */
 function waitForAboutDialog() {

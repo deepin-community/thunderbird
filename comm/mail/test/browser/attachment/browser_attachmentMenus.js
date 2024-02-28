@@ -8,10 +8,6 @@ var folder;
 var messenger;
 var epsilon;
 
-var controller = ChromeUtils.import(
-  "resource://testing-common/mozmill/controller.jsm"
-);
-
 var {
   create_body_part,
   create_deleted_attachment,
@@ -26,12 +22,15 @@ var {
   close_popup,
   create_folder,
   create_message,
+  get_about_message,
   mc,
   select_click_row,
   wait_for_popup_to_open,
 } = ChromeUtils.import(
   "resource://testing-common/mozmill/FolderDisplayHelpers.jsm"
 );
+
+var aboutMessage = get_about_message();
 
 var textAttachment =
   "Can't make the frug contest, Helen; stomach's upset. I'll fix you, " +
@@ -179,7 +178,7 @@ var messages = [
   },
 ];
 
-add_task(function setupModule(module) {
+add_setup(async function () {
   messenger = Cc["@mozilla.org/messenger;1"].createInstance(Ci.nsIMessenger);
 
   /* Today's gory details (thanks to Jonathan Protzenko): libmime somehow
@@ -231,7 +230,7 @@ add_task(function setupModule(module) {
     create_enclosure_attachment(
       "purr.mp3",
       "audio/mpeg",
-      "http://example.com",
+      "https://example.com",
       12345678
     ),
   ]);
@@ -241,7 +240,7 @@ add_task(function setupModule(module) {
       create_enclosure_attachment(
         "meow.mp3",
         "audio/mpeg",
-        "http://example.com/invalid"
+        "https://example.com/invalid"
       ),
     ]
   );
@@ -251,13 +250,13 @@ add_task(function setupModule(module) {
       create_enclosure_attachment(
         "purr.mp3",
         "audio/mpeg",
-        "http://example.com",
+        "https://example.com",
         1234567
       ),
       create_enclosure_attachment(
         "meow.mp3",
         "audio/mpeg",
-        "http://example.com",
+        "https://example.com",
         987654321
       ),
     ]
@@ -268,13 +267,13 @@ add_task(function setupModule(module) {
       create_enclosure_attachment(
         "purr.mp3",
         "audio/mpeg",
-        "http://example.com",
+        "https://example.com",
         1234567
       ),
       create_enclosure_attachment(
         "meow.mp3",
         "audio/mpeg",
-        "http://example.com/invalid"
+        "https://example.com/invalid"
       ),
     ]
   );
@@ -284,17 +283,17 @@ add_task(function setupModule(module) {
       create_enclosure_attachment(
         "purr.mp3",
         "audio/mpeg",
-        "http://example.com/invalid"
+        "https://example.com/invalid"
       ),
       create_enclosure_attachment(
         "meow.mp3",
         "audio/mpeg",
-        "http://example.com/invalid"
+        "https://example.com/invalid"
       ),
     ]
   );
 
-  folder = create_folder("AttachmentMenusA");
+  folder = await create_folder("AttachmentMenusA");
   for (let i = 0; i < messages.length; i++) {
     // First, add any missing info to the message object.
     switch (messages[i].name) {
@@ -336,7 +335,7 @@ add_task(function setupModule(module) {
         break;
     }
 
-    add_message_to_folder(folder, create_message(messages[i]));
+    await add_message_to_folder([folder], create_message(messages[i]));
   }
 });
 
@@ -347,11 +346,11 @@ add_task(function setupModule(module) {
  * @param visible true if the element should be visible, false otherwise
  */
 function assert_shown(id, visible) {
-  if (mc.e(id).hidden == visible) {
-    throw new Error(
-      '"' + id + '" should be ' + (visible ? "visible" : "hidden")
-    );
-  }
+  Assert.notEqual(
+    aboutMessage.document.getElementById(id).hidden,
+    visible,
+    `"${id}" should be ${visible ? "visible" : "hidden"}`
+  );
 }
 
 /**
@@ -361,11 +360,11 @@ function assert_shown(id, visible) {
  * @param enabled true if the element should be enabled, false otherwise
  */
 function assert_enabled(id, enabled) {
-  if (mc.e(id).disabled == enabled) {
-    throw new Error(
-      '"' + id + '" should be ' + (enabled ? "enabled" : "disabled")
-    );
-  }
+  Assert.notEqual(
+    aboutMessage.document.getElementById(id).disabled,
+    enabled,
+    `"${id}" should be ${enabled ? "enabled" : "disabled"}`
+  );
 }
 
 /**
@@ -381,12 +380,13 @@ async function check_toolbar_menu_states_single(expected) {
     assert_enabled("attachmentSaveAllSingle", false);
   } else {
     assert_enabled("attachmentSaveAllSingle", true);
-    mc.click(
-      mc.window.document.querySelector(
-        "#attachmentSaveAllSingle .toolbarbutton-menubutton-dropmarker"
-      )
+    let dm = aboutMessage.document.querySelector(
+      "#attachmentSaveAllSingle .toolbarbutton-menubutton-dropmarker"
     );
-    await wait_for_popup_to_open(mc.e("attachmentSaveAllSingleMenu"));
+    EventUtils.synthesizeMouseAtCenter(dm, { clickCount: 1 }, aboutMessage);
+    await wait_for_popup_to_open(
+      aboutMessage.document.getElementById("attachmentSaveAllSingleMenu")
+    );
 
     try {
       assert_enabled("button-openAttachment", expected.open);
@@ -394,7 +394,10 @@ async function check_toolbar_menu_states_single(expected) {
       assert_enabled("button-detachAttachment", expected.detach);
       assert_enabled("button-deleteAttachment", expected.delete_);
     } finally {
-      await close_popup(mc, mc.e("attachmentSaveAllSingleMenu"));
+      await close_popup(
+        aboutMessage,
+        aboutMessage.document.getElementById("attachmentSaveAllSingleMenu")
+      );
     }
   }
 }
@@ -412,12 +415,13 @@ async function check_toolbar_menu_states_multiple(expected) {
     assert_enabled("attachmentSaveAllMultiple", false);
   } else {
     assert_enabled("attachmentSaveAllMultiple", true);
-    mc.click(
-      mc.window.document.querySelector(
-        "#attachmentSaveAllMultiple .toolbarbutton-menubutton-dropmarker"
-      )
+    let dm = aboutMessage.document.querySelector(
+      "#attachmentSaveAllMultiple .toolbarbutton-menubutton-dropmarker"
     );
-    await wait_for_popup_to_open(mc.e("attachmentSaveAllMultipleMenu"));
+    EventUtils.synthesizeMouseAtCenter(dm, { clickCount: 1 }, aboutMessage);
+    await wait_for_popup_to_open(
+      aboutMessage.document.getElementById("attachmentSaveAllMultipleMenu")
+    );
 
     try {
       assert_enabled("button-openAllAttachments", expected.open);
@@ -425,7 +429,10 @@ async function check_toolbar_menu_states_multiple(expected) {
       assert_enabled("button-detachAllAttachments", expected.detach);
       assert_enabled("button-deleteAllAttachments", expected.delete_);
     } finally {
-      await close_popup(mc, mc.e("attachmentSaveAllMultipleMenu"));
+      await close_popup(
+        mc,
+        aboutMessage.document.getElementById("attachmentSaveAllMultipleMenu")
+      );
     }
   }
 }
@@ -436,13 +443,19 @@ async function check_toolbar_menu_states_multiple(expected) {
  * @param expected a dictionary containing the expected states
  */
 async function check_menu_states_single(index, expected) {
-  let attachmentList = mc.e("attachmentList");
+  let attachmentList = aboutMessage.document.getElementById("attachmentList");
   let node = attachmentList.getItemAtIndex(index);
 
-  let contextMenu = document.getElementById("attachmentItemContext");
+  let contextMenu = aboutMessage.document.getElementById(
+    "attachmentItemContext"
+  );
   let shownPromise = BrowserTestUtils.waitForEvent(contextMenu, "popupshown");
   attachmentList.selectItem(node);
-  EventUtils.synthesizeMouseAtCenter(node, { type: "contextmenu" });
+  EventUtils.synthesizeMouseAtCenter(
+    node,
+    { type: "contextmenu" },
+    aboutMessage
+  );
   await shownPromise;
 
   try {
@@ -476,9 +489,13 @@ async function check_menu_states_all(expected) {
   // Using a rightClick here is unsafe, because we need to hit the empty area
   // beside the attachment items and that seems to be different per platform.
   // Using DOM methods to open the popup works fine.
-  let contextMenu = document.getElementById("attachmentListContext");
+  let contextMenu = aboutMessage.document.getElementById(
+    "attachmentListContext"
+  );
   let shownPromise = BrowserTestUtils.waitForEvent(contextMenu, "popupshown");
-  mc.e("attachmentListContext").openPopup(mc.e("attachmentList"));
+  aboutMessage.document
+    .getElementById("attachmentListContext")
+    .openPopup(aboutMessage.document.getElementById("attachmentList"));
   await shownPromise;
 
   try {
@@ -493,27 +510,26 @@ async function check_menu_states_all(expected) {
     assert_enabled("context-detachAllAttachments", expected.detach);
     assert_enabled("context-deleteAllAttachments", expected.delete_);
   } finally {
-    await close_popup(mc, mc.e("attachmentListContext"));
+    await close_popup(
+      aboutMessage,
+      aboutMessage.document.getElementById("attachmentListContext")
+    );
   }
 }
 
 async function help_test_attachment_menus(index) {
-  be_in_folder(folder);
+  await be_in_folder(folder);
   select_click_row(index);
   let expectedStates = messages[index].menuStates;
 
-  mc.window.toggleAttachmentList(true);
+  let aboutMessage = get_about_message();
+  aboutMessage.toggleAttachmentList(true);
 
-  for (let attachment of mc.window.currentAttachments) {
+  for (let attachment of aboutMessage.currentAttachments) {
     // Ensure all attachments are resolved; other than external they already
     // should be.
-    attachment.isEmpty();
+    await attachment.isEmpty();
   }
-
-  // Test funcs are generated in the global scope, and there isn't a way to
-  // do this async (like within an async add_task in xpcshell) so await can
-  // force serial execution of each test. Wait here for the fetch() to complete.
-  controller.sleep(1000);
 
   if (expectedStates.length == 1) {
     await check_toolbar_menu_states_single(messages[index].allMenuStates);
@@ -529,7 +545,7 @@ async function help_test_attachment_menus(index) {
 
 // Generate a test for each message in |messages|.
 for (let i = 0; i < messages.length; i++) {
-  add_task(function() {
+  add_task(function () {
     return help_test_attachment_menus(i);
   });
 }
@@ -541,4 +557,9 @@ add_task(() => {
     undefined,
     "Test ran to completion successfully"
   );
+});
+
+registerCleanupFunction(() => {
+  // Remove created folders.
+  folder.deleteSelf(null);
 });

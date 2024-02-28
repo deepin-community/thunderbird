@@ -2,11 +2,11 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-/* exported onLoad */
-
-/* import-globals-from ../calendar-ui-utils.js */
+/* global addMenuItem */ // From  ../calendar-ui-utils.js
 
 var { cal } = ChromeUtils.import("resource:///modules/calendar/calUtils.jsm");
+
+window.addEventListener("load", onLoad);
 
 /**
  * Sets up the timezone dialog from the window arguments, also setting up all
@@ -16,9 +16,6 @@ function onLoad() {
   let args = window.arguments[0];
   window.time = args.time;
   window.onAcceptCallback = args.onOk;
-
-  let tzProvider = args.calendar.getProperty("timezones.provider") || cal.getTimezoneService();
-  window.tzProvider = tzProvider;
 
   let menulist = document.getElementById("timezone-menulist");
   let tzMenuPopup = document.getElementById("timezone-menupopup");
@@ -33,8 +30,8 @@ function onLoad() {
 
   let tzids = {};
   let displayNames = [];
-  for (let timezoneId of tzProvider.timezoneIds) {
-    let timezone = tzProvider.getTimezone(timezoneId);
+  for (let timezoneId of cal.timezoneService.timezoneIds) {
+    let timezone = cal.timezoneService.getTimezone(timezoneId);
     if (timezone && !timezone.isFloating && !timezone.isUTC) {
       let displayName = timezone.displayName;
       displayNames.push(displayName);
@@ -68,7 +65,7 @@ function onLoad() {
  * Find the index of the timezone menuitem corresponding to the given timezone.
  *
  * @param timezone      The calITimezone to look for.
- * @return              The index of the childnode below "timezone-menulist"
+ * @returns The index of the childnode below "timezone-menulist"
  */
 function findTimezone(timezone) {
   let tzid = timezone.tzid;
@@ -90,7 +87,7 @@ function findTimezone(timezone) {
 function updateTimezone() {
   let menulist = document.getElementById("timezone-menulist");
   let menuitem = menulist.selectedItem;
-  let timezone = window.tzProvider.getTimezone(menuitem.getAttribute("value"));
+  let timezone = cal.timezoneService.getTimezone(menuitem.getAttribute("value"));
 
   // convert the date/time to the currently selected timezone
   // and display the result in the appropriate control.
@@ -123,7 +120,7 @@ document.addEventListener("dialogaccept", () => {
   let menulist = document.getElementById("timezone-menulist");
   let menuitem = menulist.selectedItem;
   let timezoneString = menuitem.getAttribute("value");
-  let timezone = window.tzProvider.getTimezone(timezoneString);
+  let timezone = cal.timezoneService.getTimezone(timezoneString);
   let datetime = window.time.getInTimezone(timezone);
   window.onAcceptCallback(datetime);
 });

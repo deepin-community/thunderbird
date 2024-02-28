@@ -22,13 +22,7 @@ const TEST_URI2 = `
   </div>
 `;
 
-add_task(async function() {
-  // Disable bfcache for Fission for now.
-  // If Fission is disabled, the pref is no-op.
-  await SpecialPowers.pushPrefEnv({
-    set: [["fission.bfcacheInParent", false]],
-  });
-
+add_task(async function () {
   await addTab("data:text/html;charset=utf-8," + encodeURIComponent(TEST_URI1));
 
   startTelemetry();

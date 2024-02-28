@@ -56,13 +56,10 @@ var suppressed_toggles = [
   "-moz-scrollbar-end-forward",
   "-moz-scrollbar-start-backward",
   "-moz-scrollbar-start-forward",
-  "-moz-scrollbar-thumb-proportional",
   "-moz-windows-compositor",
   "-moz-windows-default-theme",
   "-moz-windows-glass",
   "-moz-gtk-csd-available",
-  "-moz-gtk-csd-hide-titlebar-by-default",
-  "-moz-gtk-csd-transparent-background",
   "-moz-gtk-csd-minimize-button",
   "-moz-gtk-csd-maximize-button",
   "-moz-gtk-csd-close-button",
@@ -70,9 +67,6 @@ var suppressed_toggles = [
 ];
 
 var toggles_enabled_in_content = [];
-
-// Possible values for '-moz-os-version'
-var windows_versions = ["windows-win7", "windows-win8", "windows-win10"];
 
 // Read the current OS.
 var OS = SpecialPowers.Services.appinfo.OS;
@@ -92,7 +86,7 @@ var keyValMatches = (key, val) =>
 // Attempts to run a media query match for the given key and value.
 // If value is an array of two elements [min max], then matches any
 // value in-between.
-var testMatch = function(key, val) {
+var testMatch = function (key, val) {
   if (val === null) {
     return;
   } else if (Array.isArray(val)) {
@@ -108,8 +102,8 @@ var testMatch = function(key, val) {
 
 // __testToggles(resisting)__.
 // Test whether we are able to match the "toggle" media queries.
-var testToggles = function(resisting) {
-  suppressed_toggles.forEach(function(key) {
+var testToggles = function (resisting) {
+  suppressed_toggles.forEach(function (key) {
     var exists = keyValMatches(key, 0) || keyValMatches(key, 1);
     if (!toggles_enabled_in_content.includes(key) && !is_chrome_window) {
       ok(!exists, key + " should not exist.");
@@ -125,34 +119,13 @@ var testToggles = function(resisting) {
   });
 };
 
-// __testWindowsSpecific__.
-// Runs a media query on the queryName with the given possible matching values.
-var testWindowsSpecific = function(resisting, queryName, possibleValues) {
-  let foundValue = null;
-  possibleValues.forEach(function(val) {
-    if (keyValMatches(queryName, val)) {
-      foundValue = val;
-    }
-  });
-  if (resisting || !is_chrome_window) {
-    ok(!foundValue, queryName + " should have no match");
-  } else {
-    ok(
-      foundValue,
-      foundValue
-        ? "Match found: '" + queryName + ":" + foundValue + "'"
-        : "Should have a match for '" + queryName + "'"
-    );
-  }
-};
-
 // __generateHtmlLines(resisting)__.
 // Create a series of div elements that look like:
 // `<div class='spoof' id='resolution'>resolution</div>`,
 // where each line corresponds to a different media query.
-var generateHtmlLines = function(resisting) {
+var generateHtmlLines = function (resisting) {
   let fragment = document.createDocumentFragment();
-  expected_values.forEach(function([key, offVal, onVal]) {
+  expected_values.forEach(function ([key, offVal, onVal]) {
     let val = resisting ? onVal : offVal;
     if (val) {
       let div = document.createElementNS(HTML_NS, "div");
@@ -162,27 +135,20 @@ var generateHtmlLines = function(resisting) {
       fragment.appendChild(div);
     }
   });
-  suppressed_toggles.forEach(function(key) {
+  suppressed_toggles.forEach(function (key) {
     let div = document.createElementNS(HTML_NS, "div");
     div.setAttribute("class", "suppress");
     div.setAttribute("id", key);
     div.textContent = key;
     fragment.appendChild(div);
   });
-  if (OS === "WINNT") {
-    let div = document.createElementNS(HTML_NS, "div");
-    div.setAttribute("class", "windows");
-    div.setAttribute("id", "-moz-os-version");
-    div.textContent = "-moz-os-version";
-    fragment.appendChild(div);
-  }
   return fragment;
 };
 
 // __cssLine__.
 // Creates a line of css that looks something like
 // `@media (resolution: 1ppx) { .spoof#resolution { background-color: green; } }`.
-var cssLine = function(query, clazz, id, color) {
+var cssLine = function (query, clazz, id, color) {
   return (
     "@media " +
     query +
@@ -199,7 +165,7 @@ var cssLine = function(query, clazz, id, color) {
 // __constructQuery(key, val)__.
 // Creates a CSS media query from key and val. If key is an array of
 // two elements, constructs a range query (using min- and max-).
-var constructQuery = function(key, val) {
+var constructQuery = function (key, val) {
   return Array.isArray(val)
     ? "(min-" + key + ": " + val[0] + ") and (max-" + key + ": " + val[1] + ")"
     : "(" + key + ": " + val + ")";
@@ -207,7 +173,7 @@ var constructQuery = function(key, val) {
 
 // __mediaQueryCSSLine(key, val, color)__.
 // Creates a line containing a CSS media query and a CSS expression.
-var mediaQueryCSSLine = function(key, val, color) {
+var mediaQueryCSSLine = function (key, val, color) {
   if (val === null) {
     return "";
   }
@@ -217,7 +183,7 @@ var mediaQueryCSSLine = function(key, val, color) {
 // __suppressedMediaQueryCSSLine(key, color)__.
 // Creates a CSS line that matches the existence of a
 // media query that is supposed to be suppressed.
-var suppressedMediaQueryCSSLine = function(key, color, suppressed) {
+var suppressedMediaQueryCSSLine = function (key, color, suppressed) {
   let query = "(" + key + ": 0), (" + key + ": 1)";
   return cssLine(query, "suppress", key, color);
 };
@@ -226,14 +192,14 @@ var suppressedMediaQueryCSSLine = function(key, color, suppressed) {
 // Creates a series of lines of CSS, each of which corresponds to
 // a different media query. If the query produces a match to the
 // expected value, then the element will be colored green.
-var generateCSSLines = function(resisting) {
+var generateCSSLines = function (resisting) {
   let lines = ".spoof { background-color: red;}\n";
-  expected_values.forEach(function([key, offVal, onVal]) {
+  expected_values.forEach(function ([key, offVal, onVal]) {
     lines += mediaQueryCSSLine(key, resisting ? onVal : offVal, "green");
   });
   lines +=
     ".suppress { background-color: " + (resisting ? "green" : "red") + ";}\n";
-  suppressed_toggles.forEach(function(key) {
+  suppressed_toggles.forEach(function (key) {
     if (
       !toggles_enabled_in_content.includes(key) &&
       !resisting &&
@@ -244,15 +210,6 @@ var generateCSSLines = function(resisting) {
       lines += suppressedMediaQueryCSSLine(key, "green");
     }
   });
-  if (OS === "WINNT") {
-    lines +=
-      ".windows { background-color: " + (resisting ? "green" : "red") + ";}\n";
-    lines +=
-      windows_versions.map(val => "(-moz-os-version: " + val + ")").join(", ") +
-      " { #-moz-os-version { background-color: " +
-      (resisting ? "red" : "green") +
-      ";} }\n";
-  }
   return lines;
 };
 
@@ -264,7 +221,7 @@ var green = "rgb(0, 128, 0)";
 // Creates a series of divs and CSS using media queries to set their
 // background color. If all media queries match as expected, then
 // all divs should have a green background color.
-var testCSS = function(resisting) {
+var testCSS = function (resisting) {
   document.getElementById("display").appendChild(generateHtmlLines(resisting));
   document.getElementById("test-css").textContent = generateCSSLines(resisting);
   let cssTestDivs = document.querySelectorAll(".spoof,.suppress");
@@ -277,7 +234,7 @@ var testCSS = function(resisting) {
 // __testOSXFontSmoothing(resisting)__.
 // When fingerprinting resistance is enabled, the `getComputedStyle`
 // should always return `undefined` for `MozOSXFontSmoothing`.
-var testOSXFontSmoothing = function(resisting) {
+var testOSXFontSmoothing = function (resisting) {
   let div = document.createElementNS(HTML_NS, "div");
   div.style.MozOsxFontSmoothing = "unset";
   document.documentElement.appendChild(div);
@@ -296,8 +253,8 @@ var testOSXFontSmoothing = function(resisting) {
 
 // __sleep(timeoutMs)__.
 // Returns a promise that resolves after the given timeout.
-var sleep = function(timeoutMs) {
-  return new Promise(function(resolve, reject) {
+var sleep = function (timeoutMs) {
+  return new Promise(function (resolve, reject) {
     window.setTimeout(resolve);
   });
 };
@@ -305,18 +262,19 @@ var sleep = function(timeoutMs) {
 // __testMediaQueriesInPictureElements(resisting)__.
 // Test to see if media queries are properly spoofed in picture elements
 // when we are resisting fingerprinting.
-var testMediaQueriesInPictureElements = async function(resisting) {
-  let picture = document.createElementNS(HTML_NS, "picture");
+var testMediaQueriesInPictureElements = async function (resisting) {
+  const MATCH = "/tests/layout/style/test/chrome/match.png";
+  let container = document.getElementById("pictures");
+  let testImages = [];
   for (let [key, offVal, onVal] of expected_values) {
     let expected = resisting ? onVal : offVal;
     if (expected) {
+      let picture = document.createElementNS(HTML_NS, "picture");
       let query = constructQuery(key, expected);
+      ok(matchMedia(query).matches, `${query} should match`);
 
       let source = document.createElementNS(HTML_NS, "source");
-      source.setAttribute(
-        "srcset",
-        "/tests/layout/style/test/chrome/match.png"
-      );
+      source.setAttribute("srcset", MATCH);
       source.setAttribute("media", query);
 
       let image = document.createElementNS(HTML_NS, "img");
@@ -325,16 +283,19 @@ var testMediaQueriesInPictureElements = async function(resisting) {
       image.setAttribute("src", "/tests/layout/style/test/chrome/mismatch.png");
       image.setAttribute("alt", key);
 
+      testImages.push(image);
+
       picture.appendChild(source);
       picture.appendChild(image);
+      container.appendChild(picture);
     }
   }
-  document.getElementById("pictures").appendChild(picture);
-  var testImages = document.getElementsByClassName("testImage");
+  const matchURI = new URL(MATCH, document.baseURI).href;
   await sleep(0);
   for (let testImage of testImages) {
-    ok(
-      testImage.currentSrc.endsWith("/match.png"),
+    is(
+      testImage.currentSrc,
+      matchURI,
       "Media query '" + testImage.title + "' in picture should match."
     );
   }
@@ -343,25 +304,22 @@ var testMediaQueriesInPictureElements = async function(resisting) {
 // __pushPref(key, value)__.
 // Set a pref value asynchronously, returning a promise that resolves
 // when it succeeds.
-var pushPref = function(key, value) {
-  return new Promise(function(resolve, reject) {
+var pushPref = function (key, value) {
+  return new Promise(function (resolve, reject) {
     SpecialPowers.pushPrefEnv({ set: [[key, value]] }, resolve);
   });
 };
 
 // __test(isContent)__.
 // Run all tests.
-var test = async function(isContent) {
+var test = async function (isContent) {
   for (prefValue of [false, true]) {
     await pushPref("privacy.resistFingerprinting", prefValue);
     let resisting = prefValue && isContent;
-    expected_values.forEach(function([key, offVal, onVal]) {
+    expected_values.forEach(function ([key, offVal, onVal]) {
       testMatch(key, resisting ? onVal : offVal);
     });
     testToggles(resisting);
-    if (OS === "WINNT") {
-      testWindowsSpecific(resisting, "-moz-os-version", windows_versions);
-    }
     testCSS(resisting);
     if (OS === "Darwin") {
       testOSXFontSmoothing(resisting);

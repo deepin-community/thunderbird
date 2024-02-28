@@ -5,7 +5,7 @@
 /* exported onEventDialogUnload, changeUndiscloseCheckboxStatus,
  *          categoryPopupHiding, categoryTextboxKeypress,
  *          toggleKeepDuration, dateTimeControls2State, onUpdateAllDay,
- *          openNewEvent, openNewTask, openNewMessage, openNewCardDialog,
+ *          openNewEvent, openNewTask, openNewMessage,
  *          deleteAllAttachments, copyAttachment, attachmentLinkKeyPress,
  *          attachmentDblClick, attachmentClick, notifyUser,
  *          removeNotification, chooseRecentTimezone, showTimezonePopup,
@@ -23,21 +23,24 @@
 /* globals gTimezonesEnabled */ // Set by calendar-item-panel.js.
 
 var { cal } = ChromeUtils.import("resource:///modules/calendar/calUtils.jsm");
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 var {
   recurrenceRule2String,
   splitRecurrenceRules,
   checkRecurrenceRule,
   countOccurrences,
+  hasUnsupported,
 } = ChromeUtils.import("resource:///modules/calendar/calRecurrenceUtils.jsm");
-var { PluralForm } = ChromeUtils.import("resource://gre/modules/PluralForm.jsm");
-var { XPCOMUtils } = ChromeUtils.import("resource://gre/modules/XPCOMUtils.jsm");
+var { PluralForm } = ChromeUtils.importESModule("resource://gre/modules/PluralForm.sys.mjs");
+var { XPCOMUtils } = ChromeUtils.importESModule("resource://gre/modules/XPCOMUtils.sys.mjs");
 
 XPCOMUtils.defineLazyModuleGetters(this, {
   CalAttachment: "resource:///modules/CalAttachment.jsm",
   CalAttendee: "resource:///modules/CalAttendee.jsm",
   CalRecurrenceInfo: "resource:///modules/CalRecurrenceInfo.jsm",
 });
+
+window.addEventListener("load", onLoad);
+window.addEventListener("unload", onEventDialogUnload);
 
 var cloudFileAccounts;
 try {
@@ -83,6 +86,8 @@ XPCOMUtils.defineLazyGetter(this, "gEventNotification", () => {
 });
 
 var eventDialogRequestObserver = {
+  QueryInterface: ChromeUtils.generateQI(["nsIObserver"]),
+
   observe(aSubject, aTopic, aData) {
     if (
       aTopic == "http-on-modify-request" &&
@@ -98,6 +103,8 @@ var eventDialogRequestObserver = {
 };
 
 var eventDialogQuitObserver = {
+  QueryInterface: ChromeUtils.generateQI(["nsIObserver"]),
+
   observe(aSubject, aTopic, aData) {
     // Check whether or not we want to veto the quit request (unless another
     // observer already did.
@@ -112,6 +119,8 @@ var eventDialogQuitObserver = {
 };
 
 var eventDialogCalendarObserver = {
+  QueryInterface: ChromeUtils.generateQI(["calIObserver"]),
+
   target: null,
   isObserving: false,
 
@@ -127,14 +136,13 @@ var eventDialogCalendarObserver = {
       // The item has been modified outside the dialog. We only need to
       // prompt if there have been local changes also.
       if (isItemChanged()) {
-        let promptService = Ci.nsIPromptService;
         let promptTitle = cal.l10n.getCalString("modifyConflictPromptTitle");
         let promptMessage = cal.l10n.getCalString("modifyConflictPromptMessage");
         let promptButton1 = cal.l10n.getCalString("modifyConflictPromptButton1");
         let promptButton2 = cal.l10n.getCalString("modifyConflictPromptButton2");
         let flags =
-          promptService.BUTTON_TITLE_IS_STRING * promptService.BUTTON_POS_0 +
-          promptService.BUTTON_TITLE_IS_STRING * promptService.BUTTON_POS_1;
+          Ci.nsIPromptService.BUTTON_TITLE_IS_STRING * Ci.nsIPromptService.BUTTON_POS_0 +
+          Ci.nsIPromptService.BUTTON_TITLE_IS_STRING * Ci.nsIPromptService.BUTTON_POS_1;
 
         let choice = Services.prompt.confirmEx(
           window,
@@ -205,8 +213,8 @@ var eventDialogCalendarObserver = {
  * Checks if the given calendar supports notifying attendees. The item is needed
  * since calendars may support notifications for only some types of items.
  *
- * @param {calICalendar} aCalendar  The calendar to check
- * @param {calIItemBase} aItem      The item to check support for
+ * @param {calICalendar} aCalendar - The calendar to check
+ * @param {calIItemBase} aItem - The item to check support for
  */
 function canNotifyAttendees(aCalendar, aItem) {
   try {
@@ -222,8 +230,8 @@ function canNotifyAttendees(aCalendar, aItem) {
  * iframe. Additional properties of aMessage are generally arguments
  * that will be passed to the function named in aMessage.command.
  *
- * @param {Object} aMessage           The message to pass to the parent context
- * @param {string} aMessage.command   The name of a function to call
+ * @param {object} aMessage - The message to pass to the parent context
+ * @param {string} aMessage.command - The name of a function to call
  */
 function sendMessage(aMessage) {
   parent.postMessage(aMessage, "*");
@@ -232,7 +240,7 @@ function sendMessage(aMessage) {
 /**
  * Receives asynchronous messages from the parent context that contains the iframe.
  *
- * @param {MessageEvent} aEvent  Contains the message being received
+ * @param {MessageEvent} aEvent - Contains the message being received
  */
 function receiveMessage(aEvent) {
   let validOrigin = gTabmail ? "chrome://messenger" : "chrome://calendar";
@@ -345,29 +353,22 @@ function onLoad() {
 
   window.attendeeTabLabel = document.getElementById("event-grid-tab-attendees").label;
   window.attachmentTabLabel = document.getElementById("event-grid-tab-attachments").label;
-  // we store the array of attendees in the window.
-  // clone each existing attendee since we still suffer
-  // from the 'lost x-properties'-bug.
-  window.attendees = [];
-  let attendees = item.getAttendees();
-  if (attendees && attendees.length) {
-    for (let attendee of attendees) {
-      window.attendees.push(attendee.clone());
-    }
-  }
+
+  // Store the array of attendees on the window for later retrieval. Clone each
+  // existing attendee to prevent modifying objects referenced elsewhere.
+  const attendees = item.getAttendees() ?? [];
+  window.attendees = attendees.map(attendee => attendee.clone());
 
   window.organizer = null;
   if (item.organizer) {
     window.organizer = item.organizer.clone();
-  } else if (item.getAttendees().length > 0) {
-    // previous versions of calendar may have filled ORGANIZER correctly on overridden instances:
-    let orgId = item.calendar.getProperty("organizerId");
-    if (orgId) {
+  } else if (attendees.length > 0) {
+    // Previous versions of calendar may not have set the organizer correctly.
+    let organizerId = item.calendar.getProperty("organizerId");
+    if (organizerId) {
       let organizer = new CalAttendee();
-      organizer.id = orgId;
+      organizer.id = cal.email.removeMailTo(organizerId);
       organizer.commonName = item.calendar.getProperty("organizerCN");
-      organizer.role = "REQ-PARTICIPANT";
-      organizer.participationStatus = "ACCEPTED";
       organizer.isOrganizer = true;
       window.organizer = organizer;
     }
@@ -416,16 +417,11 @@ function onLoad() {
   // Stopping event propagation doesn't seem to work, so just overwrite the
   // function that does this.
   if (!gInTab) {
-    document.documentElement._hitEnter = function() {};
+    document.documentElement._hitEnter = function () {};
   }
 
   // set up our calendar event observer
   eventDialogCalendarObserver.observe(item.calendar);
-
-  // Check if the systemcolor pref is set.
-  if (Services.prefs.getBoolPref("calendar.view.useSystemColors")) {
-    document.documentElement.setAttribute("systemcolors", "true");
-  }
 
   // Disable save and save close buttons and menuitems if the item
   // title is empty.
@@ -439,6 +435,12 @@ function onLoad() {
     "*"
   );
   EditorSharedStartup();
+
+  // We want to keep HTML output as simple as possible, so don't try to use divs
+  // as separators. As a bonus, this avoids a bug in the editor which sometimes
+  // causes the user to have to hit enter twice for it to take effect.
+  const editor = GetCurrentEditor();
+  editor.document.execCommand("defaultparagraphseparator", false, "br");
 
   onLoad.hasLoaded = true;
 }
@@ -454,7 +456,7 @@ function onEventDialogUnload() {
 /**
  * Handler function to be called when the accept button is pressed.
  *
- * @return      Returns true if the window should be closed
+ * @returns Returns true if the window should be closed
  */
 function onAccept() {
   dispose();
@@ -471,7 +473,7 @@ function onAccept() {
  *
  * XXX Could possibly be consolidated into onCancel()
  *
- * @return    Returns true if the window should be closed.
+ * @returns Returns true if the window should be closed.
  */
 function onCommandCancel() {
   // Allow closing if the item has not changed and no warning dialog has to be showed.
@@ -484,8 +486,6 @@ function onCommandCancel() {
     gTabmail.switchToTab(gTabInfoObject);
   }
 
-  let promptService = Ci.nsIPromptService;
-
   let promptTitle = cal.l10n.getCalString(
     window.calendarItem.isEvent() ? "askSaveTitleEvent" : "askSaveTitleTask"
   );
@@ -494,9 +494,9 @@ function onCommandCancel() {
   );
 
   let flags =
-    promptService.BUTTON_TITLE_SAVE * promptService.BUTTON_POS_0 +
-    promptService.BUTTON_TITLE_CANCEL * promptService.BUTTON_POS_1 +
-    promptService.BUTTON_TITLE_DONT_SAVE * promptService.BUTTON_POS_2;
+    Ci.nsIPromptService.BUTTON_TITLE_SAVE * Ci.nsIPromptService.BUTTON_POS_0 +
+    Ci.nsIPromptService.BUTTON_TITLE_CANCEL * Ci.nsIPromptService.BUTTON_POS_1 +
+    Ci.nsIPromptService.BUTTON_TITLE_DONT_SAVE * Ci.nsIPromptService.BUTTON_POS_2;
 
   let choice = Services.prompt.confirmEx(
     null,
@@ -533,7 +533,7 @@ function onCommandCancel() {
  *
  * @param  {string}  aIframeId      (optional) iframe id of the tab to be closed
  * @param  {boolean} aPreventClose  (optional) True means don't close, just ask about saving
- * @return {boolean}                True if the tab or window should be closed
+ * @returns {boolean} True if the tab or window should be closed
  */
 function onCancel(aIframeId, aPreventClose) {
   // The datepickers need to remove the focus in order to trigger the
@@ -572,7 +572,7 @@ function cancelItem() {
 /**
  * Get the currently selected calendar from the menulist of calendars.
  *
- * @return      The currently selected calendar.
+ * @returns The currently selected calendar.
  */
 function getCurrentCalendar() {
   return document.getElementById("item-calendar").selectedItem.calendar;
@@ -627,7 +627,7 @@ function loadDialog(aItem) {
 
   let link = editorElement.contentDocument.createElement("link");
   link.rel = "stylesheet";
-  link.href = "chrome://messenger/content/messengercompose/EditorContent.css";
+  link.href = "chrome://messenger/skin/shared/editorContent.css";
   editorElement.contentDocument.head.appendChild(link);
 
   try {
@@ -740,7 +740,7 @@ function loadDialog(aItem) {
   // if we're in reschedule mode, it's pointless to enable the control
   disallowcounterCheckbox.disabled = !!window.counterProposal;
 
-  updateAttendees();
+  updateAttendeeInterface();
   updateRepeat(true);
   updateReminder(true);
 
@@ -769,6 +769,12 @@ function loadDialog(aItem) {
 
   // update in outer parent context
   updateConfigState(gConfig);
+
+  if (aItem.getAttendees().length && !aItem.descriptionText) {
+    let tabs = document.getElementById("event-grid-tabs");
+    let attendeeTab = document.getElementById("event-grid-tab-attendees");
+    tabs.selectedItem = attendeeTab;
+  }
 }
 
 /**
@@ -880,7 +886,7 @@ function updateCategoryMenulist() {
  * Updates the categories menulist label and decides if the popup should close
  *
  * @param aItem     The popuphiding event
- * @return          Whether the popup should close
+ * @returns Whether the popup should close
  */
 function categoryPopupHiding(event) {
   updateCategoryMenulist();
@@ -905,12 +911,9 @@ function categoryTextboxKeypress(event) {
       event.target.blur();
       event.preventDefault();
 
-      let code = event.key == "ArrowUp" ? KeyboardEvent.DOM_VK_UP : KeyboardEvent.DOM_VK_DOWN;
-      let keyEvent = document.createEvent("KeyboardEvent");
-      keyEvent.initKeyEvent("keydown", true, true, null, false, false, false, false, code, 0);
-      categoryPopup.dispatchEvent(keyEvent);
-      keyEvent.initKeyEvent("keyup", true, true, null, false, false, false, false, code, 0);
-      categoryPopup.dispatchEvent(keyEvent);
+      let keyCode = event.key == "ArrowUp" ? KeyboardEvent.DOM_VK_UP : KeyboardEvent.DOM_VK_DOWN;
+      categoryPopup.dispatchEvent(new KeyboardEvent("keydown", { keyCode }));
+      categoryPopup.dispatchEvent(new KeyboardEvent("keyup", { keyCode }));
       return;
     }
     case "Escape":
@@ -1218,7 +1221,7 @@ function dateTimeControls2State(aStartDatepicker) {
     // warning dialog is showed.
     enableAcceptCommand(false);
     gWarning = true;
-    let callback = function() {
+    let callback = function () {
       Services.prompt.alert(null, document.title, stringWarning);
       gWarning = false;
       updateAccept();
@@ -1310,8 +1313,8 @@ function updateDateCheckboxes(aDatePickerId, aCheckboxId, aDateTime) {
 /**
  * Get the item's recurrence information for displaying in dialog controls.
  *
- * @param {Object} aItem  The calendar item
- * @return {string[]}     An array of two strings: [repeatType, untilDate]
+ * @param {object} aItem - The calendar item
+ * @returns {string[]} An array of two strings: [repeatType, untilDate]
  */
 function getRepeatTypeAndUntilDate(aItem) {
   let recurrenceInfo = window.recurrenceInfo;
@@ -1460,9 +1463,9 @@ function getRepeatTypeAndUntilDate(aItem) {
 /**
  * Updates the XUL UI with the repeat type and the until date.
  *
- * @param {string} aRepeatType  The type of repeat
- * @param {string} aUntilDate   The until date
- * @param {Object} aItem        The calendar item
+ * @param {string} aRepeatType - The type of repeat
+ * @param {string} aUntilDate - The until date
+ * @param {object} aItem - The calendar item
  */
 function loadRepeat(aRepeatType, aUntilDate, aItem) {
   document.getElementById("item-repeat").value = aRepeatType;
@@ -1545,15 +1548,21 @@ function saveDialog(item) {
   let editorElement = document.getElementById("item-description");
   let editor = editorElement.getHTMLEditor(editorElement.contentWindow);
   if (editor.documentModified) {
-    // Using the same mode as the HTML downconverter in calItemBase.js
+    // Get editor output as HTML. We request raw output to avoid any
+    // pretty-printing which may cause issues with Google Calendar (see comments
+    // in calViewUtils.fixGoogleCalendarDescription() for more information).
     let mode =
+      Ci.nsIDocumentEncoder.OutputRaw |
       Ci.nsIDocumentEncoder.OutputDropInvisibleBreak |
-      Ci.nsIDocumentEncoder.OutputWrap |
-      Ci.nsIDocumentEncoder.OutputLFLineBreak |
-      Ci.nsIDocumentEncoder.OutputNoScriptContent |
-      Ci.nsIDocumentEncoder.OutputNoFramesContent |
       Ci.nsIDocumentEncoder.OutputBodyOnly;
-    item.descriptionHTML = editor.outputToString("text/html", mode);
+
+    const editorOutput = editor.outputToString("text/html", mode);
+
+    // The editor gives us output wrapped in a body tag. We don't really want
+    // that, so strip it. (Yes, it's a regex with HTML, but a _very_ specific
+    // one.) We use the `s` flag to match across newlines in case there's a
+    // <pre/> tag, in which case <br/> will not be inserted.
+    item.descriptionHTML = editorOutput.replace(/^<body>(.+)<\/body>$/s, "$1");
   }
 
   // Event Status
@@ -1852,8 +1861,13 @@ function updateAllDay() {
   }
 
   let allDay = document.getElementById("event-all-day").checked;
-  document.getElementById("event-starttime").toggleAttribute("timepickerdisabled", allDay);
-  document.getElementById("event-endtime").toggleAttribute("timepickerdisabled", allDay);
+  if (allDay) {
+    document.getElementById("event-starttime").setAttribute("timepickerdisabled", true);
+    document.getElementById("event-endtime").setAttribute("timepickerdisabled", true);
+  } else {
+    document.getElementById("event-starttime").removeAttribute("timepickerdisabled");
+    document.getElementById("event-endtime").removeAttribute("timepickerdisabled");
+  }
 
   gStartTime.isDate = allDay;
   gEndTime.isDate = allDay;
@@ -1900,33 +1914,9 @@ function editAttendees() {
   let savedWindow = window;
   let calendar = getCurrentCalendar();
 
-  let callback = function(attendees, organizer, startTime, endTime) {
+  let callback = function (attendees, organizer, startTime, endTime) {
     savedWindow.attendees = attendees;
-    if (organizer) {
-      // In case we didn't have an organizer object before we
-      // added attendees to our event we take the one created
-      // by the 'invite attendee'-dialog.
-      if (savedWindow.organizer) {
-        // The other case is that we already had an organizer object
-        // before we went through the 'invite attendee'-dialog. In that
-        // case make sure we don't carry over attributes that have been
-        // set to their default values by the dialog but don't actually
-        // exist in the original organizer object.
-        if (!savedWindow.organizer.id) {
-          organizer.id = null;
-        }
-        if (!savedWindow.organizer.role) {
-          organizer.role = null;
-        }
-        if (!savedWindow.organizer.participationStatus) {
-          organizer.participationStatus = null;
-        }
-        if (!savedWindow.organizer.commonName) {
-          organizer.commonName = null;
-        }
-      }
-      savedWindow.organizer = organizer;
-    }
+    savedWindow.organizer = organizer;
 
     // if a participant was added or removed we switch to the attendee
     // tab, so the user can see the change directly
@@ -1943,7 +1933,7 @@ function editAttendees() {
     gStartTime = startTime.getInTimezone(kDefaultTimezone);
     gEndTime = endTime.getInTimezone(kDefaultTimezone);
     gItemDuration = duration;
-    updateAttendees();
+    updateAttendeeInterface();
     updateDateTime();
     updateAllDay();
 
@@ -1993,11 +1983,11 @@ function editAttendees() {
  * selected calendar does not support them, or only supports certain
  * values, these are removed from the UI.
  *
- * @param {Object} aArg             Container
- * @param {string} aArg.privacy     (optional) The new privacy value
- * @param {short} aArg.priority     (optional) The new priority value
- * @param {string} aArg.status      (optional) The new status value
- * @param {string} aArg.showTimeAs  (optional) The new transparency value
+ * @param {object} aArg - Container
+ * @param {string} aArg.privacy - (optional) The new privacy value
+ * @param {short} aArg.priority - (optional) The new priority value
+ * @param {string} aArg.status - (optional) The new status value
+ * @param {string} aArg.showTimeAs - (optional) The new transparency value
  */
 function updateConfigState(aArg) {
   // We include additional info for priority and privacy.
@@ -2125,7 +2115,7 @@ function attachURL() {
 /**
  * Attach a file using a cloud provider, identified by its accountKey.
  *
- * @param {string} aAccountKey  The accountKey for a cloud provider
+ * @param {string} aAccountKey - The accountKey for a cloud provider
  */
 function attachFileByAccountKey(aAccountKey) {
   for (let cloudProvider of cloudFileAccounts.configuredAccounts) {
@@ -2171,7 +2161,7 @@ function attachFile(cloudProvider) {
       let fileHandler = Services.io
         .getProtocolHandler("file")
         .QueryInterface(Ci.nsIFileProtocolHandler);
-      let uriSpec = fileHandler.getURLSpecFromFile(file);
+      let uriSpec = fileHandler.getURLSpecFromActualFile(file);
 
       if (!(uriSpec in gAttachMap)) {
         // If the attachment hasn't been added, then set the last display
@@ -2197,7 +2187,7 @@ function attachFile(cloudProvider) {
  * @param aFileUri    (optional) If passed, the last directory will be set and
  *                                 returned. If null, the last chosen directory
  *                                 will be returned.
- * @return            The last directory that was set with this function.
+ * @returns The last directory that was set with this function.
  */
 function lastDirectory(aFileUri) {
   if (aFileUri) {
@@ -2217,7 +2207,7 @@ function lastDirectory(aFileUri) {
  * - For a http:// url, removes protocol and trailing slash
  *
  * @param aUri    The uri to parse.
- * @return        A string that can be used in UI.
+ * @returns A string that can be used in UI.
  */
 function makePrettyName(aUri) {
   let name = aUri.spec;
@@ -2234,8 +2224,8 @@ function makePrettyName(aUri) {
  * Asynchronously uploads the given attachment to the cloud provider, updating
  * the passed listItem as things progress.
  *
- * @param attachment        A calIAttachment to upload
- * @param cloudProvider     The clould provider to upload to
+ * @param attachment        A calIAttachment to upload.
+ * @param cloudFileAccount  The cloud file account used for uploading.
  * @param listItem          The listitem in attachment-link listbox to update.
  */
 function uploadCloudAttachment(attachment, cloudFileAccount, listItem) {
@@ -2249,16 +2239,17 @@ function uploadCloudAttachment(attachment, cloudFileAccount, listItem) {
       delete gAttachMap[attachment.hashId];
       attachment.uri = Services.io.newURI(upload.url);
       attachment.setParameter("FILENAME", file.leafName);
-      attachment.setParameter("PROVIDER", cloudFileAccount.type);
+      attachment.setParameter("X-SERVICE-ICONURL", upload.serviceIcon);
       listItem.setAttribute("label", file.leafName);
       gAttachMap[attachment.hashId] = attachment;
-      image.setAttribute("src", cloudFileAccount.iconURL);
+      image.setAttribute("src", upload.serviceIcon);
       listItem.attachCloudFileUpload = upload;
       updateAttachment();
     },
     statusCode => {
       cal.ERROR(
-        "[calendar-event-dialog] Uploading cloud attachment failed. Status code: " + statusCode
+        "[calendar-event-dialog] Uploading cloud attachment failed. Status code: " +
+          statusCode.result
       );
 
       // Uploading failed. First of all, show an error icon. Also,
@@ -2295,6 +2286,10 @@ function addAttachment(attachment, cloudFileAccount) {
     let listItem = document.createXULElement("richlistitem");
     let image = document.createElement("img");
     image.setAttribute("alt", "");
+    image.width = "24";
+    image.height = "24";
+    // Allow the moz-icon src to be invalid.
+    image.classList.add("invisible-on-broken");
     listItem.appendChild(image);
     let label = document.createXULElement("label");
     label.setAttribute("value", makePrettyName(attachment.uri));
@@ -2307,8 +2302,9 @@ function addAttachment(attachment, cloudFileAccount) {
         image.setAttribute("src", "chrome://messenger/skin/icons/connecting.png");
         uploadCloudAttachment(attachment, cloudFileAccount, listItem);
       } else {
+        let cloudFileIconURL = attachment.getParameter("X-SERVICE-ICONURL");
+        image.setAttribute("src", cloudFileIconURL);
         let leafName = attachment.getParameter("FILENAME");
-        image.setAttribute("src", cloudFileAccount.iconURL);
         if (leafName) {
           listItem.setAttribute("label", leafName);
         }
@@ -2317,16 +2313,15 @@ function addAttachment(attachment, cloudFileAccount) {
       image.setAttribute("src", "moz-icon://" + attachment.uri.spec);
     } else {
       let leafName = attachment.getParameter("FILENAME");
-      let providerType = attachment.getParameter("PROVIDER");
+      let cloudFileIconURL = attachment.getParameter("X-SERVICE-ICONURL");
       let cloudFileEnabled = Services.prefs.getBoolPref("mail.cloud_files.enabled", false);
 
       if (leafName) {
         // TODO security issues?
         listItem.setAttribute("label", leafName);
       }
-      if (providerType && cloudFileEnabled) {
-        let provider = cloudFileAccounts.getProviderForType(providerType);
-        image.setAttribute("src", provider.iconURL);
+      if (cloudFileIconURL && cloudFileEnabled) {
+        image.setAttribute("src", cloudFileIconURL);
       } else {
         let iconSrc = attachment.uri.spec.length ? attachment.uri.spec : "dummy.html";
         if (attachment.formatType) {
@@ -2428,6 +2423,7 @@ function deleteAllAttachments() {
 
 /**
  * Opens the selected attachment using the external protocol service.
+ *
  * @see nsIExternalProtocolService
  */
 function openAttachment() {
@@ -2527,14 +2523,16 @@ function notifyUser(aMessage, aValue, aPriority, aImage, aButtonset, aCallback) 
       info: gEventNotification.PRIORITY_INFO_MEDIUM,
       critical: gEventNotification.PRIORITY_CRITICAL_MEDIUM,
     };
-    let priority = prioMap[aPriority] || gEventNotification.PRIORITY_WARNING_MEDIUM;
+    let prio = prioMap[aPriority] || gEventNotification.PRIORITY_WARNING_MEDIUM;
     gEventNotification.appendNotification(
-      aMessage,
       aValue,
-      aImage,
-      priority,
-      aButtonset,
-      aCallback
+      {
+        label: aMessage,
+        image: aImage,
+        priority: prio,
+        eventCallback: aCallback,
+      },
+      aButtonset
     );
   }
 }
@@ -2542,7 +2540,7 @@ function notifyUser(aMessage, aValue, aPriority, aImage, aButtonset, aCallback) 
 /**
  * Remove a notification from the notifiactionBox
  *
- * @param {string} aValue    string identifying the notification to remove
+ * @param {string} aValue - string identifying the notification to remove
  */
 function removeNotification(aValue) {
   let notification = gEventNotification.getNotificationWithValue(aValue);
@@ -2575,6 +2573,7 @@ function updateCalendar() {
     window.organizer.id = calendarOrgId;
     window.organizer.commonName = calendar.getProperty("organizerCN");
     gPreviousCalendarId = calendar.id;
+    updateAttendeeInterface();
   }
 
   if (!canNotifyAttendees(calendar, item) && calendar.getProperty("imip.identity")) {
@@ -2690,7 +2689,7 @@ function editRepeat() {
   args.endTime = gEndTime;
 
   let savedWindow = window;
-  args.onOk = function(recurrenceInfo) {
+  args.onOk = function (recurrenceInfo) {
     savedWindow.recurrenceInfo = recurrenceInfo;
   };
 
@@ -2958,10 +2957,10 @@ function updateUntildateRecRule(recRule) {
 /**
  * Updates the UI controls related to a task's completion status.
  *
- * @param {string} aStatus       The item's completion status or a string
+ * @param {string} aStatus - The item's completion status or a string
  *                               that allows to identify a change in the
  *                               percent-complete's textbox.
- * @param {Date} aCompletedDate  The item's completed date (as a JSDate).
+ * @param {Date} aCompletedDate - The item's completed date (as a JSDate).
  */
 function updateToDoStatus(aStatus, aCompletedDate = null) {
   // RFC2445 doesn't support completedDates without the todo's status
@@ -3051,7 +3050,7 @@ function updateToDoStatus(aStatus, aCompletedDate = null) {
 /**
  * Saves all dialog controls back to the item.
  *
- * @return      a copy of the original item with changes made.
+ * @returns a copy of the original item with changes made.
  */
 function saveItem() {
   // we need to clone the item in order to apply the changes.
@@ -3167,8 +3166,9 @@ function onCommandSave(aIsClosing) {
   // before the call is complete. In that case, we do need a progress bar and
   // the ability to cancel the operation though.
   let listener = {
-    QueryInterface: ChromeUtils.generateQI(["calIOperationListener"]),
-    onOperationComplete(aCalendar, aStatus, aOpType, aId, aItem) {
+    onTransactionComplete(aItem) {
+      let aId = aItem.id;
+      let aCalendar = aItem.calendar;
       // Check if the current window has a calendarItem first, because in case of undo
       // window refers to the main window and we would get a 'calendarItem is undefined' warning.
       if (!aIsClosing && "calendarItem" in window) {
@@ -3176,8 +3176,7 @@ function onCommandSave(aIsClosing) {
         // times. We need to make sure we're receiving the update on the right calendar.
         if (
           (!window.calendarItem.id || aId == window.calendarItem.id) &&
-          aCalendar.id == window.calendarItem.calendar.id &&
-          Components.isSuccessCode(aStatus)
+          aCalendar.id == window.calendarItem.calendar.id
         ) {
           if (window.calendarItem.recurrenceId) {
             // TODO This workaround needs to be removed in bug 396182
@@ -3218,19 +3217,7 @@ function onCommandSave(aIsClosing) {
 function onCommandDeleteItem() {
   // only ask for confirmation, if the User changed anything on a new item or we modify an existing item
   if (isItemChanged() || window.mode != "new") {
-    let promptTitle = "";
-    let promptMessage = "";
-
-    if (window.calendarItem.isEvent()) {
-      promptTitle = cal.l10n.getCalString("deleteEventLabel");
-      promptMessage = cal.l10n.getCalString("deleteEventMessage");
-    } else if (window.calendarItem.isTodo()) {
-      promptTitle = cal.l10n.getCalString("deleteTaskLabel");
-      promptMessage = cal.l10n.getCalString("deleteTaskMessage");
-    }
-
-    let answerDelete = Services.prompt.confirm(null, promptTitle, promptMessage);
-    if (!answerDelete) {
+    if (!cal.window.promptDeleteItems(window.calendarItem, true)) {
       return;
     }
   }
@@ -3240,11 +3227,11 @@ function onCommandDeleteItem() {
   } else {
     let deleteListener = {
       // when deletion of item is complete, close the dialog
-      onOperationComplete(aCalendar, aStatus, aOperationType, aId, aDetail) {
+      onTransactionComplete(item) {
         // Check if the current window has a calendarItem first, because in case of undo
         // window refers to the main window and we would get a 'calendarItem is undefined' warning.
         if ("calendarItem" in window) {
-          if (aId == window.calendarItem.id && Components.isSuccessCode(aStatus)) {
+          if (item.id == window.calendarItem.id) {
             cancelItem();
           } else {
             eventDialogCalendarObserver.observe(window.calendarItem.calendar);
@@ -3296,7 +3283,7 @@ function onCommandDeleteItem() {
  * use this format intentionally instead of a calIDuration object because
  * those objects cannot be serialized for message passing with iframes.)
  *
- * @param {string} aDuration  A duration in ISO 8601 format
+ * @param {string} aDuration - A duration in ISO 8601 format
  */
 function postponeTask(aDuration) {
   let duration = cal.createDuration(aDuration);
@@ -3319,7 +3306,7 @@ function editStartTimezone() {
     editStartTimezone.complete
   );
 }
-editStartTimezone.complete = function(datetime) {
+editStartTimezone.complete = function (datetime) {
   let equalTimezones = false;
   if (gStartTimezone && gEndTimezone) {
     if (gStartTimezone == gEndTimezone) {
@@ -3339,7 +3326,7 @@ editStartTimezone.complete = function(datetime) {
 function editEndTimezone() {
   editTimezone("timezone-endtime", gEndTime.getInTimezone(gEndTimezone), editEndTimezone.complete);
 }
-editEndTimezone.complete = function(datetime) {
+editEndTimezone.complete = function (datetime) {
   gEndTimezone = datetime.timezone;
   updateDateTime();
 };
@@ -3352,11 +3339,9 @@ editEndTimezone.complete = function(datetime) {
 function chooseRecentTimezone(event) {
   let tzid = event.target.value;
   let timezonePopup = document.getElementById("timezone-popup");
-  let tzProvider =
-    getCurrentCalendar().getProperty("timezones.provider") || cal.getTimezoneService();
 
   if (tzid != "custom") {
-    let zone = tzProvider.getTimezone(tzid);
+    let zone = cal.timezoneService.getTimezone(tzid);
     let datetime = timezonePopup.dateTime.getInTimezone(zone);
     timezonePopup.editTimezone.complete(datetime);
   }
@@ -3424,7 +3409,7 @@ function editTimezone(aElementId, aDateTime, aCallback) {
   let args = {};
   args.time = aDateTime;
   args.calendar = getCurrentCalendar();
-  args.onOk = function(datetime) {
+  args.onOk = function (datetime) {
     cal.dtz.saveRecentTimezone(datetime.timezone.tzid);
     return aCallback(datetime);
   };
@@ -3676,7 +3661,7 @@ function updateAttachment() {
  * (rfc2445 URL property).
  *
  * @param {string} aUrl - The url in question.
- * @return {boolean} true for show and false for hide
+ * @returns {boolean} true for show and false for hide
  */
 function showOrHideItemURL(url) {
   if (!url) {
@@ -3701,8 +3686,8 @@ function showOrHideItemURL(url) {
 /**
  * Updates the related link on the dialog (rfc2445 URL property).
  *
- * @param {boolean} aShow  Show the link (true) or not (false)
- * @param {string} aUrl    The url
+ * @param {boolean} aShow - Show the link (true) or not (false)
+ * @param {string} aUrl - The url
  */
 function updateItemURL(aShow, aUrl) {
   // Hide or show the link
@@ -3723,7 +3708,7 @@ function updateItemURL(aShow, aUrl) {
 /**
  * This function updates dialog controls related to attendees.
  */
-function updateAttendees() {
+function updateAttendeeInterface() {
   // sending email invitations currently only supported for events
   let attendeeTab = document.getElementById("event-grid-tab-attendees");
   let attendeePanel = document.getElementById("event-grid-tabpanel-attendees");
@@ -3802,7 +3787,7 @@ function updateRepeatDetails() {
   let recurrenceInfo = window.recurrenceInfo;
   let itemRepeat = document.getElementById("item-repeat");
   let repeatDetails = document.getElementById("repeat-details");
-  if (itemRepeat.value == "custom" && recurrenceInfo) {
+  if (itemRepeat.value == "custom" && recurrenceInfo && !hasUnsupported(recurrenceInfo)) {
     let item = window.calendarItem;
     document.getElementById("repeat-untilDate").hidden = true;
     // Try to create a descriptive string from the rule(s).
@@ -3846,7 +3831,7 @@ function updateRepeatDetails() {
  * TENTATIVE, but also if he hasn't responded.
  *
  * @param aAttendee     The attendee to check.
- * @return              True, if the attendee hasn't responded.
+ * @returns True, if the attendee hasn't responded.
  */
 function isAttendeeUndecided(aAttendee) {
   return (
@@ -3926,12 +3911,13 @@ function setAttendeeContext(aEvent) {
 
 /**
  * Removes the selected attendee from the window
+ *
  * @param aAttendee
  */
 function removeAttendee(aAttendee) {
   if (aAttendee) {
     window.attendees = window.attendees.filter(aAtt => aAtt != aAttendee);
-    updateAttendees();
+    updateAttendeeInterface();
   }
 }
 
@@ -3941,7 +3927,7 @@ function removeAttendee(aAttendee) {
 function removeAllAttendees() {
   window.attendees = [];
   window.organizer = null;
-  updateAttendees();
+  updateAttendeeInterface();
 }
 
 /**
@@ -4013,7 +3999,7 @@ function capSupported(aCap) {
  * Return the values for a certain capability.
  *
  * @param aCap      The capability from "capabilities.<aCap>.values"
- * @return          The values for this capability
+ * @returns The values for this capability
  */
 function capValues(aCap, aDefault) {
   let calendar = getCurrentCalendar();
@@ -4046,7 +4032,7 @@ function checkUntilDate() {
       ? cal.dtz.dateTimeToJsDate(gUntilDate.getInTimezone(cal.dtz.floating))
       : "forever";
     gWarning = true;
-    let callback = function() {
+    let callback = function () {
       // Disable the "Save" and "Save and Close" commands as long as the
       // warning dialog is showed.
       enableAcceptCommand(false);
@@ -4135,9 +4121,11 @@ function displayCounterProposal() {
 
   if (idCounter > 0) {
     if (partStat && attendeeId.length) {
-      document.getElementById(
-        "counter-proposal-summary"
-      ).value = cal.l10n.getString("calendar-event-dialog", partStat, [attendeeId]);
+      document.getElementById("counter-proposal-summary").value = cal.l10n.getString(
+        "calendar-event-dialog",
+        partStat,
+        [attendeeId]
+      );
       document.getElementById("counter-proposal-summary").removeAttribute("collapsed");
     }
     if (comment) {
@@ -4172,7 +4160,7 @@ function displayCounterProposal() {
  * the dialog
  *
  * @param   {JSObject}     aProperty  The property to check for a label
- * @returns {String|null}             The label to display or null if no such label
+ * @returns {string | null} The label to display or null if no such label
  */
 function lookupCounterLabel(aProperty) {
   let nodeIds = getPropertyMap();
@@ -4198,7 +4186,7 @@ function lookupCounterLabel(aProperty) {
  * Get the property value to display for a counterproposal as currently supported
  *
  * @param   {JSObject}     aProperty  The property to check for a label
- * @returns {String|null}             The value to display or null if the property is not supported
+ * @returns {string | null} The value to display or null if the property is not supported
  */
 function formatCounterValue(aProperty) {
   const dateProps = ["DTSTART", "DTEND"];
@@ -4239,7 +4227,7 @@ function getPropertyMap() {
 /**
  * Applies the proposal or original data to the respective dialog fields
  *
- * @param {String} aType Either 'proposed' or 'original'
+ * @param {string} aType Either 'proposed' or 'original'
  */
 function applyValues(aType) {
   if (!window.counterProposal || (aType != "proposed" && aType != "original")) {
@@ -4271,7 +4259,7 @@ function applyValues(aType) {
 
 /**
  * Opens the context menu for the editor element.
- * *
+ *
  * Since its content is, well, content, its contextmenu event is
  * eaten by the context menu actor before the element's default
  * context menu processing. Since we know that the editor runs

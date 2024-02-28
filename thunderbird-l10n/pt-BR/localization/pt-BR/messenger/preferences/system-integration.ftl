@@ -4,6 +4,7 @@
 
 system-integration-title =
     .title = Integração com o sistema
+system-integration-dialog-title = Integração com o sistema
 system-integration-dialog =
     .buttonlabelaccept = Definir como padrão
     .buttonlabelcancel = Pular integração
@@ -17,7 +18,7 @@ checkbox-newsgroups-label =
     .label = Grupos de notícias
     .tooltiptext = { unset-default-tooltip }
 checkbox-feeds-label =
-    .label = RSS
+    .label = Canais de informações
     .tooltiptext = { unset-default-tooltip }
 checkbox-calendar-label =
     .label = Agenda

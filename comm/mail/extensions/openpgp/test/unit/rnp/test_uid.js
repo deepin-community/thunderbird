@@ -8,7 +8,6 @@
 
 "use strict";
 
-const { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 const { OpenPGPTestUtils } = ChromeUtils.import(
   "resource://testing-common/mozmill/OpenPGPTestUtils.jsm"
 );
@@ -116,7 +115,7 @@ const tests = [
 /**
  * Initialize OpenPGP add testing keys.
  */
-add_task(async function setUp() {
+add_setup(async function () {
   do_get_profile();
 
   await OpenPGPTestUtils.initOpenPGP();

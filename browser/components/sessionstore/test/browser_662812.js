@@ -6,14 +6,14 @@ function test() {
 
   window.addEventListener(
     "SSWindowStateBusy",
-    function() {
-      let state = JSON.parse(ss.getWindowState(window));
+    function () {
+      let state = ss.getWindowState(window);
       ok(state.windows[0].busy, "window is busy");
 
       window.addEventListener(
         "SSWindowStateReady",
-        function() {
-          let state2 = JSON.parse(ss.getWindowState(window));
+        function () {
+          let state2 = ss.getWindowState(window);
           ok(!state2.windows[0].busy, "window is not busy");
 
           executeSoon(() => {
@@ -34,7 +34,7 @@ function test() {
   // close and restore it
   browser.addEventListener(
     "load",
-    function() {
+    function () {
       gBrowser.removeTab(tab);
       ss.undoCloseTab(window, 0);
     },

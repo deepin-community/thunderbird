@@ -9,7 +9,7 @@ if (typeof Mozilla == "undefined") {
   var Mozilla = {};
 }
 
-(function($) {
+(function ($) {
   "use strict";
 
   // create namespace
@@ -105,20 +105,15 @@ if (typeof Mozilla == "undefined") {
    * - appMenu
    * - backForward
    * - bookmarks
-   * - devtools
    * - forget
    * - help
    * - home
-   * - library
+   * - logins
    * - pageAction-bookmark
-   * - pageAction-copyURL
-   * - pageAction-emailLink
-   * - pageAction-sendToDevice
    * - pocket
    * - privateWindow
    * - quit
    * - readerMode-urlBar
-   * - screenshots
    * - search
    * - searchIcon
    * - selectedTabIcon
@@ -138,7 +133,7 @@ if (typeof Mozilla == "undefined") {
    * @param {Function} [callback] Callback to call if UITour is working for the document.
    * @since 35
    */
-  Mozilla.UITour.ping = function(callback) {
+  Mozilla.UITour.ping = function (callback) {
     var data = {};
     if (callback) {
       data.callbackID = _waitForCallback(callback);
@@ -156,7 +151,7 @@ if (typeof Mozilla == "undefined") {
    * @param {?Function} listener - Called when any UITour notification occurs.
    * @param {Function} [callback] - Called when the browser acknowledges the observer.
    */
-  Mozilla.UITour.observe = function(listener, callback) {
+  Mozilla.UITour.observe = function (listener, callback) {
     notificationListener = listener;
 
     if (listener) {
@@ -181,7 +176,7 @@ if (typeof Mozilla == "undefined") {
    * @param {string} pageID Unique identifier for the page/tour.
    * @memberof Mozilla.UITour
    */
-  Mozilla.UITour.registerPageID = function(pageID) {
+  Mozilla.UITour.registerPageID = function (pageID) {
     _sendEvent("registerPageID", {
       pageID,
     });
@@ -216,7 +211,7 @@ if (typeof Mozilla == "undefined") {
    * @param {Mozilla.UITour.Target} target - Identifier of the UI widget to show a highlight on.
    * @param {Mozilla.UITour.HighlightEffect} [effect="none"] - Name of the effect to use when highlighting.
    */
-  Mozilla.UITour.showHighlight = function(target, effect) {
+  Mozilla.UITour.showHighlight = function (target, effect) {
     _sendEvent("showHighlight", {
       target,
       effect,
@@ -227,7 +222,7 @@ if (typeof Mozilla == "undefined") {
    * Hide any visible UI highlight.
    * @see Mozilla.UITour.showHighlight
    */
-  Mozilla.UITour.hideHighlight = function() {
+  Mozilla.UITour.hideHighlight = function () {
     _sendEvent("hideHighlight");
   };
 
@@ -271,7 +266,7 @@ if (typeof Mozilla == "undefined") {
    *
    * Mozilla.UITour.showInfo('appMenu', 'my title', 'my text', icon, buttons, options);
    */
-  Mozilla.UITour.showInfo = function(
+  Mozilla.UITour.showInfo = function (
     target,
     title,
     text,
@@ -314,7 +309,7 @@ if (typeof Mozilla == "undefined") {
    * Hide any visible info panels.
    * @see Mozilla.UITour.showInfo
    */
-  Mozilla.UITour.hideInfo = function() {
+  Mozilla.UITour.hideInfo = function () {
     _sendEvent("hideInfo");
   };
 
@@ -345,7 +340,7 @@ if (typeof Mozilla == "undefined") {
    *   console.log('menu was opened');
    * });
    */
-  Mozilla.UITour.showMenu = function(name, callback) {
+  Mozilla.UITour.showMenu = function (name, callback) {
     var showCallbackID;
     if (callback) {
       showCallbackID = _waitForCallback(callback);
@@ -364,7 +359,7 @@ if (typeof Mozilla == "undefined") {
    *
    * @param {Mozilla.UITour.MenuName} name - Menu name
    */
-  Mozilla.UITour.hideMenu = function(name) {
+  Mozilla.UITour.hideMenu = function (name) {
     _sendEvent("hideMenu", {
       name,
     });
@@ -374,7 +369,7 @@ if (typeof Mozilla == "undefined") {
    * Loads about:newtab in the tour tab.
    * @since 51
    */
-  Mozilla.UITour.showNewTab = function() {
+  Mozilla.UITour.showNewTab = function () {
     _sendEvent("showNewTab");
   };
 
@@ -382,7 +377,7 @@ if (typeof Mozilla == "undefined") {
    * Loads about:protections in the tour tab.
    * @since 70
    */
-  Mozilla.UITour.showProtectionReport = function() {
+  Mozilla.UITour.showProtectionReport = function () {
     _sendEvent("showProtectionReport");
   };
 
@@ -546,7 +541,7 @@ if (typeof Mozilla == "undefined") {
    * @param {Mozilla.UITour.ConfigurationName} configName - Name of configuration to retrieve
    * @param {Function} callback - Called with one argument containing the value of the configuration.
    */
-  Mozilla.UITour.getConfiguration = function(configName, callback) {
+  Mozilla.UITour.getConfiguration = function (configName, callback) {
     _sendEvent("getConfiguration", {
       callbackID: _waitForCallback(callback),
       configuration: configName,
@@ -568,7 +563,7 @@ if (typeof Mozilla == "undefined") {
    * @example
    * Mozilla.UITour.setConfiguration('defaultBrowser');
    */
-  Mozilla.UITour.setConfiguration = function(configName, configValue) {
+  Mozilla.UITour.setConfiguration = function (configName, configValue) {
     _sendEvent("setConfiguration", {
       configuration: configName,
       value: configValue,
@@ -618,7 +613,7 @@ if (typeof Mozilla == "undefined") {
    *   device_id: '7e450f3337d3479b8582ea1c9bb5ba6c'
    * }, "foo@bar.com");
    */
-  Mozilla.UITour.showFirefoxAccounts = function(
+  Mozilla.UITour.showFirefoxAccounts = function (
     extraURLParams,
     entrypoint,
     email
@@ -652,7 +647,7 @@ if (typeof Mozilla == "undefined") {
    *   'utm_bar': 'baz'
    * });
    */
-  Mozilla.UITour.showConnectAnotherDevice = function(extraURLParams) {
+  Mozilla.UITour.showConnectAnotherDevice = function (extraURLParams) {
     _sendEvent("showConnectAnotherDevice", {
       extraURLParams: JSON.stringify(extraURLParams),
     });
@@ -666,7 +661,7 @@ if (typeof Mozilla == "undefined") {
    * @since 48
    * @see Mozilla.UITour.Configuration.CanReset
    */
-  Mozilla.UITour.resetFirefox = function() {
+  Mozilla.UITour.resetFirefox = function () {
     _sendEvent("resetFirefox");
   };
 
@@ -682,7 +677,7 @@ if (typeof Mozilla == "undefined") {
    *   console.log('forget button added to toolbar');
    * });
    */
-  Mozilla.UITour.addNavBarWidget = function(name, callback) {
+  Mozilla.UITour.addNavBarWidget = function (name, callback) {
     _sendEvent("addNavBarWidget", {
       name,
       callbackID: _waitForCallback(callback),
@@ -698,7 +693,7 @@ if (typeof Mozilla == "undefined") {
    * @see Mozilla.UITour.Configuration.Search
    * @since 34
    */
-  Mozilla.UITour.setDefaultSearchEngine = function(identifier) {
+  Mozilla.UITour.setDefaultSearchEngine = function (identifier) {
     _sendEvent("setDefaultSearchEngine", {
       identifier,
     });
@@ -713,7 +708,7 @@ if (typeof Mozilla == "undefined") {
    * @example
    * Mozilla.UITour.setTreatmentTag('srch-chg-action', 'Switch');
    */
-  Mozilla.UITour.setTreatmentTag = function(name, value) {
+  Mozilla.UITour.setTreatmentTag = function (name, value) {
     _sendEvent("setTreatmentTag", {
       name,
       value,
@@ -732,7 +727,7 @@ if (typeof Mozilla == "undefined") {
    *   console.log(value);
    * });
    */
-  Mozilla.UITour.getTreatmentTag = function(name, callback) {
+  Mozilla.UITour.getTreatmentTag = function (name, callback) {
     _sendEvent("getTreatmentTag", {
       name,
       callbackID: _waitForCallback(callback),
@@ -747,7 +742,7 @@ if (typeof Mozilla == "undefined") {
    * @param {String} term - Search string e.g. 'Firefox'
    * @since 34
    */
-  Mozilla.UITour.setSearchTerm = function(term) {
+  Mozilla.UITour.setSearchTerm = function (term) {
     _sendEvent("setSearchTerm", {
       term,
     });
@@ -761,7 +756,7 @@ if (typeof Mozilla == "undefined") {
    * @param {Function} callback - Called once the panel has opened.
    * @since 34
    */
-  Mozilla.UITour.openSearchPanel = function(callback) {
+  Mozilla.UITour.openSearchPanel = function (callback) {
     _sendEvent("openSearchPanel", {
       callbackID: _waitForCallback(callback),
     });
@@ -774,7 +769,7 @@ if (typeof Mozilla == "undefined") {
    * @description This is useful if you want to target an annotation (panel/highlight) on it
    * but the tour page doesn't have much textual content.
    */
-  Mozilla.UITour.forceShowReaderIcon = function() {
+  Mozilla.UITour.forceShowReaderIcon = function () {
     _sendEvent("forceShowReaderIcon");
   };
 
@@ -783,7 +778,7 @@ if (typeof Mozilla == "undefined") {
    * mode, the UITour document will not be active and therefore cannot call other
    * UITour APIs.
    */
-  Mozilla.UITour.toggleReaderMode = function() {
+  Mozilla.UITour.toggleReaderMode = function () {
     _sendEvent("toggleReaderMode");
   };
 
@@ -806,7 +801,7 @@ if (typeof Mozilla == "undefined") {
    *
    * @since 42
    */
-  Mozilla.UITour.openPreferences = function(pane) {
+  Mozilla.UITour.openPreferences = function (pane) {
     _sendEvent("openPreferences", {
       pane,
     });
@@ -822,7 +817,7 @@ if (typeof Mozilla == "undefined") {
    * displaying a goodbye message or a button to restart the tour.
    * @since 46
    */
-  Mozilla.UITour.closeTab = function() {
+  Mozilla.UITour.closeTab = function () {
     _sendEvent("closeTab");
   };
 })();

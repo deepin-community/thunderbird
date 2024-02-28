@@ -2,25 +2,8 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-var {
-  CALENDARNAME,
-  TIMEOUT_MODAL_DIALOG,
-  closeAllEventDialogs,
-  controller,
-  createCalendar,
-  deleteCalendars,
-  goToDate,
-  invokeNewEventDialog,
-  invokeEditingEventDialog,
-  switchToView,
-  viewForward,
-} = ChromeUtils.import("resource://testing-common/calendar/CalendarUtils.jsm");
-
 var { saveAndCloseItemDialog, setData } = ChromeUtils.import(
   "resource://testing-common/calendar/ItemEditingHelpers.jsm"
-);
-var { plan_for_modal_dialog, wait_for_modal_dialog } = ChromeUtils.import(
-  "resource://testing-common/mozmill/WindowHelpers.jsm"
 );
 
 var { dayView } = CalendarTestUtils;
@@ -30,14 +13,23 @@ add_task(async function testAlarmDialog() {
 
   const TITLE = "Event";
 
-  createCalendar(controller, CALENDARNAME);
-  switchToView(controller, "day");
-  goToDate(controller, now.getUTCFullYear(), now.getUTCMonth() + 1, now.getUTCDate());
-  viewForward(controller, 1);
+  let calendar = CalendarTestUtils.createCalendar();
+  registerCleanupFunction(() => {
+    CalendarTestUtils.removeCalendar(calendar);
+  });
 
-  let allDayHeader = dayView.getAllDayHeader(controller.window);
+  await CalendarTestUtils.setCalendarView(window, "day");
+  await CalendarTestUtils.goToDate(
+    window,
+    now.getUTCFullYear(),
+    now.getUTCMonth() + 1,
+    now.getUTCDate()
+  );
+  await CalendarTestUtils.calendarViewForward(window, 1);
+
+  let allDayHeader = dayView.getAllDayHeader(window);
   Assert.ok(allDayHeader);
-  controller.click(allDayHeader);
+  EventUtils.synthesizeMouseAtCenter(allDayHeader, {}, window);
 
   // Create a new all-day event tomorrow.
 
@@ -54,19 +46,18 @@ add_task(async function testAlarmDialog() {
       },
     }
   );
-  await invokeNewEventDialog(window, null, async (eventWindow, iframeWindow) => {
-    await setData(eventWindow, iframeWindow, {
-      allday: true,
-      reminder: "1day",
-      title: TITLE,
-    });
-
-    await saveAndCloseItemDialog(eventWindow);
+  let { dialogWindow, iframeWindow } = await CalendarTestUtils.editNewEvent(window);
+  await setData(dialogWindow, iframeWindow, {
+    allday: true,
+    reminder: "1day",
+    title: TITLE,
   });
+
+  await saveAndCloseItemDialog(dialogWindow);
   await alarmPromise;
 
   // Change the reminder duration, this resets the alarm.
-  let eventBox = await dayView.waitForAllDayItemAt(controller.window, 1);
+  let eventBox = await dayView.waitForAllDayItemAt(window, 1);
 
   // Prepare to snooze the alarm.
   alarmPromise = BrowserTestUtils.promiseAlertDialog(
@@ -87,16 +78,11 @@ add_task(async function testAlarmDialog() {
       },
     }
   );
-  await invokeEditingEventDialog(window, eventBox, async (eventWindow, iframeWindow) => {
-    await setData(eventWindow, iframeWindow, { reminder: "2days", title: TITLE });
-    await saveAndCloseItemDialog(eventWindow);
-  });
+
+  ({ dialogWindow, iframeWindow } = await CalendarTestUtils.editItem(window, eventBox));
+  await setData(dialogWindow, iframeWindow, { reminder: "2days", title: TITLE });
+  await saveAndCloseItemDialog(dialogWindow);
   await alarmPromise;
 
   Assert.ok(true, "Test ran to completion");
-});
-
-registerCleanupFunction(function teardownModule(module) {
-  deleteCalendars(controller, CALENDARNAME);
-  closeAllEventDialogs();
 });

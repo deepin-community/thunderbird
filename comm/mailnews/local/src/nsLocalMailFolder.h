@@ -82,13 +82,10 @@ struct nsLocalFolderScanState {
   ~nsLocalFolderScanState();
 
   nsCOMPtr<nsIInputStream> m_inputStream;
-  nsCOMPtr<nsISeekableStream> m_seekableStream;
   nsCOMPtr<nsIMsgPluggableStore> m_msgStore;
   nsCString m_header;
   nsCString m_accountKey;
   const char* m_uidl;  // memory is owned by m_header
-  // false if we need a new input stream for each message
-  bool m_streamReusable;
 };
 
 class nsMsgLocalMailFolder : public nsMsgDBFolder,
@@ -117,10 +114,9 @@ class nsMsgLocalMailFolder : public nsMsgDBFolder,
 
   NS_IMETHOD Compact(nsIUrlListener* aListener,
                      nsIMsgWindow* aMsgWindow) override;
-  NS_IMETHOD CompactAll(nsIUrlListener* aListener, nsIMsgWindow* aMsgWindow,
-                        bool aCompactOfflineAlso) override;
-  NS_IMETHOD EmptyTrash(nsIMsgWindow* msgWindow,
-                        nsIUrlListener* aListener) override;
+  NS_IMETHOD CompactAll(nsIUrlListener* aListener,
+                        nsIMsgWindow* aMsgWindow) override;
+  NS_IMETHOD EmptyTrash(nsIUrlListener* aListener) override;
   NS_IMETHOD DeleteSelf(nsIMsgWindow* msgWindow) override;
   NS_IMETHOD CreateStorageIfMissing(nsIUrlListener* urlListener) override;
   NS_IMETHOD Rename(const nsAString& aNewName,
@@ -182,8 +178,11 @@ class nsMsgLocalMailFolder : public nsMsgDBFolder,
   NS_IMETHOD DownloadMessagesForOffline(
       nsTArray<RefPtr<nsIMsgDBHdr>> const& aMessages,
       nsIMsgWindow* aWindow) override;
+  NS_IMETHOD HasMsgOffline(nsMsgKey msgKey, bool* result) override;
+  NS_IMETHOD GetLocalMsgStream(nsIMsgDBHdr* hdr,
+                               nsIInputStream** stream) override;
   NS_IMETHOD FetchMsgPreviewText(nsTArray<nsMsgKey> const& aKeysToFetch,
-                                 bool aLocalOnly, nsIUrlListener* aUrlListener,
+                                 nsIUrlListener* aUrlListener,
                                  bool* aAsyncResults) override;
   NS_IMETHOD AddKeywordsToMessages(
       const nsTArray<RefPtr<nsIMsgDBHdr>>& aMessages,
@@ -199,7 +198,8 @@ class nsMsgLocalMailFolder : public nsMsgDBFolder,
                               nsIMsgFolder** folder) override;
   nsresult CopyFolderAcrossServer(nsIMsgFolder* srcFolder,
                                   nsIMsgWindow* msgWindow,
-                                  nsIMsgCopyServiceListener* listener);
+                                  nsIMsgCopyServiceListener* listener,
+                                  bool moveMsgs);
 
   nsresult CreateSubFolders(nsIFile* path);
   nsresult GetTrashFolder(nsIMsgFolder** trashFolder);
@@ -215,8 +215,6 @@ class nsMsgLocalMailFolder : public nsMsgDBFolder,
   nsresult ConfirmFolderDeletion(nsIMsgWindow* aMsgWindow,
                                  nsIMsgFolder* aFolder, bool* aResult);
 
-  nsresult DeleteMessage(nsISupports* message, nsIMsgWindow* msgWindow,
-                         bool deleteStorage, bool commit);
   nsresult GetDatabase() override;
   // this will set mDatabase, if successful. It will also create a .msf file
   // for an empty local mail folder. It will leave invalid DBs in place, and
@@ -274,15 +272,6 @@ class nsMsgLocalMailFolder : public nsMsgDBFolder,
 
   // state variables for DownloadMessagesForOffline
 
-  // Do we notify the owning window of Delete's before or after
-  // Adding the new msg?
-#define DOWNLOAD_NOTIFY_FIRST 1
-#define DOWNLOAD_NOTIFY_LAST 2
-
-#ifndef DOWNLOAD_NOTIFY_STYLE
-#  define DOWNLOAD_NOTIFY_STYLE DOWNLOAD_NOTIFY_FIRST
-#endif
-
   nsCOMArray<nsIMsgDBHdr> mDownloadMessages;
   nsCOMPtr<nsIMsgWindow> mDownloadWindow;
   nsMsgKey mDownloadSelectKey;
@@ -291,12 +280,6 @@ class nsMsgLocalMailFolder : public nsMsgDBFolder,
 #define DOWNLOAD_STATE_INITED 1
 #define DOWNLOAD_STATE_GOTMSG 2
 #define DOWNLOAD_STATE_DIDSEL 3
-
-#if DOWNLOAD_NOTIFY_STYLE == DOWNLOAD_NOTIFY_LAST
-  nsMsgKey mDownloadOldKey;
-  nsMsgKey mDownloadOldParent;
-  uint32_t mDownloadOldFlags;
-#endif
 };
 
 #endif  // nsMsgLocalMailFolder_h__

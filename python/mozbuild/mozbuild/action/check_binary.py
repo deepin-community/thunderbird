@@ -2,41 +2,29 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-from __future__ import absolute_import, print_function, unicode_literals
-
 import argparse
 import os
 import re
 import subprocess
 import sys
 
-from distutils.version import StrictVersion as Version
-
 import buildconfig
+from mozpack.executables import ELF, UNKNOWN, get_type
+from packaging.version import Version
+
 from mozbuild.action.util import log_build_task
 from mozbuild.util import memoize
-from mozpack.executables import (
-    get_type,
-    ELF,
-    UNKNOWN,
-)
-
 
 STDCXX_MAX_VERSION = Version("3.4.19")
 CXXABI_MAX_VERSION = Version("1.3.7")
 GLIBC_MAX_VERSION = Version("2.17")
 LIBGCC_MAX_VERSION = Version("4.8")
 
-HOST = {
-    "MOZ_LIBSTDCXX_VERSION": buildconfig.substs.get("MOZ_LIBSTDCXX_HOST_VERSION"),
-    "platform": buildconfig.substs["HOST_OS_ARCH"],
-    "readelf": "readelf",
-}
+HOST = {"platform": buildconfig.substs["HOST_OS_ARCH"], "readelf": "readelf"}
 
 TARGET = {
-    "MOZ_LIBSTDCXX_VERSION": buildconfig.substs.get("MOZ_LIBSTDCXX_TARGET_VERSION"),
     "platform": buildconfig.substs["OS_TARGET"],
-    "readelf": "{}readelf".format(buildconfig.substs.get("TOOLCHAIN_PREFIX", "")),
+    "readelf": buildconfig.substs.get("READELF", "readelf"),
 }
 
 ADDR_RE = re.compile(r"[0-9a-f]{8,16}")
@@ -286,7 +274,7 @@ def checks(target, binary):
     if "clang-plugin" in binary:
         target = HOST
     checks = []
-    if target["MOZ_LIBSTDCXX_VERSION"]:
+    if buildconfig.substs.get("MOZ_STDCXX_COMPAT") and target["platform"] == "Linux":
         checks.append(check_binary_compat)
 
     # Disabled for local builds because of readelf performance: See bug 1472496

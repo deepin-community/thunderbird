@@ -5,18 +5,23 @@
 import React, { Component, memo } from "react";
 import PropTypes from "prop-types";
 
-import classNames from "classnames";
-
 import AccessibleImage from "../../shared/AccessibleImage";
 import { formatDisplayName } from "../../../utils/pause/frames";
 import { getFilename, getFileURL } from "../../../utils/source";
 import FrameMenu from "./FrameMenu";
 import FrameIndent from "./FrameIndent";
+const classnames = require("devtools/client/shared/classnames.js");
 
 function FrameTitle({ frame, options = {}, l10n }) {
   const displayName = formatDisplayName(frame, options, l10n);
   return <span className="title">{displayName}</span>;
 }
+
+FrameTitle.propTypes = {
+  frame: PropTypes.object.isRequired,
+  options: PropTypes.object.isRequired,
+  l10n: PropTypes.object.isRequired,
+};
 
 const FrameLocation = memo(({ frame, displayFullUrl = false }) => {
   if (!frame.source) {
@@ -49,12 +54,37 @@ const FrameLocation = memo(({ frame, displayFullUrl = false }) => {
 
 FrameLocation.displayName = "FrameLocation";
 
+FrameLocation.propTypes = {
+  frame: PropTypes.object.isRequired,
+  displayFullUrl: PropTypes.bool.isRequired,
+};
+
 export default class FrameComponent extends Component {
   static defaultProps = {
     hideLocation: false,
     shouldMapDisplayName: true,
     disableContextMenu: false,
   };
+
+  static get propTypes() {
+    return {
+      copyStackTrace: PropTypes.func.isRequired,
+      cx: PropTypes.object,
+      disableContextMenu: PropTypes.bool.isRequired,
+      displayFullUrl: PropTypes.bool.isRequired,
+      frame: PropTypes.object.isRequired,
+      frameworkGroupingOn: PropTypes.bool.isRequired,
+      getFrameTitle: PropTypes.func,
+      hideLocation: PropTypes.bool.isRequired,
+      panel: PropTypes.oneOf(["debugger", "webconsole"]).isRequired,
+      restart: PropTypes.func,
+      selectFrame: PropTypes.func.isRequired,
+      selectedFrame: PropTypes.object,
+      shouldMapDisplayName: PropTypes.bool.isRequired,
+      toggleBlackBox: PropTypes.func,
+      toggleFrameworkGrouping: PropTypes.func.isRequired,
+    };
+  }
 
   get isSelectable() {
     return this.props.panel == "webconsole";
@@ -111,7 +141,7 @@ export default class FrameComponent extends Component {
     } = this.props;
     const { l10n } = this.context;
 
-    const className = classNames("frame", {
+    const className = classnames("frame", {
       selected: selectedFrame && selectedFrame.id === frame.id,
     });
 

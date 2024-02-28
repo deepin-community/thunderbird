@@ -19,17 +19,17 @@ include "mozilla/dom/TabMessageUtils.h";
 
 using mozilla::layers::LayersObserverEpoch from "mozilla/layers/LayersTypes.h";
 using class mozilla::WidgetMouseEvent from "ipc/nsGUIEventIPC.h";
-using mozilla::a11y::IDispatchHolder from "mozilla/a11y/IPCTypes.h";
 using mozilla::dom::EffectsInfo from "mozilla/dom/EffectsInfo.h";
 using mozilla::ScrollAxis from "mozilla/PresShellForwards.h";
 using mozilla::ScrollFlags from "mozilla/PresShellForwards.h";
 using struct nsRect from "nsRect.h";
-using CallerType from "mozilla/dom/BindingDeclarations.h";
+using mozilla::dom::CallerType from "mozilla/dom/BindingDeclarations.h";
 using nsIntRect from "nsRect.h";
 using mozilla::dom::EmbedderElementEventType from "mozilla/dom/TabMessageTypes.h";
 [RefCounted] using class nsDocShellLoadState from "nsDocShellLoadState.h";
 using mozilla::IntrinsicSize from "nsIFrame.h";
 using mozilla::AspectRatio from "mozilla/AspectRatio.h";
+using mozilla::StyleImageRendering from "mozilla/ServoStyleConsts.h";
 
 namespace mozilla {
 namespace dom {
@@ -41,7 +41,7 @@ namespace dom {
  * See `dom/docs/Fission-IPC-Diagram.svg` for an overview of the DOM IPC
  * actors.
  */
-async refcounted protocol PBrowserBridge {
+async protocol PBrowserBridge {
   manager PBrowser;
 
 child:
@@ -59,11 +59,6 @@ child:
   async MoveFocus(bool forward, bool forDocumentNavigation);
 
   /**
-   * Send the child the COM proxy for the embedded document accessible.
-   */
-  async SetEmbeddedDocAccessibleCOMProxy(IDispatchHolder aCOMProxy);
-
-  /**
    * Called once this PBrowserBridge's OOP subdoc no longer blocks its
    * embedding element's and embedding doc's 'load' events.
    */
@@ -78,9 +73,18 @@ child:
   async IntrinsicSizeOrRatioChanged(IntrinsicSize? aIntrinsicSize,
                                     AspectRatio? aIntrinsicRatio);
 
-parent:
+  async ImageLoadComplete(nsresult aResult);
+
+both:
+
   // Destroy the remote web browser due to the nsFrameLoader going away.
+  // Before initialization we sync-delete it from the child. After
+  // initialization we sync-delete it from the parent after BeginDestroy().
   async __delete__();
+
+parent:
+
+  async BeginDestroy();
 
   // DocShell messaging.
   async LoadURL(nsDocShellLoadState aLoadState);
@@ -112,7 +116,7 @@ parent:
 
   async Deactivate(bool aWindowLowering, uint64_t aActionId);
 
-  async SetIsUnderHiddenEmbedderElement(bool aIsUnderHiddenEmbedderElement);
+  async UpdateRemoteStyle(StyleImageRendering aImageRendering);
 
   async WillChangeProcess();
 
@@ -123,7 +127,7 @@ parent:
    * aDoc is the actor for the containing document.
    * aID is the unique id of the embedder accessible within that document.
    */
-  async SetEmbedderAccessible(PDocAccessible aDoc, uint64_t aID);
+  async SetEmbedderAccessible(nullable PDocAccessible aDoc, uint64_t aID);
 #endif
 };
 

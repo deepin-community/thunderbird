@@ -1,4 +1,3 @@
-/* -*- Mode: Java; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
@@ -22,13 +21,15 @@
 
 const EXPORTED_SYMBOLS = ["AccountConfig"];
 
+const lazy = {};
+
 ChromeUtils.defineModuleGetter(
-  this,
+  lazy,
   "AccountCreationUtils",
   "resource:///modules/accountcreation/AccountCreationUtils.jsm"
 );
 ChromeUtils.defineModuleGetter(
-  this,
+  lazy,
   "Sanitizer",
   "resource:///modules/accountcreation/Sanitizer.jsm"
 );
@@ -91,9 +92,8 @@ AccountConfig.prototype = {
       // May be a placeholder (starts and ends with %). { String }
       username: null,
       password: null,
-      // { enum: 1 = plain, 2 = SSL/TLS, 3 = STARTTLS always, 0 = not inited }
-      // ('TLS when available' is insecure and not supported here)
-      socketType: 0,
+      // {nsMsgSocketType} @see MailNewsTypes2.idl. -1 means not inited
+      socketType: -1,
       /**
        * true when the cert is invalid (and thus SSL useless), because it's
        * 1) not from an accepted CA (including self-signed certs)
@@ -151,7 +151,7 @@ AccountConfig.prototype = {
       port: null, // see incoming
       username: null, // see incoming. may be null, if auth is 0.
       password: null, // see incoming. may be null, if auth is 0.
-      socketType: 0, // see incoming
+      socketType: -1, // see incoming
       badCert: false, // see incoming
       auth: 0, // see incoming
       authAlternatives: null, // see incoming
@@ -223,7 +223,7 @@ AccountConfig.prototype = {
     // Workaround: deepCopy() fails to preserve base obj (instanceof)
     let result = new AccountConfig();
     for (let prop in this) {
-      result[prop] = AccountCreationUtils.deepCopy(this[prop]);
+      result[prop] = lazy.AccountCreationUtils.deepCopy(this[prop]);
     }
 
     return result;
@@ -233,14 +233,14 @@ AccountConfig.prototype = {
     return (
       !!this.incoming.hostname &&
       !!this.incoming.port &&
-      !!this.incoming.socketType &&
+      this.incoming.socketType != -1 &&
       !!this.incoming.auth &&
       !!this.incoming.username &&
       (!!this.outgoing.existingServerKey ||
         this.outgoing.useGlobalPreferredServer ||
         (!!this.outgoing.hostname &&
           !!this.outgoing.port &&
-          !!this.outgoing.socketType &&
+          this.outgoing.socketType != -1 &&
           !!this.outgoing.auth &&
           !!this.outgoing.username))
     );
@@ -250,13 +250,11 @@ AccountConfig.prototype = {
     function sslToString(socketType) {
       switch (socketType) {
         case 0:
-          return "undefined";
-        case 1:
-          return "no SSL";
+          return "plain";
         case 2:
-          return "SSL";
-        case 3:
           return "STARTTLS";
+        case 3:
+          return "SSL";
         default:
           return "invalid";
       }
@@ -365,10 +363,10 @@ AccountConfig.kSourceExchange = "exchange"; // from Microsoft Exchange AutoDisco
  * Some fields on the account config accept placeholders (when coming from XML).
  *
  * These are the predefined ones
- * * %EMAILADDRESS% (full email address of the user, usually entered by user)
- * * %EMAILLOCALPART% (email address, part before @)
- * * %EMAILDOMAIN% (email address, part after @)
- * * %REALNAME%
+ * %EMAILADDRESS% (full email address of the user, usually entered by user)
+ * %EMAILLOCALPART% (email address, part before @)
+ * %EMAILDOMAIN% (email address, part after @)
+ * %REALNAME%
  * as well as those defined in account.inputFields.*.varname, with % added
  * before and after.
  *
@@ -394,22 +392,22 @@ AccountConfig.kSourceExchange = "exchange"; // from Microsoft Exchange AutoDisco
  * @param password {String}
  * The password for the incoming server and (if necessary) the outgoing server
  */
-AccountConfig.replaceVariables = function(
+AccountConfig.replaceVariables = function (
   account,
   realname,
   emailfull,
   password
 ) {
-  Sanitizer.nonemptystring(emailfull);
+  lazy.Sanitizer.nonemptystring(emailfull);
   let emailsplit = emailfull.split("@");
-  AccountCreationUtils.assert(
+  lazy.AccountCreationUtils.assert(
     emailsplit.length == 2,
     "email address not in expected format: must contain exactly one @"
   );
-  let emaillocal = Sanitizer.nonemptystring(emailsplit[0]);
-  let emaildomain = Sanitizer.hostname(emailsplit[1]);
-  Sanitizer.label(realname);
-  Sanitizer.nonemptystring(realname);
+  let emaillocal = lazy.Sanitizer.nonemptystring(emailsplit[0]);
+  let emaildomain = lazy.Sanitizer.hostname(emailsplit[1]);
+  lazy.Sanitizer.label(realname);
+  lazy.Sanitizer.nonemptystring(realname);
 
   let otherVariables = {};
   otherVariables.EMAILADDRESS = emailfull;

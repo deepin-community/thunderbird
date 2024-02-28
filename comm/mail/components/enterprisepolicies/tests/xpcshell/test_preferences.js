@@ -64,6 +64,22 @@ const NEW_PREFERENCES_TESTS = [
           Value: 11,
           Status: "user",
         },
+        "mail.openMessageBehavior": {
+          Value: 1,
+          Status: "locked",
+        },
+        "mailnews.display.prefer_plaintext": {
+          Value: true,
+          Status: "locked",
+        },
+        "chat.enabled": {
+          Value: false,
+          Status: "locked",
+        },
+        "calendar.agenda.days": {
+          Value: 21,
+          Status: "locked",
+        },
       },
     },
     defaultPrefs: {
@@ -75,6 +91,10 @@ const NEW_PREFERENCES_TESTS = [
       "browser.policies.test.locked.boolean": true,
       "browser.policies.test.locked.string": "string",
       "browser.policies.test.locked.number": 11,
+      "mail.openMessageBehavior": 1,
+      "mailnews.display.prefer_plaintext": true,
+      "chat.enabled": false,
+      "calendar.agenda.days": 21,
     },
     userPrefs: {
       "browser.policies.test.user.boolean": true,
@@ -113,10 +133,11 @@ const BAD_PREFERENCES_TESTS = [
           Value: true,
           Status: "default",
         },
-        "security.turn_off_all_security_so_that_viruses_can_take_over_this_computer": {
-          Value: true,
-          Status: "default",
-        },
+        "security.turn_off_all_security_so_that_viruses_can_take_over_this_computer":
+          {
+            Value: true,
+            Status: "default",
+          },
       },
     },
     defaultPrefs: {
@@ -212,17 +233,6 @@ add_task(async function test_security_preference() {
   });
 
   checkUnsetPref("security.this.should.not.work");
-});
-
-add_task(async function test_JSON_preferences() {
-  await setupPolicyEngineWithJson({
-    policies: {
-      Preferences:
-        '{"browser.policies.test.default.boolean.json": {"Value": true,"Status": "default"}}',
-    },
-  });
-
-  checkDefaultPref("browser.policies.test.default.boolean.json", true);
 });
 
 add_task(async function test_bug_1666836() {

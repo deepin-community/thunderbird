@@ -4,8 +4,6 @@
 
 const EXPORTED_SYMBOLS = ["CalDAVServer"];
 
-Cu.importGlobalProperties(["crypto"]);
-
 const PREFIX_BINDINGS = {
   c: "urn:ietf:params:xml:ns:caldav",
   cs: "http://calendarserver.org/ns/",
@@ -16,9 +14,28 @@ const NAMESPACE_STRING = Object.entries(PREFIX_BINDINGS)
   .map(([prefix, url]) => `xmlns:${prefix}="${url}"`)
   .join(" ");
 
-const { Assert } = ChromeUtils.import("resource://testing-common/Assert.jsm");
-const { CommonUtils } = ChromeUtils.import("resource://services-common/utils.js");
+const { Assert } = ChromeUtils.importESModule("resource://testing-common/Assert.sys.mjs");
+const { CommonUtils } = ChromeUtils.importESModule("resource://services-common/utils.sys.mjs");
 const { HttpServer } = ChromeUtils.import("resource://testing-common/httpd.js");
+
+const logger = console.createInstance({
+  prefix: "CalDAVServer",
+  maxLogLevel: "Log",
+});
+
+// The response bodies Google sends if you exceed its rate limit.
+let MULTIGET_RATELIMIT_ERROR = `<?xml version="1.0" encoding="UTF-8"?>
+<D:error xmlns:D="DAV:"/>
+`;
+let PROPFIND_RATELIMIT_ERROR = `<?xml version="1.0" encoding="UTF-8"?>
+<errors xmlns="http://schemas.google.com/g/2005">
+ <error>
+  <domain>GData</domain>
+  <code>rateLimitExceeded</code>
+  <internalReason>Some text we're not looking at anyway</internalReason>
+ </error>
+</errors>
+`;
 
 var CalDAVServer = {
   items: new Map(),
@@ -26,6 +43,11 @@ var CalDAVServer = {
   changeCount: 0,
   server: null,
   isOpen: false,
+
+  /**
+   * The "current-user-privilege-set" in responses. Set to null to have no privilege set.
+   */
+  privileges: "<d:privilege><d:all/></d:privilege>",
 
   open(username, password) {
     this.server = new HttpServer();
@@ -43,6 +65,7 @@ var CalDAVServer = {
     this.items.clear();
     this.deletedItems.clear();
     this.changeCount = 0;
+    this.privileges = "<d:privilege><d:all/></d:privilege>";
     this.resetHandlers();
   },
 
@@ -168,7 +191,10 @@ var CalDAVServer = {
     let propNames = this._inputProps(input);
     let propValues = {
       "d:resourcetype": "<principal/>",
-      "c:calendar-home-set": "<href>/calendars/me/</href>",
+      "c:calendar-home-set": "<d:href>/calendars/me/</d:href>",
+      "c:calendar-user-address-set": `<d:href preferred="1">mailto:me@invalid</d:href>`,
+      "c:schedule-inbox-URL": "<d:href>/calendars/me/inbox/</d:href>",
+      "c:schedule-outbox-URL": "<d:href>/calendars/me/inbox/</d:href>",
     };
 
     response.setStatusLine("1.1", 207, "Multi-Status");
@@ -188,12 +214,24 @@ var CalDAVServer = {
       return;
     }
 
+    if (request.method == "OPTIONS") {
+      response.setStatusLine("1.1", 200, "OK");
+      response.setHeader("DAV", "1,2,3, calendar-access, calendar-schedule");
+      return;
+    }
+
     let input = new DOMParser().parseFromString(
       CommonUtils.readBytesFromInputStream(request.bodyInputStream),
       "text/xml"
     );
 
     let propNames = this._inputProps(input);
+    let propValues = {
+      "d:resourcetype": "<collection/><c:calendar/>",
+      "d:displayname": "CalDAV Test",
+      "i:calendar-color": "#ff8000",
+      "d:current-user-privilege-set": this.privileges,
+    };
 
     response.setStatusLine("1.1", 207, "Multi-Status");
     response.setHeader("Content-Type", "text/xml");
@@ -208,11 +246,7 @@ var CalDAVServer = {
         </response>
         <response>
           <href>${this.path}</href>
-          ${this._outputProps(propNames, {
-            "d:resourcetype": "<collection/><c:calendar/>",
-            "d:displayname": "CalDAV Test",
-            "i:calendar-color": "#ff8000",
-          })}
+          ${this._outputProps(propNames, propValues)}
         </response>
       </multistatus>`.replace(/>\s+</g, "><")
     );
@@ -230,10 +264,9 @@ var CalDAVServer = {
       return;
     }
 
-    let input = new DOMParser().parseFromString(
-      CommonUtils.readBytesFromInputStream(request.bodyInputStream),
-      "text/xml"
-    );
+    let input = CommonUtils.readBytesFromInputStream(request.bodyInputStream);
+    logger.log("C: " + input);
+    input = new DOMParser().parseFromString(input, "text/xml");
 
     switch (input.documentElement.localName) {
       case "calendar-query":
@@ -275,6 +308,7 @@ var CalDAVServer = {
     response.setStatusLine("1.1", 207, "Multi-Status");
     response.setHeader("Content-Type", "text/xml");
     response.write(output.replace(/>\s+</g, "><"));
+    logger.log("S: " + output.replace(/>\s+</g, "><"));
   },
 
   async calendarMultiGet(input, response) {
@@ -292,18 +326,27 @@ var CalDAVServer = {
     response.setStatusLine("1.1", 207, "Multi-Status");
     response.setHeader("Content-Type", "text/xml");
     response.write(output.replace(/>\s+</g, "><"));
+    logger.log("S: " + output.replace(/>\s+</g, "><"));
   },
 
   propFind(input, depth, response) {
-    let propNames = this._inputProps(input);
+    if (this.throwRateLimitErrors) {
+      response.setStatusLine("1.1", 403, "Forbidden");
+      response.setHeader("Content-Type", "text/xml");
+      response.write(PROPFIND_RATELIMIT_ERROR);
+      logger.log("S: " + PROPFIND_RATELIMIT_ERROR);
+      return;
+    }
 
+    let propNames = this._inputProps(input);
     let propValues = {
       "d:resourcetype": "<d:collection/><c:calendar/>",
       "d:owner": "/principals/me/",
-      "d:current-user-principal": "/principals/me/",
-      "d:current-user-privilege-set": "<d:privilege><d:all/></d:privilege>",
+      "d:current-user-principal": "<href>/principals/me/</href>",
+      "d:current-user-privilege-set": this.privileges,
       "d:supported-report-set":
-        "<d:supported-report><d:report><c:calendar-multiget/></d:report></d:supported-report>",
+        "<d:supported-report><d:report><c:calendar-multiget/></d:report></d:supported-report>" +
+        "<d:supported-report><d:report><sync-collection/></d:report></d:supported-report>",
       "c:supported-calendar-component-set": "",
       "d:getcontenttype": "text/calendar; charset=utf-8",
       "c:calendar-home-set": `<d:href>/calendars/me/</d:href>`,
@@ -329,36 +372,76 @@ var CalDAVServer = {
     response.setStatusLine("1.1", 207, "Multi-Status");
     response.setHeader("Content-Type", "text/xml");
     response.write(output.replace(/>\s+</g, "><"));
+    logger.log("S: " + output.replace(/>\s+</g, "><"));
   },
 
   syncCollection(input, response) {
-    let token = input.querySelector("sync-token").textContent.replace(/\D/g, "");
-    let propNames = this._inputProps(input);
+    if (this.throwRateLimitErrors) {
+      response.setStatusLine("1.1", 403, "Forbidden");
+      response.setHeader("Content-Type", "text/xml");
+      response.write(MULTIGET_RATELIMIT_ERROR);
+      logger.log("S: " + MULTIGET_RATELIMIT_ERROR);
+      return;
+    }
 
-    let output = `<multistatus xmlns="${PREFIX_BINDINGS.d}" ${NAMESPACE_STRING}>`;
+    // The maximum number of responses to make at any one request.
+    let pageSize = 3;
+    // The last-seen token. Changes before this won't be returned.
+    let token = 0;
+    // Which page of responses to return.
+    let page = 0;
+
+    let tokenStr = input.querySelector("sync-token")?.textContent.replace(/.*\//g, "");
+    if (tokenStr?.includes("#")) {
+      [token, page] = tokenStr.split("#");
+      token = parseInt(token, 10);
+      page = parseInt(page, 10);
+    } else if (tokenStr) {
+      token = parseInt(tokenStr, 10);
+    }
+
+    let nextPage = page + 1;
+
+    // Collect all responses, even if we know some won't be returned.
+    // This is a test, who cares about performance?
+    let propNames = this._inputProps(input);
+    let responses = [];
     for (let [href, item] of this.items) {
       if (item.changed > token) {
-        output += this._itemResponse(href, item, propNames);
+        responses.push(this._itemResponse(href, item, propNames));
       }
     }
     for (let [href, deleted] of this.deletedItems) {
       if (deleted > token) {
-        output += `<response>
+        responses.push(`<response>
           <status>HTTP/1.1 404 Not Found</status>
           <href>${href}</href>
           <propstat>
             <prop/>
             <status>HTTP/1.1 418 I'm a teapot</status>
           </propstat>
-        </response>`;
+        </response>`);
       }
     }
-    output += `<sync-token>http://mochi.test/sync/${this.changeCount}</sync-token>
-    </multistatus>`;
+
+    let output = `<multistatus xmlns="${PREFIX_BINDINGS.d}" ${NAMESPACE_STRING}>`;
+    // Use only the responses that match those requested.
+    output += responses.slice(page * pageSize, nextPage * pageSize).join("");
+    if (responses.length > nextPage * pageSize) {
+      output += `<response>
+          <status>HTTP/1.1 507 Insufficient Storage</status>
+          <href>${this.path}</href>
+        </response>`;
+      output += `<sync-token>http://mochi.test/sync/${token}#${nextPage}</sync-token>`;
+    } else {
+      output += `<sync-token>http://mochi.test/sync/${this.changeCount}</sync-token>`;
+    }
+    output += `</multistatus>`;
 
     response.setStatusLine("1.1", 207, "Multi-Status");
     response.setHeader("Content-Type", "text/xml");
     response.write(output.replace(/>\s+</g, "><"));
+    logger.log("S: " + output.replace(/>\s+</g, "><"));
   },
 
   _itemResponse(href, item, propNames) {
@@ -426,7 +509,7 @@ var CalDAVServer = {
     let found = [];
     let notFound = [];
     for (let p of propNames) {
-      if (p in propValues) {
+      if (p in propValues && propValues[p] != null) {
         found.push(`<${p}>${propValues[p]}</${p}>`);
       } else {
         notFound.push(`<${p}/>`);

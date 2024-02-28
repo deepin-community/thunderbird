@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017-2020, [Ribose Inc](https://www.ribose.com).
+ * Copyright (c) 2017-2023, [Ribose Inc](https://www.ribose.com).
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without modification,
@@ -48,7 +48,6 @@
 #include "stream-packet.h"
 #include "stream-armor.h"
 #include "stream-sig.h"
-#include "list.h"
 #include "pgp-key.h"
 #include "fingerprint.h"
 #include "types.h"
@@ -85,21 +84,20 @@ typedef struct pgp_dest_compressed_param_t {
 } pgp_dest_compressed_param_t;
 
 typedef struct pgp_dest_encrypted_param_t {
-    pgp_dest_packet_param_t pkt;     /* underlying packet-related params */
-    rnp_ctx_t *             ctx;     /* rnp operation context with additional parameters */
-    bool                    has_mdc; /* encrypted with mdc, i.e. tag 18 */
-    bool                    aead;    /* we use AEAD encryption */
-    pgp_crypt_t             encrypt; /* encrypting crypto */
-    pgp_hash_t              mdc;     /* mdc SHA1 hash */
-    pgp_aead_alg_t          aalg;    /* AEAD algorithm used */
-    uint8_t                 iv[PGP_AEAD_MAX_NONCE_LEN]; /* iv for AEAD mode */
-    uint8_t                 ad[PGP_AEAD_MAX_AD_LEN];    /* additional data for AEAD mode */
-    size_t                  adlen;    /* length of additional data, including chunk idx */
-    size_t                  chunklen; /* length of the AEAD chunk in bytes */
-    size_t                  chunkout; /* how many bytes from the chunk were written out */
-    size_t                  chunkidx; /* index of the current AEAD chunk */
-    size_t                  cachelen; /* how many bytes are in cache, for AEAD */
-    uint8_t                 cache[PGP_AEAD_CACHE_LEN]; /* pre-allocated cache for encryption */
+    pgp_dest_packet_param_t    pkt; /* underlying packet-related params */
+    rnp_ctx_t *                ctx; /* rnp operation context with additional parameters */
+    rnp::AuthType              auth_type; /* Authentication type: MDC, AEAD or none */
+    pgp_crypt_t                encrypt;   /* encrypting crypto */
+    std::unique_ptr<rnp::Hash> mdc;       /* mdc SHA1 hash */
+    pgp_aead_alg_t             aalg;      /* AEAD algorithm used */
+    uint8_t                    iv[PGP_AEAD_MAX_NONCE_LEN]; /* iv for AEAD mode */
+    uint8_t                    ad[PGP_AEAD_MAX_AD_LEN];    /* additional data for AEAD mode */
+    size_t                     adlen;    /* length of additional data, including chunk idx */
+    size_t                     chunklen; /* length of the AEAD chunk in bytes */
+    size_t                     chunkout; /* how many bytes from the chunk were written out */
+    size_t                     chunkidx; /* index of the current AEAD chunk */
+    size_t                     cachelen; /* how many bytes are in cache, for AEAD */
+    uint8_t cache[PGP_AEAD_CACHE_LEN];   /* pre-allocated cache for encryption */
 } pgp_dest_encrypted_param_t;
 
 typedef struct pgp_dest_signer_info_t {
@@ -115,13 +113,13 @@ typedef struct pgp_dest_signed_param_t {
     rnp_ctx_t *              ctx;      /* rnp operation context with additional parameters */
     pgp_password_provider_t *password_provider;   /* password provider from write handler */
     std::vector<pgp_dest_signer_info_t> siginfos; /* list of  pgp_dest_signer_info_t */
-    std::vector<pgp_hash_t> hashes;    /* hashes to pass raw data through and then sign */
-    bool                    clr_start; /* we are on the start of the line */
-    uint8_t                 clr_buf[CT_BUF_LEN]; /* buffer to hold partial line data */
-    size_t                  clr_buflen;          /* number of bytes in buffer */
+    rnp::HashList hashes;              /* hashes to pass raw data through and then sign */
+    bool          clr_start;           /* we are on the start of the line */
+    uint8_t       clr_buf[CT_BUF_LEN]; /* buffer to hold partial line data */
+    size_t        clr_buflen;          /* number of bytes in buffer */
 
     pgp_dest_signed_param_t() = default;
-    ~pgp_dest_signed_param_t();
+    ~pgp_dest_signed_param_t() = default;
 } pgp_dest_signed_param_t;
 
 typedef struct pgp_dest_partial_param_t {
@@ -297,8 +295,13 @@ encrypted_dst_write_cfb(pgp_dest_t *dst, const void *buf, size_t len)
         return RNP_ERROR_BAD_PARAMETERS;
     }
 
-    if (param->has_mdc) {
-        pgp_hash_add(&param->mdc, buf, len);
+    if (param->auth_type == rnp::AuthType::MDC) {
+        try {
+            param->mdc->add(buf, len);
+        } catch (const std::exception &e) {
+            RNP_LOG("%s", e.what());
+            return RNP_ERROR_BAD_STATE;
+        }
     }
 
     while (len > 0) {
@@ -312,6 +315,7 @@ encrypted_dst_write_cfb(pgp_dest_t *dst, const void *buf, size_t len)
     return RNP_SUCCESS;
 }
 
+#if defined(ENABLE_AEAD)
 static rnp_result_t
 encrypted_start_aead_chunk(pgp_dest_encrypted_param_t *param, size_t idx, bool last)
 {
@@ -383,10 +387,15 @@ encrypted_start_aead_chunk(pgp_dest_encrypted_param_t *param, size_t idx, bool l
 
     return res ? RNP_SUCCESS : RNP_ERROR_BAD_PARAMETERS;
 }
+#endif
 
 static rnp_result_t
 encrypted_dst_write_aead(pgp_dest_t *dst, const void *buf, size_t len)
 {
+#if !defined(ENABLE_AEAD)
+    RNP_LOG("AEAD is not enabled.");
+    return RNP_ERROR_WRITE;
+#else
     pgp_dest_encrypted_param_t *param = (pgp_dest_encrypted_param_t *) dst->param;
 
     size_t       sz;
@@ -439,33 +448,44 @@ encrypted_dst_write_aead(pgp_dest_t *dst, const void *buf, size_t len)
     }
 
     return RNP_SUCCESS;
+#endif
 }
 
 static rnp_result_t
 encrypted_dst_finish(pgp_dest_t *dst)
 {
-    uint8_t                     mdcbuf[MDC_V1_SIZE];
     pgp_dest_encrypted_param_t *param = (pgp_dest_encrypted_param_t *) dst->param;
-    rnp_result_t                res;
 
-    if (param->aead) {
+    if (param->auth_type == rnp::AuthType::AEADv1) {
+#if !defined(ENABLE_AEAD)
+        RNP_LOG("AEAD is not enabled.");
+        rnp_result_t res = RNP_ERROR_NOT_IMPLEMENTED;
+#else
         size_t chunks = param->chunkidx;
         /* if we didn't write anything in current chunk then discard it and restart */
         if (param->chunkout || param->cachelen) {
             chunks++;
         }
 
-        res = encrypted_start_aead_chunk(param, chunks, true);
+        rnp_result_t res = encrypted_start_aead_chunk(param, chunks, true);
         pgp_cipher_aead_destroy(&param->encrypt);
-
+#endif
         if (res) {
+            finish_streamed_packet(&param->pkt);
             return res;
         }
-    } else if (param->has_mdc) {
+    } else if (param->auth_type == rnp::AuthType::MDC) {
+        uint8_t mdcbuf[MDC_V1_SIZE];
         mdcbuf[0] = MDC_PKT_TAG;
         mdcbuf[1] = MDC_V1_SIZE - 2;
-        pgp_hash_add(&param->mdc, mdcbuf, 2);
-        pgp_hash_finish(&param->mdc, &mdcbuf[2]);
+        try {
+            param->mdc->add(mdcbuf, 2);
+            param->mdc->finish(&mdcbuf[2]);
+            param->mdc = nullptr;
+        } catch (const std::exception &e) {
+            RNP_LOG("%s", e.what());
+            return RNP_ERROR_BAD_STATE;
+        }
         pgp_cipher_cfb_encrypt(&param->encrypt, mdcbuf, mdcbuf, MDC_V1_SIZE);
         dst_write(param->pkt.writedst, mdcbuf, MDC_V1_SIZE);
     }
@@ -482,14 +502,15 @@ encrypted_dst_close(pgp_dest_t *dst, bool discard)
         return;
     }
 
-    if (!param->aead) {
-        pgp_hash_finish(&param->mdc, NULL);
-        pgp_cipher_cfb_finish(&param->encrypt);
-    } else {
+    if (param->auth_type == rnp::AuthType::AEADv1) {
+#if defined(ENABLE_AEAD)
         pgp_cipher_aead_destroy(&param->encrypt);
+#endif
+    } else {
+        pgp_cipher_cfb_finish(&param->encrypt);
     }
     close_streamed_packet(&param->pkt, discard);
-    free(param);
+    delete param;
     dst->param = NULL;
 }
 
@@ -505,13 +526,8 @@ encrypted_add_recipient(pgp_write_handler_t *handler,
     rnp_result_t                ret = RNP_ERROR_GENERIC;
 
     /* Use primary key if good for encryption, otherwise look in subkey list */
-    userkey =
-      find_suitable_key(PGP_OP_ENCRYPT_SYM, userkey, handler->key_provider, PGP_KF_ENCRYPT);
+    userkey = find_suitable_key(PGP_OP_ENCRYPT, userkey, handler->key_provider);
     if (!userkey) {
-        return RNP_ERROR_NO_SUITABLE_KEY;
-    }
-    if (!userkey->valid()) {
-        RNP_LOG("attempt to use invalid key as recipient");
         return RNP_ERROR_NO_SUITABLE_KEY;
     }
 
@@ -539,7 +555,7 @@ encrypted_add_recipient(pgp_write_handler_t *handler,
     switch (userkey->alg()) {
     case PGP_PKA_RSA:
     case PGP_PKA_RSA_ENCRYPT_ONLY: {
-        ret = rsa_encrypt_pkcs1(rnp_ctx_rng_handle(handler->ctx),
+        ret = rsa_encrypt_pkcs1(&handler->ctx->ctx->rng,
                                 &material.rsa,
                                 enckey.data(),
                                 keylen + 3,
@@ -551,7 +567,8 @@ encrypted_add_recipient(pgp_write_handler_t *handler,
         break;
     }
     case PGP_PKA_SM2: {
-        ret = sm2_encrypt(rnp_ctx_rng_handle(handler->ctx),
+#if defined(ENABLE_SM2)
+        ret = sm2_encrypt(&handler->ctx->ctx->rng,
                           &material.sm2,
                           enckey.data(),
                           keylen + 3,
@@ -562,9 +579,18 @@ encrypted_add_recipient(pgp_write_handler_t *handler,
             return ret;
         }
         break;
+#else
+        RNP_LOG("sm2_encrypt is not available");
+        return RNP_ERROR_NOT_IMPLEMENTED;
+#endif
     }
     case PGP_PKA_ECDH: {
-        ret = ecdh_encrypt_pkcs5(rnp_ctx_rng_handle(handler->ctx),
+        if (!curve_supported(userkey->material().ec.curve)) {
+            RNP_LOG("ECDH encrypt: curve %d is not supported.",
+                    (int) userkey->material().ec.curve);
+            return RNP_ERROR_NOT_SUPPORTED;
+        }
+        ret = ecdh_encrypt_pkcs5(&handler->ctx->ctx->rng,
                                  &material.ecdh,
                                  enckey.data(),
                                  keylen + 3,
@@ -577,7 +603,7 @@ encrypted_add_recipient(pgp_write_handler_t *handler,
         break;
     }
     case PGP_PKA_ELGAMAL: {
-        ret = elgamal_encrypt_pkcs1(rnp_ctx_rng_handle(handler->ctx),
+        ret = elgamal_encrypt_pkcs1(&handler->ctx->ctx->rng,
                                     &material.eg,
                                     enckey.data(),
                                     keylen + 3,
@@ -603,6 +629,7 @@ encrypted_add_recipient(pgp_write_handler_t *handler,
     }
 }
 
+#if defined(ENABLE_AEAD)
 static bool
 encrypted_sesk_set_ad(pgp_crypt_t *crypt, pgp_sk_sesskey_t *skey)
 {
@@ -615,6 +642,7 @@ encrypted_sesk_set_ad(pgp_crypt_t *crypt, pgp_sk_sesskey_t *skey)
 
     return pgp_cipher_aead_set_ad(crypt, ad_data, 4);
 }
+#endif
 
 static rnp_result_t
 encrypted_add_password(rnp_symmetric_pass_info_t * pass,
@@ -624,29 +652,19 @@ encrypted_add_password(rnp_symmetric_pass_info_t * pass,
                        bool                        singlepass)
 {
     pgp_sk_sesskey_t skey = {};
-    unsigned         s2keylen; /* length of the s2k key */
     pgp_crypt_t      kcrypt;
-    uint8_t          nonce[PGP_AEAD_MAX_NONCE_LEN];
-    bool             res;
 
-    skey.alg = param->ctx->ealg;
     skey.s2k = pass->s2k;
 
-    if (!param->aead) {
+    if (param->auth_type != rnp::AuthType::AEADv1) {
         skey.version = PGP_SKSK_V4;
-        /* Following algorithm may differ from ctx's one if not singlepass */
-        if (singlepass) {
-            s2keylen = keylen;
-        } else if ((s2keylen = pgp_key_size(skey.alg)) == 0) {
-            return RNP_ERROR_BAD_PARAMETERS;
-        }
-
         if (singlepass) {
             /* if there are no public keys then we do not encrypt session key in the packet */
+            skey.alg = param->ctx->ealg;
             skey.enckeylen = 0;
-            memcpy(key, pass->key.data(), s2keylen);
+            memcpy(key, pass->key.data(), keylen);
         } else {
-            /* Currently we are using the same sym algo for key and stream encryption */
+            /* We may use different algo for CEK and KEK */
             skey.enckeylen = keylen + 1;
             skey.enckey[0] = param->ctx->ealg;
             memcpy(&skey.enckey[1], key, keylen);
@@ -659,6 +677,10 @@ encrypted_add_password(rnp_symmetric_pass_info_t * pass,
             pgp_cipher_cfb_finish(&kcrypt);
         }
     } else {
+#if !defined(ENABLE_AEAD)
+        RNP_LOG("AEAD support is not enabled.");
+        return RNP_ERROR_NOT_IMPLEMENTED;
+#else
         /* AEAD-encrypted v5 packet */
         if ((param->ctx->aalg != PGP_AEAD_EAX) && (param->ctx->aalg != PGP_AEAD_OCB)) {
             RNP_LOG("unsupported AEAD algorithm");
@@ -666,11 +688,14 @@ encrypted_add_password(rnp_symmetric_pass_info_t * pass,
         }
 
         skey.version = PGP_SKSK_V5;
+        skey.alg = pass->s2k_cipher;
         skey.aalg = param->ctx->aalg;
         skey.ivlen = pgp_cipher_aead_nonce_len(skey.aalg);
         skey.enckeylen = keylen + pgp_cipher_aead_tag_len(skey.aalg);
 
-        if (!rng_get_data(rnp_ctx_rng_handle(param->ctx), skey.iv, skey.ivlen)) {
+        try {
+            param->ctx->ctx->rng.get(skey.iv, skey.ivlen);
+        } catch (const std::exception &e) {
             return RNP_ERROR_RNG;
         }
 
@@ -685,17 +710,19 @@ encrypted_add_password(rnp_symmetric_pass_info_t * pass,
         }
 
         /* calculate nonce */
-        size_t nlen = pgp_cipher_aead_nonce(skey.aalg, skey.iv, nonce, 0);
+        uint8_t nonce[PGP_AEAD_MAX_NONCE_LEN];
+        size_t  nlen = pgp_cipher_aead_nonce(skey.aalg, skey.iv, nonce, 0);
 
         /* start cipher, encrypt key and get tag */
-        res = pgp_cipher_aead_start(&kcrypt, nonce, nlen) &&
-              pgp_cipher_aead_finish(&kcrypt, skey.enckey, key, keylen);
+        bool res = pgp_cipher_aead_start(&kcrypt, nonce, nlen) &&
+                   pgp_cipher_aead_finish(&kcrypt, skey.enckey, key, keylen);
 
         pgp_cipher_aead_destroy(&kcrypt);
 
         if (!res) {
             return RNP_ERROR_BAD_STATE;
         }
+#endif
     }
 
     /* Writing symmetric key encrypted session key packet */
@@ -714,12 +741,14 @@ encrypted_start_cfb(pgp_dest_encrypted_param_t *param, uint8_t *enckey)
     uint8_t  enchdr[PGP_MAX_BLOCK_SIZE + 2]; /* encrypted header */
     unsigned blsize;
 
-    if (param->has_mdc) {
+    if (param->auth_type == rnp::AuthType::MDC) {
         /* initializing the mdc */
         dst_write(param->pkt.writedst, &mdcver, 1);
 
-        if (!pgp_hash_create(&param->mdc, PGP_HASH_SHA1)) {
-            RNP_LOG("cannot create sha1 hash");
+        try {
+            param->mdc = rnp::Hash::create(PGP_HASH_SHA1);
+        } catch (const std::exception &e) {
+            RNP_LOG("cannot create sha1 hash: %s", e.what());
             return RNP_ERROR_GENERIC;
         }
     }
@@ -731,22 +760,24 @@ encrypted_start_cfb(pgp_dest_encrypted_param_t *param, uint8_t *enckey)
 
     /* generating and writing iv/password check bytes */
     blsize = pgp_block_size(param->ctx->ealg);
-    if (!rng_get_data(rnp_ctx_rng_handle(param->ctx), enchdr, blsize)) {
-        return RNP_ERROR_RNG;
-    }
+    try {
+        param->ctx->ctx->rng.get(enchdr, blsize);
+        enchdr[blsize] = enchdr[blsize - 2];
+        enchdr[blsize + 1] = enchdr[blsize - 1];
 
-    enchdr[blsize] = enchdr[blsize - 2];
-    enchdr[blsize + 1] = enchdr[blsize - 1];
-
-    if (param->has_mdc) {
-        pgp_hash_add(&param->mdc, enchdr, blsize + 2);
+        if (param->auth_type == rnp::AuthType::MDC) {
+            param->mdc->add(enchdr, blsize + 2);
+        }
+    } catch (const std::exception &e) {
+        RNP_LOG("%s", e.what());
+        return RNP_ERROR_BAD_STATE;
     }
 
     pgp_cipher_cfb_encrypt(&param->encrypt, enchdr, enchdr, blsize + 2);
 
     /* RFC 4880, 5.13: Unlike the Symmetrically Encrypted Data Packet, no special CFB
      * resynchronization is done after encrypting this prefix data. */
-    if (!param->has_mdc) {
+    if (param->auth_type == rnp::AuthType::None) {
         pgp_cipher_cfb_resync(&param->encrypt, enchdr + 2);
     }
 
@@ -758,6 +789,10 @@ encrypted_start_cfb(pgp_dest_encrypted_param_t *param, uint8_t *enckey)
 static rnp_result_t
 encrypted_start_aead(pgp_dest_encrypted_param_t *param, uint8_t *enckey)
 {
+#if !defined(ENABLE_AEAD)
+    RNP_LOG("AEAD support is not enabled.");
+    return RNP_ERROR_NOT_IMPLEMENTED;
+#else
     uint8_t hdr[4 + PGP_AEAD_MAX_NONCE_LEN];
     size_t  nlen;
 
@@ -773,7 +808,9 @@ encrypted_start_aead(pgp_dest_encrypted_param_t *param, uint8_t *enckey)
 
     /* generate iv */
     nlen = pgp_cipher_aead_nonce_len(param->ctx->aalg);
-    if (!rng_get_data(rnp_ctx_rng_handle(param->ctx), param->iv, nlen)) {
+    try {
+        param->ctx->ctx->rng.get(param->iv, nlen);
+    } catch (const std::exception &e) {
         return RNP_ERROR_RNG;
     }
     memcpy(hdr + 4, param->iv, nlen);
@@ -798,6 +835,7 @@ encrypted_start_aead(pgp_dest_encrypted_param_t *param, uint8_t *enckey)
     }
 
     return encrypted_start_aead_chunk(param, 0, false);
+#endif
 }
 
 static rnp_result_t
@@ -818,7 +856,7 @@ init_encrypted_dst(pgp_write_handler_t *handler, pgp_dest_t *dst, pgp_dest_t *wr
 
     if (handler->ctx->aalg) {
         if ((handler->ctx->aalg != PGP_AEAD_EAX) && (handler->ctx->aalg != PGP_AEAD_OCB)) {
-            RNP_LOG("unknown AEAD algorithm");
+            RNP_LOG("unknown AEAD algorithm: %d", (int) handler->ctx->aalg);
             return RNP_ERROR_BAD_PARAMETERS;
         }
 
@@ -827,23 +865,29 @@ init_encrypted_dst(pgp_write_handler_t *handler, pgp_dest_t *dst, pgp_dest_t *wr
             return RNP_ERROR_BAD_PARAMETERS;
         }
 
-        if ((handler->ctx->abits < 0) || (handler->ctx->abits > 56)) {
-            RNP_LOG("wrong AEAD chunk bits");
+        if ((handler->ctx->abits < 0) || (handler->ctx->abits > 16)) {
+            RNP_LOG("wrong AEAD chunk bits: %d", handler->ctx->abits);
             return RNP_ERROR_BAD_PARAMETERS;
         }
     }
 
-    if (!init_dst_common(dst, sizeof(*param))) {
+    if (!init_dst_common(dst, 0)) {
         return RNP_ERROR_OUT_OF_MEMORY;
     }
-
-    param = (pgp_dest_encrypted_param_t *) dst->param;
-    param->has_mdc = true;
-    param->aead = handler->ctx->aalg != PGP_AEAD_NONE;
+    try {
+        param = new pgp_dest_encrypted_param_t();
+        dst->param = param;
+    } catch (const std::exception &e) {
+        RNP_LOG("%s", e.what());
+        return RNP_ERROR_OUT_OF_MEMORY;
+    }
+    param->auth_type =
+      handler->ctx->aalg == PGP_AEAD_NONE ? rnp::AuthType::MDC : rnp::AuthType::AEADv1;
     param->aalg = handler->ctx->aalg;
     param->ctx = handler->ctx;
     param->pkt.origdst = writedst;
-    dst->write = param->aead ? encrypted_dst_write_aead : encrypted_dst_write_cfb;
+    dst->write = param->auth_type == rnp::AuthType::AEADv1 ? encrypted_dst_write_aead :
+                                                             encrypted_dst_write_cfb;
     dst->finish = encrypted_dst_finish;
     dst->close = encrypted_dst_close;
     dst->type = PGP_STREAM_ENCRYPTED;
@@ -858,8 +902,10 @@ init_encrypted_dst(pgp_write_handler_t *handler, pgp_dest_t *dst, pgp_dest_t *wr
         goto finish;
     }
 
-    if ((pkeycount > 0) || (skeycount > 1) || param->aead) {
-        if (!rng_get_data(rnp_ctx_rng_handle(handler->ctx), enckey.data(), keylen)) {
+    if ((pkeycount > 0) || (skeycount > 1) || (param->auth_type == rnp::AuthType::AEADv1)) {
+        try {
+            handler->ctx->ctx->rng.get(enckey.data(), keylen);
+        } catch (const std::exception &e) {
             ret = RNP_ERROR_RNG;
             goto finish;
         }
@@ -885,10 +931,12 @@ init_encrypted_dst(pgp_write_handler_t *handler, pgp_dest_t *dst, pgp_dest_t *wr
     /* Initializing partial packet writer */
     param->pkt.partial = true;
     param->pkt.indeterminate = false;
-    if (param->aead) {
+    if (param->auth_type == rnp::AuthType::AEADv1) {
         param->pkt.tag = PGP_PKT_AEAD_ENCRYPTED;
     } else {
-        param->pkt.tag = param->has_mdc ? PGP_PKT_SE_IP_DATA : PGP_PKT_SE_DATA;
+        /* We do not generate PGP_PKT_SE_DATA, leaving this just in case */
+        param->pkt.tag =
+          param->auth_type == rnp::AuthType::MDC ? PGP_PKT_SE_IP_DATA : PGP_PKT_SE_DATA;
     }
 
     /* initializing partial data length writer */
@@ -899,7 +947,7 @@ init_encrypted_dst(pgp_write_handler_t *handler, pgp_dest_t *dst, pgp_dest_t *wr
         goto finish;
     }
 
-    if (param->aead) {
+    if (param->auth_type == rnp::AuthType::AEADv1) {
         /* initialize AEAD encryption */
         ret = encrypted_start_aead(param, enckey.data());
     } else {
@@ -939,29 +987,33 @@ cleartext_dst_writeline(pgp_dest_signed_param_t *param,
     /* output data */
     dst_write(param->writedst, buf, len);
 
-    if (eol) {
-        bool hashcrlf = false;
-        ptr = buf + len - 1;
+    try {
+        if (eol) {
+            bool hashcrlf = false;
+            ptr = buf + len - 1;
 
-        /* skipping trailing characters - space, tab, carriage return, line feed */
-        while ((ptr >= buf) && ((*ptr == CH_SPACE) || (*ptr == CH_TAB) || (*ptr == CH_CR) ||
-                                (*ptr == CH_LF))) {
-            if (*ptr == CH_LF) {
-                hashcrlf = true;
+            /* skipping trailing characters - space, tab, carriage return, line feed */
+            while ((ptr >= buf) && ((*ptr == CH_SPACE) || (*ptr == CH_TAB) ||
+                                    (*ptr == CH_CR) || (*ptr == CH_LF))) {
+                if (*ptr == CH_LF) {
+                    hashcrlf = true;
+                }
+                ptr--;
             }
-            ptr--;
-        }
 
-        /* hashing line body and \r\n */
-        pgp_hash_list_update(param->hashes, buf, ptr + 1 - buf);
-        if (hashcrlf) {
-            pgp_hash_list_update(param->hashes, ST_CRLF, 2);
+            /* hashing line body and \r\n */
+            param->hashes.add(buf, ptr + 1 - buf);
+            if (hashcrlf) {
+                param->hashes.add(ST_CRLF, 2);
+            }
+            param->clr_start = hashcrlf;
+        } else if (len > 0) {
+            /* hashing just line's data */
+            param->hashes.add(buf, len);
+            param->clr_start = false;
         }
-        param->clr_start = hashcrlf;
-    } else if (len > 0) {
-        /* hashing just line's data */
-        pgp_hash_list_update(param->hashes, buf, len);
-        param->clr_start = false;
+    } catch (const std::exception &e) {
+        RNP_LOG("failed to hash data: %s", e.what());
     }
 }
 
@@ -1045,56 +1097,33 @@ cleartext_dst_write(pgp_dest_t *dst, const void *buf, size_t len)
     return RNP_SUCCESS;
 }
 
-static rnp_result_t
-signed_fill_signature(pgp_dest_signed_param_t *param,
-                      pgp_signature_t *        sig,
-                      pgp_dest_signer_info_t * signer)
+static void
+signed_fill_signature(pgp_dest_signed_param_t &param,
+                      pgp_signature_t &        sig,
+                      pgp_dest_signer_info_t & signer)
 {
-    const pgp_key_pkt_t *deckey = NULL;
-    pgp_hash_t           hash;
-    pgp_password_ctx_t   ctx = {.op = PGP_OP_SIGN, .key = signer->key};
-    rnp_result_t         ret = RNP_ERROR_GENERIC;
-
-    /* fill signature fields */
-    try {
-        sig->set_keyfp(signer->key->fp());
-        sig->set_keyid(signer->key->keyid());
-        sig->set_creation(signer->sigcreate ? signer->sigcreate : time(NULL));
-        sig->set_expiration(signer->sigexpire);
-    } catch (const std::exception &e) {
-        RNP_LOG("failed to setup signature fields: %s", e.what());
-        return RNP_ERROR_OUT_OF_MEMORY;
+    /* fill signature fields, assuming sign_init was called on it */
+    if (signer.sigcreate) {
+        sig.set_creation(signer.sigcreate);
     }
-    if (!signature_fill_hashed_data(sig)) {
-        RNP_LOG("failed to fill the signature data");
-        return RNP_ERROR_OUT_OF_MEMORY;
-    }
+    sig.set_expiration(signer.sigexpire);
+    sig.fill_hashed_data();
 
-    if (!pgp_hash_copy(&hash, pgp_hash_list_get(param->hashes, sig->halg))) {
+    auto listh = param.hashes.get(sig.halg);
+    if (!listh) {
         RNP_LOG("failed to obtain hash");
-        return RNP_ERROR_BAD_PARAMETERS;
+        throw rnp::rnp_exception(RNP_ERROR_BAD_STATE);
     }
 
     /* decrypt the secret key if needed */
-    if (signer->key->encrypted()) {
-        deckey = pgp_decrypt_seckey(signer->key, param->password_provider, &ctx);
-        if (!deckey) {
-            RNP_LOG("wrong secret key password");
-            pgp_hash_finish(&hash, NULL);
-            return RNP_ERROR_BAD_PASSWORD;
-        }
-    } else {
-        deckey = &signer->key->pkt();
+    rnp::KeyLocker keylock(*signer.key);
+    if (signer.key->encrypted() &&
+        !signer.key->unlock(*param.password_provider, PGP_OP_SIGN)) {
+        RNP_LOG("wrong secret key password");
+        throw rnp::rnp_exception(RNP_ERROR_BAD_PASSWORD);
     }
-
     /* calculate the signature */
-    ret = signature_calculate(sig, &deckey->material, &hash, rnp_ctx_rng_handle(param->ctx));
-
-    /* destroy decrypted secret key */
-    if (signer->key->encrypted()) {
-        delete deckey;
-    }
-    return ret;
+    signature_calculate(sig, signer.key->material(), *listh->clone(), *param.ctx->ctx);
 }
 
 static rnp_result_t
@@ -1102,27 +1131,24 @@ signed_write_signature(pgp_dest_signed_param_t *param,
                        pgp_dest_signer_info_t * signer,
                        pgp_dest_t *             writedst)
 {
-    pgp_signature_t sig;
-    sig.version = (pgp_version_t) 4;
-    if (signer->onepass.version) {
-        sig.halg = signer->onepass.halg;
-        sig.palg = signer->onepass.palg;
-        sig.set_type(signer->onepass.type);
-    } else {
-        sig.halg = pgp_hash_adjust_alg_to_key(signer->halg, &signer->key->pkt());
-        sig.palg = signer->key->alg();
-        sig.set_type(param->ctx->detached ? PGP_SIG_BINARY : PGP_SIG_TEXT);
-    }
-
-    rnp_result_t ret = signed_fill_signature(param, &sig, signer);
-    if (ret) {
-        return ret;
-    }
     try {
+        pgp_signature_t sig;
+        if (signer->onepass.version) {
+            signer->key->sign_init(sig, signer->onepass.halg, param->ctx->ctx->time());
+            sig.palg = signer->onepass.palg;
+            sig.set_type(signer->onepass.type);
+        } else {
+            signer->key->sign_init(sig, signer->halg, param->ctx->ctx->time());
+            /* line below should be checked */
+            sig.set_type(param->ctx->detached ? PGP_SIG_BINARY : PGP_SIG_TEXT);
+        }
+        signed_fill_signature(*param, sig, *signer);
         sig.write(*writedst);
         return writedst->werr;
+    } catch (const rnp::rnp_exception &e) {
+        return e.code();
     } catch (const std::exception &e) {
-        RNP_LOG("%s", e.what());
+        RNP_LOG("Failed to write signature: %s", e.what());
         return RNP_ERROR_WRITE;
     }
 }
@@ -1164,8 +1190,6 @@ signed_detached_dst_finish(pgp_dest_t *dst)
 static rnp_result_t
 cleartext_dst_finish(pgp_dest_t *dst)
 {
-    pgp_dest_t               armordst = {0};
-    rnp_result_t             ret;
     pgp_dest_signed_param_t *param = (pgp_dest_signed_param_t *) dst->param;
 
     /* writing cached line if any */
@@ -1176,22 +1200,21 @@ cleartext_dst_finish(pgp_dest_t *dst)
     dst_write(param->writedst, ST_CRLF, 2);
 
     /* writing signatures to the armored stream, which outputs to param->writedst */
-    if ((ret = init_armored_dst(&armordst, param->writedst, PGP_ARMORED_SIGNATURE))) {
-        return ret;
-    }
-
-    for (auto &sinfo : param->siginfos) {
-        if ((ret = signed_write_signature(param, &sinfo, &armordst))) {
-            break;
+    try {
+        rnp::ArmoredDest armor(*param->writedst, PGP_ARMORED_SIGNATURE);
+        armor.set_discard(true);
+        for (auto &sinfo : param->siginfos) {
+            auto ret = signed_write_signature(param, &sinfo, &armor.dst());
+            if (ret) {
+                return ret;
+            }
         }
+        armor.set_discard(false);
+        return RNP_SUCCESS;
+    } catch (const std::exception &e) {
+        RNP_LOG("Failed to write armored signature: %s", e.what());
+        return RNP_ERROR_WRITE;
     }
-
-    if (ret == RNP_SUCCESS) {
-        ret = dst_finish(&armordst);
-    }
-
-    dst_close(&armordst, ret != RNP_SUCCESS);
-    return ret;
 }
 
 static void
@@ -1209,7 +1232,7 @@ static void
 signed_dst_update(pgp_dest_t *dst, const void *buf, size_t len)
 {
     pgp_dest_signed_param_t *param = (pgp_dest_signed_param_t *) dst->param;
-    pgp_hash_list_update(param->hashes, buf, len);
+    param->hashes.add(buf, len);
 }
 
 static rnp_result_t
@@ -1221,6 +1244,12 @@ signed_add_signer(pgp_dest_signed_param_t *param, rnp_signer_info_t *signer, boo
         RNP_LOG("secret key required for signing");
         return RNP_ERROR_BAD_PARAMETERS;
     }
+    /* validate signing key material if didn't before */
+    signer->key->pkt().material.validate(*param->ctx->ctx, false);
+    if (!signer->key->pkt().material.valid()) {
+        RNP_LOG("attempt to sign to the key with invalid material");
+        return RNP_ERROR_NO_SUITABLE_KEY;
+    }
 
     /* copy fields */
     sinfo.key = signer->key;
@@ -1229,7 +1258,10 @@ signed_add_signer(pgp_dest_signed_param_t *param, rnp_signer_info_t *signer, boo
 
     /* Add hash to the list */
     sinfo.halg = pgp_hash_adjust_alg_to_key(signer->halg, &signer->key->pkt());
-    if (!pgp_hash_list_add(param->hashes, sinfo.halg)) {
+    try {
+        param->hashes.add_alg(sinfo.halg);
+    } catch (const std::exception &e) {
+        RNP_LOG("%s", e.what());
         return RNP_ERROR_BAD_PARAMETERS;
     }
 
@@ -1275,19 +1307,11 @@ signed_add_signer(pgp_dest_signed_param_t *param, rnp_signer_info_t *signer, boo
     }
 }
 
-pgp_dest_signed_param_t::~pgp_dest_signed_param_t()
-{
-    for (auto &hash : hashes) {
-        pgp_hash_finish(&hash, NULL);
-    }
-}
-
 static rnp_result_t
 init_signed_dst(pgp_write_handler_t *handler, pgp_dest_t *dst, pgp_dest_t *writedst)
 {
     pgp_dest_signed_param_t *param;
     rnp_result_t             ret = RNP_ERROR_GENERIC;
-    const char *             hname;
 
     if (!handler->key_provider) {
         RNP_LOG("no key provider");
@@ -1330,7 +1354,7 @@ init_signed_dst(pgp_write_handler_t *handler, pgp_dest_t *dst, pgp_dest_t *write
     }
 
     /* Do we have any signatures? */
-    if (param->hashes.empty()) {
+    if (param->hashes.hashes.empty()) {
         ret = RNP_ERROR_BAD_PARAMETERS;
         goto finish;
     }
@@ -1341,10 +1365,10 @@ init_signed_dst(pgp_write_handler_t *handler, pgp_dest_t *dst, pgp_dest_t *write
         dst_write(param->writedst, ST_CRLF, strlen(ST_CRLF));
         dst_write(param->writedst, ST_HEADER_HASH, strlen(ST_HEADER_HASH));
 
-        for (const auto &hash : param->hashes) {
-            hname = pgp_hash_name(&hash);
+        for (const auto &hash : param->hashes.hashes) {
+            auto hname = rnp::Hash::name(hash->alg());
             dst_write(param->writedst, hname, strlen(hname));
-            if (&hash != &param->hashes.back()) {
+            if (&hash != &param->hashes.hashes.back()) {
                 dst_write(param->writedst, ST_COMMA, 1);
             }
         }
@@ -1685,52 +1709,39 @@ finish:
 }
 
 static rnp_result_t
-process_stream_sequence(pgp_source_t *src, pgp_dest_t *streams, unsigned count)
+process_stream_sequence(pgp_source_t *src,
+                        pgp_dest_t *  streams,
+                        unsigned      count,
+                        pgp_dest_t *  sstream,
+                        pgp_dest_t *  wstream)
 {
-    uint8_t *    readbuf = NULL;
-    pgp_dest_t * sstream = NULL; /* signed stream if any, to call signed_dst_update on it */
-    pgp_dest_t * wstream = NULL; /* stream to dst_write() source data, may be empty */
-    rnp_result_t ret = RNP_ERROR_GENERIC;
-
-    if (!(readbuf = (uint8_t *) calloc(1, PGP_INPUT_CACHE_SIZE))) {
+    std::unique_ptr<uint8_t[]> readbuf(new (std::nothrow) uint8_t[PGP_INPUT_CACHE_SIZE]);
+    if (!readbuf) {
         RNP_LOG("allocation failure");
-        ret = RNP_ERROR_OUT_OF_MEMORY;
-        goto finish;
-    }
-
-    /* check whether we have signed stream and stream for data output */
-    for (int i = count - 1; i >= 0; i--) {
-        if (streams[i].type == PGP_STREAM_SIGNED) {
-            sstream = &streams[i];
-        } else if ((streams[i].type == PGP_STREAM_CLEARTEXT) ||
-                   (streams[i].type == PGP_STREAM_LITERAL)) {
-            wstream = &streams[i];
-        }
+        return RNP_ERROR_OUT_OF_MEMORY;
     }
 
     /* processing source stream */
     while (!src->eof) {
         size_t read = 0;
-        if (!src_read(src, readbuf, PGP_INPUT_CACHE_SIZE, &read)) {
+        if (!src_read(src, readbuf.get(), PGP_INPUT_CACHE_SIZE, &read)) {
             RNP_LOG("failed to read from source");
-            ret = RNP_ERROR_READ;
-            goto finish;
+            return RNP_ERROR_READ;
         } else if (!read) {
             continue;
         }
 
         if (sstream) {
-            signed_dst_update(sstream, readbuf, read);
+            signed_dst_update(sstream, readbuf.get(), read);
         }
 
         if (wstream) {
-            dst_write(wstream, readbuf, read);
+            dst_write(wstream, readbuf.get(), read);
 
             for (int i = count - 1; i >= 0; i--) {
-                if (streams[i].werr != RNP_SUCCESS) {
+                if (streams[i].werr) {
                     RNP_LOG("failed to process data");
-                    ret = RNP_ERROR_WRITE;
-                    goto finish;
+                    return RNP_ERROR_WRITE;
                 }
             }
         }
@@ -1738,68 +1749,13 @@ process_stream_sequence(pgp_source_t *src, pgp_dest_t *streams, unsigned count)
 
     /* finalizing destinations */
     for (int i = count - 1; i >= 0; i--) {
-        ret = dst_finish(&streams[i]);
-        if (ret != RNP_SUCCESS) {
+        rnp_result_t ret = dst_finish(&streams[i]);
+        if (ret) {
             RNP_LOG("failed to finish stream");
-            goto finish;
+            return ret;
         }
     }
-
-    ret = RNP_SUCCESS;
-finish:
-    free(readbuf);
-    return ret;
-}
-
-rnp_result_t
-rnp_encrypt_src(pgp_write_handler_t *handler, pgp_source_t *src, pgp_dest_t *dst)
-{
-    /* stack of the streams would be as following:
-       [armoring stream] - if armoring is enabled
-       encrypting stream, partial writing stream
-       [compressing stream, partial writing stream] - if compression is enabled
-       literal data stream, partial writing stream
-    */
-    pgp_dest_t   dests[4];
-    int          destc = 0;
-    rnp_result_t ret = RNP_ERROR_GENERIC;
-
-    /* pushing armoring stream, which will write to the output */
-    if (handler->ctx->armor) {
-        if ((ret = init_armored_dst(&dests[destc], dst, PGP_ARMORED_MESSAGE))) {
-            goto finish;
-        }
-        destc++;
-    }
-
-    /* pushing encrypting stream, which will write to the output or armoring stream */
-    if ((ret = init_encrypted_dst(handler, &dests[destc], destc ? &dests[destc - 1] : dst))) {
-        goto finish;
-    }
-    destc++;
-
-    /* if compression is enabled then pushing compressing stream */
-    if (handler->ctx->zlevel > 0) {
-        if ((ret = init_compressed_dst(handler, &dests[destc], &dests[destc - 1]))) {
-            goto finish;
-        }
-        destc++;
-    }
-
-    /* pushing literal data stream */
-    if ((ret = init_literal_dst(handler, &dests[destc], &dests[destc - 1]))) {
-        goto finish;
-    }
-    destc++;
-
-    /* processing stream sequence */
-    ret = process_stream_sequence(src, dests, destc);
-finish:
-    for (int i = destc - 1; i >= 0; i--) {
-        dst_close(&dests[i], ret != RNP_SUCCESS);
-    }
-
-    return ret;
+    return RNP_SUCCESS;
 }
 
 rnp_result_t
@@ -1814,20 +1770,22 @@ rnp_sign_src(pgp_write_handler_t *handler, pgp_source_t *src, pgp_dest_t *dst)
     pgp_dest_t   dests[4];
     unsigned     destc = 0;
     rnp_result_t ret = RNP_ERROR_GENERIC;
+    rnp_ctx_t &  ctx = *handler->ctx;
+    pgp_dest_t * wstream = NULL;
+    pgp_dest_t * sstream = NULL;
 
     /* pushing armoring stream, which will write to the output */
-    if (handler->ctx->armor && !handler->ctx->clearsign) {
-        pgp_armored_msg_t msgt =
-          handler->ctx->detached ? PGP_ARMORED_SIGNATURE : PGP_ARMORED_MESSAGE;
+    if (ctx.armor && !ctx.clearsign) {
+        pgp_armored_msg_t msgt = ctx.detached ? PGP_ARMORED_SIGNATURE : PGP_ARMORED_MESSAGE;
         ret = init_armored_dst(&dests[destc], dst, msgt);
-        if (ret != RNP_SUCCESS) {
+        if (ret) {
             goto finish;
         }
         destc++;
     }
 
     /* if compression is enabled then pushing compressing stream */
-    if (!handler->ctx->detached && !handler->ctx->clearsign && (handler->ctx->zlevel > 0)) {
+    if (!ctx.detached && !ctx.clearsign && (ctx.zlevel > 0)) {
         if ((ret =
                init_compressed_dst(handler, &dests[destc], destc ? &dests[destc - 1] : dst))) {
             goto finish;
@@ -1840,21 +1798,28 @@ rnp_sign_src(pgp_write_handler_t *handler, pgp_source_t *src, pgp_dest_t *dst)
     if ((ret = init_signed_dst(handler, &dests[destc], destc ? &dests[destc - 1] : dst))) {
         goto finish;
     }
+    if (!ctx.clearsign) {
+        sstream = &dests[destc];
+    }
+    if (!ctx.detached) {
+        wstream = &dests[destc];
+    }
     destc++;
 
     /* pushing literal data stream, if not detached/cleartext signature */
-    if (!handler->ctx->detached && !handler->ctx->clearsign) {
+    if (!ctx.no_wrap && !ctx.detached && !ctx.clearsign) {
         if ((ret = init_literal_dst(handler, &dests[destc], &dests[destc - 1]))) {
             goto finish;
         }
+        wstream = &dests[destc];
         destc++;
     }
 
     /* process source with streams stack */
-    ret = process_stream_sequence(src, dests, destc);
+    ret = process_stream_sequence(src, dests, destc, sstream, wstream);
 finish:
     for (int i = destc - 1; i >= 0; i--) {
-        dst_close(&dests[i], ret != RNP_SUCCESS);
+        dst_close(&dests[i], ret);
     }
     return ret;
 }
@@ -1870,19 +1835,20 @@ rnp_encrypt_sign_src(pgp_write_handler_t *handler, pgp_source_t *src, pgp_dest_t
        literal data stream, partial writing stream
     */
     pgp_dest_t   dests[5];
-    unsigned     destc = 0;
+    size_t       destc = 0;
     rnp_result_t ret = RNP_SUCCESS;
+    rnp_ctx_t &  ctx = *handler->ctx;
+    pgp_dest_t * sstream = NULL;
 
     /* we may use only attached signatures here */
-    if (handler->ctx->clearsign || handler->ctx->detached) {
+    if (ctx.clearsign || ctx.detached) {
         RNP_LOG("cannot clearsign or sign detached together with encryption");
         return RNP_ERROR_BAD_PARAMETERS;
     }
 
     /* pushing armoring stream, which will write to the output */
-    if (handler->ctx->armor) {
-        ret = init_armored_dst(&dests[destc], dst, PGP_ARMORED_MESSAGE);
-        if (ret != RNP_SUCCESS) {
+    if (ctx.armor) {
+        if ((ret = init_armored_dst(&dests[destc], dst, PGP_ARMORED_MESSAGE))) {
             goto finish;
         }
         destc++;
@@ -1895,30 +1861,35 @@ rnp_encrypt_sign_src(pgp_write_handler_t *handler, pgp_source_t *src, pgp_dest_t
     destc++;
 
     /* if compression is enabled then pushing compressing stream */
-    if (handler->ctx->zlevel > 0) {
+    if (ctx.zlevel > 0) {
         if ((ret = init_compressed_dst(handler, &dests[destc], &dests[destc - 1]))) {
             goto finish;
         }
         destc++;
     }
 
-    /* pushing signing stream */
-    if ((ret = init_signed_dst(handler, &dests[destc], &dests[destc - 1]))) {
-        goto finish;
+    /* pushing signing stream if we have signers */
+    if (!ctx.signers.empty()) {
+        if ((ret = init_signed_dst(handler, &dests[destc], &dests[destc - 1]))) {
+            goto finish;
+        }
+        sstream = &dests[destc];
+        destc++;
     }
-    destc++;
 
     /* pushing literal data stream */
-    if ((ret = init_literal_dst(handler, &dests[destc], &dests[destc - 1]))) {
-        goto finish;
+    if (!ctx.no_wrap) {
+        if ((ret = init_literal_dst(handler, &dests[destc], &dests[destc - 1]))) {
+            goto finish;
+        }
+        destc++;
     }
-    destc++;
 
     /* process source with streams stack */
-    ret = process_stream_sequence(src, dests, destc);
+    ret = process_stream_sequence(src, dests, destc, sstream, &dests[destc - 1]);
 finish:
-    for (int i = destc - 1; i >= 0; i--) {
-        dst_close(&dests[i], ret != RNP_SUCCESS);
+    for (size_t i = destc; i > 0; i--) {
+        dst_close(&dests[i - 1], ret);
     }
     return ret;
 }
@@ -1965,22 +1936,27 @@ done:
 }
 
 rnp_result_t
-rnp_raw_encrypt_src(pgp_source_t &src, pgp_dest_t &dst, const std::string &password)
+rnp_raw_encrypt_src(pgp_source_t &        src,
+                    pgp_dest_t &          dst,
+                    const std::string &   password,
+                    rnp::SecurityContext &secctx)
 {
     pgp_write_handler_t handler = {};
     rnp_ctx_t           ctx;
-    rng_t               rng = {};
 
-    if (!rng_init(&rng, RNG_SYSTEM)) {
-        return RNP_ERROR_BAD_STATE;
-    }
-    ctx.rng = &rng;
+    ctx.ctx = &secctx;
     ctx.ealg = DEFAULT_PGP_SYMM_ALG;
     handler.ctx = &ctx;
     pgp_dest_t encrypted = {};
 
-    rnp_result_t ret = rnp_ctx_add_encryption_password(
-      ctx, password.c_str(), DEFAULT_PGP_HASH_ALG, DEFAULT_PGP_SYMM_ALG, 0);
+    rnp_result_t ret = RNP_ERROR_GENERIC;
+    try {
+        ret =
+          ctx.add_encryption_password(password, DEFAULT_PGP_HASH_ALG, DEFAULT_PGP_SYMM_ALG);
+    } catch (const std::exception &e) {
+        RNP_LOG("%s", e.what());
+        goto done;
+    }
     if (ret) {
         goto done;
     }
@@ -1993,6 +1969,5 @@ rnp_raw_encrypt_src(pgp_source_t &src, pgp_dest_t &dst, const std::string &passw
     ret = dst_write_src(&src, &encrypted);
 done:
     dst_close(&encrypted, ret);
-    rng_destroy(&rng);
     return ret;
 }

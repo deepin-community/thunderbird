@@ -1,29 +1,28 @@
 {
   "langpack_id": "fy-NL",
   "manifest_version": 2,
-  "applications": {
+  "browser_specific_settings": {
     "gecko": {
       "id": "langpack-fy-NL@thunderbird.mozilla.org",
-      "strict_min_version": "91.0",
-      "strict_max_version": "91.*"
+      "strict_min_version": "115.0",
+      "strict_max_version": "115.*"
     }
   },
-  "name": "Frysk (fy) Language Pack",
-  "description": "Language pack for Thunderbird for fy-NL",
-  "version": "91.0buildid20211101223011",
+  "name": "Language: Frysk (Frisian)",
+  "description": "Thunderbird Language Pack for Frysk (fy-NL) – Frisian",
+  "version": "115.8.20240216.174500",
   "languages": {
     "fy-NL": {
-      "version": "20211012142932",
+      "version": "20240216183821",
       "chrome_resources": {
         "alerts": "chrome/fy-NL/locale/fy-NL/alerts/",
         "autoconfig": "chrome/fy-NL/locale/fy-NL/autoconfig/",
-        "branding": "chrome/fy-NL/locale/fy-NL/branding/",
+        "branding": "chrome/fy-NL/locale/branding/",
         "calendar": "chrome/fy-NL/locale/fy-NL/calendar/",
         "chat": "chrome/fy-NL/locale/fy-NL/chat/",
         "communicator": "chrome/fy-NL/locale/fy-NL/communicator/",
         "devtools": "chrome/fy-NL/locale/fy-NL/devtools/client/",
         "devtools-shared": "chrome/fy-NL/locale/fy-NL/devtools/shared/",
-        "devtools-startup": "chrome/fy-NL/locale/fy-NL/devtools/startup/",
         "global": "chrome/fy-NL/locale/fy-NL/global/",
         "global-platform": {
           "macosx": "chrome/fy-NL/locale/fy-NL/global-platform/mac/",

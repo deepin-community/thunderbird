@@ -9,12 +9,19 @@
 #include "gfxTextRun.h"  // for the gfxTextRun::CompressedGlyph::FLAG_BREAK_TYPE_* values
 #include "nsHyphenationManager.h"
 #include "nsHyphenator.h"
+#include "mozilla/AutoRestore.h"
 #include "mozilla/gfx/2D.h"
-#include "mozilla/intl/LineBreaker.h"
-#include "mozilla/intl/MozLocale.h"
+#include "mozilla/intl/LineBreaker.h"  // for LineBreaker::ComputeBreakPositions
+#include "mozilla/intl/Locale.h"
+#include "mozilla/intl/UnicodeProperties.h"
 
+using mozilla::AutoRestore;
 using mozilla::intl::LineBreaker;
+using mozilla::intl::LineBreakRule;
 using mozilla::intl::Locale;
+using mozilla::intl::LocaleParser;
+using mozilla::intl::UnicodeProperties;
+using mozilla::intl::WordBreakRule;
 
 nsLineBreaker::nsLineBreaker()
     : mCurrentWordLanguage(nullptr),
@@ -23,8 +30,8 @@ nsLineBreaker::nsLineBreaker()
       mScriptIsChineseOrJapanese(false),
       mAfterBreakableSpace(false),
       mBreakHere(false),
-      mWordBreak(LineBreaker::WordBreak::Normal),
-      mStrictness(LineBreaker::Strictness::Auto),
+      mWordBreak(WordBreakRule::Normal),
+      mLineBreak(LineBreakRule::Auto),
       mWordContinuation(false) {}
 
 nsLineBreaker::~nsLineBreaker() {
@@ -34,26 +41,62 @@ nsLineBreaker::~nsLineBreaker() {
 
 static void SetupCapitalization(const char16_t* aWord, uint32_t aLength,
                                 bool* aCapitalization) {
-  // Capitalize the first alphanumeric character after a space or start
-  // of the word.
-  // The only space character a word can contain is NBSP.
+  // Capitalize the first alphanumeric character after a space or punctuation.
+  using mozilla::intl::GeneralCategory;
   bool capitalizeNextChar = true;
   for (uint32_t i = 0; i < aLength; ++i) {
     uint32_t ch = aWord[i];
-    if (capitalizeNextChar) {
-      if (i + 1 < aLength && NS_IS_SURROGATE_PAIR(ch, aWord[i + 1])) {
-        ch = SURROGATE_TO_UCS4(ch, aWord[i + 1]);
-      }
-      if (nsContentUtils::IsAlphanumeric(ch)) {
-        aCapitalization[i] = true;
-        capitalizeNextChar = false;
-      }
-      if (!IS_IN_BMP(ch)) {
-        ++i;
-      }
+    if (i + 1 < aLength && NS_IS_SURROGATE_PAIR(ch, aWord[i + 1])) {
+      ch = SURROGATE_TO_UCS4(ch, aWord[i + 1]);
     }
-    if (ch == 0xA0 /*NBSP*/) {
-      capitalizeNextChar = true;
+    auto category = UnicodeProperties::CharType(ch);
+    switch (category) {
+      case GeneralCategory::Uppercase_Letter:
+      case GeneralCategory::Lowercase_Letter:
+      case GeneralCategory::Titlecase_Letter:
+      case GeneralCategory::Modifier_Letter:
+      case GeneralCategory::Other_Letter:
+      case GeneralCategory::Decimal_Number:
+      case GeneralCategory::Letter_Number:
+      case GeneralCategory::Other_Number:
+        if (capitalizeNextChar) {
+          aCapitalization[i] = true;
+          capitalizeNextChar = false;
+        }
+        break;
+      case GeneralCategory::Space_Separator:
+      case GeneralCategory::Line_Separator:
+      case GeneralCategory::Paragraph_Separator:
+      case GeneralCategory::Dash_Punctuation:
+      case GeneralCategory::Initial_Punctuation:
+        /* These punctuation categories are excluded, for examples like
+         *   "what colo[u]r" -> "What Colo[u]r?" (rather than "What Colo[U]R?")
+         * and
+         *   "snake_case" -> "Snake_case" (to match word selection behavior)
+        case GeneralCategory::Open_Punctuation:
+        case GeneralCategory::Close_Punctuation:
+        case GeneralCategory::Connector_Punctuation:
+         */
+        capitalizeNextChar = true;
+        break;
+      case GeneralCategory::Final_Punctuation:
+        /* Special-case: exclude Unicode single-close-quote/apostrophe,
+           for examples like "Lowe’s" etc. */
+        if (ch != 0x2019) {
+          capitalizeNextChar = true;
+        }
+        break;
+      case GeneralCategory::Other_Punctuation:
+        /* Special-case: exclude ASCII apostrophe, for "Lowe's" etc. */
+        if (ch != '\'') {
+          capitalizeNextChar = true;
+        }
+        break;
+      default:
+        break;
+    }
+    if (!IS_IN_BMP(ch)) {
+      ++i;
     }
   }
 }
@@ -61,13 +104,11 @@ static void SetupCapitalization(const char16_t* aWord, uint32_t aLength,
 nsresult nsLineBreaker::FlushCurrentWord() {
   uint32_t length = mCurrentWord.Length();
   AutoTArray<uint8_t, 4000> breakState;
-  // XXX(Bug 1631371) Check if this should use a fallible operation as it
-  // pretended earlier.
-  breakState.AppendElements(length);
+  if (!breakState.AppendElements(length, mozilla::fallible)) {
+    return NS_ERROR_OUT_OF_MEMORY;
+  }
 
-  nsTArray<bool> capitalizationState;
-
-  if (mStrictness == LineBreaker::Strictness::Anywhere) {
+  if (mLineBreak == LineBreakRule::Anywhere) {
     memset(breakState.Elements(),
            gfxTextRun::CompressedGlyph::FLAG_BREAK_TYPE_NORMAL,
            length * sizeof(uint8_t));
@@ -75,13 +116,13 @@ nsresult nsLineBreaker::FlushCurrentWord() {
     // For break-strict set everything internal to "break", otherwise
     // to "no break"!
     memset(breakState.Elements(),
-           mWordBreak == LineBreaker::WordBreak::BreakAll
+           mWordBreak == WordBreakRule::BreakAll
                ? gfxTextRun::CompressedGlyph::FLAG_BREAK_TYPE_NORMAL
                : gfxTextRun::CompressedGlyph::FLAG_BREAK_TYPE_NONE,
            length * sizeof(uint8_t));
   } else {
-    nsContentUtils::LineBreaker()->GetJISx4051Breaks(
-        mCurrentWord.Elements(), length, mWordBreak, mStrictness,
+    LineBreaker::ComputeBreakPositions(
+        mCurrentWord.Elements(), length, mWordBreak, mLineBreak,
         mScriptIsChineseOrJapanese, breakState.Elements());
   }
 
@@ -103,6 +144,7 @@ nsresult nsLineBreaker::FlushCurrentWord() {
     }
   }
 
+  nsTArray<bool> capitalizationState;
   uint32_t offset = 0;
   for (i = 0; i < mTextItems.Length(); ++i) {
     TextItem* ti = &mTextItems[i];
@@ -128,9 +170,9 @@ nsresult nsLineBreaker::FlushCurrentWord() {
 
       if (!mWordContinuation && (ti->mFlags & BREAK_NEED_CAPITALIZATION)) {
         if (capitalizationState.Length() == 0) {
-          // XXX(Bug 1631371) Check if this should use a fallible operation as
-          // it pretended earlier.
-          capitalizationState.AppendElements(length);
+          if (!capitalizationState.AppendElements(length, mozilla::fallible)) {
+            return NS_ERROR_OUT_OF_MEMORY;
+          };
           memset(capitalizationState.Elements(), false, length * sizeof(bool));
           SetupCapitalization(mCurrentWord.Elements(), length,
                               capitalizationState.Elements());
@@ -193,17 +235,17 @@ nsresult nsLineBreaker::AppendText(nsAtom* aHyphenationLanguage,
 
   AutoTArray<uint8_t, 4000> breakState;
   if (aSink) {
-    // XXX(Bug 1631371) Check if this should use a fallible operation as it
-    // pretended earlier.
-    breakState.AppendElements(aLength);
+    if (!breakState.AppendElements(aLength, mozilla::fallible)) {
+      return NS_ERROR_OUT_OF_MEMORY;
+    }
   }
 
   bool noCapitalizationNeeded = true;
   nsTArray<bool> capitalizationState;
   if (aSink && (aFlags & BREAK_NEED_CAPITALIZATION)) {
-    // XXX(Bug 1631371) Check if this should use a fallible operation as it
-    // pretended earlier.
-    capitalizationState.AppendElements(aLength);
+    if (!capitalizationState.AppendElements(aLength, mozilla::fallible)) {
+      return NS_ERROR_OUT_OF_MEMORY;
+    }
     memset(capitalizationState.Elements(), false, aLength * sizeof(bool));
     noCapitalizationNeeded = false;
   }
@@ -241,8 +283,8 @@ nsresult nsLineBreaker::AppendText(nsAtom* aHyphenationLanguage,
     if (aSink && !noBreaksNeeded) {
       breakState[offset] =
           mBreakHere || (mAfterBreakableSpace && !isBreakableSpace) ||
-                  mWordBreak == LineBreaker::WordBreak::BreakAll ||
-                  mStrictness == LineBreaker::Strictness::Anywhere
+                  mWordBreak == WordBreakRule::BreakAll ||
+                  mLineBreak == LineBreakRule::Anywhere
               ? gfxTextRun::CompressedGlyph::FLAG_BREAK_TYPE_NORMAL
               : gfxTextRun::CompressedGlyph::FLAG_BREAK_TYPE_NONE;
     }
@@ -252,18 +294,17 @@ nsresult nsLineBreaker::AppendText(nsAtom* aHyphenationLanguage,
     if (isSpace || ch == '\n') {
       if (offset > wordStart && aSink) {
         if (!(aFlags & BREAK_SUPPRESS_INSIDE)) {
-          if (mStrictness == LineBreaker::Strictness::Anywhere) {
+          if (mLineBreak == LineBreakRule::Anywhere) {
             memset(breakState.Elements() + wordStart,
                    gfxTextRun::CompressedGlyph::FLAG_BREAK_TYPE_NORMAL,
                    offset - wordStart);
           } else if (wordHasComplexChar) {
-            // Save current start-of-word state because GetJISx4051Breaks will
-            // set it to false
-            uint8_t currentStart = breakState[wordStart];
-            nsContentUtils::LineBreaker()->GetJISx4051Breaks(
-                aText + wordStart, offset - wordStart, mWordBreak, mStrictness,
+            // Save current start-of-word state because ComputeBreakPositions()
+            // will set it to false.
+            AutoRestore<uint8_t> saveWordStartBreakState(breakState[wordStart]);
+            LineBreaker::ComputeBreakPositions(
+                aText + wordStart, offset - wordStart, mWordBreak, mLineBreak,
                 mScriptIsChineseOrJapanese, breakState.Elements() + wordStart);
-            breakState[wordStart] = currentStart;
           }
           if (hyphenator) {
             FindHyphenationPoints(hyphenator, aText + wordStart, aText + offset,
@@ -374,9 +415,9 @@ nsresult nsLineBreaker::AppendText(nsAtom* aHyphenationLanguage,
 
   AutoTArray<uint8_t, 4000> breakState;
   if (aSink) {
-    // XXX(Bug 1631371) Check if this should use a fallible operation as it
-    // pretended earlier.
-    breakState.AppendElements(aLength);
+    if (!breakState.AppendElements(aLength, mozilla::fallible)) {
+      return NS_ERROR_OUT_OF_MEMORY;
+    }
   }
 
   uint32_t start = offset;
@@ -407,8 +448,8 @@ nsresult nsLineBreaker::AppendText(nsAtom* aHyphenationLanguage,
       // will be set by nsILineBreaker, we don't consider CJK at this point.
       breakState[offset] =
           mBreakHere || (mAfterBreakableSpace && !isBreakableSpace) ||
-                  mWordBreak == LineBreaker::WordBreak::BreakAll ||
-                  mStrictness == LineBreaker::Strictness::Anywhere
+                  mWordBreak == WordBreakRule::BreakAll ||
+                  mLineBreak == LineBreakRule::Anywhere
               ? gfxTextRun::CompressedGlyph::FLAG_BREAK_TYPE_NORMAL
               : gfxTextRun::CompressedGlyph::FLAG_BREAK_TYPE_NONE;
     }
@@ -417,18 +458,17 @@ nsresult nsLineBreaker::AppendText(nsAtom* aHyphenationLanguage,
 
     if (isSpace) {
       if (offset > wordStart && aSink && !(aFlags & BREAK_SUPPRESS_INSIDE)) {
-        if (mStrictness == LineBreaker::Strictness::Anywhere) {
+        if (mLineBreak == LineBreakRule::Anywhere) {
           memset(breakState.Elements() + wordStart,
                  gfxTextRun::CompressedGlyph::FLAG_BREAK_TYPE_NORMAL,
                  offset - wordStart);
         } else if (wordHasComplexChar) {
-          // Save current start-of-word state because GetJISx4051Breaks will
-          // set it to false
-          uint8_t currentStart = breakState[wordStart];
-          nsContentUtils::LineBreaker()->GetJISx4051Breaks(
-              aText + wordStart, offset - wordStart, mWordBreak, mStrictness,
+          // Save current start-of-word state because ComputeBreakPositions()
+          // will set it to false.
+          AutoRestore<uint8_t> saveWordStartBreakState(breakState[wordStart]);
+          LineBreaker::ComputeBreakPositions(
+              aText + wordStart, offset - wordStart, mWordBreak, mLineBreak,
               mScriptIsChineseOrJapanese, breakState.Elements() + wordStart);
-          breakState[wordStart] = currentStart;
         }
       }
 
@@ -471,14 +511,19 @@ void nsLineBreaker::UpdateCurrentWordLanguage(nsAtom* aHyphenationLanguage) {
     mScriptIsChineseOrJapanese = false;
   } else {
     if (aHyphenationLanguage && !mCurrentWordLanguage) {
-      Locale loc = Locale(nsAtomCString(aHyphenationLanguage));
-      if (loc.GetScript().IsEmpty()) {
-        loc.Maximize();
+      Locale loc;
+      auto result =
+          LocaleParser::TryParse(nsAtomCString(aHyphenationLanguage), loc);
+
+      if (result.isErr()) {
+        return;
       }
-      const nsDependentCSubstring& script = loc.GetScript();
+      if (loc.Script().Missing() && loc.AddLikelySubtags().isErr()) {
+        return;
+      }
       mScriptIsChineseOrJapanese =
-          script.EqualsLiteral("Hans") || script.EqualsLiteral("Hant") ||
-          script.EqualsLiteral("Jpan") || script.EqualsLiteral("Hrkt");
+          loc.Script().EqualTo("Hans") || loc.Script().EqualTo("Hant") ||
+          loc.Script().EqualTo("Jpan") || loc.Script().EqualTo("Hrkt");
     }
     mCurrentWordLanguage = aHyphenationLanguage;
   }

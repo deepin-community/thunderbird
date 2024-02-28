@@ -4,7 +4,7 @@
 
 close-button =
     .aria-label = Đóng
-preferences-doc-title = Tùy chỉnh
+preferences-doc-title2 = Cài đặt
 category-list =
     .aria-label = Thể loại
 pane-general-title = Tổng quát
@@ -22,6 +22,9 @@ category-chat =
 pane-calendar-title = Lịch
 category-calendar =
     .tooltiptext = Lịch
+pane-sync-title = Đồng bộ hóa
+category-sync =
+    .tooltiptext = Đồng bộ hóa
 general-language-and-appearance-header = Ngôn ngữ & giao diện
 general-incoming-mail-header = Thư đến:
 general-files-and-attachment-header = Tập tin & đính kèm
@@ -115,12 +118,18 @@ restore-default-label =
     .label = Khôi phục về mặc định
     .accesskey = R
 default-search-engine = Công cụ tìm kiếm mặc định
-add-search-engine =
-    .label = Thêm từ tập tin
-    .accesskey = A
+add-web-search-engine =
+    .label = Thêm…
+    .accesskey = a
 remove-search-engine =
     .label = Xóa
     .accesskey = v
+add-opensearch-provider-title = Thêm nhà cung cấp OpenSearch
+add-opensearch-provider-text = Nhập URL của nhà cung cấp OpenSearch để thêm. Sử dụng URL trực tiếp của dập tin mô tả OpenSearch, hoặc một URL mànó có thể được tự động phát hiện.
+adding-opensearch-provider-failed-title = Thêm nhà cung cấp OpenSearch không thành công
+# Variables:
+# $url (String) - URL an OpenSearch provider was requested for.
+adding-opensearch-provider-failed-text = Không thể thêm nhà cung cấp OpenSearch cho { $url }.
 minimize-to-tray-label =
     .label = Khi { -brand-short-name } đã thu nhỏ, di chuyển nó vào khay
     .accesskey = m
@@ -143,7 +152,7 @@ change-dock-icon = Thay đổi tùy chọn cho biểu tượng ứng dụng
 app-icon-options =
     .label = Tùy chọn biểu tượng ứng dụng…
     .accesskey = n
-notification-settings = Thông báo và âm thanh mặc định có thể được tắt trong Notification pane của System Preferences.
+notification-settings2 = Có thể tắt cảnh báo và âm thanh mặc định trên ngăn thông báo của cài đặt hệ thống.
 animated-alert-label =
     .label = Hiển thị thông báo
     .accesskey = S
@@ -153,7 +162,7 @@ customize-alert-label =
 biff-use-system-alert =
     .label = Sử dụng thông báo hệ thống
 tray-icon-unread-label =
-    .label = Hiển thị biểu tượng khay cho các tin nhắn chưa đọc
+    .label = Hiển thị biểu tượng khay cho các thư chưa đọc
     .accesskey = t
 tray-icon-unread-description = Được đề xuất khi sử dụng các nút trên thanh tác vụ nhỏ
 mail-system-sound-label =
@@ -187,6 +196,17 @@ autoscroll-label =
 smooth-scrolling-label =
     .label = Cuộn uyển chuyển
     .accesskey = m
+browsing-gtk-use-non-overlay-scrollbars =
+    .label = Luôn hiển thị thanh cuộn
+    .accesskey = c
+window-layout-legend = Bố trí cửa sổ
+draw-in-titlebar-label =
+    .label = Ẩn thanh tiêu đề cửa sổ hệ thống
+    .accesskey = H
+auto-hide-tabbar-label =
+    .label = Tự động ẩn thanh thẻ
+    .accesskey = A
+auto-hide-tabbar-description = Ẩn thanh thẻ khi chỉ mở một thẻ
 system-integration-legend = Hệ thống tích hợp
 always-check-default =
     .label = Luôn kiểm tra xem { -brand-short-name } có phải là ứng dụng thư mặc định khi khởi động
@@ -267,6 +287,9 @@ smart-cache-label =
 clear-cache-button =
     .label = Xóa ngay
     .accesskey = C
+clear-cache-shutdown-label =
+    .label = Xóa bộ nhớ đệm khi thoát
+    .accesskey = s
 fonts-legend = Phông chữ & màu sắc
 default-font-label =
     .value = Phông chữ mặc định:
@@ -311,8 +334,8 @@ quoted-text-color =
     .accesskey = o
 search-handler-table =
     .placeholder = Lọc các loại nội dung và hành động
-
-
+type-column-header = Kiểu dữ liệu
+action-column-header = Thao tác
 save-to-label =
     .label = Lưu các tập tin vào
     .accesskey = S
@@ -330,7 +353,7 @@ choose-folder-label =
 always-ask-label =
     .label = Luôn hỏi tôi nơi lưu tập tin
     .accesskey = A
-display-tags-text = Thẻ có thể được sử dụng để phân loại và ưu tiên thư của bạn.
+display-tags-text = Nhãn có thể được sử dụng để phân loại và ưu tiên thư của bạn.
 new-tag-button =
     .label = Mới…
     .accesskey = N
@@ -346,6 +369,9 @@ auto-mark-as-read =
 mark-read-no-delay =
     .label = Ngay lập tức trên màn hình
     .accesskey = o
+view-attachments-inline =
+    .label = Xem tập tin đính kèm nội tuyến
+    .accesskey = V
 
 ## Note: This will concatenate to "After displaying for [___] seconds",
 ## using (mark-read-delay) and a number (seconds-label).
@@ -403,6 +429,9 @@ auto-save-end = phút
 warn-on-send-accel-key =
     .label = Xác nhận khi sử dụng phím tắt để gửi thư
     .accesskey = C
+add-link-previews =
+    .label = Thêm bản xem trước liên kết khi dán URL
+    .accesskey = i
 spellcheck-label =
     .label = Kiểm tra chính tả trước khi gửi
     .accesskey = C
@@ -434,10 +463,19 @@ restore-html-label =
 default-format-label =
     .label = Sử dụng định dạng của đoạn thay vì phần thân văn bản theo mặc định
     .accesskey = P
-format-description = Cấu hình hành vi định dạng văn bản
-send-options-label =
-    .label = Tùy chọn gửi…
-    .accesskey = S
+compose-send-format-title = Định dạng gửi
+compose-send-automatic-option =
+    .label = Tự động
+compose-send-automatic-description = Nếu không có kiểu nào được sử dụng trong thư, hãy gửi văn bản thuần túy. Nếu không, hãy gửi HTML có dự phòng văn bản thuần túy.
+compose-send-both-option =
+    .label = Cả HTML và văn bản thuần túy
+compose-send-both-description = Ứng dụng email của người nhận sẽ xác định phiên bản nào sẽ hiển thị.
+compose-send-html-option =
+    .label = Chỉ HTML
+compose-send-html-description = Một số người nhận có thể không đọc được thư nếu không có văn bản thuần túy dự phòng.
+compose-send-plain-option =
+    .label = Chỉ văn bản thuần túy
+compose-send-plain-description = Một số kiểu sẽ được chuyển đổi thành một kiểu thay thế đơn giản, trong khi các tính năng thành phần khác sẽ bị tắt.
 autocomplete-description = Khi tìm địa chỉ trong thư, tra cứu các mục khớp nhau trong:
 ab-label =
     .label = Sổ địa chỉ nội bộ
@@ -506,23 +544,14 @@ third-party-never =
     .label = Không bao giờ
 third-party-visited =
     .label = Từ các trang đã truy cập
-keep-label =
-    .value = Lưu cho tới khi:
-    .accesskey = K
-keep-expire =
-    .label = chúng hết hạn
-keep-close =
-    .label = Tôi đóng { -brand-short-name }
-keep-ask =
-    .label = hỏi tôi mọi lúc
 cookies-button =
     .label = Hiện cookie…
     .accesskey = S
 do-not-track-label =
     .label = Gửi tín hiệu “Không theo dõi” tới trang web để cho biết bạn không muốn bị theo dõi
     .accesskey = n
-learn-button =
-    .label = Tìm hiểu thêm
+dnt-learn-more-button =
+    .value = Tìm hiểu thêm
 passwords-description = { -brand-short-name } có thể ghi nhớ mật khẩu cho tất cả tài khoản của bạn.
 passwords-button =
     .label = Mật khẩu đã lưu…
@@ -582,6 +611,22 @@ certificate-button =
 security-devices-button =
     .label = Thiết bị bảo mật…
     .accesskey = D
+email-e2ee-header = Mã hóa đầu cuối email
+account-settings = Cài đặt tài khoản
+email-e2ee-enable-info = Thiết lập tài khoản email và danh tính cho mã hóa đầu cuối trong cài đặt tài khoản.
+email-e2ee-automatism = Tự động sử dụng mã hóa
+email-e2ee-automatism-pre =
+    { -brand-short-name } có thể hỗ trợ bằng cách tự động bật hoặc tắt mã hóa trong khi soạn email.
+    Bật/tắt tự động dựa trên tính khả dụng của các khóa hoặc chứng chỉ đối tác hợp lệ và được chấp nhận.
+email-e2ee-auto-on =
+    .label = Tự động kích hoạt mã hóa khi có thể
+email-e2ee-auto-off =
+    .label = Tự động tắt mã hóa khi người nhận thay đổi và không thể mã hóa nữa
+email-e2ee-auto-off-notify =
+    .label = Hiển thị thông báo bất cứ khi nào mã hóa tự động bị tắt
+email-e2ee-automatism-post =
+    Các quyết định tự động có thể bị ghi đè bằng cách bật hoặc tắt mã hóa theo cách thủ công khi soạn thư.
+    Lưu ý: mã hóa luôn được bật tự động khi trả lời thư được mã hóa.
 
 ## Chat Tab
 
@@ -651,8 +696,8 @@ chat-browse-sound-button =
 theme-label =
     .value = Chủ đề:
     .accesskey = T
-style-thunderbird =
-    .label = Thunderbird
+style-mail =
+    .label = { -brand-short-name }
 style-bubbles =
     .label = Bong bóng
 style-dark =
@@ -675,17 +720,59 @@ chat-variant-label =
 # Notice: The value of the `.style` attribute is a CSS string, and the `width`
 # is the name of the CSS property. It is intended only to adjust the element's width.
 # Do not translate.
-search-preferences-input =
+search-preferences-input2 =
     .style = width: 15.4em
-    .placeholder = Tìm kiếm trong Tùy chỉnh
+    .placeholder = Tìm trong Cài đặt
 
-## Preferences UI Search Results
+## Settings UI Search Results
 
 search-results-header = Kết quả tìm kiếm
 # `<span data-l10n-name="query"></span>` will be replaced by the search term.
-search-results-empty-message =
+search-results-empty-message2 =
     { PLATFORM() ->
-        [windows] Xin lỗi! Không có kết quả trong phần Tùy chọn cho “<span data-l10n-name="query"></span>”.
-       *[other] Xin lỗi! Không có kết quả trong phần Tùy chỉnh cho “<span data-l10n-name="query"></span>”.
+        [windows] Xin lỗi! Không có kết quả nào trong Tùy chọn cho “<span data-l10n-name="query"></span>”.
+       *[other] Xin lỗi! Không có kết quả nào trong Cài đặt cho “<span data-l10n-name="query"></span>”.
     }
 search-results-help-link = Cần trợ giúp? Đi đến <a data-l10n-name="url">Hỗ trợ { -brand-short-name }</a>
+
+## Sync Tab
+
+sync-signedout-caption = Mang trang web theo bạn
+sync-signedout-description = Đồng bộ hóa tài khoản, sổ địa chỉ, lịch, tiện ích mở rộng và cài đặt trên tất cả các thiết bị của bạn.
+# Note: "Sync" represents the Firefox Sync product so it shouldn't be translated.
+sync-signedout-account-signin-btn = Đăng nhập để đồng bộ hóa…
+sync-pane-header = Đồng bộ hóa
+# Variables:
+# $userEmail (String) - The email logged into Sync.
+sync-pane-email-not-verified = “{ $userEmail }” chưa được xác minh.
+# Variables:
+# $userEmail (String) - The email logged into Sync.
+sync-signedin-login-failure = Vui lòng đăng nhập để kết nối lại “{ $userEmail }”
+sync-pane-resend-verification = Gửi lại xác minh
+sync-pane-sign-in = Đăng nhập
+sync-pane-remove-account = Xóa tài khoản
+sync-pane-edit-photo =
+    .title = Đổi hình hồ sơ
+sync-pane-manage-account = Quản lý tài khoản
+sync-pane-sign-out = Đăng xuất…
+sync-pane-device-name-title = Tên thiết bị
+sync-pane-change-device-name = Thay đổi tên thiết bị
+sync-pane-cancel = Hủy bỏ
+sync-pane-save = Lưu
+sync-pane-show-synced-header-on = Đồng bộ hóa đang bật
+sync-pane-show-synced-header-off = Đồng bộ hóa đang tắt
+sync-pane-sync-now = Đồng bộ ngay
+sync-panel-sync-now-syncing = Đang đồng bộ hóa…
+show-synced-list-heading = Bạn hiện đang đồng bộ hóa các mục này:
+show-synced-learn-more = Tìm hiểu thêm…
+show-synced-item-account = Tài khoản email
+show-synced-item-address = Sổ địa chỉ
+show-synced-item-calendar = Lịch
+show-synced-item-identity = Danh tính
+show-synced-item-passwords = Mật khẩu
+show-synced-change = Thay đổi…
+synced-acount-item-server-config = Cấu hình máy chủ
+synced-acount-item-filters = Bộ lọc
+synced-acount-item-keys = OpenPGP - S/MIME
+sync-disconnected-text = Đồng bộ hóa tài khoản email, sổ địa chỉ, lịch và danh tính trên tất cả các thiết bị của bạn.
+sync-disconnected-turn-on-sync = Bật Đồng bộ hóa…

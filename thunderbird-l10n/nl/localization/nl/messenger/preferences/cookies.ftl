@@ -2,31 +2,23 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-cookies-window-dialog =
+cookies-window-dialog2 =
     .title = Cookies
-    .style = width: 36em;
-
+cookies-dialog-title = Cookies
 window-close-key =
     .key = w
-
 window-focus-search-key =
     .key = f
-
 window-focus-search-alt-key =
     .key = k
-
 filter-search-label =
     .value = Zoeken:
     .accesskey = Z
-
 cookies-on-system-label = De volgende cookies zijn op uw computer opgeslagen:
-
 treecol-site-header =
     .label = Website
-
 treecol-name-header =
     .label = Cookienaam
-
 props-name-label =
     .value = Naam:
 props-value-label =
@@ -41,15 +33,12 @@ props-expires-label =
     .value = Verloopt:
 props-container-label =
     .value = Container:
-
 remove-cookie-button =
     .label = Cookie verwijderen
     .accesskey = v
-
 remove-all-cookies-button =
     .label = Alle cookies verwijderen
     .accesskey = A
-
 cookie-close-button =
     .label = Sluiten
     .accesskey = S

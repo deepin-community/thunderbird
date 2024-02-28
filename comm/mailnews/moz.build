@@ -10,9 +10,11 @@ DIRS += [
     "db/gloda",
     "db/mork",
     "db/msgdb",
+    "export/modules",
     "extensions",
     "imap/public",
     "imap/src",
+    "import/modules",
     "import/public",
     "import/src",
     "intl",
@@ -40,7 +42,6 @@ if CONFIG["MOZ_MAPI_SUPPORT"]:
     TEST_DIRS += ["mapi/test"]
 
 DIRS += [
-    "build",
     "import/build",
 ]
 
@@ -62,6 +63,7 @@ TESTING_JS_MODULES.mailnews += [
     "test/resources/LocalAccountUtils.jsm",
     "test/resources/MailTestUtils.jsm",
     "test/resources/MessageGenerator.jsm",
+    "test/resources/MessageInjection.jsm",
     "test/resources/NetworkTestUtils.jsm",
     "test/resources/PromiseTestUtils.jsm",
     "test/resources/smimeUtils.jsm",
@@ -73,13 +75,16 @@ else:
     test_harness_base = TEST_HARNESS_FILES.xpcshell
 
 test_harness_base.mailnews.data += [
-    "/%s/mailnews/test/data/**" % CONFIG["commreltopsrcdir"],
+    "/comm/mailnews/test/data/**",
 ]
 
 test_harness_base.mailnews.resources += [
-    "/%s/mailnews/test/resources/**" % CONFIG["commreltopsrcdir"],
+    "/comm/mailnews/test/resources/**",
 ]
 
 JS_PREFERENCE_PP_FILES += [
     "mailnews.js",
 ]
+
+Library("mail")
+FINAL_LIBRARY = "xul"

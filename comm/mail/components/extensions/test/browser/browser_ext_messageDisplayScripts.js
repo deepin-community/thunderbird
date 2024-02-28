@@ -3,9 +3,9 @@
  * file, you can obtain one at http://mozilla.org/MPL/2.0/. */
 
 let account, messages;
-let messagePane = document.getElementById("messagepane");
+let tabmail, about3Pane, messagePane;
 
-add_task(async () => {
+add_setup(async () => {
   account = createAccount();
   let rootFolder = account.incomingServer.rootFolder;
   rootFolder.createSubfolder("messageDisplayScripts", null);
@@ -13,7 +13,11 @@ add_task(async () => {
   createMessages(folder, 11);
   messages = [...folder.messages];
 
-  window.gFolderTreeView.selectFolder(folder);
+  tabmail = document.getElementById("tabmail");
+  about3Pane = tabmail.currentTabInfo.chromeBrowser.contentWindow;
+  about3Pane.displayFolder(folder.URI);
+  messagePane =
+    about3Pane.messageBrowser.contentDocument.getElementById("messagepane");
 });
 
 async function checkMessageBody(expected, message, browser) {
@@ -68,8 +72,8 @@ add_task(async function testInsertRemoveCSS() {
     },
   });
 
-  window.gFolderDisplay.selectViewIndex(0);
-  await BrowserTestUtils.browserLoaded(messagePane);
+  about3Pane.threadTree.selectedIndex = 0;
+  await awaitBrowserLoaded(messagePane);
 
   await extension.startup();
 
@@ -136,8 +140,8 @@ add_task(async function testInsertRemoveCSSNoPermissions() {
     },
   });
 
-  window.gFolderDisplay.selectViewIndex(1);
-  await BrowserTestUtils.browserLoaded(messagePane);
+  about3Pane.threadTree.selectedIndex = 1;
+  await awaitBrowserLoaded(messagePane);
 
   await extension.startup();
 
@@ -182,8 +186,8 @@ add_task(async function testExecuteScript() {
     },
   });
 
-  window.gFolderDisplay.selectViewIndex(2);
-  await BrowserTestUtils.browserLoaded(messagePane);
+  about3Pane.threadTree.selectedIndex = 2;
+  await awaitBrowserLoaded(messagePane);
 
   await extension.startup();
 
@@ -251,8 +255,8 @@ add_task(async function testExecuteScriptNoPermissions() {
     },
   });
 
-  window.gFolderDisplay.selectViewIndex(3);
-  await BrowserTestUtils.browserLoaded(messagePane);
+  about3Pane.threadTree.selectedIndex = 3;
+  await awaitBrowserLoaded(messagePane);
 
   await extension.startup();
 
@@ -286,8 +290,8 @@ add_task(async function testExecuteScriptAlias() {
     },
   });
 
-  window.gFolderDisplay.selectViewIndex(4);
-  await BrowserTestUtils.browserLoaded(messagePane);
+  about3Pane.threadTree.selectedIndex = 4;
+  await awaitBrowserLoaded(messagePane);
 
   await extension.startup();
 
@@ -313,6 +317,13 @@ add_task(async function testRegister() {
   let extension = ExtensionTestUtils.loadExtension({
     files: {
       "background.js": async () => {
+        // Keep track of registered scrips being executed and ready.
+        browser.runtime.onMessage.addListener((message, sender) => {
+          if (message == "LOADED") {
+            window.sendMessage("ScriptLoaded", sender.tab.id);
+          }
+        });
+
         let registeredScript = await browser.messageDisplayScripts.register({
           css: [{ code: "body { color: white }" }, { file: "test.css" }],
           js: [
@@ -321,16 +332,39 @@ add_task(async function testRegister() {
           ],
         });
 
-        await window.sendMessage();
+        browser.test.onMessage.addListener(async (message, data) => {
+          switch (message) {
+            case "Unregister":
+              await registeredScript.unregister();
+              browser.test.notifyPass("finished");
+              break;
 
-        await registeredScript.unregister();
+            case "RuntimeMessageTest":
+              try {
+                browser.test.assertEq(
+                  `Received: ${data.tabId}`,
+                  await browser.tabs.sendMessage(data.tabId, data.tabId)
+                );
+              } catch (ex) {
+                browser.test.fail(
+                  `Failed to send message to messageDisplayScript: ${ex}`
+                );
+              }
+              browser.test.sendMessage("RuntimeMessageTestDone");
+              break;
+          }
+        });
 
-        browser.test.notifyPass("finished");
+        window.sendMessage("Ready");
       },
       "test.css": "body { background-color: green; }",
       "test.js": () => {
         document.body.querySelector(".moz-text-flowed").textContent +=
           "Hey look, the script ran!";
+        browser.runtime.onMessage.addListener(async message => {
+          return `Received: ${message}`;
+        });
+        browser.runtime.sendMessage("LOADED");
       },
       "utils.js": await getUtilsJS(),
     },
@@ -340,14 +374,14 @@ add_task(async function testRegister() {
     },
   });
 
-  let tabmail = document.getElementById("tabmail");
-  window.gFolderDisplay.selectViewIndex(5);
-  await BrowserTestUtils.browserLoaded(messagePane);
+  about3Pane.threadTree.selectedIndex = 5;
+  await awaitBrowserLoaded(messagePane);
 
   extension.startup();
-  await extension.awaitMessage();
+  await extension.awaitMessage("Ready");
 
-  // Check a message that was already loaded.
+  // Check a message that was already loaded. This tab has not loaded the
+  // registered scripts.
   await checkMessageBody(
     {
       backgroundColor: "rgba(0, 0, 0, 0)",
@@ -357,12 +391,10 @@ add_task(async function testRegister() {
   );
 
   // Load a new message and check it is modified.
-  let scriptsAddedPromise = BrowserTestUtils.waitForEvent(
-    window,
-    "extension-scripts-added"
-  );
-  window.gFolderDisplay.selectViewIndex(6);
-  await scriptsAddedPromise;
+  let loadPromise = extension.awaitMessage("ScriptLoaded");
+  about3Pane.threadTree.selectedIndex = 6;
+  let tabId = await loadPromise;
+
   await checkMessageBody(
     {
       backgroundColor: "rgb(0, 128, 0)",
@@ -372,19 +404,17 @@ add_task(async function testRegister() {
     },
     messages[6]
   );
+  // Check runtime messaging.
+  let testDonePromise = extension.awaitMessage("RuntimeMessageTestDone");
+  extension.sendMessage("RuntimeMessageTest", { tabId });
+  await testDonePromise;
 
   // Open the message in a new tab.
-  // First, sabotage the message pane so we can be sure it changed.
-  messagePane.contentDocument.body.style.backgroundColor = "red";
-  messagePane.contentDocument.body.textContent = "Nope.";
-
-  scriptsAddedPromise = BrowserTestUtils.waitForEvent(
-    window,
-    "extension-scripts-added"
-  );
-  openMessageInTab(messages[6]);
-  await scriptsAddedPromise;
+  loadPromise = extension.awaitMessage("ScriptLoaded");
+  let messageTab = await openMessageInTab(messages[6]);
+  let messageTabId = await loadPromise;
   Assert.equal(tabmail.tabInfo.length, 2);
+
   await checkMessageBody(
     {
       backgroundColor: "rgb(0, 128, 0)",
@@ -392,11 +422,16 @@ add_task(async function testRegister() {
       foo: "bar",
       textContent: "Hey look, the script ran!",
     },
-    messages[6]
+    messages[6],
+    messageTab.browser
   );
+  // Check runtime messaging.
+  testDonePromise = extension.awaitMessage("RuntimeMessageTestDone");
+  extension.sendMessage("RuntimeMessageTest", { tabId: messageTabId });
+  await testDonePromise;
 
   // Open a content tab. The CSS and script shouldn't apply.
-  let newTab = window.openContentTab("http://mochi.test:8888/");
+  let contentTab = window.openContentTab("http://mochi.test:8888/");
   // Let's wait a while and see if anything happens:
   // eslint-disable-next-line mozilla/no-arbitrary-setTimeout
   await new Promise(resolve => setTimeout(resolve, 1000));
@@ -407,16 +442,12 @@ add_task(async function testRegister() {
       foo: null,
     },
     undefined,
-    newTab.browser
+    contentTab.browser
   );
-  scriptsAddedPromise = BrowserTestUtils.waitForEvent(
-    window,
-    "extension-scripts-added"
-  );
-  tabmail.closeTab(newTab);
 
-  // We should be back at the message opened in a tab.
-  await scriptsAddedPromise;
+  // Closing this tab should bring us back to the message in a tab.
+  tabmail.closeTab(contentTab);
+  Assert.equal(tabmail.currentTabInfo, messageTab);
   await checkMessageBody(
     {
       backgroundColor: "rgb(0, 128, 0)",
@@ -424,14 +455,20 @@ add_task(async function testRegister() {
       foo: "bar",
       textContent: "Hey look, the script ran!",
     },
-    messages[6]
+    messages[6],
+    messageTab.browser
   );
+  // Check runtime messaging.
+  testDonePromise = extension.awaitMessage("RuntimeMessageTestDone");
+  extension.sendMessage("RuntimeMessageTest", { tabId: messageTabId });
+  await testDonePromise;
 
   // Open the message in a new window.
+  loadPromise = extension.awaitMessage("ScriptLoaded");
   let newWindow = await openMessageInWindow(messages[7]);
-  let newWindowMessagePane = newWindow.document.getElementById("messagepane");
+  let newWindowMessagePane = newWindow.getBrowser();
+  let windowTabId = await loadPromise;
 
-  await BrowserTestUtils.waitForEvent(newWindow, "extension-scripts-added");
   await checkMessageBody(
     {
       backgroundColor: "rgb(0, 128, 0)",
@@ -442,9 +479,13 @@ add_task(async function testRegister() {
     messages[7],
     newWindowMessagePane
   );
+  // Check runtime messaging.
+  testDonePromise = extension.awaitMessage("RuntimeMessageTestDone");
+  extension.sendMessage("RuntimeMessageTest", { tabId: windowTabId });
+  await testDonePromise;
 
   // Unregister.
-  extension.sendMessage();
+  extension.sendMessage("Unregister");
   await extension.awaitFinish("finished");
   await extension.unload();
 
@@ -456,26 +497,19 @@ add_task(async function testRegister() {
       foo: "bar",
       textContent: "Hey look, the script ran!",
     },
-    messages[6]
+    messages[6],
+    messageTab.browser
   );
 
-  // Close the new tab. The message reloads in the first tab, so the CSS
-  // should't be applied and the script shouldn't have run.
-  // Sabotage the message pane so we can be sure it changed.
-  messagePane.contentDocument.body.style.backgroundColor = "red";
-  messagePane.contentDocument.body.textContent = "Nope.";
-  tabmail.closeTab(tabmail.tabInfo[1]);
+  // Close the new tab.
+  tabmail.closeTab(messageTab);
 
-  await BrowserTestUtils.browserLoaded(messagePane);
-  // Let's wait a while and see if anything happens:
-  // eslint-disable-next-line mozilla/no-arbitrary-setTimeout
-  await new Promise(resolve => setTimeout(resolve, 1000));
   await checkMessageBody(
     {
       backgroundColor: "rgba(0, 0, 0, 0)",
       color: "rgb(0, 0, 0)",
-      foo: null,
-      textContent: "",
+      foo: "bar",
+      textContent: "Hey look, the script ran!",
     },
     messages[6]
   );
@@ -535,13 +569,13 @@ async function subtestContentScriptManifest(message, ...permissions) {
 }
 
 add_task(async function testContentScriptManifestNoPermission() {
-  window.gFolderDisplay.selectViewIndex(7);
-  await BrowserTestUtils.browserLoaded(messagePane);
+  about3Pane.threadTree.selectedIndex = 7;
+  await awaitBrowserLoaded(messagePane);
   await subtestContentScriptManifest(messages[7]);
 });
 add_task(async function testContentScriptManifest() {
-  window.gFolderDisplay.selectViewIndex(8);
-  await BrowserTestUtils.browserLoaded(messagePane);
+  about3Pane.threadTree.selectedIndex = 8;
+  await awaitBrowserLoaded(messagePane);
   await subtestContentScriptManifest(messages[8], "messagesModify");
 });
 
@@ -587,13 +621,13 @@ async function subtestContentScriptRegister(message, ...permissions) {
 }
 
 add_task(async function testContentScriptRegisterNoPermission() {
-  window.gFolderDisplay.selectViewIndex(9);
-  await BrowserTestUtils.browserLoaded(messagePane);
+  about3Pane.threadTree.selectedIndex = 9;
+  await awaitBrowserLoaded(messagePane);
   await subtestContentScriptRegister(messages[9], "<all_urls>");
 });
 add_task(async function testContentScriptRegister() {
-  window.gFolderDisplay.selectViewIndex(10);
-  await BrowserTestUtils.browserLoaded(messagePane);
+  about3Pane.threadTree.selectedIndex = 10;
+  await awaitBrowserLoaded(messagePane);
   await subtestContentScriptRegister(
     messages[10],
     "<all_urls>",

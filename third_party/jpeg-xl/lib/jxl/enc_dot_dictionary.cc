@@ -11,7 +11,6 @@
 #include <array>
 #include <utility>
 
-#include "lib/jxl/aux_out.h"
 #include "lib/jxl/base/override.h"
 #include "lib/jxl/base/status.h"
 #include "lib/jxl/chroma_from_luma.h"
@@ -35,9 +34,9 @@ const double kEllipseMaxSigma = 3.1;  // Maximum Sigma value
 const size_t kEllipseSigmaQ = 16;     // Number of quantization levels for sigma
 const size_t kEllipseAngleQ = 8;      // Quantization level for the angle
 // TODO: fix these values.
-const std::array<double, 3> kEllipseMinIntensity{-0.05, 0.0, -0.5};
-const std::array<double, 3> kEllipseMaxIntensity{0.05, 1.0, 0.4};
-const std::array<size_t, 3> kEllipseIntensityQ{10, 36, 10};
+const std::array<double, 3> kEllipseMinIntensity{{-0.05, 0.0, -0.5}};
+const std::array<double, 3> kEllipseMaxIntensity{{0.05, 1.0, 0.4}};
+const std::array<size_t, 3> kEllipseIntensityQ{{10, 36, 10}};
 }  // namespace
 
 std::vector<PatchInfo> FindDotDictionary(const CompressParams& cparams,

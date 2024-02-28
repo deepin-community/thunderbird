@@ -42,7 +42,7 @@ newsgroups-label = Novičarske skupine
 newsgroups-description = { -brand-short-name } se vam omogoča priključiti vsem mogočim novičarskim skupinam.
 
 import-title = Uvoz iz drugega programa
-import-paragraph = { -brand-short-name } vam omogoča uvoziti e-poštna sporočila, stike, naročnine na vire, nastavitve in filtre iz drugih programov za e-pošto in iz običajnih oblik imenikov.
+import-paragraph2 = { -brand-short-name } vam omogoča uvoziti e-poštna sporočila, stike, naročnine na vire, nastavitve in filtre iz drugih programov za e-pošto in iz običajnih oblik imenikov.
 
 import-label = Uvozi
     .aria-label = Uvozi podatke iz drugih programov

@@ -10,10 +10,6 @@
    broken. So instead just show the normal titlebar in that case, and override
    the window color as transparent when the compositor is available. */
 @media (-moz-windows-compositor: 0) {
-  #messengerWindow[tabsintitlebar] #titlebar:-moz-lwtheme {
-    visibility: visible;
-  }
-
   /* Prevent accent color overriding the window background for
    * light and dark theme on Aero Basic. This is copied from browser-aero.css. */
   @media (-moz-windows-default-theme) {
@@ -26,13 +22,8 @@
   }
 }
 
-@media (-moz-os-version: windows-win7) {
+@media (-moz-platform: windows-win7) {
   @media (-moz-windows-default-theme) {
-    /* Hide the LW-background-box to show the window background */
-    :root[tabsintitlebar] #LW-background-box {
-      display: none;
-    }
-
     /* Always show light toolbar elements on aero surface. */
     #tabs-toolbar {
       color: hsl(240,9%,98%);
@@ -41,24 +32,6 @@
     /* Keep showing the correct color inside the tabs. */
     .tabmail-tab {
       color: var(--lwt-text-color) !important;
-    }
-
-    /* Because we're forcing the tabs toolbar to be [brighttext] to
-     * get white toolbar button icons, we need to manually set the
-     * correct color for the tab hover state for the light theme. */
-    .tabmail-tab:hover > .tab-stack > .tab-background:not([selected=true]):-moz-lwtheme-darktext {
-      background-color: rgba(0,0,0,.1) !important;
-    }
-    .tabmail-tab:hover > .tab-stack > .tab-background > .tab-line:not([selected=true]):-moz-lwtheme-darktext {
-      background-color: rgba(0,0,0,.2) !important;
-    }
-
-    :root[tabsintitlebar] #mail-menubar {
-      color: CaptionText;
-    }
-
-    :root[tabsintitlebar]:not([inFullscreen]) #mail-menubar:-moz-window-inactive {
-      color: InactiveCaptionText;
     }
 
     #messengerWindow[tabsintitlebar] #mail-menubar > menu {
@@ -79,18 +52,14 @@
     --toolbarbutton-icon-fill: white;
   }
 
-  #navigation-toolbox {
-    background-color: transparent;
-  }
-
   :root[tabsintitlebar] #mail-menubar,
   :root[tabsintitlebar]:not([inFullscreen]) #mail-menubar:-moz-window-inactive {
     color: inherit;
   }
 }
 
-@media (-moz-os-version: windows-win7),
-       (-moz-os-version: windows-win8) {
+@media (-moz-platform: windows-win7),
+       (-moz-platform: windows-win8) {
   #messengerWindow .statusbar {
     background-color: var(--lwt-accent-color);
   }
@@ -101,17 +70,11 @@
     }
   }
 
-  /* Always show full-height tab separators on tabs with borders. */
-  .tabmail-tab::before,
-  .tabmail-tab::after {
-    border-image: none !important;
-  }
-
   /* Show border on tabs with background colors and
    * show the tabs toolbar background color inside tabs. */
   .tabmail-tab {
     background-color: var(--lwt-accent-color) !important;
-    border-top: 1px solid var(--tabs-border-color);
+    border-top: 1px solid var(--lwt-tabs-border-color);
     background-clip: padding-box;
   }
 
@@ -125,13 +88,13 @@
    * by the slightly transparent outside tabs-border-color. */
   .tabmail-tab:first-child {
     margin-inline-start: 0 !important;
-    border-inline-start: 1px solid var(--tabs-border-color);
+    border-inline-start: 1px solid var(--lwt-tabs-border-color);
   }
 
   /* The border at the end of the tab strip is replaced
    * by the slightly transparent outside tabs-border-color. */
   .tabmail-tab:last-child {
-    border-inline-end: 1px solid var(--tabs-border-color);
+    border-inline-end: 1px solid var(--lwt-tabs-border-color);
   }
 
   .tabmail-tab:first-child::before,
@@ -141,11 +104,13 @@
 
   /* Use proper menu text styling in Win7 classic mode (copied from browser.css) */
   @media (-moz-windows-default-theme: 0) {
-    :root[tabsintitlebar]:not([inFullscreen]) #mail-menubar {
+    :root[tabsintitlebar]:not([inFullscreen]) #mail-menubar,
+    :root[tabsintitlebar]:not([inFullscreen]) unified-toolbar {
       color: CaptionText;
     }
 
-    :root[tabsintitlebar]:not([inFullscreen]) #mail-menubar:-moz-window-inactive {
+    :root[tabsintitlebar]:not([inFullscreen]) #mail-menubar:-moz-window-inactive,
+    :root[tabsintitlebar]:not([inFullscreen]) unified-toolbar:-moz-window-inactive {
       color: InactiveCaptionText;
     }
 
@@ -164,7 +129,7 @@
 /* Restored windows get an artificial border on windows, because the lwtheme background
  * overlaps the regular window border. That isn't the case for us, so we avoid painting
  * over the native border with our custom borders: */
-#navigator-toolbox {
+#navigation-toolbox {
   /* These are !important to avoid specificity-wars with the selectors that add borders here. */
   background-image: none !important;
   border-top: none !important;

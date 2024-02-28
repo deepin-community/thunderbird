@@ -15,11 +15,6 @@ var { close_window } = ChromeUtils.import(
   "resource://testing-common/mozmill/WindowHelpers.jsm"
 );
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-var { AppConstants } = ChromeUtils.import(
-  "resource://gre/modules/AppConstants.jsm"
-);
-
 async function check_eml_window_title(subject, eml) {
   let file = new FileUtils.File(getTestFilePath(`data/${eml}`));
   let msgc = await open_message_from_file(file);
@@ -37,6 +32,9 @@ async function check_eml_window_title(subject, eml) {
     expectedTitle += productName;
   }
 
+  await TestUtils.waitForCondition(
+    () => msgc.window.document.title == expectedTitle
+  );
   Assert.equal(msgc.window.document.title, expectedTitle);
   close_window(msgc);
 }

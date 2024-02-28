@@ -3,10 +3,13 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-var { PluralForm } = ChromeUtils.import(
-  "resource://gre/modules/PluralForm.jsm"
+var { PluralForm } = ChromeUtils.importESModule(
+  "resource://gre/modules/PluralForm.sys.mjs"
 );
+ChromeUtils.defineESModuleGetters(this, {
+  ContextualIdentityService:
+    "resource://gre/modules/ContextualIdentityService.sys.mjs",
+});
 
 var gCookiesWindow = {
   _hosts: {},
@@ -534,6 +537,7 @@ var gCookiesWindow = {
       this._addCookie(strippedHost, cookie, hostCount);
     }
     this._view._rowCount = hostCount.value;
+    this._tree.rowCountChanged(0, hostCount.value);
   },
 
   formatExpiresString(aExpires) {
@@ -549,8 +553,11 @@ var gCookiesWindow = {
   },
 
   _getUserContextString(aUserContextId) {
-    // Thunderbird ignores the context for now.
-    return this._bundle.getString("defaultUserContextLabel");
+    if (parseInt(aUserContextId, 10) == 0) {
+      return this._bundle.getString("defaultUserContextLabel");
+    }
+
+    return ContextualIdentityService.getUserContextLabel(aUserContextId);
   },
 
   _updateCookieData(aItem) {
@@ -772,18 +779,11 @@ var gCookiesWindow = {
       }
     }
 
-    var blockFutureCookies = false;
-    if (Services.prefs.prefHasUserValue("network.cookie.blockFutureCookies")) {
-      blockFutureCookies = Services.prefs.getBoolPref(
-        "network.cookie.blockFutureCookies"
-      );
-    }
     for (let item of deleteItems) {
       Services.cookies.remove(
         item.host,
         item.name,
         item.path,
-        blockFutureCookies,
         item.originAttributes
       );
     }
@@ -893,9 +893,8 @@ var gCookiesWindow = {
     }
     this._lastSelectedRanges = [];
 
-    document.getElementById("cookiesIntro").value = this._bundle.getString(
-      "cookiesAll"
-    );
+    document.getElementById("cookiesIntro").value =
+      this._bundle.getString("cookiesAll");
   },
 
   _cookieMatchesFilter(aCookie) {
@@ -978,9 +977,8 @@ var gCookiesWindow = {
       view.selection.select(0);
     }
 
-    document.getElementById(
-      "cookiesIntro"
-    ).value = gCookiesWindow._bundle.getString("cookiesFiltered");
+    document.getElementById("cookiesIntro").value =
+      gCookiesWindow._bundle.getString("cookiesFiltered");
   },
 
   setFilter(aFilterString) {

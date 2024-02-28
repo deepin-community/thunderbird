@@ -12,30 +12,21 @@ interface nsIURI;
 [scriptable, uuid(ceabfc6b-f139-4c25-890f-efb7c3069d40)]
 interface nsIPop3Sink : nsISupports {
 
-  attribute boolean userAuthenticated;
-  attribute ACString mailAccountURL;
   attribute boolean buildMessageUri;
-  attribute string messageUri;
-  attribute string baseMessageUri;
+  attribute AUTF8String messageUri;
+  attribute AUTF8String baseMessageUri;
 
   /// message uri for header-only message version
-  attribute ACString origMessageUri;
+  attribute AUTF8String origMessageUri;
 
-  boolean BeginMailDelivery(in boolean uidlDownload, in nsIMsgWindow msgWindow);
+  boolean beginMailDelivery(in boolean uidlDownload, in nsIMsgWindow msgWindow);
   void endMailDelivery(in nsIPop3Protocol protocol);
-  void AbortMailDelivery(in nsIPop3Protocol protocol);
+  void abortMailDelivery(in nsIPop3Protocol protocol);
 
-  /* returns a closure ? */
-  [noscript] voidPtr IncorporateBegin(in string uidlString, in nsIURI aURL,
-                                      in unsigned long flags);
-
-  [noscript] void IncorporateWrite(in string block,
-                                   in long length);
-
-  [noscript] void IncorporateComplete(in nsIMsgWindow aMsgWindow, in int32_t aSize);
-  [noscript] void IncorporateAbort(in boolean uidlDownload);
-
-  void BiffGetNewMail();
+  void incorporateBegin(in string uidlString, in unsigned long flags);
+  void incorporateWrite(in string block, in long length);
+  void incorporateComplete(in nsIMsgWindow aMsgWindow, in int32_t aSize);
+  void incorporateAbort(in boolean uidlDownload);
 
   /**
    * Tell the pop3sink how many messages we're going to download.
@@ -44,9 +35,7 @@ interface nsIPop3Sink : nsISupports {
    */
   void setMsgsToDownload(in unsigned long aNumMessages);
 
-  void SetBiffStateAndUpdateFE(in unsigned long biffState, in long numNewMessages, in boolean notify);
-
-  [noscript] void SetSenderAuthedFlag(in voidPtr closure, in boolean authed);
+  void setBiffStateAndUpdateFE(in unsigned long biffState, in long numNewMessages, in boolean notify);
 
   attribute nsIPop3IncomingServer popServer;
   attribute nsIMsgFolder folder;

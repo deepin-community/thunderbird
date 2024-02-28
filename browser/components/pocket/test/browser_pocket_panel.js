@@ -2,7 +2,7 @@
  * http://creativecommons.org/publicdomain/zero/1.0/ */
 "use strict";
 
-add_task(async function() {
+add_task(async function () {
   let tab = await BrowserTestUtils.openNewForegroundTab(
     gBrowser,
     "https://example.com/browser/browser/components/pocket/test/test.html"
@@ -32,24 +32,24 @@ add_task(async function() {
 
   let pocketFrame = pocketPanel.querySelector("browser");
 
-  // Avoid intermittency due to race between loading of the pocket panel
-  // and our call to BrowserTestUtils.browserLoaded.
-  const { readyState } = pocketFrame.contentDocument;
-  if (readyState !== "complete") {
-    info(
-      `Wait pocket frame to be fully loaded, current readyState ${readyState}`
-    );
-    await BrowserTestUtils.browserLoaded(pocketFrame);
-  }
+  const getReadyState = async frame =>
+    SpecialPowers.spawn(frame, [], () => content.document.readyState);
 
-  // Avoid intermittency due to synthesizeMouse not always triggering the
-  // context menu as this test expects (see Bug 1519808).
-  pocketFrame.contentDocument.body.dispatchEvent(
-    new pocketFrame.contentWindow.MouseEvent("contextmenu", {
-      bubbles: true,
-      cancelable: true,
-      view: pocketFrame.contentWindow,
-    })
+  // Ensure Pocket panel is ready to avoid intermittency.
+  await TestUtils.waitForCondition(
+    async () => (await getReadyState(pocketFrame)) == "complete"
+  );
+
+  // Ensure that the document layout has been flushed before triggering the mouse event
+  // (See Bug 1519808 for a rationale).
+  await pocketFrame.ownerGlobal.promiseDocumentFlushed(() => {});
+  await BrowserTestUtils.synthesizeMouseAtCenter(
+    "body",
+    {
+      type: "contextmenu",
+      button: 2,
+    },
+    pocketFrame
   );
 
   await popupShown;

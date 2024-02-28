@@ -7,11 +7,10 @@
 
 const CC = Components.Constructor;
 
-ChromeUtils.defineModuleGetter(
-  this,
-  "AppConstants",
-  "resource://gre/modules/AppConstants.jsm"
-);
+ChromeUtils.defineESModuleGetters(this, {
+  WindowsVersionInfo:
+    "resource://gre/modules/components-utils/WindowsVersionInfo.sys.mjs",
+});
 
 let expectedResults;
 
@@ -66,14 +65,17 @@ const SPOOFED_PLATFORM = {
   other: "Linux x86_64",
 };
 
-// If comparison with this value fails in the future,
-// it's time to evaluate if exposing a new Windows
-// version to the Web is appropriate. See
+// If comparison with the WindowsOscpu value fails in the future, it's time to
+// evaluate if exposing a new Windows version to the Web is appropriate. See
 // https://bugzilla.mozilla.org/show_bug.cgi?id=1693295
-const WindowsOscpu =
-  cpuArch == "x86_64"
-    ? `Windows NT ${osVersion}; Win64; x64`
-    : `Windows NT ${osVersion}`;
+let WindowsOscpu = null;
+if (AppConstants.platform == "win") {
+  let isWin11 = WindowsVersionInfo.get().buildNumber >= 22000;
+  WindowsOscpu =
+    cpuArch == "x86_64" || (cpuArch == "aarch64" && isWin11)
+      ? `Windows NT ${osVersion}; Win64; x64`
+      : `Windows NT ${osVersion}`;
+}
 
 const DEFAULT_OSCPU = {
   linux: `Linux ${cpuArch}`,
@@ -123,7 +125,12 @@ const CONST_VENDOR = "";
 const CONST_VENDORSUB = "";
 
 const appVersion = parseInt(Services.appinfo.version);
-const spoofedVersion = appVersion - ((appVersion - 78) % 13);
+const rvVersion =
+  parseInt(
+    Services.prefs.getIntPref("network.http.useragent.forceRVOnly", 0),
+    0
+  ) || appVersion;
+const spoofedVersion = AppConstants.platform == "android" ? "115" : appVersion;
 
 const LEGACY_UA_GECKO_TRAIL = "20100101";
 
@@ -146,13 +153,13 @@ const SPOOFED_UA_GECKO_TRAIL = {
 async function testUserAgentHeader() {
   const BASE =
     "http://mochi.test:8888/browser/browser/components/resistfingerprinting/test/browser/";
-  const TEST_TARGET_URL = `${BASE}browser_navigator_header.sjs?`;
+  const TEST_TARGET_URL = `${BASE}file_navigator_header.sjs?`;
   let tab = await BrowserTestUtils.openNewForegroundTab(
     gBrowser,
     TEST_TARGET_URL
   );
 
-  let result = await SpecialPowers.spawn(tab.linkedBrowser, [], function() {
+  let result = await SpecialPowers.spawn(tab.linkedBrowser, [], function () {
     return content.document.body.textContent;
   });
 
@@ -172,7 +179,7 @@ async function testNavigator() {
     TEST_PATH + "file_navigator.html"
   );
 
-  let result = await SpecialPowers.spawn(tab.linkedBrowser, [], function() {
+  let result = await SpecialPowers.spawn(tab.linkedBrowser, [], function () {
     return content.document.getElementById("result").innerHTML;
   });
 
@@ -195,8 +202,16 @@ async function testNavigator() {
     expectedResults.userAgentNavigator,
     `Checking ${testDesc} navigator.userAgent.`
   );
-  is(result.mimeTypesLength, 0, "Navigator.mimeTypes has a length of 0.");
-  is(result.pluginsLength, 0, "Navigator.plugins has a length of 0.");
+  is(
+    result.mimeTypesLength,
+    expectedResults.mimeTypesLength,
+    `Navigator.mimeTypes has a length of ${expectedResults.mimeTypesLength}.`
+  );
+  is(
+    result.pluginsLength,
+    expectedResults.pluginsLength,
+    `Navigator.plugins has a length of ${expectedResults.pluginsLength}.`
+  );
   is(
     result.oscpu,
     expectedResults.oscpu,
@@ -252,14 +267,14 @@ async function testWorkerNavigator() {
   let result = await SpecialPowers.spawn(
     tab.linkedBrowser,
     [],
-    async function() {
+    async function () {
       let worker = new content.SharedWorker(
         "file_navigatorWorker.js",
         "WorkerNavigatorTest"
       );
 
       let res = await new Promise(resolve => {
-        worker.port.onmessage = function(e) {
+        worker.port.onmessage = function (e) {
           resolve(e.data);
         };
       });
@@ -275,38 +290,38 @@ async function testWorkerNavigator() {
   is(
     result.appVersion,
     expectedResults.appVersion,
-    `Checking ${testDesc} navigator.appVersion.`
+    `Checking ${testDesc} worker navigator.appVersion.`
   );
   is(
     result.platform,
     expectedResults.platform,
-    `Checking ${testDesc} navigator.platform.`
+    `Checking ${testDesc} worker navigator.platform.`
   );
   is(
     result.userAgent,
     expectedResults.userAgentNavigator,
-    `Checking ${testDesc} navigator.userAgent.`
+    `Checking ${testDesc} worker navigator.userAgent.`
   );
   is(
     result.hardwareConcurrency,
     expectedResults.hardwareConcurrency,
-    `Checking ${testDesc} navigator.hardwareConcurrency.`
+    `Checking ${testDesc} worker navigator.hardwareConcurrency.`
   );
 
   is(
     result.appCodeName,
     CONST_APPCODENAME,
-    "Navigator.appCodeName reports correct constant value."
+    "worker Navigator.appCodeName reports correct constant value."
   );
   is(
     result.appName,
     CONST_APPNAME,
-    "Navigator.appName reports correct constant value."
+    "worker Navigator.appName reports correct constant value."
   );
   is(
     result.product,
     CONST_PRODUCT,
-    "Navigator.product reports correct constant value."
+    "worker Navigator.product reports correct constant value."
   );
 
   BrowserTestUtils.removeTab(tab);
@@ -329,30 +344,65 @@ async function testWorkerNavigator() {
 add_task(async function setupDefaultUserAgent() {
   let defaultUserAgent = `Mozilla/5.0 (${
     DEFAULT_UA_OS[AppConstants.platform]
-  }; rv:${appVersion}.0) Gecko/${
+  }; rv:${rvVersion}.0) Gecko/${
     DEFAULT_UA_GECKO_TRAIL[AppConstants.platform]
   } Firefox/${appVersion}.0`;
   expectedResults = {
     testDesc: "default",
     appVersion: DEFAULT_APPVERSION[AppConstants.platform],
     hardwareConcurrency: navigator.hardwareConcurrency,
+    mimeTypesLength: 2,
     oscpu: DEFAULT_OSCPU[AppConstants.platform],
     platform: DEFAULT_PLATFORM[AppConstants.platform],
+    pluginsLength: 5,
     userAgentNavigator: defaultUserAgent,
     userAgentHeader: defaultUserAgent,
   };
-});
 
-add_task(async function runDefaultNavigatorTest() {
   await testNavigator();
-});
 
-add_task(async function runDefaultHTTPHeaderTest() {
   await testUserAgentHeader();
+
+  await testWorkerNavigator();
 });
 
-add_task(async function runDefaultWorkerNavigatorTest() {
+add_task(async function setupRFPExemptions() {
+  await SpecialPowers.pushPrefEnv({
+    set: [
+      ["privacy.resistFingerprinting", true],
+      [
+        "privacy.resistFingerprinting.exemptedDomains",
+        "example.net, mochi.test",
+      ],
+    ],
+  });
+
+  let defaultUserAgent = `Mozilla/5.0 (${
+    DEFAULT_UA_OS[AppConstants.platform]
+  }; rv:${rvVersion}.0) Gecko/${
+    DEFAULT_UA_GECKO_TRAIL[AppConstants.platform]
+  } Firefox/${appVersion}.0`;
+
+  expectedResults = {
+    testDesc: "RFP Exempted Domain",
+    appVersion: DEFAULT_APPVERSION[AppConstants.platform],
+    hardwareConcurrency: navigator.hardwareConcurrency,
+    mimeTypesLength: 2,
+    oscpu: DEFAULT_OSCPU[AppConstants.platform],
+    platform: DEFAULT_PLATFORM[AppConstants.platform],
+    pluginsLength: 5,
+    userAgentNavigator: defaultUserAgent,
+    userAgentHeader: defaultUserAgent,
+  };
+
+  await testNavigator();
+
+  await testUserAgentHeader();
+
   await testWorkerNavigator();
+
+  // Pop exempted domains
+  await SpecialPowers.popPrefEnv();
 });
 
 add_task(async function setupResistFingerprinting() {
@@ -364,32 +414,28 @@ add_task(async function setupResistFingerprinting() {
 
   let spoofedUserAgentNavigator = `Mozilla/5.0 (${
     SPOOFED_UA_NAVIGATOR_OS[AppConstants.platform]
-  }; rv:${spoofedVersion}.0) Gecko/${spoofedGeckoTrail} Firefox/${spoofedVersion}.0`;
+  }; rv:${rvVersion}.0) Gecko/${spoofedGeckoTrail} Firefox/${appVersion}.0`;
 
   let spoofedUserAgentHeader = `Mozilla/5.0 (${
     SPOOFED_UA_HTTPHEADER_OS[AppConstants.platform]
-  }; rv:${spoofedVersion}.0) Gecko/${spoofedGeckoTrail} Firefox/${spoofedVersion}.0`;
+  }; rv:${rvVersion}.0) Gecko/${spoofedGeckoTrail} Firefox/${appVersion}.0`;
 
   expectedResults = {
     testDesc: "spoofed",
     appVersion: SPOOFED_APPVERSION[AppConstants.platform],
     hardwareConcurrency: SPOOFED_HW_CONCURRENCY,
+    mimeTypesLength: 2,
     oscpu: SPOOFED_OSCPU[AppConstants.platform],
     platform: SPOOFED_PLATFORM[AppConstants.platform],
+    pluginsLength: 5,
     userAgentNavigator: spoofedUserAgentNavigator,
     userAgentHeader: spoofedUserAgentHeader,
   };
-});
 
-add_task(async function runSpoofedNavigatorTest() {
   await testNavigator();
-});
 
-add_task(async function runSpoofedHTTPHeaderTest() {
   await testUserAgentHeader();
-});
 
-add_task(async function runSpoofedWorkerNavigatorTest() {
   await testWorkerNavigator();
 });
 
@@ -410,4 +456,10 @@ add_task(async function runOverrideTest() {
   await testWorkerNavigator();
 
   await testUserAgentHeader();
+
+  // Pop general.appname.override etc
+  await SpecialPowers.popPrefEnv();
+
+  // Pop privacy.resistFingerprinting
+  await SpecialPowers.popPrefEnv();
 });

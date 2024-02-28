@@ -9,7 +9,7 @@
 const TEST_URL = URL_ROOT + "doc_inspector_highlighter_cssshapes.html";
 const HIGHLIGHTER_TYPE = "ShapesHighlighter";
 
-add_task(async function() {
+add_task(async function () {
   const env = await openInspectorForURL(TEST_URL);
   const helper = await getHighlighterHelperFor(HIGHLIGHTER_TYPE)(env);
   const { highlighterTestFront, inspector } = env;
@@ -36,9 +36,8 @@ add_task(async function() {
 
 async function getComputedPropertyValue(selector, property, inspector) {
   const highlightedNode = await getNodeFront(selector, inspector);
-  const computedStyle = await highlightedNode.inspectorFront.pageStyle.getComputed(
-    highlightedNode
-  );
+  const computedStyle =
+    await highlightedNode.inspectorFront.pageStyle.getComputed(highlightedNode);
   return computedStyle[property].value;
 }
 
@@ -56,13 +55,7 @@ async function teardown(config) {
 }
 
 async function testPolygonMovePoint(config) {
-  const {
-    inspector,
-    view,
-    highlighters,
-    highlighterTestFront,
-    helper,
-  } = config;
+  const { inspector, view, highlighterTestFront, helper } = config;
   const selector = "#polygon";
   const property = "clip-path";
 
@@ -71,7 +64,7 @@ async function testPolygonMovePoint(config) {
   const points = await highlighterTestFront.getHighlighterNodeAttribute(
     "shapes-polygon",
     "points",
-    highlighters.highlighters[HIGHLIGHTER_TYPE]
+    inspector.inspectorFront.getKnownHighlighter(HIGHLIGHTER_TYPE)
   );
   let [x, y] = points.split(" ")[0].split(",");
   const quads = await getAllAdjustedQuadsForContentPageElement(selector);
@@ -106,13 +99,7 @@ async function testPolygonMovePoint(config) {
 }
 
 async function testPolygonAddPoint(config) {
-  const {
-    inspector,
-    view,
-    highlighters,
-    highlighterTestFront,
-    helper,
-  } = config;
+  const { inspector, view, highlighterTestFront, helper } = config;
   const selector = "#polygon";
   const property = "clip-path";
 
@@ -123,7 +110,7 @@ async function testPolygonAddPoint(config) {
   const points = await highlighterTestFront.getHighlighterNodeAttribute(
     "shapes-polygon",
     "points",
-    highlighters.highlighters[HIGHLIGHTER_TYPE]
+    inspector.inspectorFront.getKnownHighlighter(HIGHLIGHTER_TYPE)
   );
   const pointsArray = points.split(" ");
   const quads = await getAllAdjustedQuadsForContentPageElement(selector);
@@ -186,7 +173,7 @@ async function testPolygonRemovePoint(config) {
   const points = await highlighterTestFront.getHighlighterNodeAttribute(
     "shapes-polygon",
     "points",
-    highlighters.highlighters[HIGHLIGHTER_TYPE]
+    inspector.inspectorFront.getKnownHighlighter(HIGHLIGHTER_TYPE)
   );
   const [x, y] = points.split(" ")[0].split(",");
   const quads = await getAllAdjustedQuadsForContentPageElement(selector);
@@ -203,7 +190,7 @@ async function testPolygonRemovePoint(config) {
   const markerHidden = await highlighterTestFront.getHighlighterNodeAttribute(
     "shapes-marker-hover",
     "hidden",
-    highlighters.highlighters[HIGHLIGHTER_TYPE]
+    inspector.inspectorFront.getKnownHighlighter(HIGHLIGHTER_TYPE)
   );
   ok(!markerHidden, "Marker on highlighter is visible");
 
@@ -245,14 +232,14 @@ async function testCircleMoveCenter(config) {
     await highlighterTestFront.getHighlighterNodeAttribute(
       "shapes-ellipse",
       "cx",
-      highlighters.highlighters[HIGHLIGHTER_TYPE]
+      inspector.inspectorFront.getKnownHighlighter(HIGHLIGHTER_TYPE)
     )
   );
   const cy = parseFloat(
     await highlighterTestFront.getHighlighterNodeAttribute(
       "shapes-ellipse",
       "cy",
-      highlighters.highlighters[HIGHLIGHTER_TYPE]
+      inspector.inspectorFront.getKnownHighlighter(HIGHLIGHTER_TYPE)
     )
   );
   const quads = await getAllAdjustedQuadsForContentPageElement(selector);
@@ -295,36 +282,35 @@ async function testEllipseMoveRadius(config) {
     await highlighterTestFront.getHighlighterNodeAttribute(
       "shapes-ellipse",
       "rx",
-      highlighters.highlighters[HIGHLIGHTER_TYPE]
+      inspector.inspectorFront.getKnownHighlighter(HIGHLIGHTER_TYPE)
     )
   );
   const ry = parseFloat(
     await highlighterTestFront.getHighlighterNodeAttribute(
       "shapes-ellipse",
       "ry",
-      highlighters.highlighters[HIGHLIGHTER_TYPE]
+      inspector.inspectorFront.getKnownHighlighter(HIGHLIGHTER_TYPE)
     )
   );
   const cx = parseFloat(
     await highlighterTestFront.getHighlighterNodeAttribute(
       "shapes-ellipse",
       "cx",
-      highlighters.highlighters[HIGHLIGHTER_TYPE]
+      inspector.inspectorFront.getKnownHighlighter(HIGHLIGHTER_TYPE)
     )
   );
   const cy = parseFloat(
     await highlighterTestFront.getHighlighterNodeAttribute(
       "shapes-ellipse",
       "cy",
-      highlighters.highlighters[HIGHLIGHTER_TYPE]
+      inspector.inspectorFront.getKnownHighlighter(HIGHLIGHTER_TYPE)
     )
   );
   const quads = await getAllAdjustedQuadsForContentPageElement("#ellipse");
   const { width, height } = quads.content[0].bounds;
   const highlightedNode = await getNodeFront(selector, inspector);
-  const computedStyle = await highlightedNode.inspectorFront.pageStyle.getComputed(
-    highlightedNode
-  );
+  const computedStyle =
+    await highlightedNode.inspectorFront.pageStyle.getComputed(highlightedNode);
   const paddingTop = parseFloat(computedStyle["padding-top"].value);
   const paddingLeft = parseFloat(computedStyle["padding-left"].value);
   const cxPixel = paddingLeft + (width * cx) / 100;
@@ -375,28 +361,28 @@ async function testInsetMoveEdges(config) {
     await highlighterTestFront.getHighlighterNodeAttribute(
       "shapes-rect",
       "x",
-      highlighters.highlighters[HIGHLIGHTER_TYPE]
+      inspector.inspectorFront.getKnownHighlighter(HIGHLIGHTER_TYPE)
     )
   );
   const y = parseFloat(
     await highlighterTestFront.getHighlighterNodeAttribute(
       "shapes-rect",
       "y",
-      highlighters.highlighters[HIGHLIGHTER_TYPE]
+      inspector.inspectorFront.getKnownHighlighter(HIGHLIGHTER_TYPE)
     )
   );
   const width = parseFloat(
     await highlighterTestFront.getHighlighterNodeAttribute(
       "shapes-rect",
       "width",
-      highlighters.highlighters[HIGHLIGHTER_TYPE]
+      inspector.inspectorFront.getKnownHighlighter(HIGHLIGHTER_TYPE)
     )
   );
   const height = parseFloat(
     await highlighterTestFront.getHighlighterNodeAttribute(
       "shapes-rect",
       "height",
-      highlighters.highlighters[HIGHLIGHTER_TYPE]
+      inspector.inspectorFront.getKnownHighlighter(HIGHLIGHTER_TYPE)
     )
   );
   const quads = await getAllAdjustedQuadsForContentPageElement(selector);
@@ -456,8 +442,9 @@ async function testInsetMoveEdges(config) {
   // NOTE: No change to bottom inset until Bug 1456777 is fixed.
   ok(
     definition.includes(
-      `${top + dy}px ${elemWidth - right - dx}px ${100 - y - height}% ${x +
-        10}%`
+      `${top + dy}px ${elemWidth - right - dx}px ${100 - y - height}% ${
+        x + 10
+      }%`
     ),
     "Inset edges successfully moved"
   );

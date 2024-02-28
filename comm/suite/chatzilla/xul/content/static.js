@@ -85,6 +85,7 @@ client.awayMsgCount = 5;
 client.statusMessages = new Array();
 
 CIRCNetwork.prototype.INITIAL_CHANNEL = "";
+CIRCNetwork.prototype.STS_MODULE = new CIRCSTS();
 CIRCNetwork.prototype.MAX_MESSAGES = 100;
 CIRCNetwork.prototype.IGNORE_MOTD = false;
 CIRCNetwork.prototype.RECLAIM_WAIT = 15000;
@@ -136,6 +137,14 @@ function init()
     client.dcc = new CIRCDCC(client);
 
     client.ident = new IdentServer(client);
+
+    // Initialize the STS module.
+    var stsFile = new nsLocalFile(client.prefs["profilePath"]);
+    stsFile.append("sts.json");
+
+    client.sts = CIRCNetwork.prototype.STS_MODULE;
+    client.sts.init(stsFile);
+    client.sts.ENABLED = client.prefs["sts.enabled"];
 
     // Start log rotation checking first.  This will schedule the next check.
     checkLogFiles();
@@ -607,7 +616,6 @@ function getPluginById(id)
     return client.plugins[id] || null;
 }
 
-
 function getPluginByURL(url)
 {
     for (var k in client.plugins)
@@ -620,6 +628,49 @@ function getPluginByURL(url)
     return null;
 }
 
+function disablePlugin(plugin, destroy)
+{
+    if (!plugin.enabled)
+    {
+        display(getMsg(MSG_IS_DISABLED, plugin.id));
+        return true;
+    }
+
+    if (plugin.API > 0)
+    {
+        if (!plugin.disable())
+        {
+            display(getMsg(MSG_CANT_DISABLE, plugin.id));
+            return false;
+        }
+
+        if (destroy)
+        {
+            client.prefManager.removeObserver(plugin.prefManager);
+            plugin.prefManager.destroy();
+        }
+        else
+        {
+            plugin.prefs["enabled"] = false;
+        }
+    }
+    else if ("disablePlugin" in plugin.scope)
+    {
+        plugin.scope.disablePlugin();
+    }
+    else
+    {
+        display(getMsg(MSG_CANT_DISABLE, plugin.id));
+        return false;
+    }
+
+    display(getMsg(MSG_PLUGIN_DISABLED, plugin.id));
+    if (!destroy)
+    {
+        plugin.enabled = false;
+    }
+    return true;
+}
 
 function processStartupAutoperform()
 {
@@ -1334,7 +1385,7 @@ function openQueryTab(server, nick)
         for (var c in server.channels)
         {
             var chan = server.channels[c];
-            if (!(user.canonicalName in chan.users))
+            if (!(user.collectionKey in chan.users))
                 continue;
             /* This takes a boolean value for each channel (true - channel has
              * same value as first), and &&-s them all together. Thus, |same|
@@ -1584,8 +1635,8 @@ var testURLs = [
     "irc://irc.foo.org/?msg=hello%20there",
     "irc://irc.foo.org/?msg=hello%20there&ignorethis",
     "irc://irc.foo.org/%23mozilla,needkey?msg=hello%20there&ignorethis",
-    "irc://freenode/",
-    "irc://freenode/,isserver",
+    "irc://libera.chat/",
+    "irc://libera.chat/,isserver",
     "irc://[fe80::5d49:767b:4b68:1b17]",
     "irc://[fe80::5d49:767b:4b68:1b17]/",
     "irc://[fe80::5d49:767b:4b68:1b17]:6666",
@@ -1701,6 +1752,8 @@ function gotoIRCURL(url, e)
 
     let isSecure = url.scheme == "ircs";
     let network;
+    // Make sure host is in lower case.
+    url.host = url.host.toLowerCase();
 
     // Convert a request for a server to a network if we know it.
     if (url.isserver)
@@ -1716,7 +1769,7 @@ function gotoIRCURL(url, e)
                     (!url.port || (server.port == url.port)))
                 {
                     url.isserver = false;
-                    url.host = n;
+                    url.host = network.canonicalName;
                     if (!url.port)
                       url.port = server.port;
                     break;
@@ -1727,12 +1780,13 @@ function gotoIRCURL(url, e)
         }
     }
 
+    let name = url.host;
+    network = client.getNetwork(name);
+
     if (url.isserver)
     {
-        var name = url.host.toLowerCase();
         let found = false;
-        if (name in client.networks) {
-          network = client.networks[name];
+        if (network) {
           for (let s in network.servers) {
             let server = network.servers[s];
             if ((server.isSecure == isSecure) &&
@@ -1753,29 +1807,31 @@ function gotoIRCURL(url, e)
           name += ":" + url.port;
 
           // If there is no temporary network for this server:port, create one.
-          if (!(name in client.networks)) {
+          if (!client.getNetwork(name)) {
             let server = {name: url.host, port: url.port, isSecure: isSecure};
             client.addNetwork(name, [server], true);
           }
-          network = client.networks[name];
+          network = client.getNetwork(name);
         }
     }
     else
     {
         // There is no network called this, sorry.
-        if (!(url.host in client.networks))
+        if (!network)
         {
-            display(getMsg(MSG_ERR_UNKNOWN_NETWORK, url.host));
+            display(getMsg(MSG_ERR_UNKNOWN_NETWORK, name));
             return;
         }
-        network = client.networks[url.host];
     }
 
     // We should only prompt for a password if we're not connected.
-    if ((network.state == NET_OFFLINE) && url.needpass && !url.pass)
+    if (network.state == NET_OFFLINE)
     {
-        url.pass = promptPassword(getMsg(MSG_HOST_PASSWORD,
-                                         network.unicodeName));
+        // Check for a network password.
+        url.pass = client.tryToGetLogin(network.getURL(), "serv", "*",
+                                        url.pass, url.needpass,
+                                        getMsg(MSG_HOST_PASSWORD,
+                                               network.getURL()));
     }
 
     // Adjust secure setting for temporary networks (so user can override).
@@ -2234,9 +2290,9 @@ function updateTitle (obj)
             if ("me" in o.parent)
             {
                 nick = o.parent.me.unicodeName;
-                if (o.parent.me.canonicalName in client.currentObject.users)
+                if (o.parent.me.collectionKey in client.currentObject.users)
                 {
-                    var cuser = client.currentObject.users[o.parent.me.canonicalName];
+                    let cuser = client.currentObject.users[o.parent.me.collectionKey];
                     if (cuser.isFounder)
                         nick = "~" + nick;
                     else if (cuser.isAdmin)
@@ -2305,7 +2361,7 @@ function updateTitle (obj)
                        (Number(i) + 1) + "!" : (Number(i) + 1));
         if (actl.length > 0)
             tstring = getMsg(MSG_TITLE_ACTIVITY,
-                             [tstring, actl.join (MSG_COMMASP)]);
+                             [tstring, actl.join (", ")]);
     }
 
     document.title = tstring;
@@ -2491,6 +2547,11 @@ function setCurrentObject (obj)
         tb = getTabForObject(client.currentObject);
     if (tb)
         tb.setAttribute("state", "normal");
+
+    // If we're tracking last read lines, set a mark on the current view
+    // before switching to the new one.
+    if (tb && client.currentObject.prefs["autoMarker"])
+        client.currentObject.dispatch("marker-set");
 
     client.currentObject = obj;
 
@@ -3226,6 +3287,21 @@ function cli_installPlugin(name, source)
     }
 }
 
+client.uninstallPlugin =
+function cli_uninstallPlugin(plugin)
+{
+    if (!disablePlugin(plugin, true))
+        return;
+    delete client.plugins[plugin.id];
+    let file = getFileFromURLSpec(plugin.cwd);
+    if (file.exists() && file.isDirectory())
+    {
+        // Delete the directory and contents.
+        file.remove(true);
+    }
+    display(getMsg(MSG_PLUGIN_UNINSTALLED, plugin.id));
+}
+
 function syncOutputFrame(obj, nesting)
 {
     const nsIWebProgress = Components.interfaces.nsIWebProgress;
@@ -3847,18 +3923,26 @@ function cli_adoptnode_noop(node, doc)
 client.addNetwork =
 function cli_addnet(name, serverList, temporary)
 {
-    client.networks[name] =
-        new CIRCNetwork(name, serverList, client.eventPump, temporary);
+    let net = new CIRCNetwork(name, serverList, client.eventPump, temporary);
+    client.networks[net.collectionKey] = net;
+}
+
+client.getNetwork =
+function cli_getnet(name)
+{
+    return client.networks[":" + name] || null;
 }
 
 client.removeNetwork =
 function cli_removenet(name)
 {
-    // Allow network a chance to clean up any mess.
-    if (typeof client.networks[name].destroy == "function")
-        client.networks[name].destroy();
+    let net = client.getNetwork(name);
 
-    delete client.networks[name];
+    // Allow network a chance to clean up any mess.
+    if (typeof net.destroy == "function")
+        net.destroy();
+
+    delete client.networks[net.collectionKey];
 }
 
 client.connectToNetwork =
@@ -3875,14 +3959,13 @@ function cli_connect(networkOrName, requireSecurity)
     else
     {
         name = networkOrName;
+        network = client.getNetwork(name);
 
-        if (!(name in client.networks))
+        if (!network)
         {
             display(getMsg(MSG_ERR_UNKNOWN_NETWORK, name), MT_ERROR);
             return null;
         }
-
-        network = client.networks[name];
     }
     name = network.unicodeName;
 
@@ -4104,17 +4187,18 @@ function dccfile_getprefmgr()
  * the same network.
  */
 CIRCNetwork.prototype.display =
-function net_display(message, msgtype, sourceObj, destObj)
+function net_display(message, msgtype, sourceObj, destObj, tags)
 {
     var o = getObjectDetails(client.currentObject);
     if (client.SLOPPY_NETWORKS && client.currentObject != this &&
         o.network == this && o.server && o.server.isConnected)
     {
-        client.currentObject.display(message, msgtype, sourceObj, destObj);
+        client.currentObject.display(message, msgtype, sourceObj, destObj,
+                                     tags);
     }
     else
     {
-        this.displayHere(message, msgtype, sourceObj, destObj);
+        this.displayHere(message, msgtype, sourceObj, destObj, tags);
     }
 }
 
@@ -4124,12 +4208,13 @@ function net_display(message, msgtype, sourceObj, destObj)
  * to it; otherwise, messages go to the *network* view.
  */
 CIRCChannel.prototype.display =
-function chan_display(message, msgtype, sourceObj, destObj)
+function chan_display(message, msgtype, sourceObj, destObj, tags)
 {
     if ("messages" in this)
-        this.displayHere(message, msgtype, sourceObj, destObj);
+        this.displayHere(message, msgtype, sourceObj, destObj, tags);
     else
-        this.parent.parent.displayHere(message, msgtype, sourceObj, destObj);
+        this.parent.parent.displayHere(message, msgtype, sourceObj, destObj,
+                                       tags);
 }
 
 /* Displays a user-centric message on the most appropriate view.
@@ -4139,11 +4224,11 @@ function chan_display(message, msgtype, sourceObj, destObj)
  * the same network, or the *network* view if not.
  */
 CIRCUser.prototype.display =
-function usr_display(message, msgtype, sourceObj, destObj)
+function usr_display(message, msgtype, sourceObj, destObj, tags)
 {
     if ("messages" in this)
     {
-        this.displayHere(message, msgtype, sourceObj, destObj);
+        this.displayHere(message, msgtype, sourceObj, destObj, tags);
     }
     else
     {
@@ -4151,10 +4236,11 @@ function usr_display(message, msgtype, sourceObj, destObj)
         if (o.server && o.server.isConnected &&
             o.network == this.parent.parent &&
             client.currentObject.TYPE != "IRCUser")
-            client.currentObject.display(message, msgtype, sourceObj, destObj);
+            client.currentObject.display(message, msgtype, sourceObj, destObj,
+                                         tags);
         else
             this.parent.parent.displayHere(message, msgtype, sourceObj,
-                                           destObj);
+                                           destObj, tags);
     }
 }
 
@@ -4191,9 +4277,9 @@ function this_feedback(e, message, msgtype, sourceObj, destObj)
         this.displayHere(message, msgtype, sourceObj, destObj);
 }
 
-function display (message, msgtype, sourceObj, destObj)
+function display (message, msgtype, sourceObj, destObj, tags)
 {
-    client.currentObject.display (message, msgtype, sourceObj, destObj);
+    client.currentObject.display (message, msgtype, sourceObj, destObj, tags);
 }
 
 client.getFontCSS =
@@ -4228,6 +4314,64 @@ function this_getFontCSS(format)
     return css;
 }
 
+client.startMsgGroup =
+CIRCNetwork.prototype.startMsgGroup =
+CIRCChannel.prototype.startMsgGroup =
+CIRCUser.prototype.startMsgGroup =
+CIRCDCCChat.prototype.startMsgGroup =
+CIRCDCCFileTransfer.prototype.startMsgGroup =
+function __startMsgGroup(id, groupMsg, msgtype)
+{
+    // The given ID may not be unique, so append a timestamp to ensure it is.
+    var groupId = id + "-" + Date.now();
+
+    // Add the button to the end of the message.
+    var headerMsg = groupMsg + " " + getMsg(MSG_COLLAPSE_BUTTON,
+                                            [MSG_COLLAPSE_HIDE,
+                                             MSG_COLLAPSE_HIDETITLE,
+                                             groupId]);
+
+    // Show the group header message.
+    client.munger.getRule(".inline-buttons").enabled = true;
+    this.displayHere(headerMsg, msgtype);
+    client.munger.getRule(".inline-buttons").enabled = false;
+
+    // Add the group to a list of active message groups.
+    if (!this.msgGroups)
+        this.msgGroups = [];
+    this.msgGroups.push(groupId);
+
+    // Return the actual ID in case the caller wants to use it later.
+    return groupId;
+}
+
+function startMsgGroup(groupId, headerMsg, msgtype)
+{
+    client.currentObject.startMsgGroup(groupId, headerMsg, msgtype);
+}
+
+client.endMsgGroup =
+CIRCNetwork.prototype.endMsgGroup =
+CIRCChannel.prototype.endMsgGroup =
+CIRCUser.prototype.endMsgGroup =
+CIRCDCCChat.prototype.endMsgGroup =
+CIRCDCCFileTransfer.prototype.endMsgGroup =
+function __endMsgGroup(groupId, message)
+{
+    if (!this.msgGroups)
+        return;
+
+    // Remove the group from the list of active message groups.
+    this.msgGroups.pop();
+    if (this.msgGroups.length == 0)
+        delete this.msgGroups;
+}
+
+function endMsgGroup()
+{
+    client.currentObject.endMsgGroup();
+}
+
 client.display =
 client.displayHere =
 CIRCNetwork.prototype.displayHere =
@@ -4235,7 +4379,7 @@ CIRCChannel.prototype.displayHere =
 CIRCUser.prototype.displayHere =
 CIRCDCCChat.prototype.displayHere =
 CIRCDCCFileTransfer.prototype.displayHere =
-function __display(message, msgtype, sourceObj, destObj)
+function __display(message, msgtype, sourceObj, destObj, tags)
 {
     // We need a message type, assume "INFO".
     if (!msgtype)
@@ -4329,7 +4473,11 @@ function __display(message, msgtype, sourceObj, destObj)
     var isImportant = false, getAttention = false, isSuperfluous = false;
     var viewType = this.TYPE;
     var code;
-    var time = new Date();
+    var time;
+    if (tags && ("time" in tags))
+        time = new Date(tags.time);
+    else
+        time = new Date();
 
     var timeStamp = strftime(this.prefs["timestamps.log"], time);
 
@@ -4360,6 +4508,8 @@ function __display(message, msgtype, sourceObj, destObj)
     // The table row, and it's attributes.
     var msgRow = document.createElementNS(XHTML_NS, "html:tr");
     msgRow.setAttribute("class", "msg");
+    if (this.msgGroups)
+        msgRow.setAttribute("msg-groups", this.msgGroups.join(', '));
     msgRow.setAttribute("msg-type", msgtype);
     msgRow.setAttribute("msg-prefix", msgprefix);
     msgRow.setAttribute("msg-dest", toAttr);
@@ -4739,19 +4889,21 @@ function addHistory (source, obj, mergeData)
         while (thisMessageCol && !(thisMessageCol.className == "msg-data"))
             thisMessageCol = thisMessageCol.nextSibling;
 
-        var ci = findPreviousColumnInfo(source.messages);
-        var nickColumns = ci.nickColumns;
-        var rowExtents = ci.extents;
-        var nickColumnCount = nickColumns.length;
+        let columnInfo = findPreviousColumnInfo(source.messages);
+        let nickColumns = columnInfo.nickColumns;
+        let rowExtents = columnInfo.extents;
+        let nickColumnCount = nickColumns.length;
 
-        var lastRowSpan, sameNick, sameDest, haveSameType, needSameType;
-        var isAction, collapseActions;
-        if (nickColumnCount == 0) // No message to collapse to.
-        {
-            sameNick = sameDest = needSameType = haveSameType = false;
-            lastRowSpan = 0;
-        }
-        else // 1 or more messages, check for doubles
+        let lastRowSpan = 0;
+        let sameNick = false;
+        let samePrefix = false;
+        let sameDest = false;
+        let haveSameType = false;
+        let isAction = false;
+        let collapseActions;
+        let needSameType = false;
+        // 1 or messages, check for doubles.
+        if (nickColumnCount > 0)
         {
             var lastRow = nickColumns[nickColumnCount - 1].parentNode;
             // What was the span last time?
@@ -4787,7 +4939,7 @@ function addHistory (source, obj, mergeData)
             (!isAction || collapseActions))
         {
             obj = inobj;
-            if (ci.nested)
+            if (columnInfo.nested)
                 appendTo = source.messages.firstChild.lastChild.firstChild.firstChild.firstChild;
 
             if (obj.getAttribute("important"))
@@ -4985,6 +5137,69 @@ function cli_wantToQuit(reason, deliberate)
         display(MSG_CLOSING);
         client.quit(reason);
     }
+}
+
+client.promptToSaveLogin =
+function cli_promptToSaveLogin(url, type, username, password)
+{
+    var name = "";
+    switch (type)
+    {
+        case "nick":
+        case "oper":
+        case "sasl":
+            name = username;
+            break;
+        case "serv":
+        case "chan":
+            name = url;
+            username = "*";
+            break;
+        default:
+            display(getMsg(MSG_LOGIN_ERR_UNKNOWN_TYPE, type), MT_ERROR);
+            return;
+    }
+
+    const buttons = [MSG_LOGIN_SAVE, MSG_LOGIN_DONT];
+    var checkState = { value: true };
+    var rv = confirmEx(getMsg(MSG_LOGIN_CONFIRM, name), buttons, 0,
+                       MSG_LOGIN_PROMPT, checkState);
+    if (rv == 0)
+    {
+        client.prefs["login.promptToSave"] = checkState.value;
+
+        var updated = addOrUpdateLogin(url, type, username, password);
+        if (updated) {
+            display(getMsg(MSG_LOGIN_UPDATED, name), MT_INFO);
+        } else {
+            display(getMsg(MSG_LOGIN_ADDED, name), MT_INFO);
+        }
+    }
+}
+
+client.tryToGetLogin =
+function cli_tryToGetLogin(url, type, username, existing, needpass,
+                           promptstring)
+{
+    // Password is optional. If it is not given, we look for a saved password
+    // first. If there isn't one, we potentially use a safe prompt.
+    var info = getLogin(url, type, username);
+    var stored = (info && info.password) ? info.password : "";
+    var promptToSave = false;
+    if (!existing && stored) {
+        existing = stored;
+    } else if (!existing && needpass) {
+        existing = promptPassword(promptstring, "");
+        if (existing)
+            promptToSave = true;
+    } else if (existing && stored != existing) {
+        promptToSave = true;
+    }
+
+    if (promptToSave && client.prefs["login.promptToSave"])
+        client.promptToSaveLogin(url, type, username, existing);
+
+    return existing;
 }
 
 /* gets a tab-complete match for the line of text specified by |line|.
@@ -5409,7 +5624,7 @@ function showEventAlerts (type, event, message, nick, o, thisp, msgtype)
         source = o.network.viewName;
     }
 
-    // We can't be sure if it is a MAC OS X and Growl is now turned off or not
+    // We can't be sure if it is a macOS and Growl is now turned off or not
     try
     {
         client.alert.service.showAlertNotification(

@@ -4,20 +4,14 @@
 
 "use strict";
 
-var controller = ChromeUtils.import(
-  "resource://testing-common/mozmill/controller.jsm"
-);
 var { mc } = ChromeUtils.import(
   "resource://testing-common/mozmill/FolderDisplayHelpers.jsm"
 );
 
-var {
-  click_account_tree_row,
-  get_account_tree_row,
-  open_advanced_settings,
-} = ChromeUtils.import(
-  "resource://testing-common/mozmill/AccountManagerHelpers.jsm"
-);
+var { click_account_tree_row, get_account_tree_row, open_advanced_settings } =
+  ChromeUtils.import(
+    "resource://testing-common/mozmill/AccountManagerHelpers.jsm"
+  );
 var { FAKE_SERVER_HOSTNAME } = ChromeUtils.import(
   "resource://testing-common/mozmill/FolderDisplayHelpers.jsm"
 );
@@ -25,15 +19,14 @@ var { FAKE_SERVER_HOSTNAME } = ChromeUtils.import(
 var { MailServices } = ChromeUtils.import(
   "resource:///modules/MailServices.jsm"
 );
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 
 var gOldWhiteList = null;
 var gKeyString = null;
 
 var gAccount = null;
 
-add_task(function setupModule(module) {
-  let server = MailServices.accounts.FindServer(
+add_setup(function () {
+  let server = MailServices.accounts.findServer(
     "tinderbox",
     FAKE_SERVER_HOSTNAME,
     "pop3"
@@ -46,7 +39,7 @@ add_task(function setupModule(module) {
   Services.prefs.setCharPref(gKeyString, "");
 });
 
-registerCleanupFunction(function teardownModule(module) {
+registerCleanupFunction(function () {
   Services.prefs.setCharPref(gKeyString, gOldWhiteList);
 });
 
@@ -55,7 +48,7 @@ registerCleanupFunction(function teardownModule(module) {
  * we're not whitelisting any address books.  Then, we'll check all
  * address books and save.
  *
- * @param {Object} tab - The account manager tab.
+ * @param {object} tab - The account manager tab.
  */
 function subtest_check_whitelist_init_and_save(tab) {
   // Ok, the advanced settings window is open.  Let's choose
@@ -63,8 +56,10 @@ function subtest_check_whitelist_init_and_save(tab) {
   let accountRow = get_account_tree_row(gAccount.key, "am-junk.xhtml", tab);
   click_account_tree_row(tab, accountRow);
 
-  let doc = tab.browser.contentWindow.document.getElementById("contentFrame")
-    .contentDocument;
+  let doc =
+    tab.browser.contentWindow.document.getElementById(
+      "contentFrame"
+    ).contentDocument;
 
   // At this point, we shouldn't have anything checked, but we should have
   // the two default address books (Personal and Collected) displayed
@@ -78,7 +73,11 @@ function subtest_check_whitelist_init_and_save(tab) {
   // Now we'll check both address books
   for (let i = 0; i < list.getRowCount(); i++) {
     let abNode = list.getItemAtIndex(i);
-    mc.click(abNode.firstElementChild);
+    EventUtils.synthesizeMouseAtCenter(
+      abNode.firstElementChild,
+      { clickCount: 1 },
+      abNode.firstElementChild.ownerGlobal
+    );
   }
 }
 
@@ -87,14 +86,16 @@ function subtest_check_whitelist_init_and_save(tab) {
  * subtest_check_whitelist_init_and_save were properly saved.
  * Then, we'll clear the address books and save.
  *
- * @param {Object} tab - The account manager tab.
+ * @param {object} tab - The account manager tab.
  */
 function subtest_check_whitelist_load_and_clear(tab) {
   let accountRow = get_account_tree_row(gAccount.key, "am-junk.xhtml", tab);
   click_account_tree_row(tab, accountRow);
 
-  let doc = tab.browser.contentWindow.document.getElementById("contentFrame")
-    .contentDocument;
+  let doc =
+    tab.browser.contentWindow.document.getElementById(
+      "contentFrame"
+    ).contentDocument;
   let list = doc.getElementById("whiteListAbURI");
   let whiteListURIs = Services.prefs.getCharPref(gKeyString).split(" ");
 
@@ -109,21 +110,28 @@ function subtest_check_whitelist_load_and_clear(tab) {
     // prefs
     Assert.ok(whiteListURIs.includes(abNode.getAttribute("value")));
     // Now un-check that address book
-    mc.click(abNode.firstElementChild);
+    EventUtils.synthesizeMouseAtCenter(
+      abNode.firstElementChild,
+      { clickCount: 1 },
+      abNode.firstElementChild.ownerGlobal
+    );
   }
 }
 
 /**
  * Finally, we'll make sure that the address books we cleared
  * were actually cleared.
- * @param {Object} tab - The account manager tab.
+ *
+ * @param {object} tab - The account manager tab.
  */
 function subtest_check_whitelist_load_cleared(tab) {
   let accountRow = get_account_tree_row(gAccount.key, "am-junk.xhtml", tab);
   click_account_tree_row(tab, accountRow);
 
-  let doc = tab.browser.contentWindow.document.getElementById("contentFrame")
-    .contentDocument;
+  let doc =
+    tab.browser.contentWindow.document.getElementById(
+      "contentFrame"
+    ).contentDocument;
   let list = doc.getElementById("whiteListAbURI");
   let whiteListURIs = "";
 

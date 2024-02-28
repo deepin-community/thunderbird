@@ -11,7 +11,7 @@ var AttachmentChecker = {
 /**
  * Check whether the character is a CJK character or not.
  *
- * @return true if it is a CJK character.
+ * @returns true if it is a CJK character.
  */
 function IsCJK(code) {
   if (code >= 0x2000 && code <= 0x9fff) {
@@ -30,8 +30,8 @@ function IsCJK(code) {
 /**
  * Get the (possibly-empty) list of attachment keywords in this message.
  *
- * @return the (possibly-empty) list of attachment keywords in this message
- **/
+ * @returns the (possibly-empty) list of attachment keywords in this message
+ */
 function getAttachmentKeywords(mailData, keywordsInCsv) {
   // The empty string would get split to an array of size 1.  Avoid that...
   var keywordsArray = keywordsInCsv ? keywordsInCsv.split(",") : [];
@@ -109,7 +109,7 @@ function getAttachmentKeywords(mailData, keywordsInCsv) {
 // This file is also used as a Worker.
 /* exported onmessage */
 /* globals postMessage */
-var onmessage = function(event) {
+var onmessage = function (event) {
   var keywordsFound = AttachmentChecker.getAttachmentKeywords(
     event.data[0],
     event.data[1]

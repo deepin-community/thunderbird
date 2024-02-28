@@ -33,17 +33,20 @@ class GeckoViewHistory final : public mozilla::BaseHistory {
 
   // IHistory
   NS_IMETHOD VisitURI(nsIWidget*, nsIURI*, nsIURI* aLastVisitedURI,
-                      uint32_t aFlags) final;
+                      uint32_t aFlags, uint64_t aBrowserId) final;
   NS_IMETHOD SetURITitle(nsIURI*, const nsAString&) final;
 
   static already_AddRefed<GeckoViewHistory> GetSingleton();
 
-  void StartPendingVisitedQueries(const PendingVisitedQueries&) final;
+  void StartPendingVisitedQueries(PendingVisitedQueries&&) final;
 
   GeckoViewHistory();
 
-  void QueryVisitedState(nsIWidget* aWidget, nsTArray<RefPtr<nsIURI>>&& aURIs);
-  void HandleVisitedState(const nsTArray<VisitedURI>& aVisitedURIs);
+  void QueryVisitedState(nsIWidget* aWidget,
+                         mozilla::dom::ContentParent* aInterestedProcess,
+                         nsTArray<RefPtr<nsIURI>>&& aURIs);
+  void HandleVisitedState(const nsTArray<VisitedURI>& aVisitedURIs,
+                          ContentParentSet* aInterestedProcesses);
 
  private:
   virtual ~GeckoViewHistory();

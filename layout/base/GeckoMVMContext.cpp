@@ -14,6 +14,7 @@
 #include "nsIDOMEventListener.h"
 #include "nsIFrame.h"
 #include "nsIObserverService.h"
+#include "nsIScrollableFrame.h"
 #include "nsLayoutUtils.h"
 #include "nsPIDOMWindow.h"
 #include "nsPresContext.h"
@@ -193,12 +194,16 @@ void GeckoMVMContext::UpdateDisplayPortMargins() {
 }
 
 void GeckoMVMContext::Reflow(const CSSSize& aNewSize) {
-  MOZ_ASSERT(mPresShell);
+  RefPtr doc = mDocument;
+  RefPtr ps = mPresShell;
 
-  RefPtr<PresShell> presShell = mPresShell;
-  presShell->ResizeReflowIgnoreOverride(CSSPixel::ToAppUnits(aNewSize.width),
-                                        CSSPixel::ToAppUnits(aNewSize.height),
-                                        ResizeReflowOptions::NoOption);
+  MOZ_ASSERT(doc);
+  MOZ_ASSERT(ps);
+
+  if (ps->ResizeReflowIgnoreOverride(CSSPixel::ToAppUnits(aNewSize.width),
+                                     CSSPixel::ToAppUnits(aNewSize.height))) {
+    doc->FlushPendingNotifications(FlushType::InterruptibleLayout);
+  }
 }
 
 }  // namespace mozilla

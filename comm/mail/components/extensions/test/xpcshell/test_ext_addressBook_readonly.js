@@ -4,12 +4,19 @@
 
 "use strict";
 
-var { ExtensionTestUtils } = ChromeUtils.import(
-  "resource://testing-common/ExtensionXPCShellUtils.jsm"
+var { ExtensionTestUtils } = ChromeUtils.importESModule(
+  "resource://testing-common/ExtensionXPCShellUtils.sys.mjs"
 );
 
-add_task(async function setup() {
+add_setup(async () => {
   Services.prefs.setIntPref("ldap_2.servers.osx.dirType", -1);
+
+  registerCleanupFunction(() => {
+    // Make sure any open database is given a chance to close.
+    Services.startup.advanceShutdownPhase(
+      Services.startup.SHUTDOWN_PHASE_APPSHUTDOWNCONFIRMED
+    );
+  });
 
   let historyAB = MailServices.ab.getDirectory("jsaddrbook://history.sqlite");
 
@@ -138,9 +145,4 @@ add_task(async function test_addressBooks_readonly() {
   await extension.startup();
   await extension.awaitFinish("addressBooks");
   await extension.unload();
-});
-
-registerCleanupFunction(() => {
-  // Make sure any open database is given a chance to close.
-  Services.obs.notifyObservers(null, "quit-application");
 });

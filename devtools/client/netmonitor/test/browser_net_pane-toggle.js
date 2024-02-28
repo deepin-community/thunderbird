@@ -7,8 +7,8 @@
  * Tests if toggling the details pane works as expected.
  */
 
-add_task(async function() {
-  const { tab, monitor } = await initNetMonitor(SIMPLE_URL, {
+add_task(async function () {
+  const { monitor } = await initNetMonitor(SIMPLE_URL, {
     requestCount: 1,
   });
   info("Starting test... ");
@@ -37,7 +37,7 @@ add_task(async function() {
   );
 
   const networkEvent = waitForNetworkEvents(monitor, 1);
-  tab.linkedBrowser.reload();
+  await reloadBrowser();
   await networkEvent;
 
   ok(

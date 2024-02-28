@@ -3,11 +3,10 @@
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
-exports.FilterComponent = FilterComponent;
-
+exports.FilterComponent = void 0;
+var _thread = require("./models/thread");
 /*
-Copyright 2016 OpenMarket Ltd
-Copyright 2019 The Matrix.org Foundation C.I.C.
+Copyright 2016 - 2021 The Matrix.org Foundation C.I.C.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -23,24 +22,25 @@ limitations under the License.
 */
 
 /**
- * @module filter-component
- */
-
-/**
  * Checks if a value matches a given field value, which may be a * terminated
  * wildcard pattern.
- * @param {String} actual_value  The value to be compared
- * @param {String} filter_value  The filter pattern to be compared
- * @return {bool} true if the actual_value matches the filter_value
+ * @param actualValue -  The value to be compared
+ * @param filterValue -  The filter pattern to be compared
+ * @returns true if the actualValue matches the filterValue
  */
-function _matches_wildcard(actual_value, filter_value) {
-  if (filter_value.endsWith("*")) {
-    const type_prefix = filter_value.slice(0, -1);
-    return actual_value.substr(0, type_prefix.length) === type_prefix;
+function matchesWildcard(actualValue, filterValue) {
+  if (filterValue.endsWith("*")) {
+    const typePrefix = filterValue.slice(0, -1);
+    return actualValue.slice(0, typePrefix.length) === typePrefix;
   } else {
-    return actual_value === filter_value;
+    return actualValue === filterValue;
   }
 }
+
+/* eslint-disable camelcase */
+
+/* eslint-enable camelcase */
+
 /**
  * FilterComponent is a section of a Filter definition which defines the
  * types, rooms, senders filters etc to be applied to a particular type of resource.
@@ -48,104 +48,124 @@ function _matches_wildcard(actual_value, filter_value) {
  *
  * N.B. that synapse refers to these as 'Filters', and what js-sdk refers to as
  * 'Filters' are referred to as 'FilterCollections'.
- *
- * @constructor
- * @param {Object} filter_json the definition of this filter JSON, e.g. { 'contains_url': true }
  */
+class FilterComponent {
+  constructor(filterJson, userId) {
+    this.filterJson = filterJson;
+    this.userId = userId;
+  }
 
-
-function FilterComponent(filter_json) {
-  this.filter_json = filter_json;
-  this.types = filter_json.types || null;
-  this.not_types = filter_json.not_types || [];
-  this.rooms = filter_json.rooms || null;
-  this.not_rooms = filter_json.not_rooms || [];
-  this.senders = filter_json.senders || null;
-  this.not_senders = filter_json.not_senders || [];
-  this.contains_url = filter_json.contains_url || null;
-}
-/**
- * Checks with the filter component matches the given event
- * @param {MatrixEvent} event event to be checked against the filter
- * @return {bool} true if the event matches the filter
- */
-
-
-FilterComponent.prototype.check = function (event) {
-  return this._checkFields(event.getRoomId(), event.getSender(), event.getType(), event.getContent() ? event.getContent().url !== undefined : false);
-};
-/**
- * Checks whether the filter component matches the given event fields.
- * @param {String} room_id       the room_id for the event being checked
- * @param {String} sender        the sender of the event being checked
- * @param {String} event_type    the type of the event being checked
- * @param {String} contains_url  whether the event contains a content.url field
- * @return {bool} true if the event fields match the filter
- */
-
-
-FilterComponent.prototype._checkFields = function (room_id, sender, event_type, contains_url) {
-  const literal_keys = {
-    "rooms": function (v) {
-      return room_id === v;
-    },
-    "senders": function (v) {
-      return sender === v;
-    },
-    "types": function (v) {
-      return _matches_wildcard(event_type, v);
+  /**
+   * Checks with the filter component matches the given event
+   * @param event - event to be checked against the filter
+   * @returns true if the event matches the filter
+   */
+  check(event) {
+    const bundledRelationships = event.getUnsigned()?.["m.relations"] || {};
+    const relations = Object.keys(bundledRelationships);
+    // Relation senders allows in theory a look-up of any senders
+    // however clients can only know about the current user participation status
+    // as sending a whole list of participants could be proven problematic in terms
+    // of performance
+    // This should be improved when bundled relationships solve that problem
+    const relationSenders = [];
+    if (this.userId && bundledRelationships?.[_thread.THREAD_RELATION_TYPE.name]?.current_user_participated) {
+      relationSenders.push(this.userId);
     }
-  };
-  const self = this;
+    return this.checkFields(event.getRoomId(), event.getSender(), event.getType(), event.getContent() ? event.getContent().url !== undefined : false, relations, relationSenders);
+  }
 
-  for (let n = 0; n < Object.keys(literal_keys).length; n++) {
-    const name = Object.keys(literal_keys)[n];
-    const match_func = literal_keys[name];
-    const not_name = "not_" + name;
-    const disallowed_values = self[not_name];
+  /**
+   * Converts the filter component into the form expected over the wire
+   */
+  toJSON() {
+    return {
+      types: this.filterJson.types || null,
+      not_types: this.filterJson.not_types || [],
+      rooms: this.filterJson.rooms || null,
+      not_rooms: this.filterJson.not_rooms || [],
+      senders: this.filterJson.senders || null,
+      not_senders: this.filterJson.not_senders || [],
+      contains_url: this.filterJson.contains_url || null,
+      [_thread.FILTER_RELATED_BY_SENDERS.name]: this.filterJson[_thread.FILTER_RELATED_BY_SENDERS.name] || [],
+      [_thread.FILTER_RELATED_BY_REL_TYPES.name]: this.filterJson[_thread.FILTER_RELATED_BY_REL_TYPES.name] || []
+    };
+  }
 
-    if (disallowed_values.filter(match_func).length > 0) {
-      return false;
-    }
-
-    const allowed_values = self[name];
-
-    if (allowed_values && allowed_values.length > 0) {
-      const anyMatch = allowed_values.some(match_func);
-
-      if (!anyMatch) {
+  /**
+   * Checks whether the filter component matches the given event fields.
+   * @param roomId -        the roomId for the event being checked
+   * @param sender -        the sender of the event being checked
+   * @param eventType -     the type of the event being checked
+   * @param containsUrl -  whether the event contains a content.url field
+   * @param relationTypes -  whether has aggregated relation of the given type
+   * @param relationSenders - whether one of the relation is sent by the user listed
+   * @returns true if the event fields match the filter
+   */
+  checkFields(roomId, sender, eventType, containsUrl, relationTypes, relationSenders) {
+    const literalKeys = {
+      rooms: function (v) {
+        return roomId === v;
+      },
+      senders: function (v) {
+        return sender === v;
+      },
+      types: function (v) {
+        return matchesWildcard(eventType, v);
+      }
+    };
+    for (const name in literalKeys) {
+      const matchFunc = literalKeys[name];
+      const notName = "not_" + name;
+      const disallowedValues = this.filterJson[notName];
+      if (disallowedValues?.some(matchFunc)) {
+        return false;
+      }
+      const allowedValues = this.filterJson[name];
+      if (allowedValues && !allowedValues.some(matchFunc)) {
         return false;
       }
     }
-  }
-
-  const contains_url_filter = this.filter_json.contains_url;
-
-  if (contains_url_filter !== undefined) {
-    if (contains_url_filter !== contains_url) {
+    const containsUrlFilter = this.filterJson.contains_url;
+    if (containsUrlFilter !== undefined && containsUrlFilter !== containsUrl) {
       return false;
     }
+    const relationTypesFilter = this.filterJson[_thread.FILTER_RELATED_BY_REL_TYPES.name];
+    if (relationTypesFilter !== undefined) {
+      if (!this.arrayMatchesFilter(relationTypesFilter, relationTypes)) {
+        return false;
+      }
+    }
+    const relationSendersFilter = this.filterJson[_thread.FILTER_RELATED_BY_SENDERS.name];
+    if (relationSendersFilter !== undefined) {
+      if (!this.arrayMatchesFilter(relationSendersFilter, relationSenders)) {
+        return false;
+      }
+    }
+    return true;
+  }
+  arrayMatchesFilter(filter, values) {
+    return values.length > 0 && filter.every(value => {
+      return values.includes(value);
+    });
   }
 
-  return true;
-};
-/**
- * Filters a list of events down to those which match this filter component
- * @param {MatrixEvent[]} events  Events to be checked againt the filter component
- * @return {MatrixEvent[]} events which matched the filter component
- */
+  /**
+   * Filters a list of events down to those which match this filter component
+   * @param events -  Events to be checked against the filter component
+   * @returns events which matched the filter component
+   */
+  filter(events) {
+    return events.filter(this.check, this);
+  }
 
-
-FilterComponent.prototype.filter = function (events) {
-  return events.filter(this.check, this);
-};
-/**
- * Returns the limit field for a given filter component, providing a default of
- * 10 if none is otherwise specified.  Cargo-culted from Synapse.
- * @return {Number} the limit for this filter component.
- */
-
-
-FilterComponent.prototype.limit = function () {
-  return this.filter_json.limit !== undefined ? this.filter_json.limit : 10;
-};
+  /**
+   * Returns the limit field for a given filter component, providing a default of
+   * 10 if none is otherwise specified. Cargo-culted from Synapse.
+   * @returns the limit for this filter component.
+   */
+  limit() {
+    return this.filterJson.limit !== undefined ? this.filterJson.limit : 10;
+  }
+}
+exports.FilterComponent = FilterComponent;

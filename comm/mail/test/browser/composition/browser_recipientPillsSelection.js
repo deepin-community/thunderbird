@@ -8,16 +8,10 @@
 
 "use strict";
 
-var {
-  close_compose_window,
-  open_compose_new_mail,
-  setup_msg_contents,
-} = ChromeUtils.import("resource://testing-common/mozmill/ComposeHelpers.jsm");
+var { close_compose_window, open_compose_new_mail, setup_msg_contents } =
+  ChromeUtils.import("resource://testing-common/mozmill/ComposeHelpers.jsm");
 var { close_popup } = ChromeUtils.import(
   "resource://testing-common/mozmill/FolderDisplayHelpers.jsm"
-);
-var { AppConstants } = ChromeUtils.import(
-  "resource://gre/modules/AppConstants.jsm"
 );
 
 var modifiers =
@@ -56,14 +50,14 @@ add_task(async function test_pill_selection() {
     "All pills currently selected"
   );
 
+  // Right click on the last pill to open the context menu.
+  let pill3 = allPills[3];
   let contextMenu = cDoc.getElementById("emailAddressPillPopup");
   let popupPromise = BrowserTestUtils.waitForEvent(contextMenu, "popupshown");
-
-  // Right click on the last pill to open the context menu.
   EventUtils.synthesizeMouseAtCenter(
-    allPills[3],
+    pill3,
     { type: "contextmenu" },
-    cwc.window
+    pill3.ownerGlobal
   );
   await popupPromise;
   // The selection should not have changed.
@@ -88,11 +82,12 @@ add_task(async function test_pill_selection() {
 
   let popupPromise2 = BrowserTestUtils.waitForEvent(contextMenu, "popupshown");
 
+  let pill0 = allPills[0];
   // Right click on the first pill to open the context menu.
   EventUtils.synthesizeMouseAtCenter(
-    allPills[0],
+    pill0,
     { type: "contextmenu" },
-    cwc.window
+    pill0.ownerGlobal
   );
   await popupPromise2;
 
@@ -132,12 +127,13 @@ add_task(async function test_pill_selection() {
 
   let popupPromise3 = BrowserTestUtils.waitForEvent(contextMenu, "popupshown");
 
+  let pill2 = allPills[2];
   // Right click on the thirds pill, which should be selected, to select it
   // while opening the context menu and deselecting the other two pills.
   EventUtils.synthesizeMouseAtCenter(
-    allPills[2],
+    pill2,
     { type: "contextmenu" },
-    cwc.window
+    pill2.ownerGlobal
   );
   await popupPromise3;
 
@@ -180,10 +176,11 @@ add_task(async function test_pill_context_menu() {
   let popupPromise = BrowserTestUtils.waitForEvent(contextMenu, "popupshown");
 
   // Right click on the first pill to open the context menu.
+  let pill = allPills[0];
   EventUtils.synthesizeMouseAtCenter(
-    allPills[0],
+    pill,
     { type: "contextmenu" },
-    cwc.window
+    pill.ownerGlobal
   );
   await popupPromise;
   // The selection should not have changed.
@@ -199,10 +196,15 @@ add_task(async function test_pill_context_menu() {
     "Timeout waiting for the pill to be moved to the Cc field"
   );
 
+  let movePillCc = contextMenu.querySelector("#moveAddressPillCc");
   // Move the pill to the Cc field.
-  // We need to use click() since the synthesizeMouseAtCenter doesn't work for
-  // context menu items on macos.
-  cwc.click(contextMenu.querySelector("#moveAddressPillCc"));
+  if (AppConstants.platform == "macosx") {
+    // We need to use click() since the synthesizeMouseAtCenter doesn't work for
+    // context menu items on macos.
+    movePillCc.click();
+  } else {
+    EventUtils.synthesizeMouseAtCenter(movePillCc, {}, movePillCc.ownerGlobal);
+  }
   await pillMoved;
 
   close_popup(cwc, contextMenu);
@@ -224,7 +226,7 @@ add_task(async function test_pill_context_menu() {
   EventUtils.synthesizeMouseAtCenter(
     ccPill,
     { type: "contextmenu" },
-    cwc.window
+    ccPill.ownerGlobal
   );
   await popupPromise2;
 
@@ -235,7 +237,14 @@ add_task(async function test_pill_context_menu() {
   );
 
   // Move the pill to the Bcc field.
-  cwc.click(contextMenu.querySelector("#moveAddressPillBcc"));
+  let moveAdd = contextMenu.querySelector("#moveAddressPillBcc");
+  if (AppConstants.platform == "macosx") {
+    // We need to use click() since the synthesizeMouseAtCenter doesn't work for
+    // context menu items on macos.
+    moveAdd.click();
+  } else {
+    EventUtils.synthesizeMouseAtCenter(moveAdd, {}, moveAdd.ownerGlobal);
+  }
   await pillMoved2;
 
   close_popup(cwc, contextMenu);

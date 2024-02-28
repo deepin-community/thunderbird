@@ -7,7 +7,6 @@
 #include "nsISimpleEnumerator.h"
 
 #include "nsIAbCard.h"
-#include "nsAbBaseCID.h"
 #include "nsAbAddressCollector.h"
 #include "nsIPrefService.h"
 #include "nsIPrefBranch.h"
@@ -42,7 +41,8 @@ already_AddRefed<nsIAbCard> nsAbAddressCollector::GetCardForAddress(
     const char* aProperty, const nsACString& aEmailAddress,
     nsIAbDirectory** aDirectory) {
   nsresult rv;
-  nsCOMPtr<nsIAbManager> abManager(do_GetService(NS_ABMANAGER_CONTRACTID, &rv));
+  nsCOMPtr<nsIAbManager> abManager(
+      do_GetService("@mozilla.org/abmanager;1", &rv));
   NS_ENSURE_SUCCESS(rv, nullptr);
 
   nsTArray<RefPtr<nsIAbDirectory>> directories;
@@ -69,7 +69,7 @@ already_AddRefed<nsIAbCard> nsAbAddressCollector::GetCardForAddress(
 
 NS_IMETHODIMP
 nsAbAddressCollector::CollectAddress(const nsACString& aAddresses,
-                                     bool aCreateCard, uint32_t aSendFormat) {
+                                     bool aCreateCard) {
   // If we've not got a valid directory, no point in going any further
   if (!mDirectory) return NS_OK;
 
@@ -87,8 +87,7 @@ nsAbAddressCollector::CollectAddress(const nsACString& aAddresses,
     // should still be careful.
     if (addresses[i].IsEmpty()) continue;
 
-    CollectSingleAddress(addresses[i], names[i], aCreateCard, aSendFormat,
-                         false);
+    CollectSingleAddress(addresses[i], names[i], aCreateCard, false);
   }
   return NS_OK;
 }
@@ -97,7 +96,6 @@ NS_IMETHODIMP
 nsAbAddressCollector::CollectSingleAddress(const nsACString& aEmail,
                                            const nsACString& aDisplayName,
                                            bool aCreateCard,
-                                           uint32_t aSendFormat,
                                            bool aSkipCheckExisting) {
   if (!mDirectory) return NS_OK;
 
@@ -119,15 +117,13 @@ nsAbAddressCollector::CollectSingleAddress(const nsACString& aEmail,
   }
 
   if (!card && (aCreateCard || aSkipCheckExisting)) {
-    card = do_CreateInstance(NS_ABCARDPROPERTY_CONTRACTID, &rv);
+    card = do_CreateInstance("@mozilla.org/addressbook/cardproperty;1", &rv);
     if (NS_SUCCEEDED(rv) && card) {
       // Set up the fields for the new card.
       SetNamesForCard(card, aDisplayName);
       AutoCollectScreenName(card, aEmail);
 
       if (NS_SUCCEEDED(card->SetPrimaryEmail(NS_ConvertUTF8toUTF16(aEmail)))) {
-        card->SetPropertyAsUint32(kPreferMailFormatProperty, aSendFormat);
-
         nsCOMPtr<nsIAbCard> addedCard;
         rv = mDirectory->AddCard(card, getter_AddRefs(addedCard));
         NS_ASSERTION(NS_SUCCEEDED(rv), "failed to add card");
@@ -150,18 +146,6 @@ nsAbAddressCollector::CollectSingleAddress(const nsACString& aEmail,
     // If we already have a display name, don't set the names on the card.
     if (displayName.IsEmpty() && !aDisplayName.IsEmpty())
       modifiedCard = SetNamesForCard(card, aDisplayName);
-
-    if (aSendFormat != nsIAbPreferMailFormat::unknown) {
-      uint32_t currentFormat;
-      rv = card->GetPropertyAsUint32(kPreferMailFormatProperty, &currentFormat);
-      NS_ASSERTION(NS_SUCCEEDED(rv), "failed to get preferred mail format");
-
-      // we only want to update the AB if the current format is unknown
-      if (currentFormat == nsIAbPreferMailFormat::unknown &&
-          NS_SUCCEEDED(card->SetPropertyAsUint32(kPreferMailFormatProperty,
-                                                 aSendFormat)))
-        modifiedCard = true;
-    }
 
     if (modifiedCard) originDirectory->ModifyCard(card);
   }
@@ -275,7 +259,8 @@ void nsAbAddressCollector::SetUpAbFromPrefs(nsIPrefBranch* aPrefBranch) {
   mABURI = abURI;
 
   nsresult rv;
-  nsCOMPtr<nsIAbManager> abManager(do_GetService(NS_ABMANAGER_CONTRACTID, &rv));
+  nsCOMPtr<nsIAbManager> abManager(
+      do_GetService("@mozilla.org/abmanager;1", &rv));
   NS_ENSURE_SUCCESS_VOID(rv);
 
   rv = abManager->GetDirectory(mABURI, getter_AddRefs(mDirectory));

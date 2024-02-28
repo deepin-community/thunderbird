@@ -6,13 +6,10 @@
  * Test styling messages.
  */
 
-requestLongerTimeout(2);
+requestLongerTimeout(3);
 
-var {
-  close_compose_window,
-  open_compose_new_mail,
-  FormatHelper,
-} = ChromeUtils.import("resource://testing-common/mozmill/ComposeHelpers.jsm");
+var { close_compose_window, open_compose_new_mail, FormatHelper } =
+  ChromeUtils.import("resource://testing-common/mozmill/ComposeHelpers.jsm");
 
 add_task(async function test_style_buttons() {
   let controller = open_compose_new_mail();
@@ -246,6 +243,7 @@ add_task(async function test_text_styling_whilst_typing() {
 
     // Start styling.
     await formatHelper.selectStyle(style);
+
     // See Bug 1716840.
     // await formatHelper.assertShownStyles(style, `${name} selected`);
     let text = `test-${name}`;
@@ -265,7 +263,18 @@ add_task(async function test_text_styling_whilst_typing() {
     );
     await formatHelper.assertShownStyles(null, `${name} unselected and typing`);
 
+    // Select these again to unselect for next loop cycle. Needs to be done
+    // before empty paragraph since they happen only after "typing".
+    if (style.linked) {
+      await formatHelper.selectStyle(style.linked);
+    }
+    if (style.implies) {
+      await formatHelper.selectStyle(style.implies);
+    }
     await formatHelper.emptyParagraph();
+
+    // Select again to unselect for next loop cycle.
+    await formatHelper.selectStyle(style);
   }
 
   close_compose_window(controller);
@@ -319,8 +328,15 @@ add_task(async function test_text_styling_update_on_selection_change() {
           `${forward ? "forwards" : "backwards"}`
       );
     }
-
+    if (style.linked) {
+      await formatHelper.selectStyle(style.linked);
+    }
+    if (style.implies) {
+      await formatHelper.selectStyle(style.implies);
+    }
     await formatHelper.emptyParagraph();
+    // Select again to unselect for next loop cycle.
+    await formatHelper.selectStyle(style);
   }
 
   close_compose_window(controller);
@@ -429,17 +445,17 @@ add_task(async function test_induced_text_styling() {
       await formatHelper.selectTextRange(0, text.length);
       await formatHelper.assertShownStyles(
         style,
-        `Before trying to unselect ${desc}`
+        `Before trying to deselect ${desc}`
       );
 
       await formatHelper.selectStyle(style.implies);
       formatHelper.assertMessageParagraph(
         [{ tags, text }],
-        `After trying to unselect ${desc}`
+        `After trying to deselect ${desc}`
       );
       await formatHelper.assertShownStyles(
         style,
-        `After trying to unselect ${desc}`
+        `After trying to deselect ${desc}`
       );
     }
     if (style.linked) {
@@ -451,6 +467,15 @@ add_task(async function test_induced_text_styling() {
 
       formatHelper.assertMessageParagraph([text], `After unselecting ${desc}`);
       await formatHelper.assertShownStyles(null, `After unselecting ${desc}`);
+    }
+
+    await formatHelper.emptyParagraph();
+    // Select again to unselect for next loop cycle.
+    if (style.linked) {
+      await formatHelper.selectStyle(style.linked);
+    }
+    if (style.implies) {
+      await formatHelper.selectStyle(style.implies);
     }
     await formatHelper.emptyParagraph();
   }
@@ -569,6 +594,14 @@ add_task(async function test_fixed_width_text_styling_font_change() {
     //  `"${font}" when ${name} region has font set`
     //);
 
+    await formatHelper.emptyParagraph();
+    // Select again to unselect for next loop cycle.
+    if (style.linked) {
+      await formatHelper.selectStyle(style.linked);
+    }
+    if (style.implies) {
+      await formatHelper.selectStyle(style.implies);
+    }
     await formatHelper.emptyParagraph();
   }
 

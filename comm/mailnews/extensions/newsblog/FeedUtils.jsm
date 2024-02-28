@@ -5,17 +5,24 @@
 
 const EXPORTED_SYMBOLS = ["FeedUtils"];
 
-const { XPCOMUtils } = ChromeUtils.import(
-  "resource://gre/modules/XPCOMUtils.jsm"
+const { XPCOMUtils } = ChromeUtils.importESModule(
+  "resource://gre/modules/XPCOMUtils.sys.mjs"
+);
+const { MailServices } = ChromeUtils.import(
+  "resource:///modules/MailServices.jsm"
 );
 
-XPCOMUtils.defineLazyModuleGetters(this, {
+const lazy = {};
+
+ChromeUtils.defineESModuleGetters(lazy, {
+  JSONFile: "resource://gre/modules/JSONFile.sys.mjs",
+  PlacesUtils: "resource://gre/modules/PlacesUtils.sys.mjs",
+});
+
+XPCOMUtils.defineLazyModuleGetters(lazy, {
   Feed: "resource:///modules/Feed.jsm",
   jsmime: "resource:///modules/jsmime.jsm",
-  JSONFile: "resource://gre/modules/JSONFile.jsm",
-  MailServices: "resource:///modules/MailServices.jsm",
   MailUtils: "resource:///modules/MailUtils.jsm",
-  Services: "resource://gre/modules/Services.jsm",
 });
 
 var FeedUtils = {
@@ -123,7 +130,7 @@ var FeedUtils = {
 
     // By default, Tb sorts by hostname, ie Feeds, Feeds-1, and not by alpha
     // prettyName.  Do the same as a stock install to match folderpane order.
-    rssRootFolders.sort(function(a, b) {
+    rssRootFolders.sort(function (a, b) {
       return a.hostname > b.hostname;
     });
 
@@ -133,8 +140,8 @@ var FeedUtils = {
   /**
    * Create rss account.
    *
-   * @param {String} aName     - Optional account name to override default.
-   * @returns {nsIMsgAccount}  - The creaged account.
+   * @param {String} aName - Optional account name to override default.
+   * @returns {nsIMsgAccount} - The creaged account.
    */
   createRssAccount(aName) {
     let userName = "nobody";
@@ -144,9 +151,7 @@ var FeedUtils = {
     let serverType = "rss";
     let defaultName = FeedUtils.strings.GetStringFromName("feeds-accountname");
     let i = 2;
-    while (
-      MailServices.accounts.findRealServer(userName, hostName, serverType, 0)
-    ) {
+    while (MailServices.accounts.findServer(userName, hostName, serverType)) {
       // If "Feeds" exists, try "Feeds-2", then "Feeds-3", etc.
       hostName = hostNamePref + "-" + i++;
     }
@@ -167,17 +172,6 @@ var FeedUtils = {
     // Ensure the Trash folder db (.msf) is created otherwise folder/message
     // deletes will throw until restart creates it.
     server.msgStore.discoverSubFolders(server.rootMsgFolder, false);
-
-    // Create "Local Folders" if none exist yet as it's guaranteed that
-    // those exist when any account exists.
-    let localFolders;
-    try {
-      localFolders = MailServices.accounts.localFoldersServer;
-    } catch (ex) {}
-
-    if (!localFolders) {
-      MailServices.accounts.createLocalMailAccount();
-    }
 
     // Save new accounts in case of a crash.
     try {
@@ -201,9 +195,9 @@ var FeedUtils = {
    * true if the url is already in our list.  This is used to prevent the
    * user from subscribing to the same feed multiple times for the same server.
    *
-   * @param {String} aUrl                  - The url.
+   * @param {string} aUrl - The url.
    * @param {nsIMsgIncomingServer} aServer - Account server.
-   * @returns {Boolean}                    - true if exists else false.
+   * @returns {Boolean} - true if exists else false.
    */
   feedAlreadyExists(aUrl, aServer) {
     let ds = this.getSubscriptionsDS(aServer);
@@ -225,14 +219,14 @@ var FeedUtils = {
   /**
    * Download a feed url on biff or get new messages.
    *
-   * @param {nsIMsgFolder} aFolder         - The folder.
-   * @param {nsIUrlListener} aUrlListener  - Feed url.
-   * @param {Boolean} aIsBiff              - true if biff, false if manual get.
-   * @param {nsIDOMWindow} aMsgWindow      - The window.
+   * @param {nsIMsgFolder} aFolder - The folder.
+   * @param {nsIUrlListener} aUrlListener - Feed url.
+   * @param {Boolean} aIsBiff - true if biff, false if manual get.
+   * @param {nsIDOMWindow} aMsgWindow - The window.
    *
-   * @returns {void}
+   * @returns {Promise<void>} When all feeds downloading have been set off.
    */
-  downloadFeed(aFolder, aUrlListener, aIsBiff, aMsgWindow) {
+  async downloadFeed(aFolder, aUrlListener, aIsBiff, aMsgWindow) {
     FeedUtils.log.debug(
       "downloadFeed: account isBiff:isOffline - " +
         aIsBiff +
@@ -287,7 +281,7 @@ var FeedUtils = {
     }
 
     let folder;
-    function* feeder() {
+    async function* feeder() {
       for (let i = 0; i < allFolders.length; i++) {
         folder = allFolders[i];
         FeedUtils.log.debug(
@@ -320,8 +314,8 @@ var FeedUtils = {
         for (let url of feedUrlArray) {
           // Check whether this feed should be updated; if forceDownload is true
           // skip the per feed check.
+          let status = FeedUtils.getStatus(folder, url);
           if (!forceDownload) {
-            let status = FeedUtils.getStatus(folder, url);
             // Also skip if user paused, or error paused (but not inStartup;
             // go check the feed again), or update interval hasn't expired.
             if (
@@ -343,9 +337,16 @@ var FeedUtils = {
               continue;
             }
           }
+          // Update feed icons only once every 24h, tops.
+          if (
+            forceDownload ||
+            now - status.lastUpdateTime >= 24 * 60 * 60 * 1000
+          ) {
+            await FeedUtils.getFavicon(folder, url);
+          }
 
           // Create a feed object.
-          let feed = new Feed(url, folder);
+          let feed = new lazy.Feed(url, folder);
 
           // init can be called multiple times. Checks if it should actually
           // init itself.
@@ -387,7 +388,7 @@ var FeedUtils = {
           );
           feed.download(true, FeedUtils.progressNotifier);
 
-          Services.tm.mainThread.dispatch(function() {
+          Services.tm.mainThread.dispatch(function () {
             try {
               let done = getFeed.next().done;
               if (done) {
@@ -412,7 +413,7 @@ var FeedUtils = {
       }
     }
 
-    let getFeed = feeder();
+    let getFeed = await feeder();
     try {
       let done = getFeed.next().done;
       if (done) {
@@ -435,13 +436,12 @@ var FeedUtils = {
   /**
    * Subscribe a new feed url.
    *
-   * @param {String} aUrl              - Feed url.
-   * @param {nsIMsgFolder} aFolder     - Folder.
-   * @param {nsIDOMWindow} aMsgWindow  - The window.
+   * @param {String} aUrl - Feed url.
+   * @param {nsIMsgFolder} aFolder - Folder.
    *
    * @returns {void}
    */
-  subscribeToFeed(aUrl, aFolder, aMsgWindow) {
+  subscribeToFeed(aUrl, aFolder) {
     // We don't support the ability to subscribe to several feeds at once yet.
     // For now, abort the subscription if we are already in the middle of
     // subscribing to a feed via drag and drop.
@@ -463,30 +463,6 @@ var FeedUtils = {
       aFolder = FeedUtils.createRssAccount().incomingServer.rootFolder;
     }
 
-    if (!aMsgWindow) {
-      let wlist = Services.wm.getEnumerator("mail:3pane");
-      if (wlist.hasMoreElements()) {
-        let win = wlist.getNext();
-        win.focus();
-        aMsgWindow = win.msgWindow;
-      } else {
-        // If there are no open windows, open one, pass it the URL, and
-        // during opening it will subscribe to the feed.
-        let arg = Cc["@mozilla.org/supports-string;1"].createInstance(
-          Ci.nsISupportsString
-        );
-        arg.data = aUrl;
-        Services.ww.openWindow(
-          null,
-          "chrome://messenger/content/messenger.xhtml",
-          "_blank",
-          "chrome,dialog=no,all",
-          arg
-        );
-        return;
-      }
-    }
-
     // If aUrl is a feed url, then it is either of the form
     // feed://example.org/feed.xml or feed:https://example.org/feed.xml.
     // Replace feed:// with http:// per the spec, then strip off feed:
@@ -494,21 +470,23 @@ var FeedUtils = {
     aUrl = aUrl.replace(/^feed:\x2f\x2f/i, "http://");
     aUrl = aUrl.replace(/^feed:/i, "");
 
+    let msgWindow = Services.wm.getMostRecentWindow("mail:3pane").msgWindow;
+
     // Make sure we aren't already subscribed to this feed before we attempt
     // to subscribe to it.
     if (FeedUtils.feedAlreadyExists(aUrl, aFolder.server)) {
-      aMsgWindow.statusFeedback.showStatusString(
+      msgWindow.statusFeedback.showStatusString(
         FeedUtils.strings.GetStringFromName("subscribe-feedAlreadySubscribed")
       );
       return;
     }
 
-    let feed = new Feed(aUrl, aFolder);
+    let feed = new lazy.Feed(aUrl, aFolder);
     // Default setting for new feeds per account settings.
     feed.quickMode = feed.server.getBoolValue("quickMode");
     feed.options = FeedUtils.getOptionsAcct(feed.server);
 
-    FeedUtils.progressNotifier.init(aMsgWindow, true);
+    FeedUtils.progressNotifier.init(msgWindow, true);
     FeedUtils.progressNotifier.mNumPendingFeedDownloads++;
     feed.download(true, FeedUtils.progressNotifier);
   },
@@ -518,9 +496,9 @@ var FeedUtils = {
    * subscriptions in an account if the folder is the account folder.
    * A folder's subfolders' feeds are not included.
    *
-   * @param {nsIMsgFolder} aFolder     - Folder or account folder (server).
-   * @param {Boolean} aPause           - To pause or not to pause.
-   * @param {Boolean} aBiffNow         - If aPause is false, and aBiffNow is true
+   * @param {nsIMsgFolder} aFolder - Folder or account folder (server).
+   * @param {boolean} aPause - To pause or not to pause.
+   * @param {Boolean} aBiffNow - If aPause is false, and aBiffNow is true
    *                                     do the biff immediately.
    * @returns {void}
    */
@@ -549,7 +527,7 @@ var FeedUtils = {
     }
 
     for (let feedUrl of feedUrls) {
-      let feed = new Feed(feedUrl, aFolder);
+      let feed = new lazy.Feed(feedUrl, aFolder);
       let options = feed.options;
       options.updates.enabled = !aPause;
       feed.options = options;
@@ -566,7 +544,7 @@ var FeedUtils = {
       if (curItem.container) {
         win.FeedSubscriptions.selectFolder(curItem.folder);
       } else {
-        let feed = new Feed(curItem.url, curItem.parentFolder);
+        let feed = new lazy.Feed(curItem.url, curItem.parentFolder);
         win.FeedSubscriptions.selectFeed(feed);
       }
     }
@@ -596,7 +574,7 @@ var FeedUtils = {
     ds.saveSoon();
 
     // Update folderpane.
-    this.setFolderPaneProperty(aFeed.folder, "favicon", null, "row");
+    Services.obs.notifyObservers(aFeed.folder, "folder-properties-changed");
   },
 
   /**
@@ -618,16 +596,16 @@ var FeedUtils = {
     ds.saveSoon();
 
     // Update folderpane.
-    this.setFolderPaneProperty(aFeed.folder, "favicon", null, "row");
+    Services.obs.notifyObservers(aFeed.folder, "folder-properties-changed");
   },
 
   /**
    * Change an existing feed's url.
    *
-   * @param {Feed} aFeed      - The feed object.
-   * @param {String} aNewUrl  - New url.
+   * @param {Feed} aFeed - The feed object.
+   * @param {string} aNewUrl - New url.
    *
-   * @returns {Boolean}       - true if successful, else false.
+   * @returns {Boolean} - true if successful, else false.
    */
   changeUrlForFeed(aFeed, aNewUrl) {
     if (!aFeed || !aFeed.folder || !aNewUrl) {
@@ -746,8 +724,8 @@ var FeedUtils = {
   /**
    * Check if the folder's msgDatabase is openable, reparse if desired.
    *
-   * @param {nsIMsgFolder} aFolder        - The folder.
-   * @param {Boolean} aReparse            - Reparse if true.
+   * @param {nsIMsgFolder} aFolder - The folder.
+   * @param {boolean} aReparse - Reparse if true.
    * @param {nsIUrlListener} aUrlListener - Object implementing nsIUrlListener.
    *
    * @returns {Boolean} - true if msgDb is available, else false
@@ -790,9 +768,9 @@ var FeedUtils = {
    * folderpane or subscribe dialog tree.
    *
    * @param {nsIMsgFolder} aFolder - Folder or a feed url's parent folder.
-   * @param {String} aFeedUrl      - Feed url for a feed row, null for folder.
+   * @param {string} aFeedUrl - Feed url for a feed row, null for folder.
    *
-   * @returns {String}             - The properties.
+   * @returns {string} - Space separated properties.
    */
   getFolderProperties(aFolder, aFeedUrl) {
     let folder = aFolder;
@@ -806,7 +784,7 @@ var FeedUtils = {
       folder.server.rootFolder.URI
     ).enabled;
     if (folder.isServer) {
-      return !serverEnabled ? " serverIsPaused" : "";
+      return !serverEnabled ? " isPaused" : "";
     }
 
     let properties = aFeedUrl ? " isFeed-true" : " isFeedFolder-true";
@@ -834,45 +812,15 @@ var FeedUtils = {
     properties += hasError ? " hasError" : "";
     properties += isBusy ? " isBusy" : "";
     properties += numPaused == feedUrls.length ? " isPaused" : "";
-    properties += !serverEnabled ? " serverIsPaused" : "";
 
     return properties;
   },
 
   /**
-   * Update a folderpane cached property.
-   *
-   * @param {nsIMsgFolder} aFolder   - Folder.
-   * @param {String} aProperty       - Property.
-   * @param {String} aValue          - Value.
-   * @param {String} aInvalidate     - "row" = folder's row.
-   *                                  ."all" = all rows.
-   * @returns {void}
-   */
-  setFolderPaneProperty(aFolder, aProperty, aValue, aInvalidate) {
-    let win = Services.wm.getMostRecentWindow("mail:3pane");
-    if (!aFolder || !aProperty || !win || !("gFolderTreeView" in win)) {
-      return;
-    }
-
-    win.gFolderTreeView.setFolderCacheProperty(aFolder, aProperty, aValue);
-
-    if (aInvalidate == "all") {
-      win.gFolderTreeView._tree.invalidate();
-    }
-
-    if (aInvalidate == "row") {
-      let row = win.gFolderTreeView.getIndexOfFolder(aFolder);
-      win.gFolderTreeView.clearFolderCacheProperty(aFolder, "properties");
-      win.gFolderTreeView._tree.invalidateRow(row);
-    }
-  },
-
-  /**
    * Get a cached feed or folder status.
    *
-   * @param {nsIMsgFolder} aFolder   - Folder.
-   * @param {String} aUrl            - Url key (feed url or folder URI).
+   * @param {nsIMsgFolder} aFolder - Folder.
+   * @param {string} aUrl - Url key (feed url or folder URI).
    *
    * @returns {String} aValue        - The value.
    */
@@ -892,7 +840,7 @@ var FeedUtils = {
       this[serverKey][aUrl].status = this.statusTemplate;
       if (FeedUtils.isValidScheme(aUrl)) {
         // Seed persisted status properties for feed urls.
-        let feed = new Feed(aUrl, aFolder);
+        let feed = new lazy.Feed(aUrl, aFolder);
         this[serverKey][aUrl].status.enabled = feed.options.updates.enabled;
         this[serverKey][aUrl].status.updateMinutes =
           feed.options.updates.updateMinutes;
@@ -913,12 +861,12 @@ var FeedUtils = {
   /**
    * Update a feed or folder status and refresh folderpane.
    *
-   * @param {nsIMsgFolder} aFolder   - Folder.
-   * @param {String} aUrl            - Url key (feed url or folder URI).
-   * @param {String} aProperty       - Url status property.
-   * @param {String} aValue          - Value.
+   * @param {nsIMsgFolder} aFolder - Folder.
+   * @param {string} aUrl - Url key (feed url or folder URI).
+   * @param {string} aProperty - Url status property.
+   * @param {string} aValue - Value.
    *
-   * @returns {String} aValue        - The value.
+   * @returns {void}
    */
   setStatus(aFolder, aUrl, aProperty, aValue) {
     if (!aFolder || !aUrl || !aProperty) {
@@ -935,18 +883,9 @@ var FeedUtils = {
 
     this[aFolder.server.serverURI][aUrl].status[aProperty] = aValue;
 
-    let win = Services.wm.getMostRecentWindow("mail:3pane");
-    if (win && "gFolderTreeView" in win) {
-      if (aFolder.isServer) {
-        win.gFolderTreeView._tree.invalidate();
-      } else {
-        let row = win.gFolderTreeView.getIndexOfFolder(aFolder);
-        win.gFolderTreeView.clearFolderCacheProperty(aFolder, "properties");
-        win.gFolderTreeView._tree.invalidateRow(row);
-      }
-    }
+    Services.obs.notifyObservers(aFolder, "folder-properties-changed");
 
-    win = Services.wm.getMostRecentWindow("Mail:News-BlogSubscriptions");
+    let win = Services.wm.getMostRecentWindow("Mail:News-BlogSubscriptions");
     if (win) {
       win.FeedSubscriptions.mView.tree.invalidate();
     }
@@ -957,110 +896,149 @@ var FeedUtils = {
    * message url. The favicon service caches it in memory if places history is
    * not enabled.
    *
-   * @param {nsIMsgFolder} aFolder - The feed folder or null if aUrl.
-   * @param {String} aUrl          - A url (feed, message, other) or null if aFolder.
-   * @param {String} aIconUrl      - The icon url if already determined, else null.
-   * @param {nsIDOMWindow} aWindow - Null if requesting url without setting it.
-   * @param {Function} aCallback   - Null or callback.
+   * @param {?nsIMsgFolder} folder - The feed folder or null if url set.
+   * @param {?string} feedURL - A url (feed, message, other) or null if folder set.
    *
-   * @returns {String}             - The favicon url or empty string.
+   * @returns {Promise<string>} - The favicon url or empty string.
    */
-  getFavicon(aFolder, aUrl, aIconUrl, aWindow, aCallback) {
-    // On any error, cache an empty string to show the default favicon, and
-    // don't try anymore in this session.
-    let useDefaultFavicon = () => {
-      if (aCallback) {
-        aCallback("");
-      }
-
-      return "";
-    };
-
+  async getFavicon(folder, feedURL) {
     if (
       !Services.prefs.getBoolPref("browser.chrome.site_icons") ||
-      !Services.prefs.getBoolPref("browser.chrome.favicons")
+      !Services.prefs.getBoolPref("browser.chrome.favicons") ||
+      !Services.prefs.getBoolPref("places.history.enabled")
     ) {
-      return useDefaultFavicon();
+      return "";
     }
 
-    if (aIconUrl != null) {
-      return aIconUrl;
-    }
-
-    let onLoadSuccess = aEvent => {
-      let iconUri = Services.io.newURI(aEvent.target.src);
-      aWindow.specialTabs.mFaviconService.setAndFetchFaviconForPage(
-        uri,
-        iconUri,
-        false,
-        aWindow.specialTabs.mFaviconService.FAVICON_LOAD_NON_PRIVATE,
-        null,
-        Services.scriptSecurityManager.getSystemPrincipal()
-      );
-
-      if (aCallback) {
-        aCallback(iconUri.spec);
-      }
-    };
-
-    let onLoadError = aEvent => {
-      useDefaultFavicon();
-      let url = aEvent.target.src;
-      aWindow.specialTabs.getFaviconFromPage(url, aCallback);
-    };
-
-    let url = aUrl;
+    let url = feedURL;
     if (!url) {
       // Get the proposed iconUrl from the folder's first subscribed feed's
       // <link>.
-      if (!aFolder) {
-        return useDefaultFavicon();
-      }
-
-      let feedUrls = this.getFeedUrlsInFolder(aFolder);
-      url = feedUrls ? feedUrls[0] : null;
+      url = this.getFeedUrlsInFolder(folder)[0];
       if (!url) {
-        return useDefaultFavicon();
+        return "";
       }
+      feedURL = url;
     }
 
-    if (aFolder) {
-      let feed = new Feed(url, aFolder);
+    if (folder) {
+      let feed = new lazy.Feed(url, folder);
       url = feed.link && feed.link.startsWith("http") ? feed.link : url;
     }
 
-    let uri, iconUri;
-    try {
-      uri = Services.io.newURI(url);
-      iconUri = Services.io.newURI(uri.prePath + "/favicon.ico");
-    } catch (ex) {
-      return useDefaultFavicon();
+    /**
+     * Convert a Blob to data URL.
+     * @param {Blob} blob - Blob to convert.
+     * @returns {string} data URL.
+     */
+    let blobToBase64 = blob => {
+      return new Promise((resolve, reject) => {
+        let reader = new FileReader();
+        reader.onloadend = () => {
+          if (reader.result.endsWith("base64,")) {
+            reject(new Error(`Invalid blob encountered.`));
+            return;
+          }
+          resolve(reader.result);
+        };
+        reader.readAsDataURL(blob);
+      });
+    };
+
+    /**
+     * Try getting favicon from url.
+     * @param {string} url - The favicon url.
+     * @returns {Blob} - Existing favicon.
+     */
+    let fetchFavicon = async url => {
+      let response = await fetch(url);
+      if (!response.ok) {
+        throw new Error(`No favicon for url ${url}`);
+      }
+      if (!/^image\//i.test(response.headers.get("Content-Type"))) {
+        throw new Error(`Non-image favicon for ${url}`);
+      }
+      return response.blob();
+    };
+
+    /**
+     * Try getting favicon from the a html page.
+     * @param {string} page - The page url to check.
+     * @returns {Blob} - Found favicon.
+     */
+    let discoverFaviconURL = async page => {
+      let response = await fetch(page);
+      if (!response.ok) {
+        throw new Error(`No favicon for page ${page}`);
+      }
+      if (!/^text\/html/i.test(response.headers.get("Content-Type"))) {
+        throw new Error(`No page to get favicon from for ${page}`);
+      }
+      let doc = new DOMParser().parseFromString(
+        await response.text(),
+        "text/html"
+      );
+      let iconLink = doc.querySelector(
+        `link[href][rel~='icon']:is([sizes~='any'],[sizes~='16x16' i],[sizes~='32x32' i],:not([sizes])`
+      );
+      if (!iconLink) {
+        throw new Error(`No iconLink discovered for page=${page}`);
+      }
+      if (/^https?:/.test(iconLink.href)) {
+        return iconLink.href;
+      }
+      if (iconLink.href.at(0) != "/") {
+        iconLink.href = "/" + iconLink.href;
+      }
+      return new URL(page).origin + iconLink.href;
+    };
+
+    let uri = Services.io.newURI(url);
+    let iconURL = await fetchFavicon(uri.prePath + "/favicon.ico")
+      .then(blobToBase64)
+      .catch(e => {
+        return discoverFaviconURL(url)
+          .catch(() => discoverFaviconURL(uri.prePath))
+          .then(fetchFavicon)
+          .then(blobToBase64)
+          .catch(() => "");
+      });
+
+    if (!iconURL) {
+      return "";
     }
 
-    if (!aWindow) {
-      return iconUri.spec;
-    }
-
-    aWindow.specialTabs.loadFaviconImageNode(
-      onLoadSuccess,
-      onLoadError,
-      iconUri.spec
-    );
-    // Cache the favicon url initially.
-    if (aCallback) {
-      aCallback(iconUri.spec);
-    }
-
-    return iconUri.spec;
+    // setAndFetchFaviconForPage needs the url to be in the database first.
+    await lazy.PlacesUtils.history.insert({
+      url: feedURL,
+      visits: [
+        {
+          date: new Date(),
+        },
+      ],
+    });
+    return new Promise(resolve => {
+      // All good. Now store iconURL for future usage.
+      lazy.PlacesUtils.favicons.setAndFetchFaviconForPage(
+        Services.io.newURI(feedURL),
+        Services.io.newURI(iconURL),
+        true,
+        lazy.PlacesUtils.favicons.FAVICON_LOAD_NON_PRIVATE,
+        faviconURI => {
+          resolve(faviconURI.spec);
+        },
+        Services.scriptSecurityManager.getSystemPrincipal()
+      );
+    });
   },
 
   /**
    * Update the feeds database for rename and move/copy folder name changes.
    *
-   * @param {nsIMsgFolder} aFolder      - The folder, new if rename or target of
+   * @param {nsIMsgFolder} aFolder - The folder, new if rename or target of
    *                                      move/copy folder (new parent).
-   * @param {nsIMsgFolder} aOrigFolder  - Original folder.
-   * @param {String} aAction            - "move" or "copy" or "rename".
+   * @param {nsIMsgFolder} aOrigFolder - Original folder.
+   * @param {String} aAction - "move" or "copy" or "rename".
    *
    * @returns {void}
    */
@@ -1117,10 +1095,10 @@ var FeedUtils = {
    * url exists in the new account, its active subscription will be switched to
    * the folder being copied, to enforce the one unique url per account design.
    *
-   * @param {nsIMsgFolder} aFolder      - New folder.
-   * @param {nsIMsgFolder} aOrigFolder  - Original folder.
-   * @param {String} aNewAncestorURI    - For subfolders, ancestor new folder.
-   * @param {String} aOrigAncestorURI   - For subfolders, ancestor original folder.
+   * @param {nsIMsgFolder} aFolder - New folder.
+   * @param {nsIMsgFolder} aOrigFolder - Original folder.
+   * @param {string} aNewAncestorURI - For subfolders, ancestor new folder.
+   * @param {String} aOrigAncestorURI - For subfolders, ancestor original folder.
    *
    * @returns {void}
    */
@@ -1160,8 +1138,8 @@ var FeedUtils = {
 
     if (this.isInTrash(aFolder)) {
       // Moving to trash. Unsubscribe.
-      affectedSubs.forEach(function(sub) {
-        let feed = new Feed(sub.url, aFolder);
+      affectedSubs.forEach(function (sub) {
+        let feed = new lazy.Feed(sub.url, aFolder);
         FeedUtils.deleteFeed(feed);
       });
       // note: deleteFeed() calls saveSoon(), so we don't need to.
@@ -1181,7 +1159,7 @@ var FeedUtils = {
         sub.destFolder = folderURI;
         destDS.data.push(sub);
       }
-      this.setFolderPaneProperty(aFolder, "favicon", null, "row");
+
       origDS.saveSoon();
       destDS.saveSoon();
     }
@@ -1200,7 +1178,7 @@ var FeedUtils = {
    *                                       blank, caller ensures sane value.
    * @param {Boolean}      aUnique       - If true, return a unique indexed name.
    *
-   * @returns {String}                   - Sanitized unique name.
+   * @returns {String} - Sanitized unique name.
    */
   getSanitizedFolderName(aParentFolder, aProposedName, aDefaultName, aUnique) {
     // Clean up the name for the strictest fs (fat) and to ensure portability.
@@ -1435,7 +1413,7 @@ var FeedUtils = {
     let rssServer = aServer.QueryInterface(Ci.nsIRssIncomingServer);
     let feedsFile = rssServer.subscriptionsPath; // Path to feeds.json
     let exists = feedsFile.exists();
-    let ds = new JSONFile({
+    let ds = new lazy.JSONFile({
       path: feedsFile.path,
       backupTo: feedsFile.path + ".backup",
     });
@@ -1454,7 +1432,7 @@ var FeedUtils = {
   /**
    * Fetch an attribute for a subscribed feed.
    *
-   * @param {String} feedURL - URL of the feed.
+   * @param {string} feedURL - URL of the feed.
    * @param {nsIMsgIncomingServer} server - Server holding the subscription.
    * @param {String} attrName - Name of attribute to fetch.
    * @param {undefined} defaultValue - Value to return if not found.
@@ -1476,7 +1454,7 @@ var FeedUtils = {
    * NOTE: If the feed is not already in the store, it will be
    * added.
    *
-   * @param {String} feedURL - URL of the feed.
+   * @param {string} feedURL - URL of the feed.
    * @param {nsIMsgIncomingServer} server - server holding subscription.
    * @param {String} attrName - Name of attribute to fetch.
    * @param {undefined} value - Value to store.
@@ -1511,7 +1489,7 @@ var FeedUtils = {
     let rssServer = aServer.QueryInterface(Ci.nsIRssIncomingServer);
     let itemsFile = rssServer.feedItemsPath; // Path to feeditems.json
     let exists = itemsFile.exists();
-    let ds = new JSONFile({
+    let ds = new lazy.JSONFile({
       path: itemsFile.path,
       backupTo: itemsFile.path + ".backup",
     });
@@ -1532,7 +1510,7 @@ var FeedUtils = {
    * browser or app that provides a less nice dataTransfer object in the event.
    * Extract the url and if it passes the scheme test, try to subscribe.
    *
-   * @param {nsISupports} aDataTransfer  - The dnd event's dataTransfer.
+   * @param {nsISupports} aDataTransfer - The dnd event's dataTransfer.
    *
    * @returns {nsIURI} or null           - A uri if valid, null if none.
    */
@@ -1610,9 +1588,8 @@ var FeedUtils = {
     if ((status & 0xff0000) === 0x5a0000) {
       // Security module.
       const nsINSSErrorsService = Ci.nsINSSErrorsService;
-      let nssErrorsService = Cc["@mozilla.org/nss_errors_service;1"].getService(
-        nsINSSErrorsService
-      );
+      let nssErrorsService =
+        Cc["@mozilla.org/nss_errors_service;1"].getService(nsINSSErrorsService);
       let errorClass;
 
       // getErrorClass()) will throw a generic NS_ERROR_FAILURE if the error
@@ -1724,7 +1701,7 @@ var FeedUtils = {
    *
    * @param {nsIURI} aUri or {String} aUrl  - The Uri/Url.
    *
-   * @returns {Boolean}                     - true if a valid scheme, false if not.
+   * @returns {boolean} - true if a valid scheme, false if not.
    */
   _validSchemes: ["http", "https", "file"],
   isValidScheme(aUri) {
@@ -1742,9 +1719,9 @@ var FeedUtils = {
   /**
    * Is a folder Trash or in Trash.
    *
-   * @param {nsIMsgFolder} aFolder   - The folder.
+   * @param {nsIMsgFolder} aFolder - The folder.
    *
-   * @returns {Boolean}              - true if folder is Trash else false.
+   * @returns {Boolean} - true if folder is Trash else false.
    */
   isInTrash(aFolder) {
     let trashFolder = aFolder.rootFolder.getFolderWithFlags(
@@ -1764,12 +1741,12 @@ var FeedUtils = {
    * Return a folder path string constructed from individual folder UTF8 names
    * stored as properties (not possible hashes used to construct disk foldername).
    *
-   * @param {nsIMsgFolder} aFolder         - The folder.
+   * @param {nsIMsgFolder} aFolder - The folder.
    *
    * @returns {String} prettyName or null  - Name or null if not a disk folder.
    */
   getFolderPrettyPath(aFolder) {
-    let msgFolder = MailUtils.getExistingFolder(aFolder.URI);
+    let msgFolder = lazy.MailUtils.getExistingFolder(aFolder.URI);
     if (!msgFolder) {
       // Not a real folder uri.
       return null;
@@ -1787,7 +1764,7 @@ var FeedUtils = {
     for (let i = 0; i < rawPathParts.length - 1; i++) {
       // Two or more folders deep parts here.
       folderURI += "/" + rawPathParts[i];
-      msgFolder = MailUtils.getExistingFolder(folderURI);
+      msgFolder = lazy.MailUtils.getExistingFolder(folderURI);
       pathParts.push(msgFolder.name);
     }
 
@@ -1799,9 +1776,9 @@ var FeedUtils = {
   /**
    * Date validator for feeds.
    *
-   * @param {String} aDate - Date string.
+   * @param {string} aDate - Date string.
    *
-   * @returns {Boolean}      - true if passes regex test, false if not.
+   * @returns {Boolean} - true if passes regex test, false if not.
    */
   isValidRFC822Date(aDate) {
     const FZ_RFC822_RE =
@@ -1816,15 +1793,15 @@ var FeedUtils = {
   /**
    * Create rfc5322 date.
    *
-   * @param {String} aDateString - Optional date string; if null or invalid
+   * @param {string} aDateString - Optional date string; if null or invalid
    *                               date, get the current datetime.
    *
-   * @returns {String}           - An rfc5322 date string.
+   * @returns {String} - An rfc5322 date string.
    */
   getValidRFC5322Date(aDateString) {
     let d = new Date(aDateString || new Date().getTime());
     d = isNaN(d.getTime()) ? new Date() : d;
-    return jsmime.headeremitter
+    return lazy.jsmime.headeremitter
       .emitStructuredHeader("Date", d, {})
       .substring(6)
       .trim();
@@ -1845,6 +1822,11 @@ var FeedUtils = {
     // not all feeds may have reported in for the first time.
     mNumPendingFeedDownloads: 0,
 
+    /**
+     * @param {?nsIMsgWindow} aMsgWindow - Associated aMsgWindow if any.
+     * @param {boolean} aSubscribeMode - Whether we're in subscribe mode.
+     * @returns {void}
+     */
     init(aMsgWindow, aSubscribeMode) {
       if (this.mNumPendingFeedDownloads == 0) {
         // If we aren't already in the middle of downloading feed items.
@@ -1874,8 +1856,8 @@ var FeedUtils = {
      *
      * @param {Feed} feed - The Feed object, or a synthetic object that must
      *                      contain members {nsIMsgFolder folder, String url}.
-     * @param {Integer} aErrorCode  - The resolution code, a kNewsBlog* value.
-     * @param {Boolean} aDisable    - If true, disable/pause the feed.
+     * @param {Integer} aErrorCode - The resolution code, a kNewsBlog* value.
+     * @param {Boolean} aDisable - If true, disable/pause the feed.
      *
      * @returns {void}
      */
@@ -1898,10 +1880,11 @@ var FeedUtils = {
           // Add the feed to the databases.
           FeedUtils.addFeed(feed);
 
-          // Nice touch: select the folder that now contains the newly subscribed
-          // feed.  This is particularly nice if we just finished subscribing
+          // Nice touch: notify so the window ca select the folder that now
+          // contains the newly subscribed feed.
+          // This is particularly nice if we just finished subscribing
           // to a feed URL that the operating system gave us.
-          this.mMsgWindow.windowCommands.selectFolder(feed.folder.URI);
+          Services.obs.notifyObservers(feed.folder, "folder-subscribed");
 
           // Check for an existing feed subscriptions window and update it.
           let subscriptionsWindow = Services.wm.getMostRecentWindow(
@@ -2074,9 +2057,9 @@ var FeedUtils = {
      * items have been downloaded so far. aMaxFeedItems is an integer
      * corresponding to the total number of feed items to download.
      *
-     * @param {Feed} feed                 - The Feed object.
+     * @param {Feed} feed - The Feed object.
      * @param {Integer} aCurrentFeedItems - Number downloaded so far.
-     * @param {Integer} aMaxFeedItems     - Total number to download.
+     * @param {Integer} aMaxFeedItems - Total number to download.
      *
      * @returns {void}
      */
@@ -2133,20 +2116,20 @@ var FeedUtils = {
   },
 };
 
-XPCOMUtils.defineLazyGetter(FeedUtils, "log", function() {
+XPCOMUtils.defineLazyGetter(FeedUtils, "log", function () {
   return console.createInstance({
     prefix: "feeds",
     maxLogLevelPref: "feeds.loglevel",
   });
 });
 
-XPCOMUtils.defineLazyGetter(FeedUtils, "strings", function() {
+XPCOMUtils.defineLazyGetter(FeedUtils, "strings", function () {
   return Services.strings.createBundle(
     "chrome://messenger-newsblog/locale/newsblog.properties"
   );
 });
 
-XPCOMUtils.defineLazyGetter(FeedUtils, "stringsPrefs", function() {
+XPCOMUtils.defineLazyGetter(FeedUtils, "stringsPrefs", function () {
   return Services.strings.createBundle(
     "chrome://messenger/locale/prefs.properties"
   );

@@ -16,6 +16,7 @@
 #include "nsNetUtil.h"
 #include "prtime.h"
 #include "prprf.h"
+#include "nsITimer.h"
 #include "nsINIParser.h"
 #include "nsMailProfileMigratorUtils.h"
 #include "nsIDirectoryEnumerator.h"
@@ -267,8 +268,10 @@ nsresult nsNetscapeProfileMigratorBase::RecursiveCopy(nsIFile* srcDir,
             dirEntry->GetLeafName(leafName);
             newChild->AppendRelativePath(leafName);
             rv = newChild->Exists(&exists);
-            if (NS_SUCCEEDED(rv) && !exists)
+            if (NS_SUCCEEDED(rv) && !exists) {
               rv = newChild->Create(nsIFile::DIRECTORY_TYPE, 0775);
+              if (NS_FAILED(rv)) return rv;
+            }
             rv = RecursiveCopy(dirEntry, newChild);
           }
         } else {
@@ -297,6 +300,12 @@ nsNetscapeProfileMigratorBase::Notify(nsITimer* timer) {
   return NS_OK;
 }
 
+NS_IMETHODIMP
+nsNetscapeProfileMigratorBase::GetName(nsACString& aName) {
+  aName.AssignLiteral("nsNetscapeProfileMigratorBase");
+  return NS_OK;
+}
+
 void nsNetscapeProfileMigratorBase::CopyNextFolder() {
   if (mFileCopyTransactionIndex < mFileCopyTransactions.Length()) {
     fileTransactionEntry fileTransaction =
@@ -319,12 +328,12 @@ void nsNetscapeProfileMigratorBase::CopyNextFolder() {
     NOTIFY_OBSERVERS(MIGRATION_PROGRESS, index.get());
 
     // fire a timer to handle the next one.
-    mFileIOTimer = do_CreateInstance("@mozilla.org/timer;1");
-
-    if (mFileIOTimer)
-      mFileIOTimer->InitWithCallback(static_cast<nsITimerCallback*>(this),
-                                     percentage == 100 ? 500 : 0,
-                                     nsITimer::TYPE_ONE_SHOT);
+    nsresult rv = NS_NewTimerWithCallback(
+        getter_AddRefs(mFileIOTimer), static_cast<nsITimerCallback*>(this),
+        percentage == 100 ? 500 : 0, nsITimer::TYPE_ONE_SHOT, nullptr);
+    if (NS_FAILED(rv)) {
+      NS_WARNING("Could not start mFileIOTimer timer");
+    }
   } else
     EndCopyFolders();
 

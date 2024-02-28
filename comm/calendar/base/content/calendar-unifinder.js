@@ -2,16 +2,14 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
+/* globals calFilter, calFilter, getViewBox, openEventDialogForViewing,
+   modifyEventWithDialog, createEventWithDialog, currentView,
+   calendarController, editSelectedEvents, deleteSelectedEvents,
+   calendarUpdateDeleteCommand, getEventStatusString, goToggleToolbar */
+
 /* exported gCalendarEventTreeClicked, unifinderDoubleClick, unifinderKeyPress,
  *          focusSearch, ensureUnifinderLoaded, toggleUnifinder
  */
-
-/* import-globals-from ../../../mail/base/content/utilityOverlay.js */
-/* import-globals-from ../src/calFilter.js */
-/* import-globals-from item-editing/calendar-item-editing.js */
-/* import-globals-from widgets/mouseoverPreviews.js */
-/* import-globals-from calendar-command-controller.js */
-/* import-globals-from calendar-views-utils.js */
 
 /**
  * U N I F I N D E R
@@ -24,7 +22,6 @@
  */
 
 var { cal } = ChromeUtils.import("resource:///modules/calendar/calUtils.jsm");
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 
 // Set this to true when the calendar event tree is clicked to allow for
 // multiple selection
@@ -38,7 +35,7 @@ var gUnifinderNeedsRefresh = true;
 /**
  * Checks if the unifinder is hidden
  *
- * @return      Returns true if the unifinder is hidden.
+ * @returns Returns true if the unifinder is hidden.
  */
 function isUnifinderHidden() {
   let tabmail = document.getElementById("tabmail");
@@ -51,7 +48,7 @@ function isUnifinderHidden() {
 /**
  * Returns the current filter applied to the unifinder.
  *
- * @return      The string name of the applied filter.
+ * @returns The string name of the applied filter.
  */
 function getCurrentUnifinderFilter() {
   return document.getElementById("event-filter-menulist").selectedItem.value;
@@ -88,11 +85,7 @@ var unifinderObserver = {
   onLoad() {},
 
   onAddItem(aItem) {
-    if (
-      aItem.isEvent() &&
-      !gUnifinderNeedsRefresh &&
-      unifinderTreeView.mFilter.isItemInFilters(aItem)
-    ) {
+    if (aItem.isEvent() && !gUnifinderNeedsRefresh) {
       this.addItemToTree(aItem);
     }
   },
@@ -146,7 +139,7 @@ var unifinderObserver = {
    * event. The functions will determine whether or not anything actually
    * needs to be done to the tree.
    *
-   * @return aItem        The item to add to the tree.
+   * @returns aItem        The item to add to the tree.
    */
   addItemToTree(aItem) {
     let items;
@@ -165,7 +158,7 @@ var unifinderObserver = {
    * event. The functions will determine whether or not anything actually
    * needs to be done to the tree.
    *
-   * @return aItem        The item to remove from the tree.
+   * @returns aItem        The item to remove from the tree.
    */
   removeItemFromTree(aItem) {
     let items;
@@ -292,7 +285,7 @@ function unifinderItemSelect(aEvent) {
  * Helper function to display event datetimes in the unifinder.
  *
  * @param aDatetime     A calIDateTime object to format.
- * @return              The passed date's formatted in the default timezone.
+ * @returns The passed date's formatted in the default timezone.
  */
 function formatUnifinderEventDateTime(aDatetime) {
   return cal.dtz.formatter.formatDateTime(aDatetime.getInTimezone(cal.dtz.defaultTimezone));
@@ -313,6 +306,10 @@ function unifinderDoubleClick(event) {
   let calendarEvent = unifinderTreeView.getItemFromEvent(event);
 
   if (calendarEvent) {
+    if (Services.prefs.getBoolPref("calendar.events.defaultActionEdit", true)) {
+      modifyEventWithDialog(calendarEvent, true);
+      return;
+    }
     openEventDialogForViewing(calendarEvent);
   } else {
     createEventWithDialog();
@@ -589,7 +586,7 @@ var unifinderTreeView = {
    * Get the index of the row associated with the passed item.
    *
    * @param item      The item to search for.
-   * @return          The row index of the passed item.
+   * @returns The row index of the passed item.
    */
   getItemRow(item) {
     if (this.eventIndexMap[item.hashId] === undefined) {
@@ -602,7 +599,7 @@ var unifinderTreeView = {
    * Get the item at the given row index.
    *
    * @param item      The row index to get the item for.
-   * @return          The item at the given row.
+   * @returns The item at the given row.
    */
   getItemAt(aRow) {
     return this.eventArray[aRow];
@@ -612,7 +609,7 @@ var unifinderTreeView = {
    * Get the calendar item from the given DOM event
    *
    * @param event     The DOM mouse event to get the item for.
-   * @return          The item under the mouse position.
+   * @returns The item under the mouse position.
    */
   getItemFromEvent(event) {
     let row = this.tree.getRowAt(event.clientX, event.clientY);
@@ -696,6 +693,7 @@ var unifinderTreeView = {
 
   /**
    * Tree View Implementation
+   *
    * @see nsITreeView
    */
   get rowCount() {
@@ -907,27 +905,12 @@ function addItemsFromSingleCalendarInternal(eventArray) {
   unifinderTreeView.setSelectedItems();
 }
 
-function addItemsFromCalendar(aCalendar, aAddItemsInternalFunc) {
+async function addItemsFromCalendar(aCalendar, aAddItemsInternalFunc) {
   if (isUnifinderHidden()) {
     // If the unifinder is hidden, don't refresh the events to reduce needed
     // getItems calls.
     return;
   }
-  let refreshListener = {
-    QueryInterface: ChromeUtils.generateQI(["calIOperationListener"]),
-    mEventArray: [],
-
-    onOperationComplete(aOpCalendar, aStatus, aOperationType, aId, aDateTime) {
-      let refreshTreeInternalFunc = function() {
-        aAddItemsInternalFunc(refreshListener.mEventArray);
-      };
-      setTimeout(refreshTreeInternalFunc, 0);
-    },
-
-    onGetResult(aOpCalendar, aStatus, aItemType, aDetail, aItems) {
-      refreshListener.mEventArray = refreshListener.mEventArray.concat(aItems);
-    },
-  };
 
   let filter = 0;
 
@@ -943,13 +926,17 @@ function addItemsFromCalendar(aCalendar, aAddItemsInternalFunc) {
     filter |= aCalendar.ITEM_FILTER_CLASS_OCCURRENCES;
   }
 
-  aCalendar.getItems(
+  let items = await aCalendar.getItemsAsArray(
     filter,
     0,
     unifinderTreeView.mFilter.startDate,
-    unifinderTreeView.mFilter.endDate,
-    refreshListener
+    unifinderTreeView.mFilter.endDate
   );
+
+  let refreshTreeInternalFunc = function () {
+    aAddItemsInternalFunc(items);
+  };
+  setTimeout(refreshTreeInternalFunc, 0);
 }
 
 function removeItemsFromCalendar(aCalendar) {

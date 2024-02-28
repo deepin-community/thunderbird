@@ -8,9 +8,10 @@ var {
   assert_messages_in_view,
   be_in_folder,
   create_folder,
-  make_new_sets_in_folder,
+  make_message_sets_in_folders,
   mc,
   wait_for_all_messages_to_load,
+  get_about_3pane,
 } = ChromeUtils.import(
   "resource://testing-common/mozmill/FolderDisplayHelpers.jsm"
 );
@@ -22,35 +23,60 @@ var { MailViewConstants } = ChromeUtils.import(
   "resource:///modules/MailViewManager.jsm"
 );
 
+const { storeState } = ChromeUtils.importESModule(
+  "resource:///modules/CustomizationState.mjs"
+);
+
 var baseFolder, savedFolder;
 var setUntagged, setTagged;
 
-add_task(function setup() {
+add_setup(async function () {
   // Create a folder with some messages that have no tags and some that are
   //  tagged Important ($label1).
-  baseFolder = create_folder("MailViewA");
-  [setUntagged, setTagged] = make_new_sets_in_folder(baseFolder, [{}, {}]);
+  baseFolder = await create_folder("MailViewA");
+  [setUntagged, setTagged] = await make_message_sets_in_folders(
+    [baseFolder],
+    [{}, {}]
+  );
   setTagged.addTag("$label1"); // Important, by default
+  storeState({
+    mail: ["view-picker"],
+  });
+  await BrowserTestUtils.waitForMutationCondition(
+    document.getElementById("unifiedToolbarContent"),
+    {
+      subtree: true,
+      childList: true,
+    },
+    () => document.querySelector("#unifiedToolbarContent .view-picker")
+  );
+
+  registerCleanupFunction(() => {
+    storeState({});
+  });
 });
 
 add_task(function test_put_view_picker_on_toolbar() {
-  let toolbar = mc.e("mail-bar3");
-  toolbar.insertItem("mailviews-container", null);
-  Assert.ok(mc.e("mailviews-container"));
+  Assert.ok(
+    window.ViewPickerBinding.isVisible,
+    "View picker is registered as visible"
+  );
 });
 
 /**
  * https://bugzilla.mozilla.org/show_bug.cgi?id=474701#c97
  */
-add_task(function test_save_view_as_folder() {
+add_task(async function test_save_view_as_folder() {
   // - enter the folder
-  be_in_folder(baseFolder);
+  await be_in_folder(baseFolder);
 
   // - apply the mail view
   // okay, mozmill is just not ready to click on the view picker...
   // just call the ViewChange global.  it's sad, but it has the same effects.
   // at least, it does once we've caused the popups to get refreshed.
-  mc.window.RefreshAllViewPopups(mc.e("viewPickerPopup"));
+  mc.window.RefreshAllViewPopups(
+    mc.window.document.getElementById("toolbarViewPickerPopup")
+  );
   mc.window.ViewChange(":$label1");
   wait_for_all_messages_to_load();
 
@@ -67,19 +93,22 @@ add_task(function test_save_view_as_folder() {
 
 function subtest_save_mail_view(savc) {
   // - make sure the name is right
-  Assert.equal(savc.e("name").value, baseFolder.prettyName + "-Important");
+  Assert.equal(
+    savc.window.document.getElementById("name").value,
+    baseFolder.prettyName + "-Important"
+  );
 
-  let elem = savc.window.document.getElementById("searchVal0");
+  let selector = savc.window.document.querySelector("#searchVal0 menulist");
+  Assert.ok(selector, "Should have a tag selector");
 
   // Check the value of the search-value.
-  let activeItem = elem.findActiveItem();
-  Assert.equal(activeItem.value, "$label1");
+  Assert.equal(selector.value, "$label1");
 
   // - save it
-  savc.window.onOK();
+  savc.window.document.querySelector("dialog").acceptDialog();
 }
 
-add_task(function test_verify_saved_mail_view() {
+add_task(async function test_verify_saved_mail_view() {
   // - make sure the folder got created
   savedFolder = baseFolder.getChildNamed(baseFolder.prettyName + "-Important");
   if (!savedFolder) {
@@ -87,7 +116,7 @@ add_task(function test_verify_saved_mail_view() {
   }
 
   // - go in the folder and make sure the right messages are displayed
-  be_in_folder(savedFolder);
+  await be_in_folder(savedFolder);
   assert_messages_in_view(setTagged, mc);
 
   Assert.report(

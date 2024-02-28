@@ -4,7 +4,7 @@
 
 close-button =
     .aria-label = Закрити
-preferences-doc-title = Налаштування
+preferences-doc-title2 = Налаштування
 category-list =
     .aria-label = Категорії
 pane-general-title = Загальні
@@ -22,6 +22,9 @@ category-chat =
 pane-calendar-title = Календар
 category-calendar =
     .tooltiptext = Календар
+pane-sync-title = Синхронізація
+category-sync =
+    .tooltiptext = Синхронізація
 general-language-and-appearance-header = Мова та зовнішній вигляд
 general-incoming-mail-header = Вхідна пошта
 general-files-and-attachment-header = Файли та вкладення
@@ -40,7 +43,7 @@ privacy-passwords-header = Паролі
 privacy-junk-header = Спам
 collection-header = Збір та використання даних { -brand-short-name }
 collection-description = Ми прагнемо надати вам вибір і збирати лише дані, необхідні для роботи й вдосконалення { -brand-short-name }. Ми завжди запитуємо дозвіл перед отриманням особистої інформації.
-collection-privacy-notice = Повідомлення про приватність
+collection-privacy-notice = Положення про приватність
 collection-health-report-telemetry-disabled = Ви заборонили { -vendor-short-name } збирати технічні дані й інформацію про взаємодію. Всі попередні дані буде видалено впродовж 30 днів.
 collection-health-report-telemetry-disabled-link = Докладніше
 collection-health-report =
@@ -115,15 +118,21 @@ restore-default-label =
     .label = Відновити
     .accesskey = н
 default-search-engine = Типовий засіб пошуку
-add-search-engine =
-    .label = Додати з файлу
-    .accesskey = Д
+add-web-search-engine =
+    .label = Додати…
+    .accesskey = о
 remove-search-engine =
     .label = Вилучити
     .accesskey = в
+add-opensearch-provider-title = Додайте постачальника OpenSearch
+add-opensearch-provider-text = Введіть URL-адресу постачальника OpenSearch, який потрібно додати. Або використовуйте пряму URL-адресу файлу опису OpenSearch, або URL-адресу, де його можна автоматично знайти.
+adding-opensearch-provider-failed-title = Помилка додавання постачальника OpenSearch
+# Variables:
+# $url (String) - URL an OpenSearch provider was requested for.
+adding-opensearch-provider-failed-text = Не вдалося додати постачальника OpenSearch для { $url }.
 minimize-to-tray-label =
-    .label = Коли вікно з { -brand-short-name } згорнуте, перемістіть його в системний лоток
-    .accesskey = з
+    .label = Згортати { -brand-short-name } в область сповіщень
+    .accesskey = З
 new-message-arrival = Коли надходять нові повідомлення:
 mail-play-sound-label =
     .label =
@@ -139,7 +148,7 @@ change-dock-icon = Змінити налаштування для піктогр
 app-icon-options =
     .label = Налаштування піктограми програми…
     .accesskey = л
-notification-settings = Сигнали і типові звуки можна вимкнути в панелі сповіщень системних налаштувань.
+notification-settings2 = Сигнали й типові звуки можна вимкнути в панелі сповіщень системних налаштувань.
 animated-alert-label =
     .label = Показувати сповіщення
     .accesskey = с
@@ -147,7 +156,7 @@ customize-alert-label =
     .label = Налаштувати…
     .accesskey = л
 biff-use-system-alert =
-    .label = Використовуйте системні сповіщення
+    .label = Використовувати системне сповіщення
 tray-icon-unread-label =
     .label = Показувати піктограму непрочитаних повідомлень в системному лотку
     .accesskey = л
@@ -183,9 +192,20 @@ autoscroll-label =
 smooth-scrolling-label =
     .label = Використовувати плавне прокручування
     .accesskey = п
+browsing-gtk-use-non-overlay-scrollbars =
+    .label = Завжди показувати смуги прокручування
+    .accesskey = м
+window-layout-legend = Макет вікна
+draw-in-titlebar-label =
+    .label = Приховати панель заголовка вікна системи
+    .accesskey = х
+auto-hide-tabbar-label =
+    .label = Автоматичне приховування панелі вкладок
+    .accesskey = т
+auto-hide-tabbar-description = Приховати панель вкладок, коли відкрита лише одна вкладка
 system-integration-legend = Системна інтеграція
 always-check-default =
-    .label = Завжди перевіряти при запуску чи { -brand-short-name } типовий поштовий клієнт
+    .label = Завжди перевіряти під час запуску чи { -brand-short-name } типовий поштовий клієнт
     .accesskey = ш
 check-default-button =
     .label = Перевірити зараз…
@@ -263,6 +283,9 @@ smart-cache-label =
 clear-cache-button =
     .label = Очистити зараз
     .accesskey = О
+clear-cache-shutdown-label =
+    .label = Очистити кеш під час завершення роботи
+    .accesskey = ч
 fonts-legend = Шрифти й кольори
 default-font-label =
     .value = Типовий шрифт:
@@ -307,8 +330,8 @@ quoted-text-color =
     .accesskey = К
 search-handler-table =
     .placeholder = Фільтрувати типи вмісту та дії
-
-
+type-column-header = Тип вмісту
+action-column-header = Дія
 save-to-label =
     .label = Зберігати файли до
     .accesskey = З
@@ -340,14 +363,17 @@ auto-mark-as-read =
     .label = Автоматично позначати повідомлення як прочитані
     .accesskey = А
 mark-read-no-delay =
-    .label = Негайно при перегляді
+    .label = Негайно після відкриття
     .accesskey = г
+view-attachments-inline =
+    .label = Показувати вкладення вбудовано
+    .accesskey = к
 
 ## Note: This will concatenate to "After displaying for [___] seconds",
 ## using (mark-read-delay) and a number (seconds-label).
 
 mark-read-delay =
-    .label = При перегляді протягом
+    .label = Після відкриття через
     .accesskey = я
 seconds-label = секунд
 
@@ -370,7 +396,7 @@ close-move-delete =
 display-name-label =
     .value = Ім’я для показу:
 condensed-addresses-label =
-    .label = Показувати тільки ім’я людей, що знаходяться в моїй адресній книзі
+    .label = Показуване ім'я для людей з адресної книги
     .accesskey = м
 
 ## Compose Tab
@@ -399,6 +425,9 @@ auto-save-end = хвилин
 warn-on-send-accel-key =
     .label = Запитувати підтвердження під час використання комбінації клавіш для надсилання повідомлення
     .accesskey = З
+add-link-previews =
+    .label = Додати попередній перегляд посилань під час вставлення URL-адрес
+    .accesskey = п
 spellcheck-label =
     .label = Перевіряти правопис перед надсиланням
     .accesskey = і
@@ -430,10 +459,19 @@ restore-html-label =
 default-format-label =
     .label = Використовувати типово формат абзацу замість основного тексту
     .accesskey = б
-format-description = Текстовий формат:
-send-options-label =
-    .label = Параметри надсилання…
-    .accesskey = П
+compose-send-format-title = Формат надсилання
+compose-send-automatic-option =
+    .label = Автоматично
+compose-send-automatic-description = Якщо у повідомленні не використовується стиль, надіслати звичайний текст. В іншому випадку надіслати HTML із резервним варіантом у вигляді звичайного тексту.
+compose-send-both-option =
+    .label = І HTML, і звичайний текст
+compose-send-both-description = Програма електронної пошти отримувача визначить, яку версію показувати.
+compose-send-html-option =
+    .label = Лише HTML
+compose-send-html-description = Деякі отримувачі можуть не мати змоги прочитати повідомлення без використання резервного варіанту у вигляді звичайного тексту.
+compose-send-plain-option =
+    .label = Лише звичайний текст
+compose-send-plain-description = Деякі стилі будуть перетворені у звичайну альтернативу, тоді як інші функції структури будуть вимкнені.
 autocomplete-description = При введенні адреси шукати відповідні адреси у:
 ab-label =
     .label = Локальних адресних книгах
@@ -491,34 +529,25 @@ history-label =
     .label = Пам'ятати відвідані мною вебсайти й посилання
     .accesskey = П
 cookies-label =
-    .label = Приймати куки від сайтів
-    .accesskey = к
+    .label = Приймати файли cookie із сайтів
+    .accesskey = м
 third-party-label =
-    .value = Приймати куки від сторонніх сайтів:
-    .accesskey = с
+    .value = Приймати сторонні файли cookie:
+    .accesskey = о
 third-party-always =
     .label = Завжди
 third-party-never =
     .label = Ніколи
 third-party-visited =
     .label = Від відвіданих
-keep-label =
-    .value = Зберігати доки:
-    .accesskey = З
-keep-expire =
-    .label = не закінчиться термін їх дії
-keep-close =
-    .label = я не закрию { -brand-short-name }
-keep-ask =
-    .label = питати кожного разу
 cookies-button =
-    .label = Показати куки…
-    .accesskey = о
+    .label = Показати файли cookie…
+    .accesskey = з
 do-not-track-label =
     .label = Надішліть вебсайтам сигнал “Не стежити”, якщо ви не хочете, щоб вас відстежували
     .accesskey = с
-learn-button =
-    .label = Докладніше
+dnt-learn-more-button =
+    .value = Докладніше
 passwords-description = { -brand-short-name } може запам’ятовувати реєстраційну інформацію для всіх ваших облікових записів так, що вам не доведеться вводити її знову.
 passwords-button =
     .label = Збережені паролі…
@@ -578,6 +607,22 @@ certificate-button =
 security-devices-button =
     .label = Пристрої безпеки…
     .accesskey = з
+email-e2ee-header = Наскрізне шифрування електронної пошти
+account-settings = Налаштування облікового запису
+email-e2ee-enable-info = Налаштуйте облікові записи електронної пошти та ідентичності для наскрізного шифрування в налаштуваннях облікового запису.
+email-e2ee-automatism = Автоматичне шифрування
+email-e2ee-automatism-pre =
+    { -brand-short-name } може допомогти, автоматично вмикаючи або вимикаючи шифрування під час створення електронного листа.
+    Автоматичне ввімкнення/вимкнення залежить від наявності дійсних і погоджених ключів або сертифікатів кореспондентів.
+email-e2ee-auto-on =
+    .label = Автоматично вмикати шифрування, коли це можливо
+email-e2ee-auto-off =
+    .label = Автоматично вимикати шифрування, коли отримувачі змінюються і шифрування стає неможливим
+email-e2ee-auto-off-notify =
+    .label = Показувати сповіщення щоразу, коли автоматично вимикається шифрування
+email-e2ee-automatism-post =
+    Автоматичні рішення можна перевизначити, увімкнувши або вимкнувши шифрування вручну під час написання повідомлення.
+    Примітка: шифрування завжди вмикається автоматично під час відповіді на зашифроване повідомлення.
 
 ## Chat Tab
 
@@ -647,8 +692,8 @@ chat-browse-sound-button =
 theme-label =
     .value = Тема:
     .accesskey = Т
-style-thunderbird =
-    .label = Thunderbird
+style-mail =
+    .label = { -brand-short-name }
 style-bubbles =
     .label = Бульбашки
 style-dark =
@@ -671,17 +716,59 @@ chat-variant-label =
 # Notice: The value of the `.style` attribute is a CSS string, and the `width`
 # is the name of the CSS property. It is intended only to adjust the element's width.
 # Do not translate.
-search-preferences-input =
+search-preferences-input2 =
     .style = width: 15.4em
     .placeholder = Знайти в налаштуваннях
 
-## Preferences UI Search Results
+## Settings UI Search Results
 
 search-results-header = Результати пошуку
 # `<span data-l10n-name="query"></span>` will be replaced by the search term.
-search-results-empty-message =
+search-results-empty-message2 =
     { PLATFORM() ->
         [windows] Перепрошуємо! В налаштуваннях немає результатів для “<span data-l10n-name="query"></span>”.
        *[other] Перепрошуємо! В налаштуваннях немає результатів для “<span data-l10n-name="query"></span>”.
     }
 search-results-help-link = Потрібна допомога? Відвідайте <a data-l10n-name="url">Підтримку { -brand-short-name }</a>
+
+## Sync Tab
+
+sync-signedout-caption = Візьміть свій інтернет з собою
+sync-signedout-description = Синхронізуйте свої облікові записи, адресні книги, календарі, додатки та налаштування на всіх пристроях.
+# Note: "Sync" represents the Firefox Sync product so it shouldn't be translated.
+sync-signedout-account-signin-btn = Увійти до синхронізації…
+sync-pane-header = Синхронізація
+# Variables:
+# $userEmail (String) - The email logged into Sync.
+sync-pane-email-not-verified = “{ $userEmail }” не підтверджено.
+# Variables:
+# $userEmail (String) - The email logged into Sync.
+sync-signedin-login-failure = Увійдіть, щоб повторно під'єднати “{ $userEmail }”
+sync-pane-resend-verification = Повторно надіслати підтвердження
+sync-pane-sign-in = Увійти
+sync-pane-remove-account = Видалити обліковий запис
+sync-pane-edit-photo =
+    .title = Змінити зображення профілю
+sync-pane-manage-account = Керувати обліковим записом
+sync-pane-sign-out = Вийти…
+sync-pane-device-name-title = Назва пристрою
+sync-pane-change-device-name = Змінити назву пристрою
+sync-pane-cancel = Скасувати
+sync-pane-save = Зберегти
+sync-pane-show-synced-header-on = Синхронізацію ввімкнено
+sync-pane-show-synced-header-off = Синхронізацію вимкнено
+sync-pane-sync-now = Синхронізувати зараз
+sync-panel-sync-now-syncing = Синхронізація…
+show-synced-list-heading = Зараз ви синхронізуєте такі елементи:
+show-synced-learn-more = Докладніше…
+show-synced-item-account = Облікові записи електронної пошти
+show-synced-item-address = Адресні книги
+show-synced-item-calendar = Календарі
+show-synced-item-identity = Особисті дані
+show-synced-item-passwords = Паролі
+show-synced-change = Змінити…
+synced-acount-item-server-config = Конфігурація сервера
+synced-acount-item-filters = Фільтри
+synced-acount-item-keys = OpenPGP - S/MIME
+sync-disconnected-text = Синхронізуйте свої облікові записи електронної пошти, адресні книги, календарі та особисті дані на всіх пристроях.
+sync-disconnected-turn-on-sync = Увімкнути синхронізацію…

@@ -6,9 +6,6 @@
 
 // Wrap in a block to prevent leaking to window scope.
 {
-  const { Services } = ChromeUtils.import(
-    "resource://gre/modules/Services.jsm"
-  );
   const { MailServices } = ChromeUtils.import(
     "resource:///modules/MailServices.jsm"
   );
@@ -16,8 +13,8 @@
   const { FacetUtils } = ChromeUtils.import(
     "resource:///modules/gloda/Facet.jsm"
   );
-  const { PluralForm } = ChromeUtils.import(
-    "resource://gre/modules/PluralForm.jsm"
+  const { PluralForm } = ChromeUtils.importESModule(
+    "resource://gre/modules/PluralForm.sys.mjs"
   );
   const { Gloda } = ChromeUtils.import("resource:///modules/gloda/Gloda.jsm");
 
@@ -86,7 +83,8 @@
 
   /**
    * MozFacetResultsMessage shows the search results for the string entered in gloda-searchbox.
-   * @extends {HTMLElement}
+   *
+   * @augments {HTMLElement}
    */
   class MozFacetResultsMessage extends HTMLElement {
     connectedCallback() {
@@ -96,19 +94,12 @@
       this.countNode = document.createElement("h2");
       this.countNode.classList.add("results-message-count");
 
-      this.toggleTimeline = document.createElement("label");
+      this.toggleTimeline = document.createElement("button");
       this.toggleTimeline.setAttribute("id", "date-toggle");
-      this.toggleTimeline.setAttribute("role", "button");
       this.toggleTimeline.setAttribute("tabindex", 0);
       this.toggleTimeline.classList.add("gloda-timeline-button");
       this.toggleTimeline.addEventListener("click", () => {
         FacetContext.toggleTimeline();
-      });
-      this.toggleTimeline.addEventListener("keypress", event => {
-        if (event.charCode == KeyEvent.DOM_VK_SPACE) {
-          FacetContext.toggleTimeline();
-          event.preventDefault();
-        }
       });
 
       const timelineImage = document.createElement("img");
@@ -116,6 +107,7 @@
         "src",
         "chrome://messenger/skin/icons/popular.svg"
       );
+      timelineImage.setAttribute("alt", "");
       this.toggleTimeline.appendChild(timelineImage);
 
       this.toggleText = document.createElement("span");
@@ -125,6 +117,7 @@
       sortDiv.classList.add("results-message-sort-bar");
 
       this.sortSelect = document.createElement("select");
+      this.sortSelect.setAttribute("id", "sortby");
       let sortByPref = Services.prefs.getIntPref("gloda.facetview.sortby");
 
       let relevanceItem = document.createElement("option");
@@ -217,7 +210,7 @@
           this.messagesNode.appendChild(msgNode);
         }
       } catch (e) {
-        Cu.reportError(e);
+        console.error(e);
       }
     }
   }
@@ -635,11 +628,10 @@
       this.excludeList = document.createElement("ul");
       this.excludeList.classList.add("facet-excluded", "barry");
 
-      this.moreButton = document.createElement("div");
+      this.moreButton = document.createElement("button");
       this.moreButton.classList.add("facet-more");
       this.moreButton.setAttribute("needed", "false");
       this.moreButton.setAttribute("tabindex", "0");
-      this.moreButton.setAttribute("role", "button");
 
       this.contentBox.appendChild(this.includeLabel);
       this.contentBox.appendChild(this.includeList);
@@ -1147,7 +1139,7 @@
 
         return false;
       } catch (e) {
-        return Cu.reportError(e);
+        return console.error(e);
       }
     }
 
@@ -1169,7 +1161,7 @@
 
         return false;
       } catch (e) {
-        return Cu.reportError(e);
+        return console.error(e);
       }
     }
   }
@@ -1325,7 +1317,7 @@
           );
         }
       } catch (e) {
-        Cu.reportError(e);
+        console.error(e);
       }
     }
 
@@ -1342,7 +1334,7 @@
         event.preventDefault();
         event.stopPropagation();
       } catch (e) {
-        Cu.reportError(e);
+        console.error(e);
       }
     }
 
@@ -1357,7 +1349,7 @@
           this.doUndo();
         }
       } catch (e) {
-        Cu.reportError(e);
+        console.error(e);
       }
     }
 
@@ -1409,7 +1401,7 @@
           this.undoNode.focus();
         }
       } catch (e) {
-        Cu.reportError(e);
+        console.error(e);
       }
     }
 
@@ -1421,7 +1413,7 @@
           this.node.focus();
         }
       } catch (e) {
-        Cu.reportError(e);
+        console.error(e);
       }
     }
 
@@ -1430,7 +1422,7 @@
         this.facetNode.includeFacet(this.node);
         this.hide();
       } catch (e) {
-        Cu.reportError(e);
+        console.error(e);
       }
     }
 
@@ -1627,7 +1619,7 @@
           }
         }
       } catch (e) {
-        Cu.reportError(e);
+        console.error(e);
       }
 
       // - Starred
@@ -1658,16 +1650,17 @@
       if ("tags" in message && message.tags.length) {
         for (let tag of message.tags) {
           let tagNode = document.createElement("span");
-          let color = MailServices.tags.getColorForKey(tag.key);
-          let textColor = "black";
-          if (!TagUtils.isColorContrastEnough(color)) {
-            textColor = "white";
-          }
           tagNode.setAttribute("class", "message-tag");
-          tagNode.setAttribute(
-            "style",
-            "color: " + textColor + "; background-color: " + color + ";"
-          );
+          let color = MailServices.tags.getColorForKey(tag.key);
+          if (color) {
+            let textColor = !TagUtils.isColorContrastEnough(color)
+              ? "white"
+              : "black";
+            tagNode.setAttribute(
+              "style",
+              "color: " + textColor + "; background-color: " + color + ";"
+            );
+          }
           tagNode.textContent = tag.tag;
           tagsNode.appendChild(tagNode);
         }

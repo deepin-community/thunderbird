@@ -3,8 +3,8 @@
  * file, You can obtain one at <http://mozilla.org/MPL/2.0/>. */
 
 import React, { Component } from "react";
+import PropTypes from "prop-types";
 import { connect } from "../../../utils/connect";
-import classnames from "classnames";
 
 import Reps from "devtools/client/shared/components/reps/index";
 const {
@@ -18,6 +18,7 @@ import { getThreadContext } from "../../../selectors";
 import AccessibleImage from "../../shared/AccessibleImage";
 
 const DevToolsUtils = require("devtools/shared/DevToolsUtils");
+const classnames = require("devtools/client/shared/classnames.js");
 
 const POPUP_SELECTOR = ".preview-popup.exception-popup";
 const ANONYMOUS_FN_NAME = "<anonymous>";
@@ -32,6 +33,16 @@ class ExceptionPopup extends Component {
     super(props);
     this.state = {
       isStacktraceExpanded: false,
+    };
+  }
+
+  static get propTypes() {
+    return {
+      clearPreview: PropTypes.func.isRequired,
+      cx: PropTypes.object.isRequired,
+      mouseout: PropTypes.func.isRequired,
+      selectSourceURL: PropTypes.func.isRequired,
+      exception: PropTypes.object.isRequired,
     };
   }
 

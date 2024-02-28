@@ -1,12 +1,13 @@
-const { AddonManagerPrivate } = ChromeUtils.import(
-  "resource://gre/modules/AddonManager.jsm"
+const { AddonManagerPrivate } = ChromeUtils.importESModule(
+  "resource://gre/modules/AddonManager.sys.mjs"
 );
 
-const { AddonTestUtils } = ChromeUtils.import(
-  "resource://testing-common/AddonTestUtils.jsm"
+var { AddonTestUtils } = ChromeUtils.importESModule(
+  "resource://testing-common/AddonTestUtils.sys.mjs"
 );
 
 AddonTestUtils.initMochitest(this);
+AddonTestUtils.hookAMTelemetryEvents();
 
 const ID = "update2@tests.mozilla.org";
 const ID_ICON = "update_icon2@tests.mozilla.org";
@@ -52,7 +53,7 @@ function promiseBadgeChange() {
 }
 
 // Set some prefs that apply to all the tests in this file
-add_task(async function setup() {
+add_setup(async function () {
   await SpecialPowers.pushPrefEnv({
     set: [
       // We don't have pre-pinned certificates for the local mochitest server
@@ -61,9 +62,6 @@ add_task(async function setup() {
     ],
   });
 });
-
-hookExtensionsTelemetry();
-AddonTestUtils.hookAMTelemetryEvents();
 
 // Helper function to test background updates.
 async function backgroundUpdateTest(url, id, checkIconFn) {
@@ -166,9 +164,6 @@ async function backgroundUpdateTest(url, id, checkIconFn) {
   is(addon.version, "2.0", "Should have upgraded to the new version");
 
   is(getBadgeStatus(), "", "Addon alert badge should be gone");
-
-  // Should have recorded 1 canceled followed by 1 accepted update.
-  expectTelemetry(["updateRejected", "updateAccepted"]);
 
   await addon.uninstall();
   await SpecialPowers.popPrefEnv();

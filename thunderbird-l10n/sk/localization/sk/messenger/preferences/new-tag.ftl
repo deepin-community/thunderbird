@@ -3,12 +3,11 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 tag-dialog-window =
-    .title = Nový popis
-
+    .title = Nový štítok
+tag-dialog-title = Nový štítok
 tag-name-label =
-    .value = Názov popisu:
+    .value = Názov štítku:
     .accesskey = N
-
 tag-color-label =
     .value = Farba:
     .accesskey = F

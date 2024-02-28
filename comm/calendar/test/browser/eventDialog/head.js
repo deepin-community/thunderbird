@@ -19,10 +19,7 @@ var savePromptObserver = {
         // this is by checking whether the textbox is visible.
         if (doc.querySelector("#loginContainer").hasAttribute("hidden")) {
           Assert.report(true, undefined, undefined, "Unexpected save prompt appeared");
-          doc
-            .querySelector("dialog")
-            .getButton("cancel")
-            .click();
+          doc.querySelector("dialog").getButton("cancel").click();
         }
       }
     }
@@ -30,6 +27,71 @@ var savePromptObserver = {
 };
 Services.ww.registerNotification(savePromptObserver);
 
+const calendarViewsInitialState = CalendarTestUtils.saveCalendarViewsState(window);
+
 registerCleanupFunction(async () => {
   Services.ww.unregisterNotification(savePromptObserver);
+  await CalendarTestUtils.restoreCalendarViewsState(window, calendarViewsInitialState);
 });
+
+function openAttendeesWindow(eventWindowOrArgs) {
+  let attendeesWindowPromise = BrowserTestUtils.promiseAlertDialogOpen(
+    null,
+    "chrome://calendar/content/calendar-event-dialog-attendees.xhtml",
+    {
+      async callback(win) {
+        await new Promise(resolve => win.setTimeout(resolve));
+      },
+    }
+  );
+
+  if (Window.isInstance(eventWindowOrArgs)) {
+    EventUtils.synthesizeMouseAtCenter(
+      eventWindowOrArgs.document.getElementById("button-attendees"),
+      {},
+      eventWindowOrArgs
+    );
+  } else {
+    openDialog(
+      "chrome://calendar/content/calendar-event-dialog-attendees.xhtml",
+      "_blank",
+      "chrome,titlebar,resizable",
+      eventWindowOrArgs
+    );
+  }
+  return attendeesWindowPromise;
+}
+
+async function closeAttendeesWindow(attendeesWindow, buttonAction = "accept") {
+  let closedPromise = BrowserTestUtils.domWindowClosed(attendeesWindow);
+  let dialog = attendeesWindow.document.querySelector("dialog");
+  dialog.getButton(buttonAction).click();
+  await closedPromise;
+
+  await new Promise(resolve => setTimeout(resolve));
+}
+
+function findAndFocusMatchingRow(attendeesWindow, message, matchFunction) {
+  // Get the attendee row for which the input matches.
+  const attendeeList = attendeesWindow.document.getElementById("attendee-list");
+  const attendeeInput = Array.from(attendeeList.children)
+    .map(child => child.querySelector("input"))
+    .find(input => {
+      return input ? matchFunction(input.value) : false;
+    });
+  Assert.ok(attendeeInput, message);
+
+  attendeeInput.focus();
+
+  return attendeeInput;
+}
+
+function findAndEditMatchingRow(attendeesWindow, newValue, message, matchFunction) {
+  // Get the attendee row we wish to edit.
+  const attendeeInput = findAndFocusMatchingRow(attendeesWindow, message, matchFunction);
+
+  // Set the new value of the row. We set the input value directly due to issues
+  // experienced trying to use simulated keystrokes.
+  attendeeInput.value = newValue;
+  EventUtils.synthesizeKey("VK_RETURN", {}, attendeesWindow);
+}

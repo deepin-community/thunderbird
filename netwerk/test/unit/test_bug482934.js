@@ -31,8 +31,7 @@ function make_channel(aUrl) {
 }
 
 function make_uri(aUrl) {
-  var ios = Cc["@mozilla.org/network/io-service;1"].getService(Ci.nsIIOService);
-  return ios.newURI(aUrl);
+  return Services.io.newURI(aUrl);
 }
 
 function resource_handler(aMetadata, aResponse) {
@@ -58,9 +57,9 @@ function check_cached_data(aCachedData, aCallback) {
     "disk",
     Ci.nsICacheStorage.OPEN_READONLY,
     null,
-    function(aStatus, aEntry) {
+    function (aStatus, aEntry) {
       Assert.equal(aStatus, Cr.NS_OK);
-      pumpReadStream(aEntry.openInputStream(0), function(aData) {
+      pumpReadStream(aEntry.openInputStream(0), function (aData) {
         Assert.equal(aData, aCachedData);
         aCallback();
       });
@@ -90,7 +89,7 @@ add_test(() => {
 
   var ch = make_channel(resource_url);
   ch.asyncOpen(
-    new ChannelListener(function(aRequest, aData) {
+    new ChannelListener(function (aRequest, aData) {
       syncWithCacheIOThread(() => {
         Assert.ok(hit_server);
         Assert.equal(
@@ -116,7 +115,7 @@ add_test(() => {
 
   var ch = make_channel(resource_url);
   ch.asyncOpen(
-    new ChannelListener(function(aRequest, aData) {
+    new ChannelListener(function (aRequest, aData) {
       syncWithCacheIOThread(() => {
         Assert.ok(hit_server);
         Assert.equal(
@@ -142,7 +141,7 @@ add_test(() => {
 
   var ch = make_channel(resource_url);
   ch.asyncOpen(
-    new ChannelListener(function(aRequest, aData) {
+    new ChannelListener(function (aRequest, aData) {
       syncWithCacheIOThread(() => {
         Assert.ok(hit_server);
         Assert.equal(
@@ -169,7 +168,7 @@ add_test(() => {
   response_time = "Sat, 3 Jan 2009 00:00:00 GMT";
   var ch = make_channel(resource_url);
   ch.asyncOpen(
-    new ChannelListener(function(aRequest, aData) {
+    new ChannelListener(function (aRequest, aData) {
       syncWithCacheIOThread(() => {
         Assert.ok(hit_server);
         Assert.equal(

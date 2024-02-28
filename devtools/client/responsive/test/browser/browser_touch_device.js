@@ -5,7 +5,7 @@ http://creativecommons.org/publicdomain/zero/1.0/ */
 
 // Tests changing viewport touch simulation
 const TEST_URL = "data:text/html;charset=utf-8,touch simulation test";
-const Types = require("devtools/client/responsive/types");
+const Types = require("resource://devtools/client/responsive/types.js");
 
 const testDevice = {
   name: "Fake Phone RDM Test",
@@ -24,7 +24,7 @@ addDeviceForTest(testDevice);
 
 addRDMTask(
   TEST_URL,
-  async function({ ui }) {
+  async function ({ ui }) {
     reloadOnTouchChange(true);
 
     await waitStartup(ui);
@@ -69,23 +69,18 @@ async function testChangingDevice(ui) {
   testViewportDeviceMenuLabel(ui, testDevice.name);
 }
 
-async function testResizingViewport(ui, device, touch) {
-  info(`Test resizing the viewport, device ${device}, touch ${touch}`);
+async function testResizingViewport(ui, hasDevice, touch) {
+  info(`Test resizing the viewport, device ${hasDevice}, touch ${touch}`);
 
-  let deviceRemoved;
-  if (device) {
-    deviceRemoved = once(ui, "device-association-removed");
-  }
   await testViewportResize(
     ui,
     ".viewport-vertical-resize-handle",
     [-10, -10],
     [0, -10],
-    ui
+    {
+      hasDevice,
+    }
   );
-  if (device) {
-    await deviceRemoved;
-  }
   await testTouchEventsOverride(ui, touch);
   testViewportDeviceMenuLabel(ui, "Responsive");
 }

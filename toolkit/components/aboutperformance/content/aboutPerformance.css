@@ -169,7 +169,7 @@ td {
   background-position-x: right 62px;
 }
 #dispatch-tbody > tr > td.tracker {
-  background-image: url("chrome://browser/skin/controlcenter/trackers.svg");
+  background-image: url("chrome://global/skin/icons/trackers.svg");
   -moz-context-properties: fill;
   fill: rgb(224, 41, 29);
 }
@@ -211,7 +211,7 @@ td {
 }
 #dispatch-thead > tr > td.clickable:hover:active {
   background-color: var(--in-content-button-background-active);
-  color: var(--in-content-button-text-color-hover);
+  color: var(--in-content-button-text-color-active);
 }
 
 .energy-impact {

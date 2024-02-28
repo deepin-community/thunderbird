@@ -9,6 +9,8 @@
 #include "nsBaseClipboard.h"
 #include "nsIObserver.h"
 #include "nsIURI.h"
+
+#include <ole2.h>
 #include <windows.h>
 
 class nsITransferable;
@@ -38,10 +40,13 @@ class nsClipboard : public nsBaseClipboard, public nsIObserver {
   NS_IMETHOD EmptyClipboard(int32_t aWhichClipboard) override;
 
   // Internal Native Routines
+  enum class MightNeedToFlush : bool { No, Yes };
   static nsresult CreateNativeDataObject(nsITransferable* aTransferable,
-                                         IDataObject** aDataObj, nsIURI* uri);
+                                         IDataObject** aDataObj, nsIURI* aUri,
+                                         MightNeedToFlush* = nullptr);
   static nsresult SetupNativeDataObject(nsITransferable* aTransferable,
-                                        IDataObject* aDataObj);
+                                        IDataObject* aDataObj,
+                                        MightNeedToFlush* = nullptr);
   static nsresult GetDataFromDataObject(IDataObject* aDataObject, UINT anIndex,
                                         nsIWidget* aWindow,
                                         nsITransferable* aTransferable);
@@ -61,11 +66,20 @@ class nsClipboard : public nsBaseClipboard, public nsIObserver {
   // of Gecko.
   static UINT GetFormat(const char* aMimeStr, bool aMapHTMLMime = true);
 
+  static UINT GetClipboardFileDescriptorFormatA();
+  static UINT GetClipboardFileDescriptorFormatW();
   static UINT GetHtmlClipboardFormat();
   static UINT GetCustomClipboardFormat();
 
  protected:
-  NS_IMETHOD SetNativeClipboardData(int32_t aWhichClipboard) override;
+  // @param aDataObject must be non-nullptr.
+  static HRESULT FillSTGMedium(IDataObject* aDataObject, UINT aFormat,
+                               LPFORMATETC pFE, LPSTGMEDIUM pSTM, DWORD aTymed);
+
+  // Implement the native clipboard behavior.
+  NS_IMETHOD SetNativeClipboardData(nsITransferable* aTransferable,
+                                    nsIClipboardOwner* aOwner,
+                                    int32_t aWhichClipboard) override;
   NS_IMETHOD GetNativeClipboardData(nsITransferable* aTransferable,
                                     int32_t aWhichClipboard) override;
 
@@ -79,7 +93,12 @@ class nsClipboard : public nsBaseClipboard, public nsIObserver {
   static bool FindPlatformHTML(IDataObject* inDataObject, UINT inIndex,
                                void** outData, uint32_t* outStartOfData,
                                uint32_t* outDataLen);
+
   static void ResolveShortcut(nsIFile* inFileName, nsACString& outURL);
+  static nsresult GetTempFilePath(const nsAString& aFileName,
+                                  nsAString& aFilePath);
+  static nsresult SaveStorageOrStream(IDataObject* aDataObject, UINT aIndex,
+                                      const nsAString& aFileName);
 
   nsIWidget* mWindow;
 };

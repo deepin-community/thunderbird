@@ -1,29 +1,28 @@
 {
   "langpack_id": "zh-CN",
   "manifest_version": 2,
-  "applications": {
+  "browser_specific_settings": {
     "gecko": {
       "id": "langpack-zh-CN@thunderbird.mozilla.org",
-      "strict_min_version": "91.0",
-      "strict_max_version": "91.*"
+      "strict_min_version": "115.0",
+      "strict_max_version": "115.*"
     }
   },
-  "name": "Chinese Simplified (zh-CN) Language Pack",
-  "description": "Language pack for Thunderbird for zh-CN",
-  "version": "91.0buildid20211101223011",
+  "name": "Language: 简体中文 (Simplified Chinese)",
+  "description": "Thunderbird Language Pack for 简体中文 (zh-CN) – Simplified Chinese",
+  "version": "115.8.20240216.174500",
   "languages": {
     "zh-CN": {
-      "version": "20211014154104",
+      "version": "20240216183709",
       "chrome_resources": {
         "alerts": "chrome/zh-CN/locale/zh-CN/alerts/",
         "autoconfig": "chrome/zh-CN/locale/zh-CN/autoconfig/",
-        "branding": "chrome/zh-CN/locale/zh-CN/branding/",
+        "branding": "chrome/zh-CN/locale/branding/",
         "calendar": "chrome/zh-CN/locale/zh-CN/calendar/",
         "chat": "chrome/zh-CN/locale/zh-CN/chat/",
         "communicator": "chrome/zh-CN/locale/zh-CN/communicator/",
         "devtools": "chrome/zh-CN/locale/zh-CN/devtools/client/",
         "devtools-shared": "chrome/zh-CN/locale/zh-CN/devtools/shared/",
-        "devtools-startup": "chrome/zh-CN/locale/zh-CN/devtools/startup/",
         "global": "chrome/zh-CN/locale/zh-CN/global/",
         "global-platform": {
           "macosx": "chrome/zh-CN/locale/zh-CN/global-platform/mac/",

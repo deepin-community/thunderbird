@@ -7,6 +7,7 @@
 #include "TelemetryCommon.h"
 
 #include <cstring>
+#include "js/String.h"
 #include "mozilla/TimeStamp.h"
 #include "mozilla/StaticPrefs_toolkit.h"
 #include "nsComponentManagerUtils.h"
@@ -126,7 +127,7 @@ void LogToBrowserConsole(uint32_t aLogLevel, const nsAString& aMsg) {
   }
 
   nsCOMPtr<nsIScriptError> error(do_CreateInstance(NS_SCRIPTERROR_CONTRACTID));
-  error->Init(aMsg, u""_ns, u""_ns, 0, 0, aLogLevel, "chrome javascript",
+  error->Init(aMsg, u""_ns, u""_ns, 0, 0, aLogLevel, "chrome javascript"_ns,
               false /* from private window */, true /* from chrome context */);
   console->LogMessage(error);
 }

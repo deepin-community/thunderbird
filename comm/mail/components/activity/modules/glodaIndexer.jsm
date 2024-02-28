@@ -16,15 +16,20 @@ var nsActEvent = Components.Constructor(
   "init"
 );
 
-const { XPCOMUtils } = ChromeUtils.import(
-  "resource://gre/modules/XPCOMUtils.jsm"
+const { XPCOMUtils } = ChromeUtils.importESModule(
+  "resource://gre/modules/XPCOMUtils.sys.mjs"
 );
 
-XPCOMUtils.defineLazyModuleGetters(this, {
+const lazy = {};
+
+ChromeUtils.defineESModuleGetters(lazy, {
+  PluralForm: "resource://gre/modules/PluralForm.sys.mjs",
+});
+
+XPCOMUtils.defineLazyModuleGetters(lazy, {
   Gloda: "resource:///modules/gloda/GlodaPublic.jsm",
+  GlodaConstants: "resource:///modules/gloda/GlodaConstants.jsm",
   GlodaIndexer: "resource:///modules/gloda/GlodaIndexer.jsm",
-  PluralForm: "resource://gre/modules/PluralForm.jsm",
-  Services: "resource://gre/modules/Services.jsm",
 });
 
 /**
@@ -70,7 +75,7 @@ var glodaIndexerActivity = {
     function listenerWrapper(...aArgs) {
       glodaIndexerActivity.listener(...aArgs);
     }
-    GlodaIndexer.addListener(listenerWrapper);
+    lazy.GlodaIndexer.addListener(listenerWrapper);
   },
 
   /**
@@ -96,7 +101,7 @@ var glodaIndexerActivity = {
     this.log.debug("Gloda Indexer Job: " + aJobNumber);
     this.log.debug("Gloda Indexer Item: " + aItemNumber + "/" + aTotalItemNum);
 
-    if (aStatus == Gloda.kIndexerIdle) {
+    if (aStatus == lazy.GlodaConstants.kIndexerIdle) {
       if (this.currentJob) {
         this.onJobCompleted();
       }
@@ -126,7 +131,7 @@ var glodaIndexerActivity = {
     let displayText = aFolder
       ? this.getString("indexingFolder").replace("#1", aFolder)
       : this.getString("indexing");
-    let process = new nsActProcess(displayText, Gloda);
+    let process = new nsActProcess(displayText, lazy.Gloda);
 
     process.iconClass = "indexMail";
     process.contextType = "account";
@@ -169,7 +174,7 @@ var glodaIndexerActivity = {
       statusText = this.getString(
         aFolder ? "indexingFolderStatusExact" : "indexingStatusExact"
       );
-      statusText = PluralForm.get(aTotalItemNum, statusText)
+      statusText = lazy.PluralForm.get(aTotalItemNum, statusText)
         .replace("#1", aItemNumber + 1)
         .replace("#2", aTotalItemNum)
         .replace("#3", percentComplete)
@@ -204,7 +209,7 @@ var glodaIndexerActivity = {
       // Note: we must replace the folder name placeholder last; otherwise,
       // if the name happens to contain another one of the placeholders, we'll
       // hork the name when replacing it.
-      let displayText = PluralForm.get(
+      let displayText = lazy.PluralForm.get(
         totalItemNum,
         this.getString("indexedFolder")
       )
@@ -216,14 +221,14 @@ var glodaIndexerActivity = {
         (endTime - this.currentJob.startTime) / 1000
       );
 
-      let statusText = PluralForm.get(
+      let statusText = lazy.PluralForm.get(
         secondsElapsed,
         this.getString("indexedFolderStatus")
       ).replace("#1", secondsElapsed);
 
       let event = new nsActEvent(
         displayText,
-        Gloda,
+        lazy.Gloda,
         statusText,
         this.currentJob.startTime,
         endTime

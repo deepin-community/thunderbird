@@ -215,7 +215,6 @@ pref("browser.bookmarks.editDialog.firstEditField", "namePicker");
 // Tabbed browser
 pref("browser.tabs.loadDivertedInBackground", false);
 pref("browser.tabs.loadInBackground", true);
-pref("browser.tabs.opentabfor.doubleclick", false);
 pref("browser.tabs.opentabfor.middleclick", true);
 pref("browser.tabs.opentabfor.urlbar", true);
 pref("browser.tabs.tooltippreview.enable", true);
@@ -229,9 +228,8 @@ pref("browser.tabs.warnOnOpen", true);
 pref("browser.tabs.maxOpenBeforeWarn", 15);
 pref("browser.tabs.insertRelatedAfterCurrent", true);
 pref("browser.tabs.insertAllTabsAfterCurrent", false);
-
-// For future use
-pref("browser.tabs.loadBookmarksInBackground", false);
+pref("browser.tabs.selectOwnerOnClose", true);
+pref("browser.tabs.avoidBrowserFocus", false);
 
 // No e10s in SeaMonkey for now.
 pref("browser.tabs.remote.autostart", false);
@@ -348,9 +346,19 @@ pref("network.auth.non-web-content-triggered-resources-http-auth-allow", true);
 
 pref("mail.biff.show_new_alert",     true);
 
+// If the mail tab bar is automatically hidden when there is only one tab.
+pref("mail.tabs.autoHide", false);
+
 // If messages or folders are opened using the context menu or a middle click,
 // should we open them in the foreground or in the background?
 pref("mail.tabs.loadInBackground", true);
+
+// If messages are opened in a tab or a window on a double-click.
+pref("mail.tabs.opentabfor.doubleclick", false);
+
+// If messages or folders are opened in a tab or a window on a middle-click (or
+// equivalent).
+pref("mail.tabs.opentabfor.middleclick", true);
 
 // Force the unit shown for the size of all folders.
 // If empty, the unit is determined automatically for each folder.
@@ -402,9 +410,6 @@ pref("browser.preferences.animateFadeIn", true);
 #else
 pref("browser.preferences.animateFadeIn", false);
 #endif
-
-pref("browser.download.show_plugins_in_list", true);
-pref("browser.download.hide_plugins_without_extensions", true);
 
 // initial web feed readers list - add enough entries for locales to add theirs
 pref("browser.contentHandlers.types.0.title", "chrome://navigator-region/locale/region.properties");
@@ -761,22 +766,6 @@ pref("dom.event.contextmenu.enabled",  true);
 
 pref("dom.identity.enabled", false);
 
-#ifdef XP_MACOSX
-// This pref governs whether we attempt to work around problems caused by
-// plugins using OS calls to manipulate the cursor while running out-of-
-// process.  These workarounds all involve intercepting (hooking) certain
-// OS calls in the plugin process, then arranging to make certain OS calls
-// in the browser process.  Eventually plugins will be required to use the
-// NPAPI to manipulate the cursor, and these workarounds will be removed.
-// See bug 621117.
-pref("dom.ipc.plugins.nativeCursorSupport", true);
-#endif
-
-pref("plugins.hide_infobar_for_outdated_plugin", false);
-pref("plugins.hide_infobar_for_missing_plugin", false);
-pref("plugins.click_to_play", true);
-pref("plugin.disable", false);
-
 // Digital Rights Management, Encrypted Media Extensions
 pref("media.eme.enabled", false);
 
@@ -818,7 +807,7 @@ pref("layout.word_select.stop_at_punctuation", false);
 #endif
 
 // The breakpad report server to link to in about:crashes
-pref("breakpad.reportURL", "http://crash-stats.mozilla.com/report/index/");
+pref("breakpad.reportURL", "https://crash-reports-test.seamonkey-project.org/report/index/");
 
 // Name of alternate about: page for certificate errors (when undefined, defaults to about:neterror)
 pref("security.alternate_certificate_error_page", "certerror");
@@ -936,7 +925,6 @@ pref("services.sync.prefs.sync.mailnews.mark_message_read.auto", true);
 pref("services.sync.prefs.sync.mailnews.mark_message_read.delay", true);
 pref("services.sync.prefs.sync.mailnews.mark_message_read.delay.interval", true);
 pref("services.sync.prefs.sync.mailnews.messageid.openInNewWindow", true);
-pref("services.sync.prefs.sync.mailnews.message_display.allow_plugins", true);
 pref("services.sync.prefs.sync.mailnews.message_display.disable_remote_image", true);
 pref("services.sync.prefs.sync.mailnews.nav_crosses_folders", true);
 pref("services.sync.prefs.sync.mailnews.offline_sync_mail", true);
@@ -1013,24 +1001,6 @@ pref("devtools.selfxss.count", 5);
 // This will require a restart.
 pref("security.sandbox.windows.log", false);
 
-// Controls whether and how the Windows NPAPI plugin process is sandboxed.
-// To get a different setting for a particular plugin replace "default", with
-// the plugin's nice file name, see: nsPluginTag::GetNiceFileName.
-// On windows these levels are:
-// 0 - no sandbox
-// 1 - sandbox with USER_NON_ADMIN access token level
-// 2 - a more strict sandbox, which might cause functionality issues. This now
-//     includes running at low integrity.
-// 3 - the strongest settings we seem to be able to use without breaking
-//     everything, but will probably cause some functionality restrictions
-pref("dom.ipc.plugins.sandbox-level.default", 0);
-#if defined(_AMD64_)
-// The lines in PluginModuleParent.cpp should be changed in line with this.
-pref("dom.ipc.plugins.sandbox-level.flash", 2);
-#else
-pref("dom.ipc.plugins.sandbox-level.flash", 0);
-#endif
-
 #if defined(MOZ_CONTENT_SANDBOX)
 // This controls the strength of the Windows content process sandbox for testing
 // purposes. This will require a restart.
@@ -1104,6 +1074,14 @@ pref("security.sandbox.content.tempDirSuffix", "");
 
 // Url shown when you type moz://a
 pref("toolkit.mozprotocol.url", "http://www.seamonkey-project.org/");
+
+// Serif fonts look dated. Switch those language families to sans-serif where it
+// makes sense, see bug 1727982. See all.js for other font families preferences.
+pref("font.default", "sans-serif");
+pref("font.default.x-unicode", "sans-serif");
+pref("font.default.x-western", "sans-serif");
+pref("font.default.x-cyrillic", "sans-serif");
+pref("font.default.el", "sans-serif");
 
 // Toolbox preferences
 pref("devtools.toolbox.footer.height", 250);

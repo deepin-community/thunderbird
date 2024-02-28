@@ -2,8 +2,6 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-from __future__ import absolute_import
-
 import os
 
 from talos import filter
@@ -129,6 +127,8 @@ class TsBase(Test):
         "filters",
         "setup",
         "cleanup",
+        "pine",
+        "skip_reason",
         "webextensions",
         "webextensions_folder",
         "reinstall",  # A list of files from the profile directory that
@@ -193,11 +193,6 @@ class ts_paint_heavy(ts_paint):
 
 
 @register_test()
-class ts_paint_flex(ts_paint):
-    preferences = {"layout.css.emulate-moz-box-with-flex": True}
-
-
-@register_test()
 class startup_about_home_paint(ts_paint):
     """
     Tests loading about:home on startup with the about:home startup cache
@@ -213,6 +208,7 @@ class startup_about_home_paint(ts_paint):
     preferences = {
         "browser.startup.homepage.abouthome_cache.enabled": False,
     }
+    pine = False
 
 
 @register_test()
@@ -229,6 +225,7 @@ class startup_about_home_paint_cached(ts_paint):
     preferences = {
         "browser.startup.homepage.abouthome_cache.enabled": True,
     }
+    pine = False
 
 
 @register_test()
@@ -244,6 +241,7 @@ class startup_about_home_paint_realworld_webextensions(ts_paint):
     preferences = {
         "browser.startup.homepage.abouthome_cache.enabled": False,
     }
+    pine = False
 
 
 @register_test()
@@ -268,6 +266,7 @@ class sessionrestore(TsBase):
     url = "about:home"
     preferences = {"browser.startup.page": 3}
     unit = "ms"
+    pine = False
 
 
 @register_test()
@@ -359,6 +358,8 @@ class PageloaderTest(Test):
         "extensions",
         "setup",
         "cleanup",
+        "pine",
+        "skip_reason",
         "lower_is_better",
         "alert_threshold",
         "unit",
@@ -507,6 +508,7 @@ class cross_origin_pageload(PageloaderTest):
     has 20 cross origin iframes
     """
 
+    preferences = {"dom.ipc.processPrelaunch.fission.number": 30}
     extensions = ["${talos}/pageloader"]
     tpmanifest = "${talos}/tests/cross_origin_pageload/cross_origin_pageload.manifest"
     tppagecycles = 10
@@ -562,11 +564,7 @@ class tart(PageloaderTest):
     }
     filters = filter.ignore_first.prepare(1) + filter.median.prepare()
     unit = "ms"
-
-
-@register_test()
-class tart_flex(tart):
-    preferences = {"layout.css.emulate-moz-box-with-flex": True}
+    pine = False
 
 
 @register_test()
@@ -1002,6 +1000,7 @@ class tscrollx(PageloaderTest):
     }
     filters = filter.ignore_first.prepare(5) + filter.median.prepare()
     unit = "ms"
+    pine = False
 
 
 @register_test()
@@ -1217,36 +1216,4 @@ class about_preferences_basic(PageloaderTest):
     unit = "ms"
     lower_is_better = True
     fnbpaint = True
-
-
-@register_test()
-class about_newtab_with_snippets(PageloaderTest):
-    """
-    Load about ActivityStream (about:home and about:newtab) with snippets enabled
-    """
-
-    tpmanifest = "${talos}/tests/about-newtab/about_newtab.manifest"
-    tpcycles = 25
-    tppagecycles = 1
-    responsiveness = True
-    gecko_profile_interval = 1
-    gecko_profile_entries = 2000000
-    filters = filter.ignore_first.prepare(5) + filter.median.prepare()
-    unit = "ms"
-    lower_is_better = True
-    fnbpaint = True
-    preferences = {
-        # ensure that snippets are turned on and load the json messages
-        "browser.newtabpage.activity-stream.asrouter.providers.snippets": '{"id":"snippets","enabled":true,"type":"json","location":\
-            "http://fakedomain/tests/about-newtab/snippets.json",\
-            "updateCycleInMs":14400000}',
-        "browser.newtabpage.activity-stream.feeds.snippets": True,
-        "browser.newtabpage.activity-stream.feeds.system.topstories": True,
-        "browser.newtabpage.activity-stream.feeds.section.topstories": True,
-        "browser.newtabpage.activity-stream.feeds.section.topstories.options": '{"provider_name":""}',  # NOQA: E501
-        "browser.newtabpage.activity-stream.discoverystream.endpoints": "http://fakedomain",
-        "browser.newtabpage.activity-stream.discoverystream.config": '{"api_key_pref":"extensions.pocket.oAuthConsumerKey","collapsible":true,\
-            "enabled":true,"show_spocs":false,"hardcoded_layout":false,"personalized":true,\
-            "layout_endpoint":\
-            "http://fakedomain/tests/about-newtab/ds_layout.json"}',
-    }
+    pine = False

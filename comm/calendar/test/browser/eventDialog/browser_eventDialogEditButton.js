@@ -7,17 +7,16 @@
  */
 
 const { cal } = ChromeUtils.import("resource:///modules/calendar/calUtils.jsm");
-const { XPCOMUtils } = ChromeUtils.import("resource://gre/modules/XPCOMUtils.jsm");
 
 XPCOMUtils.defineLazyModuleGetters(this, {
   CalEvent: "resource:///modules/CalEvent.jsm",
   CalRecurrenceInfo: "resource:///modules/CalRecurrenceInfo.jsm",
 });
 
-const calendar = CalendarTestUtils.createProxyCalendar("Edit Button Test", "storage");
+const calendar = CalendarTestUtils.createCalendar("Edit Button Test", "storage");
 
 registerCleanupFunction(() => {
-  CalendarTestUtils.removeProxyCalendar(calendar);
+  CalendarTestUtils.removeCalendar(calendar);
 });
 
 function createNonRecurringEvent() {
@@ -96,8 +95,9 @@ add_task(async function testEditNonRecurringEvent() {
   await modificationPromise;
 
   let viewWindow = await CalendarTestUtils.monthView.viewItemAt(window, 1, 1, 1);
-  let actualTitle = viewWindow.document.querySelector("#calendar-item-summary .item-title")
-    .textContent;
+  let actualTitle = viewWindow.document.querySelector(
+    "#calendar-item-summary .item-title"
+  ).textContent;
 
   Assert.equal(actualTitle, newTitle, "edit non-recurring event successful");
   await CalendarTestUtils.items.cancelItemDialog(viewWindow);

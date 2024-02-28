@@ -10,14 +10,14 @@ const TEST_URI = `
     body {
       color: red;
       background-color: #ededed;
-      background-image: url(chrome://global/skin/icons/warning-64.png);
+      background-image: url(chrome://branding/content/icon64.png);
       border: 2em solid rgba(120, 120, 120, .5);
     }
   </style>
   Testing the color picker tooltip!
 `;
 
-add_task(async function() {
+add_task(async function () {
   await addTab("data:text/html;charset=utf-8," + encodeURIComponent(TEST_URI));
   const { view } = await openRuleView();
 

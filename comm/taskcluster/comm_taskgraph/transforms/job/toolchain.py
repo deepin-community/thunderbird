@@ -5,30 +5,21 @@
 Support for running toolchain-building jobs via dedicated scripts in comm-central
 """
 
-from __future__ import absolute_import, print_function, unicode_literals
-
 import os.path
-import json
-from six import text_type, ensure_text
-from voluptuous import Any, Optional, Required
-import mozpack.path as mozpath
-from taskgraph.transforms.job import (
-    configure_taskdesc_for_run,
-    run_job_using,
-)
-from taskgraph.transforms.job.toolchain import (
-    toolchain_defaults,
-    toolchain_run_schema,
-)
-from taskgraph.transforms.job.common import (
-    docker_worker_add_artifacts,
-)
 
-from taskgraph.util import taskcluster
-from taskgraph.util.hash import hash_paths as hash_paths_gecko_root
-from comm_taskgraph.util.hash import hash_paths_extended
-from taskgraph import GECKO
 import taskgraph
+import taskgraph.util.path as util_path
+from taskgraph.util.schema import resolve_keyed_by
+from voluptuous import Any, Optional, Required
+
+from gecko_taskgraph import GECKO
+from gecko_taskgraph.transforms.job import configure_taskdesc_for_run, run_job_using
+from gecko_taskgraph.transforms.job.common import docker_worker_add_artifacts
+from gecko_taskgraph.transforms.job.toolchain import toolchain_defaults, toolchain_run_schema
+from gecko_taskgraph.util.attributes import RELEASE_PROJECTS
+from gecko_taskgraph.util.hash import hash_paths as hash_paths_gecko_root
+
+from comm_taskgraph.util.hash import hash_paths_extended
 
 CACHE_TYPE = "toolchains.v3"
 
@@ -37,8 +28,8 @@ TOOLCHAIN_SCRIPT_PATH = "comm/taskcluster/scripts"
 
 comm_toolchain_run_schema = toolchain_run_schema.extend(
     {
-        Required("using"): Any("comm-toolchain-script", "macos-sdk-fetch"),
-        Optional("script"): text_type,
+        Required("using"): Any("comm-toolchain-script"),
+        Optional("script"): str,
     }
 )
 
@@ -51,7 +42,7 @@ def hash_paths(*args):
     function to pick the right function based on the presence of a comm/.hg
     directory.
     """
-    comm_hg_path = mozpath.join(GECKO, "comm", ".hg")
+    comm_hg_path = util_path.join(GECKO, "comm", ".hg")
     if os.path.exists(comm_hg_path):
         return hash_paths_extended(*args)
     else:
@@ -60,7 +51,7 @@ def hash_paths(*args):
 
 def get_digest_data(config, run, taskdesc):
     """
-    Copied from taskgraph.transforms.job.toolchain, with minor
+    Copied from gecko_taskgraph.transforms.job.toolchain, with minor
     modifications to support the required script path.
     """
     files = list(run.pop("resources", []))
@@ -77,6 +68,8 @@ def get_digest_data(config, run, taskdesc):
     # Accumulate dependency hashes for index generation.
     data = [hash_paths(GECKO, files)]
 
+    data.append(taskdesc["attributes"]["toolchain-artifact"])
+
     # If the task uses an in-tree docker image, we want it to influence
     # the index path as well. Ideally, the content of the docker image itself
     # should have an influence, but at the moment, we can't get that
@@ -92,6 +85,10 @@ def get_digest_data(config, run, taskdesc):
     args = run.get("arguments")
     if args:
         data.extend(args)
+
+    if taskdesc["attributes"].get("rebuild-on-release"):
+        # Add whether this is a release branch or not
+        data.append(str(config.params["project"] in RELEASE_PROJECTS))
     return data
 
 
@@ -109,38 +106,54 @@ def docker_worker_toolchain(config, job, taskdesc):
     worker["chain-of-trust"] = True
 
     # If the task doesn't have a docker-image, set a default
-    worker.setdefault("docker-image", {"in-tree": "deb10-toolchain-build"})
-
-    # Allow the job to specify where artifacts come from, but add
-    # public/build if it's not there already.
-    artifacts = worker.setdefault("artifacts", [])
-    if not any(artifact.get("name") == "public/build" for artifact in artifacts):
-        docker_worker_add_artifacts(config, job, taskdesc)
+    worker.setdefault("docker-image", {"in-tree": "deb11-toolchain-build"})
 
     # Toolchain checkouts don't live under {workdir}/checkouts
     workspace = "{workdir}/workspace/build".format(**run)
     gecko_path = "{}/src".format(workspace)
 
-    env = worker["env"]
+    env = worker.setdefault("env", {})
     env.update(
         {
             "MOZ_BUILD_DATE": config.params["moz_build_date"],
             "MOZ_SCM_LEVEL": config.params["level"],
             "GECKO_PATH": gecko_path,
+            "TOOLCHAIN_ARTIFACT": run["toolchain-artifact"],
         }
     )
 
     attributes = taskdesc.setdefault("attributes", {})
     attributes["toolchain-artifact"] = run.pop("toolchain-artifact")
-    if "toolchain-alias" in run:
-        attributes["toolchain-alias"] = run.pop("toolchain-alias")
+    toolchain_artifact = attributes["toolchain-artifact"]
+    if not toolchain_artifact.startswith("public/build/"):
+        attributes["artifact_prefix"] = os.path.dirname(toolchain_artifact)
 
-    if not taskgraph.fast:
-        name = taskdesc["label"].replace("{}-".format(config.kind), "", 1)
+    resolve_keyed_by(
+        run,
+        "toolchain-alias",
+        item_name=taskdesc["label"],
+        project=config.params["project"],
+    )
+    alias = run.pop("toolchain-alias", None)
+    if alias:
+        attributes["toolchain-alias"] = alias
+    if "toolchain-env" in run:
+        attributes["toolchain-env"] = run.pop("toolchain-env")
+
+    # Allow the job to specify where artifacts come from, but add
+    # public/build if it's not there already.
+    artifacts = worker.setdefault("artifacts", [])
+    if not artifacts:
+        docker_worker_add_artifacts(config, job, taskdesc)
+
+    digest_data = get_digest_data(config, run, taskdesc)
+
+    if job.get("attributes", {}).get("cached_task") is not False and not taskgraph.fast:
+        name = taskdesc["label"].replace(f"{config.kind}-", "", 1)
         taskdesc["cache"] = {
             "type": CACHE_TYPE,
             "name": name,
-            "digest-data": get_digest_data(config, run, taskdesc),
+            "digest-data": digest_data,
         }
 
     run["using"] = "run-task"
@@ -148,104 +161,5 @@ def docker_worker_toolchain(config, job, taskdesc):
     run["command"] = [
         "workspace/build/src/{}/{}".format(TOOLCHAIN_SCRIPT_PATH, run.pop("script"))
     ] + run.pop("arguments", [])
-
-    configure_taskdesc_for_run(config, job, taskdesc, worker["implementation"])
-
-
-@run_job_using(
-    "docker-worker",
-    "macos-sdk-fetch",
-    schema=comm_toolchain_run_schema,
-    defaults=toolchain_defaults,
-)
-def docker_macos_sdk_fetch(config, job, taskdesc):
-    """
-    Facilitates downloading the macOS-11 SDK from the Firefox private artifact
-    build. This gets around the requirement of using a macOS worker with Xcode
-    installed to create the SDK tar file and instead downloads one that was
-    already generated.
-    Previously, toolchain artifacts with encumbered licenses such as the macOS
-    SDK were made available to build jobs as private tooltool artifacts.
-
-    There is a possibility of a race condition where the an SDK has been updated
-    but the job is not completed. In this case, the previous version would be
-    found when the Thunderbird decision task runs and that will be used for the
-    build jobs that require it. Once the Firefox SDk build job completes, the
-    index is updated and the next Thunderbird build will use it. As the SDK itself
-    does not get updated very often, this should not pose a problem.
-    """
-    run = job["run"]
-
-    worker = taskdesc["worker"] = job["worker"]
-    worker["chain-of-trust"] = True
-
-    # If the task doesn't have a docker-image, set a default
-    worker.setdefault("docker-image", {"in-tree": "deb10-toolchain-build"})
-
-    # Allow the job to specify where artifacts come from, but add
-    # public/build if it's not there already.
-    artifacts = worker.setdefault("artifacts", [])
-    if not any(artifact.get("name") == "public/build" for artifact in artifacts):
-        docker_worker_add_artifacts(config, job, taskdesc)
-
-    upload_dir = "{workdir}/artifacts".format(**run)
-
-    attributes = taskdesc.setdefault("attributes", {})
-    # Level 1 builds can use level 2 & 3 toolchains if available
-    sdk_task_id = None
-    for level in reversed(range(int(config.params["level"]), 4)):
-        gecko_index = attributes["gecko_index"].format(level=level)
-        try:
-            sdk_task_id = taskcluster.find_task_id(gecko_index)
-            break
-        except KeyError:
-            continue
-    if sdk_task_id is None:
-        raise KeyError("toolchain index path {} not found".format(gecko_index))
-
-    # Sets the MOZ_FETCHES environment variable with the task id and artifact
-    # path of the gecko artifact. This bypasses the usual setup done in
-    # taskgraph/transforms/job/__init__.py.
-    moz_fetches = {
-        "task-reference": ensure_text(
-            json.dumps(
-                [
-                    {
-                        "artifact": attributes["gecko_artifact_path"],
-                        "extract": False,
-                        "task": sdk_task_id,
-                    }
-                ]
-            )
-        )
-    }
-
-    # fetch-content dowmloads files to MOZ_FETCHES, so we set it to UPLOAD_DIR
-    # so that it's found by the automatic artifact upload done at the end of
-    # the "build".
-    env = worker["env"]
-    env.update(
-        {
-            "MOZ_SCM_LEVEL": config.params["level"],
-            "MOZ_FETCHES": moz_fetches,
-            "MOZ_FETCHES_DIR": upload_dir,
-        }
-    )
-
-    attributes["toolchain-artifact"] = run.pop("toolchain-artifact")
-    if "toolchain-alias" in run:
-        attributes["toolchain-alias"] = run.pop("toolchain-alias")
-
-    if not taskgraph.fast:
-        name = taskdesc["label"].replace("{}-".format(config.kind), "", 1)
-        taskdesc["cache"] = {
-            "type": CACHE_TYPE,
-            "name": name,
-            "digest-data": get_digest_data(config, run, taskdesc),
-        }
-
-    run["using"] = "run-task"
-    run["cwd"] = run["workdir"]
-    run["command"] = ["/builds/worker/bin/fetch-content", "task-artifacts"]
 
     configure_taskdesc_for_run(config, job, taskdesc, worker["implementation"])

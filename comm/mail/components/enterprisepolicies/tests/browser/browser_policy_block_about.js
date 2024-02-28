@@ -2,8 +2,8 @@
  * http://creativecommons.org/publicdomain/zero/1.0/ */
 "use strict";
 
-const { PromiseTestUtils } = ChromeUtils.import(
-  "resource://testing-common/PromiseTestUtils.jsm"
+const { PromiseTestUtils } = ChromeUtils.importESModule(
+  "resource://testing-common/PromiseTestUtils.sys.mjs"
 );
 
 const ABOUT_CONTRACT = "@mozilla.org/network/protocol/about;1?what=";
@@ -40,12 +40,7 @@ const policiesToTest = [
     policies: {
       DisableDeveloperTools: true,
     },
-    urls: [
-      "about:devtools",
-      "about:debugging",
-      "about:devtools-toolbox",
-      //      "about:profiling",
-    ],
+    urls: ["about:debugging", "about:devtools-toolbox"],
   },
   {
     policies: {
@@ -77,9 +72,9 @@ async function testPageBlockedByPolicy(policyJSON, page) {
   await EnterprisePolicyTesting.setupPolicyEngineWithJson(policyJSON);
 
   await withNewTab({ url: "about:blank" }, async browser => {
-    BrowserTestUtils.loadURI(browser, page);
+    BrowserTestUtils.loadURIString(browser, page);
     await BrowserTestUtils.browserLoaded(browser, false, page, true);
-    await SpecialPowers.spawn(browser, [page], async function(innerPage) {
+    await SpecialPowers.spawn(browser, [page], async function (innerPage) {
       ok(
         content.document.documentURI.startsWith(
           "about:neterror?e=blockedByPolicy"

@@ -6,11 +6,11 @@
 
 var EXPORTED_SYMBOLS = ["CalCalendarManager"];
 
-var { AddonManager } = ChromeUtils.import("resource://gre/modules/AddonManager.jsm");
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-var { Preferences } = ChromeUtils.import("resource://gre/modules/Preferences.jsm");
-var { cal } = ChromeUtils.import("resource:///modules/calendar/calUtils.jsm");
-var { calCachedCalendar } = ChromeUtils.import("resource:///components/calCachedCalendar.js");
+const { AddonManager } = ChromeUtils.importESModule("resource://gre/modules/AddonManager.sys.mjs");
+const { Preferences } = ChromeUtils.importESModule("resource://gre/modules/Preferences.sys.mjs");
+const { cal } = ChromeUtils.import("resource:///modules/calendar/calUtils.jsm");
+const { calCachedCalendar } = ChromeUtils.import("resource:///components/calCachedCalendar.js");
+const { setTimeout } = ChromeUtils.importESModule("resource://gre/modules/Timer.sys.mjs");
 
 var REGISTRY_BRANCH = "calendar.registry.";
 var MAX_INT = Math.pow(2, 31) - 1;
@@ -201,10 +201,10 @@ CalCalendarManager.prototype = {
    * cached calendars. If the provider doesn't exist, returns a dummy calendar that is
    * force-disabled.
    *
-   * @param {string} id     The calendar id.
-   * @param {string} ctype  The calendar type. See {@link calICalendar#type}.
-   * @param {string} uri    The calendar uri.
-   * @return {calICalendar} The initialized calendar or dummy calendar.
+   * @param {string} id - The calendar id.
+   * @param {string} ctype - The calendar type. See {@link calICalendar#type}.
+   * @param {string} uri - The calendar uri.
+   * @returns {calICalendar} The initialized calendar or dummy calendar.
    */
   initializeCalendar(id, ctype, uri) {
     let calendar = this.createCalendar(ctype, uri);
@@ -235,8 +235,8 @@ CalCalendarManager.prototype = {
    * Update calendar registrations for the given type. If the provider is missing then the calendars
    * are replaced with a dummy calendar, and vice versa.
    *
-   * @param {string} type                 The calendar type to update. See {@link calICalendar#type}.
-   * @param {boolean} [clearCache=false]  If true, the calendar cache is also cleared.
+   * @param {string} type - The calendar type to update. See {@link calICalendar#type}.
+   * @param {boolean} [clearCache=false] - If true, the calendar cache is also cleared.
    */
   updateDummyCalendarRegistration(type, clearCache = false) {
     let hasImplementation = !!this.providerImplementations[type];
@@ -255,8 +255,8 @@ CalCalendarManager.prototype = {
    * the calendar, then sets it up again using id, type and uri. This is similar to what happens on
    * startup.
    *
-   * @param {calICalendar[]} calendars    The calendars to update.
-   * @param {boolean} [clearCache=false]  If true, the calendar cache is also cleared.
+   * @param {calICalendar[]} calendars - The calendars to update.
+   * @param {boolean} [clearCache=false] - If true, the calendar cache is also cleared.
    */
   updateCalendarRegistration(calendars, clearCache = false) {
     let sortOrderPref = Services.prefs.getStringPref("calendar.list.sortOrder", "").split(" ");
@@ -293,8 +293,8 @@ CalCalendarManager.prototype = {
   /**
    * Register a calendar provider with the given JavaScript implementation.
    *
-   * @param {string} type         The calendar type string, see {@link calICalendar#type}.
-   * @param {Object} impl         The class that implements calICalendar.
+   * @param {string} type - The calendar type string, see {@link calICalendar#type}.
+   * @param {object} impl - The class that implements calICalendar.
    */
   registerCalendarProvider(type, impl) {
     this.assureCache();
@@ -313,8 +313,8 @@ CalCalendarManager.prototype = {
    * Unregister a calendar provider by type. Already registered calendars will be replaced by a
    * dummy calendar that is force-disabled.
    *
-   * @param {string} type         The calendar type string, see {@link calICalendar#type}.
-   * @param {boolean} temporary   If true, cached calendars will not be cleared.
+   * @param {string} type - The calendar type string, see {@link calICalendar#type}.
+   * @param {boolean} temporary - If true, cached calendars will not be cleared.
    */
   unregisterCalendarProvider(type, temporary = false) {
     cal.ASSERT(
@@ -330,8 +330,8 @@ CalCalendarManager.prototype = {
    * Checks if a calendar provider has been dynamically registered with the given type. This does
    * not check for the built-in XPCOM providers.
    *
-   * @param {string} type         The calendar type string, see {@link calICalendar#type}.
-   * @return {boolean}            True, if the calendar provider type is registered.
+   * @param {string} type - The calendar type string, see {@link calICalendar#type}.
+   * @returns {boolean} True, if the calendar provider type is registered.
    */
   hasCalendarProvider(type) {
     return !!this.providerImplementations[type];
@@ -367,7 +367,7 @@ CalCalendarManager.prototype = {
    * Sets up a calendar, this is the initialization required during calendar registration. See
    * {@link #unsetupCalendar} to revert these steps.
    *
-   * @param {calICalendar} calendar   The calendar to set up.
+   * @param {calICalendar} calendar - The calendar to set up.
    */
   setupCalendar(calendar) {
     this.mCache[calendar.id] = calendar;
@@ -393,8 +393,8 @@ CalCalendarManager.prototype = {
   /**
    * Reverts the calendar registration setup steps from {@link #setupCalendar}.
    *
-   * @param {calICalendar} calendar         The calendar to undo setup for.
-   * @param {boolean} [clearCache=false]    If true, the cache is cleared for this calendar.
+   * @param {calICalendar} calendar - The calendar to undo setup for.
+   * @param {boolean} [clearCache=false] - If true, the cache is cleared for this calendar.
    */
   unsetupCalendar(calendar, clearCache = false) {
     if (this.mCache) {
@@ -476,11 +476,7 @@ CalCalendarManager.prototype = {
 
     // For deleting, we also call the deleteCalendar method from the provider.
     if (removeModes.has("delete") && (mode & cICM.REMOVE_NO_DELETE) == 0) {
-      let wrappedCalendar = cal.wrapInstance(calendar, Ci.calICalendarProvider);
-      if (!wrappedCalendar) {
-        throw new Components.Exception("Calendar is missing a provider implementation for delete");
-      }
-
+      let wrappedCalendar = calendar.QueryInterface(Ci.calICalendarProvider);
       wrappedCalendar.deleteCalendar(calendar, null);
     }
   },
@@ -540,10 +536,72 @@ CalCalendarManager.prototype = {
       }
     }
 
+    let shouldResyncGoogleCalDav = false;
+    if (!Services.prefs.prefHasUserValue("calendar.caldav.googleResync")) {
+      // Some users' calendars got into a bad state due to Google rate-limit
+      // problems so this code triggers a full resync.
+      shouldResyncGoogleCalDav = true;
+    }
+
     // do refreshing in a second step, when *all* calendars are already available
     // via getCalendars():
     for (let calendar of Object.values(this.mCache)) {
-      maybeRefreshCalendar(calendar);
+      let delay = 0;
+
+      // The special-casing of ICS here is a very ugly hack. We can delay most
+      // cached calendars without an issue, but the ICS implementation has two
+      // properties which make that dangerous in its case:
+      //
+      // 1) ICS files can only be written whole cloth. Since it's a plain file,
+      // we need to know the entire contents of what we want to write.
+      //
+      // 2) It is backed by a memory calendar which it regards as its source of
+      // truth, and the backing calendar is only populated on a refresh.
+      //
+      // The combination of these two means that any update to the ICS calendar
+      // before the memory calendar is populated will erase everything in the
+      // calendar (except potentially the added item if that's what we're
+      // doing). A 15 second window for data loss-inducing updates isn't huge,
+      // but it's more than we should bet on.
+      //
+      // Why not fix this a different way? Trying to populate the memory
+      // calendar outside of a refresh causes the caching calendar to get
+      // confused about event ownership and identity, leading to bogus observer
+      // notifications and potential duplication of events in some parts of the
+      // interface. Having the ICS calendar refresh itself internally can cause
+      // disabled calendars to behave improperly, since calendars don't actually
+      // enforce their own disablement and may not know if they're disabled
+      // until after we try to refresh. Having the ICS calendar ensure it has
+      // refreshed itself before trying to make updates would require a fair bit
+      // of refactoring in its processing queue and, while it should probably
+      // happen, fingers crossed we can rework the provider architecture to make
+      // many of these problems less of an issue first.
+      const canDelay = calendar.getProperty("cache.enabled") && calendar.type != "ics";
+
+      if (canDelay) {
+        // If the calendar is cached, we don't need to refresh it RIGHT NOW, so let's wait a
+        // while and let other things happen first.
+        delay = 15000;
+
+        if (
+          shouldResyncGoogleCalDav &&
+          calendar.type == "caldav" &&
+          calendar.uri.prePath == "https://apidata.googleusercontent.com"
+        ) {
+          cal.LOG(`CalDAV: Resetting sync token of ${calendar.name} to perform a full resync`);
+          let calCachedCalendar = calendar.wrappedJSObject;
+          let calDavCalendar = calCachedCalendar.mUncachedCalendar.wrappedJSObject;
+          calDavCalendar.mWebdavSyncToken = null;
+          calDavCalendar.saveCalendarProperties();
+        }
+      }
+      setTimeout(() => maybeRefreshCalendar(calendar), delay);
+    }
+
+    if (shouldResyncGoogleCalDav) {
+      // Record the fact that we've scheduled a resync, so that we only do it once.
+      // Store the date instead of a boolean because we might want to use this again some day.
+      Services.prefs.setIntPref("calendar.caldav.googleResync", Date.now() / 1000);
     }
   },
 
@@ -819,7 +877,7 @@ calMgrCalendarObserver.prototype = {
     // Log warnings in error console.
     // Report serious errors in both error console and in prompt window.
     if (aErrNo == calIErrors.MODIFICATION_FAILED) {
-      Cu.reportError(summary);
+      console.error(summary);
       this.announceParamBlock(paramBlock);
     } else {
       cal.WARN(summary);
@@ -840,7 +898,7 @@ calMgrCalendarObserver.prototype = {
           return !equalMessage(msg, paramBlock);
         });
       } catch (e) {
-        Cu.reportError(e);
+        console.error(e);
       }
     };
 
@@ -901,7 +959,7 @@ function deletePrefBranch(id) {
 /**
  * Helper to refresh a calendar, if it can be refreshed and isn't disabled.
  *
- * @param {calICalendar} calendar     The calendar to refresh.
+ * @param {calICalendar} calendar - The calendar to refresh.
  */
 function maybeRefreshCalendar(calendar) {
   if (!calendar.getProperty("disabled") && calendar.canRefresh) {
@@ -916,8 +974,8 @@ function maybeRefreshCalendar(calendar) {
  * Wrap a calendar using {@link calCachedCalendar}, if the cache is supported and enabled.
  * Otherwise just return the passed in calendar.
  *
- * @param {calICalendar} calendar     The calendar to potentially wrap.
- * @return {calICalendar}             The potentially wrapped calendar.
+ * @param {calICalendar} calendar - The calendar to potentially wrap.
+ * @returns {calICalendar} The potentially wrapped calendar.
  */
 function maybeWrapCachedCalendar(calendar) {
   if (
@@ -945,7 +1003,7 @@ function flushPrefs() {
  * @param aCalendar     The calendar to refresh on notification
  */
 function timerCallback(aCalendar) {
-  this.notify = function(aTimer) {
+  this.notify = function (aTimer) {
     if (!aCalendar.getProperty("disabled") && aCalendar.canRefresh) {
       aCalendar.refresh();
     }
@@ -970,8 +1028,7 @@ var gCalendarManagerAddonListener = {
   queryUninstallProvider(aAddon) {
     const uri = "chrome://calendar/content/calendar-providerUninstall-dialog.xhtml";
     const features = "chrome,titlebar,resizable,modal";
-    let calMgr = cal.getCalendarManager();
-    let affectedCalendars = calMgr
+    let affectedCalendars = cal.manager
       .getCalendars()
       .filter(calendar => calendar.providerID == aAddon.id);
     if (!affectedCalendars.length) {

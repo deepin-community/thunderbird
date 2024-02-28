@@ -6,8 +6,15 @@
  *          checkRecurrenceRule, countOccurrences
  */
 
-var { PluralForm } = ChromeUtils.import("resource://gre/modules/PluralForm.jsm");
+var { PluralForm } = ChromeUtils.importESModule("resource://gre/modules/PluralForm.sys.mjs");
+var { XPCOMUtils } = ChromeUtils.importESModule("resource://gre/modules/XPCOMUtils.sys.mjs");
 var { cal } = ChromeUtils.import("resource:///modules/calendar/calUtils.jsm");
+
+const lazy = {};
+XPCOMUtils.defineLazyModuleGetters(lazy, {
+  CalRecurrenceDate: "resource:///modules/CalRecurrenceDate.jsm",
+  CalRecurrenceRule: "resource:///modules/CalRecurrenceRule.jsm",
+});
 
 const EXPORTED_SYMBOLS = [
   "recurrenceStringFromItem",
@@ -15,6 +22,7 @@ const EXPORTED_SYMBOLS = [
   "splitRecurrenceRules",
   "checkRecurrenceRule",
   "countOccurrences",
+  "hasUnsupported",
 ];
 
 /**
@@ -23,10 +31,10 @@ const EXPORTED_SYMBOLS = [
  * "too complex" string by getting that string using the arguments provided.
  *
  * @param {calIEvent | calITodo} item   A calendar item.
- * @param {string} bundleName           Name of the properties file, e.g. "calendar-event-dialog".
- * @param {string} stringName           Name of the string within the properties file.
- * @param {string[]} [params]           (optional) Parameters to format the string.
- * @return {string | null}              A string describing the recurrence
+ * @param {string} bundleName - Name of the properties file, e.g. "calendar-event-dialog".
+ * @param {string} stringName - Name of the string within the properties file.
+ * @param {string[]} [params] - (optional) Parameters to format the string.
+ * @returns {string | null} A string describing the recurrence
  *                                        pattern or null if the item has no
  *                                        recurrence info.
  */
@@ -61,7 +69,7 @@ function recurrenceStringFromItem(item, bundleName, stringName, params) {
  * @param startDate         The start date to base rules on.
  * @param endDate           The end date to base rules on.
  * @param allDay            If true, the pattern should assume an allday item.
- * @return                  A human readable string describing the recurrence.
+ * @returns A human readable string describing the recurrence.
  */
 function recurrenceRule2String(recurrenceInfo, startDate, endDate, allDay) {
   function getRString(name, args) {
@@ -92,6 +100,10 @@ function recurrenceRule2String(recurrenceInfo, startDate, endDate, allDay) {
   // set recurrence info. Bail out if there's more
   // than a single rule or something other than a rule.
   recurrenceInfo = recurrenceInfo.clone();
+  if (hasUnsupported(recurrenceInfo)) {
+    return null;
+  }
+
   let rrules = splitRecurrenceRules(recurrenceInfo);
   if (rrules[0].length == 1) {
     let rule = cal.wrapInstance(rrules[0][0], Ci.calIRecurrenceRule);
@@ -412,10 +424,24 @@ function recurrenceRule2String(recurrenceInfo, startDate, endDate, allDay) {
 }
 
 /**
+ * Used to test if the recurrence items of a calIRecurrenceInfo instance are
+ * supported. We do not currently allow the "SECONDLY" or "MINUTELY" frequency
+ * values.
+ *
+ * @param {calIRecurrenceInfo} recurrenceInfo
+ * @returns {boolean}
+ */
+function hasUnsupported(recurrenceInfo) {
+  return recurrenceInfo
+    .getRecurrenceItems()
+    .some(item => item.type == "SECONDLY" || item.type == "MINUTELY");
+}
+
+/**
  * Split rules into negative and positive rules.
  *
  * @param recurrenceInfo    An item's recurrence info to parse.
- * @return                  An array with two elements: an array of positive
+ * @returns An array with two elements: an array of positive
  *                            rules and an array of negative rules.
  */
 function splitRecurrenceRules(recurrenceInfo) {
@@ -438,7 +464,7 @@ function splitRecurrenceRules(recurrenceInfo) {
  * @see                     calIRecurrenceRule
  * @param aRule             The recurrence rule to check.
  * @param aArray            An array of component names to check.
- * @return                  Returns true if the rule is valid.
+ * @returns Returns true if the rule is valid.
  */
 function checkRecurrenceRule(aRule, aArray) {
   for (let comp of aArray) {
@@ -454,7 +480,7 @@ function checkRecurrenceRule(aRule, aArray) {
  * Counts the occurrences of the parent item if any of a provided item
  *
  * @param  {(calIEvent|calIToDo)}  aItem  item to count for
- * @returns {(number|null)}               number of occurrences or null if the
+ * @returns {(number|null)} number of occurrences or null if the
  *                                          passed item's parent item isn't a
  *                                          recurring item or its recurrence is
  *                                          infinite
@@ -468,7 +494,7 @@ function countOccurrences(aItem) {
     let byCount = false;
     let ritems = recInfo.getRecurrenceItems();
     for (let ritem of ritems) {
-      if (ritem instanceof Ci.calIRecurrenceRule) {
+      if (ritem instanceof lazy.CalRecurrenceRule || ritem instanceof Ci.calIRecurrenceRule) {
         if (ritem.isByCount) {
           occCounter = occCounter + ritem.count;
           byCount = true;
@@ -504,7 +530,10 @@ function countOccurrences(aItem) {
           let occurrences = recInfo.getOccurrences(from, until, 0);
           occCounter = occCounter + occurrences.length;
         }
-      } else if (ritem instanceof Ci.calIRecurrenceDate) {
+      } else if (
+        ritem instanceof lazy.CalRecurrenceDate ||
+        ritem instanceof Ci.calIRecurrenceDate
+      ) {
         if (ritem.isNegative) {
           // this is an exdate
           excCounter++;

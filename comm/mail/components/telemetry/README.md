@@ -126,7 +126,9 @@ user_pref("datareporting.healthreport.uploadEnabled",true);
 From the DevTools console, you can send an immediate test ping:
 
 ```
-Cu.import("resource://gre/modules/TelemetrySession.jsm");
+const { TelemetrySession } = ChromeUtils.import(
+  "resource://gre/modules/TelemetrySession.jsm"
+);
 TelemetrySession.testPing();
 ```
 
@@ -171,4 +173,3 @@ https://firefox-source-docs.mozilla.org/toolkit/components/telemetry/telemetry/i
 There's a good summary of settings (both compile-time and run-time prefs):
 
 https://firefox-source-docs.mozilla.org/toolkit/components/telemetry/telemetry/internals/preferences.html
-

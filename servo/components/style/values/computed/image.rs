@@ -24,10 +24,15 @@ use std::f32::consts::PI;
 use std::fmt::{self, Write};
 use style_traits::{CssWriter, ToCss};
 
+pub use specified::ImageRendering;
+
 /// Computed values for an image according to CSS-IMAGES.
 /// <https://drafts.csswg.org/css-images/#image-values>
 pub type Image =
     generic::GenericImage<Gradient, MozImageRect, ComputedImageUrl, Color, Percentage, Resolution>;
+
+// Images should remain small, see https://github.com/servo/servo/pull/18430
+size_of_test!(Image, 16);
 
 /// Computed values for a CSS gradient.
 /// <https://drafts.csswg.org/css-images/#gradients>
@@ -45,8 +50,6 @@ pub type Gradient = generic::GenericGradient<
 /// Computed values for CSS cross-fade
 /// <https://drafts.csswg.org/css-images-4/#cross-fade-function>
 pub type CrossFade = generic::CrossFade<Image, Color, Percentage>;
-/// A computed percentage or nothing.
-pub type PercentOrNone = generic::PercentOrNone<Percentage>;
 
 /// A computed radial gradient ending shape.
 pub type EndingShape = generic::GenericEndingShape<NonNegativeLength, NonNegativeLengthPercentage>;
@@ -75,14 +78,11 @@ impl ToComputedValue for specified::ImageSet {
         let items = self.items.to_computed_value(context);
         let dpr = context.device().device_pixel_ratio().get();
 
-        // If no item have a supported MIME type, the behavior is undefined by the standard
-        // By default, we select the first item
         let mut supported_image = false;
-        let mut selected_index = 0;
+        let mut selected_index = std::usize::MAX;
         let mut selected_resolution = items[0].resolution.dppx();
 
         for (i, item) in items.iter().enumerate() {
-
             // If the MIME type is not supported, we discard the ImageSetItem
             if item.has_mime_type && !context.device().is_supported_mime_type(&item.mime_type) {
                 continue;
@@ -124,7 +124,7 @@ impl ToComputedValue for specified::ImageSet {
 
     fn from_computed_value(computed: &Self::ComputedValue) -> Self {
         Self {
-            selected_index: 0,
+            selected_index: std::usize::MAX,
             items: ToComputedValue::from_computed_value(&computed.items),
         }
     }
@@ -175,7 +175,7 @@ impl generic::LineDirection for LineDirection {
                     dest.write_str("to ")?;
                 }
                 x.to_css(dest)?;
-                dest.write_str(" ")?;
+                dest.write_char(' ')?;
                 y.to_css(dest)
             },
         }

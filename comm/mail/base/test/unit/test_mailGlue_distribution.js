@@ -1,7 +1,6 @@
 var { TBDistCustomizer } = ChromeUtils.import(
   "resource:///modules/TBDistCustomizer.jsm"
 );
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 
 function run_test() {
   do_test_pending();
@@ -26,7 +25,7 @@ function run_test() {
     );
   }
 
-  registerCleanupFunction(function() {
+  registerCleanupFunction(function () {
     // Remove the distribution.ini file
     if (iniFile.exists()) {
       iniFile.remove(true);
@@ -63,7 +62,7 @@ function run_test() {
   try {
     aboutLocale = testIni.getString("Global", "about.en-US");
   } catch (e) {
-    Cu.reportError(e);
+    console.error(e);
   }
 
   if (aboutLocale == undefined) {

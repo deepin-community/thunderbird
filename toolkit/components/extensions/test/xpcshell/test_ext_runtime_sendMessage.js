@@ -216,6 +216,7 @@ add_task(async function runtimeSendMessageReply() {
 add_task(async function runtimeSendMessageBlob() {
   function background() {
     browser.runtime.onMessage.addListener(msg => {
+      // eslint-disable-next-line mozilla/use-isInstance -- this function runs in an extension
       browser.test.assertTrue(msg.blob instanceof Blob, "Message is a blob");
       return Promise.resolve(msg);
     });
@@ -230,6 +231,7 @@ add_task(async function runtimeSendMessageBlob() {
       .sendMessage({ blob: new Blob(["hello"]) })
       .then(response => {
         browser.test.assertTrue(
+          // eslint-disable-next-line mozilla/use-isInstance -- this function runs in an extension
           response.blob instanceof Blob,
           "Response is a blob"
         );
@@ -347,6 +349,10 @@ add_task(async function sendMessageResponseGC() {
   extension.sendMessage("ping");
   await extension.awaitMessage("pong");
 
+  Services.prefs.setBoolPref(
+    "security.allow_parent_unrestricted_js_loads",
+    true
+  );
   Services.ppmm.loadProcessScript("data:,Components.utils.forceGC()", false);
   await extension.awaitMessage("rejected");
 
@@ -357,6 +363,10 @@ add_task(async function sendMessageResponseGC() {
   await extension.awaitMessage("pong");
 
   Services.ppmm.loadProcessScript("data:,Components.utils.forceGC()", false);
+  Services.prefs.setBoolPref(
+    "security.allow_parent_unrestricted_js_loads",
+    false
+  );
   await extension.awaitMessage("rejected");
 
   // Test that promises from long-running tasks didn't get GCd.

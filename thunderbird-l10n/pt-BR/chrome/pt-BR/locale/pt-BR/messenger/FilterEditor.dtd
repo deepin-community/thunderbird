@@ -3,7 +3,6 @@
    - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
 
 <!ENTITY window.title "Regras de filtragem">
-<!ENTITY filterEditorDialog.dimensions "width: 100ch;">
 <!ENTITY filterName.label "Nome do filtro:">
 <!ENTITY filterName.accesskey "N">
 
@@ -46,7 +45,7 @@
 <!ENTITY setPriority.label "Definir prioridade como">
 <!ENTITY addTag.label "Aplicar etiqueta">
 <!ENTITY setJunkScore.label "Definir status de spam como">
-<!ENTITY deleteMessage.label "Excluir">
+<!ENTITY deleteMessage.label "Excluir mensagem">
 <!ENTITY deleteFromPOP.label "Excluir do servidor POP">
 <!ENTITY fetchFromPOP.label "Buscar do servidor POP">
 <!ENTITY ignoreThread.label "Ignorar tópico">

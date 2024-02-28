@@ -11,12 +11,11 @@
 
 const EXPORTED_SYMBOLS = ["GlodaExplicitAttr"];
 
-const { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 const { Gloda } = ChromeUtils.import("resource:///modules/gloda/Gloda.jsm");
-const { TagNoun } = ChromeUtils.import("resource:///modules/gloda/NounTag.jsm");
-const { MailServices } = ChromeUtils.import(
-  "resource:///modules/MailServices.jsm"
+const { GlodaConstants } = ChromeUtils.import(
+  "resource:///modules/gloda/GlodaConstants.jsm"
 );
+const { TagNoun } = ChromeUtils.import("resource:///modules/gloda/NounTag.jsm");
 
 /**
  * @namespace Explicit attribute provider.  Indexes/defines attributes that are
@@ -29,7 +28,6 @@ var GlodaExplicitAttr = {
     "chrome://messenger/locale/gloda.properties"
   ),
   _log: null,
-  _msgTagService: null,
 
   init() {
     this._log = console.createInstance({
@@ -37,8 +35,6 @@ var GlodaExplicitAttr = {
       maxLogLevel: "Warn",
       maxLogLevelPref: "gloda.loglevel",
     });
-
-    this._msgTagService = MailServices.tags;
 
     try {
       this.defineAttributes();
@@ -59,15 +55,15 @@ var GlodaExplicitAttr = {
     // Tag
     this._attrTag = Gloda.defineAttribute({
       provider: this,
-      extensionName: Gloda.BUILT_IN,
-      attributeType: Gloda.kAttrExplicit,
+      extensionName: GlodaConstants.BUILT_IN,
+      attributeType: GlodaConstants.kAttrExplicit,
       attributeName: "tag",
       bindName: "tags",
       singular: false,
       emptySetIsSignificant: true,
       facet: true,
-      subjectNouns: [Gloda.NOUN_MESSAGE],
-      objectNoun: Gloda.NOUN_TAG,
+      subjectNouns: [GlodaConstants.NOUN_MESSAGE],
+      objectNoun: GlodaConstants.NOUN_TAG,
       parameterNoun: null,
       // Property change notifications that we care about:
       propertyChanges: ["keywords"],
@@ -76,27 +72,27 @@ var GlodaExplicitAttr = {
     // Star
     this._attrStar = Gloda.defineAttribute({
       provider: this,
-      extensionName: Gloda.BUILT_IN,
-      attributeType: Gloda.kAttrExplicit,
+      extensionName: GlodaConstants.BUILT_IN,
+      attributeType: GlodaConstants.kAttrExplicit,
       attributeName: "star",
       bindName: "starred",
       singular: true,
       facet: true,
-      subjectNouns: [Gloda.NOUN_MESSAGE],
-      objectNoun: Gloda.NOUN_BOOLEAN,
+      subjectNouns: [GlodaConstants.NOUN_MESSAGE],
+      objectNoun: GlodaConstants.NOUN_BOOLEAN,
       parameterNoun: null,
     }); // tested-by: test_attributes_explicit
     // Read/Unread
     this._attrRead = Gloda.defineAttribute({
       provider: this,
-      extensionName: Gloda.BUILT_IN,
-      attributeType: Gloda.kAttrExplicit,
+      extensionName: GlodaConstants.BUILT_IN,
+      attributeType: GlodaConstants.kAttrExplicit,
       attributeName: "read",
       // Make the message query-able but without using the database.
       canQuery: "truthy-but-not-true",
       singular: true,
-      subjectNouns: [Gloda.NOUN_MESSAGE],
-      objectNoun: Gloda.NOUN_BOOLEAN,
+      subjectNouns: [GlodaConstants.NOUN_MESSAGE],
+      objectNoun: GlodaConstants.NOUN_BOOLEAN,
       parameterNoun: null,
     }); // tested-by: test_attributes_explicit
 
@@ -105,12 +101,12 @@ var GlodaExplicitAttr = {
      */
     this._attrRepliedTo = Gloda.defineAttribute({
       provider: this,
-      extensionName: Gloda.BUILT_IN,
-      attributeType: Gloda.kAttrExplicit,
+      extensionName: GlodaConstants.BUILT_IN,
+      attributeType: GlodaConstants.kAttrExplicit,
       attributeName: "repliedTo",
       singular: true,
-      subjectNouns: [Gloda.NOUN_MESSAGE],
-      objectNoun: Gloda.NOUN_BOOLEAN,
+      subjectNouns: [GlodaConstants.NOUN_MESSAGE],
+      objectNoun: GlodaConstants.NOUN_BOOLEAN,
       parameterNoun: null,
     }); // tested-by: test_attributes_explicit
 
@@ -119,12 +115,12 @@ var GlodaExplicitAttr = {
      */
     this._attrForwarded = Gloda.defineAttribute({
       provider: this,
-      extensionName: Gloda.BUILT_IN,
-      attributeType: Gloda.kAttrExplicit,
+      extensionName: GlodaConstants.BUILT_IN,
+      attributeType: GlodaConstants.kAttrExplicit,
       attributeName: "forwarded",
       singular: true,
-      subjectNouns: [Gloda.NOUN_MESSAGE],
-      objectNoun: Gloda.NOUN_BOOLEAN,
+      subjectNouns: [GlodaConstants.NOUN_MESSAGE],
+      objectNoun: GlodaConstants.NOUN_BOOLEAN,
       parameterNoun: null,
     }); // tested-by: test_attributes_explicit
   },
@@ -169,7 +165,7 @@ var GlodaExplicitAttr = {
         (tags.length - 1) * this.NOTABILITY_TAGGED_ADDL;
     }
 
-    yield Gloda.kWorkDone;
+    yield GlodaConstants.kWorkDone;
   },
 
   /**

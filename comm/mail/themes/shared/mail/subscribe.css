@@ -8,6 +8,16 @@
 
 @import url("chrome://messenger/skin/messenger.css");
 
+#subscribeWindow {
+  min-width: 40em;
+  min-height: 30em;
+}
+
+#nameColumn,
+#nameColumn2 {
+  flex: 10 10;
+}
+
 /* ::::: Subscription Icons  :::::: */
 
 treechildren::-moz-tree-image(subscribedColumn),

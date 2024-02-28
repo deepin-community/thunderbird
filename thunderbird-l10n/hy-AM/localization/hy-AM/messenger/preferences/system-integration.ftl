@@ -4,6 +4,7 @@
 
 system-integration-title =
     .title = Համակարգային ինտեգրում
+system-integration-dialog-title = Համակարգային ինտեգրում
 system-integration-dialog =
     .buttonlabelaccept = Նշել որպես հիմնական
     .buttonlabelcancel = Բաց թողնել ինտեգրացիան

@@ -7,7 +7,7 @@
 // it is preffed on.
 
 var PREF_UA_STYLES = "devtools.inspector.showUserAgentStyles";
-const { PrefObserver } = require("devtools/client/shared/prefs");
+const { PrefObserver } = require("resource://devtools/client/shared/prefs.js");
 
 const TEST_URI = URL_ROOT + "doc_author-sheet.html";
 
@@ -56,7 +56,7 @@ const TEST_DATA = [
   },
 ];
 
-add_task(async function() {
+add_task(async function () {
   // Bug 1517210: GC heuristics are broken for this test, so that the test ends up
   // running out of memory if we don't force to reduce the GC side before/after the test.
   Cu.forceShrinkingGC();
@@ -137,9 +137,9 @@ async function userAgentStylesVisible(inspector, view) {
   );
   ok(
     uaRules.some(rule => {
-      return rule.matchedSelectors.includes("*|*:link");
+      return rule.matchedSelectors.includes(":link");
     }),
-    "There is a rule for *|*:link"
+    "There is a rule for :link"
   );
   ok(
     uaRules.some(rule => {
@@ -173,7 +173,7 @@ async function compareAppliedStylesWithUI(inspector, view, filter) {
   let entries = await pageStyle.getApplied(inspector.selection.nodeFront, {
     inherited: true,
     matchedSelectors: true,
-    filter: filter,
+    filter,
   });
 
   // We may see multiple entries that map to a given rule; filter the

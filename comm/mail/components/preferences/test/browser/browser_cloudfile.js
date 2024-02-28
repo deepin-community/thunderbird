@@ -4,14 +4,11 @@
 
 /* eslint-env webextensions */
 
-let { AddonManager } = ChromeUtils.import(
-  "resource://gre/modules/AddonManager.jsm"
-);
 let { cloudFileAccounts } = ChromeUtils.import(
   "resource:///modules/cloudFileAccounts.jsm"
 );
-let { MockRegistrar } = ChromeUtils.import(
-  "resource://testing-common/MockRegistrar.jsm"
+let { MockRegistrar } = ChromeUtils.importESModule(
+  "resource://testing-common/MockRegistrar.sys.mjs"
 );
 
 function ManagementScript() {
@@ -321,11 +318,11 @@ add_task(async function addRemoveAccounts() {
   let accountListItem = accountList.selectedItem;
   is(accountListItem.getAttribute("value"), accountKey);
   is(
-    accountListItem.style.listStyleImage,
-    `url("chrome://messenger/content/extension.svg")`
+    accountListItem.querySelector(".typeIcon:not(.configuredWarning)").src,
+    "chrome://messenger/content/extension.svg"
   );
   is(accountListItem.querySelector("label").value, "Mochitest");
-  is(accountListItem.querySelector("image.configuredWarning").hidden, false);
+  is(accountListItem.querySelector(".configuredWarning").hidden, false);
 
   ok(cloudFileDefaultPanel.hidden);
   is(browserWrapper.childElementCount, 1);
@@ -430,7 +427,7 @@ add_task(async function addRemoveAccounts() {
 
   await new Promise(resolve => prefsWindow.requestAnimationFrame(resolve));
 
-  is(accountListItem.querySelector("image.configuredWarning").hidden, true);
+  is(accountListItem.querySelector(".configuredWarning").hidden, true);
   is(cloudFileAccounts.accounts.length, 1);
   is(cloudFileAccounts.configuredAccounts.length, 1);
 
@@ -706,13 +703,15 @@ add_task(async function accountListOverflow() {
 
   let count = 0;
   do {
+    let readyPromise = extension.awaitMessage("management-ui-ready");
     EventUtils.synthesizeMouseAtCenter(
       buttonList.children[0],
       { clickCount: 1 },
       prefsWindow
     );
-    await new Promise(resolve => setTimeout(resolve));
-    await extension.awaitMessage("management-ui-ready");
+    await readyPromise;
+    // eslint-disable-next-line mozilla/no-arbitrary-setTimeout
+    await new Promise(r => setTimeout(r, 500));
     if (buttonList.hidden) {
       break;
     }

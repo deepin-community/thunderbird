@@ -2,8 +2,7 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-/* import-globals-from commandglue.js */
-/* import-globals-from mailWindow.js */
+/* globals gSummaryFrameManager */ // From messenger.js
 
 /**
  * Summarize a set of selected messages.  This can either be a single thread or
@@ -21,8 +20,8 @@ function summarizeSelection(aMessageDisplay) {
   let selectedIndices = folderDisplay.selectedIndices;
   let dbView = folderDisplay.view.dbView;
 
-  let getThreadId = function(index) {
-    return dbView.getThreadContainingIndex(index).getChildHdrAt(0).messageKey;
+  let getThreadId = function (index) {
+    return dbView.getThreadContainingIndex(index).getRootHdr().messageKey;
   };
 
   let firstThreadId = getThreadId(selectedIndices[0]);
@@ -53,16 +52,20 @@ function summarizeThread(aSelectedMessages, aMessageDisplay) {
   const kSummaryURL = "chrome://messenger/content/multimessageview.xhtml";
 
   aMessageDisplay.singleMessageDisplay = false;
-  gSummaryFrameManager.loadAndCallback(kSummaryURL, function() {
+  gSummaryFrameManager.loadAndCallback(kSummaryURL, function () {
     let childWindow = gSummaryFrameManager.iframe.contentWindow;
     try {
       childWindow.gMessageSummary.summarize(
         "thread",
         aSelectedMessages,
+        aMessageDisplay.folderDisplay.view.dbView,
+        aMessageDisplay.folderDisplay.selectMessages.bind(
+          aMessageDisplay.folderDisplay
+        ),
         aMessageDisplay
       );
     } catch (e) {
-      Cu.reportError(e);
+      console.error(e);
       throw e;
     }
   });
@@ -80,35 +83,21 @@ function summarizeMultipleSelection(aSelectedMessages, aMessageDisplay) {
   const kSummaryURL = "chrome://messenger/content/multimessageview.xhtml";
 
   aMessageDisplay.singleMessageDisplay = false;
-  gSummaryFrameManager.loadAndCallback(kSummaryURL, function() {
+  gSummaryFrameManager.loadAndCallback(kSummaryURL, function () {
     let childWindow = gSummaryFrameManager.iframe.contentWindow;
     try {
       childWindow.gMessageSummary.summarize(
         "multipleselection",
         aSelectedMessages,
+        aMessageDisplay.folderDisplay.view.dbView,
+        aMessageDisplay.folderDisplay.selectMessages.bind(
+          aMessageDisplay.folderDisplay
+        ),
         aMessageDisplay
       );
     } catch (e) {
-      Cu.reportError(e);
+      console.error(e);
       throw e;
     }
   });
-}
-
-/**
- * Summarize a message folder; this is mainly a stub function for extensions to
- * override.  It currently only shows the start page.
- *
- * @param aMessageDisplay The MessageDisplayWidget object responsible for
- *                        showing messages.
- */
-function summarizeFolder(aMessageDisplay) {
-  aMessageDisplay.clearDisplay();
-
-  // Once in our lifetime is plenty.
-  if (!aMessageDisplay._haveDisplayedStartPage) {
-    loadStartPage(false);
-    aMessageDisplay._haveDisplayedStartPage = true;
-  }
-  aMessageDisplay.singleMessageDisplay = true;
 }

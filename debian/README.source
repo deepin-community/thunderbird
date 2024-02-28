@@ -27,49 +27,52 @@ git-pbuilder(1) manpage. In short:
 src:thunderbird uses component tarballs for the l10n packages (see below).
 
 
-Creating a source tarball thunderbird
-=====================================
+Creating source tarballs for thunderbird
+========================================
 
-Download the source from the Mozilla CDN [1], then use debian/repack.py
-to repackage the Thunderbird upstream tarball:
+To download all required files that are needed to import a new upstream
+version into a Debian packaging tree you should use the script
 
- debian/repack.py -p thunderbird -u 52.4.0 -c xz ../thunderbird-52.4.0.source.tar.xz
+  debian/create-upstream-tarballs.py
 
-[1] http://ftp.mozilla.org/pub/thunderbird/releases/
+This script will look for available upstream versions and ask you what version
+you want to get.
+It will download the upstream source tarball 'thunderbird-$version.source.tar.xz'
+and also all required l10n data to create an additional needed component tarball
+'thunderbird_$version.orig-thunderbird-l10n.tar.xz'.
+After the downloads and the preparation of the l10n component tarball has been
+finished the script will start to filter out unwanted files and folders which
+are taken from the content of the file debian/source.filter.
 
+The script will create the two tarballs above the working folder which can be
+imported with git-buildpackage.
 
-Creating a source tarball thunderbird-l10n
-==========================================
+Run
 
-We need to create the component tarball for the thunderbird l10n:
+  debian/create-upstream-tarballs.py -h
 
-  thunderbird_[xx].orig-thunderbird-l10n.tar.xz
+to see all possible options the script can act with.
 
-using
-
-  debian/create-thunderbird-l10n-tarball.sh
-
-You need to run the script on top of the Thunderbird Git repository.
 
 Importing the source tarballs
 =============================
 
-Since version 45.0 the source package Icedove was using component
-tarballs to include the l10n source for iceowl-extension and thunderbird.
-The same is now also true for src:thunderbird starting with 52.4.0 with
-lightning and thunderbird l10n component tarballs.
+The thunderbird package is using an additional thunderbird l10n component
+tarball.
 
-git-buildpackage supports component tarballs since version 0.8.0 so
-you can import the tarballs using "gbp import-orig". Make sure the
-component tarballs are placed in the same folder as
-thunderbird_[version].orig.tar.xz then import the new upstream version as
-usual:
+git-buildpackage supports component tarballs since version 0.8.0 so you can
+import the tarballs using "gbp import-orig". Make sure the component tarballs
+are placed in the same folder as
+
+  thunderbird_$version.orig.tar.xz
+
+then import the new upstream version as usual:
 
  gbp import-orig --sign-tags [--verbose] /path/to/thunderbird_[version].orig.tar.xz
 
 
 Pre-shipped Font file(s)
-=======================
+========================
 The source of Firefox is shipping a pre-build font EmojiOneMozilla.ttf in
 the folder
 

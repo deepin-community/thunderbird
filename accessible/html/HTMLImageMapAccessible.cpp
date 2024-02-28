@@ -8,12 +8,14 @@
 #include "ARIAMap.h"
 #include "nsAccUtils.h"
 #include "DocAccessible-inl.h"
+#include "EventTree.h"
 #include "Role.h"
 
 #include "nsIFrame.h"
 #include "nsImageFrame.h"
 #include "nsImageMap.h"
 #include "nsIURI.h"
+#include "nsLayoutUtils.h"
 #include "mozilla/dom/HTMLAreaElement.h"
 
 using namespace mozilla::a11y;
@@ -24,7 +26,7 @@ using namespace mozilla::a11y;
 
 HTMLImageMapAccessible::HTMLImageMapAccessible(nsIContent* aContent,
                                                DocAccessible* aDoc)
-    : ImageAccessibleWrap(aContent, aDoc) {
+    : ImageAccessible(aContent, aDoc) {
   mType = eImageMapType;
 
   UpdateChildAreas(false);
@@ -36,27 +38,12 @@ HTMLImageMapAccessible::HTMLImageMapAccessible(nsIContent* aContent,
 role HTMLImageMapAccessible::NativeRole() const { return roles::IMAGE_MAP; }
 
 ////////////////////////////////////////////////////////////////////////////////
-// HTMLImageMapAccessible: HyperLinkAccessible
-
-uint32_t HTMLImageMapAccessible::AnchorCount() { return ChildCount(); }
-
-LocalAccessible* HTMLImageMapAccessible::AnchorAt(uint32_t aAnchorIndex) {
-  return LocalChildAt(aAnchorIndex);
-}
-
-already_AddRefed<nsIURI> HTMLImageMapAccessible::AnchorURIAt(
-    uint32_t aAnchorIndex) const {
-  LocalAccessible* area = LocalChildAt(aAnchorIndex);
-  if (!area) return nullptr;
-
-  nsIContent* linkContent = area->GetContent();
-  return linkContent ? linkContent->GetHrefURI() : nullptr;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 // HTMLImageMapAccessible: public
 
 void HTMLImageMapAccessible::UpdateChildAreas(bool aDoFireEvents) {
+  if (!mContent || !mContent->GetPrimaryFrame()) {
+    return;
+  }
   nsImageFrame* imageFrame = do_QueryFrame(mContent->GetPrimaryFrame());
 
   // If image map is not initialized yet then we trigger one time more later.
@@ -133,7 +120,7 @@ ENameValueFlag HTMLAreaAccessible::NativeName(nsString& aName) const {
   return eNameOK;
 }
 
-void HTMLAreaAccessible::Description(nsString& aDescription) {
+void HTMLAreaAccessible::Description(nsString& aDescription) const {
   aDescription.Truncate();
 
   // Still to do - follow IE's standard here
@@ -174,6 +161,7 @@ nsRect HTMLAreaAccessible::RelativeBounds(nsIFrame** aBoundingFrame) const {
 
   nsRect bounds;
   nsresult rv = map->GetBoundsForAreaContent(mContent, bounds);
+
   if (NS_FAILED(rv)) return nsRect();
 
   // XXX Areas are screwy; they return their rects as a pair of points, one pair
@@ -181,4 +169,22 @@ nsRect HTMLAreaAccessible::RelativeBounds(nsIFrame** aBoundingFrame) const {
   *aBoundingFrame = frame;
   bounds.SizeTo(bounds.Width() - bounds.X(), bounds.Height() - bounds.Y());
   return bounds;
+}
+
+nsRect HTMLAreaAccessible::ParentRelativeBounds() {
+  nsIFrame* boundingFrame = nullptr;
+  nsRect relativeBoundsRect = RelativeBounds(&boundingFrame);
+  if (MOZ_UNLIKELY(!boundingFrame)) {
+    // Area is not attached to an image map?
+    return nsRect();
+  }
+
+  // The relative bounds returned above are relative to this area's
+  // image map, which is technically already "parent relative".
+  // Because area elements are `display:none` to layout, they can't
+  // have transforms or other styling applied directly, and so we
+  // don't apply any additional transforms here. Any transform
+  // at the image map layer will be taken care of when computing bounds
+  // in the parent process.
+  return relativeBoundsRect;
 }

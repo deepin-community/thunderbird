@@ -17,10 +17,6 @@
 #include "nsDirectoryIndexStream.h"
 #include "mozilla/Logging.h"
 #include "prtime.h"
-#ifdef THREADSAFE_I18N
-#  include "nsCollationCID.h"
-#  include "nsICollation.h"
-#endif
 #include "nsIFile.h"
 #include "nsURLHelper.h"
 #include "nsNativeCharsetUtils.h"
@@ -31,9 +27,6 @@
 // is threadsafe.
 // So THIS CODE IS ASCII ONLY!!!!!!!! This is no worse than the current
 // behaviour, though. See bug 99382.
-// When this is fixed, #define THREADSAFE_I18N to get this code working
-
-//#define THREADSAFE_I18N
 
 using namespace mozilla;
 static LazyLogModule gLog("nsDirectoryIndexStream");
@@ -100,19 +93,7 @@ nsresult nsDirectoryIndexStream::Init(nsIFile* aDir) {
     mArray.AppendObject(file);  // addrefs
   }
 
-#ifdef THREADSAFE_I18N
-  nsCOMPtr<nsICollationFactory> cf =
-      do_CreateInstance(NS_COLLATIONFACTORY_CONTRACTID, &rv);
-  if (NS_FAILED(rv)) return rv;
-
-  nsCOMPtr<nsICollation> coll;
-  rv = cf->CreateCollation(getter_AddRefs(coll));
-  if (NS_FAILED(rv)) return rv;
-
-  mArray.Sort(compare, coll);
-#else
   mArray.Sort(compare, nullptr);
-#endif
 
   mBuf.AppendLiteral("300: ");
   nsAutoCString url;
@@ -168,6 +149,9 @@ nsDirectoryIndexStream::Available(uint64_t* aLength) {
   *aLength = (mPos < mArray.Count()) ? 1 : 0;
   return NS_OK;
 }
+
+NS_IMETHODIMP
+nsDirectoryIndexStream::StreamStatus() { return mStatus; }
 
 NS_IMETHODIMP
 nsDirectoryIndexStream::Read(char* aBuf, uint32_t aCount,

@@ -6,15 +6,10 @@
  * Test TB can be set as default calendar app.
  */
 
-var { open_message_from_file } = ChromeUtils.import(
-  "resource://testing-common/mozmill/FolderDisplayHelpers.jsm"
-);
-var { close_window } = ChromeUtils.import("resource://testing-common/mozmill/WindowHelpers.jsm");
-
 /**
  * Set TB as default calendar app.
  */
-add_task(function setupModule() {
+add_setup(function () {
   let shellSvc = Cc["@mozilla.org/mail/shell-service;1"].getService(Ci.nsIShellService);
   shellSvc.setDefaultClient(false, shellSvc.CALENDAR);
   ok(shellSvc.isDefaultClient(false, shellSvc.CALENDAR), "setDefaultClient works");
@@ -25,9 +20,9 @@ add_task(function setupModule() {
  */
 add_task(async function test_ics_attachment() {
   let file = new FileUtils.File(getTestFilePath("data/message-containing-event.eml"));
-  let mc = await open_message_from_file(file);
-  mc.click(mc.e("button-openAllAttachments"));
-  await BrowserTestUtils.promiseAlertDialog(
+  let msgWindow = await openMessageFromFile(file);
+  let aboutMessage = msgWindow.document.getElementById("messageBrowser").contentWindow;
+  let promise = BrowserTestUtils.promiseAlertDialog(
     null,
     "chrome://mozapps/content/downloads/unknownContentType.xhtml",
     {
@@ -65,6 +60,12 @@ add_task(async function test_ics_attachment() {
       },
     }
   );
+  EventUtils.synthesizeMouseAtCenter(
+    aboutMessage.document.getElementById("attachmentName"),
+    {},
+    aboutMessage
+  );
+  await promise;
 
-  close_window(mc);
+  await BrowserTestUtils.closeWindow(msgWindow);
 });

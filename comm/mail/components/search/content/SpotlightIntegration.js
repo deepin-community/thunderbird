@@ -107,7 +107,7 @@ SearchIntegration = {
 
     // Encodes reserved XML characters
     _xmlEscapeString(s) {
-      return s.replace(/[<>&]/g, function(s) {
+      return s.replace(/[<>&]/g, function (s) {
         switch (s) {
           case "<":
             return "&lt;";
@@ -183,7 +183,7 @@ SearchIntegration = {
         let folder = this._msgHdr.folder;
         let text = folder.getMsgTextFromStream(
           stringStream,
-          this._msgHdr.Charset,
+          this._msgHdr.charset,
           20000,
           20000,
           false,
@@ -202,7 +202,7 @@ SearchIntegration = {
           SearchIntegration._hdrIndexedProperty,
           this._reindexTime
         );
-        folder.msgDatabase.Commit(MSG_DB_LARGE_COMMIT);
+        folder.msgDatabase.commit(MSG_DB_LARGE_COMMIT);
 
         this._message = "";
       } catch (ex) {

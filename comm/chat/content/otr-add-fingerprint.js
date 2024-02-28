@@ -2,24 +2,30 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-var { l10nHelper } = ChromeUtils.import("resource:///modules/imXPCOMUtils.jsm");
-var { OTR } = ChromeUtils.import("resource:///modules/OTR.jsm");
+var { l10nHelper } = ChromeUtils.importESModule(
+  "resource:///modules/imXPCOMUtils.sys.mjs"
+);
+var { OTR } = ChromeUtils.importESModule("resource:///modules/OTR.sys.mjs");
+
+window.addEventListener("DOMContentLoaded", () => {
+  otrAddFinger.onload();
+});
 
 var otrAddFinger = {
-  async onload() {
+  onload() {
     let args = window.arguments[0].wrappedJSObject;
 
     this.fingerWarning = document.getElementById("fingerWarning");
     this.fingerError = document.getElementById("fingerError");
     this.keyCount = document.getElementById("keyCount");
 
-    let [description, warningTooltip] = await document.l10n.formatValues([
-      { id: "otr-add-finger-description", args: { name: args.screenname } },
-      { id: "otr-add-finger-tooltip-error" },
-    ]);
-
-    document.getElementById("otrDescription").textContent = description;
-    this.fingerWarning.setAttribute("tooltiptext", warningTooltip);
+    document.l10n.setAttributes(
+      document.getElementById("otrDescription"),
+      "otr-add-finger-description",
+      {
+        name: args.screenname,
+      }
+    );
 
     document.addEventListener("dialogaccept", event => {
       let hex = document.getElementById("fingerprint").value;
@@ -42,8 +48,6 @@ var otrAddFinger = {
       }
       OTR.setTrust(finger, true, context);
     });
-
-    window.sizeToContent();
   },
 
   addBlankSpace(value) {
@@ -67,15 +71,11 @@ var otrAddFinger = {
       this.fingerError.hidden = true;
     }
 
-    document
-      .getElementById("otrAddFingerDialog")
-      .querySelector("dialog")
-      .getButton("accept").disabled = input.value && !input.validity.valid;
+    document.querySelector("dialog").getButton("accept").disabled =
+      input.value && !input.validity.valid;
 
     this.keyCount.value = `${hex.length}/40`;
     input.value = this.addBlankSpace(input.value);
-
-    window.sizeToContent();
   },
 
   onblur(input) {

@@ -3,7 +3,6 @@
    - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
 
 <!ENTITY window.title "Síureglur">
-<!ENTITY filterEditorDialog.dimensions "width: 100ch;">
 <!ENTITY filterName.label "Nafn síu:">
 <!ENTITY filterName.accesskey "s">
 
@@ -25,8 +24,9 @@
 <!ENTITY contextAfterCls.label "Sía eftir ruslpóstflokkun">
 <!ENTITY contextOutgoing.label "Eftir að sent er">
 <!ENTITY contextOutgoing.accesskey "s">
-<!ENTITY contextArchive.label "Setur í safn">
+<!ENTITY contextArchive.label "Setja í safn">
 <!ENTITY contextArchive.accesskey "a">
+<!ENTITY contextPeriodic.accesskey "e">
 
 <!ENTITY filterActionDesc.label "Framkvæma þessar aðgerðir:">
 <!ENTITY filterActionDesc.accesskey "F">
@@ -43,10 +43,10 @@
 <!ENTITY markMessageUnread.label "Merkja sem ólesið">
 <!ENTITY markMessageStarred.label "Stjörnumerkja">
 <!ENTITY setPriority.label "Setja mikilvægi sem">
-<!ENTITY addTag.label "Flokka póst">
+<!ENTITY addTag.label "Merkja skilaboð">
 <!ENTITY setJunkScore.label "Setja ruslpóstsstöðu sem">
 <!ENTITY deleteMessage.label "Eyða pósti">
-<!ENTITY deleteFromPOP.label "Eyða frá POP póstþjóni">
+<!ENTITY deleteFromPOP.label "Eyða af POP-póstþjóni">
 <!ENTITY fetchFromPOP.label "Ná í frá POP póstþjóni">
 <!ENTITY ignoreThread.label "Hunsa umræðu">
 <!ENTITY ignoreSubthread.label "Hunsa undirumræðu">
@@ -64,5 +64,3 @@
 <!-- Flex Attribute: https://developer.mozilla.org/docs/XUL/Attribute/flex -->
 <!ENTITY filterActionTypeFlexValue "1">
 <!ENTITY filterActionTargetFlexValue "4">
-
-<!ENTITY contextPeriodic.accesskey "e">

@@ -1,11 +1,15 @@
-/* -*- Mode: Java; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- */
+/* -*- Mode: JavaScript; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- */
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 var { FeedUtils } = ChromeUtils.import("resource:///modules/FeedUtils.jsm");
 
-/* Feed account standalone wizard functions */
+window.addEventListener("DOMContentLoaded", () => {
+  FeedAccountWizard.onLoad();
+});
+
+/** Feed account standalone wizard functions. */
 var FeedAccountWizard = {
   accountName: "",
 
@@ -37,17 +41,15 @@ var FeedAccountWizard = {
 
   onFinish() {
     let account = FeedUtils.createRssAccount(this.accountName);
-    if ("gFolderTreeView" in window.opener.top) {
-      // Opened from 3pane File->New or Appmenu New Message, or
-      // Account Central link.
-      window.opener.top.updateMailPaneUI();
-      window.opener.top.gFolderTreeView.selectFolder(
-        account.incomingServer.rootMsgFolder
-      );
-    } else if ("selectServer" in window.opener) {
+    let openerWindow = window.opener.top;
+    // The following block is the same as in AccountWizard.js.
+    if ("selectServer" in openerWindow) {
       // Opened from Account Settings.
-      window.opener.selectServer(account.incomingServer);
+      openerWindow.selectServer(account.incomingServer);
     }
+
+    // Post a message to the main window on successful account setup.
+    openerWindow.postMessage("account-created", "*");
 
     window.close();
   },

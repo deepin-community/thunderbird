@@ -3,6 +3,8 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 
+## Send Format
+
 # Addressing widget
 
 #   $type (String) - the type of the addressing row
@@ -42,8 +44,6 @@ pill-action-move-bcc =
 
 # Attachment widget
 
-
-
 # Reorder Attachment Panel
 
 button-return-receipt =
@@ -60,4 +60,16 @@ button-return-receipt =
 ## Editing
 
 # Tools
+
+## Filelink
+
+# Placeholder file
+
+# Template
+
+# Messages
+
+## Link Preview
+
+## Dictionary selection popup
 

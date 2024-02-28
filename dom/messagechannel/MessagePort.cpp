@@ -16,6 +16,7 @@
 #include "mozilla/dom/MessagePortBinding.h"
 #include "mozilla/dom/MessagePortChild.h"
 #include "mozilla/dom/PMessagePort.h"
+#include "mozilla/dom/RootedDictionary.h"
 #include "mozilla/dom/ScriptSettings.h"
 #include "mozilla/dom/StructuredCloneTags.h"
 #include "mozilla/dom/WorkerCommon.h"
@@ -33,10 +34,6 @@
 #include "nsContentUtils.h"
 #include "nsGlobalWindow.h"
 #include "nsPresContext.h"
-
-#include "nsIBFCacheEntry.h"
-#include "mozilla/dom/Document.h"
-#include "nsServiceManagerUtils.h"
 
 #ifdef XP_WIN
 #  undef PostMessage
@@ -118,8 +115,7 @@ class PostMessageRunnable final : public CancelableRunnable {
 
     UniquePtr<AbstractTimelineMarker> start;
     UniquePtr<AbstractTimelineMarker> end;
-    RefPtr<TimelineConsumers> timelines = TimelineConsumers::Get();
-    bool isTimelineRecording = timelines && !timelines->IsEmpty();
+    bool isTimelineRecording = !TimelineConsumers::IsEmpty();
 
     if (isTimelineRecording) {
       start = MakeUnique<MessagePortTimelineMarker>(
@@ -134,8 +130,8 @@ class PostMessageRunnable final : public CancelableRunnable {
       end = MakeUnique<MessagePortTimelineMarker>(
           ProfileTimelineMessagePortOperationType::DeserializeData,
           MarkerTracingType::END);
-      timelines->AddMarkerForAllObservedDocShells(start);
-      timelines->AddMarkerForAllObservedDocShells(end);
+      TimelineConsumers::AddMarkerForAllObservedDocShells(start);
+      TimelineConsumers::AddMarkerForAllObservedDocShells(end);
     }
 
     if (NS_WARN_IF(rv.Failed())) {
@@ -215,6 +211,11 @@ MessagePort::MessagePort(nsIGlobalObject* aGlobal, State aState)
 
 MessagePort::~MessagePort() {
   CloseForced();
+  MOZ_ASSERT(!mActor);
+  if (mActor) {
+    mActor->SetPort(nullptr);
+    mActor = nullptr;
+  }
   MOZ_ASSERT(!mWorkerRef);
 }
 
@@ -287,8 +288,7 @@ void MessagePort::Initialize(const nsID& aUUID, const nsID& aDestinationUUID,
         workerPrivate, "MessagePort", [self]() { self->CloseForced(); });
     if (NS_WARN_IF(!strongWorkerRef)) {
       // The worker is shutting down.
-      mState = eStateDisentangled;
-      UpdateMustKeepAlive();
+      CloseForced();
       aRv.Throw(NS_ERROR_FAILURE);
       return;
     }
@@ -344,8 +344,7 @@ void MessagePort::PostMessage(JSContext* aCx, JS::Handle<JS::Value> aMessage,
 
   UniquePtr<AbstractTimelineMarker> start;
   UniquePtr<AbstractTimelineMarker> end;
-  RefPtr<TimelineConsumers> timelines = TimelineConsumers::Get();
-  bool isTimelineRecording = timelines && !timelines->IsEmpty();
+  bool isTimelineRecording = !TimelineConsumers::IsEmpty();
 
   if (isTimelineRecording) {
     start = MakeUnique<MessagePortTimelineMarker>(
@@ -360,8 +359,8 @@ void MessagePort::PostMessage(JSContext* aCx, JS::Handle<JS::Value> aMessage,
     end = MakeUnique<MessagePortTimelineMarker>(
         ProfileTimelineMessagePortOperationType::SerializeData,
         MarkerTracingType::END);
-    timelines->AddMarkerForAllObservedDocShells(start);
-    timelines->AddMarkerForAllObservedDocShells(end);
+    TimelineConsumers::AddMarkerForAllObservedDocShells(start);
+    TimelineConsumers::AddMarkerForAllObservedDocShells(end);
   }
 
   if (NS_WARN_IF(aRv.Failed())) {
@@ -411,7 +410,7 @@ void MessagePort::PostMessage(JSContext* aCx, JS::Handle<JS::Value> aMessage,
 }
 
 void MessagePort::PostMessage(JSContext* aCx, JS::Handle<JS::Value> aMessage,
-                              const PostMessageOptions& aOptions,
+                              const StructuredSerializeOptions& aOptions,
                               ErrorResult& aRv) {
   PostMessage(aCx, aMessage, aOptions.mTransfer, aRv);
 }

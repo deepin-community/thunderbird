@@ -3,6 +3,9 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
+/// @addtogroup libjxl_butteraugli
+/// @{
+///
 /// @file butteraugli_cxx.h
 /// @brief C++ header-only helper for @ref butteraugli.h.
 ///
@@ -12,9 +15,9 @@
 #ifndef JXL_BUTTERAUGLI_CXX_H_
 #define JXL_BUTTERAUGLI_CXX_H_
 
-#include <memory>
+#include <jxl/butteraugli.h>
 
-#include "jxl/butteraugli.h"
+#include <memory>
 
 #if !(defined(__cplusplus) || defined(c_plusplus))
 #error "This a C++ only header. Use jxl/butteraugli.h from C sources."
@@ -53,3 +56,5 @@ typedef std::unique_ptr<JxlButteraugliResult, JxlButteraugliResultDestroyStruct>
     JxlButteraugliResultPtr;
 
 #endif  // JXL_BUTTERAUGLI_CXX_H_
+
+/// @}

@@ -5,7 +5,7 @@
 
 // Test that the box model view continues to work after the page is reloaded
 
-add_task(async function() {
+add_task(async function () {
   const tab = await addTab(URL_ROOT + "doc_boxmodel_iframe1.html");
   const browser = tab.linkedBrowser;
   const { inspector, boxmodel } = await openLayoutView();
@@ -15,7 +15,7 @@ add_task(async function() {
 
   info("Reload the page");
   const onMarkupLoaded = waitForMarkupLoaded(inspector);
-  await refreshTab();
+  await reloadBrowser();
   await onMarkupLoaded;
 
   info("Test that the box model view works on the reloaded page");

@@ -8,51 +8,56 @@
 <?xml-stylesheet type="text/css" href="chrome://calendar/skin/shared/calendar-timezone-highlighter.css"?>
 <?xml-stylesheet type="text/css" href="chrome://calendar/skin/shared/widgets/minimonth.css"?>
 <?xml-stylesheet type="text/css" href="chrome://calendar/skin/shared/datetimepickers.css"?>
+<?xml-stylesheet type="text/css" href="chrome://messenger/skin/contextMenu.css"?>
 <?xml-stylesheet type="text/css" href="chrome://messenger/skin/themeableDialog.css"?>
 
-<!DOCTYPE window [
-  <!ENTITY % dtd1 SYSTEM "chrome://calendar/locale/global.dtd" > %dtd1;
-  <!ENTITY % dtd2 SYSTEM "chrome://calendar/locale/calendar.dtd" > %dtd2;
-  <!ENTITY % dtd3 SYSTEM "chrome://calendar/locale/calendar-event-dialog.dtd" > %dtd3;
-  <!ENTITY % dtd4 SYSTEM "chrome://calendar/locale/preferences/timezones.dtd" > %dtd4;
-]>
+<!DOCTYPE html [ <!ENTITY % dtd1 SYSTEM "chrome://calendar/locale/global.dtd"> %dtd1;
+<!ENTITY % dtd2 SYSTEM "chrome://calendar/locale/calendar.dtd" >
+%dtd2;
+<!ENTITY % dtd3 SYSTEM "chrome://calendar/locale/calendar-event-dialog.dtd" >
+%dtd3; ]>
+<html
+  id="calendar-event-dialog-timezone"
+  xmlns="http://www.w3.org/1999/xhtml"
+  xmlns:xul="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul"
+  xmlns:html="http://www.w3.org/1999/xhtml"
+  windowtype="Calendar:EventDialog:Timezone"
+  lightweightthemes="true"
+  scrolling="false"
+>
+  <head>
+    <title>&timezone.title.label;</title>
+    <script defer="defer" src="chrome://messenger/content/dialogShadowDom.js"></script>
+    <script defer="defer" src="chrome://calendar/content/widgets/calendar-minimonth.js"></script>
+    <script defer="defer" src="chrome://calendar/content/calendar-dialog-utils.js"></script>
+    <script defer="defer" src="chrome://calendar/content/calendar-ui-utils.js"></script>
+    <script defer="defer" src="chrome://calendar/content/widgets/datetimepickers.js"></script>
+    <script
+      defer="defer"
+      src="chrome://calendar/content/calendar-event-dialog-timezone.js"
+    ></script>
+  </head>
+  <html:body xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul">
+    <dialog>
+      <hbox align="center">
+        <spacer flex="1" />
+        <datetimepicker id="timezone-time" disabled="true" />
+      </hbox>
 
-<window id="calendar-event-dialog-timezone"
-        title="&timezone.title.label;"
-        windowtype="Calendar:EventDialog:Timezone"
-        onload="onLoad()"
-        persist="screenX screenY width height"
-        lightweightthemes="true"
-        xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul"
-        xmlns:html="http://www.w3.org/1999/xhtml">
+      <menulist id="timezone-menulist" oncommand="updateTimezone()">
+        <menupopup id="timezone-menupopup" style="height: 460px" />
+      </menulist>
 
-<dialog>
-
-  <!-- Javascript includes -->
-  <script src="chrome://calendar/content/widgets/calendar-minimonth.js"/>
-  <script src="chrome://calendar/content/calendar-event-dialog-timezone.js"/>
-  <script src="chrome://calendar/content/calendar-dialog-utils.js"/>
-  <script src="chrome://calendar/content/calendar-ui-utils.js"/>
-  <script src="chrome://calendar/content/widgets/datetimepickers.js"/>
-  <script src="chrome://messenger/content/dialogShadowDom.js"/>
-
-  <hbox align="center">
-    <spacer flex="1"/>
-    <datetimepicker id="timezone-time" disabled="true"/>
-  </hbox>
-
-  <menulist id="timezone-menulist" oncommand="updateTimezone()">
-    <menupopup id="timezone-menupopup" style="height: 460px;"/>
-  </menulist>
-
-  <stack id="timezone-stack">
-    <html:img src="chrome://calendar/skin/shared/timezone_map.png"
-              alt="" />
-    <html:img id="highlighter"
-              src="chrome://calendar/skin/shared/timezones.png"
-              alt=""
-              class="timezone-highlight"
-              tzid="+0000" />
-  </stack>
-</dialog>
-</window>
+      <stack id="timezone-stack">
+        <html:img src="chrome://calendar/skin/shared/timezone_map.png" alt="" />
+        <html:img
+          id="highlighter"
+          src="chrome://calendar/skin/shared/timezones.png"
+          alt=""
+          class="timezone-highlight"
+          tzid="+0000"
+        />
+      </stack>
+    </dialog>
+  </html:body>
+</html>

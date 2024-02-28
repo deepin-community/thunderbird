@@ -4,17 +4,25 @@
 
 const EXPORTED_SYMBOLS = ["RNPLibLoader"];
 
-const { XPCOMUtils } = ChromeUtils.import(
-  "resource://gre/modules/XPCOMUtils.jsm"
+const { XPCOMUtils } = ChromeUtils.importESModule(
+  "resource://gre/modules/XPCOMUtils.sys.mjs"
 );
 
-XPCOMUtils.defineLazyModuleGetters(this, {
-  EnigmailCryptoAPI: "chrome://openpgp/content/modules/cryptoAPI.jsm",
-  EnigmailTimer: "chrome://openpgp/content/modules/timer.jsm",
-  ctypes: "resource://gre/modules/ctypes.jsm",
-  OpenPGPMasterpass: "chrome://openpgp/content/modules/masterpass.jsm",
-  Services: "resource://gre/modules/Services.jsm",
+const lazy = {};
+
+const { ctypes } = ChromeUtils.importESModule(
+  "resource://gre/modules/ctypes.sys.mjs"
+);
+
+ChromeUtils.defineESModuleGetters(lazy, {
+  setTimeout: "resource://gre/modules/Timer.sys.mjs",
 });
+
+XPCOMUtils.defineLazyModuleGetters(lazy, {
+  OpenPGPMasterpass: "chrome://openpgp/content/modules/masterpass.jsm",
+});
+
+const MIN_RNP_VERSION = [0, 17, 0];
 
 var systemOS = Services.appinfo.OS.toLowerCase();
 var abi = ctypes.default_abi;
@@ -23,34 +31,22 @@ var abi = ctypes.default_abi;
 // there first. If not, fallback to searching the standard locations.
 var librnp, librnpPath;
 
-var librnpLoadedFile;
-var librnpLoadedFrom;
-
 function tryLoadRNP(name, suffix) {
   let filename = ctypes.libraryName(name) + suffix;
   let binPath = Services.dirsvc.get("XpcomLib", Ci.nsIFile).path;
   let binDir = PathUtils.parent(binPath);
   librnpPath = PathUtils.join(binDir, filename);
 
-  let loadFromInfo;
-
   try {
-    loadFromInfo = librnpPath;
     librnp = ctypes.open(librnpPath);
   } catch (e) {}
 
   if (!librnp) {
     try {
-      loadFromInfo = "system's standard library locations";
       // look in standard locations
       librnpPath = filename;
       librnp = ctypes.open(librnpPath);
     } catch (e) {}
-  }
-
-  if (librnp) {
-    librnpLoadedFile = filename;
-    librnpLoadedFrom = loadFromInfo;
   }
 }
 
@@ -78,26 +74,67 @@ function loadExternalRNPLib() {
     // librnp.so.0
     tryLoadRNP("rnp", ".0");
   }
-
-  if (!librnp) {
-    throw new Error("Cannot load required RNP library");
-  }
 }
 
 var RNPLibLoader = {
   init() {
+    const required_version_str = `${MIN_RNP_VERSION[0]}.${MIN_RNP_VERSION[1]}.${MIN_RNP_VERSION[2]}`;
+
+    let dummyRNPLib = {
+      loaded: false,
+      loadedOfficial: false,
+      loadStatus: "libs-rnp-status-load-failed",
+      loadErrorReason: "RNP/OpenPGP library failed to load",
+      path: "",
+
+      getRNPLibStatus() {
+        return {
+          min_version: required_version_str,
+          loaded_version: "-",
+          status: this.loadStatus,
+          error: this.loadErrorReason,
+          path: this.path,
+        };
+      },
+    };
+
     loadExternalRNPLib();
-    if (librnp) {
-      enableRNPLibJS();
-      console.debug(
-        "Successfully loaded OpenPGP library " +
-          librnpLoadedFile +
-          " version " +
-          RNPLib.rnp_version_string_full().readStringReplaceMalformed() +
-          " from " +
-          librnpLoadedFrom
-      );
+    if (!librnp) {
+      return dummyRNPLib;
     }
+
+    try {
+      enableRNPLibJS();
+    } catch (e) {
+      console.log(e);
+      return dummyRNPLib;
+    }
+
+    const rnp_version_str =
+      RNPLib.rnp_version_string_full().readStringReplaceMalformed();
+    RNPLib.loadedVersion = rnp_version_str;
+    RNPLib.expectedVersion = required_version_str;
+
+    let hasRequiredVersion = RNPLib.check_required_version();
+
+    if (!hasRequiredVersion) {
+      RNPLib.loadErrorReason = `RNP version ${rnp_version_str} does not meet minimum required ${required_version_str}.`;
+      RNPLib.loadStatus = "libs-rnp-status-incompatible";
+      return RNPLib;
+    }
+
+    RNPLib.loaded = true;
+
+    let hasOfficialVersion =
+      rnp_version_str.includes(".MZLA") ||
+      rnp_version_str.match("^[0-9]+.[0-9]+.[0-9]+(.[0-9]+)?$");
+    if (!hasOfficialVersion) {
+      RNPLib.loadErrorReason = `RNP reports unexpected version information, it's considered an unofficial version with unknown capabilities.`;
+      RNPLib.loadStatus = "libs-rnp-status-unofficial";
+    } else {
+      RNPLib.loadedOfficial = true;
+    }
+
     return RNPLib;
   },
 };
@@ -128,14 +165,43 @@ const rnp_password_cb_t = ctypes.FunctionType(abi, ctypes.bool, [
   ctypes.size_t,
 ]).ptr;
 
+const rnp_key_signatures_cb = ctypes.FunctionType(abi, ctypes.void_t, [
+  rnp_ffi_t,
+  ctypes.void_t.ptr,
+  rnp_signature_handle_t,
+  ctypes.uint32_t.ptr,
+]).ptr;
+
 var RNPLib;
 
 function enableRNPLibJS() {
   // this must be delayed until after "librnp" is initialized
 
   RNPLib = {
+    loaded: false,
+    loadedOfficial: false,
+    loadStatus: "",
+    loadErrorReason: "",
+    expectedVersion: "",
+    loadedVersion: "",
+
+    getRNPLibStatus() {
+      return {
+        min_version: this.expectedVersion,
+        loaded_version: this.loadedVersion,
+        status:
+          this.loaded && this.loadedOfficial
+            ? "libs-rnp-status-ok"
+            : this.loadStatus,
+        error: this.loadErrorReason,
+        path: this.path,
+      };
+    },
+
     path: librnpPath,
 
+    // Handle to the RNP library and primary key data store.
+    // Kept at null if init fails.
     ffi: null,
 
     // returns rnp_input_t, destroy using rnp_input_destroy
@@ -161,17 +227,15 @@ function enableRNPLibJS() {
     },
 
     getFilenames() {
-      let names = {};
-
       let secFile = Services.dirsvc.get("ProfD", Ci.nsIFile);
       secFile.append("secring.gpg");
       let pubFile = Services.dirsvc.get("ProfD", Ci.nsIFile);
       pubFile.append("pubring.gpg");
 
-      names.secring = secFile.clone();
-      names.pubring = pubFile.clone();
+      let secRingPath = secFile.path;
+      let pubRingPath = pubFile.path;
 
-      return names;
+      return { pubRingPath, secRingPath };
     },
 
     /**
@@ -203,7 +267,7 @@ function enableRNPLibJS() {
       try {
         await this.loadFile(filename, keyringFlag);
       } catch (ex) {
-        if (ex instanceof DOMException) {
+        if (DOMException.isInstance(ex)) {
           loadBackup = true;
         }
       }
@@ -218,7 +282,7 @@ function enableRNPLibJS() {
     async _fixUnprotectedKeys() {
       // Bug 1710290, protect all unprotected keys.
       // To do so, we require that the user has already unlocked
-      // by entering the global master password, if it is set.
+      // by entering the global primary password, if it is set.
       // Ensure that other repairing is done first, if necessary,
       // as handled by masterpass.jsm (OpenPGP automatic password).
 
@@ -228,7 +292,7 @@ function enableRNPLibJS() {
       let canRepair = false;
       try {
         console.log("Trying to automatically protect the unprotected keys.");
-        let mp = await OpenPGPMasterpass.retrieveOpenPGPPassword();
+        let mp = await lazy.OpenPGPMasterpass.retrieveOpenPGPPassword();
         if (mp) {
           await RNPLib.protectUnprotectedKeys();
           await RNPLib.saveKeys();
@@ -248,9 +312,218 @@ function enableRNPLibJS() {
       }
     },
 
+    check_required_version() {
+      const min_version = this.rnp_version_for(...MIN_RNP_VERSION);
+      const this_version = this.rnp_version();
+      return Boolean(this_version >= min_version);
+    },
+
+    /**
+     * Prepare an RNP library handle, and in addition set all the
+     * application's preferences for library behavior.
+     *
+     * Other application code should NOT call rnp_ffi_create directly,
+     * but obtain an RNP library handle from this function.
+     */
+    prepare_ffi() {
+      let ffi = new rnp_ffi_t();
+      if (this._rnp_ffi_create(ffi.address(), "GPG", "GPG")) {
+        return null;
+      }
+
+      // Treat MD5 as insecure.
+      if (
+        this.rnp_add_security_rule(
+          ffi,
+          this.RNP_FEATURE_HASH_ALG,
+          this.RNP_ALGNAME_MD5,
+          this.RNP_SECURITY_OVERRIDE,
+          0,
+          this.RNP_SECURITY_INSECURE
+        )
+      ) {
+        return null;
+      }
+
+      // Use RNP's default rule for SHA1 used with data signatures,
+      // and use our override to allow it for key signatures.
+      if (
+        this.rnp_add_security_rule(
+          ffi,
+          this.RNP_FEATURE_HASH_ALG,
+          this.RNP_ALGNAME_SHA1,
+          this.RNP_SECURITY_VERIFY_KEY | this.RNP_SECURITY_OVERRIDE,
+          0,
+          this.RNP_SECURITY_DEFAULT
+        )
+      ) {
+        return null;
+      }
+
+      /*
+      // Security rules API does not yet support PK and SYMM algs.
+      //
+      // If a hash algorithm is already disabled at build time,
+      // and an attempt is made to set a security rule for that
+      // algorithm, then RNP returns a failure.
+      //
+      // Ideally, RNP should allow these calls (regardless of build time
+      // settings) to define an application security rule, that is
+      // independent of the configuration used for building the
+      // RNP library.
+
+      if (
+        this.rnp_add_security_rule(
+          ffi,
+          this.RNP_FEATURE_HASH_ALG,
+          this.RNP_ALGNAME_SM3,
+          this.RNP_SECURITY_OVERRIDE,
+          0,
+          this.RNP_SECURITY_PROHIBITED
+        )
+      ) {
+        return null;
+      }
+
+      if (
+        this.rnp_add_security_rule(
+          ffi,
+          this.RNP_FEATURE_PK_ALG,
+          this.RNP_ALGNAME_SM2,
+          this.RNP_SECURITY_OVERRIDE,
+          0,
+          this.RNP_SECURITY_PROHIBITED
+        )
+      ) {
+        return null;
+      }
+
+      if (
+        this.rnp_add_security_rule(
+          ffi,
+          this.RNP_FEATURE_SYMM_ALG,
+          this.RNP_ALGNAME_SM4,
+          this.RNP_SECURITY_OVERRIDE,
+          0,
+          this.RNP_SECURITY_PROHIBITED
+        )
+      ) {
+        return null;
+      }
+      */
+
+      return ffi;
+    },
+
+    /**
+     * Test the correctness of security rules, in particular, test
+     * if the given hash algorithm is allowed at the given time.
+     *
+     * This is an application consistency test. If the behavior isn't
+     * according to the expectation, the function throws an error.
+     *
+     * @param {string} hashAlg - Test this hash algorithm
+     * @param {time_t} time - Test status at this timestamp
+     * @param {boolean} keySigAllowed - Test if using the hash algorithm
+     *  is allowed for signatures found inside OpenPGP keys.
+     * @param {boolean} dataSigAllowed - Test if using the hash algorithm
+     *  is allowed for signatures on data.
+     */
+    _confirmSecurityRule(hashAlg, time, keySigAllowed, dataSigAllowed) {
+      let level = new ctypes.uint32_t();
+      let flag = new ctypes.uint32_t();
+
+      flag.value = this.RNP_SECURITY_VERIFY_DATA;
+      let testDataSuccess = false;
+      if (
+        !RNPLib.rnp_get_security_rule(
+          this.ffi,
+          this.RNP_FEATURE_HASH_ALG,
+          hashAlg,
+          time,
+          flag.address(),
+          null,
+          level.address()
+        )
+      ) {
+        if (dataSigAllowed) {
+          testDataSuccess = level.value == RNPLib.RNP_SECURITY_DEFAULT;
+        } else {
+          testDataSuccess = level.value < RNPLib.RNP_SECURITY_DEFAULT;
+        }
+      }
+
+      if (!testDataSuccess) {
+        throw new Error("security configuration for data signatures failed");
+      }
+
+      flag.value = this.RNP_SECURITY_VERIFY_KEY;
+      let testKeySuccess = false;
+      if (
+        !RNPLib.rnp_get_security_rule(
+          this.ffi,
+          this.RNP_FEATURE_HASH_ALG,
+          hashAlg,
+          time,
+          flag.address(),
+          null,
+          level.address()
+        )
+      ) {
+        if (keySigAllowed) {
+          testKeySuccess = level.value == RNPLib.RNP_SECURITY_DEFAULT;
+        } else {
+          testKeySuccess = level.value < RNPLib.RNP_SECURITY_DEFAULT;
+        }
+      }
+
+      if (!testKeySuccess) {
+        throw new Error("security configuration for key signatures failed");
+      }
+    },
+
+    /**
+     * Perform tests that the RNP library behaves according to the
+     * defined security rules.
+     * If a problem is found, the function throws an error.
+     */
+    _sanityCheckSecurityRules() {
+      let time_t_now = Math.round(Date.now() / 1000);
+      let ten_years_in_seconds = 10 * 365 * 24 * 60 * 60;
+      let ten_years_future = time_t_now + ten_years_in_seconds;
+
+      this._confirmSecurityRule(this.RNP_ALGNAME_MD5, time_t_now, false, false);
+      this._confirmSecurityRule(
+        this.RNP_ALGNAME_MD5,
+        ten_years_future,
+        false,
+        false
+      );
+
+      this._confirmSecurityRule(this.RNP_ALGNAME_SHA1, time_t_now, true, false);
+      this._confirmSecurityRule(
+        this.RNP_ALGNAME_SHA1,
+        ten_years_future,
+        true,
+        false
+      );
+    },
+
+    /**
+     * Register the default password callback with the default ffi
+     * RNP context (RNPLib.ffi).
+     */
+    setDefaultPasswordCB() {
+      this.rnp_ffi_set_pass_provider(
+        this.ffi,
+        this.keep_password_cb_alive,
+        null
+      );
+    },
+
     async init() {
-      this.ffi = new rnp_ffi_t();
-      if (this.rnp_ffi_create(this.ffi.address(), "GPG", "GPG")) {
+      this.ffi = this.prepare_ffi();
+      if (!this.ffi) {
         throw new Error("Couldn't initialize librnp.");
       }
 
@@ -261,22 +534,20 @@ function enableRNPLibJS() {
         this, // this value used while executing callback
         false // callback return value if exception is thrown
       );
-      this.rnp_ffi_set_pass_provider(
-        this.ffi,
-        this.keep_password_cb_alive,
-        null
-      );
+      this.setDefaultPasswordCB();
 
-      let filenames = this.getFilenames();
+      let { pubRingPath, secRingPath } = this.getFilenames();
 
-      await this.loadWithFallback(
-        filenames.pubring.path,
-        this.RNP_LOAD_SAVE_PUBLIC_KEYS
-      );
-      await this.loadWithFallback(
-        filenames.secring.path,
-        this.RNP_LOAD_SAVE_SECRET_KEYS
-      );
+      try {
+        this._sanityCheckSecurityRules();
+      } catch (e) {
+        // Disable all RNP operation
+        this.ffi = null;
+        throw e;
+      }
+
+      await this.loadWithFallback(pubRingPath, this.RNP_LOAD_SAVE_PUBLIC_KEYS);
+      await this.loadWithFallback(secRingPath, this.RNP_LOAD_SAVE_SECRET_KEYS);
 
       let pubnum = new ctypes.size_t();
       this.rnp_get_public_key_count(this.ffi, pubnum.address());
@@ -290,13 +561,13 @@ function enableRNPLibJS() {
       );
 
       if (unprot) {
-        // We need automatic repair, which can involve a master password
+        // We need automatic repair, which can involve a primary password
         // prompt. Let's use a short timer, so we keep it out of the
         // early startup code.
         console.log(
           "Will attempt to automatically protect the unprotected keys in 30 seconds"
         );
-        EnigmailTimer.setTimeout(RNPLib._fixUnprotectedKeys, 30000);
+        lazy.setTimeout(RNPLib._fixUnprotectedKeys, 30000);
       }
       return true;
     },
@@ -369,7 +640,7 @@ function enableRNPLibJS() {
      * secret key).
      *
      * @param {rnp_key_handle_t} handle - handle of the key to query
-     * @return {boolean} - true if secret key material is available
+     * @returns {boolean} - true if secret key material is available
      *
      */
     isSecretKeyMaterialAvailable(handle) {
@@ -398,7 +669,7 @@ function enableRNPLibJS() {
       let iter = new RNPLib.rnp_identifier_iterator_t();
       let grip = new ctypes.char.ptr();
 
-      let newPass = await OpenPGPMasterpass.retrieveOpenPGPPassword();
+      let newPass = await lazy.OpenPGPMasterpass.retrieveOpenPGPPassword();
 
       if (
         RNPLib.rnp_identifier_iterator_create(
@@ -452,7 +723,10 @@ function enableRNPLibJS() {
         if (RNPLib.rnp_key_get_subkey_at(handle, i, sub_handle.address())) {
           throw new Error("rnp_key_get_subkey_at failed");
         }
-        if (RNPLib.isSecretKeyMaterialAvailable(sub_handle)) {
+        if (
+          RNPLib.getSecretAvailableFromHandle(sub_handle) &&
+          RNPLib.isSecretKeyMaterialAvailable(sub_handle)
+        ) {
           if (
             RNPLib.rnp_key_protect(sub_handle, newPass, null, null, null, 0)
           ) {
@@ -463,13 +737,22 @@ function enableRNPLibJS() {
       }
     },
 
-    async saveKeyRing(fileObj, keyRingFlag) {
-      let oldSuffix = ".old";
-      let oldFile = fileObj.clone();
-      oldFile.leafName += oldSuffix;
+    /**
+     * Save keyring file to the given path.
+     *
+     * @param {string} path - The file path to save to.
+     * @param {number} keyRingFlag - RNP_LOAD_SAVE_PUBLIC_KEYS or
+     *   RNP_LOAD_SAVE_SECRET_KEYS.
+     */
+    async saveKeyRing(path, keyRingFlag) {
+      if (!this.ffi) {
+        return;
+      }
 
-      // Ignore failure, fileObj.path might not exist yet.
-      await IOUtils.copy(fileObj.path, oldFile.path).catch(() => {});
+      let oldPath = path + ".old";
+
+      // Ignore failure, oldPath might not exist yet.
+      await IOUtils.copy(path, oldPath).catch(() => {});
 
       let u8 = null;
       let keyCount = new ctypes.size_t();
@@ -517,67 +800,78 @@ function enableRNPLibJS() {
         this.rnp_output_destroy(rnp_out);
       }
 
-      let status = false;
-      let outPathString = fileObj.path;
+      u8 = u8 || new Uint8Array();
 
-      try {
-        if (!u8) {
-          u8 = new Uint8Array();
-        }
-        await IOUtils.write(outPathString, u8, {
-          tmpPath: outPathString + ".tmp-new",
-        });
-        status = true;
-      } catch (err) {
-        console.debug(
-          "RNPLib.writeOutputToPath failed for " + outPathString + " - " + err
-        );
-      }
-
-      return status;
+      await IOUtils.write(path, u8, {
+        tmpPath: path + ".tmp-new",
+      });
     },
 
     async saveKeys() {
-      let filenames = this.getFilenames();
-      if (
-        !(await this.saveKeyRing(
-          filenames.pubring,
-          this.RNP_LOAD_SAVE_PUBLIC_KEYS
-        ))
-      ) {
-        // if saving public keys failed, don't attempt to save/replace secret keys
-        return false;
+      if (!this.ffi) {
+        return;
       }
-      return this.saveKeyRing(
-        filenames.secring,
-        this.RNP_LOAD_SAVE_SECRET_KEYS
+      let { pubRingPath, secRingPath } = this.getFilenames();
+
+      let saveThem = async () => {
+        await this.saveKeyRing(pubRingPath, this.RNP_LOAD_SAVE_PUBLIC_KEYS);
+        await this.saveKeyRing(secRingPath, this.RNP_LOAD_SAVE_SECRET_KEYS);
+      };
+      let saveBlocker = saveThem();
+      IOUtils.profileBeforeChange.addBlocker(
+        "OpenPGP: writing out keyring",
+        saveBlocker
       );
+      await saveBlocker;
+      IOUtils.profileBeforeChange.removeBlocker(saveBlocker);
     },
 
     keep_password_cb_alive: null,
 
+    cached_pw: null,
+
+    /**
+     * Past versions of Thunderbird used this callback to provide
+     * the automatically managed passphrase to RNP, which was used
+     * for all OpenPGP. Nowadays, Thunderbird supports the definition
+     * of used-defined passphrase. To better control the unlocking of
+     * keys, Thunderbird no longer uses this callback.
+     * The application is designed to unlock secret keys as needed,
+     * prior to calling the respective RNP APIs.
+     * If this callback is reached anyway, it's an internal error,
+     * it means that some Thunderbird code hasn't properly unlocked
+     * the required key yet.
+     *
+     * This is a C callback from an external library, so we cannot
+     * rely on the usual JS throw mechanism to abort this operation.
+     */
     password_cb(ffi, app_ctx, key, pgp_context, buf, buf_len) {
-      const cApi = EnigmailCryptoAPI();
-      let pass = cApi.sync(OpenPGPMasterpass.retrieveOpenPGPPassword());
-      var passCTypes = ctypes.char.array()(pass); // UTF-8
-      let passLen = passCTypes.length;
-
-      if (buf_len < passLen) {
-        return false;
+      let fingerprint = new ctypes.char.ptr();
+      let fpStr;
+      if (!RNPLib.rnp_key_get_fprint(key, fingerprint.address())) {
+        fpStr = "Fingerprint: " + fingerprint.readString();
       }
+      RNPLib.rnp_buffer_destroy(fingerprint);
 
-      let char_array = ctypes.cast(buf, ctypes.char.array(buf_len).ptr)
-        .contents;
-
-      let i;
-      for (i = 0; i < passLen; ++i) {
-        char_array[i] = passCTypes[i];
-      }
-      char_array[passLen] = 0;
-      return true;
+      console.debug(
+        `Internal error, default RNP password callback called unexpectedly. ${fpStr}.`
+      );
+      return false;
     },
 
+    // For comparing version numbers
+    rnp_version_for: librnp.declare(
+      "rnp_version_for",
+      abi,
+      ctypes.uint32_t,
+      ctypes.uint32_t, // major
+      ctypes.uint32_t, // minor
+      ctypes.uint32_t // patch
+    ),
+
     // Get the library version.
+    rnp_version: librnp.declare("rnp_version", abi, ctypes.uint32_t),
+
     rnp_version_string_full: librnp.declare(
       "rnp_version_string_full",
       abi,
@@ -585,7 +879,9 @@ function enableRNPLibJS() {
     ),
 
     // Get a RNP library handle.
-    rnp_ffi_create: librnp.declare(
+    // Mark with leading underscore, to clarify that this function
+    // shouldn't be called directly - you should call prepare_ffi().
+    _rnp_ffi_create: librnp.declare(
       "rnp_ffi_create",
       abi,
       rnp_result_t,
@@ -1116,6 +1412,24 @@ function enableRNPLibJS() {
       ctypes.uint32_t
     ),
 
+    rnp_uid_remove: librnp.declare(
+      "rnp_uid_remove",
+      abi,
+      rnp_result_t,
+      rnp_key_handle_t,
+      rnp_uid_handle_t
+    ),
+
+    rnp_key_remove_signatures: librnp.declare(
+      "rnp_key_remove_signatures",
+      abi,
+      rnp_result_t,
+      rnp_key_handle_t,
+      ctypes.uint32_t,
+      rnp_key_signatures_cb,
+      ctypes.void_t.ptr
+    ),
+
     rnp_op_encrypt_create: librnp.declare(
       "rnp_op_encrypt_create",
       abi,
@@ -1377,6 +1691,31 @@ function enableRNPLibJS() {
       rnp_signature_handle_t.ptr
     ),
 
+    rnp_key_get_signature_count: librnp.declare(
+      "rnp_key_get_signature_count",
+      abi,
+      rnp_result_t,
+      rnp_uid_handle_t,
+      ctypes.size_t.ptr
+    ),
+
+    rnp_key_get_signature_at: librnp.declare(
+      "rnp_key_get_signature_at",
+      abi,
+      rnp_result_t,
+      rnp_key_handle_t,
+      ctypes.size_t,
+      rnp_signature_handle_t.ptr
+    ),
+
+    rnp_signature_get_hash_alg: librnp.declare(
+      "rnp_signature_get_hash_alg",
+      abi,
+      rnp_result_t,
+      rnp_signature_handle_t,
+      ctypes.char.ptr.ptr
+    ),
+
     rnp_signature_get_creation: librnp.declare(
       "rnp_signature_get_creation",
       abi,
@@ -1571,6 +1910,14 @@ function enableRNPLibJS() {
       ctypes.uint32_t.ptr
     ),
 
+    rnp_key_valid_till64: librnp.declare(
+      "rnp_key_valid_till64",
+      abi,
+      rnp_result_t,
+      rnp_key_handle_t,
+      ctypes.uint64_t.ptr
+    ),
+
     rnp_uid_is_valid: librnp.declare(
       "rnp_uid_is_valid",
       abi,
@@ -1611,6 +1958,79 @@ function enableRNPLibJS() {
       ctypes.size_t
     ),
 
+    rnp_key_25519_bits_tweaked: librnp.declare(
+      "rnp_key_25519_bits_tweaked",
+      abi,
+      rnp_result_t,
+      rnp_key_handle_t,
+      ctypes.bool.ptr
+    ),
+
+    rnp_key_25519_bits_tweak: librnp.declare(
+      "rnp_key_25519_bits_tweak",
+      abi,
+      rnp_result_t,
+      rnp_key_handle_t
+    ),
+
+    rnp_key_get_curve: librnp.declare(
+      "rnp_key_get_curve",
+      abi,
+      rnp_result_t,
+      rnp_key_handle_t,
+      ctypes.char.ptr.ptr
+    ),
+
+    rnp_get_security_rule: librnp.declare(
+      "rnp_get_security_rule",
+      abi,
+      rnp_result_t,
+      rnp_ffi_t,
+      ctypes.char.ptr,
+      ctypes.char.ptr,
+      ctypes.uint64_t,
+      ctypes.uint32_t.ptr,
+      ctypes.uint64_t.ptr,
+      ctypes.uint32_t.ptr
+    ),
+
+    rnp_add_security_rule: librnp.declare(
+      "rnp_add_security_rule",
+      abi,
+      rnp_result_t,
+      rnp_ffi_t,
+      ctypes.char.ptr,
+      ctypes.char.ptr,
+      ctypes.uint32_t,
+      ctypes.uint64_t,
+      ctypes.uint32_t
+    ),
+
+    rnp_op_encrypt_set_aead: librnp.declare(
+      "rnp_op_encrypt_set_aead",
+      abi,
+      rnp_result_t,
+      rnp_op_encrypt_t,
+      ctypes.char.ptr
+    ),
+
+    rnp_op_encrypt_set_flags: librnp.declare(
+      "rnp_op_encrypt_set_flags",
+      abi,
+      rnp_result_t,
+      rnp_op_encrypt_t,
+      ctypes.uint32_t
+    ),
+
+    rnp_dump_packets_to_output: librnp.declare(
+      "rnp_dump_packets_to_output",
+      abi,
+      rnp_result_t,
+      rnp_input_t,
+      rnp_output_t,
+      ctypes.uint32_t
+    ),
+
     rnp_result_t,
     rnp_ffi_t,
     rnp_password_cb_t,
@@ -1642,7 +2062,29 @@ function enableRNPLibJS() {
     RNP_KEY_EXPORT_SECRET: 4,
     RNP_KEY_EXPORT_SUBKEYS: 8,
 
+    RNP_KEY_SIGNATURE_NON_SELF_SIG: 4,
+
     RNP_SUCCESS: 0x00000000,
+
+    RNP_FEATURE_SYMM_ALG: "symmetric algorithm",
+    RNP_FEATURE_HASH_ALG: "hash algorithm",
+    RNP_FEATURE_PK_ALG: "public key algorithm",
+    RNP_ALGNAME_MD5: "MD5",
+    RNP_ALGNAME_SHA1: "SHA1",
+    RNP_ALGNAME_SM2: "SM2",
+    RNP_ALGNAME_SM3: "SM3",
+    RNP_ALGNAME_SM4: "SM4",
+
+    RNP_SECURITY_OVERRIDE: 1,
+    RNP_SECURITY_VERIFY_KEY: 2,
+    RNP_SECURITY_VERIFY_DATA: 4,
+    RNP_SECURITY_REMOVE_ALL: 65536,
+
+    RNP_SECURITY_PROHIBITED: 0,
+    RNP_SECURITY_INSECURE: 1,
+    RNP_SECURITY_DEFAULT: 2,
+
+    RNP_ENCRYPT_NOWRAP: 1,
 
     /* Common error codes */
     RNP_ERROR_GENERIC: 0x10000000, // 268435456

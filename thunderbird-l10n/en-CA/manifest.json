@@ -1,29 +1,28 @@
 {
   "langpack_id": "en-CA",
   "manifest_version": 2,
-  "applications": {
+  "browser_specific_settings": {
     "gecko": {
       "id": "langpack-en-CA@thunderbird.mozilla.org",
-      "strict_min_version": "91.0",
-      "strict_max_version": "91.*"
+      "strict_min_version": "115.0",
+      "strict_max_version": "115.*"
     }
   },
-  "name": "English (CA) Language Pack",
-  "description": "Language pack for Thunderbird for en-CA",
-  "version": "91.0buildid20211101223011",
+  "name": "Language: English (CA)",
+  "description": "Thunderbird Language Pack for English (CA) (en-CA)",
+  "version": "115.8.20240216.174500",
   "languages": {
     "en-CA": {
-      "version": "20211015155600",
+      "version": "20240216183914",
       "chrome_resources": {
         "alerts": "chrome/en-CA/locale/en-CA/alerts/",
         "autoconfig": "chrome/en-CA/locale/en-CA/autoconfig/",
-        "branding": "chrome/en-CA/locale/en-CA/branding/",
+        "branding": "chrome/en-CA/locale/branding/",
         "calendar": "chrome/en-CA/locale/en-CA/calendar/",
         "chat": "chrome/en-CA/locale/en-CA/chat/",
         "communicator": "chrome/en-CA/locale/en-CA/communicator/",
         "devtools": "chrome/en-CA/locale/en-CA/devtools/client/",
         "devtools-shared": "chrome/en-CA/locale/en-CA/devtools/shared/",
-        "devtools-startup": "chrome/en-CA/locale/en-CA/devtools/startup/",
         "global": "chrome/en-CA/locale/en-CA/global/",
         "global-platform": {
           "macosx": "chrome/en-CA/locale/en-CA/global-platform/mac/",

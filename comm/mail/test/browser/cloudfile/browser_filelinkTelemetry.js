@@ -5,8 +5,8 @@
  * Test telemetry related to filelink.
  */
 
-let { TelemetryTestUtils } = ChromeUtils.import(
-  "resource://testing-common/TelemetryTestUtils.jsm"
+let { TelemetryTestUtils } = ChromeUtils.importESModule(
+  "resource://testing-common/TelemetryTestUtils.sys.mjs"
 );
 let { gMockFilePicker, gMockFilePickReg } = ChromeUtils.import(
   "resource://testing-common/mozmill/AttachmentHelpers.jsm"
@@ -24,10 +24,7 @@ let {
 let { mc } = ChromeUtils.import(
   "resource://testing-common/mozmill/FolderDisplayHelpers.jsm"
 );
-let {
-  get_notification_button,
-  wait_for_notification_to_stop,
-} = ChromeUtils.import(
+let { wait_for_notification_to_stop } = ChromeUtils.import(
   "resource://testing-common/mozmill/NotificationBoxHelpers.jsm"
 );
 let { cloudFileAccounts } = ChromeUtils.import(
@@ -41,7 +38,7 @@ let kInsertNotificationPref =
 let maxSize =
   Services.prefs.getIntPref("mail.compose.big_attachments.threshold_kb") * 1024;
 
-add_task(function setupModule(module) {
+add_setup(function () {
   requestLongerTimeout(2);
 
   gMockCloudfileManager.register(cloudType);
@@ -50,7 +47,7 @@ add_task(function setupModule(module) {
   Services.prefs.setBoolPref(kInsertNotificationPref, true);
 });
 
-registerCleanupFunction(function teardownModule(module) {
+registerCleanupFunction(function () {
   gMockCloudfileManager.unregister(cloudType);
   gMockFilePickReg.unregister();
   Services.prefs.clearUserPref(kInsertNotificationPref);
@@ -79,7 +76,7 @@ add_task(async function test_filelink_uploaded_size() {
 
   add_cloud_attachments(cwc, account, false);
   gMockCloudfileManager.resolveUploads();
-  wait_for_notification_to_stop(cwc, kBoxId, "bigAttachmentUploading");
+  wait_for_notification_to_stop(cwc.window, kBoxId, "bigAttachmentUploading");
 
   let scalars = TelemetryTestUtils.getProcessScalars("parent", true);
   Assert.equal(
@@ -105,11 +102,15 @@ add_task(async function test_filelink_ignored() {
   );
 
   // Multiple big attachments should be counted as one ignoring.
-  add_attachments(cwc, "http://www.example.com/1", maxSize);
-  add_attachments(cwc, "http://www.example.com/2", maxSize + 10);
-  add_attachments(cwc, "http://www.example.com/3", maxSize - 1);
+  add_attachments(cwc, "https://www.example.com/1", maxSize);
+  add_attachments(cwc, "https://www.example.com/2", maxSize + 10);
+  add_attachments(cwc, "https://www.example.com/3", maxSize - 1);
   let aftersend = BrowserTestUtils.waitForEvent(cwc.window, "aftersend");
-  cwc.click(cwc.e("button-send"));
+  EventUtils.synthesizeMouseAtCenter(
+    cwc.window.document.getElementById("button-send"),
+    {},
+    cwc.window.document.getElementById("button-send").ownerGlobal
+  );
   await aftersend;
   let scalars = TelemetryTestUtils.getProcessScalars("parent");
   Assert.equal(

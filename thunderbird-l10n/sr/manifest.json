@@ -1,29 +1,28 @@
 {
   "langpack_id": "sr",
   "manifest_version": 2,
-  "applications": {
+  "browser_specific_settings": {
     "gecko": {
       "id": "langpack-sr@thunderbird.mozilla.org",
-      "strict_min_version": "91.0",
-      "strict_max_version": "91.*"
+      "strict_min_version": "115.0",
+      "strict_max_version": "115.*"
     }
   },
-  "name": "српски (sr) Language Pack",
-  "description": "Language pack for Thunderbird for sr",
-  "version": "91.0buildid20211101223011",
+  "name": "Language: Cрпски (Serbian)",
+  "description": "Thunderbird Language Pack for Cрпски (sr) – Serbian",
+  "version": "115.8.20240216.174500",
   "languages": {
     "sr": {
-      "version": "20211011132528",
+      "version": "20240216183612",
       "chrome_resources": {
         "alerts": "chrome/sr/locale/sr/alerts/",
         "autoconfig": "chrome/sr/locale/sr/autoconfig/",
-        "branding": "chrome/sr/locale/sr/branding/",
+        "branding": "chrome/sr/locale/branding/",
         "calendar": "chrome/sr/locale/sr/calendar/",
         "chat": "chrome/sr/locale/sr/chat/",
         "communicator": "chrome/sr/locale/sr/communicator/",
         "devtools": "chrome/sr/locale/sr/devtools/client/",
         "devtools-shared": "chrome/sr/locale/sr/devtools/shared/",
-        "devtools-startup": "chrome/sr/locale/sr/devtools/startup/",
         "global": "chrome/sr/locale/sr/global/",
         "global-platform": {
           "macosx": "chrome/sr/locale/sr/global-platform/mac/",

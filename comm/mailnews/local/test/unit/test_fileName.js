@@ -72,10 +72,11 @@ function run_test() {
   // force load of accounts.
   MailServices.accounts.defaultAccount;
 
-  let pop3Server = MailServices.accounts.FindServer("user", "poptest", "pop3");
-  let rootFolder = localAccountUtils.incomingServer.rootMsgFolder.QueryInterface(
-    Ci.nsIMsgLocalMailFolder
-  );
+  let pop3Server = MailServices.accounts.findServer("user", "poptest", "pop3");
+  let rootFolder =
+    localAccountUtils.incomingServer.rootMsgFolder.QueryInterface(
+      Ci.nsIMsgLocalMailFolder
+    );
   let pop3Root = pop3Server.rootMsgFolder;
 
   // Note: Inbox is not created automatically when there is no deferred server,

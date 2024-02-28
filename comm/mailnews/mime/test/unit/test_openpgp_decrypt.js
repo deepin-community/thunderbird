@@ -7,8 +7,8 @@
  * processed correctly by mime.
  */
 
-const { PromiseUtils } = ChromeUtils.import(
-  "resource://gre/modules/PromiseUtils.jsm"
+const { PromiseUtils } = ChromeUtils.importESModule(
+  "resource://gre/modules/PromiseUtils.sys.mjs"
 );
 const { OpenPGPTestUtils } = ChromeUtils.import(
   "resource://testing-common/mozmill/OpenPGPTestUtils.jsm"
@@ -26,13 +26,12 @@ const { EnigmailDecryption } = ChromeUtils.import(
   "chrome://openpgp/content/modules/decryption.jsm"
 );
 
-/* import-globals-from ../../../test/resources/asyncTestUtils.js */
-load("../../../resources/asyncTestUtils.js");
+var { MessageInjection } = ChromeUtils.import(
+  "resource://testing-common/mailnews/MessageInjection.jsm"
+);
 
-/* import-globals-from ../../../test/resources/messageInjection.js */
-load("../../../resources/messageInjection.js");
-
-let gInbox;
+var messageInjection = new MessageInjection({ mode: "local" });
+let gInbox = messageInjection.getInboxFolder();
 
 const keyDir = "../../../../mail/test/browser/openpgp/data/keys/";
 const browserEMLDir = "../../../../mail/test/browser/openpgp/data/eml/";
@@ -121,6 +120,7 @@ const headerSink = {
 
 /**
  * All the tests we are going to run.
+ *
  * @type Test[]
  */
 const tests = [
@@ -268,7 +268,7 @@ const tests = [
  * Initialize OpenPGP, import Alice and Bob's keys, then install the messages
  * we are going to test.
  */
-add_task(async function setUp() {
+add_setup(async function () {
   await OpenPGPTestUtils.initOpenPGP();
 
   await OpenPGPTestUtils.importPrivateKey(
@@ -280,10 +280,6 @@ add_task(async function setUp() {
     null,
     do_get_file(`${keyDir}bob@openpgp.example-0xfbfcc82a015e7330-pub.asc`)
   );
-
-  gInbox = configure_message_injection({
-    mode: "local",
-  });
 
   for (let test of tests) {
     let promiseCopyListener = new PromiseTestUtils.PromiseCopyListener();
@@ -326,25 +322,15 @@ add_task(async function testMimeDecryptOpenPGPMessages() {
     let uri = hdr.folder.getUriForMsg(hdr);
     let sinkPromise = headerSink.expectResults(expectedResultCount);
 
-    let msgWindow = Cc["@mozilla.org/messenger/msgwindow;1"].createInstance(
-      Ci.nsIMsgWindow
-    );
-
     // Set the message window so displayStatus() invokes the hooks we are
     // interested in.
-    EnigmailVerify.lastMsgWindow = msgWindow;
+    EnigmailVerify.lastWindow = {};
 
     // Stub this function so verifyDetached() can get the correct email.
     EnigmailDecryption.getFromAddr = () => test.from;
 
     // Trigger the actual mime work.
-    let conversion = apply_mime_conversion(
-      uri,
-      {
-        securityInfo: headerSink,
-      },
-      msgWindow
-    );
+    let conversion = apply_mime_conversion(uri, headerSink);
 
     await conversion.promise;
 

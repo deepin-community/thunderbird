@@ -16,6 +16,7 @@
 #include "mozilla/dom/IPCBlobUtils.h"
 #include "mozilla/dom/MediaSource.h"
 #include "mozilla/ipc/IPCStreamUtils.h"
+#include "mozilla/AppShutdown.h"
 #include "mozilla/BasePrincipal.h"
 #include "mozilla/LoadInfo.h"
 #include "mozilla/Maybe.h"
@@ -28,6 +29,7 @@
 #include "nsContentUtils.h"
 #include "nsError.h"
 #include "nsIAsyncShutdown.h"
+#include "nsIDUtils.h"
 #include "nsIException.h"  // for nsIStackFrame
 #include "nsIMemoryReporter.h"
 #include "nsIPrincipal.h"
@@ -86,7 +88,7 @@ struct DataInfo {
 
 // The mutex is locked whenever gDataTable is changed, or if gDataTable
 // is accessed off-main-thread.
-static StaticMutex sMutex;
+static StaticMutex sMutex MOZ_UNANNOTATED;
 
 // All changes to gDataTable must happen on the main thread, while locking
 // sMutex. Reading from gDataTable on the main thread may happen without
@@ -147,16 +149,15 @@ void BroadcastBlobURLRegistration(const nsACString& aURI,
     return;
   }
 
-  dom::ContentChild* cc = dom::ContentChild::GetSingleton();
-
   IPCBlob ipcBlob;
-  nsresult rv = IPCBlobUtils::Serialize(aBlobImpl, cc, ipcBlob);
+  nsresult rv = IPCBlobUtils::Serialize(aBlobImpl, ipcBlob);
   if (NS_WARN_IF(NS_FAILED(rv))) {
     return;
   }
 
-  Unused << NS_WARN_IF(!cc->SendStoreAndBroadcastBlobURLRegistration(
-      nsCString(aURI), ipcBlob, IPC::Principal(aPrincipal), aAgentClusterId));
+  dom::ContentChild* cc = dom::ContentChild::GetSingleton();
+  (void)NS_WARN_IF(!cc->SendStoreAndBroadcastBlobURLRegistration(
+      nsCString(aURI), ipcBlob, aPrincipal, aAgentClusterId));
 }
 
 void BroadcastBlobURLUnregistration(const nsCString& aURI,
@@ -169,8 +170,10 @@ void BroadcastBlobURLUnregistration(const nsCString& aURI,
   }
 
   dom::ContentChild* cc = dom::ContentChild::GetSingleton();
-  Unused << NS_WARN_IF(!cc->SendUnstoreAndBroadcastBlobURLUnregistration(
-      aURI, IPC::Principal(aPrincipal)));
+  if (cc) {
+    (void)NS_WARN_IF(
+        !cc->SendUnstoreAndBroadcastBlobURLUnregistration(aURI, aPrincipal));
+  }
 }
 
 class BlobURLsReporter final : public nsIMemoryReporter {
@@ -311,7 +314,7 @@ class BlobURLsReporter final : public nsIMemoryReporter {
     // GetCurrentJSStack() hand out the JSContext it found.
     JSContext* cx = frame ? nsContentUtils::GetCurrentJSContext() : nullptr;
 
-    for (uint32_t i = 0; frame; ++i) {
+    while (frame) {
       nsString fileNameUTF16;
       frame->GetFilename(cx, fileNameUTF16);
 
@@ -394,13 +397,10 @@ class ReleasingTimerHolder final : public Runnable,
 
     RefPtr<ReleasingTimerHolder> holder = new ReleasingTimerHolder(aURI);
 
+    // BlobURLProtocolHandler::RemoveDataEntry potentially happens late. We are
+    // prepared to RevokeUri synchronously if we run after XPCOMWillShutdown,
+    // but we need at least to be able to dispatch to the main thread here.
     auto raii = MakeScopeExit([holder] { holder->CancelTimerAndRevokeURI(); });
-
-    // ReleasingTimerHolder potentially dispatches after we've
-    // shutdown the main thread, so guard agains that.
-    if (NS_WARN_IF(gXPCOMThreadsShutDown)) {
-      return;
-    }
 
     nsresult rv =
         SchedulerGroup::Dispatch(TaskCategory::Other, holder.forget());
@@ -465,7 +465,7 @@ class ReleasingTimerHolder final : public Runnable,
   explicit ReleasingTimerHolder(const nsACString& aURI)
       : Runnable("ReleasingTimerHolder"), mURI(aURI) {}
 
-  ~ReleasingTimerHolder() = default;
+  ~ReleasingTimerHolder() override = default;
 
   void RevokeURI() {
     // Remove the shutting down blocker
@@ -712,9 +712,6 @@ nsresult BlobURLProtocolHandler::GenerateURIString(nsIPrincipal* aPrincipal,
   rv = uuidgen->GenerateUUIDInPlace(&id);
   NS_ENSURE_SUCCESS(rv, rv);
 
-  char chars[NSID_LENGTH];
-  id.ToProvidedString(chars);
-
   aUri.AssignLiteral(BLOBURI_SCHEME);
   aUri.Append(':');
 
@@ -729,7 +726,7 @@ nsresult BlobURLProtocolHandler::GenerateURIString(nsIPrincipal* aPrincipal,
     aUri.Append('/');
   }
 
-  aUri += Substring(chars + 1, chars + NSID_LENGTH - 2);
+  aUri += NSID_TrimBracketsASCII(id);
 
   return NS_OK;
 }
@@ -821,34 +818,11 @@ void BlobURLProtocolHandler::Traverse(
 
   NS_CYCLE_COLLECTION_NOTE_EDGE_NAME(
       aCallback, "BlobURLProtocolHandler mozilla::dom::DataInfo.mMediaSource");
-  aCallback.NoteXPCOMChild(res->mMediaSource);
+  aCallback.NoteXPCOMChild(static_cast<EventTarget*>(res->mMediaSource));
 }
 
 NS_IMPL_ISUPPORTS(BlobURLProtocolHandler, nsIProtocolHandler,
                   nsISupportsWeakReference)
-
-NS_IMETHODIMP
-BlobURLProtocolHandler::GetDefaultPort(int32_t* result) {
-  *result = -1;
-  return NS_OK;
-}
-
-NS_IMETHODIMP
-BlobURLProtocolHandler::GetProtocolFlags(uint32_t* result) {
-  *result = URI_NORELATIVE | URI_NOAUTH | URI_LOADABLE_BY_SUBSUMERS |
-            URI_NON_PERSISTABLE | URI_IS_LOCAL_RESOURCE;
-  return NS_OK;
-}
-
-NS_IMETHODIMP
-BlobURLProtocolHandler::GetFlagsForURI(nsIURI* aURI, uint32_t* aResult) {
-  Unused << BlobURLProtocolHandler::GetProtocolFlags(aResult);
-  if (IsBlobURI(aURI)) {
-    *aResult |= URI_IS_LOCAL_RESOURCE;
-  }
-
-  return NS_OK;
-}
 
 /* static */ nsresult BlobURLProtocolHandler::CreateNewURI(
     const nsACString& aSpec, const char* aCharset, nsIURI* aBaseURI,
@@ -868,7 +842,7 @@ BlobURLProtocolHandler::GetFlagsForURI(nsIURI* aURI, uint32_t* aResult) {
 
   return NS_MutateURI(new BlobURL::Mutator())
       .SetSpec(aSpec)
-      .Apply(NS_MutatorMethod(&nsIBlobURLMutator::SetRevoked, revoked))
+      .Apply(&nsIBlobURLMutator::SetRevoked, revoked)
       .Finalize(aResult);
 }
 
@@ -907,8 +881,7 @@ bool BlobURLProtocolHandler::GetBlobURLPrincipal(nsIURI* aURI,
     return false;
   }
 
-  MOZ_ASSERT(NS_IsMainThread(),
-             "without locking gDataTable is main-thread only");
+  StaticMutexAutoLock lock(sMutex);
   mozilla::dom::DataInfo* info =
       GetDataInfoFromURI(aURI, true /*aAlsoIfRevoked */);
   if (!info || info->mObjectType != mozilla::dom::DataInfo::eBlobImpl ||
@@ -927,6 +900,12 @@ bool BlobURLProtocolHandler::GetBlobURLPrincipal(nsIURI* aURI,
 
   principal.forget(aPrincipal);
   return true;
+}
+
+bool BlobURLProtocolHandler::IsBlobURLBroadcastPrincipal(
+    nsIPrincipal* aPrincipal) {
+  return aPrincipal->IsSystemPrincipal() ||
+         aPrincipal->GetIsAddonOrExpandedAddonPrincipal();
 }
 
 }  // namespace dom

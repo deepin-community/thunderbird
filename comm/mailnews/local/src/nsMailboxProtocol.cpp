@@ -10,7 +10,6 @@
 #include "nsIInputStreamPump.h"
 #include "nsIMsgHdr.h"
 #include "nsMsgLineBuffer.h"
-#include "nsMsgDBCID.h"
 #include "nsIMsgMailNewsUrl.h"
 #include "nsIMsgFolder.h"
 #include "nsICopyMessageStreamListener.h"
@@ -43,7 +42,12 @@ static LazyLogModule MAILBOX("Mailbox");
  */
 #define OUTPUT_BUFFER_SIZE (4096 * 2)
 
-nsMailboxProtocol::nsMailboxProtocol(nsIURI* aURI) : nsMsgProtocol(aURI) {}
+nsMailboxProtocol::nsMailboxProtocol(nsIURI* aURI)
+    : nsMsgProtocol(aURI),
+      m_mailboxAction(nsIMailboxUrl::ActionParseMailbox),
+      m_nextState(MAILBOX_UNINITIALIZED),
+      m_initialState(MAILBOX_UNINITIALIZED),
+      mCurrentProgress(0) {}
 
 nsMailboxProtocol::~nsMailboxProtocol() {}
 
@@ -107,16 +111,6 @@ nsresult nsMailboxProtocol::Initialize(nsIURI* aURL) {
         rv =
             OpenFileSocket(aURL, 0, -1 /* read in all the bytes in the file */);
       } else {
-        // we need to specify a byte range to read in so we read in JUST the
-        // message we want.
-        rv = SetupMessageExtraction();
-        if (NS_FAILED(rv)) return rv;
-        uint32_t msgSize = 0;
-        rv = m_runningUrl->GetMessageSize(&msgSize);
-        NS_ASSERTION(NS_SUCCEEDED(rv), "oops....i messed something up");
-        SetContentLength(msgSize);
-        mailnewsUrl->SetMaxProgress(msgSize);
-
         if (RunningMultipleMsgUrl()) {
           // if we're running multiple msg url, we clear the event sink because
           // the multiple msg urls will handle setting the progress.
@@ -130,14 +124,18 @@ nsresult nsMailboxProtocol::Initialize(nsIURI* aURL) {
           nsCOMPtr<nsIMsgDBHdr> msgHdr;
           rv = msgUrl->GetMessageHeader(getter_AddRefs(msgHdr));
           if (NS_SUCCEEDED(rv) && msgHdr) {
+            uint32_t msgSize = 0;
+            msgHdr->GetMessageSize(&msgSize);
+            m_runningUrl->SetMessageSize(msgSize);
+
+            SetContentLength(msgSize);
+            mailnewsUrl->SetMaxProgress(msgSize);
+
             rv = msgHdr->GetFolder(getter_AddRefs(folder));
             if (NS_SUCCEEDED(rv) && folder) {
               nsCOMPtr<nsIInputStream> stream;
               int64_t offset = 0;
-              bool reusable = false;
-
-              rv = folder->GetMsgInputStream(msgHdr, &reusable,
-                                             getter_AddRefs(stream));
+              rv = folder->GetMsgInputStream(msgHdr, getter_AddRefs(stream));
               NS_ENSURE_SUCCESS(rv, rv);
               nsCOMPtr<nsISeekableStream> seekableStream(
                   do_QueryInterface(stream, &rv));
@@ -148,26 +146,7 @@ nsresult nsMailboxProtocol::Initialize(nsIURI* aURL) {
                   do_GetService(NS_STREAMTRANSPORTSERVICE_CONTRACTID, &rv);
               if (NS_FAILED(rv)) return rv;
               m_readCount = msgSize;
-              // Save the stream for reuse, but only for multiple URLs.
-              if (reusable && RunningMultipleMsgUrl()) {
-                nsCOMPtr<nsIInputStream> clonedStream;
-                nsCOMPtr<nsIInputStream> replacementStream;
-                rv = NS_CloneInputStream(stream, getter_AddRefs(clonedStream),
-                                         getter_AddRefs(replacementStream));
-                NS_ENSURE_SUCCESS(rv, rv);
-                if (replacementStream) {
-                  // If stream is not clonable, NS_CloneInputStream
-                  // will clone it using a pipe. In order to keep the copy alive
-                  // and working, we have to replace the original stream with
-                  // the replacement.
-                  stream = replacementStream.forget();
-                }
-                // Keep the original and use the clone for the next operation.
-                m_multipleMsgMoveCopyStream = stream;
-                stream = clonedStream;
-              } else {
-                reusable = false;
-              }
+
               RefPtr<SlicedInputStream> slicedStream = new SlicedInputStream(
                   stream.forget(), offset, uint64_t(msgSize));
               // Always close the sliced stream when done, we still have the
@@ -178,8 +157,9 @@ nsresult nsMailboxProtocol::Initialize(nsIURI* aURL) {
               m_socketIsOpen = false;
             }
           }
-          if (!folder)  // must be a .eml file
-            rv = OpenFileSocket(aURL, 0, int64_t(msgSize));
+          if (!folder) {  // must be a .eml file
+            rv = OpenFileSocket(aURL, 0, -1);
+          }
         }
         NS_ASSERTION(NS_SUCCEEDED(rv), "oops....i messed something up");
       }
@@ -262,7 +242,7 @@ NS_IMETHODIMP nsMailboxProtocol::OnStopRequest(nsIRequest* request,
             nsCOMPtr<nsICopyMessageStreamListener> listener =
                 do_QueryInterface(m_channelListener, &rv);
             if (listener) {
-              listener->EndCopy(m_runningUrl, aStatus);
+              listener->EndCopy(mailnewsUrl, aStatus);
               listener->StartMessage();  // start next message.
             }
           }
@@ -283,7 +263,7 @@ NS_IMETHODIMP nsMailboxProtocol::OnStopRequest(nsIRequest* request,
               nsCOMPtr<nsIMsgMessageUrl> msgUrl =
                   do_QueryInterface(m_runningUrl);
               if (msgUrl) {
-                msgUrl->SetOriginalSpec(uri.get());
+                msgUrl->SetOriginalSpec(uri);
                 msgUrl->SetUri(uri);
 
                 uint64_t msgOffset;
@@ -304,12 +284,8 @@ NS_IMETHODIMP nsMailboxProtocol::OnStopRequest(nsIRequest* request,
                   rv = OpenMultipleMsgTransport(msgOffset, msgSize);
                 } else {
                   nsCOMPtr<nsIInputStream> stream;
-                  bool reusable = false;
-                  rv = msgFolder->GetMsgInputStream(nextMsg, &reusable,
+                  rv = msgFolder->GetMsgInputStream(nextMsg,
                                                     getter_AddRefs(stream));
-                  NS_ASSERTION(!reusable,
-                               "We thought streams were not reusable!");
-
                   if (NS_SUCCEEDED(rv)) {
                     // create input stream transport
                     nsCOMPtr<nsIStreamTransportService> sts = do_GetService(
@@ -397,31 +373,6 @@ nsresult nsMailboxProtocol::DoneReadingMessage() {
       m_msgFileOutputStream)
     rv = m_msgFileOutputStream->Close();
 
-  return rv;
-}
-
-nsresult nsMailboxProtocol::SetupMessageExtraction() {
-  // Determine the number of bytes we are going to need to read out of the
-  // mailbox url....
-  nsCOMPtr<nsIMsgDBHdr> msgHdr;
-  nsresult rv = NS_OK;
-
-  NS_ASSERTION(m_runningUrl, "Not running a url");
-  if (m_runningUrl) {
-    uint32_t messageSize = 0;
-    m_runningUrl->GetMessageSize(&messageSize);
-    if (!messageSize) {
-      nsCOMPtr<nsIMsgMessageUrl> msgUrl = do_QueryInterface(m_runningUrl, &rv);
-      NS_ENSURE_SUCCESS(rv, rv);
-      rv = msgUrl->GetMessageHeader(getter_AddRefs(msgHdr));
-      if (NS_SUCCEEDED(rv) && msgHdr) {
-        msgHdr->GetMessageSize(&messageSize);
-        m_runningUrl->SetMessageSize(messageSize);
-        msgHdr->GetMessageOffset(&m_msgOffset);
-      } else
-        NS_ASSERTION(false, "couldn't get message header");
-    }
-  }
   return rv;
 }
 

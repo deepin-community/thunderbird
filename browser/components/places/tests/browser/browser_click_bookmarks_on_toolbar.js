@@ -42,9 +42,7 @@ function getToolbarNodeForItemGuid(aItemGuid) {
 }
 
 function waitForLoad(browser, url) {
-  return BrowserTestUtils.browserLoaded(browser, false, url).then(() => {
-    return BrowserTestUtils.loadURI(browser, "about:blank");
-  });
+  return BrowserTestUtils.browserLoaded(browser, false, url);
 }
 
 function waitForNewTab(url, inBackground) {
@@ -67,7 +65,7 @@ function waitForNewTab(url, inBackground) {
   });
 }
 
-add_task(async function setup() {
+add_setup(async function () {
   await PlacesUtils.bookmarks.eraseEverything();
   let bookmarks = await Promise.all(
     TEST_PAGES.map((url, index) => {
@@ -96,15 +94,17 @@ add_task(async function setup() {
   registerCleanupFunction(async () => {
     gBookmarkElements = [];
 
-    if (wasCollapsed) {
-      await promiseSetToolbarVisibility(toolbar, false);
-    }
-
     await Promise.all(
       bookmarks.map(bookmark => {
         return PlacesUtils.bookmarks.remove(bookmark);
       })
     );
+
+    // Note: hiding the toolbar before removing the bookmarks triggers
+    // bug 1766284.
+    if (wasCollapsed) {
+      await promiseSetToolbarVisibility(toolbar, false);
+    }
   });
 });
 

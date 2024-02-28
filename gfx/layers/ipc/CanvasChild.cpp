@@ -50,13 +50,29 @@ class SourceSurfaceCanvasRecording final : public gfx::SourceSurface {
       : mRecordedSurface(aRecordedSuface),
         mCanvasChild(aCanvasChild),
         mRecorder(aRecorder) {
-    mRecorder->RecordEvent(RecordedAddSurfaceAlias(this, aRecordedSuface));
+    // It's important that AddStoredObject is called first because that will
+    // run any pending processing required by recorded objects that have been
+    // deleted off the main thread.
     mRecorder->AddStoredObject(this);
+    mRecorder->RecordEvent(RecordedAddSurfaceAlias(this, aRecordedSuface));
   }
 
   ~SourceSurfaceCanvasRecording() {
-    ReleaseOnMainThread(std::move(mRecorder), this, std::move(mRecordedSurface),
-                        std::move(mCanvasChild));
+    ReferencePtr surfaceAlias = this;
+    if (NS_IsMainThread()) {
+      ReleaseOnMainThread(std::move(mRecorder), surfaceAlias,
+                          std::move(mRecordedSurface), std::move(mCanvasChild));
+      return;
+    }
+
+    mRecorder->AddPendingDeletion(
+        [recorder = std::move(mRecorder), surfaceAlias,
+         aliasedSurface = std::move(mRecordedSurface),
+         canvasChild = std::move(mCanvasChild)]() mutable -> void {
+          ReleaseOnMainThread(std::move(recorder), surfaceAlias,
+                              std::move(aliasedSurface),
+                              std::move(canvasChild));
+        });
   }
 
   gfx::SurfaceType GetType() const final { return mRecordedSurface->GetType(); }
@@ -72,9 +88,6 @@ class SourceSurfaceCanvasRecording final : public gfx::SourceSurface {
     return do_AddRef(mDataSourceSurface);
   }
 
- protected:
-  void GuaranteePersistance() final { EnsureDataSurfaceOnMainThread(); }
-
  private:
   void EnsureDataSurfaceOnMainThread() {
     // The data can only be retrieved on the main thread.
@@ -88,14 +101,7 @@ class SourceSurfaceCanvasRecording final : public gfx::SourceSurface {
                                   ReferencePtr aSurfaceAlias,
                                   RefPtr<gfx::SourceSurface> aAliasedSurface,
                                   RefPtr<CanvasChild> aCanvasChild) {
-    if (!NS_IsMainThread()) {
-      NS_DispatchToMainThread(NewRunnableFunction(
-          "SourceSurfaceCanvasRecording::ReleaseOnMainThread",
-          SourceSurfaceCanvasRecording::ReleaseOnMainThread,
-          std::move(aRecorder), aSurfaceAlias, std::move(aAliasedSurface),
-          std::move(aCanvasChild)));
-      return;
-    }
+    MOZ_ASSERT(NS_IsMainThread());
 
     aRecorder->RemoveStoredObject(aSurfaceAlias);
     aRecorder->RecordEvent(RecordedRemoveSurfaceAlias(aSurfaceAlias));
@@ -152,7 +158,8 @@ void CanvasChild::EnsureRecorder(TextureType aTextureType) {
     }
 
     if (CanSend()) {
-      Unused << SendInitTranslator(mTextureType, handle, readerSem, writerSem);
+      Unused << SendInitTranslator(mTextureType, std::move(handle),
+                                   std::move(readerSem), std::move(writerSem));
     }
   }
 
@@ -202,6 +209,13 @@ void CanvasChild::OnTextureForwarded() {
 
     mHasOutstandingWriteLock = false;
   }
+
+  // We hold onto the last transaction's external surfaces until we have waited
+  // for the write locks in this transaction. This means we know that the
+  // surfaces have been picked up in the canvas threads and there is no race
+  // with them being removed from SharedSurfacesParent. Note this releases the
+  // current contents of mLastTransactionExternalSurfaces.
+  mRecorder->TakeExternalSurfaces(mLastTransactionExternalSurfaces);
 }
 
 void CanvasChild::EnsureBeginTransaction() {
@@ -281,7 +295,13 @@ already_AddRefed<gfx::DataSourceSurface> CanvasChild::GetDataSurface(
     return nullptr;
   }
 
-  mTransactionsSinceGetDataSurface = 0;
+  // mTransactionsSinceGetDataSurface is used to determine if we want to prepare
+  // a DataSourceSurface in the GPU process up front at the end of the
+  // transaction, but that only makes sense if the canvas JS is requesting data
+  // in between transactions.
+  if (!mIsInTransaction) {
+    mTransactionsSinceGetDataSurface = 0;
+  }
   EnsureBeginTransaction();
   mRecorder->RecordEvent(RecordedPrepareDataForSurface(aSurface));
   uint32_t checkpoint = mRecorder->CreateCheckpoint();

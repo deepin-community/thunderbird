@@ -9,7 +9,7 @@
 #define nsISupportsImpl_h__
 
 #include "nscore.h"
-#include "nsISupportsBase.h"
+#include "nsISupports.h"
 #include "nsISupportsUtils.h"
 
 #if !defined(XPCOM_GLUE_AVOID_NSPR)
@@ -27,10 +27,9 @@
 #include "mozilla/Likely.h"
 #include "mozilla/MacroArgs.h"
 #include "mozilla/MacroForEach.h"
-#include "mozilla/TypeTraits.h"
 
 #define MOZ_ASSERT_TYPE_OK_FOR_REFCOUNTING(X)            \
-  static_assert(!mozilla::IsDestructible<X>::value,      \
+  static_assert(!std::is_destructible_v<X>,              \
                 "Reference-counted class " #X            \
                 " should not have a public destructor. " \
                 "Make this class's destructor non-public");
@@ -416,6 +415,18 @@ class ThreadSafeAutoRefCnt {
  protected:                                                               \
   nsAutoRefCnt mRefCnt;                                                   \
   NS_DECL_OWNINGTHREAD                                                    \
+ public:
+
+#define NS_DECL_ISUPPORTS_ONEVENTTARGET                                   \
+ public:                                                                  \
+  NS_IMETHOD QueryInterface(REFNSIID aIID, void** aInstancePtr) override; \
+  NS_IMETHOD_(MozExternalRefCountType) AddRef(void) override;             \
+  NS_IMETHOD_(MozExternalRefCountType) Release(void) override;            \
+  using HasThreadSafeRefCnt = std::false_type;                            \
+                                                                          \
+ protected:                                                               \
+  nsAutoRefCnt mRefCnt;                                                   \
+  NS_DECL_OWNINGEVENTTARGET                                               \
  public:
 
 #define NS_DECL_THREADSAFE_ISUPPORTS                                      \
@@ -1354,14 +1365,26 @@ nsresult NS_FASTCALL NS_TableDrivenQI(void* aThis, REFNSIID aIID,
 
 namespace mozilla {
 class Runnable;
+namespace detail {
+class SupportsThreadSafeWeakPtrBase;
+
+// Don't NS_LOG_{ADDREF,RELEASE} when inheriting from `Runnable*` or types with
+// thread safe weak references, as it will generate incorrect refcnt logs due to
+// the thread-safe `Upgrade()` call's refcount modifications not calling through
+// the derived class' `AddRef()` and `Release()` methods.
+template <typename T>
+constexpr bool ShouldLogInheritedRefcnt =
+    !std::is_convertible_v<T*, Runnable*> &&
+    !std::is_base_of_v<SupportsThreadSafeWeakPtrBase, T>;
+}
 }  // namespace mozilla
 
-#define NS_IMPL_ADDREF_INHERITED_GUTS(Class, Super)         \
-  MOZ_ASSERT_TYPE_OK_FOR_REFCOUNTING(Class)                 \
-  nsrefcnt r = Super::AddRef();                             \
-  if (!std::is_convertible_v<Class*, mozilla::Runnable*>) { \
-    NS_LOG_ADDREF(this, r, #Class, sizeof(*this));          \
-  }                                                         \
+#define NS_IMPL_ADDREF_INHERITED_GUTS(Class, Super)                   \
+  MOZ_ASSERT_TYPE_OK_FOR_REFCOUNTING(Class)                           \
+  nsrefcnt r = Super::AddRef();                                       \
+  if constexpr (::mozilla::detail::ShouldLogInheritedRefcnt<Class>) { \
+    NS_LOG_ADDREF(this, r, #Class, sizeof(*this));                    \
+  }                                                                   \
   return r /* Purposefully no trailing semicolon */
 
 #define NS_IMPL_ADDREF_INHERITED(Class, Super)                  \
@@ -1369,11 +1392,11 @@ class Runnable;
     NS_IMPL_ADDREF_INHERITED_GUTS(Class, Super);                \
   }
 
-#define NS_IMPL_RELEASE_INHERITED_GUTS(Class, Super)        \
-  nsrefcnt r = Super::Release();                            \
-  if (!std::is_convertible_v<Class*, mozilla::Runnable*>) { \
-    NS_LOG_RELEASE(this, r, #Class);                        \
-  }                                                         \
+#define NS_IMPL_RELEASE_INHERITED_GUTS(Class, Super)                  \
+  nsrefcnt r = Super::Release();                                      \
+  if constexpr (::mozilla::detail::ShouldLogInheritedRefcnt<Class>) { \
+    NS_LOG_RELEASE(this, r, #Class);                                  \
+  }                                                                   \
   return r /* Purposefully no trailing semicolon */
 
 #define NS_IMPL_RELEASE_INHERITED(Class, Super)                  \
@@ -1442,28 +1465,20 @@ class Runnable;
   NS_IMPL_RELEASE_INHERITED(aClass, aSuper)
 
 /**
- * A macro to declare and implement addref/release for a class that does not
- * need to QI to any interfaces other than the ones its parent class QIs to.
+ * A macro to declare and implement inherited addref/release for a class which
+ * doesn't have or need to override QueryInterface from its base class.
+ *
+ * Note: This macro always overrides the `AddRef` and `Release` methods,
+ * including when refcount logging is disabled, meaning that it will implement
+ * the `AddRef` or `Release` method from another virtual base class.
  */
-#if defined(NS_BUILD_REFCNT_LOGGING)
-#  define NS_INLINE_DECL_REFCOUNTING_INHERITED(Class, Super)  \
-    NS_IMETHOD_(MozExternalRefCountType) AddRef() override {  \
-      NS_IMPL_ADDREF_INHERITED_GUTS(Class, Super);            \
-    }                                                         \
-    NS_IMETHOD_(MozExternalRefCountType) Release() override { \
-      NS_IMPL_RELEASE_INHERITED_GUTS(Class, Super);           \
-    }
-#else  // NS_BUILD_REFCNT_LOGGING
-   // Defining inheriting versions of functions in the refcount logging case has
-   // the side effect of making qualified references to |AddRef| and |Release|
-   // on the containing class unambiguous, if |Super| isn't the only base class
-   // that provides these members.  So if we're building without refcount
-   // logging, |using| in |Super|'s declarations to make the names similarly
-   // unambiguous.
-#  define NS_INLINE_DECL_REFCOUNTING_INHERITED(Class, Super) \
-    using Super::AddRef;                                     \
-    using Super::Release;
-#endif  // NS_BUILD_REFCNT_LOGGING
+#define NS_INLINE_DECL_REFCOUNTING_INHERITED(Class, Super)  \
+  NS_IMETHOD_(MozExternalRefCountType) AddRef() override {  \
+    NS_IMPL_ADDREF_INHERITED_GUTS(Class, Super);            \
+  }                                                         \
+  NS_IMETHOD_(MozExternalRefCountType) Release() override { \
+    NS_IMPL_RELEASE_INHERITED_GUTS(Class, Super);           \
+  }
 
 /*
  * Macro to glue together a QI that starts with an interface table

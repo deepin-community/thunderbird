@@ -18,6 +18,7 @@
 #include "nsAboutProtocolUtils.h"
 #include "ThirdPartyUtil.h"
 #include "mozilla/ContentPrincipal.h"
+#include "mozilla/ExtensionPolicyService.h"
 #include "mozilla/NullPrincipal.h"
 #include "mozilla/dom/BlobURLProtocolHandler.h"
 #include "mozilla/dom/ChromeUtils.h"
@@ -32,17 +33,26 @@
 #include "nsIURIMutator.h"
 #include "mozilla/StaticPrefs_permissions.h"
 #include "nsIURIMutator.h"
+#include "nsMixedContentBlocker.h"
 #include "prnetdb.h"
 #include "nsIURIFixup.h"
 #include "mozilla/dom/StorageUtils.h"
-#include "mozilla/ContentBlocking.h"
+#include "mozilla/StorageAccess.h"
 #include "nsPIDOMWindow.h"
 #include "nsIURIMutator.h"
+#include "mozilla/PermissionManager.h"
 
 #include "json/json.h"
 #include "nsSerializationHelper.h"
 
 namespace mozilla {
+
+const char* BasePrincipal::JSONEnumKeyStrings[4] = {
+    "0",
+    "1",
+    "2",
+    "3",
+};
 
 BasePrincipal::BasePrincipal(PrincipalKind aKind,
                              const nsACString& aOriginNoSuffix,
@@ -59,7 +69,7 @@ BasePrincipal::BasePrincipal(BasePrincipal* aOther,
       mOriginSuffix(aOriginAttributes.CreateSuffixAtom()),
       mOriginAttributes(aOriginAttributes),
       mKind(aOther->mKind),
-      mHasExplicitDomain(aOther->mHasExplicitDomain) {}
+      mHasExplicitDomain(aOther->mHasExplicitDomain.load()) {}
 
 BasePrincipal::~BasePrincipal() = default;
 
@@ -275,12 +285,53 @@ already_AddRefed<BasePrincipal> BasePrincipal::FromJSON(
     return nullptr;
   }
 
+  return FromJSON(root);
+}
+
+// Checks if an ExpandedPrincipal is using the legacy format, where
+// sub-principals are Base64 encoded.
+//
+// Given a legacy expanded principal:
+//
+//         *
+// {"2": {"0": "eyIxIjp7IjAiOiJodHRwczovL2EuY29tLyJ9fQ=="}}
+//   |     |                      |
+//   |     ----------           Value
+//   |              |
+// PrincipalKind    |
+//                  |
+//           SerializableKeys
+//
+// The value is a CSV list of Base64 encoded prinipcals. The new format for this
+// principal is:
+//
+//                       Subsumed principals
+//                               |
+//             ------------------------------------
+//         *   |                                  |
+// {"2": {"0": [{"1": {"0": https://mozilla.com"}}]}}
+//   |            |                  |
+//   --------------                Value
+//         |
+//   PrincipalKind
+//
+// It is possible to tell these apart by checking the type of the property noted
+// in both diagrams with an asterisk. In the legacy format the type will be a
+// string and in the new format it will be an array.
+static bool IsLegacyFormat(const Json::Value& aValue) {
+  const auto& specs = std::to_string(ExpandedPrincipal::eSpecs);
+  return aValue.isMember(specs) && aValue[specs].isString();
+}
+
+/* static */
+already_AddRefed<BasePrincipal> BasePrincipal::FromJSON(
+    const Json::Value& aJSON) {
   int principalKind = -1;
-  const Json::Value* value = GetPrincipalObject(root, principalKind);
+  const Json::Value* value = GetPrincipalObject(aJSON, principalKind);
   if (!value) {
 #ifdef DEBUG
     fprintf(stderr, "Unexpected JSON principal %s\n",
-            root.toStyledString().c_str());
+            aJSON.toStyledString().c_str());
 #endif
     MOZ_ASSERT(false, "Unexpected JSON to deserialize as a principal");
 
@@ -307,9 +358,15 @@ already_AddRefed<BasePrincipal> BasePrincipal::FromJSON(
   }
 
   if (principalKind == eExpandedPrincipal) {
-    nsTArray<ExpandedPrincipal::KeyVal> res =
-        GetJSONKeys<ExpandedPrincipal>(value);
-    return ExpandedPrincipal::FromProperties(res);
+    // Check if expanded principals is stored in the new or the old format. See
+    // comment for `IsLegacyFormat`.
+    if (IsLegacyFormat(*value)) {
+      nsTArray<ExpandedPrincipal::KeyVal> res =
+          GetJSONKeys<ExpandedPrincipal>(value);
+      return ExpandedPrincipal::FromProperties(res);
+    }
+
+    return ExpandedPrincipal::FromProperties(*value);
   }
 
   MOZ_RELEASE_ASSERT(false, "Unexpected enum to deserialize as a principal");
@@ -322,26 +379,38 @@ nsresult BasePrincipal::PopulateJSONObject(Json::Value& aObject) {
 // Returns a JSON representation of the principal.
 // Calling BasePrincipal::FromJSON will deserialize the JSON into
 // the corresponding principal type.
-nsresult BasePrincipal::ToJSON(nsACString& aResult) {
-  MOZ_ASSERT(aResult.IsEmpty(), "ToJSON only supports an empty result input");
-  aResult.Truncate();
-
-  Json::StreamWriterBuilder builder;
-  builder["indentation"] = "";
-  Json::Value innerJSONObject = Json::objectValue;
-
-  nsresult rv = PopulateJSONObject(innerJSONObject);
-  NS_ENSURE_SUCCESS(rv, rv);
+nsresult BasePrincipal::ToJSON(nsACString& aJSON) {
+  MOZ_ASSERT(aJSON.IsEmpty(), "ToJSON only supports an empty result input");
+  aJSON.Truncate();
 
   Json::Value root = Json::objectValue;
-  std::string key = std::to_string(Kind());
-  root[key] = innerJSONObject;
-  std::string result = Json::writeString(builder, root);
-  aResult.Append(result);
-  if (aResult.Length() == 0) {
+  nsresult rv = ToJSON(root);
+  NS_ENSURE_SUCCESS(rv, rv);
+
+  static StaticAutoPtr<Json::StreamWriterBuilder> sJSONBuilderForPrincipals;
+  if (!sJSONBuilderForPrincipals) {
+    sJSONBuilderForPrincipals = new Json::StreamWriterBuilder();
+    (*sJSONBuilderForPrincipals)["indentation"] = "";
+    (*sJSONBuilderForPrincipals)["emitUTF8"] = true;
+    ClearOnShutdown(&sJSONBuilderForPrincipals);
+  }
+  std::string result = Json::writeString(*sJSONBuilderForPrincipals, root);
+  aJSON.Append(result);
+  if (aJSON.Length() == 0) {
     MOZ_ASSERT(false, "JSON writer failed to output a principal serialization");
     return NS_ERROR_UNEXPECTED;
   }
+
+  return NS_OK;
+}
+
+nsresult BasePrincipal::ToJSON(Json::Value& aObject) {
+  static_assert(eKindMax < ArrayLength(JSONEnumKeyStrings));
+  nsresult rv = PopulateJSONObject(
+      (aObject[Json::StaticString(JSONEnumKeyStrings[Kind()])] =
+           Json::objectValue));
+  NS_ENSURE_SUCCESS(rv, rv);
+
   return NS_OK;
 }
 
@@ -391,8 +460,36 @@ BasePrincipal::EqualsForPermission(nsIPrincipal* aOther, bool aExactHost,
   NS_ENSURE_ARG_POINTER(aOther);
   NS_ENSURE_ARG_POINTER(aResult);
 
-  // If the principals are equal, then they match.
-  if (FastEquals(aOther)) {
+  auto* other = Cast(aOther);
+  if (Kind() != other->Kind()) {
+    // Principals of different kinds can't be equal.
+    return NS_OK;
+  }
+
+  if (Kind() == eSystemPrincipal) {
+    *aResult = this == other;
+    return NS_OK;
+  }
+
+  if (Kind() == eNullPrincipal) {
+    // We don't store permissions for NullPrincipals.
+    return NS_OK;
+  }
+
+  MOZ_ASSERT(Kind() == eExpandedPrincipal || Kind() == eContentPrincipal);
+
+  // Certain origin attributes should not be used to isolate permissions.
+  // Create a stripped copy of both OA sets to compare.
+  mozilla::OriginAttributes ourAttrs = mOriginAttributes;
+  PermissionManager::MaybeStripOriginAttributes(false, ourAttrs);
+  mozilla::OriginAttributes theirAttrs = aOther->OriginAttributesRef();
+  PermissionManager::MaybeStripOriginAttributes(false, theirAttrs);
+
+  if (ourAttrs != theirAttrs) {
+    return NS_OK;
+  }
+
+  if (mOriginNoSuffix == other->mOriginNoSuffix) {
     *aResult = true;
     return NS_OK;
   }
@@ -403,22 +500,18 @@ BasePrincipal::EqualsForPermission(nsIPrincipal* aOther, bool aExactHost,
     return NS_OK;
   }
 
-  // Compare their OriginAttributes
-  const mozilla::OriginAttributes& theirAttrs = aOther->OriginAttributesRef();
-  const mozilla::OriginAttributes& ourAttrs = OriginAttributesRef();
-
-  if (theirAttrs != ourAttrs) {
-    return NS_OK;
-  }
-
   nsCOMPtr<nsIURI> ourURI;
   nsresult rv = GetURI(getter_AddRefs(ourURI));
   NS_ENSURE_SUCCESS(rv, rv);
-  auto* basePrin = BasePrincipal::Cast(aOther);
+  // Some principal types may indicate success, but still return nullptr for
+  // URI.
+  NS_ENSURE_TRUE(ourURI, NS_ERROR_FAILURE);
 
   nsCOMPtr<nsIURI> otherURI;
-  rv = basePrin->GetURI(getter_AddRefs(otherURI));
+  rv = other->GetURI(getter_AddRefs(otherURI));
   NS_ENSURE_SUCCESS(rv, rv);
+  NS_ENSURE_TRUE(otherURI, NS_ERROR_FAILURE);
+
   // Compare schemes
   nsAutoCString otherScheme;
   rv = otherURI->GetScheme(otherScheme);
@@ -531,6 +624,7 @@ BasePrincipal::SubsumesConsideringDomainIgnoringFPD(nsIPrincipal* aOther,
 
 NS_IMETHODIMP
 BasePrincipal::CheckMayLoad(nsIURI* aURI, bool aAllowIfInheritsPrincipal) {
+  AssertIsOnMainThread();
   return CheckMayLoadHelper(aURI, aAllowIfInheritsPrincipal, false, 0);
 }
 
@@ -538,6 +632,7 @@ NS_IMETHODIMP
 BasePrincipal::CheckMayLoadWithReporting(nsIURI* aURI,
                                          bool aAllowIfInheritsPrincipal,
                                          uint64_t aInnerWindowID) {
+  AssertIsOnMainThread();
   return CheckMayLoadHelper(aURI, aAllowIfInheritsPrincipal, true,
                             aInnerWindowID);
 }
@@ -546,6 +641,8 @@ nsresult BasePrincipal::CheckMayLoadHelper(nsIURI* aURI,
                                            bool aAllowIfInheritsPrincipal,
                                            bool aReport,
                                            uint64_t aInnerWindowID) {
+  AssertIsOnMainThread();  // Accesses non-threadsafe URI flags and the
+                           // non-threadsafe ExtensionPolicyService
   NS_ENSURE_ARG_POINTER(aURI);
   MOZ_ASSERT(
       aReport || aInnerWindowID == 0,
@@ -570,6 +667,8 @@ nsresult BasePrincipal::CheckMayLoadHelper(nsIURI* aURI,
     }
   }
 
+  // Web Accessible Resources in MV2 Extensions are marked with
+  // URI_FETCHABLE_BY_ANYONE
   bool fetchableByAnyone;
   rv = NS_URIChainHasFlags(aURI, nsIProtocolHandler::URI_FETCHABLE_BY_ANYONE,
                            &fetchableByAnyone);
@@ -577,14 +676,32 @@ nsresult BasePrincipal::CheckMayLoadHelper(nsIURI* aURI,
     return NS_OK;
   }
 
-  if (aReport) {
-    nsCOMPtr<nsIURI> prinURI;
-    rv = GetURI(getter_AddRefs(prinURI));
-    if (NS_SUCCEEDED(rv) && prinURI) {
-      nsScriptSecurityManager::ReportError(
-          "CheckSameOriginError", prinURI, aURI,
-          mOriginAttributes.mPrivateBrowsingId > 0, aInnerWindowID);
+  // Get the principal uri for the last flag check or error.
+  nsCOMPtr<nsIURI> prinURI;
+  rv = GetURI(getter_AddRefs(prinURI));
+  if (!(NS_SUCCEEDED(rv) && prinURI)) {
+    return NS_ERROR_DOM_BAD_URI;
+  }
+
+  // If MV3 Extension uris are web accessible by this principal it is allowed to
+  // load.
+  bool maybeWebAccessible = false;
+  NS_URIChainHasFlags(aURI, nsIProtocolHandler::WEBEXT_URI_WEB_ACCESSIBLE,
+                      &maybeWebAccessible);
+  NS_ENSURE_SUCCESS(rv, rv);
+  if (maybeWebAccessible) {
+    bool isWebAccessible = false;
+    rv = ExtensionPolicyService::GetSingleton().SourceMayLoadExtensionURI(
+        prinURI, aURI, &isWebAccessible);
+    if (NS_SUCCEEDED(rv) && isWebAccessible) {
+      return NS_OK;
     }
+  }
+
+  if (aReport) {
+    nsScriptSecurityManager::ReportError(
+        "CheckSameOriginError", prinURI, aURI,
+        mOriginAttributes.mPrivateBrowsingId > 0, aInnerWindowID);
   }
 
   return NS_ERROR_DOM_BAD_URI;
@@ -592,7 +709,7 @@ nsresult BasePrincipal::CheckMayLoadHelper(nsIURI* aURI,
 
 NS_IMETHODIMP
 BasePrincipal::IsThirdPartyURI(nsIURI* aURI, bool* aRes) {
-  if (IsSystemPrincipal() || (AddonPolicy() && AddonAllowsLoad(aURI))) {
+  if (IsSystemPrincipal() || (AddonPolicyCore() && AddonAllowsLoad(aURI))) {
     *aRes = false;
     return NS_OK;
   }
@@ -618,8 +735,10 @@ BasePrincipal::IsThirdPartyPrincipal(nsIPrincipal* aPrin, bool* aRes) {
   }
   return aPrin->IsThirdPartyURI(prinURI, aRes);
 }
+
 NS_IMETHODIMP
 BasePrincipal::IsThirdPartyChannel(nsIChannel* aChan, bool* aRes) {
+  AssertIsOnMainThread();
   if (IsSystemPrincipal()) {
     // Nothing is 3rd party to the system principal.
     *aRes = false;
@@ -633,24 +752,22 @@ BasePrincipal::IsThirdPartyChannel(nsIChannel* aChan, bool* aRes) {
 }
 
 NS_IMETHODIMP
-BasePrincipal::IsSameOrigin(nsIURI* aURI, bool aIsPrivateWin, bool* aRes) {
+BasePrincipal::IsSameOrigin(nsIURI* aURI, bool* aRes) {
   *aRes = false;
   nsCOMPtr<nsIURI> prinURI;
   nsresult rv = GetURI(getter_AddRefs(prinURI));
   if (NS_FAILED(rv) || !prinURI) {
+    // Note that expanded and system principals return here, because they have
+    // no URI.
     return NS_OK;
   }
-  nsIScriptSecurityManager* ssm = nsContentUtils::GetSecurityManager();
-  if (!ssm) {
-    return NS_ERROR_UNEXPECTED;
-  }
-  *aRes = NS_SUCCEEDED(
-      ssm->CheckSameOriginURI(prinURI, aURI, false, aIsPrivateWin));
+  *aRes = nsScriptSecurityManager::SecurityCompareURIs(prinURI, aURI);
   return NS_OK;
 }
 
 NS_IMETHODIMP
 BasePrincipal::IsL10nAllowed(nsIURI* aURI, bool* aRes) {
+  AssertIsOnMainThread();  // URI_DANGEROUS_TO_LOAD is not threadsafe to query.
   *aRes = false;
 
   if (nsContentUtils::IsErrorPage(aURI)) {
@@ -688,7 +805,7 @@ BasePrincipal::IsL10nAllowed(nsIURI* aURI, bool* aRes) {
     return NS_OK;
   }
 
-  auto policy = AddonPolicy();
+  auto policy = AddonPolicyCore();
   *aRes = (policy && policy->IsPrivileged());
   return NS_OK;
 }
@@ -746,6 +863,7 @@ NS_IMETHODIMP
 BasePrincipal::HasFirstpartyStorageAccess(mozIDOMWindow* aCheckWindow,
                                           uint32_t* aRejectedReason,
                                           bool* aOutAllowed) {
+  AssertIsOnMainThread();
   *aRejectedReason = 0;
   *aOutAllowed = false;
 
@@ -755,8 +873,7 @@ BasePrincipal::HasFirstpartyStorageAccess(mozIDOMWindow* aCheckWindow,
   if (NS_FAILED(rv)) {
     return rv;
   }
-  *aOutAllowed =
-      ContentBlocking::ShouldAllowAccessFor(win, uri, aRejectedReason);
+  *aOutAllowed = ShouldAllowAccessFor(win, uri, aRejectedReason);
   return NS_OK;
 }
 
@@ -872,7 +989,7 @@ BasePrincipal::GetIsSystemPrincipal(bool* aResult) {
 
 NS_IMETHODIMP
 BasePrincipal::GetIsAddonOrExpandedAddonPrincipal(bool* aResult) {
-  *aResult = AddonPolicy() || ContentScriptAddonPolicy();
+  *aResult = AddonPolicyCore() || ContentScriptAddonPolicyCore();
   return NS_OK;
 }
 
@@ -956,7 +1073,7 @@ BasePrincipal::SchemeIs(const char* aScheme, bool* aResult) {
   *aResult = false;
   nsCOMPtr<nsIURI> prinURI;
   nsresult rv = GetURI(getter_AddRefs(prinURI));
-  if (NS_FAILED(rv) || !prinURI) {
+  if (NS_WARN_IF(NS_FAILED(rv)) || !prinURI) {
     return NS_OK;
   }
   *aResult = prinURI->SchemeIs(aScheme);
@@ -965,6 +1082,7 @@ BasePrincipal::SchemeIs(const char* aScheme, bool* aResult) {
 
 NS_IMETHODIMP
 BasePrincipal::IsURIInPrefList(const char* aPref, bool* aResult) {
+  AssertIsOnMainThread();
   *aResult = false;
   nsCOMPtr<nsIURI> prinURI;
   nsresult rv = GetURI(getter_AddRefs(prinURI));
@@ -976,8 +1094,40 @@ BasePrincipal::IsURIInPrefList(const char* aPref, bool* aResult) {
 }
 
 NS_IMETHODIMP
+BasePrincipal::IsURIInList(const nsACString& aList, bool* aResult) {
+  *aResult = false;
+  nsCOMPtr<nsIURI> prinURI;
+
+  nsresult rv = GetURI(getter_AddRefs(prinURI));
+  if (NS_FAILED(rv) || !prinURI) {
+    return NS_OK;
+  }
+
+  *aResult = nsContentUtils::IsURIInList(prinURI, nsCString(aList));
+  return NS_OK;
+}
+
+NS_IMETHODIMP
+BasePrincipal::IsContentAccessibleAboutURI(bool* aResult) {
+  *aResult = false;
+
+  nsCOMPtr<nsIURI> prinURI;
+  nsresult rv = GetURI(getter_AddRefs(prinURI));
+  if (NS_FAILED(rv) || !prinURI) {
+    return NS_OK;
+  }
+
+  if (!prinURI->SchemeIs("about")) {
+    return NS_OK;
+  }
+
+  *aResult = NS_IsContentAccessibleAboutURI(prinURI);
+  return NS_OK;
+}
+
+NS_IMETHODIMP
 BasePrincipal::GetIsOriginPotentiallyTrustworthy(bool* aResult) {
-  MOZ_ASSERT(NS_IsMainThread());
+  AssertIsOnMainThread();
   *aResult = false;
 
   nsCOMPtr<nsIURI> uri;
@@ -991,7 +1141,21 @@ BasePrincipal::GetIsOriginPotentiallyTrustworthy(bool* aResult) {
 }
 
 NS_IMETHODIMP
+BasePrincipal::GetIsLoopbackHost(bool* aRes) {
+  AssertIsOnMainThread();
+  *aRes = false;
+  nsAutoCString host;
+  nsresult rv = GetHost(host);
+  // Swallow potential failure as this method is infallible.
+  NS_ENSURE_SUCCESS(rv, NS_OK);
+
+  *aRes = nsMixedContentBlocker::IsPotentiallyTrustworthyLoopbackHost(host);
+  return NS_OK;
+}
+
+NS_IMETHODIMP
 BasePrincipal::GetAboutModuleFlags(uint32_t* flags) {
+  AssertIsOnMainThread();
   *flags = 0;
   nsCOMPtr<nsIURI> prinURI;
   nsresult rv = GetURI(getter_AddRefs(prinURI));
@@ -1045,21 +1209,36 @@ BasePrincipal::GetIsInIsolatedMozBrowserElement(
   return NS_OK;
 }
 
-nsresult BasePrincipal::GetAddonPolicy(nsISupports** aResult) {
+nsresult BasePrincipal::GetAddonPolicy(
+    extensions::WebExtensionPolicy** aResult) {
+  AssertIsOnMainThread();
   RefPtr<extensions::WebExtensionPolicy> policy(AddonPolicy());
   policy.forget(aResult);
   return NS_OK;
 }
 
+nsresult BasePrincipal::GetContentScriptAddonPolicy(
+    extensions::WebExtensionPolicy** aResult) {
+  RefPtr<extensions::WebExtensionPolicy> policy(ContentScriptAddonPolicy());
+  policy.forget(aResult);
+  return NS_OK;
+}
+
 extensions::WebExtensionPolicy* BasePrincipal::AddonPolicy() {
+  AssertIsOnMainThread();
+  RefPtr<extensions::WebExtensionPolicyCore> core = AddonPolicyCore();
+  return core ? core->GetMainThreadPolicy() : nullptr;
+}
+
+RefPtr<extensions::WebExtensionPolicyCore> BasePrincipal::AddonPolicyCore() {
   if (Is<ContentPrincipal>()) {
-    return As<ContentPrincipal>()->AddonPolicy();
+    return As<ContentPrincipal>()->AddonPolicyCore();
   }
   return nullptr;
 }
 
 bool BasePrincipal::AddonHasPermission(const nsAtom* aPerm) {
-  if (auto policy = AddonPolicy()) {
+  if (auto policy = AddonPolicyCore()) {
     return policy->HasPermission(aPerm);
   }
   return false;
@@ -1072,8 +1251,23 @@ nsIPrincipal* BasePrincipal::PrincipalToInherit(nsIURI* aRequestedURI) {
   return this;
 }
 
+bool BasePrincipal::OverridesCSP(nsIPrincipal* aDocumentPrincipal) {
+  MOZ_ASSERT(aDocumentPrincipal);
+
+  // Expanded principals override CSP if and only if they subsume the document
+  // principal.
+  if (mKind == eExpandedPrincipal) {
+    return FastSubsumes(aDocumentPrincipal);
+  }
+  // Extension principals always override the CSP of non-extension principals.
+  // This is primarily for the sake of their stylesheets, which are usually
+  // loaded from channels and cannot have expanded principals.
+  return (AddonPolicyCore() &&
+          !BasePrincipal::Cast(aDocumentPrincipal)->AddonPolicyCore());
+}
+
 already_AddRefed<BasePrincipal> BasePrincipal::CreateContentPrincipal(
-    nsIURI* aURI, const OriginAttributes& aAttrs) {
+    nsIURI* aURI, const OriginAttributes& aAttrs, nsIURI* aInitialDomain) {
   MOZ_ASSERT(aURI);
 
   nsAutoCString originNoSuffix;
@@ -1085,12 +1279,12 @@ already_AddRefed<BasePrincipal> BasePrincipal::CreateContentPrincipal(
     return NullPrincipal::Create(aAttrs);
   }
 
-  return CreateContentPrincipal(aURI, aAttrs, originNoSuffix);
+  return CreateContentPrincipal(aURI, aAttrs, originNoSuffix, aInitialDomain);
 }
 
 already_AddRefed<BasePrincipal> BasePrincipal::CreateContentPrincipal(
     nsIURI* aURI, const OriginAttributes& aAttrs,
-    const nsACString& aOriginNoSuffix) {
+    const nsACString& aOriginNoSuffix, nsIURI* aInitialDomain) {
   MOZ_ASSERT(aURI);
   MOZ_ASSERT(!aOriginNoSuffix.IsEmpty());
 
@@ -1116,7 +1310,8 @@ already_AddRefed<BasePrincipal> BasePrincipal::CreateContentPrincipal(
     }
     MOZ_ASSERT(origin);
     OriginAttributes attrs;
-    RefPtr<BasePrincipal> principal = CreateContentPrincipal(origin, attrs);
+    RefPtr<BasePrincipal> principal =
+        CreateContentPrincipal(origin, attrs, aInitialDomain);
     return principal.forget();
   }
 #endif
@@ -1125,13 +1320,15 @@ already_AddRefed<BasePrincipal> BasePrincipal::CreateContentPrincipal(
   if (dom::BlobURLProtocolHandler::GetBlobURLPrincipal(
           aURI, getter_AddRefs(blobPrincipal))) {
     MOZ_ASSERT(blobPrincipal);
+    MOZ_ASSERT(!aInitialDomain,
+               "an initial domain for a blob URI makes no sense");
     RefPtr<BasePrincipal> principal = Cast(blobPrincipal);
     return principal.forget();
   }
 
   // Mint a content principal.
   RefPtr<ContentPrincipal> principal =
-      new ContentPrincipal(aURI, aAttrs, aOriginNoSuffix);
+      new ContentPrincipal(aURI, aAttrs, aOriginNoSuffix, aInitialDomain);
   return principal.forget();
 }
 
@@ -1171,19 +1368,29 @@ already_AddRefed<BasePrincipal> BasePrincipal::CloneForcingOriginAttributes(
   nsCOMPtr<nsIURI> uri;
   MOZ_ALWAYS_SUCCEEDS(GetURI(getter_AddRefs(uri)));
 
+  // XXX: This does not copy over the domain. Should it?
   RefPtr<ContentPrincipal> copy =
-      new ContentPrincipal(uri, aOriginAttributes, originNoSuffix);
+      new ContentPrincipal(uri, aOriginAttributes, originNoSuffix, nullptr);
   return copy.forget();
 }
 
 extensions::WebExtensionPolicy* BasePrincipal::ContentScriptAddonPolicy() {
+  AssertIsOnMainThread();
+  RefPtr<extensions::WebExtensionPolicyCore> core =
+      ContentScriptAddonPolicyCore();
+  return core ? core->GetMainThreadPolicy() : nullptr;
+}
+
+RefPtr<extensions::WebExtensionPolicyCore>
+BasePrincipal::ContentScriptAddonPolicyCore() {
   if (!Is<ExpandedPrincipal>()) {
     return nullptr;
   }
 
-  auto expanded = As<ExpandedPrincipal>();
-  for (auto& prin : expanded->AllowList()) {
-    if (auto policy = BasePrincipal::Cast(prin)->AddonPolicy()) {
+  auto* expanded = As<ExpandedPrincipal>();
+  for (const auto& prin : expanded->AllowList()) {
+    if (RefPtr<extensions::WebExtensionPolicyCore> policy =
+            BasePrincipal::Cast(prin)->AddonPolicyCore()) {
       return policy;
     }
   }
@@ -1196,7 +1403,7 @@ bool BasePrincipal::AddonAllowsLoad(nsIURI* aURI,
   if (Is<ExpandedPrincipal>()) {
     return As<ExpandedPrincipal>()->AddonAllowsLoad(aURI, aExplicit);
   }
-  if (auto policy = AddonPolicy()) {
+  if (auto policy = AddonPolicyCore()) {
     return policy->CanAccessURI(aURI, aExplicit);
   }
   return false;
@@ -1348,6 +1555,7 @@ BasePrincipal::GetStorageOriginKey(nsACString& aOriginKey) {
 
 NS_IMETHODIMP
 BasePrincipal::GetIsScriptAllowedByPolicy(bool* aIsScriptAllowedByPolicy) {
+  AssertIsOnMainThread();
   *aIsScriptAllowedByPolicy = false;
   nsCOMPtr<nsIURI> prinURI;
   nsresult rv = GetURI(getter_AddRefs(prinURI));
@@ -1383,6 +1591,12 @@ BasePrincipal::CreateReferrerInfo(mozilla::dom::ReferrerPolicy aReferrerPolicy,
   return NS_OK;
 }
 
+NS_IMETHODIMP
+BasePrincipal::GetPrecursorPrincipal(nsIPrincipal** aPrecursor) {
+  *aPrecursor = nullptr;
+  return NS_OK;
+}
+
 NS_IMPL_ADDREF(BasePrincipal::Deserializer)
 NS_IMPL_RELEASE(BasePrincipal::Deserializer)
 
@@ -1399,6 +1613,13 @@ BasePrincipal::Deserializer::Write(nsIObjectOutputStream* aStream) {
   // Read is used still for legacy principals
   MOZ_RELEASE_ASSERT(false, "Old style serialization is removed");
   return NS_OK;
+}
+
+/* static */
+void BasePrincipal::SetJSONValue(Json::Value& aObject, const char* aKey,
+                                 const nsCString& aValue) {
+  aObject[Json::StaticString(aKey)] =
+      Json::Value(aValue.BeginReading(), aValue.EndReading());
 }
 
 }  // namespace mozilla

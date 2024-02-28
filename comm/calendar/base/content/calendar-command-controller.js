@@ -2,29 +2,18 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-/* import-globals-from ../../../../toolkit/content/globalOverlay.js */
-/* import-globals-from ../../../mail/base/content/utilityOverlay.js */
-/* import-globals-from ../../../mail/base/content/mailWindow.js */
-/* import-globals-from item-editing/calendar-item-editing.js */
-/* import-globals-from agenda-listbox-utils.js */
-/* import-globals-from calendar-clipboard.js */
-/* import-globals-from calendar-management.js */
-/* import-globals-from calendar-modes.js */
-/* import-globals-from calendar-tabs.js */
-/* import-globals-from calendar-task-tree-utils.js */
-/* import-globals-from calendar-ui-utils.js */
-/* import-globals-from calendar-unifinder.js */
-/* import-globals-from calendar-views-utils.js */
-/* import-globals-from import-export.js */
-/* import-globals-from publish.js */
+/* globals goUpdateCommand, currentView, TodayPane, createEventWithDialog,
+   getSelectedCalendar, editSelectedEvents, viewSelectedEvents,
+   modifyTaskFromContext, deleteSelectedEvents, setupAttendanceMenu,
+   createTodoWithDialog, deleteToDoCommand, promptDeleteCalendar,
+   toImport, loadEventsFromFile, exportEntireCalendar, saveEventsToFile,
+   publishEntireCalendar, publishCalendarData, toggleUnifinder, toggleOrientation
+   toggleWorkdaysOnly, switchCalendarView, getTaskTree, selectAllEvents,
+   gCurrentMode, getSelectedTasks, canPaste, goSetMenuValue, canUndo, canRedo,
+   cutToClipboard, copyToClipboard, pasteFromClipboard, undo, redo,
+   PrintUtils */
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 var { cal } = ChromeUtils.import("resource:///modules/calendar/calUtils.jsm");
-
-/* exported injectCalendarCommandController, removeCalendarCommandController,
- *          setupContextItemType, getSelectedItems,
- *          deleteSelectedItems, calendarUpdateNewItemsCommand
- */
 
 var CalendarDeleteCommandEnabled = false;
 var CalendarNewEventsCommandEnabled = false;
@@ -32,15 +21,15 @@ var CalendarNewTasksCommandEnabled = false;
 
 /**
  * Command controller to execute calendar specific commands
+ *
  * @see nsICommandController
  */
 var calendarController = {
-  defaultController: null,
-
   commands: new Set([
     // Common commands
     "calendar_new_event_command",
     "calendar_new_event_context_command",
+    "calendar_new_event_todaypane_command",
     "calendar_modify_event_command",
     "calendar_view_event_command",
     "calendar_delete_event_command",
@@ -51,6 +40,7 @@ var calendarController = {
     "calendar_new_todo_command",
     "calendar_new_todo_context_command",
     "calendar_new_todo_todaypane_command",
+    "calendar_toggle_tasks_in_view_command",
     "calendar_modify_todo_command",
     "calendar_modify_todo_todaypane_command",
     "calendar_delete_todo_command",
@@ -122,9 +112,6 @@ var calendarController = {
     if (this.commands.has(aCommand)) {
       return true;
     }
-    if (this.defaultContoller) {
-      return this.defaultContoller.supportsCommand(aCommand);
-    }
     return false;
   },
 
@@ -136,7 +123,7 @@ var calendarController = {
       case "calendar_new_event_todaypane_command":
         return CalendarNewEventsCommandEnabled;
       case "calendar_modify_focused_item_command":
-        return this.item_selected;
+        return this.item_selected && canEditSelectedItems();
       case "calendar_modify_event_command":
         return this.item_selected && canEditSelectedItems();
       case "calendar_view_event_command":
@@ -148,6 +135,7 @@ var calendarController = {
       case "calendar_new_todo_command":
       case "calendar_new_todo_context_command":
       case "calendar_new_todo_todaypane_command":
+      case "calendar_toggle_tasks_in_view_command":
         return CalendarNewTasksCommandEnabled;
       case "calendar_modify_todo_command":
       case "calendar_modify_todo_todaypane_command":
@@ -244,12 +232,7 @@ var calendarController = {
         return this.isInMode("task");
 
       case "cmd_selectAll":
-        if (this.todo_tasktree_focused || this.isInMode("calendar")) {
-          return true;
-        } else if (this.defaultController.supportsCommand(aCommand)) {
-          return this.defaultController.isCommandEnabled(aCommand);
-        }
-        break;
+        return this.todo_tasktree_focused || this.isInMode("calendar");
 
       // for events/tasks in a tab
       case "cmd_save":
@@ -260,24 +243,6 @@ var calendarController = {
       }
 
       default:
-        if (this.defaultController && !this.isCalendarInForeground()) {
-          // The delete-button demands a special handling in mail-mode
-          // as it is supposed to delete an element of the focused pane
-          if (aCommand == "cmd_delete" || aCommand == "button_delete") {
-            let focusedElement = document.commandDispatcher.focusedElement;
-            if (focusedElement) {
-              if (focusedElement.getAttribute("id") == "agenda-listbox") {
-                return agendaListbox.isEventSelected();
-              } else if (focusedElement.className == "calendar-task-tree") {
-                return this.writable && this.todo_items_selected && this.todo_items_writable;
-              }
-            }
-          }
-
-          if (this.defaultController.supportsCommand(aCommand)) {
-            return this.defaultController.isCommandEnabled(aCommand);
-          }
-        }
         if (this.commands.has(aCommand)) {
           // All other commands we support should be enabled by default
           return true;
@@ -304,6 +269,9 @@ var calendarController = {
         createEventWithDialog(getSelectedCalendar(), newStart, null, null, null, newStart.isDate);
         break;
       }
+      case "calendar_new_event_todaypane_command":
+        createEventWithDialog(getSelectedCalendar(), cal.dtz.getDefaultStartDate(TodayPane.start));
+        break;
       case "calendar_modify_event_command":
         editSelectedEvents();
         break;
@@ -312,17 +280,12 @@ var calendarController = {
         break;
       case "calendar_modify_focused_item_command": {
         let focusedElement = document.commandDispatcher.focusedElement;
-        if (!focusedElement && this.defaultController && !this.isCalendarInForeground()) {
-          this.defaultController.doCommand(aCommand);
-        } else {
-          let focusedRichListbox = cal.view.getParentNodeOrThis(focusedElement, "richlistbox");
-          if (focusedRichListbox && focusedRichListbox.id == "agenda-listbox") {
-            agendaListbox.editSelectedItem();
-          } else if (focusedElement && focusedElement.className == "calendar-task-tree") {
-            modifyTaskFromContext();
-          } else if (this.isInMode("calendar")) {
-            editSelectedEvents();
-          }
+        if (focusedElement == TodayPane.agenda) {
+          TodayPane.agenda.editSelectedItem();
+        } else if (focusedElement && focusedElement.className == "calendar-task-tree") {
+          modifyTaskFromContext();
+        } else if (this.isInMode("calendar")) {
+          editSelectedEvents();
         }
         break;
       }
@@ -331,17 +294,12 @@ var calendarController = {
         break;
       case "calendar_delete_focused_item_command": {
         let focusedElement = document.commandDispatcher.focusedElement;
-        if (!focusedElement && this.defaultController && !this.isCalendarInForeground()) {
-          this.defaultController.doCommand(aCommand);
-        } else {
-          let focusedRichListbox = cal.view.getParentNodeOrThis(focusedElement, "richlistbox");
-          if (focusedRichListbox && focusedRichListbox.id == "agenda-listbox") {
-            agendaListbox.deleteSelectedItem(false);
-          } else if (focusedElement && focusedElement.className == "calendar-task-tree") {
-            deleteToDoCommand(null, false);
-          } else if (this.isInMode("calendar")) {
-            deleteSelectedEvents();
-          }
+        if (focusedElement == TodayPane.agenda) {
+          TodayPane.agenda.deleteSelectedItem(false);
+        } else if (focusedElement && focusedElement.className == "calendar-task-tree") {
+          deleteToDoCommand(false);
+        } else if (this.isInMode("calendar")) {
+          deleteSelectedEvents();
         }
         break;
       }
@@ -368,31 +326,35 @@ var calendarController = {
           null,
           null,
           null,
-          cal.dtz.getDefaultStartDate(agendaListbox.today.start)
+          cal.dtz.getDefaultStartDate(TodayPane.start)
         );
         break;
       case "calendar_delete_todo_command":
         deleteToDoCommand();
         break;
       case "calendar_modify_todo_command":
-        modifyTaskFromContext(null, cal.dtz.getDefaultStartDate(currentView().selectedDay));
+        modifyTaskFromContext(cal.dtz.getDefaultStartDate(currentView().selectedDay));
         break;
       case "calendar_modify_todo_todaypane_command":
-        modifyTaskFromContext(null, cal.dtz.getDefaultStartDate(agendaListbox.today.start));
+        modifyTaskFromContext(cal.dtz.getDefaultStartDate(TodayPane.start));
         break;
 
       case "calendar_new_calendar_command":
         cal.window.openCalendarWizard(window);
         break;
       case "calendar_edit_calendar_command":
-        cal.window.openCalendarProperties(window, getSelectedCalendar());
+        cal.window.openCalendarProperties(window, { calendar: getSelectedCalendar() });
         break;
       case "calendar_delete_calendar_command":
         promptDeleteCalendar(getSelectedCalendar());
         break;
 
       case "calendar_import_command":
-        loadEventsFromFile();
+        if (Services.prefs.getBoolPref("mail.import.in_new_tab")) {
+          toImport("calendar");
+        } else {
+          loadEventsFromFile();
+        }
         break;
       case "calendar_export_command":
         exportEntireCalendar();
@@ -447,27 +409,12 @@ var calendarController = {
         break;
 
       case "cmd_selectAll":
-        if (
-          !this.todo_tasktree_focused &&
-          this.defaultController &&
-          !this.isCalendarInForeground()
-        ) {
-          // Unless a task tree is focused, make the default controller
-          // take care.
-          this.defaultController.doCommand(aCommand);
-        } else if (this.todo_tasktree_focused) {
+        if (this.todo_tasktree_focused) {
           getTaskTree().selectAll();
         } else if (this.isInMode("calendar")) {
           selectAllEvents();
         }
         break;
-
-      default:
-        if (this.defaultController && !this.isCalendarInForeground()) {
-          // If calendar is not in foreground, let the default controller take
-          // care. If we don't have a default controller, just continue.
-          this.defaultController.doCommand(aCommand);
-        }
     }
   },
 
@@ -552,10 +499,7 @@ var calendarController = {
    * calendar.
    */
   get writable() {
-    return cal
-      .getCalendarManager()
-      .getCalendars()
-      .some(cal.acl.isCalendarWritable);
+    return cal.manager.getCalendars().some(cal.acl.isCalendarWritable);
   },
 
   /**
@@ -567,21 +511,12 @@ var calendarController = {
   },
 
   /**
-   * Returns a boolean indicating if all calendars are readonly.
-   */
-  get all_readonly() {
-    let calMgr = cal.getCalendarManager();
-    return calMgr.readOnlyCalendarCount == calMgr.calendarCount;
-  },
-
-  /**
    * Returns a boolean indicating whether there is at least one enabled
    * calendar that can be reloaded. Note: ICS calendars can have a network URL
    * or a file URL, but both are reloadable.
    */
   get has_enabled_reloadable_calendars() {
-    return cal
-      .getCalendarManager()
+    return cal.manager
       .getCalendars()
       .some(
         calendar =>
@@ -591,50 +526,10 @@ var calendarController = {
   },
 
   /**
-   * Returns a boolean indicating if there are calendars that don't require
-   * network access.
-   */
-  get has_local_calendars() {
-    let calMgr = cal.getCalendarManager();
-    return calMgr.networkCalendarCount < calMgr.calendarCount;
-  },
-
-  /**
-   * Returns a boolean indicating if there are cached calendars and thus that don't require
-   * network access.
-   */
-  get has_cached_calendars() {
-    let calMgr = cal.getCalendarManager();
-    let calendars = calMgr.getCalendars();
-    for (let calendar of calendars) {
-      if (calendar.getProperty("cache.enabled") || calendar.getProperty("cache.always")) {
-        return true;
-      }
-    }
-    return false;
-  },
-
-  /**
    * Returns a boolean indicating that there is only one calendar left.
    */
   get last_calendar() {
-    return cal.getCalendarManager().calendarCount < 2;
-  },
-
-  /**
-   * Returns a boolean indicating that all local calendars are readonly
-   */
-  get all_local_calendars_readonly() {
-    // We might want to speed this part up by keeping track of this in the
-    // calendar manager.
-    let calendars = cal.getCalendarManager().getCalendars();
-    let count = calendars.length;
-    for (let calendar of calendars) {
-      if (!cal.acl.isCalendarWritable(calendar)) {
-        count--;
-      }
-    }
-    return count == 0;
+    return cal.manager.calendarCount < 2;
   },
 
   /**
@@ -698,8 +593,6 @@ var calendarController = {
  * superseded by a new command controller architecture.
  */
 var calendarController2 = {
-  defaultController: null,
-
   commands: new Set([
     "cmd_cut",
     "cmd_copy",
@@ -814,8 +707,10 @@ var calendarController2 = {
  * inserted before the conflicting Thunderbird command controller.
  */
 function injectCalendarCommandController() {
-  calendarController.defaultController = document.getElementById("tabmail").tabController;
-  top.controllers.insertControllerAt(0, calendarController);
+  // This is the third-highest priority controller. It's preceded by
+  // DefaultController and tabmail.tabController, and followed by
+  // calendarController, then whatever Gecko adds.
+  top.controllers.insertControllerAt(2, calendarController);
   document.commandDispatcher.updateCommands("calendar_commands");
 }
 
@@ -834,7 +729,7 @@ function removeCalendarCommandController() {
  *                                   triggered by opening the context menu
  * @param  {Array.<calIItemBase>}  aItems   An array of items (usually the selected
  *                                            items) to adapt the context menu for
- * @return {Boolean}                        True, to show the popup menu.
+ * @returns {boolean} True, to show the popup menu.
  */
 function setupContextItemType(aEvent, aItems) {
   function adaptModificationMenuItem(aMenuItemId, aItemType) {
@@ -902,10 +797,13 @@ function deleteSelectedItems() {
   }
 }
 
+/**
+ * Checks if any calendar allows new events and tasks to be added, otherwise
+ * disables the creation buttons.
+ */
 function calendarUpdateNewItemsCommand() {
   // Re-calculate command status.
-  let calendars = cal
-    .getCalendarManager()
+  let calendars = cal.manager
     .getCalendars()
     .filter(cal.acl.isCalendarWritable)
     .filter(cal.acl.userCanAddItemsToCalendar);
@@ -916,10 +814,15 @@ function calendarUpdateNewItemsCommand() {
   [
     "calendar_new_event_command",
     "calendar_new_event_context_command",
+    "calendar_new_event_todaypane_command",
     "calendar_new_todo_command",
     "calendar_new_todo_context_command",
     "calendar_new_todo_todaypane_command",
+    "calendar_toggle_tasks_in_view_command",
   ].forEach(goUpdateCommand);
+
+  document.getElementById("sidePanelNewEvent").disabled = !CalendarNewEventsCommandEnabled;
+  document.getElementById("sidePanelNewTask").disabled = !CalendarNewTasksCommandEnabled;
 }
 
 function calendarUpdateDeleteCommand(selectedItems) {
@@ -953,37 +856,14 @@ async function printCalendar() {
   // Ensure the printing of this file will be detected by calPrintUtils.jsm.
   cal.print.ensureInitialized();
 
-  let printBrowser = document.getElementById("calendarPrintContent");
-  if (printBrowser.currentURI.spec == "about:blank") {
-    // The template page hasn't been loaded yet. Do that now.
-    await new Promise(resolve => {
-      // Store a strong reference to this progress listener.
-      printBrowser.progressListener = {
-        QueryInterface: ChromeUtils.generateQI([
-          "nsIWebProgressListener",
-          "nsISupportsWeakReference",
-        ]),
-
-        /** nsIWebProgressListener */
-        onStateChange(webProgress, request, stateFlags, status) {
-          if (
-            stateFlags & Ci.nsIWebProgressListener.STATE_STOP &&
-            printBrowser.currentURI.spec != "about:blank"
-          ) {
-            printBrowser.webProgress.removeProgressListener(this);
-            delete printBrowser.progressListener;
-            resolve();
-          }
-        },
-      };
-
-      printBrowser.webProgress.addProgressListener(
-        printBrowser.progressListener,
-        Ci.nsIWebProgress.NOTIFY_STATE_ALL
-      );
-      MailE10SUtils.loadURI(printBrowser, "chrome://calendar/content/printing-template.html");
-    });
-  }
-
-  PrintUtils.startPrintWindow(printBrowser.browsingContext, {});
+  await PrintUtils.loadPrintBrowser("chrome://calendar/content/printing-template.html");
+  PrintUtils.startPrintWindow(PrintUtils.printBrowser.browsingContext, {});
+}
+/**
+ * Toggle the visibility of the calendars list.
+ *
+ * @param {Event} event - The click DOMEvent.
+ */
+function toggleVisibilityCalendarsList(event) {
+  document.getElementById("calendar-list-inner-pane").togglePane(event);
 }

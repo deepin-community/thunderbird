@@ -5,40 +5,30 @@
 /* This file is a copy of mozilla/toolkit/content/aboutSupport.js with
    modifications for TB. */
 
-/* globals AboutSupportPlatform, populateAccountsSection, sendViaEmail 
-    populateCalendarsSection */
+/* globals AboutSupportPlatform, populateAccountsSection, sendViaEmail
+    populateCalendarsSection, populateChatSection, populateLibrarySection */
 
 "use strict";
 
-var { XPCOMUtils } = ChromeUtils.import(
-  "resource://gre/modules/XPCOMUtils.jsm"
+var { XPCOMUtils } = ChromeUtils.importESModule(
+  "resource://gre/modules/XPCOMUtils.sys.mjs"
 );
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-var { Troubleshoot } = ChromeUtils.import(
-  "resource://gre/modules/Troubleshoot.jsm"
+var { Troubleshoot } = ChromeUtils.importESModule(
+  "resource://gre/modules/Troubleshoot.sys.mjs"
 );
-var { ResetProfile } = ChromeUtils.import(
-  "resource://gre/modules/ResetProfile.jsm"
+var { ResetProfile } = ChromeUtils.importESModule(
+  "resource://gre/modules/ResetProfile.sys.mjs"
 );
-var { AppConstants } = ChromeUtils.import(
-  "resource://gre/modules/AppConstants.jsm"
+var { AppConstants } = ChromeUtils.importESModule(
+  "resource://gre/modules/AppConstants.sys.mjs"
 );
 
-ChromeUtils.defineModuleGetter(
-  this,
-  "PluralForm",
-  "resource://gre/modules/PluralForm.jsm"
-);
-ChromeUtils.defineModuleGetter(
-  this,
-  "PlacesDBUtils",
-  "resource://gre/modules/PlacesDBUtils.jsm"
-);
-ChromeUtils.defineModuleGetter(
-  this,
-  "ProcessType",
-  "resource://gre/modules/ProcessType.jsm"
-);
+ChromeUtils.defineESModuleGetters(this, {
+  DownloadUtils: "resource://gre/modules/DownloadUtils.sys.mjs",
+  PlacesDBUtils: "resource://gre/modules/PlacesDBUtils.sys.mjs",
+  PluralForm: "resource://gre/modules/PluralForm.sys.mjs",
+  ProcessType: "resource://gre/modules/ProcessType.sys.mjs",
+});
 
 // added for TB
 /* Node classes. All of these are mutually exclusive. */
@@ -58,28 +48,50 @@ var CLASS_DATA_PUBLIC = "data-public";
 window.addEventListener("load", function onload(event) {
   try {
     window.removeEventListener("load", onload);
-    Troubleshoot.snapshot(async function(snapshot) {
+    Troubleshoot.snapshot().then(async snapshot => {
       for (let prop in snapshotFormatters) {
-        await snapshotFormatters[prop](snapshot[prop]);
+        try {
+          await snapshotFormatters[prop](snapshot[prop]);
+        } catch (e) {
+          console.error(
+            "stack of snapshot error for about:support: ",
+            e,
+            ": ",
+            e.stack
+          );
+        }
       }
-    });
+    }, console.error);
     populateActionBox();
     setupEventListeners();
+
+    let hasWinPackageId = false;
+    try {
+      hasWinPackageId = Services.sysinfo.getProperty("hasWinPackageId");
+    } catch (_ex) {
+      // The hasWinPackageId property doesn't exist; assume it would be false.
+    }
+    if (hasWinPackageId) {
+      $("update-dir-row").hidden = true;
+      $("update-history-row").hidden = true;
+    }
   } catch (e) {
-    Cu.reportError(
+    console.error(
       "stack of load error for about:support: " + e + ": " + e.stack
     );
   }
   // added for TB
   populateAccountsSection();
   populateCalendarsSection();
+  populateChatSection();
+  populateLibrarySection();
   document
     .getElementById("check-show-private-data")
     .addEventListener("change", () => onShowPrivateDataChange());
 });
 
 function prefsTable(data) {
-  return sortedArrayFromObject(data).map(function([name, value]) {
+  return sortedArrayFromObject(data).map(function ([name, value]) {
     return $.new("tr", [
       $.new("td", name, "pref-name"),
       // Very long preference values can cause users problems when they
@@ -111,6 +123,11 @@ var snapshotFormatters = {
     $("application-box").textContent = data.name;
     $("useragent-box").textContent = data.userAgent;
     $("os-box").textContent = data.osVersion;
+    if (data.osTheme) {
+      $("os-theme-box").textContent = data.osTheme;
+    } else {
+      $("os-theme-row").hidden = true;
+    }
     if (AppConstants.platform == "macosx") {
       $("rosetta-box").textContent = data.rosetta;
     }
@@ -158,7 +175,6 @@ var snapshotFormatters = {
       experimentTreatment: "fission-status-experiment-treatment",
       disabledByE10sEnv: "fission-status-disabled-by-e10s-env",
       enabledByEnv: "fission-status-enabled-by-env",
-      disabledBySafeMode: "fission-status-disabled-by-safe-mode",
       enabledByDefault: "fission-status-enabled-by-default",
       disabledByDefault: "fission-status-disabled-by-default",
       enabledByUserPref: "fission-status-enabled-by-user-pref",
@@ -239,6 +255,17 @@ var snapshotFormatters = {
 
     $("safemode-box").textContent = data.safeMode;
 
+    const formatHumanReadableBytes = (elem, bytes) => {
+      let size = DownloadUtils.convertByteUnits(bytes);
+      document.l10n.setAttributes(elem, "app-basics-data-size", {
+        value: size[0],
+        unit: size[1],
+      });
+    };
+
+    formatHumanReadableBytes($("memory-size-box"), data.memorySizeBytes);
+    formatHumanReadableBytes($("disk-available-box"), data.diskAvailableBytes);
+
     // added for TB
     // Add profile path as private info into the page.
     let currProfD = Services.dirsvc.get("ProfD", Ci.nsIFile);
@@ -247,7 +274,7 @@ var snapshotFormatters = {
     profDirNode.setAttribute("class", CLASS_DATA_PRIVATE);
     let profLinkNode = document.createElement("a");
     profLinkNode.setAttribute("href", Services.io.newFileURI(currProfD).spec);
-    profLinkNode.addEventListener("click", function(event) {
+    profLinkNode.addEventListener("click", function (event) {
       openProfileDirectory();
       event.preventDefault();
     });
@@ -270,7 +297,7 @@ var snapshotFormatters = {
         profElem.appendChild(fsTextNode);
       }
     } catch (x) {
-      Cu.reportError(x);
+      console.error(x);
     }
     // end of TB addition
   },
@@ -310,7 +337,7 @@ var snapshotFormatters = {
     let dateNow = new Date();
     $.append(
       $("crashes-tbody"),
-      data.submitted.map(function(crash) {
+      data.submitted.map(function (crash) {
         let date = new Date(crash.date);
         let timePassed = dateNow - date;
         let formattedDateStrId;
@@ -344,7 +371,7 @@ var snapshotFormatters = {
   addons(data) {
     $.append(
       $("addons-tbody"),
-      data.map(function(addon) {
+      data.map(function (addon) {
         return $.new("tr", [
           $.new("td", addon.name),
           $.new("td", addon.type),
@@ -393,9 +420,8 @@ var snapshotFormatters = {
       (a, b) => a + b,
       0
     );
-    document.querySelector(
-      "#remoteprocesses-row a"
-    ).textContent = remoteProcessesCount;
+    document.querySelector("#remoteprocesses-row a").textContent =
+      remoteProcessesCount;
 
     // Display the regular "web" process type first in the list,
     // and with special formatting.
@@ -443,7 +469,7 @@ var snapshotFormatters = {
     $.append(tbody, prefsTable(data));
     $("support-printing-clear-settings-button").addEventListener(
       "click",
-      function() {
+      function () {
         for (let name in data) {
           Services.prefs.clearUserPref(name);
         }
@@ -467,7 +493,7 @@ var snapshotFormatters = {
 
     // Read APZ info out of data.info, stripping it out in the process.
     let apzInfo = [];
-    let formatApzInfo = function(info) {
+    let formatApzInfo = function (info) {
       let out = [];
       for (let type of [
         "Wheel",
@@ -527,7 +553,7 @@ var snapshotFormatters = {
     if ("info" in data) {
       apzInfo = formatApzInfo(data.info);
 
-      let trs = sortedArrayFromObject(data.info).map(function([prop, val]) {
+      let trs = sortedArrayFromObject(data.info).map(function ([prop, val]) {
         let td = $.new("td", String(val));
         td.style["word-break"] = "break-all";
         return $.new("tr", [$.new("th", prop, "column"), td]);
@@ -545,7 +571,7 @@ var snapshotFormatters = {
       if (AppConstants.NIGHTLY_BUILD || AppConstants.MOZ_DEV_EDITION) {
         gpuProcessKillButton = $.new("button");
 
-        gpuProcessKillButton.addEventListener("click", function() {
+        gpuProcessKillButton.addEventListener("click", function () {
           windowUtils.terminateGPUProcess();
         });
 
@@ -567,7 +593,7 @@ var snapshotFormatters = {
     ) {
       let gpuDeviceResetButton = $.new("button");
 
-      gpuDeviceResetButton.addEventListener("click", function() {
+      gpuDeviceResetButton.addEventListener("click", function () {
         windowUtils.triggerDeviceReset();
       });
 
@@ -588,7 +614,7 @@ var snapshotFormatters = {
           let assembled = assembleFromGraphicsFailure(i, data);
           combined.push(assembled);
         }
-        combined.sort(function(a, b) {
+        combined.sort(function (a, b) {
           if (a.index < b.index) {
             return -1;
           }
@@ -599,7 +625,7 @@ var snapshotFormatters = {
         });
         $.append(
           $("graphics-failures-tbody"),
-          combined.map(function(val) {
+          combined.map(function (val) {
             return $.new("tr", [
               $.new("th", val.header, "column"),
               $.new("td", val.message),
@@ -613,7 +639,7 @@ var snapshotFormatters = {
             $.new("th", "LogFailure", "column"),
             $.new(
               "td",
-              data.failures.map(function(val) {
+              data.failures.map(function (val) {
                 return $.new("p", val);
               })
             ),
@@ -655,9 +681,6 @@ var snapshotFormatters = {
     let compositor = "";
     if (data.windowLayerManagerRemote) {
       compositor = data.windowLayerManagerType;
-      if (data.windowUsingAdvancedLayers) {
-        compositor += " (Advanced Layers)";
-      }
     } else {
       let noOMTCString = await document.l10n.formatValue("main-thread-no-omtc");
       compositor = "BasicLayers (" + noOMTCString + ")";
@@ -668,7 +691,6 @@ var snapshotFormatters = {
     delete data.numTotalWindows;
     delete data.numAcceleratedWindows;
     delete data.numAcceleratedWindowsMessage;
-    delete data.windowUsingAdvancedLayers;
 
     addRow(
       "features",
@@ -703,9 +725,6 @@ var snapshotFormatters = {
       ["windowProtocol", "graphics-window-protocol"],
       ["desktopEnvironment", "graphics-desktop-environment"],
       "usesTiling",
-      "contentUsesTiling",
-      "offMainThreadPaintEnabled",
-      "offMainThreadPaintWorkerCount",
       "targetFrameRate",
     ];
     for (let feature of featureKeys) {
@@ -839,7 +858,7 @@ var snapshotFormatters = {
     if (crashGuards.length) {
       for (let guard of crashGuards) {
         let resetButton = $.new("button");
-        let onClickReset = function() {
+        let onClickReset = function () {
           Services.prefs.setIntPref(guard.prefName, 0);
           resetButton.removeEventListener("click", onClickReset);
           resetButton.disabled = true;
@@ -976,9 +995,9 @@ var snapshotFormatters = {
       }
       let button = $("enumerate-database-button");
       if (button) {
-        button.addEventListener("click", function(event) {
-          let { KeyValueService } = ChromeUtils.import(
-            "resource://gre/modules/kvstore.jsm"
+        button.addEventListener("click", function (event) {
+          let { KeyValueService } = ChromeUtils.importESModule(
+            "resource://gre/modules/kvstore.sys.mjs"
           );
           let currProfDir = Services.dirsvc.get("ProfD", Ci.nsIFile);
           currProfDir.append("mediacapabilities");
@@ -1099,7 +1118,7 @@ var snapshotFormatters = {
         $.new("th", null, null, { "data-l10n-id": "loaded-lib-versions" }),
       ]),
     ];
-    sortedArrayFromObject(data).forEach(function([name, val]) {
+    sortedArrayFromObject(data).forEach(function ([name, val]) {
       trs.push(
         $.new("tr", [
           $.new("td", name),
@@ -1276,8 +1295,8 @@ function copyRawDataToClipboard(button) {
   if (button) {
     button.disabled = true;
   }
-  try {
-    Troubleshoot.snapshot(async function(snapshot) {
+  Troubleshoot.snapshot().then(
+    async snapshot => {
       if (button) {
         button.disabled = false;
       }
@@ -1289,20 +1308,21 @@ function copyRawDataToClipboard(button) {
         "@mozilla.org/widget/transferable;1"
       ].createInstance(Ci.nsITransferable);
       transferable.init(getLoadContext());
-      transferable.addDataFlavor("text/unicode");
-      transferable.setTransferData("text/unicode", str);
+      transferable.addDataFlavor("text/plain");
+      transferable.setTransferData("text/plain", str);
       Services.clipboard.setData(
         transferable,
         null,
         Ci.nsIClipboard.kGlobalClipboard
       );
-    });
-  } catch (err) {
-    if (button) {
-      button.disabled = false;
+    },
+    err => {
+      if (button) {
+        button.disabled = false;
+      }
+      console.error(err);
     }
-    throw err;
-  }
+  );
 }
 
 function getLoadContext() {
@@ -1333,9 +1353,9 @@ async function copyContentsToClipboard() {
   transferable.setTransferData("text/html", ssHtml);
 
   // Add the plain text flavor.
-  transferable.addDataFlavor("text/unicode");
+  transferable.addDataFlavor("text/plain");
   ssText.data = dataText;
-  transferable.setTransferData("text/unicode", ssText);
+  transferable.setTransferData("text/plain", ssText);
 
   // Store the data into the clipboard.
   Services.clipboard.setData(
@@ -1576,9 +1596,12 @@ function safeModeRestart() {
 
 // Added for TB.
 function onShowPrivateDataChange() {
-  document.getElementById(
-    "about-support-private"
-  ).disabled = document.getElementById("check-show-private-data").checked;
+  document
+    .getElementById("contents")
+    .classList.toggle(
+      "show-private-data",
+      document.getElementById("check-show-private-data").checked
+    );
 }
 
 /**
@@ -1595,16 +1618,13 @@ function setupEventListeners() {
 */
   let button = $("clear-startup-cache-button");
   if (button) {
-    button.addEventListener("click", async function(event) {
-      const [
-        promptTitle,
-        promptBody,
-        restartButtonLabel,
-      ] = await document.l10n.formatValues([
-        { id: "startup-cache-dialog-title2" },
-        { id: "startup-cache-dialog-body2" },
-        { id: "restart-button-label" },
-      ]);
+    button.addEventListener("click", async function (event) {
+      const [promptTitle, promptBody, restartButtonLabel] =
+        await document.l10n.formatValues([
+          { id: "startup-cache-dialog-title2" },
+          { id: "startup-cache-dialog-body2" },
+          { id: "restart-button-label" },
+        ]);
       const buttonFlags =
         Services.prompt.BUTTON_POS_0 * Services.prompt.BUTTON_TITLE_IS_STRING +
         Services.prompt.BUTTON_POS_1 * Services.prompt.BUTTON_TITLE_CANCEL +
@@ -1631,7 +1651,7 @@ function setupEventListeners() {
   }
   button = $("restart-in-safe-mode-button");
   if (button) {
-    button.addEventListener("click", function(event) {
+    button.addEventListener("click", function (event) {
       if (
         Services.obs
           .enumerateObservers("restart-in-safe-mode")
@@ -1646,7 +1666,7 @@ function setupEventListeners() {
   if (AppConstants.MOZ_UPDATER) {
     button = $("update-dir-button");
     if (button) {
-      button.addEventListener("click", function(event) {
+      button.addEventListener("click", function (event) {
         // Get the update directory.
         let updateDir = Services.dirsvc.get("UpdRootD", Ci.nsIFile);
         if (!updateDir.exists()) {
@@ -1664,7 +1684,7 @@ function setupEventListeners() {
     }
     button = $("show-update-history-button");
     if (button) {
-      button.addEventListener("click", function(event) {
+      button.addEventListener("click", function (event) {
         window.browsingContext.topChromeWindow.openDialog(
           "chrome://mozapps/content/update/history.xhtml",
           "Update:History",
@@ -1675,7 +1695,7 @@ function setupEventListeners() {
   }
   button = $("verify-place-integrity-button");
   if (button) {
-    button.addEventListener("click", function(event) {
+    button.addEventListener("click", function (event) {
       PlacesDBUtils.checkAndFixDatabase().then(tasksStatusMap => {
         let logs = [];
         for (let [key, value] of tasksStatusMap) {
@@ -1691,7 +1711,7 @@ function setupEventListeners() {
   }
 
   // added for TB
-  $("send-via-email").addEventListener("click", function(event) {
+  $("send-via-email").addEventListener("click", function (event) {
     sendViaEmail();
   });
   // end of TB addition
@@ -1700,10 +1720,10 @@ function setupEventListeners() {
     copyRawDataToClipboard(this);
   });
 */
-  $("copy-to-clipboard").addEventListener("click", function(event) {
+  $("copy-to-clipboard").addEventListener("click", function (event) {
     copyContentsToClipboard();
   });
-  $("profile-dir-button").addEventListener("click", function(event) {
+  $("profile-dir-button").addEventListener("click", function (event) {
     openProfileDirectory();
   });
 }

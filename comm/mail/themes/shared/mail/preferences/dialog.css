@@ -4,11 +4,6 @@
 
 @namespace html url("http://www.w3.org/1999/xhtml");
 
-:root > * {
-  --in-content-button-border-radius: 3px;
-  --in-content-button-vertical-padding: 0;
-}
-
 @media not (prefers-contrast) {
   @media not (prefers-color-scheme: dark) {
     :root > * {
@@ -42,23 +37,27 @@ window,
   padding: 0;
 }
 
-:root {
-  padding: 6px;
-}
-
-.contentPane {
-  margin: 0;
+body > dialog {
+  background-color: unset;
 }
 
 .contentPane,
 dialog::part(content-box) {
-  /* This allows the focus ring to display fully when scrolling is enabled. */
-  padding: 4px;
+  flex: 1;
 }
 
 .contentPane.doScroll,
 dialog.doScroll::part(content-box) {
   overflow-y: auto;
+  contain: size;
+}
+
+dialog.doScroll {
+  margin-inline: -4px;
+}
+
+dialog.doScroll::part(content-box) {
+  padding-inline: 4px;
 }
 
 tabbox {
@@ -77,12 +76,15 @@ description,
   margin-inline: 4px;
 }
 
-tree {
-  min-height: 15em;
+/* This element (in passwordManager.xhtml) has no height until Fluent fills
+   it, but we need to calculate the document height before then. The value is
+   the same as the line-height for a label in preferences.css. */
+label#signonsIntro {
+  height: 1.8em;
 }
 
-.actionButtons {
-  margin: 3px 4px 0;
+tree {
+  min-height: 150px;
 }
 
 caption {
@@ -115,8 +117,7 @@ html|input[type="number"] {
 
 button,
 menulist {
-  --in-content-button-horizontal-padding: 8px;
-  --in-content-button-vertical-padding: 0;
+  padding: 0 8px;
 }
 
 /* Create a separate rule to unset these styles on .tree-input instead of
@@ -131,10 +132,30 @@ textbox.tree-input {
   margin-inline-start: 8px;
 }
 
+#siteCol {
+  flex: 3 auto;
+}
+
+#statusCol {
+  flex: 1 auto;
+}
+
+#domainCol {
+  flex: 2 auto;
+}
+
+#nameCol {
+  flex: 1 auto;
+}
+
 /* Adjust the Lightning Edit Category dialog */
 #colorSelectRow {
   margin-top: 10px;
   margin-inline-start: 4px;
+}
+
+#totalOpenTime {
+  min-width: calc(3ch + 55px);
 }
 
 #logView {

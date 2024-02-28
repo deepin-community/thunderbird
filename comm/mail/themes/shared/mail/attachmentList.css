@@ -2,26 +2,21 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-.attachments-container {
-  display: flex;
-  flex: 1;
-  overflow: hidden;
-}
-
 .attachmentList {
   appearance: none;
   -moz-user-focus: normal;
   margin: 0;
   padding: 3px;
-}
-
-.attachmentList[orient="horizontal"] {
+  background-color: var(--layout-background-2);
+  color: var(--layout-color-2);
+  border: none;
   display: flex;
   overflow-x: hidden;
-  flex-wrap: wrap;
   align-items: start;
   align-content: start;
   flex: 1;
+  flex-direction: row;
+  flex-wrap: wrap;
 }
 
 .attachmentList[collapsed] {
@@ -31,16 +26,56 @@
 
 .attachmentItem {
   border: 1px solid transparent;
+  min-width: 10em;
+  padding: 1px 3px;
+  border-radius: 2px;
+  display: flex;
+  align-items: baseline;
+  flex-shrink: 1;
+}
+
+.attachmentItem > * {
+  /* We treat the entire attachment item as a single object for click events.
+   * This ensures that dragging will drag the entire widget by default, and
+   * click event targets will point to the attachmentItem, rather than a
+   * descendant. */
+  pointer-events: none;
+}
+
+.attachmentList:focus > .attachmentItem[selected="true"] > * {
+  color: inherit;
+}
+
+.attachmentItem > .attachmentcell-icon {
+  flex: 0 0 auto;
+  align-self: center;
+}
+
+.attachmentItem > .attachmentcell-name {
+  flex: 0 1 auto;
+  white-space: nowrap;
+  overflow-x: hidden;
+  text-overflow: ellipsis;
+}
+
+.attachmentItem > .attachmentcell-extension {
+  /* The extension part grows to fill the available space after the attachment
+   * name, but the name part shrinks when we do not have enough space. */
+  flex: 1 0 auto;
+}
+
+.attachmentItem > .attachmentcell-size {
+  flex: 0 0 auto;
 }
 
 .attachmentList[seltype="multiple"]:focus .attachmentItem[current="true"] {
-  border-color: Highlight;
+  border-color: var(--selected-item-color);
   outline: none;
 }
 
 /* Hide the drop indicator for the message pane attachment list. */
 #attachmentList .attachmentItem .attach-drop-indicator {
-  display: none !important;
+  display: none;
 }
 
 #attachmentBucket .attachmentItem .attach-drop-indicator {
@@ -64,56 +99,9 @@
   border-color: var(--sidebar-highlight-border-color, var(--item-focus-selected-border-color));
 }
 
-.attachmentcell-content {
-  -moz-box-orient: horizontal;
-}
-
-.attachmentcell-text {
-  -moz-box-orient: horizontal;
-}
-
-.attachmentList[view="large"] .attachmentcell-content {
-  -moz-box-orient: horizontal;
-}
-
-.attachmentList[view="large"] .attachmentcell-text {
-  -moz-box-align: start;
-  -moz-box-orient: vertical;
-}
-
-.attachmentList[view="tile"] .attachmentcell-content {
-  -moz-box-align: center;
-  -moz-box-orient: vertical;
-}
-
-.attachmentList[view="tile"] .attachmentcell-text {
-  -moz-box-align: center;
-  -moz-box-orient: vertical;
-}
-
-.attachmentList[orient="horizontal"] .attachmentItem {
-  display: -moz-inline-box;
-  min-width: 10em;
-  padding: 1px 3px;
-  border-radius: 2px;
-}
-
-.attachmentList[orient="horizontal"][view="tile"] .attachmentItem {
-  min-width: 5em;
-  max-width: 10em;
-}
-
 :root[lwt-tree] .attachmentList {
   background-color: var(--sidebar-background-color);
   color: var(--sidebar-text-color);
-}
-
-:root[lwt-tree] .attachmentList {
-  scrollbar-color: rgba(204, 204, 204, .5) rgba(230, 230, 235, .5);
-}
-
-:root[lwt-tree-brighttext] .attachmentList {
-  scrollbar-color: rgba(249, 249, 250, .4) rgba(20, 20, 25, .3);
 }
 
 :root[lwt-tree] .attachmentList .attachmentItem {
@@ -140,34 +128,32 @@
   background: var(--sidebar-highlight-background-color, rgba(249, 249, 250, .1));
 }
 
-#attachmentMenuList > menu:hover > .text-link {
-  text-decoration-line: underline;
-}
-
 #attachmentName.notfound,
-.attachmentItem.notfound,
-#attachmentMenuList > menu.notfound {
+.attachmentItem.notfound {
   text-decoration-line: line-through;
-}
-
-.attachmentItem > * {
-  pointer-events: none;
 }
 
 .attachmentcell-icon {
   margin: 1px;
   width: 16px;
   height: 16px;
-  min-width: 16px;
-}
-
-.attachmentcell-icon.invalid-src {
-  visibility: hidden;
 }
 
 .attachmentcell-name,
+.attachmentcell-extension,
 .attachmentcell-size {
-  padding-top: 1px;
+  margin-block: 2px;
+}
+
+/* NOTE: We do not create a margin between the name and extension. */
+.attachmentcell-name,
+.attachmentcell-size {
+  margin-inline-start: 6px;
+}
+
+.attachmentcell-extension,
+.attachmentcell-size {
+  margin-inline-end: 5px;
 }
 
 .attachmentcell-size {
@@ -178,6 +164,6 @@
   opacity: 0.8;
 }
 
-.attachmentItem:not(.notfound):hover .attachmentcell-name.text-link {
+.attachmentItem:not(.notfound):hover .text-link {
   text-decoration: underline;
 }

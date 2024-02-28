@@ -2,15 +2,17 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-/* import-globals-from ../../shared/test/shared-head.js */
-
 "use strict";
 
 // Test the storage inspector when dom.caches.enabled=false.
 
-add_task(async function() {
+add_task(async function () {
   // Disable the DOM cache
-  Services.prefs.setBoolPref(DOM_CACHE, false);
+  await pushPref(DOM_CACHE, false);
+
+  // storage-listings.html explicitly mixes secure and insecure frames.
+  // We should not enforce https for tests using this page.
+  await pushPref("dom.security.https_first", false);
 
   await openTabAndSetupStorage(MAIN_DOMAIN + "storage-listings.html");
 

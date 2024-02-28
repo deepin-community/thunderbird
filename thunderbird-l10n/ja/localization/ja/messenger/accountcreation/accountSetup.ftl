@@ -37,8 +37,6 @@ account-setup-password-label = パスワード
     .title = 任意です。ユーザー名の検証にのみ使用されます
 account-provisioner-button = 新しいメールアドレスを取得
     .accesskey = G
-account-setup-password-toggle =
-    .title = パスワードを表示または隠します
 account-setup-password-toggle-show =
     .title = パスワードを平文で表示します
 account-setup-password-toggle-hide =
@@ -124,21 +122,14 @@ account-setup-results-area-title =
         [one] 利用可能な設定
         *[other] 利用可能な設定
     }
-# Note: IMAP is the name of a protocol.
-account-setup-result-imap = IMAP
 account-setup-result-imap-description = フォルダーとメールがサーバー上で同期されます
-# Note: POP3 is the name of a protocol.
-account-setup-result-pop = POP3
 account-setup-result-pop-description = フォルダーとメールがあなたのコンピュータに保存されます
-# Note: Exchange is the name of a product.
-account-setup-result-exchange = Exchange
 # Note: Exchange, Office365 are the name of products.
 account-setup-result-exchange2-description = Microsoft Exchange サーバーまたは Office365 クラウドサービスを使用します
 account-setup-incoming-title = 受信
 account-setup-outgoing-title = 送信
 account-setup-username-title = ユーザー名
 account-setup-exchange-title = サーバー
-account-setup-result-smtp = SMTP
 account-setup-result-no-encryption = 暗号化なし
 account-setup-result-ssl = SSL/TLS
 account-setup-result-starttls = STARTTLS
@@ -155,15 +146,13 @@ account-setup-credentials-incomplete = 認証に失敗しました。入力し�
 account-setup-credentials-wrong = 認証に失敗しました。ユーザー名とパスワードを確認してください。
 account-setup-find-settings-failed = { -brand-short-name } がメールアカウントの設定を見つけられませんでした。
 account-setup-exchange-config-unverifiable = 設定を検証できませんでした。ユーザー名とパスワードが正しい場合は、サーバー管理者があなたの選択した設定を無効化している可能性があります。別のプロトコルを選択してみてください。
+account-setup-provisioner-error = { -brand-short-name } でアカウントのセットアップ中にエラーが発生しました。プロバイダーからのメールアカウントの設定情報を参照して手動で設定してください。
 
 ## Manual configuration area
 
 account-setup-manual-config-title = 手動設定
 account-setup-incoming-server-legend = 受信サーバー
 account-setup-protocol-label = プロトコル:
-protocol-imap-option = { account-setup-result-imap }
-protocol-pop-option = { account-setup-result-pop }
-protocol-exchange-option = { account-setup-result-exchange }
 account-setup-hostname-label = ホスト名:
 account-setup-port-label = ポート番号:
     .title = 自動検出するにはポート番号を 0 に設定してください
@@ -290,10 +279,12 @@ account-setup-calendar-name-input =
 account-setup-calendar-color-label = 色
 account-setup-calendar-refresh-label = 更新
 account-setup-calendar-refresh-manual = 手動
+# Variables:
+# $count (Number) - Number of minutes in the calendar refresh interval.
 account-setup-calendar-refresh-interval =
     { $count ->
         [one] 1 分間隔
-        *[other] { $count } 分間隔
+       *[other] { $count } 分間隔
     }
 account-setup-calendar-read-only = 読み取り専用
     .accesskey = R

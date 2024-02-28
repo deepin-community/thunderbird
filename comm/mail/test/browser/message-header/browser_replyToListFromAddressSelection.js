@@ -8,18 +8,12 @@
 
 "use strict";
 
-var {
-  close_compose_window,
-  open_compose_with_reply_to_list,
-} = ChromeUtils.import("resource://testing-common/mozmill/ComposeHelpers.jsm");
-var {
-  assert_selected_and_displayed,
-  be_in_folder,
-  mc,
-  select_click_row,
-} = ChromeUtils.import(
-  "resource://testing-common/mozmill/FolderDisplayHelpers.jsm"
-);
+var { close_compose_window, open_compose_with_reply_to_list } =
+  ChromeUtils.import("resource://testing-common/mozmill/ComposeHelpers.jsm");
+var { assert_selected_and_displayed, be_in_folder, mc, select_click_row } =
+  ChromeUtils.import(
+    "resource://testing-common/mozmill/FolderDisplayHelpers.jsm"
+  );
 
 var { MailServices } = ChromeUtils.import(
   "resource:///modules/MailServices.jsm"
@@ -31,16 +25,13 @@ var replyToListWindow = null;
 
 var identityString1 = "tinderbox_correct_identity@foo.invalid";
 
-add_task(function setupModule(module) {
+add_setup(function () {
   addIdentitiesAndFolder();
   addMessageToFolder(testFolder);
 });
 
 function addMessageToFolder(aFolder) {
-  var msgId =
-    Cc["@mozilla.org/uuid-generator;1"]
-      .getService(Ci.nsIUUIDGenerator)
-      .generateUUID() + "@mozillamessaging.invalid";
+  var msgId = Services.uuid.generateUUID() + "@mozillamessaging.invalid";
 
   var source =
     "From - Sat Nov  1 12:39:54 2008\n" +
@@ -98,15 +89,16 @@ function addIdentitiesAndFolder() {
   account.addIdentity(identity2);
 }
 
-add_task(function test_Reply_To_List_From_Address() {
-  be_in_folder(testFolder);
+add_task(async function test_Reply_To_List_From_Address() {
+  await be_in_folder(testFolder);
 
   let curMessage = select_click_row(0);
   assert_selected_and_displayed(mc, curMessage);
 
   replyToListWindow = open_compose_with_reply_to_list();
 
-  var identityList = replyToListWindow.e("msgIdentity");
+  var identityList =
+    replyToListWindow.window.document.getElementById("msgIdentity");
 
   // see if it's the correct identity selected
   if (!identityList.selectedItem.label.includes(identityString1)) {

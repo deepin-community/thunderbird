@@ -1,29 +1,28 @@
 {
   "langpack_id": "cy",
   "manifest_version": 2,
-  "applications": {
+  "browser_specific_settings": {
     "gecko": {
       "id": "langpack-cy@thunderbird.mozilla.org",
-      "strict_min_version": "91.0",
-      "strict_max_version": "91.*"
+      "strict_min_version": "115.0",
+      "strict_max_version": "115.*"
     }
   },
-  "name": "Cymraeg Language Pack",
-  "description": "Language pack for Thunderbird for cy",
-  "version": "91.0buildid20211101223011",
+  "name": "Language: Cymraeg (Welsh)",
+  "description": "Thunderbird Language Pack for Cymraeg (cy) – Welsh",
+  "version": "115.8.20240216.174500",
   "languages": {
     "cy": {
-      "version": "20211011150942",
+      "version": "20240216183839",
       "chrome_resources": {
         "alerts": "chrome/cy/locale/cy/alerts/",
         "autoconfig": "chrome/cy/locale/cy/autoconfig/",
-        "branding": "chrome/cy/locale/cy/branding/",
+        "branding": "chrome/cy/locale/branding/",
         "calendar": "chrome/cy/locale/cy/calendar/",
         "chat": "chrome/cy/locale/cy/chat/",
         "communicator": "chrome/cy/locale/cy/communicator/",
         "devtools": "chrome/cy/locale/cy/devtools/client/",
         "devtools-shared": "chrome/cy/locale/cy/devtools/shared/",
-        "devtools-startup": "chrome/cy/locale/cy/devtools/startup/",
         "global": "chrome/cy/locale/cy/global/",
         "global-platform": {
           "macosx": "chrome/cy/locale/cy/global-platform/mac/",

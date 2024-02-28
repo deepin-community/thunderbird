@@ -8,8 +8,6 @@
 <?xml-stylesheet href="chrome://communicator/skin/" type="text/css"?>
 
 <!DOCTYPE overlay [
-<!ENTITY % brandDTD SYSTEM "chrome://branding/locale/brand.dtd">
-%brandDTD;
 <!ENTITY % prefMailnewsDTD SYSTEM "chrome://messenger/locale/pref-mailnews.dtd">
 %prefMailnewsDTD;
 ]>
@@ -27,34 +25,27 @@
       <preference id="mailnews.thread_pane_column_unthreads"
                   name="mailnews.thread_pane_column_unthreads"
                   inverted="true" type="bool"/>
+      <preference id="mail.tabs.autoHide"
+                  name="mail.tabs.autoHide"
+                  type="bool"/>
       <preference id="mail.tabs.loadInBackground"
                   name="mail.tabs.loadInBackground"
                   inverted="true" type="bool"/>
+      <preference id="mail.biff.on_new_window"
+                  name="mail.biff.on_new_window"
+                  type="bool"
+                  inverted="true"/>
+      <preference id="mail.tabs.opentabfor.middleclick"
+                  name="mail.tabs.opentabfor.middleclick"
+                  type="bool"/>
+      <preference id="mail.tabs.opentabfor.doubleclick"
+                  name="mail.tabs.opentabfor.doubleclick"
+                  type="bool"/>
       <preference id="mailnews.start_page.enabled"
                   onchange="this.parentNode.parentNode.startPageCheck();"
                   name="mailnews.start_page.enabled" type="bool"/>
       <preference id="mailnews.start_page.url"
                   name="mailnews.start_page.url" type="wstring"/>
-      <preference id="mail.biff.on_new_window"
-                  name="mail.biff.on_new_window" inverted="true" type="bool"/>
-      <preference id="network.protocol-handler.external.mailto"
-                  name="network.protocol-handler.external.mailto"
-                  inverted="true" type="bool"/>
-      <preference id="network.protocol-handler.external.news"
-                  name="network.protocol-handler.external.news"
-                  inverted="true" type="bool"/>
-      <preference id="network.protocol-handler.external.snews"
-                  name="network.protocol-handler.external.snews"
-                  inverted="true" type="bool"/>
-      <preference id="network.protocol-handler.external.nntp"
-                  name="network.protocol-handler.external.nntp"
-                  inverted="true" type="bool"/>
-      <preference id="system.windows.lock_ui.defaultMailClient" readonly="true"
-                  name="system.windows.lock_ui.defaultMailClient" type="bool"/>
-      <preference id="system.windows.lock_ui.defaultNewsClient" readonly="true"
-                  name="system.windows.lock_ui.defaultNewsClient" type="bool"/>
-      <preference id="system.windows.lock_ui.defaultFeedClient" readonly="true"
-                  name="system.windows.lock_ui.defaultFeedClient" type="bool"/>
     </preferences>
 
     <groupbox>
@@ -80,6 +71,13 @@
       </hbox>
 
       <hbox align="center">
+        <checkbox id="mailAutoHide"
+                  label="&mailAutoHide.label;"
+                  accesskey="&mailAutoHide.accesskey;"
+                  preference="mail.tabs.autoHide"/>
+      </hbox>
+
+      <hbox align="center">
         <checkbox id="loadInBackground"
                   label="&loadInBackground.label;"
                   accesskey="&loadInBackground.accesskey;"
@@ -92,43 +90,27 @@
                   accesskey="&mailBiffOnNewWindow.accesskey;"
                   preference="mail.biff.on_new_window"/>
       </hbox>
+    </groupbox>
 
-      <vbox id="defaultMailPrefs" hidden="true">
-        <separator class="thin"/>
+    <groupbox id="mailOpenTabFor" align="start">
+      <caption label="&mailOpenTabsFor.label;"/>
+      <hbox align="center">
+        <checkbox id="mailMiddleClick"
+#ifndef XP_MACOSX
+                  label="&mailMiddleClick.label;"
+                  accesskey="&mailMiddleClick.accesskey;"
+#else
+                  label="&mailMiddleClickMac.label;"
+                  accesskey="&mailMiddleClickMac.accesskey;"
+#endif
+                  preference="mail.tabs.opentabfor.middleclick"/>
+      </hbox>
 
-        <description>&defaultMailSettings.description;</description>
-        <hbox class="indent" align="center">
-          <button id="setDefaultMail"
-                  accesskey="&setDefaultMail.accesskey;"
-                  label="&setDefaultMail.label;"
-                  oncommand="onSetDefault(this, 'MAIL');"
-                  preference="system.windows.lock_ui.defaultMailClient"/>
-          <button id="setDefaultNews"
-                  accesskey="&setDefaultNews.accesskey;"
-                  label="&setDefaultNews.label;"
-                  oncommand="onSetDefault(this, 'NEWS');"
-                  preference="system.windows.lock_ui.defaultNewsClient"/>
-          <button id="setDefaultRss"
-                  accesskey="&setDefaultFeed.accesskey;"
-                  label="&setDefaultFeed.label;"
-                  oncommand="onSetDefault(this, 'RSS');"
-                  preference="system.windows.lock_ui.defaultFeedClient"/>
-        </hbox>
-      </vbox>
-
-      <separator class="thin"/>
-
-      <description>&useInternalSettings.description;</description>
-      <hbox class="indent" align="center">
-        <checkbox id="useInternalMail"
-                  label="&useInternalMail.label;"
-                  accesskey="&useInternalMail.accesskey;"
-                  preference="network.protocol-handler.external.mailto"/>
-        <checkbox id="useInternalNews"
-                  label="&useInternalNews.label;"
-                  accesskey="&useInternalNews.accesskey;"
-                  oncommand="onNewsChange(this.checked);"
-                  preference="network.protocol-handler.external.news"/>
+      <hbox align="center">
+        <checkbox id="mailDoubleClick"
+                  label="&mailDoubleClick.label;"
+                  accesskey="&mailDoubleClick.accesskey;"
+                  preference="mail.tabs.opentabfor.doubleclick"/>
       </hbox>
     </groupbox>
 

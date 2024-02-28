@@ -8,6 +8,9 @@
 #include "mozilla/gfx/Polygon.h"
 
 namespace mozilla {
+
+class nsDisplayTransform;
+
 namespace layers {
 
 template <typename T>
@@ -113,10 +116,11 @@ void BSPTree<T>::BuildTree(BSPTreeNode<T>* aRoot, PolygonList<T>& aLayers) {
   }
 }
 
-template void BSPTree<Layer>::BuildTree(BSPTreeNode<Layer>* aRoot,
-                                        PolygonList<Layer>& aLayers);
-template void BSPTree<Layer>::BuildDrawOrder(
-    BSPTreeNode<Layer>* aNode, nsTArray<BSPPolygon<Layer>>& aLayers) const;
+template void BSPTree<BSPTestData>::BuildTree(
+    BSPTreeNode<BSPTestData>* aRoot, PolygonList<BSPTestData>& aLayers);
+template void BSPTree<BSPTestData>::BuildDrawOrder(
+    BSPTreeNode<BSPTestData>* aNode,
+    nsTArray<BSPPolygon<BSPTestData>>& aLayers) const;
 
 template void BSPTree<nsDisplayTransform>::BuildTree(
     BSPTreeNode<nsDisplayTransform>* aRoot,

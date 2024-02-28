@@ -18,15 +18,9 @@ connection-dns-over-https-url-custom =
         Nhập URL ưa thích của bạn để giải quyết DNS qua HTTPS
         Nhập URL ưa thích của bạn để xử lí DNS qua HTTPS
 connection-dns-over-https-custom-label = Tùy chỉnh
-connection-dialog-window =
+connection-dialog-window2 =
     .title = Cài đặt kết nối
-    .style =
-        { PLATFORM() ->
-            [macos] width: 44em !important
-           *[other] width: 49em !important
-        }
-connection-disable-extension =
-    .label = Vô hiệu hóa tiện ích mở rộng
+connection-dialog-title = Cài đặt kết nối
 disable-extension-button = Vô hiệu hóa tiện ích mở rộng
 # Variables:
 #   $name (String) - The extension that is controlling the proxy settings.

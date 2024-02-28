@@ -10,23 +10,24 @@
 
 use std::cmp::{max, min};
 use std::collections::BTreeMap;
+use std::convert::TryFrom;
 use std::mem;
 use std::ops::RangeInclusive;
 use std::time::{Duration, Instant};
 
 use smallvec::{smallvec, SmallVec};
 
-use neqo_common::{qdebug, qlog::NeqoQlog, qtrace, qwarn};
+use neqo_common::{qdebug, qinfo, qlog::NeqoQlog, qtrace, qwarn};
 
 use crate::ackrate::AckRate;
 use crate::cid::ConnectionIdEntry;
-use crate::connection::LOCAL_IDLE_TIMEOUT;
 use crate::crypto::CryptoRecoveryToken;
 use crate::packet::PacketNumber;
 use crate::path::{Path, PathRef};
 use crate::qlog::{self, QlogMetric};
+use crate::quic_datagrams::DatagramTracking;
 use crate::rtt::RttEstimate;
-use crate::send_stream::StreamRecoveryToken;
+use crate::send_stream::SendStreamRecoveryToken;
 use crate::stats::{Stats, StatsCell};
 use crate::stream_id::{StreamId, StreamType};
 use crate::tracking::{AckToken, PacketNumberSpace, PacketNumberSpaceSet, SentPacket};
@@ -44,59 +45,55 @@ pub const PTO_PACKET_COUNT: usize = 2;
 pub(crate) const MAX_OUTSTANDING_UNACK: usize = 200;
 /// Disable PING until this many packets are outstanding.
 pub(crate) const MIN_OUTSTANDING_UNACK: usize = 16;
+/// The scale we use for the fast PTO feature.
+pub const FAST_PTO_SCALE: u8 = 100;
 
 #[derive(Debug, Clone)]
 #[allow(clippy::module_name_repetitions)]
-pub enum RecoveryToken {
-    Ack(AckToken),
-    Stream(StreamRecoveryToken),
-    Crypto(CryptoRecoveryToken),
-    HandshakeDone,
-    NewToken(usize),
-    NewConnectionId(ConnectionIdEntry<[u8; 16]>),
-    RetireConnectionId(u64),
-    DataBlocked(u64),
-    StreamDataBlocked {
-        stream_id: StreamId,
-        limit: u64,
-    },
+pub enum StreamRecoveryToken {
+    Stream(SendStreamRecoveryToken),
     ResetStream {
         stream_id: StreamId,
     },
+    StopSending {
+        stream_id: StreamId,
+    },
+
     MaxData(u64),
+    DataBlocked(u64),
+
     MaxStreamData {
         stream_id: StreamId,
         max_data: u64,
     },
-    StopSending {
+    StreamDataBlocked {
         stream_id: StreamId,
+        limit: u64,
+    },
+
+    MaxStreams {
+        stream_type: StreamType,
+        max_streams: u64,
     },
     StreamsBlocked {
         stream_type: StreamType,
         limit: u64,
     },
-    MaxStreams {
-        stream_type: StreamType,
-        max_streams: u64,
-    },
-    AckFrequency(AckRate),
 }
 
-impl RecoveryToken {
-    pub fn is_stream(&self) -> bool {
-        matches!(
-            self,
-            Self::Stream(_)
-                | Self::ResetStream { .. }
-                | Self::StreamDataBlocked { .. }
-                | Self::MaxStreamData { .. }
-                | Self::StopSending { .. }
-                | Self::StreamsBlocked { .. }
-                | Self::MaxStreams { .. }
-                | Self::DataBlocked(_)
-                | Self::MaxData(_)
-        )
-    }
+#[derive(Debug, Clone)]
+#[allow(clippy::module_name_repetitions)]
+pub enum RecoveryToken {
+    Stream(StreamRecoveryToken),
+    Ack(AckToken),
+    Crypto(CryptoRecoveryToken),
+    HandshakeDone,
+    KeepAlive, // Special PING.
+    NewToken(usize),
+    NewConnectionId(ConnectionIdEntry<[u8; 16]>),
+    RetireConnectionId(u64),
+    AckFrequency(AckRate),
+    Datagram(DatagramTracking),
 }
 
 /// `SendProfile` tells a sender how to send packets.
@@ -345,9 +342,7 @@ impl LossRecoverySpace {
     /// and when keys are dropped.
     fn remove_ignored(&mut self) -> impl Iterator<Item = SentPacket> {
         self.in_flight_outstanding = 0;
-        mem::take(&mut self.sent_packets)
-            .into_iter()
-            .map(|(_, v)| v)
+        mem::take(&mut self.sent_packets).into_values()
     }
 
     /// Remove the primary path marking on any packets this is tracking.
@@ -361,12 +356,7 @@ impl LossRecoverySpace {
     /// We try to keep these around until a probe is sent for them, so it is
     /// important that `cd` is set to at least the current PTO time; otherwise we
     /// might remove all in-flight packets and stop sending probes.
-    #[allow(
-        clippy::option_if_let_else,
-        unknown_lints,
-        renamed_and_removed_lints,
-        clippy::unknown_clippy_lints
-    )] // Hard enough to read as-is.
+    #[allow(clippy::option_if_let_else)] // Hard enough to read as-is.
     fn remove_old_lost(&mut self, now: Instant, cd: Duration) {
         let mut it = self.sent_packets.iter();
         // If the first item is not expired, do nothing.
@@ -573,16 +563,20 @@ pub(crate) struct LossRecovery {
     spaces: LossRecoverySpaces,
     qlog: NeqoQlog,
     stats: StatsCell,
+    /// The factor by which the PTO period is reduced.
+    /// This enables faster probing at a cost in additional lost packets.
+    fast_pto: u8,
 }
 
 impl LossRecovery {
-    pub fn new(stats: StatsCell) -> Self {
+    pub fn new(stats: StatsCell, fast_pto: u8) -> Self {
         Self {
             confirmed_time: None,
             pto_state: None,
             spaces: LossRecoverySpaces::default(),
             qlog: NeqoQlog::default(),
             stats,
+            fast_pto,
         }
     }
 
@@ -594,7 +588,7 @@ impl LossRecovery {
         self.qlog = qlog;
     }
 
-    pub fn drop_0rtt(&mut self, primary_path: &PathRef) -> Vec<SentPacket> {
+    pub fn drop_0rtt(&mut self, primary_path: &PathRef, now: Instant) -> Vec<SentPacket> {
         // The largest acknowledged or loss_time should still be unset.
         // The client should not have received any ACK frames when it drops 0-RTT.
         assert!(self
@@ -611,7 +605,7 @@ impl LossRecovery {
             .collect::<Vec<_>>();
         let mut path = primary_path.borrow_mut();
         for p in &mut dropped {
-            path.discard_packet(p);
+            path.discard_packet(p, now);
         }
         dropped
     }
@@ -648,8 +642,9 @@ impl LossRecovery {
         ack_delay: Duration,
     ) {
         let confirmed = self.confirmed_time.map_or(false, |t| t < send_time);
-        let sample = now - send_time;
-        rtt.update(&mut self.qlog, sample, ack_delay, confirmed, now);
+        if let Some(sample) = now.checked_duration_since(send_time) {
+            rtt.update(&mut self.qlog, sample, ack_delay, confirmed, now);
+        }
     }
 
     /// Returns (acked packets, lost packets)
@@ -673,12 +668,16 @@ impl LossRecovery {
             largest_acked
         );
 
-        let space = self
-            .spaces
-            .get_mut(pn_space)
-            .expect("ACK on discarded space");
+        let space = self.spaces.get_mut(pn_space);
+        let space = if let Some(sp) = space {
+            sp
+        } else {
+            qinfo!("ACK on discarded space");
+            return (Vec::new(), Vec::new());
+        };
+
         let (acked_packets, any_ack_eliciting) =
-            space.remove_acked(acked_ranges, &mut *self.stats.borrow_mut());
+            space.remove_acked(acked_ranges, &mut self.stats.borrow_mut());
         if acked_packets.is_empty() {
             // No new information.
             return (Vec::new(), Vec::new());
@@ -740,7 +739,7 @@ impl LossRecovery {
 
     /// When receiving a retry, get all the sent packets so that they can be flushed.
     /// We also need to pretend that they never happened for the purposes of congestion control.
-    pub fn retry(&mut self, primary_path: &PathRef) -> Vec<SentPacket> {
+    pub fn retry(&mut self, primary_path: &PathRef, now: Instant) -> Vec<SentPacket> {
         self.pto_state = None;
         let mut dropped = self
             .spaces
@@ -749,7 +748,7 @@ impl LossRecovery {
             .collect::<Vec<_>>();
         let mut path = primary_path.borrow_mut();
         for p in &mut dropped {
-            path.discard_packet(p);
+            path.discard_packet(p, now);
         }
         dropped
     }
@@ -782,7 +781,7 @@ impl LossRecovery {
         qdebug!([self], "Reset loss recovery state for {}", space);
         let mut path = primary_path.borrow_mut();
         for p in self.spaces.drop_space(space) {
-            path.discard_packet(&p);
+            path.discard_packet(&p, now);
         }
 
         // We just made progress, so discard PTO count.
@@ -828,16 +827,25 @@ impl LossRecovery {
         rtt: &RttEstimate,
         pto_state: Option<&PtoState>,
         pn_space: PacketNumberSpace,
+        fast_pto: u8,
     ) -> Duration {
+        // This is a complicated (but safe) way of calculating:
+        //   base_pto * F * 2^pto_count
+        // where F = fast_pto / FAST_PTO_SCALE (== 1 by default)
+        let pto_count = pto_state.map_or(0, |p| u32::try_from(p.count).unwrap_or(0));
         rtt.pto(pn_space)
-            .checked_mul(1 << pto_state.map_or(0, |p| p.count))
-            .unwrap_or(LOCAL_IDLE_TIMEOUT * 2)
+            .checked_mul(
+                u32::from(fast_pto)
+                    .checked_shl(pto_count)
+                    .unwrap_or(u32::MAX),
+            )
+            .map_or(Duration::from_secs(3600), |p| p / u32::from(FAST_PTO_SCALE))
     }
 
     /// Get the current PTO period for the given packet number space.
     /// Unlike calling `RttEstimate::pto` directly, this includes exponential backoff.
     fn pto_period(&self, rtt: &RttEstimate, pn_space: PacketNumberSpace) -> Duration {
-        Self::pto_period_inner(rtt, self.pto_state.as_ref(), pn_space)
+        Self::pto_period_inner(rtt, self.pto_state.as_ref(), pn_space, self.fast_pto)
     }
 
     // Calculate PTO time for the given space.
@@ -877,7 +885,7 @@ impl LossRecovery {
         self.pto_state
             .as_mut()
             .unwrap()
-            .count_pto(&mut *self.stats.borrow_mut());
+            .count_pto(&mut self.stats.borrow_mut());
 
         qlog::metrics_updated(
             &mut self.qlog,
@@ -928,6 +936,7 @@ impl LossRecovery {
                 primary_path.borrow().rtt(),
                 self.pto_state.as_ref(),
                 space.space(),
+                self.fast_pto,
             );
             space.detect_lost_packets(now, loss_delay, pto, &mut lost_packets);
 
@@ -945,12 +954,7 @@ impl LossRecovery {
 
     /// Check how packets should be sent, based on whether there is a PTO,
     /// what the current congestion window is, and what the pacer says.
-    #[allow(
-        clippy::option_if_let_else,
-        unknown_lints,
-        renamed_and_removed_lints,
-        clippy::unknown_clippy_lints
-    )]
+    #[allow(clippy::option_if_let_else)]
     pub fn send_profile(&mut self, path: &Path, now: Instant) -> SendProfile {
         qdebug!([self], "get send profile {:?}", now);
         let sender = path.sender();
@@ -993,7 +997,9 @@ impl ::std::fmt::Display for LossRecovery {
 
 #[cfg(test)]
 mod tests {
-    use super::{LossRecovery, LossRecoverySpace, PacketNumberSpace, SendProfile, SentPacket};
+    use super::{
+        LossRecovery, LossRecoverySpace, PacketNumberSpace, SendProfile, SentPacket, FAST_PTO_SCALE,
+    };
     use crate::cc::CongestionControlAlgorithm;
     use crate::cid::{ConnectionId, ConnectionIdEntry};
     use crate::packet::PacketType;
@@ -1045,7 +1051,7 @@ mod tests {
         }
 
         pub fn on_packet_sent(&mut self, sent_packet: SentPacket) {
-            self.lr.on_packet_sent(&self.path, sent_packet)
+            self.lr.on_packet_sent(&self.path, sent_packet);
         }
 
         pub fn timeout(&mut self, now: Instant) -> Vec<SentPacket> {
@@ -1057,7 +1063,7 @@ mod tests {
         }
 
         pub fn discard(&mut self, space: PacketNumberSpace, now: Instant) {
-            self.lr.discard(&self.path, space, now)
+            self.lr.discard(&self.path, space, now);
         }
 
         pub fn pto_time(&self, space: PacketNumberSpace) -> Option<Instant> {
@@ -1079,7 +1085,7 @@ mod tests {
             );
             path.set_primary(true);
             Self {
-                lr: LossRecovery::new(StatsCell::default()),
+                lr: LossRecovery::new(StatsCell::default(), FAST_PTO_SCALE),
                 path: Rc::new(RefCell::new(path)),
             }
         }
@@ -1293,8 +1299,8 @@ mod tests {
     fn no_new_acks() {
         let mut lr = setup_lr(1);
         let check = |lr: &Fixture| {
-            assert_rtts(&lr, TEST_RTT, TEST_RTT, TEST_RTTVAR, TEST_RTT);
-            assert_no_sent_times(&lr);
+            assert_rtts(lr, TEST_RTT, TEST_RTT, TEST_RTTVAR, TEST_RTT);
+            assert_no_sent_times(lr);
         };
         check(&lr);
 
@@ -1407,17 +1413,18 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "ACK on discarded space")]
     fn ack_after_drop() {
         let mut lr = Fixture::default();
         lr.discard(PacketNumberSpace::Initial, now());
-        lr.on_ack_received(
+        let (acked, lost) = lr.on_ack_received(
             PacketNumberSpace::Initial,
             0,
             vec![],
             Duration::from_millis(0),
             pn_time(0),
         );
+        assert!(acked.is_empty());
+        assert!(lost.is_empty());
     }
 
     #[test]
@@ -1490,6 +1497,25 @@ mod tests {
     #[test]
     fn rearm_pto_after_confirmed() {
         let mut lr = Fixture::default();
+        lr.on_packet_sent(SentPacket::new(
+            PacketType::Initial,
+            0,
+            now(),
+            true,
+            Vec::new(),
+            ON_SENT_SIZE,
+        ));
+        // Set the RTT to the initial value so that discarding doesn't
+        // alter the estimate.
+        let rtt = lr.path.borrow().rtt().estimate();
+        lr.on_ack_received(
+            PacketNumberSpace::Initial,
+            0,
+            vec![0..=0],
+            Duration::new(0, 0),
+            now() + rtt,
+        );
+
         lr.on_packet_sent(SentPacket::new(
             PacketType::Handshake,
             0,

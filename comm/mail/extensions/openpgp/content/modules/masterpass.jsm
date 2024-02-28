@@ -8,46 +8,47 @@
 
 var EXPORTED_SYMBOLS = ["OpenPGPMasterpass"];
 
-Cu.importGlobalProperties(["crypto"]);
-
-const { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-const { XPCOMUtils } = ChromeUtils.import(
-  "resource://gre/modules/XPCOMUtils.jsm"
+const { XPCOMUtils } = ChromeUtils.importESModule(
+  "resource://gre/modules/XPCOMUtils.sys.mjs"
 );
 
-XPCOMUtils.defineLazyModuleGetters(this, {
-  EnigmailFiles: "chrome://openpgp/content/modules/files.jsm",
+const lazy = {};
+
+XPCOMUtils.defineLazyModuleGetters(lazy, {
   EnigmailLog: "chrome://openpgp/content/modules/log.jsm",
+  MailUtils: "resource:///modules/MailUtils.jsm",
   RNP: "chrome://openpgp/content/modules/RNP.jsm",
 });
 
-const DEFAULT_FILE_PERMS = 0o600;
-
 var OpenPGPMasterpass = {
   _initDone: false,
+  _sdr: null,
 
   getSDR() {
-    if (!this.sdr) {
+    if (!this._sdr) {
       try {
-        this.sdr = Cc["@mozilla.org/security/sdr;1"].getService(
+        this._sdr = Cc["@mozilla.org/security/sdr;1"].getService(
           Ci.nsISecretDecoderRing
         );
       } catch (ex) {
-        EnigmailLog.writeException("masterpass.jsm", ex);
+        lazy.EnigmailLog.writeException("masterpass.jsm", ex);
       }
     }
-    return this.sdr;
+    return this._sdr;
   },
+
+  filename: "encrypted-openpgp-passphrase.txt",
+  secringFilename: "secring.gpg",
 
   getPassPath() {
     let path = Services.dirsvc.get("ProfD", Ci.nsIFile);
-    path.append("encrypted-openpgp-passphrase.txt");
+    path.append(this.filename);
     return path;
   },
 
   getSecretKeyRingFile() {
     let path = Services.dirsvc.get("ProfD", Ci.nsIFile);
-    path.append("secring.gpg");
+    path.append(this.secringFilename);
     return path;
   },
 
@@ -56,15 +57,18 @@ var OpenPGPMasterpass = {
   },
 
   async _repairOrWarn() {
-    let [prot, unprot] = RNP.getProtectedKeysCount();
+    let [prot, unprot] = lazy.RNP.getProtectedKeysCount();
     let haveAtLeastOneSecretKey = prot || unprot;
 
-    if (!this.getPassPath().exists() && haveAtLeastOneSecretKey) {
+    if (
+      !(await IOUtils.exists(this.getPassPath().path)) &&
+      haveAtLeastOneSecretKey
+    ) {
       // We couldn't read the OpenPGP password from file.
       // This could either mean the file doesn't exist, which indicates
       // either a corruption, or the condition after a failed migration
       // from early Enigmail migrator versions (bug 1656287).
-      // Or it could mean the user has a master password set,
+      // Or it could mean the user has a primary password set,
       // but the user failed to enter it correctly,
       // or we are facing the consequences of multiple password prompts.
 
@@ -134,37 +138,141 @@ var OpenPGPMasterpass = {
           );
         }
 
-        this._ensureMasterPassword();
-        await RNP.protectUnprotectedKeys();
-        await RNP.saveKeyRings();
+        await this._ensurePasswordCreatedAndCached();
+        await lazy.RNP.protectUnprotectedKeys();
+        await lazy.RNP.saveKeyRings();
       }
     }
   },
 
-  // returns password
-  _ensureMasterPassword() {
-    let pass = this._readPasswordFromFile();
-    if (pass) {
-      return pass;
+  async _ensurePasswordCreatedAndCached() {
+    if (this.cachedPassword) {
+      return;
     }
 
-    EnigmailLog.DEBUG("masterpass.jsm: ensureMasterPassword()\n");
-    try {
-      pass = this.generatePassword();
-      let sdr = this.getSDR();
-      let encryptedPass = sdr.encryptString(pass);
-
-      EnigmailFiles.writeFileContents(
-        this.getPassPath(),
-        encryptedPass,
-        DEFAULT_FILE_PERMS
-      );
-    } catch (ex) {
-      EnigmailLog.writeException("masterpass.jsm", ex);
-      throw ex;
+    let sdr = this.getSDR();
+    if (!sdr) {
+      throw new Error("Failed to obtain the SDR service.");
     }
-    EnigmailLog.DEBUG("masterpass.jsm: ensureMasterPassword(): ok\n");
-    return pass;
+
+    if (await IOUtils.exists(this.getPassPath().path)) {
+      let encryptedPass = await IOUtils.readUTF8(this.getPassPath().path);
+      encryptedPass = encryptedPass.trim();
+      if (!encryptedPass) {
+        throw new Error(
+          "Failed to obtain encrypted password data from file " +
+            this.getPassPath().path
+        );
+      }
+
+      try {
+        this.cachedPassword = sdr.decryptString(encryptedPass);
+        // This is the success scenario, in which we return early.
+        return;
+      } catch (e) {
+        // This code handles the corruption described in bug 1790610.
+
+        // Failure to decrypt should be the only scenario that
+        // reaches this code path.
+
+        // Is a primary password set?
+        let tokenDB = Cc["@mozilla.org/security/pk11tokendb;1"].getService(
+          Ci.nsIPK11TokenDB
+        );
+        let token = tokenDB.getInternalKeyToken();
+        if (token.hasPassword && !token.isLoggedIn()) {
+          // Yes, primary password is set, but user is not logged in.
+          // Let's throw now, a future action will result in trying again.
+          throw e;
+        }
+
+        // No. We have profile corruption: key4.db doesn't contain the
+        // key to decrypt file encrypted-openpgp-passphrase.txt
+        // Move to backup file and create a fresh file to fix the situation.
+
+        let backup = await IOUtils.createUniqueFile(
+          Services.dirsvc.get("ProfD", Ci.nsIFile).path,
+          this.filename + ".corrupt"
+        );
+
+        try {
+          await IOUtils.move(this.getPassPath().path, backup);
+          console.warn(
+            `${this.filename} corruption fixed. Corrupted file moved to ${backup}`
+          );
+        } catch (e2) {
+          console.warn(
+            `Cannot move corrupted file ${this.filename} to backup name ${backup}`
+          );
+          // We cannot repair, so restarting doesn't help, keep running,
+          // and hope the user notices this error in console.
+          throw e2;
+        }
+
+        let secRingFile = this.getSecretKeyRingFile();
+        if (secRingFile.exists() && secRingFile.fileSize > 0) {
+          // We have secret keys that can no longer be accessed.
+
+          try {
+            let backupOld = await IOUtils.createUniqueFile(
+              Services.dirsvc.get("ProfD", Ci.nsIFile).path,
+              this.secringFilename + ".old.corrupt"
+            );
+            await IOUtils.move(secRingFile.path + ".old", backupOld);
+          } catch (eOld) {}
+
+          let backup2 = await IOUtils.createUniqueFile(
+            Services.dirsvc.get("ProfD", Ci.nsIFile).path,
+            this.secringFilename + ".corrupt"
+          );
+
+          try {
+            await IOUtils.move(secRingFile.path, backup2);
+            console.warn(
+              `secring.gpg corruption fixed. Corrupted file moved to ${backup}`
+            );
+            await IOUtils.write(secRingFile.path, new Uint8Array());
+          } catch (e3) {
+            console.warn(
+              `Cannot move corrupted file ${this.filename} to backup name ${backup}`
+            );
+            // We cannot repair, so restarting doesn't help, keep running,
+            // and hope the user notices this error in console.
+            throw e3;
+          }
+
+          // RNP might have already read the old file, we cannot easily
+          // trigger rereading of the file, so let's restart.
+          lazy.MailUtils.restartApplication();
+          return;
+        }
+
+        // If we arrive here, we have successfully repaired, and
+        // can proceed with the code below to create a fresh file.
+      }
+    }
+
+    if (await IOUtils.exists(this.getPassPath().path)) {
+      // This check is an additional precaution, to prevent against
+      // logic errors, or unexpected filesystem behavior.
+      // If this file already exists, we MUST NOT create it again.
+      // The code below is executed if the file does not exist yet,
+      // or if the file was deleted or moved, after automatic repairing.
+      throw new Error("File " + this.getPassPath().path + " already exists");
+    }
+
+    // Make sure we don't use the new password unless we're successful
+    // in encrypting and storing it to disk.
+    // (This may fail if the user has a primary password set,
+    // but refuses to enter it.)
+    let newPass = this.generatePassword();
+    let encryptedPass = sdr.encryptString(newPass);
+    if (!encryptedPass) {
+      throw new Error("cannot create OpenPGP password");
+    }
+    await IOUtils.writeUTF8(this.getPassPath().path, encryptedPass);
+
+    this.cachedPassword = newPass;
   },
 
   generatePassword() {
@@ -179,39 +287,46 @@ var OpenPGPMasterpass = {
     return result;
   },
 
-  async retrieveOpenPGPPassword() {
-    EnigmailLog.DEBUG("masterpass.jsm: retrieveMasterPassword()\n");
+  cachedPassword: null,
 
-    if (!this._initDone) {
-      this._initDone = true;
-
-      await this._repairOrWarn();
-      // repairing might have created the file
-
-      let path = this.getPassPath();
-      if (!path.exists()) {
-        return this._ensureMasterPassword();
-      }
+  // This function requires the password to already exist and be cached.
+  retrieveCachedPassword() {
+    if (!this.cachedPassword) {
+      // Obviously some functionality requires the password, but we
+      // don't have it yet.
+      // The best we can do is spawn reading and caching asynchronously,
+      // this will cause the password to be available once the user
+      // retries the current operation.
+      this.ensurePasswordIsCached();
+      throw new Error("no cached password");
     }
-
-    return this._readPasswordFromFile();
+    return this.cachedPassword;
   },
 
-  _readPasswordFromFile() {
-    try {
-      let path = this.getPassPath();
-      var encryptedPass = EnigmailFiles.readFile(path).trim();
-      if (!encryptedPass) {
-        return null;
-      }
-      let sdr = this.getSDR();
-      let pass = sdr.decryptString(encryptedPass);
-      //console.debug("your secring.gpg is protected with the following passphrase: " + pass);
-      return pass;
-    } catch (ex) {
-      EnigmailLog.writeException("masterpass.jsm", ex);
+  async ensurePasswordIsCached() {
+    if (this.cachedPassword) {
+      return;
     }
-    EnigmailLog.DEBUG("masterpass.jsm: retrieveMasterPassword(): not found!\n");
-    return null;
+
+    if (!this._initDone) {
+      // set flag immediately, to avoid any potential recursion
+      // causing us to repair twice in parallel.
+      this._initDone = true;
+      await this._repairOrWarn();
+    }
+
+    if (this.cachedPassword) {
+      return;
+    }
+
+    await this._ensurePasswordCreatedAndCached();
+  },
+
+  // This function may trigger password creation, if necessary
+  async retrieveOpenPGPPassword() {
+    lazy.EnigmailLog.DEBUG("masterpass.jsm: retrieveMasterPassword()\n");
+
+    await this.ensurePasswordIsCached();
+    return this.cachedPassword;
   },
 };

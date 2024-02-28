@@ -22,7 +22,7 @@ var {
   expand_folder,
   get_smart_folder_named,
   inboxFolder,
-  make_new_sets_in_folder,
+  make_message_sets_in_folders,
   mc,
 } = ChromeUtils.import(
   "resource://testing-common/mozmill/FolderDisplayHelpers.jsm"
@@ -43,7 +43,7 @@ var nsMsgFolderFlags = Ci.nsMsgFolderFlags;
  * create two smart folder types and two real folders, one for each
  * smart folder type
  */
-add_task(function setupModule(module) {
+add_setup(async function () {
   rootFolder = inboxFolder.server.rootFolder;
 
   // register a new smart folder type
@@ -68,8 +68,8 @@ add_task(function setupModule(module) {
 
   // The message itself doesn't really matter, as long as there's at least one
   // in the folder.
-  make_new_sets_in_folder(subfolderA, [{ count: 1 }]);
-  make_new_sets_in_folder(subfolderB, [{ count: 1 }]);
+  await make_message_sets_in_folders([subfolderA], [{ count: 1 }]);
+  await make_message_sets_in_folders([subfolderB], [{ count: 1 }]);
 });
 
 /**
@@ -205,7 +205,7 @@ add_task(function test_return_to_all_folders() {
   assert_folder_mode("all");
 });
 
-registerCleanupFunction(function teardownModule() {
-  inboxFolder.propagateDelete(subfolderA, true, null);
-  inboxFolder.propagateDelete(subfolderB, true, null);
+registerCleanupFunction(function () {
+  inboxFolder.propagateDelete(subfolderA, true);
+  inboxFolder.propagateDelete(subfolderB, true);
 });

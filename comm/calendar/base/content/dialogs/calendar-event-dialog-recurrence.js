@@ -2,16 +2,11 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-/* exported onLoad */
-
-/* import-globals-from ../calendar-ui-utils.js */
-
 var { splitRecurrenceRules } = ChromeUtils.import(
   "resource:///modules/calendar/calRecurrenceUtils.jsm"
 );
 var { cal } = ChromeUtils.import("resource:///modules/calendar/calUtils.jsm");
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-var { XPCOMUtils } = ChromeUtils.import("resource://gre/modules/XPCOMUtils.jsm");
+var { XPCOMUtils } = ChromeUtils.importESModule("resource://gre/modules/XPCOMUtils.sys.mjs");
 
 XPCOMUtils.defineLazyModuleGetters(this, {
   CalRecurrenceInfo: "resource:///modules/CalRecurrenceInfo.jsm",
@@ -22,30 +17,35 @@ var gStartTime = null;
 var gEndTime = null;
 var gUntilDate = null;
 
+window.addEventListener("load", onLoad);
+
 /**
- * Object wrapping the methods and properties of recurrence-preview binding.
+ * Object wrapping the methods and properties of recurrencePreview binding.
  */
 const RecurrencePreview = {
   /**
-   * Initializes some properties and adds event listener to the #recurrence-preview node.
+   * Initializes some properties and adds event listener to the #recurrencePreview node.
    */
   init() {
-    this.node = document.getElementById("recurrence-preview");
+    this.node = document.getElementById("recurrencePreview");
     this.mRecurrenceInfo = null;
     this.mResizeHandler = null;
     this.mDateTime = null;
-    this.mResizeHandler = this.onResize.bind(this);
-    window.addEventListener("resize", this.mResizeHandler, true);
-  },
-  /**
-   * Removes the event listener added in init method.
-   */
-  destruct() {
-    window.removeEventListener("resize", this.mResizeHandler, true);
+    document.getElementById("recurrencePrevious").addEventListener("click", () => {
+      this.showPreviousMonth();
+    });
+    document.getElementById("recurrenceNext").addEventListener("click", () => {
+      this.showNextMonth();
+    });
+    document.getElementById("recurrenceToday").addEventListener("click", () => {
+      this.jumpToToday();
+    });
+    this.togglePreviousMonthButton();
   },
   /**
    * Setter for mDateTime property.
-   * @param {date} val - The date value that is to be set.
+   *
+   * @param {Date} val - The date value that is to be set.
    */
   set dateTime(val) {
     this.mDateTime = val.clone();
@@ -60,78 +60,17 @@ const RecurrencePreview = {
     return this.mDateTime;
   },
   /**
-   * Updates #recurrence-preview node layout on window resize.
-   */
-  onResize() {
-    let minimonth = this.node.querySelector("calendar-minimonth");
-
-    let hbox = this.node.querySelector("hbox");
-    let vbox = hbox.parentNode;
-
-    let minimonthRect = minimonth.getBoundingClientRect();
-    let nodeRect = this.node.getBoundingClientRect();
-    let contentWidth = minimonthRect.width;
-    let containerWidth = nodeRect.width;
-
-    // Now find out how much elements can be displayed.
-    // this is a simple division which always yields a positive integer value.
-    let cWidth = containerWidth % contentWidth;
-    let numHorizontal = (containerWidth - cWidth) / contentWidth;
-
-    let contentHeight = minimonthRect.height;
-    let containerHeight = nodeRect.height;
-
-    let cHeight = containerHeight % contentHeight;
-    // Now find out how much elements can be displayed.
-    // this is a simple division which always yields a positive integer value.
-    let numVertical = (containerHeight - cHeight) / contentHeight;
-
-    // To cut down on reflows, use a new vbox instead of the live one.
-    let newVbox = document.createXULElement("vbox");
-
-    // Add the existing rows to the fragment.
-    for (let hbox of vbox.children) {
-      newVbox.appendChild(hbox);
-    }
-
-    // Add the extra rows we can accomodate.
-    for (let i = newVbox.childElementCount; i < numVertical; i++) {
-      newVbox.appendChild(document.createXULElement("hbox"));
-    }
-
-    // Walk all rows and adjust column elements.
-    for (let hbox of newVbox.children) {
-      for (let i = hbox.childElementCount; i < numHorizontal; i++) {
-        let newNode = document.createXULElement("calendar-minimonth");
-        newNode.setAttribute("readonly", "true");
-        hbox.appendChild(newNode);
-      }
-    }
-
-    // Now replace the current vbox with the new one.
-    vbox.replaceWith(newVbox);
-
-    this.updateContent();
-    this.updatePreview(this.mRecurrenceInfo);
-  },
-  /**
-   * Updates content of #recurrence-preview node.
+   * Updates content of #recurrencePreview node.
    */
   updateContent() {
     let date = cal.dtz.dateTimeToJsDate(this.dateTime);
-    let hbox = this.node.querySelector("hbox");
-    while (hbox) {
-      let numChilds = hbox.childElementCount;
-      for (let i = 0; i < numChilds; i++) {
-        let minimonth = hbox.children[i];
-        minimonth.showMonth(date);
-        date.setMonth(date.getMonth() + 1);
-      }
-      hbox = hbox.nextElementSibling;
+    for (let minimonth of this.node.children) {
+      minimonth.showMonth(date);
+      date.setMonth(date.getMonth() + 1);
     }
   },
   /**
-   * Updates preview of #recurrence-preview node.
+   * Updates preview of #recurrencePreview node.
    */
   updatePreview(recurrenceInfo) {
     let minimonth = this.node.querySelector("calendar-minimonth");
@@ -146,70 +85,189 @@ const RecurrencePreview = {
     let end = start.clone();
     end.month++;
 
-    // the 'minimonth' controls are arranged in a
-    // grid, sorted by rows first -> iterate the rows that may exist.
-    let hbox = this.node.querySelector("hbox");
-    while (hbox) {
-      // now iterate all the child nodes of this row
-      // in order to visit each minimonth in turn.
-      let numChilds = hbox.childElementCount;
-      for (let i = 0; i < numChilds; i++) {
-        // we now have one of the minimonth controls while 'start'
-        // and 'end' are set to the interval this minimonth shows.
-        minimonth = hbox.children[i];
-        minimonth.showMonth(cal.dtz.dateTimeToJsDate(start));
-        if (recurrenceInfo) {
-          // retrieve an array of dates that represents all occurrences
-          // that fall into this time interval [start,end[.
-          // note: the following loop assumes that this array contains
-          // dates that are strictly monotonically increasing.
-          // should getOccurrenceDates() not enforce this assumption we
-          // need to fall back to some different algorithm.
-          let dates = recurrenceInfo.getOccurrenceDates(start, end, 0);
+    for (let minimonth of this.node.children) {
+      // we now have one of the minimonth controls while 'start'
+      // and 'end' are set to the interval this minimonth shows.
+      minimonth.showMonth(cal.dtz.dateTimeToJsDate(start));
+      if (recurrenceInfo) {
+        // retrieve an array of dates that represents all occurrences
+        // that fall into this time interval [start,end[.
+        // note: the following loop assumes that this array contains
+        // dates that are strictly monotonically increasing.
+        // should getOccurrenceDates() not enforce this assumption we
+        // need to fall back to some different algorithm.
+        let dates = recurrenceInfo.getOccurrenceDates(start, end, 0);
 
-          // now run through all days of this month and set the
-          // 'busy' attribute with respect to the occurrence array.
-          let index = 0;
-          let occurrence = null;
-          if (index < dates.length) {
-            occurrence = dates[index++].getInTimezone(start.timezone);
-          }
-          let current = start.clone();
-          while (current.compare(end) < 0) {
-            let box = minimonth.getBoxForDate(current);
-            if (box) {
-              if (
-                occurrence &&
-                occurrence.day == current.day &&
-                occurrence.month == current.month &&
-                occurrence.year == current.year
-              ) {
-                box.setAttribute("busy", 1);
-                if (index < dates.length) {
-                  occurrence = dates[index++].getInTimezone(start.timezone);
-                  // take into account that the very next occurrence
-                  // can happen at the same day as the previous one.
-                  if (
-                    occurrence.day == current.day &&
-                    occurrence.month == current.month &&
-                    occurrence.year == current.year
-                  ) {
-                    continue;
-                  }
-                } else {
-                  occurrence = null;
+        // now run through all days of this month and set the
+        // 'busy' attribute with respect to the occurrence array.
+        let index = 0;
+        let occurrence = null;
+        if (index < dates.length) {
+          occurrence = dates[index++].getInTimezone(start.timezone);
+        }
+        let current = start.clone();
+        while (current.compare(end) < 0) {
+          let box = minimonth.getBoxForDate(current);
+          if (box) {
+            if (
+              occurrence &&
+              occurrence.day == current.day &&
+              occurrence.month == current.month &&
+              occurrence.year == current.year
+            ) {
+              box.setAttribute("busy", 1);
+              if (index < dates.length) {
+                occurrence = dates[index++].getInTimezone(start.timezone);
+                // take into account that the very next occurrence
+                // can happen at the same day as the previous one.
+                if (
+                  occurrence.day == current.day &&
+                  occurrence.month == current.month &&
+                  occurrence.year == current.year
+                ) {
+                  continue;
                 }
               } else {
-                box.removeAttribute("busy");
+                occurrence = null;
               }
+            } else {
+              box.removeAttribute("busy");
             }
-            current.day++;
           }
+          current.day++;
         }
-        start.month++;
-        end.month++;
       }
-      hbox = hbox.nextElementSibling;
+      start.month++;
+      end.month++;
+    }
+  },
+  /**
+   * Shows the previous month in the recurrence preview.
+   */
+  showPreviousMonth() {
+    let prevMinimonth = this.node.querySelector(`calendar-minimonth[active-month="true"]`);
+
+    let activeDate = this.previousMonthDate(
+      prevMinimonth.getAttribute("year"),
+      prevMinimonth.getAttribute("month")
+    );
+
+    if (activeDate) {
+      this.resetDisplayOfMonths();
+      this.displayCurrentMonths(activeDate);
+      this.togglePreviousMonthButton();
+    }
+  },
+  /**
+   * Shows the next month in the recurrence preview.
+   */
+  showNextMonth() {
+    let prevMinimonth = this.node.querySelector(`calendar-minimonth[active-month="true"]`);
+
+    let activeDate = this.nextMonthDate(
+      prevMinimonth.getAttribute("year"),
+      prevMinimonth.getAttribute("month")
+    );
+
+    if (activeDate) {
+      this.resetDisplayOfMonths();
+      this.displayCurrentMonths(activeDate);
+      this.togglePreviousMonthButton();
+    }
+  },
+  /**
+   * Shows the current day's month in the recurrence preview.
+   */
+  jumpToToday() {
+    let activeDate = new Date();
+    this.resetDisplayOfMonths();
+    this.displayCurrentMonths(activeDate);
+    this.togglePreviousMonthButton();
+  },
+  /**
+   * Selects the minimonth element belonging to a year and month.
+   */
+  selectMinimonth(year, month) {
+    let minimonthIdentifier = `calendar-minimonth[year="${year}"][month="${month}"]`;
+    let selectedMinimonth = this.node.querySelector(minimonthIdentifier);
+
+    if (selectedMinimonth) {
+      return selectedMinimonth;
+    }
+
+    selectedMinimonth = document.createXULElement("calendar-minimonth");
+    this.node.appendChild(selectedMinimonth);
+
+    selectedMinimonth.setAttribute("readonly", "true");
+    selectedMinimonth.setAttribute("month", month);
+    selectedMinimonth.setAttribute("year", year);
+    selectedMinimonth.hidden = true;
+
+    if (this.mRecurrenceInfo) {
+      this.updatePreview(this.mRecurrenceInfo);
+    }
+
+    return selectedMinimonth;
+  },
+  /**
+   * Returns the next month's first day when given a year and month.
+   */
+  nextMonthDate(currentYear, currentMonth) {
+    // If month is December, select first day of January
+    if (currentMonth == 11) {
+      return new Date(parseInt(currentYear) + 1, 0, 1);
+    }
+    return new Date(parseInt(currentYear), parseInt(currentMonth) + 1, 1);
+  },
+  /**
+   * Returns the previous month's first day when given a year and month.
+   */
+  previousMonthDate(currentYear, currentMonth) {
+    // If month is January, select first day of December.
+    if (currentMonth == 0) {
+      return new Date(parseInt(currentYear) - 1, 11, 1);
+    }
+    return new Date(parseInt(currentYear), parseInt(currentMonth) - 1, 1);
+  },
+  /**
+   * Reset the recurrence preview months, making all hidden and none set to active.
+   */
+  resetDisplayOfMonths() {
+    let calContainer = this.node;
+    for (let minimonth of calContainer.children) {
+      minimonth.hidden = true;
+      minimonth.setAttribute("active-month", false);
+    }
+  },
+  /**
+   * Display the active month and the next two months in the recurrence preview.
+   */
+  displayCurrentMonths(activeDate) {
+    let activeMonth = activeDate.getMonth();
+    let activeYear = activeDate.getFullYear();
+
+    let month1Date = this.nextMonthDate(activeYear, activeMonth);
+    let month2Date = this.nextMonthDate(month1Date.getFullYear(), month1Date.getMonth());
+
+    let activeMinimonth = this.selectMinimonth(activeYear, activeMonth);
+    let minimonth1 = this.selectMinimonth(month1Date.getFullYear(), month1Date.getMonth());
+    let minimonth2 = this.selectMinimonth(month2Date.getFullYear(), month2Date.getMonth());
+
+    activeMinimonth.setAttribute("active-month", true);
+    activeMinimonth.removeAttribute("hidden");
+    minimonth1.removeAttribute("hidden");
+    minimonth2.removeAttribute("hidden");
+  },
+  /**
+   * Disable previous month button when the active month is the first month of the event.
+   */
+  togglePreviousMonthButton() {
+    let activeMinimonth = this.node.querySelector(`calendar-minimonth[active-month="true"]`);
+
+    if (activeMinimonth.getAttribute("initial-month") == "true") {
+      document.getElementById("recurrencePrevious").setAttribute("disabled", "true");
+    } else {
+      document.getElementById("recurrencePrevious").removeAttribute("disabled");
     }
   },
 };
@@ -396,7 +454,7 @@ function onLoad() {
         rule = cal.wrapInstance(rules[0], Ci.calIRecurrenceRule);
       }
     } catch (ex) {
-      Cu.reportError(ex);
+      console.error(ex);
     }
   }
   if (!rule) {
@@ -404,6 +462,11 @@ function onLoad() {
     rule.type = "DAILY";
     rule.interval = 1;
     rule.count = -1;
+
+    // We don't let the user set the week start day for a given rule, but we
+    // want to default to the user's week start so rules behave as expected
+    let weekStart = Services.prefs.getIntPref("calendar.week.start", 0);
+    rule.weekStart = weekStart;
   }
   initializeControls(rule);
 
@@ -449,6 +512,8 @@ function initializeControls(rule) {
     let mask = aByDay.reduce((value, item) => value | (1 << item), 1);
     return aByDay.length == 7 && mask == Math.pow(2, 8) - 1;
   }
+
+  document.getElementById("week-start").value = rule.weekStart;
 
   switch (rule.type) {
     case "DAILY":
@@ -592,7 +657,7 @@ function initializeControls(rule) {
  * item.
  *
  * @param item    The item to save back to.
- * @return        The saved recurrence info.
+ * @returns The saved recurrence info.
  */
 function onSave(item) {
   // Always return 'null' if this item is an occurrence.
@@ -623,6 +688,12 @@ function onSave(item) {
   }
 
   let recRule = cal.createRecurrenceRule();
+
+  // We don't let the user edit the start of the week for a given rule, but we
+  // want to preserve the value set
+  let weekStart = Number(document.getElementById("week-start").value);
+  recRule.weekStart = weekStart;
+
   const ALL_WEEKDAYS = [2, 3, 4, 5, 6, 7, 1]; // The sequence MO,TU,WE,TH,FR,SA,SU.
   switch (periodNumber) {
     case 0: {
@@ -855,7 +926,6 @@ function updateRecurrenceBox() {
     periodBox.children[i].hidden = i != periodNumber;
   }
   updateRecurrenceControls();
-  window.sizeToContent();
 }
 
 /**
@@ -965,7 +1035,7 @@ function checkUntilDate() {
     );
     document.getElementById("repeat-until-date").value = repeatDate;
     checkUntilDate.warning = true;
-    let callback = function() {
+    let callback = function () {
       // No warning when the dialog is being closed with the Cancel button.
       if (!checkUntilDate.warning) {
         return;
@@ -985,12 +1055,41 @@ function checkUntilDate() {
 }
 
 /**
+ * Checks the date entered for a yearly absolute rule (i.e. every 12 of January)
+ * in order to avoid creating a rule on an invalid date.
+ */
+function checkYearlyAbsoluteDate() {
+  if (!gStartTime) {
+    // This function shouldn't run before onLoad.
+    return;
+  }
+
+  const MONTH_LENGTHS = [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  let dayOfMonth = document.getElementById("yearly-days").value;
+  let month = document.getElementById("yearly-month-ordinal").value;
+  document.getElementById("yearly-days").max = MONTH_LENGTHS[month - 1];
+  // Check if the day value is too high.
+  if (dayOfMonth > MONTH_LENGTHS[month - 1]) {
+    document.getElementById("yearly-days").value = MONTH_LENGTHS[month - 1];
+  } else {
+    updateRecurrenceControls();
+  }
+  // Check if the day value is too low.
+  if (dayOfMonth < 1) {
+    document.getElementById("yearly-days").value = 1;
+  } else {
+    updateRecurrenceControls();
+  }
+}
+
+/**
  * Update all recurrence controls on the dialog.
  */
 function updateRecurrenceControls() {
   updateRecurrencePattern();
   updateRecurrenceRange();
   updatePreview();
+  window.sizeToContent();
 }
 
 /**
@@ -1098,7 +1197,7 @@ function changeOrderForElements(aPropKey, aPropParams) {
       "erties has incorrect number of params. Expected " +
       aPropParams.length +
       " params.";
-    Cu.reportError(msg + " " + ex);
+    console.error(msg + " " + ex);
     return;
   }
 

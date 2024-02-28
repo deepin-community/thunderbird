@@ -8,10 +8,11 @@ var { cal } = ChromeUtils.import("resource:///modules/calendar/calUtils.jsm");
 var { CalAttendee } = ChromeUtils.import("resource:///modules/CalAttendee.jsm");
 var { CalRelation } = ChromeUtils.import("resource:///modules/CalRelation.jsm");
 var { CalAttachment } = ChromeUtils.import("resource:///modules/CalAttachment.jsm");
-var { XPCOMUtils } = ChromeUtils.import("resource://gre/modules/XPCOMUtils.jsm");
+var { XPCOMUtils } = ChromeUtils.importESModule("resource://gre/modules/XPCOMUtils.sys.mjs");
 
 XPCOMUtils.defineLazyModuleGetters(this, {
   CalAlarm: "resource:///modules/CalAlarm.jsm",
+  CalDateTime: "resource:///modules/CalDateTime.jsm",
   CalRecurrenceInfo: "resource:///modules/CalRecurrenceInfo.jsm",
 });
 
@@ -33,7 +34,7 @@ XPCOMUtils.defineLazyServiceGetter(
  * calItemBase prototype definition
  *
  * @implements calIItemBase
- * @constructor
+ * @class
  */
 function calItemBase() {
   cal.ASSERT(false, "Inheriting objects call initItemBase()!");
@@ -233,7 +234,7 @@ calItemBase.prototype = {
     }
 
     for (let propValue of this.mProperties.values()) {
-      if (propValue instanceof Ci.calIDateTime && propValue.isMutable) {
+      if (propValue?.isMutable) {
         propValue.makeImmutable();
       }
     }
@@ -315,7 +316,7 @@ calItemBase.prototype = {
 
     cloned.mProperties = new Map();
     for (let [name, value] of this.mProperties.entries()) {
-      if (value instanceof Ci.calIDateTime) {
+      if (value instanceof CalDateTime || value instanceof Ci.calIDateTime) {
         value = value.clone();
       }
 
@@ -419,44 +420,50 @@ calItemBase.prototype = {
 
   set descriptionHTML(html) {
     if (html) {
-      // Using the same mode as the HTML description editor
-      // in calendar-item-iframe.js
+      // We need to output a plaintext version of the description, even if we're
+      // using the ALTREP parameter. We use the "preformatted" option in case
+      // the HTML contains a <pre/> tag with newlines.
       let mode =
         Ci.nsIDocumentEncoder.OutputDropInvisibleBreak |
-        Ci.nsIDocumentEncoder.OutputWrap |
         Ci.nsIDocumentEncoder.OutputLFLineBreak |
-        Ci.nsIDocumentEncoder.OutputNoScriptContent |
-        Ci.nsIDocumentEncoder.OutputNoFramesContent |
-        Ci.nsIDocumentEncoder.OutputBodyOnly;
-      let text = gParserUtils.convertToPlainText(html, mode, 80);
+        Ci.nsIDocumentEncoder.OutputPreformatted;
+      let text = gParserUtils.convertToPlainText(html, mode, 0);
+
       this.setProperty("DESCRIPTION", text);
+
+      // If the text is non-empty, create a standard ALTREP representation of
+      // the description as HTML.
+      // N.B. There's logic in nsMsgCompose for determining if HTML is
+      // convertible to plaintext without losing formatting. We could test if we
+      // could leave this part off if we generalized that logic.
       if (text) {
         this.setPropertyParameter(
           "DESCRIPTION",
           "ALTREP",
           "data:text/html," + encodeURIComponent(html)
         );
-      } // else: can't set a property parameter if the property is empty
+      }
     } else {
       this.deleteProperty("DESCRIPTION");
     }
   },
 
-  // readonly attribute nsIJSEnumerator properties;
+  // Each inner array has two elements: a string and a nsIVariant.
+  // readonly attribute Array<Array<jsval> > properties;
   get properties() {
     let properties = this.mProperties;
     if (this.mIsProxy) {
       let parentProperties = this.mParentItem.wrappedJSObject.mProperties;
       let thisProperties = this.mProperties;
       properties = new Map(
-        (function*() {
+        (function* () {
           yield* parentProperties;
           yield* thisProperties;
         })()
       );
     }
 
-    return properties.entries();
+    return [...properties.entries()];
   },
 
   // nsIVariant getProperty(in AString name);
@@ -470,7 +477,7 @@ calItemBase.prototype = {
 
   // boolean hasProperty(in AString name);
   hasProperty(aName) {
-    return this.getProperty(aName.toUpperCase()) != null;
+    return this.getProperty(aName) != null;
   },
 
   // void setProperty(in AString name, in nsIVariant value);
@@ -510,20 +517,21 @@ calItemBase.prototype = {
   getPropertyParameter(aPropName, aParamName) {
     let propName = aPropName.toUpperCase();
     let paramName = aParamName.toUpperCase();
-    if (propName in this.mPropertyParams && paramName in this.mPropertyParams[propName]) {
-      // If the property is not in mPropertyParams, then this just means
-      // there are no properties set.
-      return this.mPropertyParams[propName][paramName];
+    if (propName in this.mPropertyParams) {
+      if (paramName in this.mPropertyParams[propName]) {
+        // If the property is not in mPropertyParams, then this just means
+        // there are no properties set.
+        return this.mPropertyParams[propName][paramName];
+      }
+      return null;
     }
-    return null;
+    return this.mIsProxy ? this.mParentItem.getPropertyParameter(propName, paramName) : null;
   },
 
   // boolean hasPropertyParameter(in AString aPropertyName,
   //                              in AString aParameterName);
   hasPropertyParameter(aPropName, aParamName) {
-    let propName = aPropName.toUpperCase();
-    let paramName = aParamName.toUpperCase();
-    return propName in this.mPropertyParams && paramName in this.mPropertyParams[propName];
+    return this.getPropertyParameter(aPropName, aParamName) != null;
   },
 
   // void setPropertyParameter(in AString aPropertyName,
@@ -560,14 +568,13 @@ calItemBase.prototype = {
     return Object.keys(this.mPropertyParams[propName]);
   },
 
-  // void getAttendees(out PRUint32 count,
-  //                   [array,size_is(count),retval] out calIAttendee attendees);
+  // Array<calIAttendee> getAttendees();
   getAttendees() {
     if (!this.mAttendees && this.mIsProxy) {
       this.mAttendees = this.mParentItem.getAttendees();
     }
     if (this.mAttendees) {
-      return this.mAttendees.concat([]); // clone
+      return Array.from(this.mAttendees); // clone
     }
     return [];
   },
@@ -614,6 +621,10 @@ calItemBase.prototype = {
 
   // void addAttendee(in calIAttendee attendee);
   addAttendee(attendee) {
+    if (!attendee.id) {
+      cal.LOG("Tried to add invalid attended");
+      return;
+    }
     // the duplicate check is migration code for bug 1204255
     let exists = this.getAttendeeById(attendee.id);
     if (exists) {
@@ -1020,7 +1031,6 @@ calItemBase.prototype = {
    */
   fillIcalComponentFromBase(icalcomp) {
     this.ensureNotDirty();
-    let icssvc = cal.getIcsService();
 
     this.mapPropsToICS(icalcomp, this.icsBasePropMap);
 
@@ -1048,7 +1058,7 @@ calItemBase.prototype = {
     }
 
     for (let cat of this.getCategories()) {
-      let catprop = icssvc.createIcalProperty("CATEGORIES");
+      let catprop = cal.icsService.createIcalProperty("CATEGORIES");
       catprop.value = cat;
       icalcomp.addProperty(catprop);
     }
@@ -1061,7 +1071,7 @@ calItemBase.prototype = {
 
     let alarmLastAck = this.alarmLastAck;
     if (alarmLastAck) {
-      let lastAck = cal.getIcsService().createIcalProperty("X-MOZ-LASTACK");
+      let lastAck = cal.icsService.createIcalProperty("X-MOZ-LASTACK");
       // - should we further ensure that those are UTC or rely on calAlarmService doing so?
       lastAck.value = alarmLastAck.icalString;
       icalcomp.addProperty(lastAck);
@@ -1144,16 +1154,16 @@ makeMemberAttrProperty(calItemBase, "ALARMTIME", "alarmTime");
 /**
  * Adds a member attribute to the given prototype.
  *
- * @param {Function} ctor       The constructor function of the prototype.
- * @param {string} varname      The variable name to get/set.
- * @param {string} attr         The attribute name to be used.
- * @param {*} dflt              The default value in case none is set.
+ * @param {Function} ctor - The constructor function of the prototype.
+ * @param {string} varname - The variable name to get/set.
+ * @param {string} attr - The attribute name to be used.
+ * @param {*} dflt - The default value in case none is set.
  */
 function makeMemberAttr(ctor, varname, attr, dflt) {
-  let getter = function() {
+  let getter = function () {
     return varname in this ? this[varname] : dflt;
   };
-  let setter = function(value) {
+  let setter = function (value) {
     this.modify();
     this[varname] = value;
     return value;
@@ -1171,15 +1181,15 @@ function makeMemberAttr(ctor, varname, attr, dflt) {
  * which makes it possible to e.g. iterate through `mProperties` when cloning
  * an object.
  *
- * @param {Function} ctor       The constructor function of the prototype.
- * @param {string} name         The property name to get/set.
- * @param {string} attr         The attribute name to be used.
+ * @param {Function} ctor - The constructor function of the prototype.
+ * @param {string} name - The property name to get/set.
+ * @param {string} attr - The attribute name to be used.
  */
 function makeMemberAttrProperty(ctor, name, attr) {
-  let getter = function() {
+  let getter = function () {
     return this.getProperty(name);
   };
-  let setter = function(value) {
+  let setter = function (value) {
     this.modify();
     return this.setProperty(name, value);
   };

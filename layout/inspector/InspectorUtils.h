@@ -16,7 +16,6 @@ class nsAtom;
 class nsINode;
 class nsINodeList;
 class nsRange;
-class ComputedStyle;
 
 namespace mozilla {
 class BindingStyleRule;
@@ -126,7 +125,7 @@ class InspectorUtils {
 
   // Utilities for working with CSS colors
   static void RgbToColorName(GlobalObject& aGlobal, uint8_t aR, uint8_t aG,
-                             uint8_t aB, nsAString& aResult, ErrorResult& aRv);
+                             uint8_t aB, nsAString& aResult);
 
   // Convert a given CSS color string to rgba. Returns null on failure or an
   // InspectorRGBATuple on success.
@@ -184,13 +183,18 @@ class InspectorUtils {
     return GetParentForNode(aNode, aShowingAnonymousContent);
   }
 
-  static already_AddRefed<nsINodeList> GetChildrenForNode(
-      GlobalObject& aGlobalObject, nsINode& aNode,
-      bool aShowingAnonymousContent) {
-    return GetChildrenForNode(aNode, aShowingAnonymousContent);
+  static void GetChildrenForNode(GlobalObject&, nsINode& aNode,
+                                 bool aShowingAnonymousContent,
+                                 bool aIncludeAssignedNodes,
+                                 nsTArray<RefPtr<nsINode>>& aResult) {
+    return GetChildrenForNode(aNode, aShowingAnonymousContent,
+                              aIncludeAssignedNodes,
+                              /* aIncludeSubdocuments = */ true, aResult);
   }
-  static already_AddRefed<nsINodeList> GetChildrenForNode(
-      nsINode& aNode, bool aShowingAnonymousContent);
+  static void GetChildrenForNode(nsINode& aNode, bool aShowingAnonymousContent,
+                                 bool aIncludeAssignedNodes,
+                                 bool aIncludeSubdocuments,
+                                 nsTArray<RefPtr<nsINode>>& aResult);
 
   /**
    * Setting and removing content state on an element. Both these functions
@@ -261,10 +265,6 @@ class InspectorUtils {
    */
   static bool IsCustomElementName(GlobalObject&, const nsAString& aName,
                                   const nsAString& aNamespaceURI);
-
- private:
-  static already_AddRefed<ComputedStyle> GetCleanComputedStyleForElement(
-      Element* aElement, nsAtom* aPseudo);
 };
 
 }  // namespace dom

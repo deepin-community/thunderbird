@@ -34,14 +34,14 @@ add_task(async function run_the_test() {
     );
   }
   gMessages = [
-    ...localAccountUtils.inboxFolder.msgDatabase.EnumerateMessages(),
+    ...localAccountUtils.inboxFolder.msgDatabase.enumerateMessages(),
   ];
   doNextTest();
 });
 
 function streamMsg(msgHdr) {
   let msgURI = localAccountUtils.inboxFolder.getUriForMsg(msgHdr);
-  let msgService = gMessenger.messageServiceFromURI(msgURI);
+  let msgService = MailServices.messageServiceFromURI(msgURI);
   msgService.streamMessage(
     msgURI,
     gStreamListener,

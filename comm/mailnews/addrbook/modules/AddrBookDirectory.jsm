@@ -4,16 +4,17 @@
 
 const EXPORTED_SYMBOLS = ["AddrBookDirectory"];
 
-const { XPCOMUtils } = ChromeUtils.import(
-  "resource://gre/modules/XPCOMUtils.jsm"
+const { XPCOMUtils } = ChromeUtils.importESModule(
+  "resource://gre/modules/XPCOMUtils.sys.mjs"
 );
-
-XPCOMUtils.defineLazyModuleGetters(this, {
+const lazy = {};
+XPCOMUtils.defineLazyModuleGetters(lazy, {
   AddrBookCard: "resource:///modules/AddrBookCard.jsm",
   AddrBookMailingList: "resource:///modules/AddrBookMailingList.jsm",
+  BANISHED_PROPERTIES: "resource:///modules/VCardUtils.jsm",
   compareAddressBooks: "resource:///modules/AddrBookUtils.jsm",
   newUID: "resource:///modules/AddrBookUtils.jsm",
-  Services: "resource://gre/modules/Services.jsm",
+  VCardProperties: "resource:///modules/VCardUtils.jsm",
 });
 
 /**
@@ -91,10 +92,11 @@ class AddrBookDirectory {
   }
 
   getCard(uid) {
-    let card = new AddrBookCard();
+    let card = new lazy.AddrBookCard();
     card.directoryUID = this.UID;
     card._uid = uid;
     card._properties = this.loadCardProperties(uid);
+    card._isGoogleCardDAV = this._isGoogleCardDAV;
     return card.QueryInterface(Ci.nsIAbCard);
   }
   /** @abstract */
@@ -105,7 +107,7 @@ class AddrBookDirectory {
     );
   }
   /** @abstract */
-  saveCardProperties(card) {
+  saveCardProperties(uid, properties) {
     throw new Components.Exception(
       `${this.constructor.name} does not implement saveCardProperties.`,
       Cr.NS_ERROR_NOT_IMPLEMENTED
@@ -131,6 +133,83 @@ class AddrBookDirectory {
       `${this.constructor.name} does not implement deleteList.`,
       Cr.NS_ERROR_NOT_IMPLEMENTED
     );
+  }
+  /**
+   * Create a Map of the properties to record when saving `card`, including
+   * any changes we want to make just before saving.
+   *
+   * @param {nsIAbCard} card
+   * @param {?string} uid
+   * @returns {Map<string, string>}
+   */
+  prepareToSaveCard(card, uid) {
+    let propertyMap = new Map(
+      Array.from(card.properties, p => [p.name, p.value])
+    );
+    let newProperties = new Map();
+
+    // Get a VCardProperties object for the card.
+    let vCardProperties;
+    if (card.supportsVCard) {
+      vCardProperties = card.vCardProperties;
+    } else {
+      vCardProperties = lazy.VCardProperties.fromPropertyMap(propertyMap);
+    }
+
+    if (uid) {
+      // Force the UID to be as passed.
+      vCardProperties.clearValues("uid");
+      vCardProperties.addValue("uid", uid);
+    } else if (vCardProperties.getFirstValue("uid") != card.UID) {
+      vCardProperties.clearValues("uid");
+      vCardProperties.addValue("uid", card.UID);
+    }
+
+    // Collect only the properties we intend to keep.
+    for (let [name, value] of propertyMap) {
+      if (lazy.BANISHED_PROPERTIES.includes(name)) {
+        continue;
+      }
+      if (value !== null && value !== undefined && value !== "") {
+        newProperties.set(name, value);
+      }
+    }
+
+    // Add the vCard and the properties from it we want to cache.
+    newProperties.set("_vCard", vCardProperties.toVCard());
+
+    let displayName = vCardProperties.getFirstValue("fn");
+    newProperties.set("DisplayName", displayName || "");
+
+    let flatten = value => {
+      if (Array.isArray(value)) {
+        return value.join(" ");
+      }
+      return value;
+    };
+
+    let name = vCardProperties.getFirstValue("n");
+    if (Array.isArray(name)) {
+      newProperties.set("FirstName", flatten(name[1]));
+      newProperties.set("LastName", flatten(name[0]));
+    }
+
+    let email = vCardProperties.getAllValuesSorted("email");
+    if (email[0]) {
+      newProperties.set("PrimaryEmail", email[0]);
+    }
+    if (email[1]) {
+      newProperties.set("SecondEmail", email[1]);
+    }
+
+    let nickname = vCardProperties.getFirstValue("nickname");
+    if (nickname) {
+      newProperties.set("NickName", flatten(nickname));
+    }
+
+    // Always set the last modified date.
+    newProperties.set("LastModifiedDate", "" + Math.floor(Date.now() / 1000));
+    return newProperties;
   }
 
   /* nsIAbDirectory */
@@ -172,7 +251,7 @@ class AddrBookDirectory {
       if (this._prefBranch.getPrefType("uid") == Services.prefs.PREF_STRING) {
         this._uid = this._prefBranch.getStringPref("uid");
       } else {
-        this._uid = newUID();
+        this._uid = lazy.newUID();
         this._prefBranch.setStringPref("uid", this._uid);
       }
     }
@@ -188,7 +267,7 @@ class AddrBookDirectory {
     let lists = Array.from(
       this.lists.values(),
       list =>
-        new AddrBookMailingList(
+        new lazy.AddrBookMailingList(
           list.uid,
           this,
           list.name,
@@ -196,14 +275,21 @@ class AddrBookDirectory {
           list.description
         ).asDirectory
     );
-    lists.sort(compareAddressBooks);
+    lists.sort(lazy.compareAddressBooks);
     return lists;
+  }
+  /** @abstract */
+  get childCardCount() {
+    throw new Components.Exception(
+      `${this.constructor.name} does not implement childCardCount getter.`,
+      Cr.NS_ERROR_NOT_IMPLEMENTED
+    );
   }
   get childCards() {
     let results = Array.from(
       this.lists.values(),
       list =>
-        new AddrBookMailingList(
+        new lazy.AddrBookMailingList(
           list.uid,
           this,
           list.name,
@@ -233,7 +319,7 @@ class AddrBookDirectory {
     let results = Array.from(
       this.lists.values(),
       list =>
-        new AddrBookMailingList(
+        new lazy.AddrBookMailingList(
           list.uid,
           this,
           list.name,
@@ -287,6 +373,19 @@ class AddrBookDirectory {
           ["NickName", card.getProperty("NickName", "")],
           ["Notes", card.getProperty("Notes", "")],
         ]);
+      } else if (card._properties.has("_vCard")) {
+        try {
+          properties = card.vCardProperties.toPropertyMap();
+        } catch (ex) {
+          // Parsing failed. Skip the vCard and just use the other properties.
+          console.error(ex);
+          properties = new Map();
+        }
+        for (let [key, value] of card._properties) {
+          if (!properties.has(key)) {
+            properties.set(key, value);
+          }
+        }
       } else {
         properties = card._properties;
       }
@@ -352,10 +451,38 @@ class AddrBookDirectory {
     return this.dirName;
   }
   cardForEmailAddress(emailAddress) {
-    return (
-      this.getCardFromProperty("PrimaryEmail", emailAddress, false) ||
-      this.getCardFromProperty("SecondEmail", emailAddress, false)
-    );
+    if (!emailAddress) {
+      return null;
+    }
+
+    // Check the properties. We copy the first two addresses to properties for
+    // this purpose, so it should be fast.
+    let card = this.getCardFromProperty("PrimaryEmail", emailAddress, false);
+    if (card) {
+      return card;
+    }
+    card = this.getCardFromProperty("SecondEmail", emailAddress, false);
+    if (card) {
+      return card;
+    }
+
+    // Nothing so far? Go through all the cards checking all of the addresses.
+    // This could be slow.
+    emailAddress = emailAddress.toLowerCase();
+    for (let [uid, properties] of this.cards) {
+      let vCard = properties.get("_vCard");
+      // If the vCard string doesn't include the email address, the parsed
+      // vCard won't include it either, so don't waste time parsing it.
+      if (!vCard?.toLowerCase().includes(emailAddress)) {
+        continue;
+      }
+      card = this.getCard(uid);
+      if (card.emailAddresses.some(e => e.toLowerCase() == emailAddress)) {
+        return card;
+      }
+    }
+
+    return null;
   }
   /** @abstract */
   getCardFromProperty(property, value, caseSensitive) {
@@ -374,7 +501,7 @@ class AddrBookDirectory {
   getMailListFromName(name) {
     for (let list of this.lists.values()) {
       if (list.name.toLowerCase() == name.toLowerCase()) {
-        return new AddrBookMailingList(
+        return new lazy.AddrBookMailingList(
           list.uid,
           this,
           list.name,
@@ -394,7 +521,7 @@ class AddrBookDirectory {
     }
 
     let list = this.lists.get(directory.UID);
-    list = new AddrBookMailingList(
+    list = new lazy.AddrBookMailingList(
       list.uid,
       this,
       list.name,
@@ -431,41 +558,53 @@ class AddrBookDirectory {
     }
 
     let oldProperties = this.loadCardProperties(card.UID);
-    let changedProperties = new Set(oldProperties.keys());
+    let newProperties = this.prepareToSaveCard(card);
 
-    for (let { name, value } of card.properties) {
-      if (!oldProperties.has(name) && ![null, undefined, ""].includes(value)) {
-        changedProperties.add(name);
-      } else if (oldProperties.get(name) == value) {
-        changedProperties.delete(name);
+    let allProperties = new Set(oldProperties.keys());
+    for (let key of newProperties.keys()) {
+      allProperties.add(key);
+    }
+
+    if (this.hasOwnProperty("cards")) {
+      this.cards.set(card.UID, newProperties);
+    }
+    this.saveCardProperties(card.UID, newProperties);
+
+    let changeData = {};
+    for (let name of allProperties) {
+      if (name == "LastModifiedDate") {
+        continue;
+      }
+
+      let oldValue = oldProperties.get(name) || null;
+      let newValue = newProperties.get(name) || null;
+      if (oldValue != newValue) {
+        changeData[name] = { oldValue, newValue };
       }
     }
-    changedProperties.delete("LastModifiedDate");
 
-    this.saveCardProperties(card);
-
-    if (changedProperties.size == 0) {
-      return;
+    // Increment this preference if one or both of these properties change.
+    // This will cause the UI to throw away cached values.
+    if ("DisplayName" in changeData || "PreferDisplayName" in changeData) {
+      Services.prefs.setIntPref(
+        "mail.displayname.version",
+        Services.prefs.getIntPref("mail.displayname.version", 0) + 1
+      );
     }
 
     // Send the card as it is in this directory, not as passed to this function.
-    card = this.getCard(card.UID);
-    Services.obs.notifyObservers(card, "addrbook-contact-updated", this.UID);
-
-    let data = {};
-
-    for (let name of changedProperties) {
-      data[name] = {
-        oldValue: oldProperties.get(name) || null,
-        newValue: card.getProperty(name, null),
-      };
-    }
+    let newCard = this.getCard(card.UID);
+    Services.obs.notifyObservers(newCard, "addrbook-contact-updated", this.UID);
 
     Services.obs.notifyObservers(
-      card,
+      newCard,
       "addrbook-contact-properties-updated",
-      JSON.stringify(data)
+      JSON.stringify(changeData)
     );
+
+    // Return the card, even though the interface says not to, because
+    // subclasses may want it.
+    return newCard;
   }
   deleteCards(cards) {
     if (this._readOnly && !this._overrideReadOnly) {
@@ -479,11 +618,23 @@ class AddrBookDirectory {
       throw Components.Exception("", Cr.NS_ERROR_INVALID_POINTER);
     }
 
+    let updateDisplayNameVersion = false;
     for (let card of cards) {
+      updateDisplayNameVersion = updateDisplayNameVersion || card.displayName;
+      // TODO: delete photo if there is one
       this.deleteCard(card.UID);
       if (this.hasOwnProperty("cards")) {
         this.cards.delete(card.UID);
       }
+    }
+
+    // Increment this preference if one or more cards has a display name.
+    // This will cause the UI to throw away cached values.
+    if (updateDisplayNameVersion) {
+      Services.prefs.setIntPref(
+        "mail.displayname.version",
+        Services.prefs.getIntPref("mail.displayname.version", 0) + 1
+      );
     }
 
     for (let card of cards) {
@@ -509,38 +660,30 @@ class AddrBookDirectory {
       throw new Error("Card must have a UID to be added to this directory.");
     }
 
-    let newCard = new AddrBookCard();
-    newCard.directoryUID = this.UID;
-    newCard._uid = needToCopyCard ? newUID() : card.UID;
+    let uid = needToCopyCard ? lazy.newUID() : card.UID;
+    let newProperties = this.prepareToSaveCard(card, uid);
+    if (card.directoryUID && card.directoryUID != this._uid) {
+      // These properties belong to a different directory. Don't keep them.
+      newProperties.delete("_etag");
+      newProperties.delete("_href");
+    }
 
     if (this.hasOwnProperty("cards")) {
-      this.cards.set(newCard._uid, new Map());
+      this.cards.set(uid, newProperties);
+    }
+    this.saveCardProperties(uid, newProperties);
+
+    // Increment this preference if the card has a display name.
+    // This will cause the UI to throw away cached values.
+    if (card.displayName) {
+      Services.prefs.setIntPref(
+        "mail.displayname.version",
+        Services.prefs.getIntPref("mail.displayname.version", 0) + 1
+      );
     }
 
-    for (let { name, value } of card.properties) {
-      if (
-        [
-          "DbRowID",
-          "LowercasePrimaryEmail",
-          "LowercaseSecondEmail",
-          "RecordKey",
-          "UID",
-        ].includes(name)
-      ) {
-        // These properties are either stored elsewhere (DbRowID, UID), or no
-        // longer needed. Don't store them.
-        continue;
-      }
-      if (card.directoryUID && ["_etag", "_href"].includes(name)) {
-        // These properties belong to a different directory. Don't keep them.
-        continue;
-      }
-      newCard.setProperty(name, value);
-    }
-    this.saveCardProperties(newCard);
-
+    let newCard = this.getCard(uid);
     Services.obs.notifyObservers(newCard, "addrbook-contact-created", this.UID);
-
     return newCard;
   }
   useForAutocomplete(identityKey) {
@@ -590,8 +733,8 @@ class AddrBookDirectory {
       }
     }
 
-    let newList = new AddrBookMailingList(
-      newUID(),
+    let newList = new lazy.AddrBookMailingList(
+      lazy.newUID(),
       this,
       list.dirName || "",
       list.listNickName || "",

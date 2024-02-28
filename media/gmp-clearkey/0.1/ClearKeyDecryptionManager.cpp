@@ -16,15 +16,15 @@
 
 #include "ClearKeyDecryptionManager.h"
 
-#include "psshparser/PsshParser.h"
-
 #include <assert.h>
 #include <string.h>
+
 #include <vector>
 #include <algorithm>
 
 #include "mozilla/CheckedInt.h"
 #include "mozilla/Span.h"
+#include "psshparser/PsshParser.h"
 
 using namespace cdm;
 
@@ -218,8 +218,8 @@ Status ClearKeyDecryptor::Decrypt(uint8_t* aBuffer, uint32_t aBufferSize,
       if (!data.isValid()) {
         return Status::kDecryptError;
       }
-      return Status::kSuccess;
     }
+    return Status::kSuccess;
   }
 
   // Decrypt CENC case:

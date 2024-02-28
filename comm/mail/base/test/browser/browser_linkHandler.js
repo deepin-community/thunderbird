@@ -2,11 +2,10 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, you can obtain one at http://mozilla.org/MPL/2.0/. */
 
-let { MockRegistrar } = ChromeUtils.import(
-  "resource://testing-common/MockRegistrar.jsm"
-);
-let { PromiseUtils } = ChromeUtils.import(
-  "resource://gre/modules/PromiseUtils.jsm"
+/* eslint-disable @microsoft/sdl/no-insecure-url */
+
+let { MockRegistrar } = ChromeUtils.importESModule(
+  "resource://testing-common/MockRegistrar.sys.mjs"
 );
 
 const TEST_DOMAIN = "http://example.org";
@@ -170,6 +169,19 @@ async function clickOnLink(
   await BrowserTestUtils.synthesizeMouseAtCenter(selector, {}, browser);
 
   await Promise.any([webProgressPromise, externalProtocolPromise]);
+
+  if (selector == "#this-hash") {
+    await SpecialPowers.spawn(browser, [], () => {
+      let doc = content.document;
+      let target = doc.querySelector("#hash");
+      let targetRect = target.getBoundingClientRect();
+      Assert.less(
+        targetRect.bottom,
+        doc.documentElement.clientHeight,
+        "page did scroll"
+      );
+    });
+  }
 
   if (shouldLoadInternally) {
     Assert.equal(

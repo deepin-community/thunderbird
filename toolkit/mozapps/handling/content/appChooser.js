@@ -2,19 +2,18 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-const { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-const { PrivateBrowsingUtils } = ChromeUtils.import(
-  "resource://gre/modules/PrivateBrowsingUtils.jsm"
+const { PrivateBrowsingUtils } = ChromeUtils.importESModule(
+  "resource://gre/modules/PrivateBrowsingUtils.sys.mjs"
 );
-const { EnableDelayHelper } = ChromeUtils.import(
-  "resource://gre/modules/SharedPromptUtils.jsm"
+const { EnableDelayHelper } = ChromeUtils.importESModule(
+  "resource://gre/modules/PromptUtils.sys.mjs"
 );
 
 class MozHandler extends window.MozElements.MozRichlistitem {
   static get markup() {
     return `
     <vbox pack="center">
-      <image height="32" width="32"/>
+      <html:img alt="" height="32" width="32" loading="lazy" />
     </vbox>
     <vbox flex="1">
       <label class="name"/>
@@ -31,7 +30,7 @@ class MozHandler extends window.MozElements.MozRichlistitem {
 
   static get inheritedAttributes() {
     return {
-      image: "src=image,disabled",
+      img: "src=image,disabled",
       ".name": "value=name,disabled",
       ".description": "value=description,disabled",
     };
@@ -48,10 +47,6 @@ customElements.define("mozapps-handler", MozHandler, {
 
 window.addEventListener("DOMContentLoaded", () => dialog.initialize(), {
   once: true,
-});
-
-let loadPromise = new Promise(resolve => {
-  window.addEventListener("load", resolve, { once: true });
 });
 
 let dialog = {
@@ -83,9 +78,7 @@ let dialog = {
     // UI is ready, lets populate our list
     this.populateList();
 
-    document.mozSubdialogReady = this.initL10n().then(() => {
-      window.sizeToContent();
-    });
+    this.initL10n();
 
     if (enableButtonDelay) {
       this._delayHelper = new EnableDelayHelper({
@@ -102,9 +95,7 @@ let dialog = {
     }
   },
 
-  async initL10n() {
-    document.l10n.pauseObserving();
-
+  initL10n() {
     let rememberLabel = document.getElementById("remember-label");
     document.l10n.setAttributes(rememberLabel, "chooser-dialog-remember", {
       scheme: this._handlerInfo.type,
@@ -114,11 +105,6 @@ let dialog = {
     document.l10n.setAttributes(description, "chooser-dialog-description", {
       scheme: this._handlerInfo.type,
     });
-
-    document.l10n.resumeObserving();
-
-    await document.l10n.translateElements([rememberLabel, description]);
-    return document.l10n.ready;
   },
 
   /**
@@ -141,9 +127,7 @@ let dialog = {
       if (app instanceof Ci.nsILocalHandlerApp) {
         // See if we have an nsILocalHandlerApp and set the icon
         let uri = Services.io.newFileURI(app.executable);
-        loadPromise.then(() => {
-          elm.setAttribute("image", "moz-icon://" + uri.spec + "?size=32");
-        });
+        elm.setAttribute("image", "moz-icon://" + uri.spec + "?size=32");
       } else if (app instanceof Ci.nsIWebHandlerApp) {
         let uri = Services.io.newURI(app.uriTemplate);
         if (/^https?$/.test(uri.scheme)) {
@@ -153,9 +137,7 @@ let dialog = {
           // and users won't visit the handler's URL template, they'll only
           // visit URLs derived from that template (i.e. with %s in the template
           // replaced by the URL of the content being handled).
-          loadPromise.then(() => {
-            elm.setAttribute("image", uri.prePath + "/favicon.ico");
-          });
+          elm.setAttribute("image", uri.prePath + "/favicon.ico");
         }
         elm.setAttribute("description", uri.prePath);
 

@@ -6,13 +6,13 @@
 
 var EXPORTED_SYMBOLS = ["PromptCollection"];
 
-const { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-const { XPCOMUtils } = ChromeUtils.import(
-  "resource://gre/modules/XPCOMUtils.jsm"
+const { XPCOMUtils } = ChromeUtils.importESModule(
+  "resource://gre/modules/XPCOMUtils.sys.mjs"
 );
 
 /**
  * Implements nsIPromptCollection
+ *
  * @class PromptCollection
  */
 class PromptCollection {
@@ -30,7 +30,7 @@ class PromptCollection {
       );
       stayLabel = this.domBundle.GetStringFromName("OnBeforeUnloadStayButton");
     } catch (exception) {
-      Cu.reportError("Failed to get strings from dom.properties");
+      console.error("Failed to get strings from dom.properties");
       return false;
     }
 
@@ -81,7 +81,7 @@ class PromptCollection {
 XPCOMUtils.defineLazyGetter(
   PromptCollection.prototype,
   "domBundle",
-  function() {
+  function () {
     let bundle = Services.strings.createBundle(
       "chrome://global/locale/dom/dom.properties"
     );

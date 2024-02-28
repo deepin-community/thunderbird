@@ -1,12 +1,10 @@
-Services.prefs.setBoolPref("browser.preferences.instantApply", true);
-
-registerCleanupFunction(function() {
-  Services.prefs.clearUserPref("browser.preferences.instantApply");
-});
-
-add_task(async function() {
+add_task(async function () {
   await openPreferencesViaOpenPreferencesAPI("general", { leaveOpen: true });
   await gBrowser.contentWindow.gMainPane._selectDefaultLanguageGroupPromise;
+  await TestUtils.waitForCondition(
+    () => !gBrowser.contentWindow.Preferences.updateQueued
+  );
+
   let doc = gBrowser.contentDocument;
   let contentWindow = gBrowser.contentWindow;
   var langGroup = Services.prefs.getComplexValue(

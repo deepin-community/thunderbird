@@ -5,7 +5,7 @@
 close-button =
     .aria-label = Close
 
-preferences-doc-title = Preferences
+preferences-doc-title2 = Settings
 
 category-list =
     .aria-label = Categories
@@ -29,6 +29,10 @@ category-chat =
 pane-calendar-title = Calendar
 category-calendar =
     .tooltiptext = Calendar
+
+pane-sync-title = Sync
+category-sync =
+    .tooltiptext = Sync
 
 general-language-and-appearance-header = Language & Appearance
 
@@ -165,12 +169,20 @@ restore-default-label =
     .accesskey = R
 
 default-search-engine = Default Search Engine
-add-search-engine =
-    .label = Add from file
+add-web-search-engine =
+    .label = Add…
     .accesskey = A
 remove-search-engine =
     .label = Remove
     .accesskey = v
+
+add-opensearch-provider-title = Add OpenSearch Provider
+add-opensearch-provider-text = Enter the URL of the OpenSearch provider to add. Either use the direct URL of the OpenSearch Description file, or a URL where it can be auto-discovered.
+
+adding-opensearch-provider-failed-title = Adding OpenSearch Provider Failed
+# Variables:
+# $url (String) - URL an OpenSearch provider was requested for.
+adding-opensearch-provider-failed-text = Could not add OpenSearch Provider for { $url }.
 
 minimize-to-tray-label =
     .label = When { -brand-short-name } is minimized, move it to the tray
@@ -192,7 +204,7 @@ app-icon-options =
     .label = App Icon Options…
     .accesskey = n
 
-notification-settings = Alerts and the default sound can be disabled on the Notification pane of System Preferences.
+notification-settings2 = Alerts and the default sound can be disabled on the Notification pane of System Settings.
 
 animated-alert-label =
     .label = Show an alert
@@ -247,6 +259,20 @@ autoscroll-label =
 smooth-scrolling-label =
     .label = Use smooth scrolling
     .accesskey = m
+browsing-gtk-use-non-overlay-scrollbars =
+    .label = Always show scrollbars
+    .accesskey = c
+
+window-layout-legend = Window Layout
+
+draw-in-titlebar-label =
+    .label = Hide system window titlebar
+    .accesskey = H
+
+auto-hide-tabbar-label =
+    .label = Auto hide tab bar
+    .accesskey = A
+auto-hide-tabbar-description = Hide the tab bar when only a single tab is open
 
 system-integration-legend = System Integration
 always-check-default =
@@ -347,6 +373,10 @@ clear-cache-button =
     .label = Clear Now
     .accesskey = C
 
+clear-cache-shutdown-label =
+    .label = Clear cache on shutdown
+    .accesskey = s
+
 fonts-legend = Fonts & Colors
 
 default-font-label =
@@ -405,9 +435,9 @@ quoted-text-color =
 search-handler-table =
     .placeholder = Filter content types and actions
 
-type-column-label = Content Type
+type-column-header = Content Type
 
-action-column-label = Action
+action-column-header = Action
 
 save-to-label =
     .label = Save files to
@@ -449,6 +479,10 @@ auto-mark-as-read =
 mark-read-no-delay =
     .label = Immediately on display
     .accesskey = o
+
+view-attachments-inline =
+    .label = View attachments inline
+    .accesskey = V
 
 ## Note: This will concatenate to "After displaying for [___] seconds",
 ## using (mark-read-delay) and a number (seconds-label).
@@ -518,6 +552,10 @@ warn-on-send-accel-key =
     .label = Confirm when using keyboard shortcut to send message
     .accesskey = C
 
+add-link-previews =
+    .label = Add link previews when pasting URLs
+    .accesskey = i
+
 spellcheck-label =
     .label = Check spelling before sending
     .accesskey = C
@@ -560,11 +598,27 @@ default-format-label =
     .label = Use Paragraph format instead of Body Text by default
     .accesskey = P
 
-format-description = Configure text format behavior
+compose-send-format-title = Sending Format
 
-send-options-label =
-    .label = Send Options…
-    .accesskey = S
+compose-send-automatic-option =
+    .label = Automatic
+
+compose-send-automatic-description = If no styling is used in the message, send Plain Text. Otherwise, send HTML with a Plain Text fallback.
+
+compose-send-both-option =
+    .label = Both HTML and Plain Text
+
+compose-send-both-description = The recipient’s email application will determine which version to show.
+
+compose-send-html-option =
+    .label = Only HTML
+
+compose-send-html-description = Some recipients may not be able to read the message without a Plain Text fallback.
+
+compose-send-plain-option =
+    .label = Only Plain Text
+
+compose-send-plain-description = Some styling will be converted into a plain alternative, while other composition features will be disabled.
 
 autocomplete-description = When addressing messages, look for matching entries in:
 
@@ -584,7 +638,7 @@ edit-directories-label =
     .accesskey = E
 
 email-picker-label =
-    .label = Automatically add outgoing e-mail addresses to my:
+    .label = Automatically add outgoing email addresses to my:
     .accesskey = A
 
 default-directory-label =
@@ -657,17 +711,6 @@ third-party-never =
 third-party-visited =
     .label = From visited
 
-keep-label =
-    .value = Keep until:
-    .accesskey = K
-
-keep-expire =
-    .label = they expire
-keep-close =
-    .label = I close { -brand-short-name }
-keep-ask =
-    .label = ask me every time
-
 cookies-button =
     .label = Show Cookies…
     .accesskey = S
@@ -676,8 +719,8 @@ do-not-track-label =
     .label = Send websites a “Do Not Track” signal that you don’t want to be tracked
     .accesskey = n
 
-learn-button =
-    .label = Learn more
+dnt-learn-more-button =
+    .value = Learn more
 
 passwords-description = { -brand-short-name } can remember passwords for all of your accounts.
 
@@ -763,6 +806,27 @@ security-devices-button =
     .label = Security Devices…
     .accesskey = D
 
+email-e2ee-header = Email End-To-End Encryption
+
+account-settings = Account Settings
+
+email-e2ee-enable-info =
+    Set up email accounts and identities for End-To-End Encryption in Account Settings.
+
+email-e2ee-automatism = Automatic Use of Encryption
+email-e2ee-automatism-pre =
+    { -brand-short-name } can assist by automatically enabling or disabling encryption while composing an email.
+    Auto enabling/disabling is based on the availability of valid and accepted correspondents’ keys or certificates.
+email-e2ee-auto-on =
+    .label = Automatically enable encryption when possible
+email-e2ee-auto-off =
+    .label = Automatically disable encryption when recipients change and encryption is no longer possible
+email-e2ee-auto-off-notify =
+    .label = Show a notification whenever encryption is disabled automatically
+email-e2ee-automatism-post =
+    Automatic decisions may be overridden by manually enabling or disabling encryption when composing a message.
+    Note: encryption is always automatically enabled when replying to an encrypted message.
+
 ## Chat Tab
 
 startup-label =
@@ -844,8 +908,8 @@ theme-label =
     .value = Theme:
     .accesskey = T
 
-style-thunderbird =
-    .label = Thunderbird
+style-mail =
+    .label = { -brand-short-name }
 style-bubbles =
     .label = Bubbles
 style-dark =
@@ -871,18 +935,92 @@ chat-variant-label =
 # Notice: The value of the `.style` attribute is a CSS string, and the `width`
 # is the name of the CSS property. It is intended only to adjust the element's width.
 # Do not translate.
-search-preferences-input =
+search-preferences-input2 =
     .style = width: 15.4em
-    .placeholder = Find in Preferences
+    .placeholder = Find in Settings
 
-## Preferences UI Search Results
+## Settings UI Search Results
 
 search-results-header = Search Results
 
 # `<span data-l10n-name="query"></span>` will be replaced by the search term.
-search-results-empty-message = { PLATFORM() ->
+search-results-empty-message2 = { PLATFORM() ->
     [windows] Sorry! There are no results in Options for “<span data-l10n-name="query"></span>”.
-    *[other] Sorry! There are no results in Preferences for “<span data-l10n-name="query"></span>”.
+    *[other] Sorry! There are no results in Settings for “<span data-l10n-name="query"></span>”.
 }
 
 search-results-help-link = Need help? Visit <a data-l10n-name="url">{ -brand-short-name } Support</a>
+
+## Sync Tab
+
+sync-signedout-caption = Take Your Web With You
+
+sync-signedout-description = Synchronize your accounts, address books, calendars, add-ons, and settings across all your devices.
+
+# Note: "Sync" represents the Firefox Sync product so it shouldn't be translated.
+sync-signedout-account-signin-btn = Sign in to Sync…
+
+sync-pane-header = Sync
+
+# Variables:
+# $userEmail (String) - The email logged into Sync.
+sync-pane-email-not-verified = “{ $userEmail }” is not verified.
+
+# Variables:
+# $userEmail (String) - The email logged into Sync.
+sync-signedin-login-failure = Please sign in to reconnect “{ $userEmail }”
+
+sync-pane-resend-verification = Resend verification
+
+sync-pane-sign-in = Sign in
+
+sync-pane-remove-account = Remove account
+
+sync-pane-edit-photo =
+  .title = Change profile picture
+
+sync-pane-manage-account = Manage account
+
+sync-pane-sign-out = Sign out…
+
+sync-pane-device-name-title = Device Name
+
+sync-pane-change-device-name = Change device name
+
+sync-pane-cancel = Cancel
+
+sync-pane-save = Save
+
+sync-pane-show-synced-header-on = Syncing ON
+
+sync-pane-show-synced-header-off = Syncing OFF
+
+sync-pane-sync-now = Sync Now
+
+sync-panel-sync-now-syncing = Syncing…
+
+show-synced-list-heading = You are currently syncing these items:
+
+show-synced-learn-more = Learn more…
+
+show-synced-item-account = Email Accounts
+
+show-synced-item-address = Address Books
+
+show-synced-item-calendar = Calendars
+
+show-synced-item-identity = Identities
+
+show-synced-item-passwords = Passwords
+
+show-synced-change = Change…
+
+synced-acount-item-server-config = Server configuration
+
+synced-acount-item-filters = Filters
+
+synced-acount-item-keys = OpenPGP - S/MIME
+
+sync-disconnected-text = Synchronize your email accounts, address books, calendars, and identities across all your devices.
+
+sync-disconnected-turn-on-sync = Turn on Syncing…

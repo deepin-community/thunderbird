@@ -162,10 +162,10 @@ add_task(async function test() {
 
   await BrowserTestUtils.withNewTab(
     { gBrowser, url: "about:blank" },
-    async function(newTabBrowser) {
+    async function (newTabBrowser) {
       await waitForPdfJS(newTabBrowser, TESTROOT + "file_pdfjs_test.pdf");
 
-      await SpecialPowers.spawn(newTabBrowser, [], async function() {
+      await SpecialPowers.spawn(newTabBrowser, [], async function () {
         // Check if PDF is opened with internal viewer
         Assert.ok(
           content.document.querySelector("div#viewer"),
@@ -177,7 +177,7 @@ add_task(async function test() {
 
       await runTests(newTabBrowser);
 
-      await SpecialPowers.spawn(newTabBrowser, [], async function() {
+      await SpecialPowers.spawn(newTabBrowser, [], async function () {
         let pageNumber = content.document.querySelector("input#pageNumber");
         Assert.equal(
           pageNumber.value,
@@ -201,7 +201,7 @@ async function contentSetUp() {
     return new Promise((resolve, reject) => {
       document.addEventListener(
         "outlineloaded",
-        function(evt) {
+        function (evt) {
           var outlineCount = evt.detail.outlineCount;
 
           if (
@@ -229,7 +229,7 @@ async function contentSetUp() {
     return new Promise(resolve => {
       document.addEventListener(
         "pagerendered",
-        function(e) {
+        function (e) {
           document.querySelector("#viewer").click();
           resolve();
         },
@@ -256,7 +256,7 @@ async function contentSetUp() {
  * @param callback
  */
 async function runTests(browser) {
-  await SpecialPowers.spawn(browser, [TESTS], async function(contentTESTS) {
+  await SpecialPowers.spawn(browser, [TESTS], async function (contentTESTS) {
     let window = content;
     let document = window.document;
 
@@ -291,19 +291,13 @@ async function runTests(browser) {
       // Dispatch the event for changing the page
       var ev;
       if (test.action.event == "keydown") {
-        ev = document.createEvent("KeyboardEvent");
-        ev.initKeyEvent(
-          "keydown",
-          true,
-          true,
-          null,
-          false,
-          false,
-          false,
-          false,
-          test.action.keyCode,
-          0
-        );
+        ev = new window.KeyboardEvent("keydown", {
+          bubbles: true,
+          cancelable: true,
+          view: null,
+          keyCode: test.action.keyCode,
+          charCode: 0,
+        });
         el.dispatchEvent(ev);
       } else {
         ev = new content.Event(test.action.event);

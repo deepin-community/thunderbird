@@ -1,29 +1,28 @@
 {
   "langpack_id": "ar",
   "manifest_version": 2,
-  "applications": {
+  "browser_specific_settings": {
     "gecko": {
       "id": "langpack-ar@thunderbird.mozilla.org",
-      "strict_min_version": "91.0",
-      "strict_max_version": "91.*"
+      "strict_min_version": "115.0",
+      "strict_max_version": "115.*"
     }
   },
-  "name": "العربية Language Pack",
-  "description": "Language pack for Thunderbird for ar",
-  "version": "91.0buildid20211101223011",
+  "name": "Language: العربية (Arabic)",
+  "description": "Thunderbird Language Pack for العربية (ar) – Arabic",
+  "version": "115.8.20240216.174500",
   "languages": {
     "ar": {
-      "version": "20211011125954",
+      "version": "20240216183701",
       "chrome_resources": {
         "alerts": "chrome/ar/locale/ar/alerts/",
         "autoconfig": "chrome/ar/locale/ar/autoconfig/",
-        "branding": "chrome/ar/locale/ar/branding/",
+        "branding": "chrome/ar/locale/branding/",
         "calendar": "chrome/ar/locale/ar/calendar/",
         "chat": "chrome/ar/locale/ar/chat/",
         "communicator": "chrome/ar/locale/ar/communicator/",
         "devtools": "chrome/ar/locale/ar/devtools/client/",
         "devtools-shared": "chrome/ar/locale/ar/devtools/shared/",
-        "devtools-startup": "chrome/ar/locale/ar/devtools/startup/",
         "global": "chrome/ar/locale/ar/global/",
         "global-platform": {
           "macosx": "chrome/ar/locale/ar/global-platform/mac/",

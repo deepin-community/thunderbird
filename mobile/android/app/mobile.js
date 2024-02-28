@@ -32,7 +32,6 @@ pref("toolkit.browser.cacheRatioHeight", 3000);
 pref("toolkit.browser.contentViewExpire", 3000);
 
 pref("toolkit.defaultChromeURI", "chrome://geckoview/content/geckoview.xhtml");
-pref("browser.chromeURL", "chrome://browser/content/");
 
 // If a tab has not been active for this long (seconds), then it may be
 // turned into a zombie tab to preemptively free up memory. -1 disables time-based
@@ -56,13 +55,9 @@ pref("toolkit.zoomManager.zoomValues", ".2,.3,.5,.67,.8,.9,1,1.1,1.2,1.33,1.5,1.
 pref("browser.viewport.defaultZoom", -1);
 
 // Show/Hide scrollbars when active/inactive
-pref("ui.showHideScrollbars", 1);
 pref("ui.useOverlayScrollbars", 1);
 pref("ui.scrollbarFadeBeginDelay", 450);
 pref("ui.scrollbarFadeDuration", 0);
-
-/* turn off the caret blink after 10 cycles */
-pref("ui.caretBlinkCount", 10);
 
 pref("browser.cache.memory_limit", 5120); // 5 MB
 
@@ -70,7 +65,6 @@ pref("browser.cache.memory_limit", 5120); // 5 MB
 pref("image.cache.size", 1048576); // bytes
 
 /* offline cache prefs */
-pref("browser.offline-apps.notify", true);
 pref("browser.cache.offline.capacity", 5120); // kilobytes
 
 /* disable some protocol warnings */
@@ -85,8 +79,8 @@ pref("network.http.max-persistent-connections-per-server", 6);
 pref("network.http.max-persistent-connections-per-proxy", 20);
 
 // spdy
-pref("network.http.spdy.push-allowance", 32768);
-pref("network.http.spdy.default-hpack-buffer", 4096); // 4k
+pref("network.http.http2.push-allowance", 32768);
+pref("network.http.http2.default-hpack-buffer", 4096); // 4k
 
 // http3
 pref("network.http.http3.default-qpack-table-size", 0);
@@ -138,15 +132,13 @@ pref("browser.download.manager.addToRecentDocs", true);
 pref("browser.helperApps.deleteTempFileOnExit", false);
 
 /* password manager */
+pref("signon.firefoxRelay.feature", "not available");
 pref("signon.rememberSignons", true);
 pref("signon.expireMasterPassword", false);
 pref("signon.debug", false);
 
 /* form helper (scroll to and optionally zoom into editable fields)  */
 pref("formhelper.autozoom", true);
-
-/* find helper */
-pref("findhelper.autozoom", true);
 
 /* autocomplete */
 pref("browser.formfill.enable", true);
@@ -161,8 +153,15 @@ pref("xpinstall.whitelist.add", "https://addons.mozilla.org");
 pref("extensions.langpacks.signatures.required", true);
 pref("xpinstall.signatures.required", true);
 
-// Use blocklist v2 until blocklist v3 is enabled on Android - bug 1639050
-pref("extensions.blocklist.useMLBF", false);
+#ifndef NIGHTLY_BUILD
+// Use blocklist v2 until blocklist v3 is enabled on Android - bug 1824863
+    pref("extensions.blocklist.useMLBF", false);
+#endif
+
+
+// Whether MV3 restrictions for actions popup urls should be extended to MV2 extensions
+// (only allowing same extension urls to be used as action popup urls).
+pref("extensions.manifestV2.actionsPopupURLRestricted", true);
 
 // Disable add-ons that are not installed by the user in all scopes by default (See the SCOPE
 // constants in AddonManager.jsm for values to use here, and Bug 1405528 for a rationale).
@@ -198,10 +197,7 @@ pref("extensions.compatability.locales.buildid", "0");
 /* Don't let XPIProvider install distribution add-ons; we do our own thing on mobile. */
 pref("extensions.installDistroAddons", false);
 
-pref("extensions.webextPermissionPrompts", true);
 pref("extensions.webextOptionalPermissionPrompts", true);
-
-pref("extensions.webextensions.background-delayed-startup", true);
 
 pref("extensions.experiments.enabled", false);
 
@@ -224,7 +220,6 @@ pref("accessibility.browsewithcaret_shortcut.enabled", false);
 pref("findbar.matchdiacritics", 0);
 
 // SSL error page behaviour
-pref("browser.ssl_override_behavior", 2);
 pref("browser.xul.error_pages.expert_bad_cert", false);
 
 // disable updating
@@ -244,31 +239,6 @@ pref("browser.casting.enabled", true);
 pref("chrome.override_package.global", "browser");
 pref("chrome.override_package.mozapps", "browser");
 pref("chrome.override_package.passwordmgr", "browser");
-
-// disable color management
-pref("gfx.color_management.mode", 0);
-
-// 0=fixed margin, 1=velocity bias, 2=dynamic resolution, 3=no margins, 4=prediction bias
-pref("gfx.displayport.strategy", 1);
-
-// all of the following displayport strategy prefs will be divided by 1000
-// to obtain some multiplier which is then used in the strategy.
-// fixed margin strategy options
-pref("gfx.displayport.strategy_fm.multiplier", -1); // displayport dimension multiplier
-pref("gfx.displayport.strategy_fm.danger_x", -1); // danger zone on x-axis when multiplied by viewport width
-pref("gfx.displayport.strategy_fm.danger_y", -1); // danger zone on y-axis when multiplied by viewport height
-
-// velocity bias strategy options
-pref("gfx.displayport.strategy_vb.multiplier", -1); // displayport dimension multiplier
-pref("gfx.displayport.strategy_vb.threshold", -1); // velocity threshold in inches/frame
-pref("gfx.displayport.strategy_vb.reverse_buffer", -1); // fraction of buffer to keep in reverse direction from scroll
-pref("gfx.displayport.strategy_vb.danger_x_base", -1); // danger zone on x-axis when multiplied by viewport width
-pref("gfx.displayport.strategy_vb.danger_y_base", -1); // danger zone on y-axis when multiplied by viewport height
-pref("gfx.displayport.strategy_vb.danger_x_incr", -1); // additional danger zone on x-axis when multiplied by viewport width and velocity
-pref("gfx.displayport.strategy_vb.danger_y_incr", -1); // additional danger zone on y-axis when multiplied by viewport height and velocity
-
-// prediction bias strategy options
-pref("gfx.displayport.strategy_pb.threshold", -1); // velocity threshold in inches/frame
 
 // don't allow JS to move and resize existing windows
 pref("dom.disable_window_move_resize", true);
@@ -350,13 +320,8 @@ pref("app.channelURL", "https://www.mozilla.org/%LOCALE%/firefox/channel/");
 // Name of alternate about: page for certificate errors (when undefined, defaults to about:neterror)
 pref("security.alternate_certificate_error_page", "certerror");
 
-pref("security.warn_viewing_mixed", false); // Warning is disabled.  See Bug 616712.
-
 // Enable pinning
 pref("security.cert_pinning.enforcement_level", 1);
-
-// Only fetch OCSP for EV certificates
-pref("security.OCSP.enabled", 2);
 
 /* prefs used by the update timer system (including blocklist pings) */
 pref("app.update.timerFirstInterval", 30000); // milliseconds
@@ -394,15 +359,6 @@ pref("apz.second_tap_tolerance", "0.3");
 pref("apz.touch_move_tolerance", "0.03");
 pref("apz.touch_start_tolerance", "0.06");
 
-pref("layers.progressive-paint", true);
-pref("layers.low-precision-buffer", true);
-// We want to limit layers for two reasons:
-// 1) We can't scroll smoothly if we have to many draw calls
-// 2) Pages that have too many layers consume too much memory and crash.
-// By limiting the number of layers on mobile we're making the main thread
-// work harder keep scrolling smooth and memory low.
-pref("layers.max-active", 20);
-
 pref("notification.feature.enabled", true);
 
 // prevent tooltips from showing up
@@ -429,9 +385,6 @@ pref("media.video-queue.default-size", 3);
 pref("media.video-queue.send-to-compositor-size", 1);
 
 pref("media.mediadrm-widevinecdm.visible", true);
-
-// Set Fennec to block autoplay by default.
-pref("media.autoplay.default", 1); // 0=Allowed, 1=Blocked
 
 // Enable WebSpeech speech synthesis
 pref("media.webspeech.synth.enabled", true);
@@ -470,43 +423,6 @@ pref("media.realtime_decoder.enabled", true);
 
 pref("full-screen-api.enabled", true);
 
-pref("direct-texture.force.enabled", false);
-pref("direct-texture.force.disabled", false);
-
-// This fraction in 1000ths of velocity remains after every animation frame when the velocity is low.
-pref("ui.scrolling.friction_slow", -1);
-// This fraction in 1000ths of velocity remains after every animation frame when the velocity is high.
-pref("ui.scrolling.friction_fast", -1);
-// The maximum velocity change factor between events, per ms, in 1000ths.
-// Direction changes are excluded.
-pref("ui.scrolling.max_event_acceleration", -1);
-// The rate of deceleration when the surface has overscrolled, in 1000ths.
-pref("ui.scrolling.overscroll_decel_rate", -1);
-// The fraction of the surface which can be overscrolled before it must snap back, in 1000ths.
-pref("ui.scrolling.overscroll_snap_limit", -1);
-// The minimum amount of space that must be present for an axis to be considered scrollable,
-// in 1/1000ths of pixels.
-pref("ui.scrolling.min_scrollable_distance", -1);
-// The axis lock mode for panning behaviour - set between standard, free and sticky
-pref("ui.scrolling.axis_lock_mode", "standard");
-// Determine the dead zone for gamepad joysticks. Higher values result in larger dead zones; use a negative value to
-// auto-detect based on reported hardware values
-pref("ui.scrolling.gamepad_dead_zone", 115);
-
-// Prefs for fling acceleration
-pref("ui.scrolling.fling_accel_interval", -1);
-pref("ui.scrolling.fling_accel_base_multiplier", -1);
-pref("ui.scrolling.fling_accel_supplemental_multiplier", -1);
-
-// Prefs for fling curving
-pref("ui.scrolling.fling_curve_function_x1", -1);
-pref("ui.scrolling.fling_curve_function_y1", -1);
-pref("ui.scrolling.fling_curve_function_x2", -1);
-pref("ui.scrolling.fling_curve_function_y2", -1);
-pref("ui.scrolling.fling_curve_threshold_velocity", -1);
-pref("ui.scrolling.fling_curve_max_velocity", -1);
-pref("ui.scrolling.fling_curve_newton_iterations", -1);
-
 // Enable accessibility mode if platform accessibility is enabled.
 pref("accessibility.accessfu.activate", 2);
 pref("accessibility.accessfu.quicknav_modes", "Link,Heading,FormElement,Landmark,ListItem");
@@ -533,30 +449,11 @@ pref("media.plugins.enabled", true);
 // 16 = Force hardware decoding
 pref("media.stagefright.omxcodec.flags", 0);
 
-pref("layers.enable-tiles", true);
-
-// Enable the dynamic toolbar
-pref("browser.chrome.dynamictoolbar", true);
-
 // Location Bar AutoComplete.
 pref("browser.urlbar.autocomplete.enabled", true);
 
 // Hide common parts of URLs like "www." or "http://"
 pref("browser.urlbar.trimURLs", true);
-
-// initial web feed readers list
-pref("browser.contentHandlers.types.0.title", "chrome://browser/locale/region.properties");
-pref("browser.contentHandlers.types.0.uri", "chrome://browser/locale/region.properties");
-pref("browser.contentHandlers.types.0.type", "application/vnd.mozilla.maybe.feed");
-pref("browser.contentHandlers.types.1.title", "chrome://browser/locale/region.properties");
-pref("browser.contentHandlers.types.1.uri", "chrome://browser/locale/region.properties");
-pref("browser.contentHandlers.types.1.type", "application/vnd.mozilla.maybe.feed");
-pref("browser.contentHandlers.types.2.title", "chrome://browser/locale/region.properties");
-pref("browser.contentHandlers.types.2.uri", "chrome://browser/locale/region.properties");
-pref("browser.contentHandlers.types.2.type", "application/vnd.mozilla.maybe.feed");
-pref("browser.contentHandlers.types.3.title", "chrome://browser/locale/region.properties");
-pref("browser.contentHandlers.types.3.uri", "chrome://browser/locale/region.properties");
-pref("browser.contentHandlers.types.3.type", "application/vnd.mozilla.maybe.feed");
 
 // Shortnumber matching needed for e.g. Brazil:
 // 01187654321 can be found with 87654321
@@ -568,9 +465,6 @@ pref("gfx.canvas.azure.backends", "skia");
 
 // When true, phone number linkification is enabled.
 pref("browser.ui.linkify.phone", false);
-
-// Enables/disables Spatial Navigation
-pref("snav.enabled", true);
 
 // The mode of home provider syncing.
 // 0: Sync always
@@ -652,7 +546,3 @@ pref("extensions.systemAddon.update.enabled", true);
 // E10s stuff. We don't support 'privileged' process types.
 pref("browser.tabs.remote.separatePrivilegedContentProcess", false);
 pref("browser.tabs.remote.enforceRemoteTypeRestrictions", false);
-
-// Allow Web Authentication
-pref("security.webauth.webauthn_enable_android_fido2", true);
-pref("browser.tabs.remote.separatePrivilegedMozillaWebContentProcess", false);

@@ -2,8 +2,6 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-
 function run_test() {
   do_calendar_startup(run_next_test);
 }
@@ -23,53 +21,25 @@ add_task(async function calendarInfo_test() {
     {
       input: { locale: "en-US" },
       expected: {
-        properties: [
-          "firstDayOfWeek",
-          "minDays",
-          "weekendStart",
-          "weekendEnd",
-          "calendar",
-          "locale",
-        ],
+        properties: ["firstDayOfWeek", "minDays", "weekend", "calendar", "locale"],
       },
     },
     {
       input: { locale: "EN-US" },
       expected: {
-        properties: [
-          "firstDayOfWeek",
-          "minDays",
-          "weekendStart",
-          "weekendEnd",
-          "calendar",
-          "locale",
-        ],
+        properties: ["firstDayOfWeek", "minDays", "weekend", "calendar", "locale"],
       },
     },
     {
       input: { locale: "et" },
       expected: {
-        properties: [
-          "firstDayOfWeek",
-          "minDays",
-          "weekendStart",
-          "weekendEnd",
-          "calendar",
-          "locale",
-        ],
+        properties: ["firstDayOfWeek", "minDays", "weekend", "calendar", "locale"],
       },
     },
     {
       input: { locale: null }, // this also would trigger caching tests
       expected: {
-        properties: [
-          "firstDayOfWeek",
-          "minDays",
-          "weekendStart",
-          "weekendEnd",
-          "calendar",
-          "locale",
-        ],
+        properties: ["firstDayOfWeek", "minDays", "weekend", "calendar", "locale"],
       },
     },
   ];

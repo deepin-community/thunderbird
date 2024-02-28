@@ -14,10 +14,13 @@
 #include <assert.h>
 #include <string.h>
 
+#include "libyuv/convert_argb.h"
 #include "libyuv/cpu_id.h"
 #include "libyuv/row.h"
 #include "libyuv/scale_row.h"
 #include "libyuv/video_common.h"
+
+#include "mozilla/gfx/Types.h"
 
 #ifdef __cplusplus
 namespace libyuv {
@@ -29,10 +32,10 @@ extern "C" {
 //
 // libyuv already has ScaleYUVToARGBBilinearUp(), but its implementation is not
 // completed yet. Implementations of the functions are based on it.
-// At first, ScaleYUVToARGBBilinearUp() was implemented by modidying the
+// At first, ScaleYUVToARGBBilinearUp() was implemented by modifying the
 // libyuv's one. Then all another functions were implemented similarly.
 //
-// Function relationship between yuv_convert.cpp abd scale_argb.cc are like
+// Function relationship between yuv_convert.cpp and scale_argb.cc are like
 // the followings
 //  - ScaleYUVToARGBDown2()      <-- ScaleARGBDown2()
 //  - ScaleYUVToARGBDownEven()   <-- ScaleARGBDownEven()
@@ -56,10 +59,6 @@ extern "C" {
 // -[4] Color conversion function selections in YUVBuferIter were borrowed from
 //      I444ToARGBMatrix(), I422ToARGBMatrix() and I420ToARGBMatrix()
 
-static __inline int Abs(int v) {
-  return v >= 0 ? v : -v;
-}
-
 typedef mozilla::gfx::YUVColorSpace YUVColorSpace;
 
 struct YUVBuferIter {
@@ -68,21 +67,21 @@ struct YUVBuferIter {
   int src_stride_y;
   int src_stride_u;
   int src_stride_v;
-  const uint8* src_y;
-  const uint8* src_u;
-  const uint8* src_v;
+  const uint8_t* src_y;
+  const uint8_t* src_u;
+  const uint8_t* src_v;
 
-  uint32 src_fourcc;
+  uint32_t src_fourcc;
   const struct YuvConstants* yuvconstants;
   int y_index;
-  const uint8* src_row_y;
-  const uint8* src_row_u;
-  const uint8* src_row_v;
+  const uint8_t* src_row_y;
+  const uint8_t* src_row_u;
+  const uint8_t* src_row_v;
 
-  void (*YUVToARGBRow)(const uint8* y_buf,
-                       const uint8* u_buf,
-                       const uint8* v_buf,
-                       uint8* rgb_buf,
+  void (*YUVToARGBRow)(const uint8_t* y_buf,
+                       const uint8_t* u_buf,
+                       const uint8_t* v_buf,
+                       uint8_t* rgb_buf,
                        const struct YuvConstants* yuvconstants,
                        int width);
   void (*MoveTo)(YUVBuferIter& iter, int y_index);
@@ -202,11 +201,11 @@ static void YUVBuferIter_MoveToNextRowForI420(YUVBuferIter& iter) {
   iter.y_index++;
 }
 
-static __inline void YUVBuferIter_ConvertToARGBRow(YUVBuferIter& iter, uint8* argb_row) {
+static __inline void YUVBuferIter_ConvertToARGBRow(YUVBuferIter& iter, uint8_t* argb_row) {
   iter.YUVToARGBRow(iter.src_row_y, iter.src_row_u, iter.src_row_v, argb_row, iter.yuvconstants, iter.src_width);
 }
 
-void YUVBuferIter_Init(YUVBuferIter& iter, uint32 src_fourcc, YUVColorSpace yuv_color_space) {
+void YUVBuferIter_Init(YUVBuferIter& iter, uint32_t src_fourcc, YUVColorSpace yuv_color_space) {
   iter.src_fourcc = src_fourcc;
   iter.y_index = 0;
   iter.src_row_y = iter.src_y;
@@ -248,20 +247,20 @@ static void ScaleYUVToARGBDown2(int src_width, int src_height,
                                 int src_stride_u,
                                 int src_stride_v,
                                 int dst_stride_argb,
-                                const uint8* src_y,
-                                const uint8* src_u,
-                                const uint8* src_v,
-                                uint8* dst_argb,
+                                const uint8_t* src_y,
+                                const uint8_t* src_u,
+                                const uint8_t* src_v,
+                                uint8_t* dst_argb,
                                 int x, int dx, int y, int dy,
                                 enum FilterMode filtering,
-                                uint32 src_fourcc,
+                                uint32_t src_fourcc,
                                 YUVColorSpace yuv_color_space) {
   int j;
 
   // Allocate 2 rows of ARGB for source conversion.
   const int kRowSize = (src_width * 4 + 15) & ~15;
   align_buffer_64(argb_cnv_row, kRowSize * 2);
-  uint8* argb_cnv_rowptr = argb_cnv_row;
+  uint8_t* argb_cnv_rowptr = argb_cnv_row;
   int argb_cnv_rowstride = kRowSize;
 
   YUVBuferIter iter;
@@ -275,8 +274,8 @@ static void ScaleYUVToARGBDown2(int src_width, int src_height,
   iter.src_v = src_v;
   YUVBuferIter_Init(iter, src_fourcc, yuv_color_space);
 
-  void (*ScaleARGBRowDown2)(const uint8* src_argb, ptrdiff_t src_stride,
-                            uint8* dst_argb, int dst_width) =
+  void (*ScaleARGBRowDown2)(const uint8_t* src_argb, ptrdiff_t src_stride,
+                            uint8_t* dst_argb, int dst_width) =
     filtering == kFilterNone ? ScaleARGBRowDown2_C :
         (filtering == kFilterLinear ? ScaleARGBRowDown2Linear_C :
         ScaleARGBRowDown2Box_C);
@@ -385,24 +384,24 @@ static void ScaleYUVToARGBDownEven(int src_width, int src_height,
                                    int src_stride_u,
                                    int src_stride_v,
                                    int dst_stride_argb,
-                                   const uint8* src_y,
-                                   const uint8* src_u,
-                                   const uint8* src_v,
-                                   uint8* dst_argb,
+                                   const uint8_t* src_y,
+                                   const uint8_t* src_u,
+                                   const uint8_t* src_v,
+                                   uint8_t* dst_argb,
                                    int x, int dx, int y, int dy,
                                    enum FilterMode filtering,
-                                   uint32 src_fourcc,
+                                   uint32_t src_fourcc,
                                    YUVColorSpace yuv_color_space) {
   int j;
   // Allocate 2 rows of ARGB for source conversion.
   const int kRowSize = (src_width * 4 + 15) & ~15;
   align_buffer_64(argb_cnv_row, kRowSize * 2);
-  uint8* argb_cnv_rowptr = argb_cnv_row;
+  uint8_t* argb_cnv_rowptr = argb_cnv_row;
   int argb_cnv_rowstride = kRowSize;
 
   int col_step = dx >> 16;
-  void (*ScaleARGBRowDownEven)(const uint8* src_argb, ptrdiff_t src_stride,
-                               int src_step, uint8* dst_argb, int dst_width) =
+  void (*ScaleARGBRowDownEven)(const uint8_t* src_argb, ptrdiff_t src_stride,
+                               int src_step, uint8_t* dst_argb, int dst_width) =
       filtering ? ScaleARGBRowDownEvenBox_C : ScaleARGBRowDownEven_C;
   assert(IS_ALIGNED(src_width, 2));
   assert(IS_ALIGNED(src_height, 2));
@@ -506,24 +505,24 @@ static void ScaleYUVToARGBBilinearDown(int src_width, int src_height,
                                        int src_stride_u,
                                        int src_stride_v,
                                        int dst_stride_argb,
-                                       const uint8* src_y,
-                                       const uint8* src_u,
-                                       const uint8* src_v,
-                                       uint8* dst_argb,
+                                       const uint8_t* src_y,
+                                       const uint8_t* src_u,
+                                       const uint8_t* src_v,
+                                       uint8_t* dst_argb,
                                        int x, int dx, int y, int dy,
                                        enum FilterMode filtering,
-                                       uint32 src_fourcc,
+                                       uint32_t src_fourcc,
                                        YUVColorSpace yuv_color_space) {
   int j;
-  void (*InterpolateRow)(uint8* dst_argb, const uint8* src_argb,
+  void (*InterpolateRow)(uint8_t* dst_argb, const uint8_t* src_argb,
       ptrdiff_t src_stride, int dst_width, int source_y_fraction) =
       InterpolateRow_C;
-  void (*ScaleARGBFilterCols)(uint8* dst_argb, const uint8* src_argb,
+  void (*ScaleARGBFilterCols)(uint8_t* dst_argb, const uint8_t* src_argb,
       int dst_width, int x, int dx) =
       (src_width >= 32768) ? ScaleARGBFilterCols64_C : ScaleARGBFilterCols_C;
-  int64 xlast = x + (int64)(dst_width - 1) * dx;
-  int64 xl = (dx >= 0) ? x : xlast;
-  int64 xr = (dx >= 0) ? xlast : x;
+  int64_t xlast = x + (int64_t)(dst_width - 1) * dx;
+  int64_t xl = (dx >= 0) ? x : xlast;
+  int64_t xr = (dx >= 0) ? xlast : x;
   int clip_src_width;
   xl = (xl >> 16) & ~3;  // Left edge aligned.
   xr = (xr >> 16) + 1;  // Right most pixel used.  Bilinear uses 2 pixels.
@@ -538,7 +537,7 @@ static void ScaleYUVToARGBBilinearDown(int src_width, int src_height,
   // Allocate 2 row of ARGB for source conversion.
   const int kRowSize = (src_width * 4 + 15) & ~15;
   align_buffer_64(argb_cnv_row, kRowSize * 2);
-  uint8* argb_cnv_rowptr = argb_cnv_row;
+  uint8_t* argb_cnv_rowptr = argb_cnv_row;
   int argb_cnv_rowstride = kRowSize;
 
 #if defined(HAS_INTERPOLATEROW_SSSE3)
@@ -675,19 +674,19 @@ static void ScaleYUVToARGBBilinearUp(int src_width, int src_height,
                                      int src_stride_u,
                                      int src_stride_v,
                                      int dst_stride_argb,
-                                     const uint8* src_y,
-                                     const uint8* src_u,
-                                     const uint8* src_v,
-                                     uint8* dst_argb,
+                                     const uint8_t* src_y,
+                                     const uint8_t* src_u,
+                                     const uint8_t* src_v,
+                                     uint8_t* dst_argb,
                                      int x, int dx, int y, int dy,
                                      enum FilterMode filtering,
-                                     uint32 src_fourcc,
+                                     uint32_t src_fourcc,
                                      YUVColorSpace yuv_color_space) {
   int j;
-  void (*InterpolateRow)(uint8* dst_argb, const uint8* src_argb,
+  void (*InterpolateRow)(uint8_t* dst_argb, const uint8_t* src_argb,
       ptrdiff_t src_stride, int dst_width, int source_y_fraction) =
       InterpolateRow_C;
-  void (*ScaleARGBFilterCols)(uint8* dst_argb, const uint8* src_argb,
+  void (*ScaleARGBFilterCols)(uint8_t* dst_argb, const uint8_t* src_argb,
       int dst_width, int x, int dx) =
       filtering ? ScaleARGBFilterCols_C : ScaleARGBCols_C;
   const int max_y = (src_height - 1) << 16;
@@ -786,7 +785,7 @@ static void ScaleYUVToARGBBilinearUp(int src_width, int src_height,
   const int kRowSize = (dst_width * 4 + 15) & ~15;
   align_buffer_64(row, kRowSize * 2);
 
-  uint8* rowptr = row;
+  uint8_t* rowptr = row;
   int rowstride = kRowSize;
   int lastyi = yi;
 
@@ -860,15 +859,15 @@ static void ScaleYUVToARGBSimple(int src_width, int src_height,
                                  int src_stride_u,
                                  int src_stride_v,
                                  int dst_stride_argb,
-                                 const uint8* src_y,
-                                 const uint8* src_u,
-                                 const uint8* src_v,
-                                 uint8* dst_argb,
+                                 const uint8_t* src_y,
+                                 const uint8_t* src_u,
+                                 const uint8_t* src_v,
+                                 uint8_t* dst_argb,
                                  int x, int dx, int y, int dy,
-                                 uint32 src_fourcc,
+                                 uint32_t src_fourcc,
                                  YUVColorSpace yuv_color_space) {
   int j;
-  void (*ScaleARGBCols)(uint8* dst_argb, const uint8* src_argb,
+  void (*ScaleARGBCols)(uint8_t* dst_argb, const uint8_t* src_argb,
       int dst_width, int x, int dx) =
       (src_width >= 32768) ? ScaleARGBCols64_C : ScaleARGBCols_C;
 
@@ -928,13 +927,13 @@ static void ScaleYUVToARGBSimple(int src_width, int src_height,
   free_aligned_buffer_64(argb_cnv_row);
 }
 
-static void YUVToARGBCopy(const uint8* src_y, int src_stride_y,
-                          const uint8* src_u, int src_stride_u,
-                          const uint8* src_v, int src_stride_v,
+static void YUVToARGBCopy(const uint8_t* src_y, int src_stride_y,
+                          const uint8_t* src_u, int src_stride_u,
+                          const uint8_t* src_v, int src_stride_v,
                           int src_width, int src_height,
-                          uint8* dst_argb, int dst_stride_argb,
+                          uint8_t* dst_argb, int dst_stride_argb,
                           int dst_width, int dst_height,
-                          uint32 src_fourcc,
+                          uint32_t src_fourcc,
                           YUVColorSpace yuv_color_space)
 {
   YUVBuferIter iter;
@@ -955,14 +954,14 @@ static void YUVToARGBCopy(const uint8* src_y, int src_stride_y,
   }
 }
 
-static void ScaleYUVToARGB(const uint8* src_y, int src_stride_y,
-                           const uint8* src_u, int src_stride_u,
-                           const uint8* src_v, int src_stride_v,
+static void ScaleYUVToARGB(const uint8_t* src_y, int src_stride_y,
+                           const uint8_t* src_u, int src_stride_u,
+                           const uint8_t* src_v, int src_stride_v,
                            int src_width, int src_height,
-                           uint8* dst_argb, int dst_stride_argb,
+                           uint8_t* dst_argb, int dst_stride_argb,
                            int dst_width, int dst_height,
                            enum FilterMode filtering,
-                           uint32 src_fourcc,
+                           uint32_t src_fourcc,
                            YUVColorSpace yuv_color_space)
 {
   // Initial source x/y coordinate and step values as 16.16 fixed point.
@@ -1086,7 +1085,7 @@ static void ScaleYUVToARGB(const uint8* src_y, int src_stride_y,
                        yuv_color_space);
 }
 
-bool IsConvertSupported(uint32 src_fourcc)
+bool IsConvertSupported(uint32_t src_fourcc)
 {
   if (src_fourcc == FOURCC_I444 ||
       src_fourcc == FOURCC_I422 ||
@@ -1097,13 +1096,13 @@ bool IsConvertSupported(uint32 src_fourcc)
 }
 
 LIBYUV_API
-int YUVToARGBScale(const uint8* src_y, int src_stride_y,
-                   const uint8* src_u, int src_stride_u,
-                   const uint8* src_v, int src_stride_v,
-                   uint32 src_fourcc,
+int YUVToARGBScale(const uint8_t* src_y, int src_stride_y,
+                   const uint8_t* src_u, int src_stride_u,
+                   const uint8_t* src_v, int src_stride_v,
+                   uint32_t src_fourcc,
                    YUVColorSpace yuv_color_space,
                    int src_width, int src_height,
-                   uint8* dst_argb, int dst_stride_argb,
+                   uint8_t* dst_argb, int dst_stride_argb,
                    int dst_width, int dst_height,
                    enum FilterMode filtering)
 {

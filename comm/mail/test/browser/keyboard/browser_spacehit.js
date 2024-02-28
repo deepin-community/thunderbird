@@ -12,7 +12,8 @@
 var {
   be_in_folder,
   create_folder,
-  make_new_sets_in_folder,
+  get_about_message,
+  make_message_sets_in_folders,
   mc,
   select_click_row,
   wait_for_message_display_completion,
@@ -20,20 +21,19 @@ var {
   "resource://testing-common/mozmill/FolderDisplayHelpers.jsm"
 );
 
-// Get original preference value
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
+// Get original preference value.
 var prefName = "mail.advance_on_spacebar";
 var prefValue = Services.prefs.getBoolPref(prefName);
 
-add_task(function setupModule(module) {
-  // Create four unread messages in a sample folder
-  let folder = create_folder("Sample");
-  make_new_sets_in_folder(folder, [{ count: 4 }]);
-  be_in_folder(folder);
+add_setup(async function () {
+  // Create four unread messages in a sample folder.
+  let folder = await create_folder("Sample");
+  await make_message_sets_in_folders([folder], [{ count: 4 }]);
+  await be_in_folder(folder);
 });
 
-registerCleanupFunction(function teardownModule(module) {
-  // Restore original preference value
+registerCleanupFunction(function () {
+  // Restore original preference value.
   Services.prefs.setBoolPref(prefName, prefValue);
 });
 
@@ -41,22 +41,26 @@ registerCleanupFunction(function teardownModule(module) {
  * The second of four simple messages is selected and [Shift-]Space is
  * pressed to determine if focus changes to a new message.
  *
- * @param aAdvance whether to advance
- * @param aShift whether to press Shift key
+ * @param {boolean} shouldAdvance - Whether the selection should advance.
+ * @param {boolean} isShiftPressed - Whether to press Shift key.
  */
-function subtest_advance_on_spacebar(aAdvance, aShift) {
-  // Set preference
-  Services.prefs.setBoolPref(prefName, aAdvance);
-  // Select the second message
-  let oldmessage = select_click_row(1);
+function subtest_advance_on_spacebar(shouldAdvance, isShiftPressed) {
+  // Set preference.
+  Services.prefs.setBoolPref(prefName, shouldAdvance);
+  // Select the second message.
+  let oldMessage = select_click_row(1);
   wait_for_message_display_completion(mc);
-  // Press [Shift-]Space
-  EventUtils.synthesizeKey(" ", { shiftKey: aShift });
-  // Check that message focus changes iff aAdvance is true
-  let newmessage = mc.folderDisplay.selectedMessage;
-  aAdvance
-    ? Assert.notEqual(oldmessage, newmessage)
-    : Assert.equal(oldmessage, newmessage);
+  // Press [Shift-]Space.
+  EventUtils.synthesizeKey(
+    " ",
+    { shiftKey: isShiftPressed },
+    get_about_message()
+  );
+  // Check that message focus changes if `shouldAdvance` is true.
+  let newMessage = get_about_message().gMessage;
+  shouldAdvance
+    ? Assert.notEqual(oldMessage, newMessage)
+    : Assert.equal(oldMessage, newMessage);
 }
 
 /**

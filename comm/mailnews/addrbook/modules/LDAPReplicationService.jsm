@@ -8,9 +8,13 @@ const EXPORTED_SYMBOLS = ["LDAPReplicationService"];
 const { LDAPListenerBase } = ChromeUtils.import(
   "resource:///modules/LDAPListenerBase.jsm"
 );
+var { SQLiteDirectory } = ChromeUtils.import(
+  "resource:///modules/SQLiteDirectory.jsm"
+);
 
 /**
  * A service to replicate a LDAP directory to a local SQLite db.
+ *
  * @implements {nsIAbLDAPReplicationService}
  * @implements {nsILDAPMessageListener}
  */
@@ -28,6 +32,7 @@ class LDAPReplicationService extends LDAPListenerBase {
     this._listener = progressListener;
     this._attrMap = directory.attributeMap;
     this._count = 0;
+    this._cards = [];
     this._connection = Cc[
       "@mozilla.org/network/ldap-connection;1"
     ].createInstance(Ci.nsILDAPConnection);
@@ -117,14 +122,15 @@ class LDAPReplicationService extends LDAPListenerBase {
 
   /**
    * Handler of nsILDAPMessage.RES_SEARCH_ENTRY message.
+   *
    * @param {nsILDAPMessage} msg - The received LDAP message.
    */
-  _onLDAPSearchEntry(msg) {
+  async _onLDAPSearchEntry(msg) {
     let newCard = Cc["@mozilla.org/addressbook/cardproperty;1"].createInstance(
       Ci.nsIAbCard
     );
     this._attrMap.setCardPropertiesFromLDAPMessage(msg, newCard);
-    this._replicationDB.addCard(newCard);
+    this._cards.push(newCard);
     this._count++;
     if (this._count % 10 == 0) {
       // inform the listener every 10 entries
@@ -137,17 +143,29 @@ class LDAPReplicationService extends LDAPListenerBase {
         -1
       );
     }
+    if (this._count % 100 == 0 && !this._writePromise) {
+      // Write to the db to release some memory.
+      this._writePromise = this._replicationDB.bulkAddCards(this._cards);
+      this._cards = [];
+      await this._writePromise;
+      this._writePromise = null;
+    }
   }
 
   /**
    * Handler of nsILDAPMessage.RES_SEARCH_RESULT message.
+   *
    * @param {nsILDAPMessage} msg - The received LDAP message.
    */
-  _onLDAPSearchResult(msg) {
+  async _onLDAPSearchResult(msg) {
     if (
       msg.errorCode == Ci.nsILDAPErrors.SUCCESS ||
       msg.errorCode == Ci.nsILDAPErrors.SIZELIMIT_EXCEEDED
     ) {
+      if (this._writePromise) {
+        await this._writePromise;
+      }
+      await this._replicationDB.bulkAddCards(this._cards);
       this.done(true);
       return;
     }
@@ -172,18 +190,18 @@ class LDAPReplicationService extends LDAPListenerBase {
       this._directory.replicationFileName = this._replicationFile.leafName;
     }
 
-    this._replicationDB = Cc[
-      "@mozilla.org/addressbook/directory;1?type=jsaddrbook"
-    ].createInstance(Ci.nsIAbDirectory);
+    this._replicationDB = new SQLiteDirectory();
     this._replicationDB.init(`jsaddrbook://${this._replicationFile.leafName}`);
   }
 
   /**
    * Clean up depending on whether replication succeeded or failed, emit
    * STATE_STOP event.
+   *
    * @param {bool} success - Replication succeeded or failed.
    */
   async _done(success) {
+    this._cards = [];
     if (this._replicationDB) {
       // Close the db.
       await this._replicationDB.cleanUp();

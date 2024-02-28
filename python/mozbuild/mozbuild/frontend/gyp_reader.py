@@ -2,28 +2,21 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-from __future__ import absolute_import, print_function, unicode_literals
+import os
+import sys
+import time
 
 import gyp
 import gyp.msvs_emulation
-import six
-import sys
-import os
-import time
-
 import mozpack.path as mozpath
+import six
 from mozpack.files import FileFinder
+
+from mozbuild import shellutil
+from mozbuild.util import expand_variables
+
+from .context import VARIABLES, ObjDirPath, SourcePath, TemplateContext
 from .sandbox import alphabetical_sorted
-from .context import (
-    ObjDirPath,
-    SourcePath,
-    TemplateContext,
-    VARIABLES,
-)
-from mozbuild.util import (
-    ensure_subprocess_env,
-    expand_variables,
-)
 
 # Define this module as gyp.generator.mozbuild so that gyp can use it
 # as a generator under the name "mozbuild".
@@ -211,6 +204,10 @@ def process_gyp_result(
         os_libs = []
         for l in libs:
             if l.startswith("-"):
+                if l.startswith("-l"):
+                    # Remove "-l" for consumption in OS_LIBS. Other flags
+                    # are passed through unchanged.
+                    l = l[2:]
                 if l not in os_libs:
                     os_libs.append(l)
             elif l.endswith(".lib"):
@@ -372,7 +369,6 @@ def process_gyp_result(
             context["LOCAL_INCLUDES"] += [
                 "!/ipc/ipdl/_ipdlheaders",
                 "/ipc/chromium/src",
-                "/ipc/glue",
             ]
             # These get set via VC project file settings for normal GYP builds.
             if config.substs["OS_TARGET"] == "WINNT":
@@ -436,12 +432,10 @@ class GypProcessor(object):
             # This isn't actually used anywhere in this generator, but it's needed
             # to override the registry detection of VC++ in gyp.
             os.environ.update(
-                ensure_subprocess_env(
-                    {
-                        "GYP_MSVS_OVERRIDE_PATH": "fake_path",
-                        "GYP_MSVS_VERSION": config.substs["MSVS_VERSION"],
-                    }
-                )
+                {
+                    "GYP_MSVS_OVERRIDE_PATH": "fake_path",
+                    "GYP_MSVS_VERSION": config.substs["MSVS_VERSION"],
+                }
             )
 
         params = {
@@ -450,6 +444,12 @@ class GypProcessor(object):
             "build_files": [path],
             "root_targets": None,
         }
+        # The NSS gyp configuration uses CC and CFLAGS to determine the
+        # floating-point ABI on arm.
+        os.environ.update(
+            CC=config.substs["CC"],
+            CFLAGS=shellutil.quote(*config.substs["CC_BASE_FLAGS"]),
+        )
 
         if gyp_dir_attrs.no_chromium:
             includes = []
@@ -479,9 +479,9 @@ class GypProcessor(object):
             # We report our execution time as the time spent blocked in a call
             # to `result`, which is the only case a gyp processor will
             # contribute significantly to total wall time.
-            t0 = time.time()
+            t0 = time.monotonic()
             flat_list, targets, data = self._gyp_loader_future.result()
-            self.execution_time += time.time() - t0
+            self.execution_time += time.monotonic() - t0
             results = []
             for res in process_gyp_result(
                 (flat_list, targets, data),

@@ -4,14 +4,15 @@
 
 var { cal } = ChromeUtils.import("resource:///modules/calendar/calUtils.jsm");
 
+var { CalendarTestUtils } = ChromeUtils.import(
+  "resource://testing-common/calendar/CalendarTestUtils.jsm"
+);
+
 add_task(async function testCategoryColors() {
-  let manager = cal.getCalendarManager();
-  let calendar = manager.createCalendar("memory", Services.io.newURI("moz-memory-calendar://"));
-  calendar.name = "Mochitest";
-  manager.registerCalendar(calendar);
+  let calendar = CalendarTestUtils.createCalendar("Mochitest", "memory");
 
   registerCleanupFunction(async () => {
-    manager.unregisterCalendar(calendar);
+    CalendarTestUtils.removeCalendar(calendar);
   });
 
   let { prefsWindow, prefsDocument } = await openNewPrefsTab("paneCalendar", "categorieslist");
@@ -38,11 +39,10 @@ add_task(async function testCategoryColors() {
   await subDialogPromise;
 
   let subDialogBrowser = prefsWindow.gSubDialog._topDialog._frame;
-  await new Promise(subDialogBrowser.contentWindow.setTimeout);
   let subDialogDocument = subDialogBrowser.contentDocument;
   subDialogDocument.getElementById("categoryName").value = "ZZZ Mochitest";
   subDialogDocument.getElementById("categoryColor").value = "#00CC00";
-  subDialogDocument.documentElement.firstElementChild.getButton("accept").click();
+  subDialogDocument.body.firstElementChild.getButton("accept").click();
 
   let listItem = listBox.itemChildren[listBox.itemCount - 1];
   Assert.equal(listBox.selectedItem, listItem);
@@ -69,7 +69,7 @@ add_task(async function testCategoryColors() {
   await new Promise(subDialogBrowser.contentWindow.setTimeout);
   subDialogDocument = subDialogBrowser.contentDocument;
   subDialogDocument.getElementById("useColor").checked = false;
-  subDialogDocument.documentElement.firstElementChild.getButton("accept").click();
+  subDialogDocument.body.firstElementChild.getButton("accept").click();
 
   listItem = listBox.itemChildren[0];
   Assert.equal(listBox.selectedItem, listItem);

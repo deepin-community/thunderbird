@@ -27,13 +27,14 @@
 
 const EXPORTED_SYMBOLS = ["SmtpClient"];
 
-var { AppConstants } = ChromeUtils.import(
-  "resource://gre/modules/AppConstants.jsm"
+var { AppConstants } = ChromeUtils.importESModule(
+  "resource://gre/modules/AppConstants.sys.mjs"
 );
-var { setTimeout } = ChromeUtils.import("resource://gre/modules/Timer.jsm");
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-var { MailCryptoUtils } = ChromeUtils.import(
-  "resource:///modules/MailCryptoUtils.jsm"
+var { setTimeout } = ChromeUtils.importESModule(
+  "resource://gre/modules/Timer.sys.mjs"
+);
+var { MailStringUtils } = ChromeUtils.import(
+  "resource:///modules/MailStringUtils.jsm"
 );
 var { SmtpAuthenticator } = ChromeUtils.import(
   "resource:///modules/MailAuthenticator.jsm"
@@ -42,15 +43,24 @@ var { MsgUtils } = ChromeUtils.import(
   "resource:///modules/MimeMessageUtils.jsm"
 );
 
-const NS_ERROR_BUT_DONT_SHOW_ALERT = 0x805530ef;
-
 class SmtpClient {
+  /**
+   * The number of RCPT TO commands sent on the connection by this client.
+   * This can count-up over multiple messages.
+   */
+  rcptCount = 0;
+
+  /**
+   * Set true only when doing a retry.
+   */
+  isRetry = false;
+
   /**
    * Creates a connection object to a SMTP server and allows to send mail through it.
    * Call `connect` method to inititate the actual connection, the constructor only
    * defines the properties but does not actually connect.
    *
-   * @constructor
+   * @class
    *
    * @param {nsISmtpServer} server - The associated nsISmtpServer instance.
    */
@@ -66,9 +76,6 @@ class SmtpClient {
     this.waitDrain = false; // Keeps track if the downstream socket is currently full and a drain event should be waited for or not
 
     // Private properties
-
-    // Indicates if the connection has been closed and can't be used anymore
-    this._destroyed = false;
 
     this._server = server;
     this._authenticator = new SmtpAuthenticator(server);
@@ -97,7 +104,6 @@ class SmtpClient {
     this._lastDataBytes = ""; // Keep track of the last bytes to see how the terminating dot should be placed
     this._envelope = null; // Envelope object for tracking who is sending mail to whom
     this._currentAction = null; // Stores the function that should be run after a response has been received from the server
-    this._secureMode = this.options.requireTLS; // Indicates if the connection is secured or plaintext
 
     this._parseBlock = { data: [], statusCode: null };
     this._parseRemainder = ""; // If the complete line is not received yet, contains the beginning of it
@@ -111,48 +117,63 @@ class SmtpClient {
     this.onidle = () => {}; // The connection is established and idle, you can send mail now
     this.onready = failedRecipients => {}; // Waiting for mail body, lists addresses that were not accepted as recipients
     this.ondone = success => {}; // The mail has been sent. Wait for `onidle` next. Indicates if the message was queued by the server.
+    // Callback when this client is ready to be reused.
+    this.onFree = () => {};
   }
 
   /**
    * Initiate a connection to the server
    */
   connect() {
-    let port = this._server.port || (this.options.requireTLS ? 465 : 587);
-    this.socket = new TCPSocket(this._server.hostname, port, {
-      binaryType: "arraybuffer",
-      useSecureTransport: this._secureMode,
-    });
+    if (this.socket?.readyState == "open") {
+      this.logger.debug("Reusing a connection");
+      this.onidle();
+    } else {
+      let hostname = this._server.hostname.toLowerCase();
+      let port = this._server.port || (this.options.requireTLS ? 465 : 587);
+      this.logger.debug(`Connecting to smtp://${hostname}:${port}`);
+      this._secureTransport = this.options.requireTLS;
+      this.socket = new TCPSocket(hostname, port, {
+        binaryType: "arraybuffer",
+        useSecureTransport: this._secureTransport,
+      });
 
-    // allows certificate handling for platform w/o native tls support
-    // oncert is non standard so setting it might throw if the socket object is immutable
-    try {
-      this.socket.oncert = this.oncert;
-    } catch (E) {}
-    this.socket.onerror = this._onError;
-    this.socket.onopen = this._onOpen;
-
-    this._destroyed = false;
+      this.socket.onerror = this._onError;
+      this.socket.onopen = this._onOpen;
+    }
+    this._freed = false;
   }
 
   /**
    * Sends QUIT
    */
   quit() {
+    this._authenticating = false;
+    this._freed = true;
     this._sendCommand("QUIT");
     this._currentAction = this.close;
   }
 
   /**
    * Closes the connection to the server
+   *
    * @param {boolean} [immediately] - Close the socket without waiting for
    *   unsent data.
    */
   close(immediately) {
-    this.logger.debug("Closing connection...");
     if (this.socket && this.socket.readyState === "open") {
-      immediately ? this.socket.closeImmediately() : this.socket.close();
+      if (immediately) {
+        this.logger.debug(
+          `Closing connection to ${this._server.hostname} immediately!`
+        );
+        this.socket.closeImmediately();
+      } else {
+        this.logger.debug(`Closing connection to ${this._server.hostname}...`);
+        this.socket.close();
+      }
     } else {
-      this._destroy();
+      this.logger.debug(`Connection to ${this._server.hostname} closed`);
+      this._free();
     }
   }
 
@@ -197,7 +218,7 @@ class SmtpClient {
         if (!recipient || firstInvalid != null) {
           if (!lastAt) {
             // Invalid char found in the localpart, throw error until we implement RFC 6532.
-            this.onerror(NS_ERROR_BUT_DONT_SHOW_ALERT, null);
+            this._onNsError(MsgUtils.NS_ERROR_ILLEGAL_LOCALPART, recipient);
             return;
           }
           // Invalid char found in the domainpart, convert it to ACE.
@@ -212,7 +233,7 @@ class SmtpClient {
     }
 
     // clone the recipients array for latter manipulation
-    this._envelope.rcptQueue = [].concat(this._envelope.to);
+    this._envelope.rcptQueue = [...new Set(this._envelope.to)];
     this._envelope.rcptFailed = [];
     this._envelope.responseQueue = [];
 
@@ -253,8 +274,8 @@ class SmtpClient {
    * Send ASCII data to the server. Works only in data mode (after `onready` event), ignored
    * otherwise
    *
-   * @param {String} chunk ASCII string (quoted-printable, base64 etc.) to be sent to the server
-   * @return {Boolean} If true, it is safe to send more data, if false, you *should* wait for the ondrain event before sending more
+   * @param {string} chunk ASCII string (quoted-printable, base64 etc.) to be sent to the server
+   * @returns {boolean} If true, it is safe to send more data, if false, you *should* wait for the ondrain event before sending more
    */
   send(chunk) {
     // works only in data mode
@@ -316,7 +337,7 @@ class SmtpClient {
   /**
    * Queue some data from the server for parsing.
    *
-   * @param {String} chunk Chunk of data received from the server
+   * @param {string} chunk Chunk of data received from the server
    */
   _parse(chunk) {
     // Lines should always end with <CR><LF> but you never know, might be only <LF> as well
@@ -389,34 +410,34 @@ class SmtpClient {
     this.socket.ondrain = this._onDrain;
 
     this._currentAction = this._actionGreeting;
+    this.socket.transport.setTimeout(
+      Ci.nsISocketTransport.TIMEOUT_READ_WRITE,
+      Services.prefs.getIntPref("mailnews.tcptimeout")
+    );
   };
 
   /**
    * Data listener for chunks of data emitted by the server
    *
-   * @event
-   * @param {Event} evt Event object. See `evt.data` for the chunk received
+   * @param {Event} evt - Event object. See `evt.data` for the chunk received
    */
   _onData = async evt => {
+    let stringPayload = new TextDecoder("UTF-8").decode(
+      new Uint8Array(evt.data)
+    );
+    // "S: " to denote that this is data from the Server.
+    this.logger.debug(`S: ${stringPayload}`);
+
     // Prevent blocking the main thread, otherwise onclose/onerror may not be
     // called in time. test_smtpPasswordFailure3 is such a case, the server
     // rejects AUTH PLAIN then closes the connection, the client then sends AUTH
     // LOGIN. This line guarantees onclose is called before sending AUTH LOGIN.
     await new Promise(resolve => setTimeout(resolve));
-
-    var stringPayload = new TextDecoder("UTF-8").decode(
-      new Uint8Array(evt.data)
-    );
-    // "S: " to denote that this is data from the Server.
-    this.logger.debug(`S: ${stringPayload}`);
     this._parse(stringPayload);
   };
 
   /**
    * More data can be buffered in the socket, `waitDrain` is reset to false
-   *
-   * @event
-   * @param {Event} evt Event object. Not used
    */
   _onDrain = () => {
     this.waitDrain = false;
@@ -426,30 +447,70 @@ class SmtpClient {
   /**
    * Error handler. Emits an nsresult value.
    *
-   * @param {Error|TCPSocketErrorEvent} e - An Error or TCPSocketErrorEvent object.
+   * @param {Error|TCPSocketErrorEvent} event - An Error or TCPSocketErrorEvent object.
    */
-  _onError = e => {
-    this.logger.error(e);
+  _onError = async event => {
+    this.logger.error(`${event.name}: a ${event.message} error occurred`);
+    if (this._freed) {
+      // Ignore socket errors if already freed.
+      return;
+    }
+
+    this._free();
+    this.quit();
+
     let nsError = Cr.NS_ERROR_FAILURE;
     let secInfo = null;
-    if (TCPSocketErrorEvent.isInstance(e)) {
-      nsError = e.errorCode;
-      secInfo = e.target.transport?.securityInfo;
+    if (TCPSocketErrorEvent.isInstance(event)) {
+      nsError = event.errorCode;
+      secInfo =
+        await event.target.transport?.tlsSocketControl?.asyncGetSecurityInfo();
+      if (secInfo) {
+        this.logger.error(`SecurityError info: ${secInfo.errorCodeString}`);
+        if (secInfo.failedCertChain.length) {
+          let chain = secInfo.failedCertChain.map(c => {
+            return c.commonName + "; serial# " + c.serialNumber;
+          });
+          this.logger.error(`SecurityError cert chain: ${chain.join(" <- ")}`);
+        }
+        this._server.closeCachedConnections();
+      }
     }
+
     // Use nsresult to integrate with other parts of sending process, e.g.
     // MessageSend.jsm will show an error message depending on the nsresult.
     this.onerror(nsError, "", secInfo);
-    this.close();
   };
 
   /**
    * Error handler. Emits an nsresult value.
    *
    * @param {nsresult} nsError - A nsresult.
-   * @param {string} serverError - Error message returned from the SMTP server.
+   * @param {string} errorParam - Param to form the error message.
    * @param {string} [extra] - Some messages take two arguments to format.
+   * @param {number} [statusCode] - Only needed when checking need to retry.
    */
-  _onNsError(nsError, serverError, extra) {
+  _onNsError(nsError, errorParam, extra, statusCode) {
+    // First check if handling an error response that might need a retry.
+    if ([this._actionMAIL, this._actionRCPT].includes(this._currentAction)) {
+      if (statusCode >= 400 && statusCode < 500) {
+        // Possibly too many recipients, too many messages, to much data
+        // or too much time has elapsed on this connection.
+        if (!this.isRetry) {
+          // Now seeing error 4xx meaning that the current message can't be
+          // accepted. We close the connection and try again to send on a new
+          // connection using this same client instance. If the retry also
+          // fails on the new connection, we give up and report the error.
+          this.logger.debug("Retry send on new connection.");
+          this.quit();
+          this.isRetry = true; // flag that we will retry on new connection
+          this.close(true);
+          this.connect();
+          return; // return without reporting the error yet
+        }
+      }
+    }
+
     let errorName = MsgUtils.getErrorStringName(nsError);
     let errorMessage = "";
     if (
@@ -461,15 +522,22 @@ class SmtpClient {
         MsgUtils.NS_ERROR_SENDING_RCPT_COMMAND,
         MsgUtils.NS_ERROR_SENDING_DATA_COMMAND,
         MsgUtils.NS_ERROR_SENDING_MESSAGE,
+        MsgUtils.NS_ERROR_ILLEGAL_LOCALPART,
       ].includes(nsError)
     ) {
       let bundle = Services.strings.createBundle(
         "chrome://messenger/locale/messengercompose/composeMsgs.properties"
       );
-      errorMessage = bundle.formatStringFromName(errorName, [
-        serverError,
-        extra,
-      ]);
+      if (nsError == MsgUtils.NS_ERROR_ILLEGAL_LOCALPART) {
+        errorMessage = bundle
+          .GetStringFromName(errorName)
+          .replace("%s", errorParam);
+      } else {
+        errorMessage = bundle.formatStringFromName(errorName, [
+          errorParam,
+          extra,
+        ]);
+      }
     }
     this.onerror(nsError, errorMessage);
     this.close();
@@ -477,13 +545,11 @@ class SmtpClient {
 
   /**
    * Indicates that the socket has been closed
-   *
-   * @event
-   * @param {Event} evt Event object. Not used
    */
   _onClose = () => {
     this.logger.debug("Socket closed.");
-    this._destroy();
+    this._free();
+    this.rcptCount = 0;
     if (this._authenticating) {
       // In some cases, socket is closed for invalid username/password.
       this._onAuthFailed({ data: "Socket closed." });
@@ -494,11 +560,21 @@ class SmtpClient {
    * This is not a socket data handler but the handler for data emitted by the parser,
    * so this data is safe to use as it is always complete (server might send partial chunks)
    *
-   * @event
-   * @param {Object} command Parsed data
+   * @param {object} command - Parsed data.
    */
   _onCommand(command) {
     if (command.statusCode < 200 || command.statusCode >= 400) {
+      // @see https://datatracker.ietf.org/doc/html/rfc5321#section-3.8
+      // 421: SMTP service shutting down and closing transmission channel.
+      // When that happens during idle, just close the connection.
+      if (
+        command.statusCode == 421 &&
+        this._currentAction == this._actionIdle
+      ) {
+        this.close(true);
+        return;
+      }
+
       this.logger.error(
         `Command failed: ${command.statusCode} ${command.data}; currentAction=${this._currentAction?.name}`
       );
@@ -509,20 +585,20 @@ class SmtpClient {
   }
 
   /**
-   * Ensures that the connection is closed and such
+   * This client has finished the current process and ready to be reused.
    */
-  _destroy() {
-    if (!this._destroyed) {
-      this._destroyed = true;
-      this.onclose();
+  _free() {
+    if (!this._freed) {
+      this._freed = true;
+      this.onFree();
     }
   }
 
   /**
    * Sends a string to the socket.
    *
-   * @param {String} chunk ASCII string (quoted-printable, base64 etc.) to be sent to the server
-   * @return {Boolean} If true, it is safe to send more data, if false, you *should* wait for the ondrain event before sending more
+   * @param {string} chunk ASCII string (quoted-printable, base64 etc.) to be sent to the server
+   * @returns {boolean} If true, it is safe to send more data, if false, you *should* wait for the ondrain event before sending more
    */
   _sendString(chunk) {
     // escape dots
@@ -548,7 +624,7 @@ class SmtpClient {
 
     // pass the chunk to the socket
     this.waitDrain = this._send(
-      MailCryptoUtils.binaryStringToTypedArray(chunk).buffer
+      MailStringUtils.byteStringToUint8Array(chunk).buffer
     );
     return this.waitDrain;
   }
@@ -563,9 +639,11 @@ class SmtpClient {
    */
   _sendCommand(str, suppressLogging = false) {
     if (this.socket.readyState !== "open") {
-      this.logger.warn(
-        `Failed to send "${str}" because socket state is ${this.socket.readyState}`
-      );
+      if (str != "QUIT") {
+        this.logger.warn(
+          `Failed to send "${str}" because socket state is ${this.socket.readyState}`
+        );
+      }
       return;
     }
     // "C: " is used to denote that this is data from the Client.
@@ -588,6 +666,7 @@ class SmtpClient {
 
   /**
    * Intitiate authentication sequence if needed
+   *
    * @param {boolean} forceNewPassword - Discard cached password.
    */
   async _authenticateUser(forceNewPassword) {
@@ -609,9 +688,10 @@ class SmtpClient {
     this._authenticating = true;
 
     this._currentAuthMethod = this._nextAuthMethod;
-    this._nextAuthMethod = this._possibleAuthMethods[
-      this._possibleAuthMethods.indexOf(this._currentAuthMethod) + 1
-    ];
+    this._nextAuthMethod =
+      this._possibleAuthMethods[
+        this._possibleAuthMethods.indexOf(this._currentAuthMethod) + 1
+      ];
     this.logger.debug(`Current auth method: ${this._currentAuthMethod}`);
 
     switch (this._currentAuthMethod) {
@@ -629,21 +709,8 @@ class SmtpClient {
         // C: AUTH PLAIN BASE64(\0 USER \0 PASS)
         this.logger.debug("Authentication via AUTH PLAIN");
         this._currentAction = this._actionAUTHComplete;
-        // According to rfc4616#section-2, password should be UTF-8 BinaryString
-        // before base64 encoded.
-        let password = String.fromCharCode(
-          ...new TextEncoder().encode(this._authenticator.getPassword())
-        );
-
         this._sendCommand(
-          // convert to BASE64
-          "AUTH PLAIN " +
-            btoa(
-              "\u0000" + // skip authorization identity as it causes problems with some servers
-                this._authenticator.username +
-                "\u0000" +
-                password
-            ),
+          "AUTH PLAIN " + this._authenticator.getPlainToken(),
           true
         );
         return;
@@ -698,7 +765,7 @@ class SmtpClient {
 
   _onAuthFailed(command) {
     this.logger.error(`Authentication failed: ${command.data}`);
-    if (!this._destroyed) {
+    if (!this._freed) {
       if (this._nextAuthMethod) {
         // Try the next auth method.
         this._authenticateUser();
@@ -747,7 +814,7 @@ class SmtpClient {
       this._authenticator.forgetPassword();
     }
 
-    if (this._destroyed) {
+    if (this._freed) {
       // If connection is lost, reconnect.
       this.connect();
       return;
@@ -785,7 +852,7 @@ class SmtpClient {
   /**
    * Initial response from the server, must have a status 220
    *
-   * @param {Object} command Parsed command from the server {statusCode, data}
+   * @param {object} command Parsed command from the server {statusCode, data}
    */
   _actionGreeting(command) {
     if (command.statusCode !== 220) {
@@ -805,7 +872,7 @@ class SmtpClient {
   /**
    * Response to LHLO
    *
-   * @param {Object} command Parsed command from the server {statusCode, data}
+   * @param {object} command Parsed command from the server {statusCode, data}
    */
   _actionLHLO(command) {
     if (!command.success) {
@@ -820,11 +887,9 @@ class SmtpClient {
   /**
    * Response to EHLO. If the response is an error, try HELO instead
    *
-   * @param {Object} command Parsed command from the server {statusCode, data}
+   * @param {object} command Parsed command from the server {statusCode, data}
    */
   _actionEHLO(command) {
-    var match;
-
     if ([500, 502].includes(command.statusCode)) {
       // EHLO is not implemented by the server.
       if (this.options.alwaysSTARTTLS) {
@@ -846,9 +911,21 @@ class SmtpClient {
       return;
     }
 
-    if (!this._secureMode && this.options.alwaysSTARTTLS) {
+    this._supportedAuthMethods = [];
+
+    let lines = command.data.toUpperCase().split("\n");
+    // Skip the first greeting line.
+    for (let line of lines.slice(1)) {
+      if (line.startsWith("AUTH ")) {
+        this._supportedAuthMethods = line.slice(5).split(" ");
+      } else {
+        this._capabilities.push(line.split(" ")[0]);
+      }
+    }
+
+    if (!this._secureTransport && this.options.alwaysSTARTTLS) {
       // STARTTLS is required by the user. Detect if the server supports it.
-      if (command.data.match(/STARTTLS\s?$/im)) {
+      if (this._capabilities.includes("STARTTLS")) {
         this._currentAction = this._actionSTARTTLS;
         this._sendCommand("STARTTLS");
         return;
@@ -858,38 +935,6 @@ class SmtpClient {
       return;
     }
 
-    this._supportedAuthMethods = [];
-
-    // Detect if the server supports PLAIN auth
-    if (command.data.match(/AUTH(?:\s+[^\n]*\s+|\s+)PLAIN/i)) {
-      this._supportedAuthMethods.push("PLAIN");
-    }
-
-    // Detect if the server supports LOGIN auth
-    if (command.data.match(/AUTH(?:\s+[^\n]*\s+|\s+)LOGIN/i)) {
-      this._supportedAuthMethods.push("LOGIN");
-    }
-
-    // Detect if the server supports XOAUTH2 auth
-    if (command.data.match(/AUTH(?:\s+[^\n]*\s+|\s+)XOAUTH2/i)) {
-      this._supportedAuthMethods.push("XOAUTH2");
-    }
-
-    // Detect if the server supports CRAM-MD5 auth
-    if (command.data.match(/AUTH(?:\s+[^\n]*\s+|\s+)CRAM-MD5/i)) {
-      this._supportedAuthMethods.push("CRAM-MD5");
-    }
-
-    // Detect if the server supports GSSAPI auth
-    if (command.data.match(/AUTH(?:\s+[^\n]*\s+|\s+)GSSAPI/i)) {
-      this._supportedAuthMethods.push("GSSAPI");
-    }
-
-    // Detect if the server supports NTLM auth
-    if (command.data.match(/AUTH(?:\s+[^\n]*\s+|\s+)NTLM/i)) {
-      this._supportedAuthMethods.push("NTLM");
-    }
-
     // If a preferred method is not supported by the server, no need to try it.
     this._possibleAuthMethods = this._preferredAuthMethods.filter(x =>
       this._supportedAuthMethods.includes(x)
@@ -897,27 +942,28 @@ class SmtpClient {
     this.logger.debug(`Possible auth methods: ${this._possibleAuthMethods}`);
     this._nextAuthMethod = this._possibleAuthMethods[0];
 
-    // Detect maximum allowed message size
-    if ((match = command.data.match(/SIZE (\d+)/i)) && Number(match[1])) {
-      const maxAllowedSize = Number(match[1]);
-      this.logger.debug("Maximum allowed message size: " + maxAllowedSize);
+    if (
+      this._capabilities.includes("CLIENTID") &&
+      (this._secureTransport ||
+        // For test purpose.
+        ["localhost", "127.0.0.1", "::1"].includes(this._server.hostname)) &&
+      this._server.clientidEnabled &&
+      this._server.clientid
+    ) {
+      // Client identity extension, still a draft.
+      this._currentAction = this._actionCLIENTID;
+      this._sendCommand("CLIENTID UUID " + this._server.clientid, true);
+    } else {
+      this._authenticateUser();
     }
-
-    for (let cap of ["8BITMIME", "SIZE", "SMTPUTF8", "DSN"]) {
-      if (new RegExp(cap, "i").test(command.data)) {
-        this._capabilities.push(cap);
-      }
-    }
-
-    this._authenticateUser();
   }
 
   /**
    * Handles server response for STARTTLS command. If there's an error
    * try HELO instead, otherwise initiate TLS upgrade. If the upgrade
-   * succeedes restart the EHLO
+   * succeeds restart the EHLO
    *
-   * @param {String} str Message from the server
+   * @param {string} command - Message from the server.
    */
   _actionSTARTTLS(command) {
     if (!command.success) {
@@ -925,8 +971,8 @@ class SmtpClient {
       return;
     }
 
-    this._secureMode = true;
     this.socket.upgradeToSecure();
+    this._secureTransport = true;
 
     // restart protocol flow
     this._currentAction = this._actionEHLO;
@@ -936,7 +982,7 @@ class SmtpClient {
   /**
    * Response to HELO
    *
-   * @param {Object} command Parsed command from the server {statusCode, data}
+   * @param {object} command Parsed command from the server {statusCode, data}
    */
   _actionHELO(command) {
     if (!command.success) {
@@ -947,44 +993,84 @@ class SmtpClient {
   }
 
   /**
+   * Handles server response for CLIENTID command. If successful then will
+   * initiate the authenticateUser process.
+   *
+   * @param {object} command Parsed command from the server {statusCode, data}
+   */
+  _actionCLIENTID(command) {
+    if (!command.success) {
+      this._onNsError(MsgUtils.NS_ERROR_SMTP_SERVER_ERROR, command.data);
+      return;
+    }
+    this._authenticateUser();
+  }
+
+  /**
+   * Returns the saved/cached server password, or show a password dialog. If the
+   * user cancels the dialog, abort sending.
+   *
+   * @returns {string} The server password.
+   */
+  _getPassword() {
+    try {
+      return this._authenticator.getPassword();
+    } catch (e) {
+      if (e.result == Cr.NS_ERROR_ABORT) {
+        this.quit();
+        this.onerror(e.result);
+      } else {
+        throw e;
+      }
+    }
+    return null;
+  }
+
+  /**
    * Response to AUTH LOGIN, if successful expects base64 encoded username
    *
-   * @param {Object} command Parsed command from the server {statusCode, data}
+   * @param {object} command Parsed command from the server {statusCode, data}
    */
   _actionAUTH_LOGIN_USER(command) {
     if (command.statusCode !== 334 || command.data !== "VXNlcm5hbWU6") {
       this._onNsError(MsgUtils.NS_ERROR_SMTP_AUTH_FAILURE, command.data);
       return;
     }
-    this.logger.debug("AUTH LOGIN USER successful");
+    this.logger.debug("AUTH LOGIN USER");
     this._currentAction = this._actionAUTH_LOGIN_PASS;
     this._sendCommand(btoa(this._authenticator.username), true);
   }
 
   /**
-   * Response to AUTH LOGIN username, if successful expects base64 encoded password
+   * Process the response to AUTH LOGIN with a username. If successful, expects
+   * a base64-encoded password.
    *
-   * @param {Object} command Parsed command from the server {statusCode, data}
+   * @param {{statusCode: number, data: string}} command - Parsed command from
+   *   the server.
    */
   _actionAUTH_LOGIN_PASS(command) {
-    if (command.statusCode !== 334 || command.data !== "UGFzc3dvcmQ6") {
+    if (
+      command.statusCode !== 334 ||
+      (command.data !== btoa("Password:") && command.data !== btoa("password:"))
+    ) {
       this._onNsError(MsgUtils.NS_ERROR_SMTP_AUTH_FAILURE, command.data);
       return;
     }
-    this.logger.debug("AUTH LOGIN PASS successful");
+    this.logger.debug("AUTH LOGIN PASS");
     this._currentAction = this._actionAUTHComplete;
-    let password = this._authenticator.getPassword();
+    let password = this._getPassword();
     if (
       !Services.prefs.getBoolPref(
         "mail.smtp_login_pop3_user_pass_auth_is_latin1",
         true
-      )
+      ) ||
+      !/^[\x00-\xFF]+$/.test(password) // eslint-disable-line no-control-regex
     ) {
       // Unlike PLAIN auth, the payload of LOGIN auth is not standardized. When
       // `mail.smtp_login_pop3_user_pass_auth_is_latin1` is true, we apply
       // base64 encoding directly. Otherwise, we convert it to UTF-8
       // BinaryString first.
-      password = String.fromCharCode(...new TextEncoder().encode(password));
+      password = MailStringUtils.stringToByteString(password);
     }
     this._sendCommand(btoa(password), true);
   }
@@ -992,32 +1078,24 @@ class SmtpClient {
   /**
    * Response to AUTH CRAM, if successful expects base64 encoded challenge.
    *
-   * @param {Object} command Parsed command from the server {statusCode, data}
+   * @param {object} command Parsed command from the server {statusCode, data}
    */
   async _actionAUTH_CRAM(command) {
     if (command.statusCode !== 334) {
       this._onNsError(MsgUtils.NS_ERROR_SMTP_AUTH_FAILURE, command.data);
       return;
     }
-    // Server sent us a base64 encoded challenge.
-    let challenge = atob(command.data);
-    let password = this._authenticator.getPassword();
-    // Use password as key, challenge as payload, generate a HMAC-MD5 signature.
-    let signature = MailCryptoUtils.hmacMd5(
-      new TextEncoder().encode(password),
-      new TextEncoder().encode(challenge)
-    );
-    // Get the hex form of the signature.
-    let hex = [...signature].map(x => x.toString(16).padStart(2, "0")).join("");
     this._currentAction = this._actionAUTHComplete;
-    // Send the username and signature back to the server.
-    this._sendCommand(btoa(`${this._authenticator.username} ${hex}`), true);
+    this._sendCommand(
+      this._authenticator.getCramMd5Token(this._getPassword(), command.data),
+      true
+    );
   }
 
   /**
    * Response to AUTH XOAUTH2 token, if error occurs send empty response
    *
-   * @param {Object} command Parsed command from the server {statusCode, data}
+   * @param {object} command Parsed command from the server {statusCode, data}
    */
   _actionAUTH_XOAUTH2(command) {
     if (!command.success) {
@@ -1032,7 +1110,7 @@ class SmtpClient {
   /**
    * Response to AUTH GSSAPI, if successful expects a base64 encoded challenge.
    *
-   * @param {Object} command Parsed command from the server {statusCode, data}
+   * @param {object} command Parsed command from the server {statusCode, data}
    */
   _actionAUTH_GSSAPI(command) {
     // GSSAPI auth can be multiple steps. We exchange tokens with the server
@@ -1053,7 +1131,7 @@ class SmtpClient {
   /**
    * Response to AUTH NTLM, if successful expects a base64 encoded challenge.
    *
-   * @param {Object} command Parsed command from the server {statusCode, data}
+   * @param {object} command Parsed command from the server {statusCode, data}
    */
   _actionAUTH_NTLM(command) {
     // NTLM auth can be multiple steps. We exchange tokens with the server
@@ -1075,7 +1153,7 @@ class SmtpClient {
    * Checks if authentication succeeded or not. If successfully authenticated
    * emit `idle` to indicate that an e-mail can be sent using this connection
    *
-   * @param {Object} command Parsed command from the server {statusCode, data}
+   * @param {object} command Parsed command from the server {statusCode, data}
    */
   _actionAUTHComplete(command) {
     this._authenticating = false;
@@ -1093,31 +1171,32 @@ class SmtpClient {
   /**
    * Used when the connection is idle, not expecting anything from the server.
    *
-   * @param {Object} command Parsed command from the server {statusCode, data}
+   * @param {object} command Parsed command from the server {statusCode, data}
    */
   _actionIdle(command) {
-    this._onError(new Error(command.data));
+    this._onNsError(MsgUtils.NS_ERROR_SMTP_SERVER_ERROR, command.data);
   }
 
   /**
    * Response to MAIL FROM command. Proceed to defining RCPT TO list if successful
    *
-   * @param {Object} command Parsed command from the server {statusCode, data}
+   * @param {object} command Parsed command from the server {statusCode, data}
    */
   _actionMAIL(command) {
     if (!command.success) {
-      let errorCode = MsgUtils.NS_ERROR_SENDING_FROM_COMMAND;
-      if (this._capabilities.includes("SIZE")) {
-        if (command.statusCode == 452) {
-          errorCode = MsgUtils.NS_ERROR_SMTP_TEMP_SIZE_EXCEEDED;
-        } else if (command.statusCode == 552) {
-          errorCode = MsgUtils.NS_ERROR_SMTP_PERM_SIZE_EXCEEDED_2;
-        }
+      let errorCode = MsgUtils.NS_ERROR_SENDING_FROM_COMMAND; // default code
+      if (command.statusCode == 552) {
+        // Too much mail data indicated by "size" parameter of MAIL FROM.
+        // @see https://datatracker.ietf.org/doc/html/rfc5321#section-4.5.3.1.9
+        errorCode = MsgUtils.NS_ERROR_SMTP_PERM_SIZE_EXCEEDED_2;
       }
-      this._onNsError(errorCode, command.data);
+      if (command.statusCode == 452 || command.statusCode == 451) {
+        // @see https://datatracker.ietf.org/doc/html/rfc5321#section-4.5.3.1.10
+        errorCode = MsgUtils.NS_ERROR_SMTP_TEMP_SIZE_EXCEEDED;
+      }
+      this._onNsError(errorCode, command.data, null, command.statusCode);
       return;
     }
-
     this.logger.debug(
       "MAIL FROM successful, proceeding with " +
         this._envelope.rcptQueue.length +
@@ -1162,17 +1241,19 @@ class SmtpClient {
    * Response to a RCPT TO command. If the command is unsuccessful, emit an
    * error to abort the sending.
    *
-   * @param {Object} command Parsed command from the server {statusCode, data}
+   * @param {object} command Parsed command from the server {statusCode, data}
    */
   _actionRCPT(command) {
     if (!command.success) {
       this._onNsError(
         MsgUtils.NS_ERROR_SENDING_RCPT_COMMAND,
         command.data,
-        this._envelope.curRecipient
+        this._envelope.curRecipient,
+        command.statusCode
       );
       return;
     }
+    this.rcptCount++;
     this._envelope.responseQueue.push(this._envelope.curRecipient);
 
     if (this._envelope.rcptQueue.length) {
@@ -1183,7 +1264,10 @@ class SmtpClient {
         `RCPT TO:<${this._envelope.curRecipient}>${this._getRCPTParameters()}`
       );
     } else {
-      this.logger.debug("RCPT TO done, proceeding with payload");
+      this.logger.debug(
+        `Total RCPTs during this connection: ${this.rcptCount}`
+      );
+      this.logger.debug("RCPT TO done. Proceeding with payload.");
       this._currentAction = this._actionDATA;
       this._sendCommand("DATA");
     }
@@ -1192,7 +1276,7 @@ class SmtpClient {
   /**
    * Response to the DATA command. Server is now waiting for a message, so emit `onready`
    *
-   * @param {Object} command Parsed command from the server {statusCode, data}
+   * @param {object} command Parsed command from the server {statusCode, data}
    */
   _actionDATA(command) {
     // response should be 354 but according to this issue https://github.com/eleith/emailjs/issues/24
@@ -1211,7 +1295,7 @@ class SmtpClient {
    * Response from the server, once the message stream has ended with <CR><LF>.<CR><LF>
    * Emits `ondone`.
    *
-   * @param {Object} command Parsed command from the server {statusCode, data}
+   * @param {object} command Parsed command from the server {statusCode, data}
    */
   _actionStream(command) {
     var rcpt;
@@ -1243,17 +1327,18 @@ class SmtpClient {
         this.logger.error("Message sending failed.");
       } else {
         this.logger.debug("Message sent successfully.");
+        this.isRetry = false;
       }
 
       this._currentAction = this._actionIdle;
-      this.ondone(command.success ? 0 : MsgUtils.NS_ERROR_SENDING_MESSAGE);
+      if (command.success) {
+        this.ondone(0);
+      } else {
+        this._onNsError(MsgUtils.NS_ERROR_SENDING_MESSAGE, command.data);
+      }
     }
 
-    // If the client wanted to do something else (eg. to quit), do not force idle
-    if (this._currentAction === this._actionIdle) {
-      // Waiting for new connections
-      this.logger.debug("Idling while waiting for new connections...");
-      this.onidle();
-    }
+    this._freed = true;
+    this.onFree();
   }
 }

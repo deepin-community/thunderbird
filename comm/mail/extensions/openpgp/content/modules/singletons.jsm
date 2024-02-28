@@ -18,7 +18,36 @@ var EnigmailSingletons = {
     let lm = this.lastDecryptedMessage;
     lm.lastMessageData = "";
     lm.lastMessageURI = null;
+    lm.mimePartNumber = "";
     lm.lastStatus = {};
+    lm.gossip = [];
+  },
+
+  isLastDecryptedMessagePart(folder, msgNum, mimePartNumber) {
+    let reval =
+      this.lastDecryptedMessage.lastMessageURI &&
+      this.lastDecryptedMessage.lastMessageURI.folder == folder &&
+      this.lastDecryptedMessage.lastMessageURI.msgNum == msgNum &&
+      this.lastDecryptedMessage.mimePartNumber == mimePartNumber;
+    return reval;
+  },
+
+  urisWithNestedEncryptedParts: [],
+
+  maxRecentSubEncryptionUrisToRemember: 10,
+
+  addUriWithNestedEncryptedPart(uri) {
+    if (
+      this.urisWithNestedEncryptedParts.length >
+      this.maxRecentSubEncryptionUrisToRemember
+    ) {
+      this.urisWithNestedEncryptedParts.shift(); // remove oldest
+    }
+    this.urisWithNestedEncryptedParts.push(uri);
+  },
+
+  isRecentUriWithNestedEncryptedPart(uri) {
+    return this.urisWithNestedEncryptedParts.includes(uri);
   },
 };
 

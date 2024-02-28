@@ -4,9 +4,8 @@
 
 /* import-globals-from editor.js */
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-var { AppConstants } = ChromeUtils.import(
-  "resource://gre/modules/AppConstants.jsm"
+var { AppConstants } = ChromeUtils.importESModule(
+  "resource://gre/modules/AppConstants.sys.mjs"
 );
 
 // Each editor window must include this file
@@ -29,7 +28,7 @@ var kOutputWrap = Ci.nsIDocumentEncoder.OutputWrap;
 var gStringBundle;
 var gFilePickerDirectory;
 
-/** *********** Message dialogs ***************/
+/** *********** Message dialogs */
 
 // Optional: Caller may supply text to substitute for "Ok" and/or "Cancel"
 function ConfirmWithTitle(title, message, okButtonText, cancelButtonText) {
@@ -56,7 +55,7 @@ function ConfirmWithTitle(title, message, okButtonText, cancelButtonText) {
   );
 }
 
-/** *********** String Utilities ***************/
+/** *********** String Utilities */
 
 function GetString(name) {
   if (!gStringBundle) {
@@ -167,10 +166,7 @@ function GetSelectionAsText() {
   return "";
 }
 
-/** *********** Get Current Editor and associated interfaces or info ***************/
-const nsIHTMLEditor = Ci.nsIHTMLEditor;
-const nsITableEditor = Ci.nsITableEditor;
-const nsIEditingSession = Ci.nsIEditingSession;
+/** *********** Get Current Editor and associated interfaces or info */
 
 function GetCurrentEditor() {
   // Get the active editor from the <editor> tag
@@ -195,7 +191,7 @@ function GetCurrentEditor() {
 
 function GetCurrentTableEditor() {
   var editor = GetCurrentEditor();
-  return editor && editor instanceof nsITableEditor ? editor : null;
+  return editor && editor instanceof Ci.nsITableEditor ? editor : null;
 }
 
 function GetCurrentEditorElement() {
@@ -240,7 +236,7 @@ function GetCurrentEditorType() {
  * Gets the editor's spell checker. Could return null if there are no
  * dictionaries installed.
  *
- * @return {nsIInlineSpellChecker?}
+ * @returns {nsIInlineSpellChecker?}
  */
 function GetCurrentEditorSpellChecker() {
   try {
@@ -320,7 +316,7 @@ function newCommandParams() {
   return null;
 }
 
-/** *********** General editing command utilities ***************/
+/** *********** General editing command utilities */
 
 function GetDocumentTitle() {
   try {
@@ -379,7 +375,7 @@ function EditorRemoveTextProperty(property, attribute) {
   } catch (e) {}
 }
 
-/** *********** Element enbabling/disabling ***************/
+/** *********** Element enbabling/disabling */
 
 // this function takes an elementID and a flag
 // if the element can be found by ID, then it is either enabled (by removing "disabled" attr)
@@ -400,7 +396,7 @@ function SetElementEnabled(element, doEnable) {
   }
 }
 
-/** *********** Services / Prefs ***************/
+/** *********** Services / Prefs */
 
 function GetFileProtocolHandler() {
   let handler = Services.io.getProtocolHandler("file");
@@ -498,7 +494,7 @@ function GetDefaultBrowserColors() {
   return colors;
 }
 
-/** *********** URL handling ***************/
+/** *********** URL handling */
 
 function TextIsURI(selectedText) {
   return (
@@ -510,7 +506,7 @@ function TextIsURI(selectedText) {
 }
 
 function IsUrlAboutBlank(urlString) {
-  return urlString == "about:blank";
+  return urlString.startsWith("about:blank");
 }
 
 function MakeRelativeUrl(url) {
@@ -897,7 +893,7 @@ function ConvertRGBColorIntoHEXColor(color) {
   return color;
 }
 
-/** *********** CSS ***************/
+/** *********** CSS */
 
 function GetHTMLOrCSSStyleValue(element, attrName, cssPropertyName) {
   var value;
@@ -916,7 +912,7 @@ function GetHTMLOrCSSStyleValue(element, attrName, cssPropertyName) {
   return value;
 }
 
-/** *********** Miscellaneous ***************/
+/** *********** Miscellaneous */
 // Clone simple JS objects
 function Clone(obj) {
   var clone = {};
@@ -936,7 +932,8 @@ function Clone(obj) {
 
 /**
  * Is the passed in image URI a shortened data URI?
- * @return {bool}
+ *
+ * @returns {bool}
  */
 function isImageDataShortened(aImageData) {
   return /^data:/i.test(aImageData) && aImageData.includes("…");
@@ -944,6 +941,7 @@ function isImageDataShortened(aImageData) {
 
 /**
  * Event handler for Copy or Cut
+ *
  * @param aEvent  the event
  */
 function onCopyOrCutShortened(aEvent) {
@@ -979,32 +977,31 @@ function onCopyOrCutShortened(aEvent) {
  * @param aImageData    the data: URL of the image to be shortened.
  *                      Note: Original stored in 'aDialogField.fullDataURI'.
  * @param aDialogField  The field of the dialog to contain the data.
- * @return {bool}       URL was shortened?
+ * @returns {bool} URL was shortened?
  */
 function shortenImageData(aImageData, aDialogField) {
   let shortened = false;
-  aDialogField.value = aImageData.replace(/^(data:.+;base64,)(.*)/i, function(
-    match,
-    nonDataPart,
-    dataPart
-  ) {
-    if (dataPart.length <= 35) {
-      return match;
-    }
+  aDialogField.value = aImageData.replace(
+    /^(data:.+;base64,)(.*)/i,
+    function (match, nonDataPart, dataPart) {
+      if (dataPart.length <= 35) {
+        return match;
+      }
 
-    shortened = true;
-    aDialogField.addEventListener("copy", onCopyOrCutShortened);
-    aDialogField.addEventListener("cut", onCopyOrCutShortened);
-    aDialogField.fullDataURI = aImageData;
-    aDialogField.removeAttribute("tooltiptext");
-    aDialogField.setAttribute("tooltip", "shortenedDataURI");
-    return (
-      nonDataPart +
-      dataPart.substring(0, 5) +
-      "…" +
-      dataPart.substring(dataPart.length - 30)
-    );
-  });
+      shortened = true;
+      aDialogField.addEventListener("copy", onCopyOrCutShortened);
+      aDialogField.addEventListener("cut", onCopyOrCutShortened);
+      aDialogField.fullDataURI = aImageData;
+      aDialogField.removeAttribute("tooltiptext");
+      aDialogField.setAttribute("tooltip", "shortenedDataURI");
+      return (
+        nonDataPart +
+        dataPart.substring(0, 5) +
+        "…" +
+        dataPart.substring(dataPart.length - 30)
+      );
+    }
+  );
   return shortened;
 }
 

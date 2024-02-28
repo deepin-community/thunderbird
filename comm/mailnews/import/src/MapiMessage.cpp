@@ -20,7 +20,6 @@
 #include "nsNativeCharsetUtils.h"
 #include "nsIOutputStream.h"
 
-#include "nsMsgCompCID.h"
 #include "MapiDbgLog.h"
 #include "MapiApi.h"
 
@@ -34,6 +33,9 @@
 #include "nsOutlookMail.h"
 
 #include "mozilla/Encoding.h"
+
+#include <stdlib.h>
+#include <tuple>
 
 // needed for the call the OpenStreamOnFile
 extern LPMAPIALLOCATEBUFFER gpMapiAllocateBuffer;
@@ -183,7 +185,6 @@ DEFINE_OLEGUID(PSETID_Common, MAKELONG(0x2000 + (8), 0x0006), 0, 0);
 
 void CMapiMessage::GetDownloadState() {
   // See http://support.microsoft.com/kb/912239
-  HRESULT hRes = S_OK;
   ULONG ulVal = 0;
   LPSPropValue lpPropVal = NULL;
   LPSPropTagArray lpNamedPropTag = NULL;
@@ -195,14 +196,14 @@ void CMapiMessage::GetDownloadState() {
   NamedID.Kind.lID = dispidHeaderItem;
   lpNamedID = &NamedID;
 
-  hRes = m_lpMsg->GetIDsFromNames(1, &lpNamedID, NULL, &lpNamedPropTag);
+  m_lpMsg->GetIDsFromNames(1, &lpNamedID, NULL, &lpNamedPropTag);
 
   if (lpNamedPropTag && 1 == lpNamedPropTag->cValues) {
     lpNamedPropTag->aulPropTag[0] =
         CHANGE_PROP_TYPE(lpNamedPropTag->aulPropTag[0], PT_LONG);
 
     // Get the value of the property.
-    hRes = m_lpMsg->GetProps(lpNamedPropTag, 0, &ulVal, &lpPropVal);
+    m_lpMsg->GetProps(lpNamedPropTag, 0, &ulVal, &lpPropVal);
     if (lpPropVal && 1 == ulVal && PT_LONG == PROP_TYPE(lpPropVal->ulPropTag) &&
         lpPropVal->Value.ul)
       m_dldStateHeadersOnly = true;
@@ -571,8 +572,7 @@ bool CMapiMessage::CheckBodyInCharsetRange(const char* charset) {
   while (true) {
     uint32_t result;
     size_t read;
-    size_t written;
-    mozilla::Tie(result, read, written) =
+    std::tie(result, read, std::ignore) =
         encoder->EncodeFromUTF16WithoutReplacement(src, dst, false);
     if (result == mozilla::kInputEmpty) {
       // All converted successfully.
@@ -583,7 +583,6 @@ bool CMapiMessage::CheckBodyInCharsetRange(const char* charset) {
       return false;
     }
     src = src.From(read);
-    // dst = dst.From(written); // Just overwrite output since we don't need it.
   }
 
   return true;
@@ -668,7 +667,7 @@ bool CMapiMessage::FetchBody(void) {
     // To detect the "true" plain text messages, we look for our string
     // immediately following the <BODY> tag.
     if (!m_body.IsEmpty() &&
-        m_body.Find("<BODY>\r\n<!-- Converted from text/plain format -->") ==
+        m_body.Find(u"<BODY>\r\n<!-- Converted from text/plain format -->") ==
             kNotFound) {
       m_bodyIsHtml = true;
     } else {
@@ -1130,7 +1129,7 @@ nsresult CMapiMessage::GetAttachments(
        it != m_stdattachments.end(); it++) {
     nsresult rv;
     nsCOMPtr<nsIMsgAttachedFile> a(
-        do_CreateInstance(NS_MSGATTACHEDFILE_CONTRACTID, &rv));
+        do_CreateInstance("@mozilla.org/messengercompose/attachedfile;1", &rv));
     NS_ENSURE_SUCCESS(rv, rv);
     a->SetOrigUrl((*it)->orig_url);
     a->SetTmpFile((*it)->tmp_file);
@@ -1145,7 +1144,7 @@ nsresult CMapiMessage::GetAttachments(
 bool CMapiMessage::GetEmbeddedAttachmentInfo(unsigned int i, nsIURI** uri,
                                              const char** cid,
                                              const char** name) const {
-  if ((i < 0) || (i >= m_embattachments.size())) return false;
+  if (i >= m_embattachments.size()) return false;
   attach_data* data = m_embattachments[i];
   if (!data) return false;
   *uri = data->orig_url;

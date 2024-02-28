@@ -7,29 +7,6 @@ const PERMISSIONS_PAGE =
     "chrome://mochitests/content",
     "https://example.com"
   ) + "permissions.html";
-const kStrictKeyPressEvents = SpecialPowers.getBoolPref(
-  "dom.keyboardevent.keypress.dispatch_non_printable_keys_only_system_group_in_content"
-);
-
-function openPermissionPopup() {
-  let promise = BrowserTestUtils.waitForEvent(
-    window,
-    "popupshown",
-    true,
-    event => event.target == gPermissionPanel._permissionPopup
-  );
-  gPermissionPanel._identityPermissionBox.click();
-  return promise;
-}
-
-function closePermissionPopup() {
-  let promise = BrowserTestUtils.waitForEvent(
-    gPermissionPanel._permissionPopup,
-    "popuphidden"
-  );
-  gPermissionPanel._permissionPopup.hidePopup();
-  return promise;
-}
 
 function testPermListHasEntries(expectEntries) {
   let permissionsList = document.getElementById(
@@ -46,7 +23,7 @@ function testPermListHasEntries(expectEntries) {
 }
 
 add_task(async function testMainViewVisible() {
-  await BrowserTestUtils.withNewTab(PERMISSIONS_PAGE, async function() {
+  await BrowserTestUtils.withNewTab(PERMISSIONS_PAGE, async function () {
     await openPermissionPopup();
 
     let permissionsList = document.getElementById(
@@ -92,7 +69,7 @@ add_task(async function testMainViewVisible() {
 });
 
 add_task(async function testIdentityIcon() {
-  await BrowserTestUtils.withNewTab(PERMISSIONS_PAGE, function() {
+  await BrowserTestUtils.withNewTab(PERMISSIONS_PAGE, function () {
     PermissionTestUtils.add(
       gBrowser.currentURI,
       "geo",
@@ -164,7 +141,7 @@ add_task(async function testIdentityIcon() {
 });
 
 add_task(async function testCancelPermission() {
-  await BrowserTestUtils.withNewTab(PERMISSIONS_PAGE, async function() {
+  await BrowserTestUtils.withNewTab(PERMISSIONS_PAGE, async function () {
     let permissionsList = document.getElementById(
       "permission-popup-permission-list"
     );
@@ -211,7 +188,7 @@ add_task(async function testCancelPermission() {
 });
 
 add_task(async function testPermissionHints() {
-  await BrowserTestUtils.withNewTab(PERMISSIONS_PAGE, async function(browser) {
+  await BrowserTestUtils.withNewTab(PERMISSIONS_PAGE, async function (browser) {
     let permissionsList = document.getElementById(
       "permission-popup-permission-list"
     );
@@ -253,7 +230,7 @@ add_task(async function testPermissionHints() {
 
     await closePermissionPopup();
     let loaded = BrowserTestUtils.browserLoaded(browser);
-    BrowserTestUtils.loadURI(browser, PERMISSIONS_PAGE);
+    BrowserTestUtils.loadURIString(browser, PERMISSIONS_PAGE);
     await loaded;
     await openPermissionPopup();
 
@@ -267,7 +244,7 @@ add_task(async function testPermissionHints() {
 });
 
 add_task(async function testPermissionIcons() {
-  await BrowserTestUtils.withNewTab(PERMISSIONS_PAGE, function() {
+  await BrowserTestUtils.withNewTab(PERMISSIONS_PAGE, function () {
     PermissionTestUtils.add(
       gBrowser.currentURI,
       "camera",
@@ -304,7 +281,7 @@ add_task(async function testPermissionIcons() {
 });
 
 add_task(async function testPermissionShortcuts() {
-  await BrowserTestUtils.withNewTab(PERMISSIONS_PAGE, async function(browser) {
+  await BrowserTestUtils.withNewTab(PERMISSIONS_PAGE, async function (browser) {
     browser.focus();
 
     await new Promise(r => {
@@ -316,7 +293,7 @@ add_task(async function testPermissionShortcuts() {
 
     async function tryKey(desc, expectedValue) {
       await EventUtils.synthesizeAndWaitKey("c", { accelKey: true });
-      let result = await SpecialPowers.spawn(browser, [], function() {
+      let result = await SpecialPowers.spawn(browser, [], function () {
         return {
           keydowns: content.wrappedJSObject.gKeyDowns,
           keypresses: content.wrappedJSObject.gKeyPresses,
@@ -327,19 +304,11 @@ add_task(async function testPermissionShortcuts() {
         expectedValue,
         "keydown event was fired or not fired as expected, " + desc
       );
-      if (kStrictKeyPressEvents) {
-        is(
-          result.keypresses,
-          0,
-          "keypress event shouldn't be fired for shortcut key, " + desc
-        );
-      } else {
-        is(
-          result.keypresses,
-          expectedValue,
-          "keypress event should be fired even for shortcut key, " + desc
-        );
-      }
+      is(
+        result.keypresses,
+        0,
+        "keypress event shouldn't be fired for shortcut key, " + desc
+      );
     }
 
     await tryKey("pressed with default permissions", 1);
@@ -387,7 +356,7 @@ add_task(async function testPermissionShortcuts() {
 
 // Test the control center UI when policy permissions are set.
 add_task(async function testPolicyPermission() {
-  await BrowserTestUtils.withNewTab(PERMISSIONS_PAGE, async function() {
+  await BrowserTestUtils.withNewTab(PERMISSIONS_PAGE, async function () {
     await SpecialPowers.pushPrefEnv({
       set: [["dom.disable_open_during_load", true]],
     });
@@ -445,7 +414,7 @@ add_task(async function testPolicyPermission() {
 });
 
 add_task(async function testHiddenAfterRefresh() {
-  await BrowserTestUtils.withNewTab(PERMISSIONS_PAGE, async function(browser) {
+  await BrowserTestUtils.withNewTab(PERMISSIONS_PAGE, async function (browser) {
     ok(
       BrowserTestUtils.is_hidden(gPermissionPanel._permissionPopup),
       "Popup is hidden"
@@ -478,11 +447,8 @@ add_task(async function test3rdPartyStoragePermission() {
   // that this works correctly, i.e. the permission items are added to the
   // anchor when relevant, and other permission items are added to the default
   // anchor, and adding/removing permissions preserves this behavior correctly.
-  SpecialPowers.pushPrefEnv({
-    set: [["browser.contentblocking.state-partitioning.mvp.ui.enabled", true]],
-  });
 
-  await BrowserTestUtils.withNewTab(PERMISSIONS_PAGE, async function(browser) {
+  await BrowserTestUtils.withNewTab(PERMISSIONS_PAGE, async function (browser) {
     await openPermissionPopup();
 
     let permissionsList = document.getElementById(

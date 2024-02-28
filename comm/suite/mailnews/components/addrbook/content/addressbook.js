@@ -1,3 +1,4 @@
+/* -*- indent-tabs-mode: nil; js-indent-level: 2 -*- */
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
@@ -557,40 +558,6 @@ function LaunchUrl(url)
     window.location = url;
   }
   catch (ex) {}
-}
-
-function AbIMSelected()
-{
-  var cards = GetSelectedAbCards();
-  var count = cards.length;
-
-  var screennames;
-  var screennameCount = 0;
-
-  for (var i=0;i<count;i++) {
-    var screenname = cards[i].getProperty("_AimScreenName", "");
-    if (screenname) {
-      if (screennameCount == 0)
-        screennames = screenname;
-      else
-        screennames += "," + screenname;
-
-      screennameCount++
-    }
-  }
-
-  var url = "aim:";
-
-  if (screennameCount == 0)
-    url += "goim";
-  else if (screennameCount == 1)
-    url += "goim?screenname=" + screennames;
-  else {
-    url += "SendChatInvite?listofscreennames=" + screennames;
-    url += "&message=" + gAddressBookBundle.getString("joinMeInThisChat");
-  }
-
-  LaunchUrl(url);
 }
 
 function getAbToolbox()

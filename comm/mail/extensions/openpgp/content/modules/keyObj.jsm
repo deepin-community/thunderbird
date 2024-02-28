@@ -11,10 +11,10 @@ var EXPORTED_SYMBOLS = ["newEnigmailKeyObj"];
 /**
  This module implements the EnigmailKeyObj class with the following members:
 
-  - keyId           - 16 digits (8-byte) public key ID (/not/ preceeded with 0x)
+  - keyId           - 16 digits (8-byte) public key ID (/not/ preceded with 0x)
   - userId          - main user ID
   - fpr             - fingerprint
-  - fprFormatted    - a formatted version of the fingerprint followin the scheme .... .... ....
+  - fprFormatted    - a formatted version of the fingerprint following the scheme .... .... ....
   - expiry          - Expiry date as printable string
   - expiryTime      - Expiry time as seconds after 01/01/1970
   - created         - Key creation date as printable string
@@ -45,12 +45,6 @@ var EXPORTED_SYMBOLS = ["newEnigmailKeyObj"];
                     * keySize    - subkey size
                     * type       -  "sub"
 
-  - signatures  - [Array]: list of signature objects
-                    * userId
-                    * uidLabel
-                    * created
-                    * fpr
-                    * sigList: Array of object: { userId, created, signerKeyId, sigType, sigKnown }
   - methods:
      * hasSubUserIds
      * getKeyExpiry
@@ -62,19 +56,20 @@ var EXPORTED_SYMBOLS = ["newEnigmailKeyObj"];
      * getVirtualKeySize
 */
 
-const { XPCOMUtils } = ChromeUtils.import(
-  "resource://gre/modules/XPCOMUtils.jsm"
+const { XPCOMUtils } = ChromeUtils.importESModule(
+  "resource://gre/modules/XPCOMUtils.sys.mjs"
 );
 
-XPCOMUtils.defineLazyModuleGetters(this, {
+const lazy = {};
+
+XPCOMUtils.defineLazyModuleGetters(lazy, {
   EnigmailCryptoAPI: "chrome://openpgp/content/modules/cryptoAPI.jsm",
   EnigmailFuncs: "chrome://openpgp/content/modules/funcs.jsm",
   EnigmailKey: "chrome://openpgp/content/modules/key.jsm",
   EnigmailLog: "chrome://openpgp/content/modules/log.jsm",
-  Services: "resource://gre/modules/Services.jsm",
 });
 
-XPCOMUtils.defineLazyGetter(this, "l10n", () => {
+XPCOMUtils.defineLazyGetter(lazy, "l10n", () => {
   return new Localization(["messenger/openpgp/openpgp.ftl"], true);
 });
 
@@ -101,7 +96,6 @@ class EnigmailKeyObj {
     this.photoAvailable = false;
     this.secretAvailable = false;
     this.secretMaterial = false;
-    this._sigList = null;
 
     this.type = keyData.type;
     if ("keyId" in keyData) {
@@ -139,6 +133,7 @@ class EnigmailKeyObj {
       "secretMaterial",
       "photoAvailable",
       "userId",
+      "hasIgnoredAttributes",
     ];
     for (let i of ATTRS) {
       if (i in keyData) {
@@ -148,35 +143,15 @@ class EnigmailKeyObj {
   }
 
   /**
-   * gettter that returns a list of all signatures found on the key
-   *
-   * @return Array of Object, or null in case of error:
-   *     - uid
-   *     - uidLabel
-   *     - creationDate
-   *     - sigList: Array of object: { uid, creationDate, signerKeyId, sigType }
-   */
-  get signatures() {
-    if (this._sigList === null) {
-      const cApi = EnigmailCryptoAPI();
-      this._sigList = cApi.sync(cApi.getKeySignatures(this.keyId));
-    }
-
-    return this._sigList;
-  }
-
-  /**
    * create a copy of the object
    */
   clone() {
     let cp = new EnigmailKeyObj(["copy"]);
     for (let i in this) {
-      if (i !== "signatures" && i !== "fprFormatted") {
-        // caution: don't try to evaluate this[i] if i==="signatures";
-        // it would immediately get all signatures for the key (slow!)
+      if (i !== "fprFormatted") {
         if (typeof this[i] !== "function") {
           if (typeof this[i] === "object") {
-            cp[i] = EnigmailFuncs.cloneObj(this[i]);
+            cp[i] = lazy.EnigmailFuncs.cloneObj(this[i]);
           } else {
             cp[i] = this[i];
           }
@@ -207,10 +182,10 @@ class EnigmailKeyObj {
    * Get a formatted version of the fingerprint:
    * 1234 5678 90AB CDEF .... ....
    *
-   * @return String - the formatted fingerprint
+   * @returns String - the formatted fingerprint
    */
   get fprFormatted() {
-    let f = EnigmailKey.formatFpr(this.fpr);
+    let f = lazy.EnigmailKey.formatFpr(this.fpr);
     if (f.length === 0) {
       f = this.fpr;
     }
@@ -220,7 +195,7 @@ class EnigmailKeyObj {
   /**
    * Determine if the public key is valid. If not, return a description why it's not
    *
-   * @return Object:
+   * @returns Object:
    *   - keyValid: Boolean (true if key is valid)
    *   - reason: String (explanation of invalidity)
    */
@@ -231,7 +206,7 @@ class EnigmailKeyObj {
     };
     if (this.keyTrust.search(/r/i) >= 0) {
       // public key revoked
-      retVal.reason = l10n.formatValueSync("key-ring-pub-key-revoked", {
+      retVal.reason = lazy.l10n.formatValueSync("key-ring-pub-key-revoked", {
         userId: this.userId,
         keyId: "0x" + this.keyId,
       });
@@ -240,7 +215,7 @@ class EnigmailKeyObj {
       this.keyTrust.search(/e/i) >= 0
     ) {
       // public key expired
-      retVal.reason = l10n.formatValueSync("key-ring-pub-key-expired", {
+      retVal.reason = lazy.l10n.formatValueSync("key-ring-pub-key-expired", {
         userId: this.userId,
         keyId: "0x" + this.keyId,
       });
@@ -254,7 +229,7 @@ class EnigmailKeyObj {
   /**
    * Check whether a key can be used for signing and return a description of why not
    *
-   * @return Object:
+   * @returns Object:
    *   - keyValid: Boolean (true if key is valid)
    *   - reason: String (explanation of invalidity)
    */
@@ -267,7 +242,7 @@ class EnigmailKeyObj {
 
     if (!this.secretAvailable) {
       retVal.keyValid = false;
-      retVal.reason = l10n.formatValueSync("key-ring-no-secret-key", {
+      retVal.reason = lazy.l10n.formatValueSync("key-ring-no-secret-key", {
         userId: this.userId,
         keyId: "0x" + this.keyId,
       });
@@ -286,7 +261,10 @@ class EnigmailKeyObj {
 
     for (let sk in this.subKeys) {
       if (this.subKeys[sk].keyUseFor.search(/s/) >= 0) {
-        if (this.subKeys[sk].keyTrust.search(/e/i) >= 0) {
+        if (
+          this.subKeys[sk].keyTrust.search(/e/i) >= 0 &&
+          exceptionReason != "ignoreExpired"
+        ) {
           ++expired;
         } else if (this.subKeys[sk].keyTrust.search(/r/i) >= 0) {
           ++revoked;
@@ -301,22 +279,28 @@ class EnigmailKeyObj {
 
     if (!found) {
       if (exceptionReason != "ignoreExpired" && expired) {
-        retVal.reason = l10n.formatValueSync("key-ring-sign-sub-keys-expired", {
-          userId: this.userId,
-          keyId: "0x" + this.keyId,
-        });
+        retVal.reason = lazy.l10n.formatValueSync(
+          "key-ring-sign-sub-keys-expired",
+          {
+            userId: this.userId,
+            keyId: "0x" + this.keyId,
+          }
+        );
       } else if (revoked) {
-        retVal.reason = l10n.formatValueSync("key-ring-sign-sub-keys-revoked", {
-          userId: this.userId,
-          keyId: "0x" + this.keyId,
-        });
+        retVal.reason = lazy.l10n.formatValueSync(
+          "key-ring-sign-sub-keys-revoked",
+          {
+            userId: this.userId,
+            keyId: "0x" + this.keyId,
+          }
+        );
       } else if (noSecret) {
-        retVal.reason = l10n.formatValueSync("key-ring-no-secret-key", {
+        retVal.reason = lazy.l10n.formatValueSync("key-ring-no-secret-key", {
           userId: this.userId,
           keyId: "0x" + this.keyId,
         });
       } else {
-        retVal.reason = l10n.formatValueSync(
+        retVal.reason = lazy.l10n.formatValueSync(
           "key-ring-pub-key-not-for-signing",
           {
             userId: this.userId,
@@ -337,22 +321,44 @@ class EnigmailKeyObj {
    * @param {boolean} requireDecryptionKey:
    *                  If true, require secret key material to be available
    *                  for at least one encryption key.
+   * @param {string} exceptionReason:
+   *                 Can be used to override the requirement to check for
+   *                 full validity, and accept certain scenarios as valid.
+   *                 If value is set to "ignoreExpired",
+   *                 then an expired key isn't treated as invalid.
+   *                 Set to null to get the default behavior.
+   * @param {string} subId:
+   *                 A key ID of a subkey or null.
+   *                 If subId is null, any part of the key will be
+   *                 considered when looking for a valid encryption key.
+   *                 If subId is non-null, only this subkey will be
+   *                 checked.
    *
-   * @return Object:
+   * @returns Object:
    *   - keyValid: Boolean (true if key is valid)
    *   - reason: String (explanation of invalidity)
    */
-  getEncryptionValidity(requireDecryptionKey, exceptionReason = null) {
+  getEncryptionValidity(
+    requireDecryptionKey,
+    exceptionReason = null,
+    subId = null
+  ) {
     let retVal = this.getPubKeyValidity(exceptionReason);
     if (!retVal.keyValid) {
       return retVal;
     }
 
     if (
-      requireDecryptionKey &&
+      !subId &&
       this.keyUseFor.search(/e/) >= 0 &&
-      this.secretMaterial
+      (!requireDecryptionKey || this.secretMaterial)
     ) {
+      // We can stop and return the result we already found,
+      // because we aren't looking at a specific subkey (!subId),
+      // and the primary key is usable for encryption.
+      // If we must own secret key material (requireDecryptionKey),
+      // in this scenario it's sufficient to have secret material for
+      // the primary key.
       return retVal;
     }
 
@@ -363,13 +369,20 @@ class EnigmailKeyObj {
     let found = 0;
     let noSecret = 0;
 
-    for (let sk in this.subKeys) {
-      if (this.subKeys[sk].keyUseFor.search(/e/) >= 0) {
-        if (this.subKeys[sk].keyTrust.search(/e/i) >= 0) {
+    for (let sk of this.subKeys) {
+      if (subId && subId != sk.keyId) {
+        continue;
+      }
+
+      if (sk.keyUseFor.search(/e/) >= 0) {
+        if (
+          sk.keyTrust.search(/e/i) >= 0 &&
+          exceptionReason != "ignoreExpired"
+        ) {
           ++expired;
-        } else if (this.subKeys[sk].keyTrust.search(/r/i) >= 0) {
+        } else if (sk.keyTrust.search(/r/i) >= 0) {
           ++revoked;
-        } else if (requireDecryptionKey && !this.subKeys[sk].secretMaterial) {
+        } else if (requireDecryptionKey && !sk.secretMaterial) {
           ++noSecret;
         } else {
           // found subkey usable
@@ -379,27 +392,35 @@ class EnigmailKeyObj {
     }
 
     if (!found) {
+      let idToShow = subId ? subId : this.keyId;
+
       if (exceptionReason != "ignoreExpired" && expired) {
-        retVal.reason = l10n.formatValueSync("key-ring-enc-sub-keys-expired", {
-          userId: this.userId,
-          keyId: "0x" + this.keyId,
-        });
+        retVal.reason = lazy.l10n.formatValueSync(
+          "key-ring-enc-sub-keys-expired",
+          {
+            userId: this.userId,
+            keyId: "0x" + idToShow,
+          }
+        );
       } else if (revoked) {
-        retVal.reason = l10n.formatValueSync("key-ring-enc-sub-keys-revoked", {
-          userId: this.userId,
-          keyId: "0x" + this.keyId,
-        });
+        retVal.reason = lazy.l10n.formatValueSync(
+          "key-ring-enc-sub-keys-revoked",
+          {
+            userId: this.userId,
+            keyId: "0x" + idToShow,
+          }
+        );
       } else if (noSecret) {
-        retVal.reason = l10n.formatValueSync("key-ring-no-secret-key", {
+        retVal.reason = lazy.l10n.formatValueSync("key-ring-no-secret-key", {
           userId: this.userId,
-          keyId: "0x" + this.keyId,
+          keyId: "0x" + idToShow,
         });
       } else {
-        retVal.reason = l10n.formatValueSync(
+        retVal.reason = lazy.l10n.formatValueSync(
           "key-ring-pub-key-not-for-encryption",
           {
             userId: this.userId,
-            keyId: "0x" + this.keyId,
+            keyId: "0x" + idToShow,
           }
         );
       }
@@ -415,7 +436,7 @@ class EnigmailKeyObj {
    * or the maximum expiry date of a signing or encryption subkey. I.e. this returns the next
    * date at which the key cannot be used for signing and/or encryption anymore
    *
-   * @return Number - The expiry date as seconds after 01/01/1970
+   * @returns Number - The expiry date as seconds after 01/01/1970
    */
   getKeyExpiry() {
     let expiryDate = Number.MAX_VALUE;
@@ -462,22 +483,21 @@ class EnigmailKeyObj {
    * Export the minimum key for the public key object:
    * public key, desired UID, newest signing/encryption subkey
    *
-   * @param {String} emailAddr: [optional] email address of UID to extract. Use primary UID if null .
+   * @param {string} emailAddr: [optional] email address of UID to extract. Use primary UID if null .
    *
-   * @return Object:
+   * @returns Object:
    *    - exitCode (0 = success)
    *    - errorMsg (if exitCode != 0)
    *    - keyData: BASE64-encded string of key data
    */
-
   getMinimalPubKey(emailAddr) {
-    EnigmailLog.DEBUG(
+    lazy.EnigmailLog.DEBUG(
       "keyObj.jsm: EnigmailKeyObj.getMinimalPubKey: " + this.keyId + "\n"
     );
 
     if (emailAddr) {
       try {
-        emailAddr = EnigmailFuncs.stripEmail(emailAddr.toLowerCase());
+        emailAddr = lazy.EnigmailFuncs.stripEmail(emailAddr.toLowerCase());
       } catch (x) {
         emailAddr = emailAddr.toLowerCase();
       }
@@ -486,7 +506,9 @@ class EnigmailKeyObj {
         uid = "";
       for (let i in this.userIds) {
         try {
-          uid = EnigmailFuncs.stripEmail(this.userIds[i].userId.toLowerCase());
+          uid = lazy.EnigmailFuncs.stripEmail(
+            this.userIds[i].userId.toLowerCase()
+          );
         } catch (x) {
           uid = this.userIds[i].userId.toLowerCase();
         }
@@ -506,7 +528,7 @@ class EnigmailKeyObj {
     }
 
     try {
-      emailAddr = EnigmailFuncs.stripEmail(emailAddr.toLowerCase());
+      emailAddr = lazy.EnigmailFuncs.stripEmail(emailAddr.toLowerCase());
     } catch (x) {
       emailAddr = emailAddr.toLowerCase();
     }
@@ -538,7 +560,7 @@ class EnigmailKeyObj {
     }
 
     if (!(emailAddr in this.minimalKeyBlock)) {
-      const cApi = EnigmailCryptoAPI();
+      const cApi = lazy.EnigmailCryptoAPI();
       this.minimalKeyBlock[emailAddr] = cApi.sync(
         cApi.getMinimalPubKey(this.fpr, emailAddr, subkeysArr)
       );
@@ -551,10 +573,10 @@ class EnigmailKeyObj {
    * e.g. elliptic curve keys have small key sizes with high cryptographic strength
    *
    *
-   * @return Number: a virtual size
+   * @returns Number: a virtual size
    */
   getVirtualKeySize() {
-    EnigmailLog.DEBUG(
+    lazy.EnigmailLog.DEBUG(
       "keyObj.jsm: EnigmailKeyObj.getVirtualKeySize: " + this.keyId + "\n"
     );
 
@@ -571,35 +593,19 @@ class EnigmailKeyObj {
   }
 
   /**
-   * Get a file object holding the photo of a key
+   * @param {boolean} minimalKey - if true, reduce key to minimum required
    *
-   * @param {Number} photoNumber: number of the photo on the key, starting with 0
-   *
-   * @return {nsIFile} object or null in case no data / error.
-   */
-  getPhotoFile(photoNumber) {
-    const cApi = EnigmailCryptoAPI();
-    return cApi.sync(cApi.getPhotoFile(this.fpr, photoNumber));
-  }
-
-  /**
-   * @param {Boolean} minimalKey  if true, reduce key to minimum required
-   *
-   * @return {Object}:
+   * @returns {object}:
    *   - {Number} exitCode:  result code (0: OK)
    *   - {String} keyData:   ASCII armored key data material
    *   - {String} errorMsg:  error message in case exitCode !== 0
    */
   getSecretKey(minimalKey) {
-    const cApi = EnigmailCryptoAPI();
+    const cApi = lazy.EnigmailCryptoAPI();
     return cApi.sync(cApi.extractSecretKey(this.fpr, minimalKey));
   }
 
-  iSimpleOneSubkeySameExpiry(result = null) {
-    if (result) {
-      result.fingerprints = [];
-    }
-
+  iSimpleOneSubkeySameExpiry() {
     if (this.subKeys.length == 0) {
       return true;
     }
@@ -621,13 +627,53 @@ class EnigmailKeyObj {
 
     // If expiry dates differ by less than a half day, then we
     // treat it as having roughly the same expiry date.
-    let rv = deltaSeconds < 12 * 60 * 60;
+    return deltaSeconds < 12 * 60 * 60;
+  }
 
-    if (rv && result) {
-      result.fingerprints.push(this.fpr);
-      result.fingerprints.push(subKey.fpr);
+  /**
+   * Obtain the list of alternative email addresses, except the one
+   * that is given as the parameter.
+   *
+   * @param {boolean} exceptThisEmail - an email address that will
+   *   be excluded in the result array.
+   * @returns {string[]} - an array of all email addresses found in all
+   *   of the key's user IDs, excluding exceptThisEmail.
+   */
+  getAlternativeEmails(exceptThisEmail) {
+    let result = [];
+
+    for (let u of this.userIds) {
+      let email;
+      try {
+        email = lazy.EnigmailFuncs.stripEmail(u.userId.toLowerCase());
+      } catch (x) {
+        email = u.userId.toLowerCase();
+      }
+
+      if (email == exceptThisEmail) {
+        continue;
+      }
+
+      result.push(email);
     }
 
-    return rv;
+    return result;
+  }
+
+  getUserIdWithEmail(email) {
+    for (let u of this.userIds) {
+      let e;
+      try {
+        e = lazy.EnigmailFuncs.stripEmail(u.userId.toLowerCase());
+      } catch (x) {
+        e = u.userId.toLowerCase();
+      }
+
+      if (email == e) {
+        return u;
+      }
+    }
+
+    return null;
   }
 }

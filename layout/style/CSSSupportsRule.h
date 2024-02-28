@@ -15,7 +15,7 @@ namespace dom {
 
 class CSSSupportsRule : public css::ConditionRule {
  public:
-  CSSSupportsRule(RefPtr<RawServoSupportsRule> aRawRule, StyleSheet* aSheet,
+  CSSSupportsRule(RefPtr<StyleSupportsRule> aRawRule, StyleSheet* aSheet,
                   css::Rule* aParentRule, uint32_t aLine, uint32_t aColumn);
 
   NS_DECL_ISUPPORTS_INHERITED
@@ -24,14 +24,13 @@ class CSSSupportsRule : public css::ConditionRule {
   void List(FILE* out = stdout, int32_t aIndent = 0) const final;
 #endif
 
-  RawServoSupportsRule* Raw() const { return mRawRule; }
+  StyleSupportsRule* Raw() const { return mRawRule; }
+  void SetRawAfterClone(RefPtr<StyleSupportsRule>);
 
   // WebIDL interface
-  uint16_t Type() const override { return CSSRule_Binding::SUPPORTS_RULE; }
+  StyleCssRuleType Type() const final;
   void GetCssText(nsACString& aCssText) const final;
   void GetConditionText(nsACString& aConditionText) final;
-  void SetConditionText(const nsACString& aConditionText,
-                        ErrorResult& aRv) final;
 
   size_t SizeOfIncludingThis(MallocSizeOf) const override;
   JSObject* WrapObject(JSContext* aCx,
@@ -40,7 +39,7 @@ class CSSSupportsRule : public css::ConditionRule {
  private:
   ~CSSSupportsRule() = default;
 
-  RefPtr<RawServoSupportsRule> mRawRule;
+  RefPtr<StyleSupportsRule> mRawRule;
 };
 
 }  // namespace dom

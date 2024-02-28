@@ -56,24 +56,20 @@ var gTestArray = [
   },
   function verifyMessages() {
     // check MoveFolder message
-    let hdr = [...gMoveFolder.msgDatabase.EnumerateMessages()][0];
-    Assert.ok(!gMoveFolder.fetchMsgPreviewText([hdr.messageKey], false, null));
+    let hdr = [...gMoveFolder.msgDatabase.enumerateMessages()][0];
+    Assert.ok(!gMoveFolder.fetchMsgPreviewText([hdr.messageKey], null));
     Assert.equal(hdr.getStringProperty("preview"), bugmail10_preview);
     // check inbox message
-    hdr = [...localAccountUtils.inboxFolder.msgDatabase.EnumerateMessages()][0];
+    hdr = [...localAccountUtils.inboxFolder.msgDatabase.enumerateMessages()][0];
     Assert.ok(
-      !localAccountUtils.inboxFolder.fetchMsgPreviewText(
-        [hdr.messageKey],
-        false,
-        null
-      )
+      !localAccountUtils.inboxFolder.fetchMsgPreviewText([hdr.messageKey], null)
     );
     Assert.equal(hdr.getStringProperty("preview"), basic1_preview);
   },
 ];
 
 function folderCount(folder) {
-  return [...folder.msgDatabase.EnumerateMessages()].length;
+  return [...folder.msgDatabase.enumerateMessages()].length;
 }
 
 function setup_store(storeID) {
@@ -90,9 +86,8 @@ function setup_store(storeID) {
       localAccountUtils.loadLocalMailAccount();
     }
 
-    gMoveFolder = localAccountUtils.rootFolder.createLocalSubfolder(
-      "MoveFolder"
-    );
+    gMoveFolder =
+      localAccountUtils.rootFolder.createLocalSubfolder("MoveFolder");
   };
 }
 

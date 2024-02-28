@@ -1,8 +1,6 @@
 /* Any copyright is dedicated to the Public Domain.
  * http://creativecommons.org/publicdomain/zero/1.0/ */
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-
 // Import common head.
 {
   /* import-globals-from ../head_common.js */
@@ -16,19 +14,19 @@ var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 var { CanonicalJSON } = ChromeUtils.import(
   "resource://gre/modules/CanonicalJSON.jsm"
 );
-var { Log } = ChromeUtils.import("resource://gre/modules/Log.jsm");
-var { ObjectUtils } = ChromeUtils.import(
-  "resource://gre/modules/ObjectUtils.jsm"
+var { Log } = ChromeUtils.importESModule("resource://gre/modules/Log.sys.mjs");
+
+var { PlacesSyncUtils } = ChromeUtils.importESModule(
+  "resource://gre/modules/PlacesSyncUtils.sys.mjs"
 );
-var { PlacesSyncUtils } = ChromeUtils.import(
-  "resource://gre/modules/PlacesSyncUtils.jsm"
+var { SyncedBookmarksMirror } = ChromeUtils.importESModule(
+  "resource://gre/modules/SyncedBookmarksMirror.sys.mjs"
 );
-var { SyncedBookmarksMirror } = ChromeUtils.import(
-  "resource://gre/modules/SyncedBookmarksMirror.jsm"
+var { CommonUtils } = ChromeUtils.importESModule(
+  "resource://services-common/utils.sys.mjs"
 );
-var { CommonUtils } = ChromeUtils.import("resource://services-common/utils.js");
-var { FileTestUtils } = ChromeUtils.import(
-  "resource://testing-common/FileTestUtils.jsm"
+var { FileTestUtils } = ChromeUtils.importESModule(
+  "resource://testing-common/FileTestUtils.sys.mjs"
 );
 var {
   HTTP_400,
@@ -86,12 +84,12 @@ function run_test() {
 // A test helper to insert local roots directly into Places, since the public
 // bookmarks APIs no longer support custom roots.
 async function insertLocalRoot({ guid, title }) {
-  await PlacesUtils.withConnectionWrapper("insertLocalRoot", async function(
-    db
-  ) {
-    let dateAdded = PlacesUtils.toPRTime(new Date());
-    await db.execute(
-      `
+  await PlacesUtils.withConnectionWrapper(
+    "insertLocalRoot",
+    async function (db) {
+      let dateAdded = PlacesUtils.toPRTime(new Date());
+      await db.execute(
+        `
         INSERT INTO moz_bookmarks(guid, type, parent, position, title,
                                   dateAdded, lastModified)
         VALUES(:guid, :type, (SELECT id FROM moz_bookmarks
@@ -100,15 +98,16 @@ async function insertLocalRoot({ guid, title }) {
                 WHERE parent = (SELECT id FROM moz_bookmarks
                                 WHERE guid = :parentGuid)),
                :title, :dateAdded, :dateAdded)`,
-      {
-        guid,
-        type: PlacesUtils.bookmarks.TYPE_FOLDER,
-        parentGuid: PlacesUtils.bookmarks.rootGuid,
-        title,
-        dateAdded,
-      }
-    );
-  });
+        {
+          guid,
+          type: PlacesUtils.bookmarks.TYPE_FOLDER,
+          parentGuid: PlacesUtils.bookmarks.rootGuid,
+          title,
+          dateAdded,
+        }
+      );
+    }
+  );
 }
 
 // Returns a `CryptoWrapper`-like object that wraps the Sync record cleartext.
@@ -337,6 +336,7 @@ BookmarkObserver.prototype = {
             index: event.index,
             type: event.itemType,
             urlHref: event.url || null,
+            title: event.title,
             guid: event.guid,
             parentGuid: event.parentGuid,
             source: event.source,
@@ -360,46 +360,56 @@ BookmarkObserver.prototype = {
           this.notifications.push({ name: "bookmark-moved", params });
           break;
         }
+        case "bookmark-guid-changed": {
+          const params = {
+            itemId: event.id,
+            type: event.itemType,
+            urlHref: event.url,
+            guid: event.guid,
+            parentGuid: event.parentGuid,
+            source: event.source,
+            isTagging: event.isTagging,
+          };
+          this.notifications.push({ name: "bookmark-guid-changed", params });
+          break;
+        }
+        case "bookmark-title-changed": {
+          const params = {
+            itemId: event.id,
+            guid: event.guid,
+            title: event.title,
+            parentGuid: event.parentGuid,
+          };
+          this.notifications.push({ name: "bookmark-title-changed", params });
+          break;
+        }
+        case "bookmark-url-changed": {
+          const params = {
+            itemId: event.id,
+            type: event.itemType,
+            urlHref: event.url,
+            guid: event.guid,
+            parentGuid: event.parentGuid,
+            source: event.source,
+            isTagging: event.isTagging,
+          };
+          this.notifications.push({ name: "bookmark-url-changed", params });
+          break;
+        }
       }
     }
   },
-  onItemChanged(
-    itemId,
-    property,
-    isAnnoProperty,
-    newValue,
-    lastModified,
-    type,
-    parentId,
-    guid,
-    parentGuid,
-    oldValue,
-    source
-  ) {
-    let params = {
-      itemId,
-      property,
-      isAnnoProperty,
-      newValue,
-      type,
-      parentId,
-      guid,
-      parentGuid,
-      oldValue,
-      source,
-    };
-    if (!this.ignoreDates) {
-      params.lastModified = lastModified;
-    }
-    this.notifications.push({ name: "onItemChanged", params });
-  },
-
-  QueryInterface: ChromeUtils.generateQI(["nsINavBookmarkObserver"]),
 
   check(expectedNotifications) {
-    PlacesUtils.bookmarks.removeObserver(this);
     PlacesUtils.observers.removeListener(
-      ["bookmark-added", "bookmark-removed", "bookmark-moved"],
+      [
+        "bookmark-added",
+        "bookmark-removed",
+        "bookmark-moved",
+        "bookmark-guid-changed",
+        "bookmark-title-changed",
+        "bookmark-url-changed",
+      ],
       this.handlePlacesEvents
     );
     if (!ObjectUtils.deepEqual(this.notifications, expectedNotifications)) {
@@ -415,9 +425,15 @@ BookmarkObserver.prototype = {
 
 function expectBookmarkChangeNotifications(options) {
   let observer = new BookmarkObserver(options);
-  PlacesUtils.bookmarks.addObserver(observer);
   PlacesUtils.observers.addListener(
-    ["bookmark-added", "bookmark-removed", "bookmark-moved"],
+    [
+      "bookmark-added",
+      "bookmark-removed",
+      "bookmark-moved",
+      "bookmark-guid-changed",
+      "bookmark-title-changed",
+      "bookmark-url-changed",
+    ],
     observer.handlePlacesEvents
   );
   return observer;
@@ -428,6 +444,6 @@ function expectBookmarkChangeNotifications(options) {
 async function setupFixtureFile(fixturePath) {
   let fixtureFile = do_get_file(fixturePath);
   let tempFile = FileTestUtils.getTempFile(fixturePath);
-  await OS.File.copy(fixtureFile.path, tempFile.path);
+  await IOUtils.copy(fixtureFile.path, tempFile.path);
   return tempFile;
 }

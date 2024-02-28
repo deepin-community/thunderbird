@@ -1,10 +1,13 @@
-/* -*- Mode: Java; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
 /* vim:set ts=2 sw=2 sts=2 et: */
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 const EXPORTED_SYMBOLS = ["LDAPDaemon", "LDAPHandlerFn"];
+
+var { MailStringUtils } = ChromeUtils.import(
+  "resource:///modules/MailStringUtils.jsm"
+);
 
 /**
  * This file provides fake LDAP server functionality, just enough to run
@@ -74,7 +77,7 @@ class BERValue {
   /**
    * Encode the BERValue to an array of bytes, ready to be written to the wire.
    *
-   * @return {Array.<number>} - The encoded bytes.
+   * @returns {Array.<number>} - The encoded bytes.
    */
   encode() {
     let bytes = [];
@@ -111,7 +114,7 @@ class BERValue {
   }
 
   /**
-   * @return {number} - The tag number of the type (the lower 5 bits).
+   * @returns {number} - The tag number of the type (the lower 5 bits).
    */
   tag() {
     return this.type & 0x1f;
@@ -159,7 +162,7 @@ class BERValue {
   asString() {
     // TODO: pass in expected encoding?
     if (this.data.length > 0) {
-      return String.fromCharCode(...this.data);
+      return MailStringUtils.uint8ArrayToByteString(new Uint8Array(this.data));
     }
     return "";
   }
@@ -213,6 +216,7 @@ class BERValue {
 
   /**
    * Create a new sequence
+   *
    * @param {number} type - BER type byte
    * @param {Array.<BERValue>} children - The contents of the sequence.
    */
@@ -303,7 +307,7 @@ class BERParser {
   /**
    * Helper to fetch the next byte in the stream.
    *
-   * @return {number} - The byte.
+   * @returns {number} - The byte.
    */
   async _nextByte() {
     let buf = await this._conn.read(1);
@@ -313,7 +317,7 @@ class BERParser {
   /**
    * Helper to read a BER length field from the connection.
    *
-   * @return {Array.<number>} - 2 elements: [length, bytesconsumed].
+   * @returns {Array.<number>} - 2 elements: [length, bytesconsumed].
    */
   async _readLength() {
     let n = await this._nextByte();
@@ -332,7 +336,7 @@ class BERParser {
   /**
    * Reads a single BERValue from the connection (including any children).
    *
-   * @return {Array.<number>} - 2 elements: [value, bytesconsumed].
+   * @returns {Array.<number>} - 2 elements: [value, bytesconsumed].
    */
   async decodeBERValue() {
     // BER values always encoded as TLV (type, length, value) triples,
@@ -422,7 +426,7 @@ class LDAPDaemon {
    * Find entries in our LDAP db.
    *
    * @param {BERValue} berFilter - BERValue containing the filter to apply.
-   * @return {Array} - The matching entries.
+   * @returns {Array} - The matching entries.
    */
   search(berFilter) {
     let f = this.buildFilter(berFilter);
@@ -435,7 +439,7 @@ class LDAPDaemon {
    * returns a bool to say if it passes the filter or not.
    *
    * @param {BERValue} ber - The filter.
-   * @return {function} - A function to test an entry against the filter.
+   * @returns {Function} - A function to test an entry against the filter.
    */
   buildFilter(ber) {
     if (!ber.isContextSpecific()) {
@@ -449,7 +453,7 @@ class LDAPDaemon {
           throw new Error("Bad 'and' filter");
         }
         let subFilters = ber.children.map(this.buildFilter);
-        return function(e) {
+        return function (e) {
           return subFilters.every(filt => filt(e));
         };
       }
@@ -459,7 +463,7 @@ class LDAPDaemon {
           throw new Error("Bad 'or' filter");
         }
         let subFilters = ber.children.map(this.buildFilter);
-        return function(e) {
+        return function (e) {
           return subFilters.some(filt => filt(e));
         };
       }
@@ -469,7 +473,7 @@ class LDAPDaemon {
           throw new Error("Bad 'not' filter");
         }
         let subFilter = this.buildFilter(ber.children[0]); // one child
-        return function(e) {
+        return function (e) {
           return !subFilter(e);
         };
       }
@@ -480,8 +484,8 @@ class LDAPDaemon {
         }
         let attrName = ber.children[0].asString().toLowerCase();
         let attrVal = ber.children[1].asString().toLowerCase();
-        return function(e) {
-          let attrs = Object.keys(e.attributes).reduce(function(c, key) {
+        return function (e) {
+          let attrs = Object.keys(e.attributes).reduce(function (c, key) {
             c[key.toLowerCase()] = e.attributes[key];
             return c;
           }, {});
@@ -494,8 +498,8 @@ class LDAPDaemon {
       case 7: {
         // present
         let attrName = ber.asString().toLowerCase();
-        return function(e) {
-          let attrs = Object.keys(e.attributes).reduce(function(c, key) {
+        return function (e) {
+          let attrs = Object.keys(e.attributes).reduce(function (c, key) {
             c[key.toLowerCase()] = e.attributes[key];
             return c;
           }, {});

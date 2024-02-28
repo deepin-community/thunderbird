@@ -1,9 +1,9 @@
 /* Any copyright is dedicated to the Public Domain.
  * http://creativecommons.org/publicdomain/zero/1.0/ */
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-var ircCTCP = {};
-Services.scriptloader.loadSubScript("resource:///modules/ircCTCP.jsm", ircCTCP);
+var { CTCPMessage } = ChromeUtils.importESModule(
+  "resource:///modules/ircCTCP.sys.mjs"
+);
 
 var input = [
   "ACTION",
@@ -44,7 +44,7 @@ var expectedOutputParam = [
 ];
 
 function run_test() {
-  let output = input.map(aStr => ircCTCP.CTCPMessage({}, aStr));
+  let output = input.map(aStr => CTCPMessage({}, aStr));
   // Ensure both arrays have the same length.
   equal(expectedOutputParam.length, output.length);
   // Ensure the values in the arrays are equal.

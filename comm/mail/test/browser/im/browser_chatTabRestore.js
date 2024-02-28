@@ -6,7 +6,7 @@
 
 var utils = ChromeUtils.import("resource://testing-common/mozmill/utils.jsm");
 
-var { assert_tab_mode_name, mark_action, mc } = ChromeUtils.import(
+var { assert_tab_mode_name, mc } = ChromeUtils.import(
   "resource://testing-common/mozmill/FolderDisplayHelpers.jsm"
 );
 
@@ -14,32 +14,34 @@ var { assert_tab_mode_name, mark_action, mc } = ChromeUtils.import(
  * Create a new chat tab, making that tab the current tab. We block until the
  * message finishes loading. (Inspired by open_selected_message_in_new_tab)
  */
-function open_chat_tab() {
+async function open_chat_tab() {
   // Get the current tab count so we can make sure the tab actually opened.
-  let preCount = mc.tabmail.tabContainer.allTabs.length;
+  let preCount =
+    mc.window.document.getElementById("tabmail").tabContainer.allTabs.length;
 
-  mc.tabmail.openTab("chat", {});
-  mark_action("imh", "open_chat_tab", []);
-  wait_for_chat_tab_to_open(mc);
+  mc.window.document.getElementById("tabmail").openTab("chat", {});
+  await wait_for_chat_tab_to_open(mc);
 
-  if (mc.tabmail.tabContainer.allTabs.length != preCount + 1) {
+  if (
+    mc.window.document.getElementById("tabmail").tabContainer.allTabs.length !=
+    preCount + 1
+  ) {
     throw new Error("The tab never actually got opened!");
   }
 
-  let newTab = mc.tabmail.tabInfo[preCount];
+  let newTab = mc.window.document.getElementById("tabmail").tabInfo[preCount];
   return newTab;
 }
 
-function wait_for_chat_tab_to_open(aController) {
+async function wait_for_chat_tab_to_open(aController) {
   if (aController == null) {
     aController = mc;
   }
 
-  mark_action("imh", "wait_for_chat_tab_to_open", [aController]);
   utils.waitFor(
-    function() {
+    function () {
       let chatTabFound = false;
-      for (let tab of mc.tabmail.tabInfo) {
+      for (let tab of mc.window.document.getElementById("tabmail").tabInfo) {
         if (tab.mode.type == "chat") {
           chatTabFound = true;
           break;
@@ -54,35 +56,39 @@ function wait_for_chat_tab_to_open(aController) {
 
   // The above may return immediately, meaning the event queue might not get a
   // chance. Give it a chance now.
-  aController.sleep(0);
-  mark_action("imh", "/wait_for_chat_tab_to_open", []);
+  await new Promise(resolve => setTimeout(resolve));
 }
 
-/*
+/**
  * This tests that the chat tab is restored properly after tabs are
  * serialized. As for folder tabs, we can't test a restart (can we ?), so we
  * just test the persist/restore cycle.
  */
-add_task(function test_chat_tab_restore() {
+add_task(async function test_chat_tab_restore() {
   // Close everything but the first tab.
-  let closeTabs = function() {
-    while (mc.tabmail.tabInfo.length > 1) {
-      mc.tabmail.closeTab(1);
+  let closeTabs = function () {
+    while (mc.window.document.getElementById("tabmail").tabInfo.length > 1) {
+      mc.window.document.getElementById("tabmail").closeTab(1);
     }
   };
 
-  open_chat_tab();
-  let state = mc.tabmail.persistTabs();
+  await open_chat_tab();
+  let state = mc.window.document.getElementById("tabmail").persistTabs();
   closeTabs();
-  mc.tabmail.restoreTabs(state);
+  mc.window.document.getElementById("tabmail").restoreTabs(state);
 
-  if (mc.tabmail.tabContainer.allTabs.length < 2) {
+  if (
+    mc.window.document.getElementById("tabmail").tabContainer.allTabs.length < 2
+  ) {
     throw new Error("The tab is not restored!");
   }
 
-  let tabTypes = ["folder", "chat"];
+  let tabTypes = ["mail3PaneTab", "chat"];
   for (let i in tabTypes) {
-    assert_tab_mode_name(mc.tabmail.tabInfo[i], tabTypes[i]);
+    assert_tab_mode_name(
+      mc.window.document.getElementById("tabmail").tabInfo[i],
+      tabTypes[i]
+    );
   }
 
   closeTabs();

@@ -40,7 +40,7 @@ class LazyReferenceRenderingDrawTargetGetterFromFrame final
   explicit LazyReferenceRenderingDrawTargetGetterFromFrame(nsIFrame* aFrame)
       : mFrame(aFrame) {}
   virtual already_AddRefed<DrawTarget> GetRefDrawTarget() override {
-    RefPtr<gfxContext> ctx =
+    UniquePtr<gfxContext> ctx =
         mFrame->PresShell()->CreateReferenceRenderingContext();
     RefPtr<DrawTarget> dt = ctx->GetDrawTarget();
     return dt.forget();
@@ -159,11 +159,9 @@ class nsDisplayTextOverflowMarker final : public nsPaintedDisplayItem {
         mAscent(aAscent) {
     MOZ_COUNT_CTOR(nsDisplayTextOverflowMarker);
   }
-#ifdef NS_BUILD_REFCNT_LOGGING
-  virtual ~nsDisplayTextOverflowMarker() {
-    MOZ_COUNT_DTOR(nsDisplayTextOverflowMarker);
-  }
-#endif
+
+  MOZ_COUNTED_DTOR_OVERRIDE(nsDisplayTextOverflowMarker)
+
   virtual nsRect GetBounds(nsDisplayListBuilder* aBuilder,
                            bool* aSnap) const override {
     *aSnap = false;
@@ -211,16 +209,13 @@ static void PaintTextShadowCallback(gfxContext* aCtx, nsPoint aShadowOffset,
 
 void nsDisplayTextOverflowMarker::Paint(nsDisplayListBuilder* aBuilder,
                                         gfxContext* aCtx) {
-  DrawTargetAutoDisableSubpixelAntialiasing disable(aCtx->GetDrawTarget(),
-                                                    IsSubpixelAADisabled());
-
   nscolor foregroundColor =
       nsLayoutUtils::GetColor(mFrame, &nsStyleText::mWebkitTextFillColor);
 
   // Paint the text-shadows for the overflow marker
-  nsLayoutUtils::PaintTextShadow(mFrame, aCtx, mRect, GetPaintRect(),
-                                 foregroundColor, PaintTextShadowCallback,
-                                 (void*)this);
+  nsLayoutUtils::PaintTextShadow(mFrame, aCtx, mRect,
+                                 GetPaintRect(aBuilder, aCtx), foregroundColor,
+                                 PaintTextShadowCallback, (void*)this);
   aCtx->SetColor(gfx::sRGBColor::FromABGR(foregroundColor));
   PaintTextToContext(aCtx, nsPoint(0, 0));
 }
@@ -275,39 +270,31 @@ bool nsDisplayTextOverflowMarker::CreateWebRenderCommands(
   // Run the rendering algorithm to capture the glyphs and shadows
   RefPtr<TextDrawTarget> textDrawer =
       new TextDrawTarget(aBuilder, aResources, aSc, aManager, this, bounds);
-  RefPtr<gfxContext> captureCtx = gfxContext::CreateOrNull(textDrawer);
-  Paint(aDisplayListBuilder, captureCtx);
+  MOZ_ASSERT(textDrawer->IsValid());
+  if (!textDrawer->IsValid()) {
+    return false;
+  }
+  gfxContext captureCtx(textDrawer);
+  Paint(aDisplayListBuilder, &captureCtx);
   textDrawer->TerminateShadows();
 
   return textDrawer->Finish();
 }
 
 TextOverflow::TextOverflow(nsDisplayListBuilder* aBuilder,
-                           nsIFrame* aBlockFrame)
+                           nsBlockFrame* aBlockFrame)
     : mContentArea(aBlockFrame->GetWritingMode(),
                    aBlockFrame->GetContentRectRelativeToSelf(),
                    aBlockFrame->GetSize()),
       mBuilder(aBuilder),
       mBlock(aBlockFrame),
       mScrollableFrame(nsLayoutUtils::GetScrollableFrameFor(aBlockFrame)),
+      mMarkerList(aBuilder),
       mBlockSize(aBlockFrame->GetSize()),
       mBlockWM(aBlockFrame->GetWritingMode()),
+      mCanHaveInlineAxisScrollbar(false),
+      mInLineClampContext(aBlockFrame->IsInLineClampContext()),
       mAdjustForPixelSnapping(false) {
-#ifdef MOZ_XUL
-  if (!mScrollableFrame) {
-    auto pseudoType = aBlockFrame->Style()->GetPseudoType();
-    if (pseudoType == PseudoStyleType::mozXULAnonymousBlock) {
-      mScrollableFrame =
-          nsLayoutUtils::GetScrollableFrameFor(aBlockFrame->GetParent());
-      // nsXULScrollFrame::ClampAndSetBounds rounds to nearest pixels
-      // for RTL blocks (also for overflow:hidden), so we need to move
-      // the edges 1px outward in ExamineLineFrames to avoid triggering
-      // a text-overflow marker in this case.
-      mAdjustForPixelSnapping = mBlockWM.IsBidiRTL();
-    }
-  }
-#endif
-  mCanHaveInlineAxisScrollbar = false;
   if (mScrollableFrame) {
     auto scrollbarStyle = mBlockWM.IsVertical()
                               ? mScrollableFrame->GetScrollStyles().mVertical
@@ -348,7 +335,7 @@ TextOverflow::TextOverflow(nsDisplayListBuilder* aBuilder,
 
 /* static */
 Maybe<TextOverflow> TextOverflow::WillProcessLines(
-    nsDisplayListBuilder* aBuilder, nsIFrame* aBlockFrame) {
+    nsDisplayListBuilder* aBuilder, nsBlockFrame* aBlockFrame) {
   // Ignore text-overflow and -webkit-line-clamp for event and frame visibility
   // processing.
   if (aBuilder->IsForEventDelivery() || aBuilder->IsForFrameVisibility() ||
@@ -500,8 +487,8 @@ LogicalRect TextOverflow::ExamineLineFrames(nsLineBox* aLine,
                                             FrameHashtable* aFramesToHide,
                                             AlignmentEdges* aAlignmentEdges) {
   // No ellipsing for 'clip' style.
-  bool suppressIStart = mIStart.IsSuppressed();
-  bool suppressIEnd = mIEnd.IsSuppressed();
+  bool suppressIStart = mIStart.IsSuppressed(mInLineClampContext);
+  bool suppressIEnd = mIEnd.IsSuppressed(mInLineClampContext);
   if (mCanHaveInlineAxisScrollbar) {
     LogicalPoint pos(mBlockWM, mScrollableFrame->GetScrollPosition(),
                      mBlockSize);
@@ -705,7 +692,7 @@ void TextOverflow::ProcessLine(const nsDisplayListSet& aLists, nsLineBox* aLine,
   mIStart.mActive = !mIStart.mStyle->IsClip();
   mIEnd.Reset();
   mIEnd.mHasBlockEllipsis = aLine->HasLineClampEllipsis();
-  mIEnd.mActive = !mIEnd.mStyle->IsClip() || aLine->HasLineClampEllipsis();
+  mIEnd.mActive = !mIEnd.IsSuppressed(mInLineClampContext);
 
   FrameHashtable framesToHide(64);
   AlignmentEdges alignmentEdges;
@@ -716,9 +703,9 @@ void TextOverflow::ProcessLine(const nsDisplayListSet& aLists, nsLineBox* aLine,
   if (!needIStart && !needIEnd) {
     return;
   }
-  NS_ASSERTION(!mIStart.IsSuppressed() || !needIStart,
+  NS_ASSERTION(!mIStart.IsSuppressed(mInLineClampContext) || !needIStart,
                "left marker when not needed");
-  NS_ASSERTION(!mIEnd.IsSuppressed() || !needIEnd,
+  NS_ASSERTION(!mIEnd.IsSuppressed(mInLineClampContext) || !needIEnd,
                "right marker when not needed");
 
   // If there is insufficient space for both markers then keep the one on the
@@ -772,9 +759,7 @@ void TextOverflow::ProcessLine(const nsDisplayListSet& aLists, nsLineBox* aLine,
 void TextOverflow::PruneDisplayListContents(
     nsDisplayList* aList, const FrameHashtable& aFramesToHide,
     const LogicalRect& aInsideMarkersArea) {
-  nsDisplayList saved;
-  nsDisplayItem* item;
-  while ((item = aList->RemoveBottom())) {
+  for (nsDisplayItem* item : aList->TakeItems()) {
     nsIFrame* itemFrame = item->Frame();
     if (IsFrameDescendantOfAny(itemFrame, aFramesToHide, mBlock)) {
       item->Destroy(mBuilder);
@@ -810,9 +795,8 @@ void TextOverflow::PruneDisplayListContents(
       }
     }
 
-    saved.AppendToTop(item);
+    aList->AppendToTop(item);
   }
-  aList->AppendToTop(&saved);
 }
 
 /* static */
@@ -828,11 +812,19 @@ bool TextOverflow::HasBlockEllipsis(nsIFrame* aBlockFrame) {
   return f && f->HasAnyStateBits(NS_BLOCK_HAS_LINE_CLAMP_ELLIPSIS);
 }
 
+static bool BlockCanHaveLineClampEllipsis(nsBlockFrame* aBlockFrame,
+                                          bool aBeforeReflow) {
+  if (aBeforeReflow) {
+    return aBlockFrame->IsInLineClampContext();
+  }
+  return aBlockFrame->HasAnyStateBits(NS_BLOCK_HAS_LINE_CLAMP_ELLIPSIS);
+}
+
 /* static */
-bool TextOverflow::CanHaveOverflowMarkers(nsIFrame* aBlockFrame) {
-  // Treat a line with a -webkit-line-clamp ellipsis as a kind of text
-  // overflow.
-  if (aBlockFrame->HasAnyStateBits(NS_BLOCK_HAS_LINE_CLAMP_ELLIPSIS)) {
+bool TextOverflow::CanHaveOverflowMarkers(nsBlockFrame* aBlockFrame,
+                                          BeforeReflow aBeforeReflow) {
+  if (BlockCanHaveLineClampEllipsis(aBlockFrame,
+                                    aBeforeReflow == BeforeReflow::Yes)) {
     return true;
   }
 
@@ -928,7 +920,7 @@ void TextOverflow::Marker::SetupString(nsIFrame* aFrame) {
       mISize = 0;
     }
   } else {
-    RefPtr<gfxContext> rc =
+    UniquePtr<gfxContext> rc =
         aFrame->PresShell()->CreateReferenceRenderingContext();
     RefPtr<nsFontMetrics> fm =
         nsLayoutUtils::GetInflatedFontMetricsForFrame(aFrame);

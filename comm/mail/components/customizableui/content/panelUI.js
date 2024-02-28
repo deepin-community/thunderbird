@@ -2,61 +2,45 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this file,
  * You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-/* globals CanDetachAttachments
-  currentAttachments FullScreen
-  getIconForAttachment goUpdateAttachmentCommands initAddonPrefsMenu
-  initAppMenuPopup InitAppmenuViewBodyMenu InitAppMessageMenu
-  InitAppmenuViewMessagesMenu InitAppFolderViewsMenu InitAppViewSortByMenu
-  InitMessageTags InitRecentlyClosedTabsPopup InitViewFolderViewsMenu
-  InitViewHeadersMenu InitViewLayoutStyleMenu initSearchMessagesMenu
-  MozXULElement msgWindow
-  onViewToolbarsPopupShowing RefreshCustomViewsPopup RefreshTagsPopup
-  RefreshViewPopup SanitizeAttachmentDisplayName
-  updateEditUIVisibility UpdateFullZoomMenu
-  gFolderTreeView initUiDensityAppMenu gDensityPreviewer
-   */
+/* import-globals-from ../../../base/content/globalOverlay.js */
+/* import-globals-from ../../../base/content/mailCore.js */
+/* import-globals-from ../../../base/content/mailWindowOverlay.js */
+/* import-globals-from ../../../base/content/messenger.js */
+/* import-globals-from ../../../extensions/mailviews/content/msgViewPickerOverlay.js */
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-var { CustomizableUI } = ChromeUtils.import(
-  "resource:///modules/CustomizableUI.jsm"
-);
-var { ExtensionParent } = ChromeUtils.import(
-  "resource://gre/modules/ExtensionParent.jsm"
+var { ExtensionParent } = ChromeUtils.importESModule(
+  "resource://gre/modules/ExtensionParent.sys.mjs"
 );
 var { ExtensionSupport } = ChromeUtils.import(
   "resource:///modules/ExtensionSupport.jsm"
 );
-var { ShortcutUtils } = ChromeUtils.import(
-  "resource://gre/modules/ShortcutUtils.jsm"
+var { ShortcutUtils } = ChromeUtils.importESModule(
+  "resource://gre/modules/ShortcutUtils.sys.mjs"
 );
-var { AppConstants } = ChromeUtils.import(
-  "resource://gre/modules/AppConstants.jsm"
+var { AppConstants } = ChromeUtils.importESModule(
+  "resource://gre/modules/AppConstants.sys.mjs"
 );
-var { XPCOMUtils } = ChromeUtils.import(
-  "resource://gre/modules/XPCOMUtils.jsm"
+var { UIDensity } = ChromeUtils.import("resource:///modules/UIDensity.jsm");
+var { XPCOMUtils } = ChromeUtils.importESModule(
+  "resource://gre/modules/XPCOMUtils.sys.mjs"
 );
 
-ChromeUtils.defineModuleGetter(
-  this,
-  "AppMenuNotifications",
-  "resource://gre/modules/AppMenuNotifications.jsm"
-);
+ChromeUtils.defineESModuleGetters(this, {
+  AppMenuNotifications: "resource://gre/modules/AppMenuNotifications.sys.mjs",
+  CustomizableUI: "resource:///modules/CustomizableUI.sys.mjs",
+  PanelMultiView: "resource:///modules/PanelMultiView.sys.mjs",
+});
 ChromeUtils.defineModuleGetter(
   this,
   "ExtensionsUI",
   "resource:///modules/ExtensionsUI.jsm"
-);
-ChromeUtils.defineModuleGetter(
-  this,
-  "PanelMultiView",
-  "resource:///modules/PanelMultiView.jsm"
 );
 
 /**
  * Maintains the state and dispatches events for the main menu panel.
  */
 const PanelUI = {
-  /** Panel events that we listen for. **/
+  /** Panel events that we listen for. */
   get kEvents() {
     return [
       "popupshowing",
@@ -89,7 +73,6 @@ const PanelUI = {
   init() {
     this._initElements();
     this.initAppMenuButton("button-appmenu", "mail-toolbox");
-    this.initAppMenuButton("button-chat-appmenu", "chat-view-toolbox");
 
     this.menuButton = this.menuButtonMail;
 
@@ -130,7 +113,6 @@ const PanelUI = {
     }
 
     window.addEventListener("activate", this);
-    CustomizableUI.addListener(this);
 
     Services.obs.notifyObservers(
       null,
@@ -146,7 +128,7 @@ const PanelUI = {
       // Need to do fresh let-bindings per iteration
       let getKey = k;
       let id = v;
-      this.__defineGetter__(getKey, function() {
+      this.__defineGetter__(getKey, function () {
         delete this[getKey];
         // eslint-disable-next-line consistent-return
         return (this[getKey] = document.getElementById(id));
@@ -213,8 +195,6 @@ const PanelUI = {
         button.removeEventListener("keypress", this);
       }
     });
-
-    CustomizableUI.removeListener(this);
   },
 
   /**
@@ -276,7 +256,7 @@ const PanelUI = {
       await PanelMultiView.openPopup(this.panel, anchor, {
         triggerEvent: domEvent,
       });
-    })().catch(Cu.reportError);
+    })().catch(console.error);
   },
 
   /**
@@ -358,19 +338,13 @@ const PanelUI = {
    * When a ViewShowing event happens when a <panelview> element is shown,
    * do any required set up for that particular view.
    *
-   * @param {ViewShowingEvent} event  ViewShowing event.
+   * @param {ViewShowingEvent} event - ViewShowing event.
    */
   _handleViewShowingEvent(event) {
     // Typically event.target for "ViewShowing" is a <panelview> element.
     PanelUI._ensureShortcutsShown(event.target);
 
     switch (event.target.id) {
-      case "appMenu-attachmentsView":
-        this._onAttachmentsViewShow(event);
-        break;
-      case "appMenu-attachmentView":
-        this._onAttachmentViewShow(event);
-        break;
       case "appMenu-foldersView":
         this._onFoldersViewShow(event);
         break;
@@ -392,53 +366,15 @@ const PanelUI = {
           true
         );
         break;
-      case "appMenu_uiDensityView":
-        initUiDensityAppMenu(event);
-        break;
       case "appMenu-preferencesLayoutView":
         PanelUI._onPreferencesLayoutViewShow(event);
         break;
       // View
-      case "appMenu-viewSortByView":
-        InitAppViewSortByMenu();
-        break;
-      case "appMenu-viewMessagesView":
-        RefreshViewPopup(event.target);
-        break;
       case "appMenu-viewMessagesTagsView":
         PanelUI._refreshDynamicView(event, RefreshTagsPopup);
         break;
       case "appMenu-viewMessagesCustomViewsView":
         PanelUI._refreshDynamicView(event, RefreshCustomViewsPopup);
-        break;
-      case "appMenu-viewThreadsView":
-        InitAppmenuViewMessagesMenu();
-        break;
-      case "appMenu-viewHeadersView":
-        InitViewHeadersMenu();
-        break;
-      case "appMenu-viewMessageBodyAsView":
-        InitAppmenuViewBodyMenu();
-        break;
-      case "appMenu-viewFeedsView":
-        InitAppmenuViewBodyMenu();
-        break;
-      case "appMenu-viewZoomView":
-        UpdateFullZoomMenu();
-        break;
-      // Go
-      case "appMenu-goRecentlyClosedTabsView":
-        PanelUI._refreshDynamicView(event, InitRecentlyClosedTabsPopup);
-        break;
-      // Message
-      case "appMenu-messageView":
-        InitAppMessageMenu();
-        break;
-      case "appMenu-messageTagView":
-        PanelUI._refreshDynamicView(event, InitMessageTags);
-        break;
-      case "appMenu-findView":
-        initSearchMessagesMenu();
         break;
     }
   },
@@ -448,8 +384,8 @@ const PanelUI = {
    * event listeners responding to a ViewShowing event. It calls a given refresh
    * function (that populates the view), passing appmenu-specific arguments.
    *
-   * @param {ViewShowingEvent} event    ViewShowing event.
-   * @param {Function} refreshFunction  Function that refreshes a particular view.
+   * @param {ViewShowingEvent} event - ViewShowing event.
+   * @param {Function} refreshFunction - Function that refreshes a particular view.
    */
   _refreshDynamicView(event, refreshFunction) {
     refreshFunction(
@@ -474,7 +410,7 @@ const PanelUI = {
    *        customization mode. If that's the case, we trust that customization
    *        mode will handle calling beginBatchUpdate and endBatchUpdate.
    *
-   * @return a Promise that resolves once the panel is ready to roll.
+   * @returns a Promise that resolves once the panel is ready to roll.
    */
   async ensureReady() {
     if (this._isReady) {
@@ -492,57 +428,17 @@ const PanelUI = {
    *
    * @param aViewId the ID of the subview to show.
    * @param aAnchor the element that spawned the subview.
-   * @param aEvent the event triggering the view showing.
    */
-  async showSubView(aViewId, aAnchor, aEvent) {
-    let domEvent = null;
-    if (aEvent) {
-      if (aEvent.type == "mousedown" && aEvent.button != 0) {
-        return;
-      }
-      if (
-        aEvent.type == "keypress" &&
-        aEvent.key != " " &&
-        aEvent.key != "Enter"
-      ) {
-        return;
-      }
-      if (aEvent.type == "command" && aEvent.inputSource != null) {
-        // Synthesize a new DOM mouse event to pass on the inputSource.
-        domEvent = document.createEvent("MouseEvent");
-        domEvent.initNSMouseEvent(
-          "click",
-          true,
-          true,
-          null,
-          0,
-          aEvent.screenX,
-          aEvent.screenY,
-          0,
-          0,
-          false,
-          false,
-          false,
-          false,
-          0,
-          aEvent.target,
-          0,
-          aEvent.inputSource
-        );
-      } else if (aEvent.mozInputSource != null || aEvent.type == "keypress") {
-        domEvent = aEvent;
-      }
-    }
-
+  async showSubView(aViewId, aAnchor) {
     this._ensureEventListenersAdded();
     let viewNode = document.getElementById(aViewId);
     if (!viewNode) {
-      Cu.reportError("Could not show panel subview with id: " + aViewId);
+      console.error("Could not show panel subview with id: " + aViewId);
       return;
     }
 
     if (!aAnchor) {
-      Cu.reportError(
+      console.error(
         "Expected an anchor when opening subview with id: " + aViewId
       );
       return;
@@ -551,74 +447,6 @@ const PanelUI = {
     let container = aAnchor.closest("panelmultiview");
     if (container) {
       container.showSubView(aViewId, aAnchor);
-    } else if (!aAnchor.open) {
-      aAnchor.open = true;
-
-      let tempPanel = document.createXULElement("panel");
-      tempPanel.setAttribute("type", "arrow");
-      tempPanel.setAttribute("id", "customizationui-widget-panel");
-      tempPanel.setAttribute("class", "cui-widget-panel panel-no-padding");
-      tempPanel.setAttribute("viewId", aViewId);
-      if (aAnchor.getAttribute("tabspecific")) {
-        tempPanel.setAttribute("tabspecific", true);
-      }
-      if (this._disableAnimations) {
-        tempPanel.setAttribute("animate", "false");
-      }
-      tempPanel.setAttribute("context", "");
-      document
-        .getElementById(CustomizableUI.AREA_NAVBAR)
-        .appendChild(tempPanel);
-      // If the view has a footer, set a convenience class on the panel.
-      tempPanel.classList.toggle(
-        "cui-widget-panelWithFooter",
-        viewNode.querySelector(".panel-subview-footer")
-      );
-
-      let multiView = document.createXULElement("panelmultiview");
-      multiView.setAttribute("id", "customizationui-widget-multiview");
-      multiView.setAttribute("viewCacheId", "appMenu-viewCache");
-      multiView.setAttribute("mainViewId", viewNode.id);
-      tempPanel.appendChild(multiView);
-      viewNode.classList.add("cui-widget-panelview");
-
-      let viewShown = false;
-      let panelRemover = () => {
-        viewNode.classList.remove("cui-widget-panelview");
-        if (viewShown) {
-          CustomizableUI.removePanelCloseListeners(tempPanel);
-          tempPanel.removeEventListener("popuphidden", panelRemover);
-        }
-        aAnchor.open = false;
-
-        PanelMultiView.removePopup(tempPanel);
-      };
-
-      if (aAnchor.parentNode.id == "PersonalToolbar") {
-        tempPanel.classList.add("bookmarks-toolbar");
-      }
-
-      let anchor = this._getPanelAnchor(aAnchor);
-
-      if (aAnchor != anchor && aAnchor.id) {
-        anchor.setAttribute("consumeanchor", aAnchor.id);
-      }
-
-      try {
-        viewShown = await PanelMultiView.openPopup(tempPanel, anchor, {
-          position: "bottomcenter topright",
-          triggerEvent: domEvent,
-        });
-      } catch (ex) {
-        Cu.reportError(ex);
-      }
-
-      if (viewShown) {
-        CustomizableUI.addPanelCloseListeners(tempPanel);
-        tempPanel.addEventListener("popuphidden", panelRemover);
-      } else {
-        panelRemover();
-      }
     }
   },
 
@@ -648,7 +476,7 @@ const PanelUI = {
    * Event handler for showing the Preferences/Layout view. Removes "checked"
    * from all layout menu items and then checks the current layout menu item.
    *
-   * @param {ViewShowingEvent} event  ViewShowing event.
+   * @param {ViewShowingEvent} event - ViewShowing event.
    */
   _onPreferencesLayoutViewShow(event) {
     event.target
@@ -659,246 +487,69 @@ const PanelUI = {
   },
 
   /**
-   * Refreshes and populates the attachments view when it is shown, adding attachment items, etc.
-   * See similar function FillAttachmentListPopup.
-   *
-   * @param {ViewShowingEvent} event  The "ViewShowing" event.
-   */
-  _onAttachmentsViewShow(event) {
-    const viewBody = event.target.querySelector(".panel-subview-body");
-
-    // First clear out the old attachment items. They are above the separator.
-    while (viewBody.firstElementChild.localName == "toolbarbutton") {
-      viewBody.firstElementChild.remove();
-    }
-
-    for (const [attachmentIndex, attachment] of currentAttachments.entries()) {
-      PanelUI._addAttachmentToAttachmentsView(
-        viewBody,
-        attachment,
-        attachmentIndex + 1
-      );
-    }
-
-    goUpdateAttachmentCommands();
-  },
-
-  /**
-   * Add an attachment button to the attachments view panel.
-   * See the similar function addAttachmentToPopup.
-   *
-   * @param {Element} viewBody         Parent element that will receive the attachment button.
-   * @param {Object} attachment        Attachment data.
-   * @param {Number} attachmentIndex   1-based index of the attachment.
-   */
-  _addAttachmentToAttachmentsView(viewBody, attachment, attachmentIndex) {
-    if (!viewBody) {
-      return;
-    }
-
-    const item = document.createXULElement("toolbarbutton");
-    if (!item) {
-      return;
-    }
-
-    // Insert the item just before the separator.
-    item.setAttribute(
-      "class",
-      "subviewbutton subviewbutton-iconic subviewbutton-nav"
-    );
-    item.setAttribute("image", getIconForAttachment(attachment));
-    item.setAttribute("closemenu", "none");
-
-    // Find the separator index.
-    let separatorIndex = 0;
-    while (viewBody.children[separatorIndex].localName != "toolbarseparator") {
-      separatorIndex += 1;
-    }
-
-    // The accesskeys for the attachments in the menu start with 1 (not 0).
-    const displayName = SanitizeAttachmentDisplayName(attachment);
-    const label = document
-      .getElementById("bundle_messenger")
-      .getFormattedString("attachmentDisplayNameFormat", [
-        attachmentIndex,
-        displayName,
-      ]);
-    item.setAttribute("crop", "center");
-    item.setAttribute("label", label);
-    item.setAttribute("accesskey", attachmentIndex % 10);
-
-    // Each attachment gets its own subview with options for opening, saving, deleting, etc.
-    item.setAttribute(
-      "oncommand",
-      "PanelUI.showSubView('appMenu-attachmentView', this)"
-    );
-
-    // Add the attachment data to the item so that when the item is clicked and the subview is
-    // shown, we can access the attachment data from the ViewShowing event's explicitOriginalTarget.
-    item.attachment = attachment;
-
-    if (attachment.isDeleted) {
-      item.classList.add("notfound");
-    }
-
-    if (!attachment.hasFile) {
-      item.setAttribute("disabled", "true");
-    }
-
-    viewBody.insertBefore(item, viewBody.children[separatorIndex]);
-  },
-
-  /**
-   * Refreshes and populates the single attachment view (open, save, etc.) when it is shown.
-   * See similar function addAttachmentToPopup.
-   *
-   * @param {ViewShowingEvent} event  The "ViewShowing" event.
-   */
-  _onAttachmentViewShow(event) {
-    const attachment = event.explicitOriginalTarget.attachment;
-    const bundle = document.getElementById("bundle_messenger");
-
-    const detached = attachment.isExternalAttachment;
-    const deleted = !attachment.hasFile;
-    const canDetach = CanDetachAttachments() && !deleted && !detached;
-
-    const attachmentView = document.getElementById("appMenu-attachmentView");
-    attachmentView.setAttribute("title", attachment.name);
-
-    const viewBody = attachmentView.querySelector(".panel-subview-body");
-
-    // Clear out old view items.
-    while (viewBody.firstElementChild) {
-      viewBody.firstElementChild.remove();
-    }
-
-    // Create the "open" item.
-    const openButton = document.createXULElement("toolbarbutton");
-    openButton.attachment = attachment;
-    openButton.setAttribute("class", "subviewbutton subviewbutton-iconic");
-    openButton.setAttribute("oncommand", "this.attachment.open();");
-    openButton.setAttribute("label", bundle.getString("openLabel"));
-    openButton.setAttribute(
-      "accesskey",
-      bundle.getString("openLabelAccesskey")
-    );
-    if (deleted) {
-      openButton.setAttribute("disabled", "true");
-    }
-    viewBody.appendChild(openButton);
-
-    // Create the "save" item.
-    const saveButton = document.createXULElement("toolbarbutton");
-    saveButton.attachment = attachment;
-    saveButton.setAttribute("class", "subviewbutton subviewbutton-iconic");
-    saveButton.setAttribute("oncommand", "this.attachment.save();");
-    saveButton.setAttribute("label", bundle.getString("saveLabel"));
-    saveButton.setAttribute(
-      "accesskey",
-      bundle.getString("saveLabelAccesskey")
-    );
-    if (deleted) {
-      saveButton.setAttribute("disabled", "true");
-    }
-    viewBody.appendChild(saveButton);
-
-    // Create the "detach" item.
-    const detachButton = document.createXULElement("toolbarbutton");
-    detachButton.attachment = attachment;
-    detachButton.setAttribute("class", "subviewbutton subviewbutton-iconic");
-    detachButton.setAttribute("oncommand", "this.attachment.detach(true);");
-    detachButton.setAttribute("label", bundle.getString("detachLabel"));
-    detachButton.setAttribute(
-      "accesskey",
-      bundle.getString("detachLabelAccesskey")
-    );
-    if (!canDetach) {
-      detachButton.setAttribute("disabled", "true");
-    }
-    viewBody.appendChild(detachButton);
-
-    // Create the "delete" item.
-    const deleteButton = document.createXULElement("toolbarbutton");
-    deleteButton.attachment = attachment;
-    deleteButton.setAttribute("class", "subviewbutton subviewbutton-iconic");
-    deleteButton.setAttribute("oncommand", "this.attachment.detach(false);");
-    deleteButton.setAttribute("label", bundle.getString("deleteLabel"));
-    deleteButton.setAttribute(
-      "accesskey",
-      bundle.getString("deleteLabelAccesskey")
-    );
-    if (!canDetach) {
-      deleteButton.setAttribute("disabled", "true");
-    }
-    viewBody.appendChild(deleteButton);
-
-    // Create the "open containing folder" item, for existing detached only.
-    if (attachment.isFileAttachment) {
-      const separator = document.createXULElement("toolbarseparator");
-      viewBody.appendChild(separator);
-      const openFolderButton = document.createXULElement("toolbarbutton");
-      openFolderButton.attachment = attachment;
-      openFolderButton.setAttribute(
-        "class",
-        "subviewbutton subviewbutton-iconic"
-      );
-      openFolderButton.setAttribute(
-        "oncommand",
-        "this.attachment.openFolder();"
-      );
-      openFolderButton.setAttribute(
-        "label",
-        bundle.getString("openFolderLabel")
-      );
-      openFolderButton.setAttribute(
-        "accesskey",
-        bundle.getString("openFolderLabelAccesskey")
-      );
-      if (deleted) {
-        openFolderButton.setAttribute("disabled", "true");
-      }
-      viewBody.appendChild(openFolderButton);
-    }
-  },
-
-  /**
    * Event listener for showing the Folders view.
    *
-   * @param {ViewShowingEvent} event  ViewShowing event.
+   * @param {ViewShowingEvent} event - ViewShowing event.
    */
   _onFoldersViewShow(event) {
-    event.target
-      .querySelectorAll('[name="viewmessages"]')
-      .forEach(item => item.removeAttribute("checked"));
+    let about3Pane = document.getElementById("tabmail").currentAbout3Pane;
+    let folder = about3Pane.gFolder;
 
-    InitAppFolderViewsMenu();
-    InitViewFolderViewsMenu(event);
-  },
-
-  _updateQuitTooltip() {
-    if (AppConstants.platform == "win") {
-      return;
+    const paneHeaderMenuitem = event.target.querySelector(
+      '[name="paneheader"]'
+    );
+    if (about3Pane.folderPane.isFolderPaneHeaderHidden()) {
+      paneHeaderMenuitem.removeAttribute("checked");
+    } else {
+      paneHeaderMenuitem.setAttribute("checked", "true");
     }
 
-    let tooltipId =
-      AppConstants.platform == "macosx"
-        ? "quit-button.tooltiptext.mac"
-        : "quit-button.tooltiptext.linux2";
+    let { activeModes, canBeCompact, isCompact } = about3Pane.folderPane;
+    if (isCompact) {
+      activeModes.push("compact");
+    }
 
-    let brands = Services.strings.createBundle(
-      "chrome://branding/locale/brand.properties"
-    );
-    let stringArgs = [brands.GetStringFromName("brandShortName")];
+    for (let item of event.target.querySelectorAll('[name="viewmessages"]')) {
+      let mode = item.getAttribute("value");
+      if (activeModes.includes(mode)) {
+        item.setAttribute("checked", "true");
+        if (mode == "all") {
+          item.disabled = activeModes.length == 1;
+        }
+      } else {
+        item.removeAttribute("checked");
+      }
+      if (mode == "compact") {
+        item.disabled = !canBeCompact;
+      }
+    }
 
-    let key = document.getElementById("key_quitApplication");
-    stringArgs.push(ShortcutUtils.prettifyShortcut(key));
-    let tooltipString = CustomizableUI.getLocalizedProperty(
-      { x: tooltipId },
-      "x",
-      stringArgs
-    );
-    let quitButton = document.getElementById("PanelUI-quit");
-    quitButton.setAttribute("tooltiptext", tooltipString);
+    goUpdateCommand("cmd_properties");
+    let propertiesMenuItem = document.getElementById("appmenu_properties");
+    if (folder?.server.type == "nntp") {
+      document.l10n.setAttributes(
+        propertiesMenuItem,
+        "menu-edit-newsgroup-properties"
+      );
+    } else {
+      document.l10n.setAttributes(
+        propertiesMenuItem,
+        "menu-edit-folder-properties"
+      );
+    }
+
+    let favoriteFolderMenu = document.getElementById("appmenu_favoriteFolder");
+    if (folder?.getFlag(Ci.nsMsgFolderFlags.Favorite)) {
+      favoriteFolderMenu.setAttribute("checked", "true");
+    } else {
+      favoriteFolderMenu.removeAttribute("checked");
+    }
+  },
+
+  _onToolsMenuShown(event) {
+    let noAccounts = MailServices.accounts.accounts.length == 0;
+    event.target.querySelector("#appmenu_searchCmd").disabled = noAccounts;
+    event.target.querySelector("#appmenu_filtersCmd").disabled = noAccounts;
   },
 
   _updateNotifications(notificationsChanged) {
@@ -907,13 +558,6 @@ const PanelUI = {
       if (notificationsChanged) {
         this._clearAllNotifications();
       }
-      return;
-    }
-
-    if (
-      (window.fullScreen && FullScreen.navToolboxHidden) ||
-      document.fullscreenElement
-    ) {
       return;
     }
 
@@ -975,16 +619,25 @@ const PanelUI = {
   // "Banner item" here refers to an item in the hamburger panel menu. They will
   // typically show up as a colored row in the panel.
   _showBannerItem(notification) {
+    const supportedIds = [
+      "update-downloading",
+      "update-available",
+      "update-manual",
+      "update-unsupported",
+      "update-restart",
+    ];
+    if (!supportedIds.includes(notification.id)) {
+      return;
+    }
+
     if (!this._panelBannerItem) {
       this._panelBannerItem = this.mainView.querySelector(".panel-banner-item");
     }
-    let label = this._panelBannerItem.getAttribute("label-" + notification.id);
-    // Ignore items we don't know about.
-    if (!label) {
-      return;
-    }
+
+    let l10nId = "appmenuitem-banner-" + notification.id;
+    document.l10n.setAttributes(this._panelBannerItem, l10nId);
+
     this._panelBannerItem.setAttribute("notificationid", notification.id);
-    this._panelBannerItem.setAttribute("label", label);
     this._panelBannerItem.hidden = false;
     this._panelBannerItem.notification = notification;
   },
@@ -1051,9 +704,6 @@ const PanelUI = {
     return iconAnchor || candidate;
   },
 
-  // This is unused:
-  // _addedShortcuts: false,
-
   _ensureShortcutsShown(view = this.mainView) {
     if (view.hasAttribute("added-shortcuts")) {
       return;
@@ -1070,11 +720,38 @@ const PanelUI = {
   },
 
   folderViewMenuOnCommand(event) {
-    gFolderTreeView.activeModes = event.target.getAttribute("value");
+    let about3Pane = document.getElementById("tabmail").currentAbout3Pane;
+    if (!about3Pane) {
+      return;
+    }
+
+    let mode = event.target.getAttribute("value");
+    if (mode == "toggle-header") {
+      about3Pane.folderPane.toggleHeader(event.target.hasAttribute("checked"));
+      return;
+    }
+
+    let activeModes = about3Pane.folderPane.activeModes;
+    let index = activeModes.indexOf(mode);
+    if (event.target.hasAttribute("checked")) {
+      if (index == -1) {
+        activeModes.push(mode);
+      }
+    } else if (index >= 0) {
+      activeModes.splice(index, 1);
+    }
+    about3Pane.folderPane.activeModes = activeModes;
+
+    this._onFoldersViewShow({ target: event.target.parentNode });
   },
 
   folderCompactMenuOnCommand(event) {
-    gFolderTreeView.toggleCompactMode(event.target.checked);
+    let about3Pane = document.getElementById("tabmail").currentAbout3Pane;
+    if (!about3Pane) {
+      return;
+    }
+
+    about3Pane.folderPane.isCompact = event.target.hasAttribute("checked");
   },
 
   setUIDensity(event) {
@@ -1091,7 +768,7 @@ const PanelUI = {
       item.removeAttribute("checked");
     }
     // Update the UI density.
-    gDensityPreviewer.setUIDensity(event.originalTarget.mode);
+    UIDensity.setMode(event.originalTarget.mode);
   },
 };
 
@@ -1099,7 +776,8 @@ XPCOMUtils.defineConstant(this, "PanelUI", PanelUI);
 
 /**
  * Gets the currently selected locale for display.
- * @return  the selected locale
+ *
+ * @returns the selected locale
  */
 function getLocale() {
   return Services.locale.appLocaleAsBCP47;
@@ -1134,26 +812,35 @@ var gExtensionsNotifications = {
     ExtensionsUI.off("change", this.boundUpdate);
   },
 
-  _createAddonButton(text, icon, callback) {
+  get l10n() {
+    if (this._l10n) {
+      return this._l10n;
+    }
+    return (this._l10n = new Localization(
+      ["messenger/addonNotifications.ftl", "branding/brand.ftl"],
+      true
+    ));
+  },
+
+  _createAddonButton(l10nId, addon, callback) {
+    let text = this.l10n.formatValueSync(l10nId, { addonName: addon.name });
     let button = document.createXULElement("toolbarbutton");
+    button.setAttribute("wrap", "true");
     button.setAttribute("label", text);
     button.setAttribute("tooltiptext", text);
     const DEFAULT_EXTENSION_ICON =
-      "chrome://mozapps/skin/extensions/extensionGeneric.svg";
-    button.setAttribute("image", icon || DEFAULT_EXTENSION_ICON);
-    button.className = "addon-banner-item";
+      "chrome://messenger/skin/icons/new/compact/extension.svg";
+    button.setAttribute("image", addon.iconURL || DEFAULT_EXTENSION_ICON);
+    button.className = "addon-banner-item subviewbutton";
 
     button.addEventListener("command", callback);
     PanelUI.addonNotificationContainer.appendChild(button);
   },
 
   updateAlerts() {
-    let tabmail = document.getElementById("tabmail");
+    let gBrowser = document.getElementById("tabmail");
     let sideloaded = ExtensionsUI.sideloaded;
     let updates = ExtensionsUI.updates;
-    let bundle = Services.strings.createBundle(
-      "chrome://messenger/locale/addons.properties"
-    );
 
     let container = PanelUI.addonNotificationContainer;
 
@@ -1166,34 +853,25 @@ var gExtensionsNotifications = {
       if (++items > 4) {
         break;
       }
-      let text = bundle.formatStringFromName("webextPerms.updateMenuItem", [
-        update.addon.name,
-      ]);
-      this._createAddonButton(text, update.addon.iconURL, evt => {
-        ExtensionsUI.showUpdate(tabmail.selectedBrowser, update);
-      });
+      this._createAddonButton(
+        "webext-perms-update-menu-item",
+        update.addon,
+        evt => {
+          ExtensionsUI.showUpdate(gBrowser, update);
+        }
+      );
     }
 
-    let appName;
     for (let addon of sideloaded) {
       if (++items > 4) {
         break;
       }
-      if (!appName) {
-        let brandBundle = document.getElementById("bundle_brand");
-        appName = brandBundle.getString("brandShortName");
-      }
-
-      let text = bundle.formatStringFromName("webextPerms.sideloadMenuItem", [
-        addon.name,
-        appName,
-      ]);
-      this._createAddonButton(text, addon.iconURL, evt => {
+      this._createAddonButton("webext-perms-sideload-menu-item", addon, evt => {
         // We need to hide the main menu manually because the toolbarbutton is
         // removed immediately while processing this event, and PanelUI is
         // unable to identify which panel should be closed automatically.
         PanelUI.hide();
-        ExtensionsUI.showSideloaded(tabmail.selectedBrowser, addon);
+        ExtensionsUI.showSideloaded(gBrowser, addon);
       });
     }
   },

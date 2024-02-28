@@ -7,19 +7,21 @@
  */
 
 var { cal } = ChromeUtils.import("resource:///modules/calendar/calUtils.jsm");
-var { PluralForm } = ChromeUtils.import("resource://gre/modules/PluralForm.jsm");
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
+
+var { CalendarTestUtils } = ChromeUtils.import(
+  "resource://testing-common/calendar/CalendarTestUtils.jsm"
+);
+var { cancelItemDialog } = ChromeUtils.import(
+  "resource://testing-common/calendar/ItemEditingHelpers.jsm"
+);
 
 const DEFVALUE = 43;
 
 add_task(async function testDefaultAlarms() {
-  let manager = cal.getCalendarManager();
-  let calendar = manager.createCalendar("memory", Services.io.newURI("moz-memory-calendar://"));
-  calendar.name = "Mochitest";
-  manager.registerCalendar(calendar);
-
+  let calendar = CalendarTestUtils.createCalendar("Mochitest", "memory");
+  calendar.setProperty("calendar-main-default", true);
   registerCleanupFunction(async () => {
-    manager.unregisterCalendar(calendar);
+    CalendarTestUtils.removeCalendar(calendar);
   });
 
   let localeUnitString = cal.l10n.getCalString("unitDays");
@@ -35,21 +37,9 @@ add_task(async function testDefaultAlarms() {
   await handlePrefTab(prefsWindow, prefsDocument);
 
   // Create New Event.
-  let eventDialogPromise = BrowserTestUtils.domWindowOpened(null, async win => {
-    await BrowserTestUtils.waitForEvent(win, "load");
-    return win.document.documentURI == "chrome://calendar/content/calendar-event-dialog.xhtml";
-  });
-  EventUtils.synthesizeKey("i", { accelKey: true });
-  let eventDialogWindow = await eventDialogPromise;
-  let eventDialogDocument = eventDialogWindow.document;
+  await CalendarTestUtils.openCalendarTab(window);
 
-  let eventDialogIframe = eventDialogDocument.getElementById("calendar-item-panel-iframe");
-  let iframeWindow = eventDialogIframe.contentWindow;
-  if (eventDialogIframe.contentDocument.readyState != "complete") {
-    await BrowserTestUtils.waitForEvent(iframeWindow, "load");
-  }
-  let iframeDocument = iframeWindow.document;
-  await new Promise(r => iframeWindow.setTimeout(r));
+  let { dialogWindow, iframeWindow, iframeDocument } = await CalendarTestUtils.editNewEvent(window);
 
   Assert.equal(iframeDocument.querySelector(".item-alarm").value, "custom");
   let reminderDetails = iframeDocument.querySelector(".reminder-single-alarms-label");
@@ -63,24 +53,13 @@ add_task(async function testDefaultAlarms() {
   EventUtils.synthesizeMouseAtCenter(reminderDetails, {}, iframeWindow);
   await reminderDialogPromise;
 
-  eventDialogWindow.close();
+  let promptPromise = BrowserTestUtils.promiseAlertDialog("extra1");
+  cancelItemDialog(dialogWindow);
+  await promptPromise;
 
   // Create New Task.
-  let taskDialogPromise = BrowserTestUtils.domWindowOpened(null, async win => {
-    await BrowserTestUtils.waitForEvent(win, "load");
-    return win.document.documentURI == "chrome://calendar/content/calendar-event-dialog.xhtml";
-  });
-  EventUtils.synthesizeKey("d", { accelKey: true });
-  let taskDialogWindow = await taskDialogPromise;
-  let taskDialogDocument = taskDialogWindow.document;
-
-  let taskDialogIframe = taskDialogDocument.getElementById("calendar-item-panel-iframe");
-  iframeWindow = taskDialogIframe.contentWindow;
-  if (taskDialogIframe.contentDocument.readyState != "complete") {
-    await BrowserTestUtils.waitForEvent(iframeWindow, "load");
-  }
-  iframeDocument = iframeWindow.document;
-  await new Promise(r => iframeWindow.setTimeout(r));
+  await openTasksTab();
+  ({ dialogWindow, iframeWindow, iframeDocument } = await CalendarTestUtils.editNewTask(window));
 
   Assert.equal(iframeDocument.querySelector(".item-alarm").value, "custom");
   reminderDetails = iframeDocument.querySelector(".reminder-single-alarms-label");
@@ -94,7 +73,9 @@ add_task(async function testDefaultAlarms() {
   EventUtils.synthesizeMouseAtCenter(reminderDetails, {}, iframeWindow);
   await reminderDialogPromise;
 
-  taskDialogWindow.close();
+  promptPromise = BrowserTestUtils.promiseAlertDialog("extra1");
+  cancelItemDialog(dialogWindow);
+  await promptPromise;
 });
 
 async function handlePrefTab(prefsWindow, prefsDocument) {
@@ -165,13 +146,27 @@ async function handleReminderDialog(remindersWindow) {
 
   Assert.equal(listbox.selectedItem.reminder.offset.days, DEFVALUE);
 
-  remindersDocument
-    .querySelector("dialog")
-    .getButton("accept")
-    .click();
+  remindersDocument.querySelector("dialog").getButton("accept").click();
 }
 
-registerCleanupFunction(function teardownModule(module) {
+async function openTasksTab() {
+  let tabmail = document.getElementById("tabmail");
+  let tasksMode = tabmail.tabModes.tasks;
+
+  if (tasksMode.tabs.length == 1) {
+    tabmail.selectedTab = tasksMode.tabs[0];
+  } else {
+    let tasksTabButton = document.getElementById("tasksButton");
+    EventUtils.synthesizeMouseAtCenter(tasksTabButton, { clickCount: 1 });
+  }
+
+  is(tasksMode.tabs.length, 1, "tasks tab is open");
+  is(tabmail.selectedTab, tasksMode.tabs[0], "tasks tab is selected");
+
+  await new Promise(resolve => setTimeout(resolve));
+}
+
+registerCleanupFunction(function () {
   Services.prefs.clearUserPref("calendar.alarms.onforevents");
   Services.prefs.clearUserPref("calendar.alarms.eventalarmlen");
   Services.prefs.clearUserPref("calendar.alarms.eventalarmunit");

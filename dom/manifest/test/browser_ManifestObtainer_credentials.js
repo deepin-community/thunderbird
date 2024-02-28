@@ -2,14 +2,14 @@
 
 Services.prefs.setBoolPref("dom.manifest.enabled", true);
 
-const { ManifestObtainer } = ChromeUtils.import(
-  "resource://gre/modules/ManifestObtainer.jsm"
+const { ManifestObtainer } = ChromeUtils.importESModule(
+  "resource://gre/modules/ManifestObtainer.sys.mjs"
 );
 
 // Don't send cookies
-add_task(async function() {
+add_task(async function () {
   const testPath = "/browser/dom/manifest/test/cookie_setter.html";
-  const tabURL = `http://example.com:80${testPath}`;
+  const tabURL = `https://example.com${testPath}`;
   const browser = BrowserTestUtils.addTab(gBrowser, tabURL).linkedBrowser;
   await BrowserTestUtils.browserLoaded(browser);
   const { short_name } = await ManifestObtainer.browserObtainManifest(browser);
@@ -19,10 +19,10 @@ add_task(async function() {
 });
 
 // Send cookies
-add_task(async function() {
+add_task(async function () {
   const testPath =
     "/browser/dom/manifest/test/cookie_setter_with_credentials.html";
-  const tabURL = `http://example.com:80${testPath}`;
+  const tabURL = `https://example.com${testPath}`;
   const browser = BrowserTestUtils.addTab(gBrowser, tabURL).linkedBrowser;
   await BrowserTestUtils.browserLoaded(browser);
   const { short_name } = await ManifestObtainer.browserObtainManifest(browser);
@@ -32,10 +32,10 @@ add_task(async function() {
 });
 
 // Cross origin - we go from example.com to example.org
-add_task(async function() {
+add_task(async function () {
   const testPath =
     "/browser/dom/manifest/test/cookie_setter_with_credentials_cross_origin.html";
-  const tabURL = `http://example.com:80${testPath}`;
+  const tabURL = `https://example.com${testPath}`;
   const browser = BrowserTestUtils.addTab(gBrowser, tabURL).linkedBrowser;
   await BrowserTestUtils.browserLoaded(browser);
   const { short_name } = await ManifestObtainer.browserObtainManifest(browser);

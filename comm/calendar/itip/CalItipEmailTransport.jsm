@@ -6,7 +6,6 @@ var EXPORTED_SYMBOLS = ["CalItipEmailTransport", "CalItipDefaultEmailTransport"]
 
 var { MailServices } = ChromeUtils.import("resource:///modules/MailServices.jsm");
 var { cal } = ChromeUtils.import("resource:///modules/calendar/calUtils.jsm");
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 
 /**
  * CalItipEmailTransport is used to send iTIP messages via email. Outside
@@ -198,7 +197,7 @@ class CalItipEmailTransport {
         if (aItipItem.autoResponse == Ci.calIItipItem.AUTO) {
           cal.LOG("sendXpcomMail: Found AUTO autoResponse type.");
         }
-        let cbEmail = function(aVal, aInd, aArr) {
+        let cbEmail = function (aVal, aInd, aArr) {
           let email = cal.email.getAttendeeEmail(aVal, true);
           if (!email.length) {
             cal.LOG("sendXpcomMail: Invalid recipient for email transport: " + aVal.toString());
@@ -214,7 +213,7 @@ class CalItipEmailTransport {
         let composeUtils = Cc["@mozilla.org/messengercompose/computils;1"].createInstance(
           Ci.nsIMsgCompUtils
         );
-        let messageId = composeUtils.msgGenerateMessageId(identity);
+        let messageId = composeUtils.msgGenerateMessageId(identity, null);
         let mailFile = this._createTempImipFile(
           toList,
           aSubject,
@@ -256,8 +255,7 @@ class CalItipEmailTransport {
           //           "@mozilla.org/messengercompose/composesendlistener;1"
           //           and/or "chrome://messenger/content/messengercompose/sendProgress.xhtml"
           // i.e. bug 432662
-          let msgSend = Cc["@mozilla.org/messengercompose/send;1"].createInstance(Ci.nsIMsgSend);
-          msgSend.sendMessageFile(
+          this.getMsgSend().sendMessageFile(
             identity,
             account.key,
             composeFields,
@@ -295,7 +293,7 @@ class CalItipEmailTransport {
         Ci.calIIcsSerializer
       );
       serializer.addItems(itemList);
-      let methodProp = cal.getIcsService().createIcalProperty("METHOD");
+      let methodProp = cal.icsService.createIcalProperty("METHOD");
       methodProp.value = aItipItem.responseMethod;
       serializer.addProperty(methodProp);
       let calText = serializer.serializeToString();
@@ -367,9 +365,17 @@ class CalItipEmailTransport {
   }
 
   /**
+   * Provides a new nsIMsgSend instance to use when sending the message. This
+   * method can be overridden in child classes for testing or other purposes.
+   */
+  getMsgSend() {
+    return Cc["@mozilla.org/messengercompose/send;1"].createInstance(Ci.nsIMsgSend);
+  }
+
+  /**
    * Provides the identity and account to use when sending iTIP emails. By
    * default prefers whatever the item's calendar is configured to use or the
-   * default configuration when not set. This method can be overriden to change
+   * default configuration when not set. This method can be overridden to change
    * that behaviour.
    *
    * @param {calIItipItem} aItipItem

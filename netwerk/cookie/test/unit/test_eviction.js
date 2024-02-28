@@ -1,27 +1,13 @@
 const { NetUtil } = ChromeUtils.import("resource://gre/modules/NetUtil.jsm");
-const { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-
-var { XPCOMUtils } = ChromeUtils.import(
-  "resource://gre/modules/XPCOMUtils.jsm"
-);
 
 const BASE_HOST = "example.org";
-const BASE_HOSTNAMES = ["example.org", "example.co.uk"];
-const SUBDOMAINS = ["", "pub.", "www.", "other."];
 
-const { CookieXPCShellUtils } = ChromeUtils.import(
-  "resource://testing-common/CookieXPCShellUtils.jsm"
+const { CookieXPCShellUtils } = ChromeUtils.importESModule(
+  "resource://testing-common/CookieXPCShellUtils.sys.mjs"
 );
 
 CookieXPCShellUtils.init(this);
 CookieXPCShellUtils.createServer({ hosts: ["example.org"] });
-
-XPCOMUtils.defineLazyServiceGetter(
-  this,
-  "cm",
-  "@mozilla.org/cookiemanager;1",
-  "nsICookieManager"
-);
 
 add_task(async function test_basic_eviction() {
   do_get_profile();
@@ -121,33 +107,33 @@ add_task(async function test_basic_eviction() {
     BASE_URI
   );
 
-  cm.removeAll();
+  Services.cookies.removeAll();
 });
 
 // Verify that the given cookie names exist, and are ordered from least to most recently accessed
 function verifyCookies(names, uri) {
-  Assert.equal(cm.countCookiesFromHost(uri.host), names.length);
+  Assert.equal(Services.cookies.countCookiesFromHost(uri.host), names.length);
   let actual_cookies = [];
-  for (let cookie of cm.getCookiesFromHost(uri.host, {})) {
+  for (let cookie of Services.cookies.getCookiesFromHost(uri.host, {})) {
     actual_cookies.push(cookie);
   }
   if (names.length != actual_cookies.length) {
-    let left = names.filter(function(n) {
+    let left = names.filter(function (n) {
       return (
-        actual_cookies.findIndex(function(c) {
+        actual_cookies.findIndex(function (c) {
           return c.name == n;
         }) == -1
       );
     });
     let right = actual_cookies
-      .filter(function(c) {
+      .filter(function (c) {
         return (
-          names.findIndex(function(n) {
+          names.findIndex(function (n) {
             return c.name == n;
           }) == -1
         );
       })
-      .map(function(c) {
+      .map(function (c) {
         return c.name;
       });
     if (left.length) {
@@ -158,7 +144,7 @@ function verifyCookies(names, uri) {
     }
   }
   Assert.equal(names.length, actual_cookies.length);
-  actual_cookies.sort(function(a, b) {
+  actual_cookies.sort(function (a, b) {
     if (a.lastAccessed < b.lastAccessed) {
       return -1;
     }
@@ -200,10 +186,9 @@ function setCookie(name, domain, path, maxAge, url) {
     contentPolicyType: Ci.nsIContentPolicy.TYPE_DOCUMENT,
   });
 
-  const cs = Cc["@mozilla.org/cookieService;1"].getService(Ci.nsICookieService);
-  cs.setCookieStringFromHttp(url, value, channel);
+  Services.cookies.setCookieStringFromHttp(url, value, channel);
 
-  return new Promise(function(resolve) {
+  return new Promise(function (resolve) {
     // Windows XP has low precision timestamps that cause our cookie eviction
     // algorithm to produce different results from other platforms. We work around
     // this by ensuring that there's a clear gap between each cookie update.

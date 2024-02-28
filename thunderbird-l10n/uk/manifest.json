@@ -1,29 +1,28 @@
 {
   "langpack_id": "uk",
   "manifest_version": 2,
-  "applications": {
+  "browser_specific_settings": {
     "gecko": {
       "id": "langpack-uk@thunderbird.mozilla.org",
-      "strict_min_version": "91.0",
-      "strict_max_version": "91.*"
+      "strict_min_version": "115.0",
+      "strict_max_version": "115.*"
     }
   },
-  "name": "Ukrainian (UA) Language Pack",
-  "description": "Language pack for Thunderbird for uk",
-  "version": "91.0buildid20211101223011",
+  "name": "Language: Українська (Ukrainian)",
+  "description": "Thunderbird Language Pack for Українська (uk) – Ukrainian",
+  "version": "115.8.20240216.174500",
   "languages": {
     "uk": {
-      "version": "20211013182827",
+      "version": "20240216183456",
       "chrome_resources": {
         "alerts": "chrome/uk/locale/uk/alerts/",
         "autoconfig": "chrome/uk/locale/uk/autoconfig/",
-        "branding": "chrome/uk/locale/uk/branding/",
+        "branding": "chrome/uk/locale/branding/",
         "calendar": "chrome/uk/locale/uk/calendar/",
         "chat": "chrome/uk/locale/uk/chat/",
         "communicator": "chrome/uk/locale/uk/communicator/",
         "devtools": "chrome/uk/locale/uk/devtools/client/",
         "devtools-shared": "chrome/uk/locale/uk/devtools/shared/",
-        "devtools-startup": "chrome/uk/locale/uk/devtools/startup/",
         "global": "chrome/uk/locale/uk/global/",
         "global-platform": {
           "macosx": "chrome/uk/locale/uk/global-platform/mac/",

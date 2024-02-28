@@ -20,9 +20,7 @@
 
 // See the architecture comment in DOMSVGAnimatedLengthList.h.
 
-namespace mozilla {
-
-namespace dom {
+namespace mozilla::dom {
 
 static SVGAttrTearoffTable<SVGAnimatedLength, DOMSVGLength>
     sBaseSVGLengthTearOffTable, sAnimSVGLengthTearOffTable;
@@ -46,9 +44,6 @@ NS_IMPL_CYCLE_COLLECTION_TRAVERSE_END
 NS_IMPL_CYCLE_COLLECTION_TRACE_BEGIN(DOMSVGLength)
   NS_IMPL_CYCLE_COLLECTION_TRACE_PRESERVED_WRAPPER
 NS_IMPL_CYCLE_COLLECTION_TRACE_END
-
-NS_IMPL_CYCLE_COLLECTION_ROOT_NATIVE(DOMSVGLength, AddRef)
-NS_IMPL_CYCLE_COLLECTION_UNROOT_NATIVE(DOMSVGLength, Release)
 
 DOMSVGLength::DOMSVGLength(DOMSVGLengthList* aList, uint8_t aAttrEnum,
                            uint32_t aListIndex, bool aIsAnimValItem)
@@ -157,7 +152,7 @@ float DOMSVGLength::GetValue(ErrorResult& aRv) {
   if (nsCOMPtr<DOMSVGLengthList> lengthList = do_QueryInterface(mOwner)) {
     float value = InternalItem().GetValueInUserUnits(lengthList->Element(),
                                                      lengthList->Axis());
-    if (!IsFinite(value)) {
+    if (!std::isfinite(value)) {
       aRv.Throw(NS_ERROR_FAILURE);
     }
     return value;
@@ -201,7 +196,7 @@ void DOMSVGLength::SetValue(float aUserUnitValue, ErrorResult& aRv) {
                                                        lengthList->Axis());
     if (uuPerUnit > 0) {
       float newValue = aUserUnitValue / uuPerUnit;
-      if (IsFinite(newValue)) {
+      if (std::isfinite(newValue)) {
         AutoChangeLengthListNotifier notifier(this);
         internalItem.SetValueAndUnit(newValue, internalItem.GetUnit());
         return;
@@ -362,7 +357,7 @@ void DOMSVGLength::ConvertToSpecifiedUnits(uint16_t aUnit, ErrorResult& aRv) {
   } else {
     val = SVGLength(mValue, mUnit).GetValueInSpecifiedUnit(aUnit, nullptr, 0);
   }
-  if (IsFinite(val)) {
+  if (std::isfinite(val)) {
     if (HasOwner()) {
       AutoChangeLengthListNotifier notifier(this);
       InternalItem().SetValueAndUnit(val, aUnit);
@@ -445,5 +440,4 @@ bool DOMSVGLength::IndexIsValid() {
 }
 #endif
 
-}  // namespace dom
-}  // namespace mozilla
+}  // namespace mozilla::dom

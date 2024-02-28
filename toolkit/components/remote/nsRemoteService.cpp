@@ -5,18 +5,13 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-#ifdef XP_UNIX
-#  include <sys/types.h>
-#  include <pwd.h>
-#endif
-
 #ifdef MOZ_WIDGET_GTK
-#  include "mozilla/WidgetUtilsGtk.h"
-#  include "nsGTKRemoteServer.h"
-#  include "nsXRemoteClient.h"
 #  ifdef MOZ_ENABLE_DBUS
 #    include "nsDBusRemoteServer.h"
 #    include "nsDBusRemoteClient.h"
+#  else
+#    include "nsGTKRemoteServer.h"
+#    include "nsXRemoteClient.h"
 #  endif
 #elif defined(XP_WIN)
 #  include "nsWinRemoteServer.h"
@@ -30,19 +25,13 @@
 #include "nsIObserverService.h"
 #include "nsString.h"
 #include "nsServiceManagerUtils.h"
-#include "mozilla/ModuleUtils.h"
 #include "SpecialSystemDirectory.h"
-#include "mozilla/CmdLineAndEnvUtils.h"
 #include "mozilla/TimeStamp.h"
 #include "mozilla/UniquePtr.h"
 
 // Time to wait for the remoting service to start
 #define START_TIMEOUT_SEC 5
 #define START_SLEEP_MSEC 100
-
-// When MOZ_DBUS_REMOTE is set both X11 and Wayland backends
-// use only DBus remote.
-#define DBUS_REMOTE_ENV "MOZ_DBUS_REMOTE"
 
 using namespace mozilla;
 
@@ -63,27 +52,34 @@ void nsRemoteService::LockStartup() {
   nsCOMPtr<nsIFile> mutexDir;
   nsresult rv = GetSpecialSystemDirectory(OS_TemporaryDirectory,
                                           getter_AddRefs(mutexDir));
-  if (NS_SUCCEEDED(rv)) {
-    mutexDir->AppendNative(mProgram);
+  NS_ENSURE_SUCCESS_VOID(rv);
+  rv = mutexDir->AppendNative(mProgram);
+  NS_ENSURE_SUCCESS_VOID(rv);
 
+  const mozilla::TimeStamp epoch = mozilla::TimeStamp::Now();
+  do {
+    // If we have been waiting for another instance to release the lock it will
+    // have deleted the lock directory when doing so we have to make sure it
+    // exists every time we poll for the lock.
     rv = mutexDir->Create(nsIFile::DIRECTORY_TYPE, 0700);
     if (NS_SUCCEEDED(rv) || rv == NS_ERROR_FILE_ALREADY_EXISTS) {
       mRemoteLockDir = mutexDir;
+    } else {
+      NS_WARNING("Unable to create startup lock directory.");
+      return;
     }
-  }
 
-  if (mRemoteLockDir) {
-    const mozilla::TimeStamp epoch = mozilla::TimeStamp::Now();
-    do {
-      rv = mRemoteLock.Lock(mRemoteLockDir, nullptr);
-      if (NS_SUCCEEDED(rv)) break;
-      PR_Sleep(START_SLEEP_MSEC);
-    } while ((mozilla::TimeStamp::Now() - epoch) <
-             mozilla::TimeDuration::FromSeconds(START_TIMEOUT_SEC));
-    if (NS_FAILED(rv)) {
-      NS_WARNING("Cannot lock remote start mutex");
+    rv = mRemoteLock.Lock(mRemoteLockDir, nullptr);
+    if (NS_SUCCEEDED(rv)) {
+      return;
     }
-  }
+
+    mRemoteLockDir = nullptr;
+    PR_Sleep(START_SLEEP_MSEC);
+  } while ((mozilla::TimeStamp::Now() - epoch) <
+           mozilla::TimeDuration::FromSeconds(START_TIMEOUT_SEC));
+
+  NS_WARNING("Failed to lock for startup, continuing anyway.");
 }
 
 void nsRemoteService::UnlockStartup() {
@@ -96,24 +92,18 @@ void nsRemoteService::UnlockStartup() {
   }
 }
 
-RemoteResult nsRemoteService::StartClient(const char* aDesktopStartupID) {
+RemoteResult nsRemoteService::StartClient(const char* aStartupToken) {
   if (mProfile.IsEmpty()) {
     return REMOTE_NOT_FOUND;
   }
 
   UniquePtr<nsRemoteClient> client;
-
 #ifdef MOZ_WIDGET_GTK
-  bool useX11Remote = mozilla::widget::GdkIsX11Display();
-
 #  if defined(MOZ_ENABLE_DBUS)
-  if (!useX11Remote || getenv(DBUS_REMOTE_ENV)) {
-    client = MakeUnique<nsDBusRemoteClient>();
-  }
+  client = MakeUnique<nsDBusRemoteClient>();
+#  else
+  client = MakeUnique<nsXRemoteClient>();
 #  endif
-  if (!client && useX11Remote) {
-    client = MakeUnique<nsXRemoteClient>();
-  }
 #elif defined(XP_WIN)
   client = MakeUnique<nsWinRemoteClient>();
 #elif defined(XP_DARWIN)
@@ -127,9 +117,9 @@ RemoteResult nsRemoteService::StartClient(const char* aDesktopStartupID) {
 
   nsCString response;
   bool success = false;
-  rv = client->SendCommandLine(mProgram.get(), mProfile.get(), gArgc, gArgv,
-                               aDesktopStartupID, getter_Copies(response),
-                               &success);
+  rv =
+      client->SendCommandLine(mProgram.get(), mProfile.get(), gArgc, gArgv,
+                              aStartupToken, getter_Copies(response), &success);
   // did the command fail?
   if (!success) return REMOTE_NOT_FOUND;
 
@@ -153,16 +143,11 @@ void nsRemoteService::StartupServer() {
   }
 
 #ifdef MOZ_WIDGET_GTK
-  bool useX11Remote = mozilla::widget::GdkIsX11Display();
-
 #  if defined(MOZ_ENABLE_DBUS)
-  if (!useX11Remote || getenv(DBUS_REMOTE_ENV)) {
-    mRemoteServer = MakeUnique<nsDBusRemoteServer>();
-  }
+  mRemoteServer = MakeUnique<nsDBusRemoteServer>();
+#  else
+  mRemoteServer = MakeUnique<nsGTKRemoteServer>();
 #  endif
-  if (!mRemoteServer && useX11Remote) {
-    mRemoteServer = MakeUnique<nsGTKRemoteServer>();
-  }
 #elif defined(XP_WIN)
   mRemoteServer = MakeUnique<nsWinRemoteServer>();
 #elif defined(XP_DARWIN)

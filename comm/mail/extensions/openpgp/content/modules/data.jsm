@@ -61,11 +61,8 @@ var EnigmailData = {
     }
 
     // Encode plaintext
-    try {
-      return converter(charset).ConvertToUnicode(text);
-    } catch (ex) {
-      return text;
-    }
+    let buffer = Uint8Array.from(text, c => c.charCodeAt(0));
+    return new TextDecoder(charset).decode(buffer);
   },
 
   convertFromUnicode(text, charset) {
@@ -73,11 +70,10 @@ var EnigmailData = {
       return "";
     }
 
-    try {
-      return converter(charset).ConvertFromUnicode(text);
-    } catch (ex) {
-      return text;
-    }
+    let conv = converter(charset);
+    let result = conv.ConvertFromUnicode(text);
+    result += conv.Finish();
+    return result;
   },
 
   convertGpgToUnicode(text) {

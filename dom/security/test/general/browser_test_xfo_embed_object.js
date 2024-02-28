@@ -2,12 +2,12 @@
 
 const kTestPath = getRootDirectory(gTestPath).replace(
   "chrome://mochitests/content",
-  "http://example.com"
+  "https://example.com"
 );
 const kTestXFOEmbedURI = kTestPath + "file_framing_xfo_embed.html";
 const kTestXFOObjectURI = kTestPath + "file_framing_xfo_object.html";
 
-const errorMessage = `The loading of “http://example.com/browser/dom/security/test/general/file_framing_xfo_embed_object.sjs” in a frame is denied by “X-Frame-Options“ directive set to “deny“`;
+const errorMessage = `The loading of “https://example.com/browser/dom/security/test/general/file_framing_xfo_embed_object.sjs” in a frame is denied by “X-Frame-Options“ directive set to “deny“`;
 
 let xfoBlocked = false;
 
@@ -22,9 +22,9 @@ function onXFOMessage(msgObj) {
 
 add_task(async function open_test_xfo_embed_blocked() {
   xfoBlocked = false;
-  await BrowserTestUtils.withNewTab("about:blank", async function(browser) {
+  await BrowserTestUtils.withNewTab("about:blank", async function (browser) {
     Services.console.registerListener(onXFOMessage);
-    BrowserTestUtils.loadURI(browser, kTestXFOEmbedURI);
+    BrowserTestUtils.loadURIString(browser, kTestXFOEmbedURI);
     await BrowserTestUtils.waitForCondition(() => xfoBlocked);
     Services.console.unregisterListener(onXFOMessage);
   });
@@ -32,9 +32,9 @@ add_task(async function open_test_xfo_embed_blocked() {
 
 add_task(async function open_test_xfo_object_blocked() {
   xfoBlocked = false;
-  await BrowserTestUtils.withNewTab("about:blank", async function(browser) {
+  await BrowserTestUtils.withNewTab("about:blank", async function (browser) {
     Services.console.registerListener(onXFOMessage);
-    BrowserTestUtils.loadURI(browser, kTestXFOObjectURI);
+    BrowserTestUtils.loadURIString(browser, kTestXFOObjectURI);
     await BrowserTestUtils.waitForCondition(() => xfoBlocked);
     Services.console.unregisterListener(onXFOMessage);
   });

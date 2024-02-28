@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e
+
 # This script creates additional S/MIME test files.
 # It's called automatically by generate.sh.
 # However, it can also be called directly, if the test data from NSS
@@ -26,19 +28,22 @@ then
   exit
 fi
 
-MILLDIR="`pwd`/../../../../mail/test/mozmill/smime"
+MILLDIR="$(pwd)/../../../../mail/test/browser/smime/data"
 
 # When executing mozmill in the CI environment, the files from this
 # directory aren't available. Copy all files that mozmill requires to
 # the mozmill directory.
-cp -rv Bob.p12 TestCA.pem $MILLDIR
+cp -rv Bob.p12 TestCA.pem "$MILLDIR"
 
 TMPDIR="./tmp-local"
 mkdir $TMPDIR
 
 BOUNDARY="--------BOUNDARY"
 
+EMAILDATE=$(date --rfc-email --utc)
+
 MSGHEADER="MIME-Version: 1.0
+Date: ${EMAILDATE}
 From: Alice <alice@example.com>
 To: Bob <bob@example.com>
 Subject: a message
@@ -52,8 +57,8 @@ Content-Transfer-Encoding: base64
 "
 
 certutil -d $TMPDIR -N --empty-password
-pk12util -d $TMPDIR -i Alice.p12 -W ''
-pk12util -d $TMPDIR -i Bob.p12 -W ''
+pk12util -d $TMPDIR -i Alice.p12 -W nss
+pk12util -d $TMPDIR -i Bob.p12 -W nss
 certutil -d $TMPDIR -M -n TestCA -t C,C,
 
 INPUT="Content-type: text/plain
@@ -69,15 +74,24 @@ echo "$INPUT" | cmsutil -d $TMPDIR -E -r bob@example.com | btoa > $TMPDIR/bait.b
 
 MSG=$TMPDIR/msg.eml
 
-echo -n "$MSGHEADER" > $MSG
-echo "--$BOUNDARY" >> $MSG
-echo -n "$ENVHEADER" >> $MSG
-cat $TMPDIR/bait.b64 >> $MSG
-echo "--$BOUNDARY" >> $MSG
-echo -n "$ENVHEADER" >> $MSG
-cat $TMPDIR/prey.b64 >> $MSG
-echo "--$BOUNDARY" >> $MSG
+{
+  echo -n "$MSGHEADER"
+  echo "--$BOUNDARY"
+  echo -n "$ENVHEADER"
+  cat $TMPDIR/bait.b64
+  echo "--$BOUNDARY"
+  echo -n "$ENVHEADER"
+  cat $TMPDIR/prey.b64
+  echo "--$BOUNDARY"
+} > $MSG
 
-mv $MSG $MILLDIR/multipart-alternative.eml
+mv $MSG "$MILLDIR/multipart-alternative.eml"
+
+# Create a message with a mismatching message date (use a later time,
+# because the test certificates aren't valid at earlier times).
+
+GOOD_DATE=$(grep ^Date "alice.dsig.SHA256.multipart.eml" | sed 's/^Date: //')
+FUTURE_DATE=$(date --utc --rfc-email --date="${GOOD_DATE} + 6 hours")
+sed "s/^Date: .*$/Date: ${FUTURE_DATE}/" "alice.dsig.SHA256.multipart.eml" > "alice.future.dsig.SHA256.multipart.eml"
 
 rm -rf $TMPDIR

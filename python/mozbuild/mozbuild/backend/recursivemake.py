@@ -2,35 +2,29 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-from __future__ import absolute_import, print_function, unicode_literals
-
 import io
 import logging
 import os
 import re
-import six
-
-from collections import (
-    defaultdict,
-    namedtuple,
-)
+from collections import defaultdict, namedtuple
 from itertools import chain
 from operator import itemgetter
-from six import StringIO
 
-from mozpack.manifests import InstallManifest
 import mozpack.path as mozpath
+import six
+from mozpack.manifests import InstallManifest
+from six import StringIO
 
 from mozbuild import frontend
 from mozbuild.frontend.context import (
     AbsolutePath,
+    ObjDirPath,
     Path,
     RenamedSourcePath,
     SourcePath,
-    ObjDirPath,
 )
-from .common import CommonBackend
-from .make import MakeBackend
+from mozbuild.shellutil import quote as shell_quote
+
 from ..frontend.data import (
     BaseLibrary,
     BaseProgram,
@@ -45,12 +39,11 @@ from ..frontend.data import (
     FinalTargetFiles,
     FinalTargetPreprocessedFiles,
     GeneratedFile,
-    GeneratedSources,
     HostDefines,
-    HostGeneratedSources,
     HostLibrary,
     HostProgram,
     HostRustProgram,
+    HostSharedLibrary,
     HostSimpleProgram,
     HostSources,
     InstallationTarget,
@@ -63,7 +56,6 @@ from ..frontend.data import (
     ObjdirPreprocessedFiles,
     PerSourceFlag,
     Program,
-    HostSharedLibrary,
     RustProgram,
     RustTests,
     SandboxedWasmLibrary,
@@ -73,18 +65,13 @@ from ..frontend.data import (
     StaticLibrary,
     TestManifest,
     VariablePassthru,
-    WasmGeneratedSources,
     WasmSources,
     XPIDLModule,
 )
-from ..util import (
-    ensureParentDir,
-    FileAvoidWrite,
-    OrderedDefaultDict,
-    pairwise,
-)
 from ..makeutil import Makefile
-from mozbuild.shellutil import quote as shell_quote
+from ..util import FileAvoidWrite, OrderedDefaultDict, ensureParentDir, pairwise
+from .common import CommonBackend
+from .make import MakeBackend
 
 # To protect against accidentally adding logic to Makefiles that belong in moz.build,
 # we check if moz.build-like variables are defined in Makefiles. If they are, we throw
@@ -264,6 +251,7 @@ class RecursiveMakeTraversal(object):
 
         filter is a function with the following signature:
             def filter(current, subdirs)
+
         where current is the directory being traversed, and subdirs the
         SubDirectories instance corresponding to it.
         The filter function returns a tuple (filtered_current, filtered_parallel,
@@ -378,7 +366,6 @@ class RecursiveMakeBackend(MakeBackend):
         self._traversal = RecursiveMakeTraversal()
         self._compile_graph = OrderedDefaultDict(set)
         self._rust_targets = set()
-        self._rust_lib_targets = set()
         self._gkrust_target = None
         self._pre_compile = set()
 
@@ -458,7 +445,7 @@ class RecursiveMakeBackend(MakeBackend):
             # CommonBackend.
             assert os.path.basename(obj.output_path) == "Makefile"
             self._create_makefile(obj)
-        elif isinstance(obj, (Sources, GeneratedSources)):
+        elif isinstance(obj, Sources):
             suffix_map = {
                 ".s": "ASFILES",
                 ".c": "CSRCS",
@@ -468,66 +455,51 @@ class RecursiveMakeBackend(MakeBackend):
                 ".S": "SSRCS",
             }
             variables = [suffix_map[obj.canonical_suffix]]
-            if isinstance(obj, GeneratedSources):
-                base = backend_file.objdir
-                cls = ObjDirPath
-                prefix = "!"
-            else:
-                base = backend_file.srcdir
-                cls = SourcePath
-                prefix = ""
-            for f in sorted(obj.files):
-                p = self._pretty_path(
-                    cls(obj._context, prefix + mozpath.relpath(f, base)),
-                    backend_file,
-                )
-                for var in variables:
-                    backend_file.write("%s += %s\n" % (var, p))
+            for files, base, cls, prefix in (
+                (obj.static_files, backend_file.srcdir, SourcePath, ""),
+                (obj.generated_files, backend_file.objdir, ObjDirPath, "!"),
+            ):
+                for f in sorted(files):
+                    p = self._pretty_path(
+                        cls(obj._context, prefix + mozpath.relpath(f, base)),
+                        backend_file,
+                    )
+                    for var in variables:
+                        backend_file.write("%s += %s\n" % (var, p))
             self._compile_graph[mozpath.join(backend_file.relobjdir, "target-objects")]
-        elif isinstance(obj, (HostSources, HostGeneratedSources)):
+        elif isinstance(obj, HostSources):
             suffix_map = {
                 ".c": "HOST_CSRCS",
                 ".mm": "HOST_CMMSRCS",
                 ".cpp": "HOST_CPPSRCS",
             }
             variables = [suffix_map[obj.canonical_suffix]]
-            if isinstance(obj, HostGeneratedSources):
-                base = backend_file.objdir
-                cls = ObjDirPath
-                prefix = "!"
-            else:
-                base = backend_file.srcdir
-                cls = SourcePath
-                prefix = ""
-            for f in sorted(obj.files):
-                p = self._pretty_path(
-                    cls(obj._context, prefix + mozpath.relpath(f, base)),
-                    backend_file,
-                )
-                for var in variables:
-                    backend_file.write("%s += %s\n" % (var, p))
+            for files, base, cls, prefix in (
+                (obj.static_files, backend_file.srcdir, SourcePath, ""),
+                (obj.generated_files, backend_file.objdir, ObjDirPath, "!"),
+            ):
+                for f in sorted(files):
+                    p = self._pretty_path(
+                        cls(obj._context, prefix + mozpath.relpath(f, base)),
+                        backend_file,
+                    )
+                    for var in variables:
+                        backend_file.write("%s += %s\n" % (var, p))
             self._compile_graph[mozpath.join(backend_file.relobjdir, "host-objects")]
-        elif isinstance(obj, (WasmSources, WasmGeneratedSources)):
-            suffix_map = {
-                ".c": "WASM_CSRCS",
-                ".cpp": "WASM_CPPSRCS",
-            }
+        elif isinstance(obj, WasmSources):
+            suffix_map = {".c": "WASM_CSRCS", ".cpp": "WASM_CPPSRCS"}
             variables = [suffix_map[obj.canonical_suffix]]
-            if isinstance(obj, WasmGeneratedSources):
-                base = backend_file.objdir
-                cls = ObjDirPath
-                prefix = "!"
-            else:
-                base = backend_file.srcdir
-                cls = SourcePath
-                prefix = ""
-            for f in sorted(obj.files):
-                p = self._pretty_path(
-                    cls(obj._context, prefix + mozpath.relpath(f, base)),
-                    backend_file,
-                )
-                for var in variables:
-                    backend_file.write("%s += %s\n" % (var, p))
+            for files, base, cls, prefix in (
+                (obj.static_files, backend_file.srcdir, SourcePath, ""),
+                (obj.generated_files, backend_file.objdir, ObjDirPath, "!"),
+            ):
+                for f in sorted(files):
+                    p = self._pretty_path(
+                        cls(obj._context, prefix + mozpath.relpath(f, base)),
+                        backend_file,
+                    )
+                    for var in variables:
+                        backend_file.write("%s += %s\n" % (var, p))
             self._compile_graph[mozpath.join(backend_file.relobjdir, "target-objects")]
         elif isinstance(obj, VariablePassthru):
             # Sorted so output is consistent and we don't bump mtimes.
@@ -637,7 +609,6 @@ class RecursiveMakeBackend(MakeBackend):
             build_target = self._build_target_for_obj(obj)
             self._compile_graph[build_target]
             self._rust_targets.add(build_target)
-            self._rust_lib_targets.add(build_target)
             if obj.is_gkrust:
                 self._gkrust_target = build_target
 
@@ -652,7 +623,6 @@ class RecursiveMakeBackend(MakeBackend):
 
         elif isinstance(obj, SandboxedWasmLibrary):
             self._process_sandboxed_wasm_library(obj, backend_file)
-            self._process_linked_libraries(obj, backend_file)
 
         elif isinstance(obj, HostLibrary):
             self._process_linked_libraries(obj, backend_file)
@@ -800,7 +770,6 @@ class RecursiveMakeBackend(MakeBackend):
             # on other directories in the tree, so putting them first here will
             # start them earlier in the build.
             rust_roots = sorted(r for r in roots if r in self._rust_targets)
-            rust_libs = sorted(r for r in roots if r in self._rust_lib_targets)
             if category == "compile" and rust_roots:
                 rust_rule = root_deps_mk.create_rule(["recurse_rust"])
                 rust_rule.add_dependencies(rust_roots)
@@ -812,7 +781,7 @@ class RecursiveMakeBackend(MakeBackend):
                 # builds.
                 for prior_target, target in pairwise(
                     sorted(
-                        [t for t in rust_libs], key=lambda t: t != self._gkrust_target
+                        [t for t in rust_roots], key=lambda t: t != self._gkrust_target
                     )
                 ):
                     r = root_deps_mk.create_rule([target])
@@ -986,10 +955,7 @@ class RecursiveMakeBackend(MakeBackend):
                     # topobjdir is handled separatedly, don't do anything for
                     # it.
                     if bf.relobjdir:
-                        for tier in (
-                            "export",
-                            "libs",
-                        ):
+                        for tier in ("export", "libs"):
                             self._no_skip[tier].add(bf.relobjdir)
                 else:
                     self.log(
@@ -1009,9 +975,9 @@ class RecursiveMakeBackend(MakeBackend):
                 with io.open(obj.output_path, encoding="utf-8") as fh:
                     content = fh.read()
                     # Directories with a Makefile containing a tools target, or
-                    # XPI_PKGNAME or INSTALL_EXTENSION_ID can't be skipped and
-                    # must run during the 'tools' tier.
-                    for t in ("XPI_PKGNAME", "INSTALL_EXTENSION_ID", "tools"):
+                    # XPI_PKGNAME can't be skipped and must run during the
+                    # 'tools' tier.
+                    for t in ("XPI_PKGNAME", "tools"):
                         if t not in content:
                             continue
                         if t == "tools" and not re.search(
@@ -1079,6 +1045,7 @@ class RecursiveMakeBackend(MakeBackend):
 
         suffix_map = {
             ".c": "UNIFIED_CSRCS",
+            ".m": "UNIFIED_CMSRCS",
             ".mm": "UNIFIED_CMMSRCS",
             ".cpp": "UNIFIED_CPPSRCS",
         }
@@ -1209,8 +1176,7 @@ class RecursiveMakeBackend(MakeBackend):
         self._create_makefile(
             obj,
             extra=dict(
-                xpidl_rules=rules.getvalue(),
-                xpidl_modules=" ".join(xpt_modules),
+                xpidl_rules=rules.getvalue(), xpidl_modules=" ".join(xpt_modules)
             ),
         )
 
@@ -1230,8 +1196,9 @@ class RecursiveMakeBackend(MakeBackend):
         self, obj, backend_file, target_variable, target_cargo_variable
     ):
         backend_file.write_once("CARGO_FILE := %s\n" % obj.cargo_file)
-        backend_file.write_once("CARGO_TARGET_DIR := .\n")
-        backend_file.write("%s += %s\n" % (target_variable, obj.location))
+        target_dir = mozpath.normpath(backend_file.environment.topobjdir)
+        backend_file.write_once("CARGO_TARGET_DIR := %s\n" % target_dir)
+        backend_file.write("%s += $(DEPTH)/%s\n" % (target_variable, obj.location))
         backend_file.write("%s += %s\n" % (target_cargo_variable, obj.name))
 
     def _process_rust_program(self, obj, backend_file):
@@ -1391,7 +1358,7 @@ class RecursiveMakeBackend(MakeBackend):
             backend_file.write("NO_EXPAND_LIBS := 1\n")
 
     def _process_sandboxed_wasm_library(self, libdef, backend_file):
-        backend_file.write("WASM_LIBRARY := %s\n" % libdef.lib_name)
+        backend_file.write("WASM_ARCHIVE := %s\n" % libdef.basename)
 
     def _process_rust_library(self, libdef, backend_file):
         backend_file.write_once(
@@ -1461,6 +1428,9 @@ class RecursiveMakeBackend(MakeBackend):
             backend_file.write_once("%s: %s\n" % (obj_target, list_file_path))
             backend_file.write("%s: %s\n" % (obj_target, objs_ref))
 
+        if getattr(obj, "symbols_file", None):
+            backend_file.write_once("%s: %s\n" % (obj_target, obj.symbols_file))
+
         for lib in shared_libs:
             assert obj.KIND != "host" and obj.KIND != "wasm"
             backend_file.write_once(
@@ -1524,13 +1494,7 @@ class RecursiveMakeBackend(MakeBackend):
     def _process_final_target_files(self, obj, files, backend_file):
         target = obj.install_target
         path = mozpath.basedir(
-            target,
-            (
-                "dist/bin",
-                "dist/xpi-stage",
-                "_tests",
-                "dist/include",
-            ),
+            target, ("dist/bin", "dist/xpi-stage", "_tests", "dist/include")
         )
         if not path:
             raise Exception("Cannot install to " + target)
@@ -1746,13 +1710,7 @@ class RecursiveMakeBackend(MakeBackend):
     class Substitution(object):
         """BaseConfigSubstitution-like class for use with _create_makefile."""
 
-        __slots__ = (
-            "input_path",
-            "output_path",
-            "topsrcdir",
-            "topobjdir",
-            "config",
-        )
+        __slots__ = ("input_path", "output_path", "topsrcdir", "topobjdir", "config")
 
     def _create_makefile(self, obj, stub=False, extra=None):
         """Creates the given makefile. Makefiles are treated the same as
@@ -1804,7 +1762,6 @@ class RecursiveMakeBackend(MakeBackend):
         sorted_ipdl_sources,
         sorted_nonstatic_ipdl_sources,
         sorted_static_ipdl_sources,
-        unified_ipdl_cppsrcs_mapping,
     ):
         # Write out a master list of all IPDL source files.
         mk = Makefile()
@@ -1829,10 +1786,6 @@ class RecursiveMakeBackend(MakeBackend):
                 " ".join(sorted_nonstatic_ipdl_basenames),
                 " ".join(sorted_static_ipdl_sources),
             )
-        )
-
-        self._add_unified_build_rules(
-            mk, unified_ipdl_cppsrcs_mapping, unified_files_makefile_variable="CPPSRCS"
         )
 
         # Preprocessed ipdl files are generated in ipdl_dir.

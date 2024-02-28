@@ -42,7 +42,7 @@ newsgroups-label = 新聞群組
 newsgroups-description = { -brand-short-name } 讓您可以連結到任何新聞群組。
 
 import-title = 從另一套程式匯入…
-import-paragraph = { -brand-short-name } 讓您可以從其他程式匯入郵件訊息、通訊錄項目、消息來源訂閱、偏好設定以及來自其他郵件程式的篩選規則與常見格式的通訊錄。
+import-paragraph2 = { -brand-short-name } 讓您可以從其他程式匯入郵件訊息、通訊錄項目、消息來源訂閱、設定以及來自其他郵件程式的篩選規則與常見格式的通訊錄。
 
 import-label = 匯入
     .aria-label = 匯入其他程式的資料

@@ -2,29 +2,22 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-dock-options-window-dialog =
-    .title = Appikon beállításai
-    .style = width: 35em;
-
+dock-options-window-dialog2 =
+    .title = Alkalmazásikon beállításai
+dock-options-dialog-title = Alkalmazásikon beállításai
 dock-options-show-badge =
     .label = Jelvény ikon megjelenítése
     .accesskey = J
-
 bounce-system-dock-icon =
-    .label = Az appikon animálása új üzenet érkezésekor
+    .label = Az alkalmazásikon animálása új üzenet érkezésekor
     .accesskey = a
-
-dock-icon-legend = Appikon megjelölése
-
+dock-icon-legend = Alkalmazásikon megjelölése
 dock-icon-show-label =
-    .value = Appikon megjelölése ezzel:
-
+    .value = Alkalmazásikon megjelölése ezzel:
 count-unread-messages-radio =
     .label = Olvasatlan üzenetek száma
     .accesskey = O
-
 count-new-messages-radio =
     .label = Új üzenetek száma
     .accesskey = n
-
-notification-settings-info = A kitűzőt a Rendszerbeállítások Értesítés lapján tudja letiltani.
+notification-settings-info2 = A kitűzőt a Rendszerbeállítások Értesítés lapján tudja letiltani.

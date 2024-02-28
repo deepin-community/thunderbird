@@ -2,13 +2,13 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-var { Services } = ChromeUtils.import("resource:///modules/imServices.jsm");
+var { IMServices } = ChromeUtils.importESModule(
+  "resource:///modules/IMServices.sys.mjs"
+);
 // We don't load the command service via Services as we want to access
 // _findCommands in order to avoid having to intercept command execution.
-var imCommands = {};
-Services.scriptloader.loadSubScript(
-  "resource:///modules/imCommands.jsm",
-  imCommands
+var { CommandsService } = ChromeUtils.importESModule(
+  "resource:///modules/imCommands.sys.mjs"
 );
 
 var kPrplId = "green";
@@ -48,7 +48,7 @@ fakeCommand.prototype = {
 };
 
 function run_test() {
-  let cmdserv = new imCommands.CommandsService();
+  let cmdserv = new CommandsService();
   cmdserv.initCommands();
 
   // Some commands providing multiple possible completions.

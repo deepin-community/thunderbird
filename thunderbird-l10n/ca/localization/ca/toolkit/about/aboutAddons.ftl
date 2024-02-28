@@ -6,9 +6,16 @@ addons-page-title = Gestor de complements
 search-header =
     .placeholder = Cerca a addons.mozilla.org
     .searchbuttonlabel = Cerca
-search-header-shortcut =
-    .key = f
+
+## Variables
+##   $domain - Domain name where add-ons are available (e.g. addons.mozilla.org)
+
 list-empty-get-extensions-message = Obteniu més extensions i temes a <a data-l10n-name="get-extensions">{ $domain }</a>
+list-empty-get-dictionaries-message = Obteniu més diccionaris a <a data-l10n-name="get-extensions">{ $domain }</a>
+list-empty-get-language-packs-message = Obteniu més paquets d’idioma a <a data-l10n-name="get-extensions">{ $domain }</a>
+
+##
+
 list-empty-installed =
     .value = No teniu instal·lat cap complement d'aquest tipus
 list-empty-available-updates =
@@ -33,6 +40,8 @@ detail-version =
     .label = Versió
 detail-last-updated =
     .label = Darrera actualització
+addon-detail-description-expand = Mostra'n més
+addon-detail-description-collapse = Mostra'n menys
 detail-contributions-description = El desenvolupador del complement us demana que l'ajudeu a continuar amb el seu desenvolupament fent una donació.
 detail-contributions-button = Col·labora-hi
     .title = Col·labora en el desenvolupament del complement
@@ -132,16 +141,32 @@ addon-category-available-updates-title =
 addon-category-recent-updates = Actualitzacions recents
 addon-category-recent-updates-title =
     .title = Actualitzacions recents
+addon-category-sitepermission = Permisos dels llocs
+addon-category-sitepermission-title =
+    .title = Permisos dels llocs
+# String displayed in about:addons in the Site Permissions section
+# Variables:
+#  $host (string) - DNS host name for which the webextension enables permissions
+addon-sitepermission-host = Permisos del lloc per a { $host }
 
 ## These are global warnings
 
 extensions-warning-safe-mode = El mode segur ha inhabilitat tots els complements.
 extensions-warning-check-compatibility = La comprovació de compatibilitat dels complements no està habilitada. Pot ser que tingueu complements incompatibles.
+extensions-warning-safe-mode2 =
+    .message = El mode segur ha inhabilitat tots els complements.
+extensions-warning-check-compatibility2 =
+    .message = La comprovació de compatibilitat dels complements no està habilitada. Pot ser que tingueu complements incompatibles.
 extensions-warning-check-compatibility-button = Habilita
     .title = Habilita la comprovació de compatibilitat dels complements
 extensions-warning-update-security = La comprovació de seguretat dels complements no està habilitada. Les actualitzacions podrien posar-vos en risc.
+extensions-warning-update-security2 =
+    .message = La comprovació de seguretat dels complements no està habilitada. Les actualitzacions podrien posar-vos en risc.
 extensions-warning-update-security-button = Habilita
     .title = Habilita la comprovació de seguretat dels complements
+extensions-warning-imported-addons2 =
+    .message = Finalitzeu la instal·lació de les extensions que s'han importat al { -brand-short-name }.
+extensions-warning-imported-addons-button = Instal·la les extensions
 
 ## Strings connected to add-on updates
 
@@ -206,10 +231,17 @@ shortcuts-duplicate = Drecera duplicada
 # Variables:
 #   $shortcut (string) - Shortcut string for the add-on
 shortcuts-duplicate-warning-message = { $shortcut } ja s'utilitza com a drecera en més d’un cas. Les dreceres duplicades poden causar un comportament inesperat.
+# String displayed when a keyboard shortcut is already assigned to more than one add-on
+# Variables:
+#   $shortcut (string) - Shortcut string for the add-on
+shortcuts-duplicate-warning-message2 =
+    .message = { $shortcut } ja s'utilitza com a drecera en més d’un cas. Les dreceres duplicades poden causar un comportament inesperat.
 # String displayed when a keyboard shortcut is already used by another add-on
 # Variables:
 #   $addon (string) - Name of the add-on
 shortcuts-exists = Ja s'utilitza en { $addon }
+# Variables:
+#   $numberToShow (number) - Number of other elements available to show
 shortcuts-card-expand-button =
     { $numberToShow ->
         [one] Mostra'n { $numberToShow } més
@@ -228,6 +260,11 @@ discopane-intro = Les extensions i els temes són com les aplicacions per al nav
 discopane-notice-recommendations =
     Algunes d’aquestes recomanacions són personalitzades. Es basen en altres
     extensions que heu instal·lat, preferències del perfil i estadístiques d’ús.
+# Notice to make user aware that the recommendations are personalized.
+discopane-notice-recommendations2 =
+    .message =
+        Algunes d’aquestes recomanacions són personalitzades. Es basen en altres
+        extensions que heu instal·lat, preferències del perfil i estadístiques d’ús.
 discopane-notice-learn-more = Més informació
 privacy-policy = Política de privadesa
 # Refers to the author of an add-on, shown below the name of the add-on.
@@ -273,15 +310,15 @@ permissions-addon-button = Permisos
 extension-enabled-heading = Activades
 extension-disabled-heading = Desactivades
 theme-enabled-heading = Activat
-theme-disabled-heading = Desactivats
-theme-monochromatic-heading = Combinació de colors
-theme-monochromatic-subheading = Combinacions de colors vibrants del { -brand-product-name }. Disponibles durant un temps limitat.
+theme-disabled-heading2 = Temes desats
 plugin-enabled-heading = Activats
 plugin-disabled-heading = Desactivats
 dictionary-enabled-heading = Activats
 dictionary-disabled-heading = Desactivats
 locale-enabled-heading = Activat
 locale-disabled-heading = Desactivats
+sitepermission-enabled-heading = Activats
+sitepermission-disabled-heading = Desactivats
 always-activate-button = Activa'l sempre
 never-activate-button = No l'activis mai
 addon-detail-author-label = Autor
@@ -291,6 +328,9 @@ addon-detail-homepage-label = Pàgina d'inici
 addon-detail-rating-label = Valoració
 # Message for add-ons with a staged pending update.
 install-postponed-message = Aquesta extensió s'actualitzarà en reiniciar el { -brand-short-name }.
+# Message for add-ons with a staged pending update.
+install-postponed-message2 =
+    .message = Aquesta extensió s'actualitzarà en reiniciar el { -brand-short-name }.
 install-postponed-button = Actualitza ara
 # The average rating that the add-on has received.
 # Variables:
@@ -315,6 +355,10 @@ addon-detail-reviews-link =
 # Variables:
 #   $addon (string) - Name of the add-on
 pending-uninstall-description = <span data-l10n-name="addon-name">{ $addon }</span> s'ha eliminat.
+# Variables:
+#   $addon (string) - Name of the add-on
+pending-uninstall-description2 =
+    .message = { $addon } s'ha eliminat.
 pending-uninstall-undo-button = Desfés
 addon-detail-updates-label = Permet actualitzacions automàtiques
 addon-detail-updates-radio-default = Per defecte
@@ -322,6 +366,10 @@ addon-detail-updates-radio-on = Sí
 addon-detail-updates-radio-off = No
 addon-detail-update-check-label = Cerca actualitzacions
 install-update-button = Actualitza
+# aria-label associated to the updates row to help screen readers to announce the group
+# of input controls being entered.
+addon-detail-group-label-updates =
+    .aria-label = { addon-detail-updates-label }
 # This is the tooltip text for the private browsing badge in about:addons. The
 # badge is the private browsing icon included next to the extension's name.
 addon-badge-private-browsing-allowed2 =
@@ -330,6 +378,24 @@ addon-badge-private-browsing-allowed2 =
 addon-detail-private-browsing-help = Si ho permeteu, l'extensió tindrà accés a la vostra activitat a Internet encara que utilitzeu la navegació privada. <a data-l10n-name="learn-more">Més informació</a>
 addon-detail-private-browsing-allow = Permet
 addon-detail-private-browsing-disallow = No ho permetis
+# aria-label associated to the private browsing row to help screen readers to announce the group
+# of input controls being entered.
+addon-detail-group-label-private-browsing =
+    .aria-label = { detail-private-browsing-label }
+
+## "sites with restrictions" (internally called "quarantined") are special domains
+## where add-ons are normally blocked for security reasons.
+
+# Used as a description for the option to allow or block an add-on on quarantined domains.
+addon-detail-quarantined-domains-label = Executa en llocs amb restriccions
+# Used as help text part of the quarantined domains UI controls row.
+addon-detail-quarantined-domains-help = Si ho permeteu, l'extensió tindrà accés als llocs restringits per { -vendor-short-name }. Permeteu-ho només si confieu en aquesta extensió.
+# Used as label and tooltip text on the radio inputs associated to the quarantined domains UI controls.
+addon-detail-quarantined-domains-allow = Permet
+addon-detail-quarantined-domains-disallow = No ho permetis
+# aria-label associated to the quarantined domains exempt row to help screen readers to announce the group.
+addon-detail-group-label-quarantined-domains =
+    .aria-label = { addon-detail-quarantined-domains-label }
 
 ## This is the tooltip text for the recommended badges for an extension in about:addons. The
 ## badge is a small icon displayed next to an extension when it is recommended on AMO.
@@ -358,6 +424,9 @@ addon-permissions-optional = Permisos opcionals per a les funcions addicionals:
 addon-permissions-learnmore = Més informació sobre els permisos
 recommended-extensions-heading = Extensions recomanades
 recommended-themes-heading = Temes recomanats
+# Variables:
+#   $hostname (string) - Host where the permissions are granted
+addon-sitepermissions-required = Atorga les capacitats següents a <span data-l10n-name="hostname">{ $hostname }</span>:
 # A recommendation for the Firefox Color theme shown at the bottom of the theme
 # list view. The "Firefox Color" name itself should not be translated.
 recommended-theme-1 = Us sentiu creatiu? <a data-l10n-name="link">Creeu el vostre propi tema amb el Firefox Color.</a>
@@ -370,6 +439,7 @@ plugin-heading = Gestioneu els connectors
 dictionary-heading = Gestioneu els diccionaris
 locale-heading = Gestioneu les llengües
 updates-heading = Gestioneu les actualitzacions
+sitepermission-heading = Gestioneu els permisos dels llocs
 discover-heading = Personalitzeu el { -brand-short-name }
 shortcuts-heading = Gestioneu les dreceres de les extensions
 default-heading-search-label = Cerca més complements
@@ -377,3 +447,44 @@ addons-heading-search-input =
     .placeholder = Cerca a addons.mozilla.org
 addon-page-options-button =
     .title = Eines per a tots els complements
+
+## Detail notifications
+## Variables:
+##   $name (string) - Name of the add-on.
+
+# Variables:
+#   $version (string) - Application version.
+details-notification-incompatible = { $name } no és compatible amb el { -brand-short-name } { $version }.
+# Variables:
+#   $version (string) - Application version.
+details-notification-incompatible2 =
+    .message = { $name } no és compatible amb el { -brand-short-name } { $version }.
+details-notification-incompatible-link = Més informació
+details-notification-unsigned-and-disabled = «{ $name }» no s'ha pogut verificar per al seu ús al { -brand-short-name } i s'ha inhabilitat.
+details-notification-unsigned-and-disabled2 =
+    .message = «{ $name }» no s'ha pogut verificar per al seu ús al { -brand-short-name } i s'ha inhabilitat.
+details-notification-unsigned-and-disabled-link = Més informació
+details-notification-unsigned = «{ $name }» no s'ha pogut verificar per al seu ús al { -brand-short-name }. Aneu amb compte.
+details-notification-unsigned2 =
+    .message = «{ $name }» no s'ha pogut verificar per al seu ús al { -brand-short-name }. Aneu amb compte.
+details-notification-unsigned-link = Més informació
+details-notification-blocked = S'ha inhabilitat { $name } per motius de seguretat o d'estabilitat.
+details-notification-blocked2 =
+    .message = S'ha inhabilitat { $name } per motius de seguretat o d'estabilitat.
+details-notification-blocked-link = Més informació
+details-notification-softblocked = «{ $name }» pot causar problemes de seguretat o d'estabilitat.
+details-notification-softblocked2 =
+    .message = «{ $name }» pot causar problemes de seguretat o d'estabilitat.
+details-notification-softblocked-link = Més informació
+details-notification-gmp-pending = «{ $name }» s'instal·larà aviat.
+details-notification-gmp-pending2 =
+    .message = «{ $name }» s'instal·larà aviat.
+
+## Gecko Media Plugins (GMPs)
+
+plugins-gmp-license-info = Informació de la llicència
+plugins-gmp-privacy-info = Informació de privadesa
+plugins-openh264-name = Còdec de vídeo OpenH264 proporcionat per Cisco Systems, Inc.
+plugins-openh264-description = Mozilla instal·la automàticament aquest connector per complir l'especificació WebRTC i per permetre les trucades WebRTC amb dispositius que necessiten el còdec de vídeo H.264. Visiteu http://www.openh264.org/ per veure el codi font del còdec i per obtenir més informació de la implementació.
+plugins-widevine-name = Mòdul de desxifratge de contingut Widevine proporcionat per Google Inc.
+plugins-widevine-description = Aquest complement permet la reproducció de contingut multimèdia xifrat d'acord amb l'especificació «Encrypted Media Extensions» (extensions de contingut multimèdia xifrat). Habitualment, els llocs web utilitzen contingut multimèdia xifrat per protegir-se contra la còpia de contingut prèmium. Visiteu https://www.w3.org/TR/encrypted-media/ per obtenir més informació sobre les extensions de contingut multimèdia xifrat.

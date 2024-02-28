@@ -24,23 +24,12 @@
 /* states of the machine
  */
 typedef enum _MailboxStatesEnum {
+  MAILBOX_UNINITIALIZED,
   MAILBOX_READ_FOLDER,
-  MAILBOX_FINISH_OPEN_FOLDER,
-  MAILBOX_OPEN_MESSAGE,
-  MAILBOX_OPEN_STREAM,
   MAILBOX_READ_MESSAGE,
-  MAILBOX_COMPRESS_FOLDER,
-  MAILBOX_FINISH_COMPRESS_FOLDER,
-  MAILBOX_BACKGROUND,
-  MAILBOX_NULL,
-  MAILBOX_NULL2,
-  MAILBOX_DELIVER_QUEUED,
-  MAILBOX_FINISH_DELIVER_QUEUED,
   MAILBOX_DONE,
   MAILBOX_ERROR_DONE,
   MAILBOX_FREE,
-  MAILBOX_COPY_MESSAGES,
-  MAILBOX_FINISH_COPY_MESSAGES
 } MailboxStatesEnum;
 
 class nsMsgLineStreamBuffer;
@@ -70,7 +59,6 @@ class nsMailboxProtocol : public nsMsgProtocol {
       m_runningUrl;  // the nsIMailboxURL that is currently running
   nsMailboxAction m_mailboxAction;  // current mailbox action associated with
                                     // this connection...
-  uint64_t m_msgOffset;
   // Event sink handles
   nsCOMPtr<nsIStreamListener> m_mailboxParser;
 
@@ -100,7 +88,6 @@ class nsMailboxProtocol : public nsMsgProtocol {
                                         uint32_t length) override;
   virtual nsresult CloseSocket() override;
 
-  nsresult SetupMessageExtraction();
   nsresult OpenMultipleMsgTransport(uint64_t offset, int64_t size);
   bool RunningMultipleMsgUrl();
 

@@ -11,19 +11,17 @@
  *        this may change in the future.
  */
 
-const { AddonManager } = ChromeUtils.import(
-  "resource://gre/modules/AddonManager.jsm"
+const { AddonManager } = ChromeUtils.importESModule(
+  "resource://gre/modules/AddonManager.sys.mjs"
 );
 
-const { RemoteSettings } = ChromeUtils.import(
-  "resource://services-settings/remote-settings.js"
+const { RemoteSettings } = ChromeUtils.importESModule(
+  "resource://services-settings/remote-settings.sys.mjs"
 );
 
-const { TelemetryController } = ChromeUtils.import(
-  "resource://gre/modules/TelemetryController.jsm"
+const { TelemetryController } = ChromeUtils.importESModule(
+  "resource://gre/modules/TelemetryController.sys.mjs"
 );
-
-const { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 
 let parserUtils = Cc["@mozilla.org/parserutils;1"].getService(
   Ci.nsIParserUtils
@@ -402,10 +400,7 @@ async function updateStudy(studyAddonId) {
 // equivalent to what we use for Telemetry IDs
 // https://searchfox.org/mozilla-central/rev/9193635dca8cfdcb68f114306194ffc860456044/toolkit/components/telemetry/app/TelemetryUtils.jsm#222
 function generateUUID() {
-  let str = Cc["@mozilla.org/uuid-generator;1"]
-    .getService(Ci.nsIUUIDGenerator)
-    .generateUUID()
-    .toString();
+  let str = Services.uuid.generateUUID().toString();
   return str.substring(1, str.length - 1);
 }
 
@@ -482,9 +477,8 @@ async function setup(cachedAddons) {
               console.error(
                 `Could not install default add-on ${cachedAddon.addon_id}`
               );
-              const availableStudies = document.getElementById(
-                "available-studies"
-              );
+              const availableStudies =
+                document.getElementById("available-studies");
               document.l10n.setAttributes(
                 availableStudies,
                 "ion-no-current-studies"

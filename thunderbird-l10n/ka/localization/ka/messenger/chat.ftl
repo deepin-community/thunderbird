@@ -19,3 +19,29 @@ chat-participant-moderator-role-icon2 =
 
 chat-participant-voiced-role-icon2 =
     .alt = მონაწილეს შეუძლია შეტყობინებების დატოვება
+
+chat-verify-identity =
+    .label = ვინაობის დამოწმება
+    .accesskey = წ
+
+chat-identity-verified =
+    .label = ვინაობა უკვე დამოწმებულია
+
+chat-buddy-identity-status = დაშიფვრის სანდოობა
+chat-buddy-identity-status-verified = დამოწმებულია
+chat-buddy-identity-status-unverified = დაუმოწმებელია
+
+## Conversation invite notification box
+
+# This string appears in a notification bar at the top of the Contacts window
+# when someone invited the user to a multi user chat conversation, to request
+# the user to confirm they want to join the chat.
+# Variables:
+#   $conversation (String) - Name of the conversation the user is invited to.
+chat-conv-invite-label = მიწვეული ხართ სასაუბროში, { $conversation }
+chat-conv-invite-accept =
+    .label = დათანხმება
+    .accesskey = ხ
+chat-conv-invite-deny =
+    .label = უარყოფა
+    .accesskey = უ

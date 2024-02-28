@@ -1,12 +1,9 @@
-/* -*- Mode: Java; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 /* import-globals-from am-prefs.js */
 /* import-globals-from amUtils.js */
-
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 
 function onLoad() {
   parent.onPanelLoaded("am-addressing.xhtml");

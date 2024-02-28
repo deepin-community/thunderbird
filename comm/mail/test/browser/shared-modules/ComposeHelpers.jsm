@@ -7,6 +7,8 @@
 const EXPORTED_SYMBOLS = [
   "add_attachments",
   "add_cloud_attachments",
+  "rename_selected_cloud_attachment",
+  "convert_selected_to_cloud_attachment",
   "assert_previous_text",
   "async_wait_for_compose_window",
   "clear_recipients",
@@ -24,6 +26,7 @@ const EXPORTED_SYMBOLS = [
   "open_compose_with_reply",
   "open_compose_with_reply_to_all",
   "open_compose_with_reply_to_list",
+  "save_compose_message",
   "setup_msg_contents",
   "type_in_composer",
   "wait_for_compose_window",
@@ -32,7 +35,7 @@ const EXPORTED_SYMBOLS = [
 
 var utils = ChromeUtils.import("resource://testing-common/mozmill/utils.jsm");
 
-var folderDisplayHelper = ChromeUtils.import(
+var { get_about_message, mc } = ChromeUtils.import(
   "resource://testing-common/mozmill/FolderDisplayHelpers.jsm"
 );
 var { gMockCloudfileManager } = ChromeUtils.import(
@@ -47,18 +50,21 @@ var { get_notification } = ChromeUtils.import(
 var EventUtils = ChromeUtils.import(
   "resource://testing-common/mozmill/EventUtils.jsm"
 );
-var { TestUtils } = ChromeUtils.import(
-  "resource://testing-common/TestUtils.jsm"
+var { Assert } = ChromeUtils.importESModule(
+  "resource://testing-common/Assert.sys.mjs"
 );
-var { BrowserTestUtils } = ChromeUtils.import(
-  "resource://testing-common/BrowserTestUtils.jsm"
+var { BrowserTestUtils } = ChromeUtils.importESModule(
+  "resource://testing-common/BrowserTestUtils.sys.mjs"
+);
+var { TestUtils } = ChromeUtils.importESModule(
+  "resource://testing-common/TestUtils.sys.mjs"
 );
 
-var { Assert } = ChromeUtils.import("resource://testing-common/Assert.jsm");
+var { MailServices } = ChromeUtils.import(
+  "resource:///modules/MailServices.jsm"
+);
 
 var kTextNodeType = 3;
-
-var mc = folderDisplayHelper.mc;
 
 /**
  * Opens the compose window by starting a new message
@@ -66,8 +72,8 @@ var mc = folderDisplayHelper.mc;
  * @param aController the controller for the mail:3pane from which to spawn
  *                    the compose window.  If left blank, defaults to mc.
  *
- * @return The loaded window of type "msgcompose" wrapped in a MozmillController
- *         that is augmented using augment_controller.
+ * @returns {MozmillController} The loaded window of type "msgcompose"
+ *   wrapped in a MozmillController.
  *
  */
 function open_compose_new_mail(aController) {
@@ -89,8 +95,8 @@ function open_compose_new_mail(aController) {
  * Opens the compose window by replying to a selected message and waits for it
  * to load.
  *
- * @return The loaded window of type "msgcompose" wrapped in a MozmillController
- *         that is augmented using augment_controller.
+ * @returns {MozmillController} The loaded window of type "msgcompose"
+ *   wrapped in a MozmillController.
  */
 function open_compose_with_reply(aController) {
   if (aController === undefined) {
@@ -111,8 +117,8 @@ function open_compose_with_reply(aController) {
  * Opens the compose window by replying to all for a selected message and waits
  * for it to load.
  *
- * @return The loaded window of type "msgcompose" wrapped in a MozmillController
- *         that is augmented using augment_controller.
+ * @returns {MozmillController} The loaded window of type "msgcompose"
+ *   wrapped in a MozmillController.
  */
 function open_compose_with_reply_to_all(aController) {
   if (aController === undefined) {
@@ -133,8 +139,8 @@ function open_compose_with_reply_to_all(aController) {
  * Opens the compose window by replying to list for a selected message and waits for it
  * to load.
  *
- * @return The loaded window of type "msgcompose" wrapped in a MozmillController
- *         that is augmented using augment_controller.
+ * @returns {MozmillController} The loaded window of type "msgcompose"
+ *   wrapped in a MozmillController.
  */
 function open_compose_with_reply_to_list(aController) {
   if (aController === undefined) {
@@ -155,8 +161,8 @@ function open_compose_with_reply_to_list(aController) {
  * Opens the compose window by forwarding the selected messages as attachments
  * and waits for it to load.
  *
- * @return The loaded window of type "msgcompose" wrapped in a MozmillController
- *         that is augmented using augment_controller.
+ * @returns {MozmillController} The loaded window of type "msgcompose"
+ *   wrapped in a MozmillController.
  */
 function open_compose_with_forward_as_attachments(aController) {
   if (aController === undefined) {
@@ -164,7 +170,7 @@ function open_compose_with_forward_as_attachments(aController) {
   }
 
   windowHelper.plan_for_new_window("msgcompose");
-  aController.click(aController.e("menu_forwardAsAttachment"));
+  aController.window.goDoCommand("cmd_forwardAttachment");
 
   return wait_for_compose_window();
 }
@@ -173,8 +179,8 @@ function open_compose_with_forward_as_attachments(aController) {
  * Opens the compose window by editing the selected message as new
  * and waits for it to load.
  *
- * @return The loaded window of type "msgcompose" wrapped in a MozmillController
- *         that is augmented using augment_controller.
+ * @returns {MozmillController} The loaded window of type "msgcompose"
+ *   wrapped in a MozmillController.
  */
 function open_compose_with_edit_as_new(aController) {
   if (aController === undefined) {
@@ -182,7 +188,7 @@ function open_compose_with_edit_as_new(aController) {
   }
 
   windowHelper.plan_for_new_window("msgcompose");
-  aController.click(aController.e("menu_editMsgAsNew"));
+  aController.window.goDoCommand("cmd_editAsNew");
 
   return wait_for_compose_window();
 }
@@ -191,8 +197,8 @@ function open_compose_with_edit_as_new(aController) {
  * Opens the compose window by forwarding the selected message and waits for it
  * to load.
  *
- * @return The loaded window of type "msgcompose" wrapped in a MozmillController
- *         that is augmented using augment_controller.
+ * @returns {MozmillController} The loaded window of type "msgcompose"
+ *   wrapped in a MozmillController.
  */
 function open_compose_with_forward(aController) {
   if (aController === undefined) {
@@ -213,26 +219,29 @@ function open_compose_with_forward(aController) {
  * Open draft editing by clicking the "Edit" on the draft notification bar
  * of the selected message.
  *
- * @return The loaded window of type "msgcompose" wrapped in a MozmillController
- *         that is augmented using augment_controller.
+ * @returns {MozmillController} The loaded window of type "msgcompose"
+ *   wrapped in a MozmillController.
  */
-function open_compose_from_draft(aController) {
-  if (aController === undefined) {
-    aController = mc;
-  }
-
+function open_compose_from_draft(win = get_about_message()) {
   windowHelper.plan_for_new_window("msgcompose");
-  let box = get_notification(
-    aController,
-    "mail-notification-top",
-    "draftMsgContent"
-  );
+  let box = get_notification(win, "mail-notification-top", "draftMsgContent");
   EventUtils.synthesizeMouseAtCenter(
     box.buttonContainer.firstElementChild,
     {},
-    aController.window
+    win
   );
   return wait_for_compose_window();
+}
+
+/**
+ * Saves the message being composed and waits for the save to complete.
+ *
+ * @param {Window} win - A messengercompose.xhtml window.
+ */
+async function save_compose_message(win) {
+  let savePromise = BrowserTestUtils.waitForEvent(win, "aftersave");
+  win.document.querySelector("#button-save").click();
+  await savePromise;
 }
 
 /**
@@ -253,7 +262,7 @@ function close_compose_window(aController, aShouldPrompt) {
   if (aShouldPrompt) {
     windowHelper.plan_for_modal_dialog(
       "commonDialogWindow",
-      function clickDontSave(controller) {
+      function (controller) {
         controller.window.document
           .querySelector("dialog")
           .getButton("extra1")
@@ -274,8 +283,8 @@ function close_compose_window(aController, aShouldPrompt) {
  * "windowHelper.plan_for_new_window("msgcompose");" and the command to open
  * the compose window itself.
  *
- * @return The loaded window of type "msgcompose" wrapped in a MozmillController
- *         that is augmented using augment_controller.
+ * @returns {MozmillController} The loaded window of type "msgcompose"
+ *   wrapped in a MozmillController.
  */
 async function async_wait_for_compose_window(aController, aPromise) {
   let replyWindow = await aPromise;
@@ -292,46 +301,15 @@ function _wait_for_compose_window(aController, replyWindow) {
     aController = mc;
   }
 
-  let editor = replyWindow.window.document.querySelector("editor");
-
-  if (editor.docShell.busyFlags != Ci.nsIDocShell.BUSY_FLAGS_NONE) {
-    let editorObserver = {
-      editorLoaded: false,
-
-      observe: function eO_observe(aSubject, aTopic, aData) {
-        if (aTopic == "obs_documentCreated") {
-          this.editorLoaded = true;
-        }
-      },
-    };
-
-    editor.commandManager.addCommandObserver(
-      editorObserver,
-      "obs_documentCreated"
-    );
-
-    utils.waitFor(
-      () => editorObserver.editorLoaded,
-      "Timeout waiting for compose window editor to load",
-      10000,
-      100
-    );
-
-    // Let the event queue clear.
-    aController.sleep(0);
-
-    editor.commandManager.removeCommandObserver(
-      editorObserver,
-      "obs_documentCreated"
-    );
-  }
-
-  // Although the above is reasonable, testing has shown that the some elements
-  // need to have a little longer to try and load the initial data.
-  // As I can't see a simpler way at the moment, we'll just have to make it a
-  // sleep :-(
-
-  aController.sleep(1000);
+  utils.waitFor(
+    () => Services.focus.activeWindow == replyWindow.window,
+    "waiting for the compose window to have focus"
+  );
+  utils.waitFor(
+    () => replyWindow.window.composeEditorReady,
+    "waiting for the compose editor to be ready"
+  );
+  utils.sleep(0);
 
   return replyWindow;
 }
@@ -352,15 +330,31 @@ function setup_msg_contents(
   aBody,
   inputID = "toAddrInput"
 ) {
-  let input = aCwc.e(inputID);
-  aCwc.type(input, aAddr);
-  input.focus();
-  EventUtils.synthesizeKey("VK_RETURN", {}, aCwc.window);
-  aCwc.type(aCwc.e("msgSubject"), aSubj);
-  aCwc.type(aCwc.e("content-frame"), aBody);
+  let pillcount = function () {
+    return aCwc.window.document.querySelectorAll("mail-address-pill").length;
+  };
+  let targetCount = pillcount();
+  if (aAddr.trim()) {
+    targetCount += aAddr.split(",").filter(s => s.trim()).length;
+  }
 
-  // Wait 1 second for the pill to be created.
-  aCwc.sleep(1000);
+  let input = aCwc.window.document.getElementById(inputID);
+  utils.sleep(1000);
+  input.focus();
+  EventUtils.sendString(aAddr, aCwc.window);
+  input.focus();
+
+  EventUtils.synthesizeKey("VK_RETURN", {}, aCwc.window);
+  aCwc.window.document.getElementById("msgSubject").focus();
+  EventUtils.sendString(aSubj, aCwc.window);
+  aCwc.window.document.getElementById("messageEditor").focus();
+  EventUtils.sendString(aBody, aCwc.window);
+
+  // Wait for the pill(s) to be created.
+  utils.waitFor(
+    () => pillcount() == targetCount,
+    `Creating pill for: ${aAddr}`
+  );
 }
 
 /**
@@ -374,7 +368,9 @@ function clear_recipients(aController) {
   )) {
     pill.toggleAttribute("selected", true);
   }
-  aController.e("recipientsContainer").removeSelectedPills();
+  aController.window.document
+    .getElementById("recipientsContainer")
+    .removeSelectedPills();
 }
 
 /**
@@ -388,6 +384,7 @@ function get_first_pill(aController) {
 
 /**
  * Create and return an nsIMsgAttachment for the passed URL.
+ *
  * @param aUrl the URL for this attachment (either a file URL or a web URL)
  * @param aSize (optional) the file size of this attachment, in bytes
  */
@@ -409,8 +406,8 @@ function create_msg_attachment(aUrl, aSize) {
  *
  * @param aController  the controller of the composition window in question
  * @param aUrl         the URL for this attachment (either a file URL or a web URL)
- * @param aSize (optional)  the file size of this attachment, in bytes
- * @param aWaitAdded (optional)  True to wait for the attachments to be fully added, false otherwise.
+ * @param aSize (optional) - the file size of this attachment, in bytes
+ * @param aWaitAdded (optional) - True to wait for the attachments to be fully added, false otherwise.
  */
 function add_attachments(aController, aUrls, aSizes, aWaitAdded = true) {
   if (!Array.isArray(aUrls)) {
@@ -433,7 +430,7 @@ function add_attachments(aController, aUrls, aSizes, aWaitAdded = true) {
     attachmentsDone = true;
   }
 
-  let bucket = aController.e("attachmentBucket");
+  let bucket = aController.window.document.getElementById("attachmentBucket");
   if (aWaitAdded) {
     bucket.addEventListener("attachments-added", collectAddedAttachments, {
       once: true,
@@ -441,74 +438,276 @@ function add_attachments(aController, aUrls, aSizes, aWaitAdded = true) {
   }
   aController.window.AddAttachments(attachments);
   if (aWaitAdded) {
-    aController.waitFor(
-      () => attachmentsDone,
-      "Attachments adding didn't finish"
+    utils.waitFor(() => attachmentsDone, "Attachments adding didn't finish");
+  }
+  utils.sleep(0);
+}
+
+/**
+ * Rename the selected cloud (filelink) attachment
+ *
+ * @param aController    The controller of the composition window in question.
+ * @param aName          The requested new name for the attachment.
+ *
+ */
+function rename_selected_cloud_attachment(aController, aName) {
+  let bucket = aController.window.document.getElementById("attachmentBucket");
+  let attachmentRenamed = false;
+  let upload = null;
+  let seenAlert = null;
+
+  function getRenamedUpload(event) {
+    upload = event.target.cloudFileUpload;
+    attachmentRenamed = true;
+  }
+
+  /** @implements {nsIPromptService} */
+  let mockPromptService = {
+    value: "",
+    prompt(window, title, message, rv) {
+      rv.value = this.value;
+      return true;
+    },
+    alert(window, title, message) {
+      seenAlert = { title, message };
+    },
+    QueryInterface: ChromeUtils.generateQI(["nsIPromptService"]),
+  };
+
+  bucket.addEventListener("attachment-renamed", getRenamedUpload, {
+    once: true,
+  });
+
+  let originalPromptService = Services.prompt;
+  Services.prompt = mockPromptService;
+  Services.prompt.value = aName;
+  aController.window.RenameSelectedAttachment();
+
+  utils.waitFor(
+    () => attachmentRenamed || seenAlert,
+    "Couldn't rename attachment"
+  );
+  Services.prompt = originalPromptService;
+
+  utils.sleep(0);
+  if (seenAlert) {
+    return seenAlert;
+  }
+
+  return upload;
+}
+
+/**
+ * Convert the selected attachment to a cloud (filelink) attachment
+ *
+ * @param aController    The controller of the composition window in question.
+ * @param aProvider      The provider account to upload the selected attachment to.
+ * @param aWaitUploaded (optional) - True to wait for the attachments to be uploaded, false otherwise.
+ */
+function convert_selected_to_cloud_attachment(
+  aController,
+  aProvider,
+  aWaitUploaded = true
+) {
+  let bucket = aController.window.document.getElementById("attachmentBucket");
+  let uploads = [];
+  let attachmentsSelected =
+    aController.window.gAttachmentBucket.selectedItems.length;
+  let attachmentsSubmitted = 0;
+  let attachmentsConverted = 0;
+
+  Assert.equal(
+    attachmentsSelected,
+    1,
+    "Exactly one attachment should be scheduled for conversion."
+  );
+
+  function collectConvertingAttachments(event) {
+    let item = event.target;
+    let img = item.querySelector("img.attachmentcell-icon");
+    Assert.equal(
+      img.src,
+      "chrome://global/skin/icons/loading.png",
+      "Icon should be the spinner during conversion."
+    );
+
+    attachmentsSubmitted++;
+    if (attachmentsSubmitted == attachmentsSelected) {
+      bucket.removeEventListener(
+        "attachment-uploading",
+        collectConvertingAttachments
+      );
+      bucket.removeEventListener(
+        "attachment-moving",
+        collectConvertingAttachments
+      );
+    }
+  }
+
+  function collectConvertedAttachment(event) {
+    let item = event.target;
+    let img = item.querySelector("img.attachmentcell-icon");
+    Assert.equal(
+      img.src,
+      item.cloudIcon,
+      "Cloud icon should be used after conversion has finished."
+    );
+
+    attachmentsConverted++;
+    if (attachmentsConverted == attachmentsSelected) {
+      item.removeEventListener(
+        "attachment-uploaded",
+        collectConvertedAttachment
+      );
+      item.removeEventListener("attachment-moved", collectConvertedAttachment);
+    }
+  }
+
+  bucket.addEventListener("attachment-uploading", collectConvertingAttachments);
+  bucket.addEventListener("attachment-moving", collectConvertingAttachments);
+  aController.window.convertSelectedToCloudAttachment(aProvider);
+  utils.waitFor(
+    () => attachmentsSubmitted == attachmentsSelected,
+    "Couldn't start converting all attachments"
+  );
+
+  if (aWaitUploaded) {
+    bucket.addEventListener("attachment-uploaded", collectConvertedAttachment);
+    bucket.addEventListener("attachment-moved", collectConvertedAttachment);
+
+    uploads = gMockCloudfileManager.resolveUploads();
+    utils.waitFor(
+      () => attachmentsConverted == attachmentsSelected,
+      "Attachments uploading didn't finish"
     );
   }
-  aController.sleep(0);
+
+  utils.sleep(0);
+  return uploads;
 }
 
 /**
  * Add a cloud (filelink) attachment to the compose window.
  *
- * @param aController    The controller of the composition window in question.
- * @param aProvider      The provider account to upload to, with files to be uploaded.
- * @param aWaitUploaded (optional)  True to wait for the attachments to be uploaded, false otherwise.
+ * @param aController - The controller of the composition window in question.
+ * @param aProvider - The provider account to upload to, with files to be uploaded.
+ * @param [aWaitUploaded] - True to wait for the attachments to be uploaded,
+ *   false otherwise.
+ * @param [aExpectedAlerts] - The number of expected alert prompts.
  */
-function add_cloud_attachments(aController, aProvider, aWaitUploaded = true) {
-  let bucket = aController.e("attachmentBucket");
+function add_cloud_attachments(
+  aController,
+  aProvider,
+  aWaitUploaded = true,
+  aExpectedAlerts = 0
+) {
+  let bucket = aController.window.document.getElementById("attachmentBucket");
+  let uploads = [];
+  let seenAlerts = [];
 
-  let attachmentsSubmitted = false;
-  function uploadAttachments(event) {
-    attachmentsSubmitted = true;
-    if (aWaitUploaded) {
-      // event.detail contains an array of nsIMsgAttachment objects that were uploaded.
-      attachmentCount = event.detail.length;
-      for (let attachment of event.detail) {
-        let item = bucket.findItemForAttachment(attachment);
-        item.addEventListener(
-          "attachment-uploaded",
-          collectUploadedAttachments,
-          { once: true }
-        );
-      }
+  let attachmentsAdded = 0;
+  let attachmentsSubmitted = 0;
+  let attachmentsUploaded = 0;
+
+  function collectAddedAttachments(event) {
+    attachmentsAdded = event.detail.length;
+    if (!aExpectedAlerts) {
+      bucket.addEventListener(
+        "attachment-uploading",
+        collectUploadingAttachments
+      );
     }
   }
 
-  let attachmentCount = 0;
-  function collectUploadedAttachments(event) {
-    attachmentCount--;
+  function collectUploadingAttachments(event) {
+    let item = event.target;
+    let img = item.querySelector("img.attachmentcell-icon");
+    Assert.equal(
+      img.src,
+      "chrome://global/skin/icons/loading.png",
+      "Icon should be the spinner during upload."
+    );
+
+    attachmentsSubmitted++;
+    if (attachmentsSubmitted == attachmentsAdded) {
+      bucket.removeEventListener(
+        "attachment-uploading",
+        collectUploadingAttachments
+      );
+    }
   }
 
-  bucket.addEventListener("attachments-uploading", uploadAttachments, {
+  function collectUploadedAttachments(event) {
+    let item = event.target;
+    let img = item.querySelector("img.attachmentcell-icon");
+    Assert.equal(
+      img.src,
+      item.cloudIcon,
+      "Cloud icon should be used after upload has finished."
+    );
+
+    attachmentsUploaded++;
+    if (attachmentsUploaded == attachmentsAdded) {
+      bucket.removeEventListener(
+        "attachment-uploaded",
+        collectUploadedAttachments
+      );
+    }
+  }
+
+  /** @implements {nsIPromptService} */
+  let mockPromptService = {
+    alert(window, title, message) {
+      seenAlerts.push({ title, message });
+    },
+    QueryInterface: ChromeUtils.generateQI(["nsIPromptService"]),
+  };
+
+  bucket.addEventListener("attachments-added", collectAddedAttachments, {
     once: true,
   });
+
+  let originalPromptService = Services.prompt;
+  Services.prompt = mockPromptService;
   aController.window.attachToCloudNew(aProvider);
-  aController.waitFor(
-    () => attachmentsSubmitted,
+  utils.waitFor(
+    () =>
+      (!aExpectedAlerts &&
+        attachmentsAdded > 0 &&
+        attachmentsAdded == attachmentsSubmitted) ||
+      (aExpectedAlerts && seenAlerts.length == aExpectedAlerts),
     "Couldn't attach attachments for upload"
   );
+
+  Services.prompt = originalPromptService;
+  if (seenAlerts.length > 0) {
+    return seenAlerts;
+  }
+
   if (aWaitUploaded) {
-    gMockCloudfileManager.resolveUploads();
-    aController.waitFor(
-      () => attachmentCount == 0,
+    bucket.addEventListener("attachment-uploaded", collectUploadedAttachments);
+    uploads = gMockCloudfileManager.resolveUploads();
+    utils.waitFor(
+      () => attachmentsAdded == attachmentsUploaded,
       "Attachments uploading didn't finish"
     );
   }
-  aController.sleep(0);
+  utils.sleep(0);
+  return uploads;
 }
 
 /**
  * Delete an attachment from the compose window
+ *
  * @param aComposeWindow the composition window in question
  * @param aIndex the index of the attachment in the attachment pane
  */
 function delete_attachment(aComposeWindow, aIndex) {
-  let bucket = aComposeWindow.e("attachmentBucket");
+  let bucket =
+    aComposeWindow.window.document.getElementById("attachmentBucket");
   let node = bucket.querySelectorAll("richlistitem.attachmentItem")[aIndex];
 
-  aComposeWindow.click(node);
+  EventUtils.synthesizeMouseAtCenter(node, {}, node.ownerGlobal);
   aComposeWindow.window.RemoveSelectedAttachment();
 }
 
@@ -518,8 +717,8 @@ function delete_attachment(aComposeWindow, aIndex) {
  * @param aController the controller for a compose window.
  */
 function get_compose_body(aController) {
-  let mailBody = aController
-    .e("content-frame")
+  let mailBody = aController.window.document
+    .getElementById("messageEditor")
     .contentDocument.querySelector("body");
   if (!mailBody) {
     throw new Error("Compose body not found!");
@@ -536,9 +735,10 @@ function get_compose_body(aController) {
  */
 function type_in_composer(aController, aText) {
   // If we have any typing to do, let's do it.
-  let frame = aController.e("content-frame");
+  let frame = aController.window.document.getElementById("messageEditor");
   for (let [i, aLine] of aText.entries()) {
-    aController.type(frame, aLine);
+    frame.focus();
+    EventUtils.sendString(aLine, aController.window);
     if (i < aText.length - 1) {
       frame.focus();
       EventUtils.synthesizeKey("VK_RETURN", {}, aController.window);
@@ -596,38 +796,49 @@ function assert_previous_text(aStart, aText) {
  * @param aMsgHdr  nsIMsgDBHdr addressing a message which will be returned as text.
  * @param aCharset Charset to use to decode the message.
  *
- * @return         String with the message source.
+ * @returns String with the message source.
  */
-function get_msg_source(aMsgHdr, aCharset = "") {
+async function get_msg_source(aMsgHdr, aCharset = "") {
   let msgUri = aMsgHdr.folder.getUriForMsg(aMsgHdr);
 
-  let messenger = Cc["@mozilla.org/messenger;1"].createInstance(
-    Ci.nsIMessenger
-  );
-  let streamListener = Cc[
-    "@mozilla.org/network/sync-stream-listener;1"
-  ].createInstance(Ci.nsISyncStreamListener);
-  messenger
-    .messageServiceFromURI(msgUri)
-    .streamMessage(msgUri, streamListener, null, null, false, "", false);
-
-  let sis = Cc["@mozilla.org/scriptableinputstream;1"].createInstance(
-    Ci.nsIScriptableInputStream
-  );
-  sis.init(streamListener.inputStream);
-  const MAX_MESSAGE_LENGTH = 65536;
-  let content = sis.read(MAX_MESSAGE_LENGTH);
-  sis.close();
+  let content = await new Promise((resolve, reject) => {
+    let streamListener = {
+      QueryInterface: ChromeUtils.generateQI(["nsIStreamListener"]),
+      sis: Cc["@mozilla.org/scriptableinputstream;1"].createInstance(
+        Ci.nsIScriptableInputStream
+      ),
+      content: "",
+      onDataAvailable(request, inputStream, offset, count) {
+        this.sis.init(inputStream);
+        this.content += this.sis.read(count);
+      },
+      onStartRequest(request) {},
+      onStopRequest(request, statusCode) {
+        this.sis.close();
+        if (Components.isSuccessCode(statusCode)) {
+          resolve(this.content);
+        } else {
+          reject(new Error(statusCode));
+        }
+      },
+    };
+    MailServices.messageServiceFromURI(msgUri).streamMessage(
+      msgUri,
+      streamListener,
+      null,
+      null,
+      false,
+      "",
+      false
+    );
+  });
 
   if (!aCharset) {
     return content;
   }
 
-  let converter = Cc[
-    "@mozilla.org/intl/scriptableunicodeconverter"
-  ].createInstance(Ci.nsIScriptableUnicodeConverter);
-  converter.charset = aCharset;
-  return converter.ConvertToUnicode(content);
+  let buffer = Uint8Array.from(content, c => c.charCodeAt(0));
+  return new TextDecoder(aCharset).decode(buffer);
 }
 
 /**
@@ -711,7 +922,7 @@ class FormatHelper {
     /** The remove text styling menu item. */
     this.removeStylingMenuItem = this._getById("removeStylesMenuitem");
 
-    this.messageEditor = this._getById("content-frame");
+    this.messageEditor = this._getById("messageEditor");
     /** The Window of the message content. */
     this.messageWindow = this.messageEditor.contentWindow;
     /** The Document of the message content. */
@@ -727,7 +938,7 @@ class FormatHelper {
       ["superscript", { tag: "SUP" }],
       ["subscript", { tag: "SUB" }],
       ["tt", { tag: "TT" }],
-      ["nobreak", { tag: "NOBR" }],
+      // ["nobreak", { tag: "NOBR" }], // Broken after bug 1806330. Why?
       ["em", { tag: "EM", linked: "italic" }],
       ["strong", { tag: "STRONG", linked: "bold" }],
       ["cite", { tag: "CITE", implies: "italic" }],
@@ -766,6 +977,7 @@ class FormatHelper {
      */
     /**
      * Data for the various text styles. Maps from the style name to its data.
+     *
      * @type {Map<string, StyleData>}
      */
     this.styleDataMap = styleDataMap;
@@ -773,6 +985,7 @@ class FormatHelper {
     /**
      * A list of common font families available in Thunderbird. Excludes the
      * Variable Width ("") and Fixed Width ("monospace") fonts.
+     *
      * @type {[string]}
      */
     this.commonFonts = [
@@ -886,10 +1099,13 @@ class FormatHelper {
   async emptyParagraph() {
     await this.selectFirstParagraph();
     await this.deleteSelection();
+    let p = this.messageDocument.body.querySelector("p");
+    Assert.equal(p.textContent, "", "should have emptied p");
   }
 
   /**
    * Tags that correspond to inline styling (in upper case).
+   *
    * @type {[string]}
    */
   static inlineStyleTags = [
@@ -912,6 +1128,7 @@ class FormatHelper {
   ];
   /**
    * Tags that correspond to block scopes (in upper case).
+   *
    * @type {[string]}
    */
   static blockTags = [
@@ -929,7 +1146,7 @@ class FormatHelper {
   /**
    * @param {Node} node - The node to test.
    *
-   * @return {boolean} Whether the node is considered a block.
+   * @returns {boolean} Whether the node is considered a block.
    */
   static isBlock(node) {
     return this.blockTags.includes(node.tagName);
@@ -938,7 +1155,7 @@ class FormatHelper {
   /**
    * @param {Node} node - The node to test.
    *
-   * @return {boolean} Whether the node is considered inline styling.
+   * @returns {boolean} Whether the node is considered inline styling.
    */
   static isInlineStyle(node) {
     return this.inlineStyleTags.includes(node.tagName);
@@ -947,7 +1164,7 @@ class FormatHelper {
   /**
    * @param {Node} node - The node to test.
    *
-   * @return {boolean} Whether the node is considered a font node.
+   * @returns {boolean} Whether the node is considered a font node.
    */
   static isFont(node) {
     return node.tagName === "FONT";
@@ -956,7 +1173,7 @@ class FormatHelper {
   /**
    * @param {Node} node - The node to test.
    *
-   * @return {boolean} Whether the node is considered a break.
+   * @returns {boolean} Whether the node is considered a break.
    */
   static isBreak(node) {
     return node.tagName === "BR";
@@ -984,7 +1201,7 @@ class FormatHelper {
    *
    * @param {Node} node - The node to fetch the first leaf of.
    *
-   * @return {Leaf} - The first leaf below the node.
+   * @returns {Leaf} - The first leaf below the node.
    */
   static firstLeaf(node) {
     while (true) {
@@ -999,7 +1216,7 @@ class FormatHelper {
         break;
       }
     }
-    if (node instanceof Text) {
+    if (Text.isInstance(node)) {
       return { type: "text", node };
     } else if (this.isBreak(node)) {
       return { type: "break", node };
@@ -1013,7 +1230,7 @@ class FormatHelper {
    * @param {Node} root - The root of the tree to find leaves from.
    * @param {Leaf} leaf - The leaf to search from.
    *
-   * @return {Leaf|null} - The next Leaf under the root that follows the given
+   * @returns {Leaf|null} - The next Leaf under the root that follows the given
    *   Leaf, or null if the given leaf was the last one.
    */
   static nextLeaf(root, leaf) {
@@ -1251,7 +1468,7 @@ class FormatHelper {
    * @param {Set<string>|undefined} tags - A set of tags.
    * @param {Set<string>|undefined} cmp - A set to compare against.
    *
-   * @return {boolean} - Whether the two sets are equal.
+   * @returns {boolean} - Whether the two sets are equal.
    */
   static equalTags(tags, cmp) {
     if (!tags || tags.size === 0) {
@@ -1280,7 +1497,7 @@ class FormatHelper {
    * + the start of a block, or
    * + the end of a block.
    *
-   * @return {(BlockSummary|StyledTextSummary)[]} - A summary of the body
+   * @returns {(BlockSummary|StyledTextSummary)[]} - A summary of the body
    *   content.
    */
   getMessageBodyContent() {
@@ -1598,15 +1815,60 @@ class FormatHelper {
     this.assertMessageBodyContent([{ block: "P", content }], assertMessage);
   }
 
-  // NOTE: fails to open a native application menu on mac/osx because it is
-  // handled and restricted by the OS.
-  async _openMenu(menu) {
+  /**
+   * Attempt to show a menu. The menu must be closed when calling.
+   *
+   * NOTE: this fails to open a native application menu on mac/osx because it is
+   * handled and restricted by the OS.
+   *
+   * @param {MozMenuPopup} menu - The menu to show.
+   *
+   * @returns {boolean} Whether the menu was opened. Otherwise, the menu is still
+   *   closed.
+   */
+  async _openMenuOnce(menu) {
     menu = menu.parentNode;
-    let shownPromise = BrowserTestUtils.waitForEvent(menu, "popupshown");
+    // NOTE: Calling openMenu(true) on a closed menu will put the menu in the
+    // "showing" state. But this can be cancelled (for some unknown reason) and
+    // the menu will be put back in the "hidden" state. Therefore we listen to
+    // both popupshown and popuphidden. See bug 1720174.
+    // NOTE: This only seems to happen for some platforms, specifically this
+    // sometimes occurs for the linux64 build on the try server.
+    // FIXME: Use only BrowserEventUtils.waitForEvent(menu, "popupshown")
+    let eventPromise = new Promise(resolve => {
+      let listener = event => {
+        menu.removeEventListener("popupshown", listener);
+        menu.removeEventListener("popuphidden", listener);
+        resolve(event.type);
+      };
+      menu.addEventListener("popupshown", listener);
+      menu.addEventListener("popuphidden", listener);
+    });
     menu.openMenu(true);
-    await shownPromise;
+    let eventType = await eventPromise;
+    return eventType == "popupshown";
   }
 
+  /**
+   * Show a menu. The menu must be closed when calling.
+   *
+   * @param {MozMenuPopup} menu - The menu to show.
+   */
+  async _openMenu(menu) {
+    if (!(await this._openMenuOnce(menu))) {
+      // If opening failed, try one more time. See bug 1720174.
+      Assert.ok(
+        await this._openMenuOnce(menu),
+        `Opening ${menu.id} should succeed on a second attempt`
+      );
+    }
+  }
+
+  /**
+   * Hide a menu. The menu must be open when calling.
+   *
+   * @param {MozMenuPopup} menu - The menu to hide.
+   */
   async _closeMenu(menu) {
     menu = menu.parentNode;
     let hiddenPromise = BrowserTestUtils.waitForEvent(menu, "popuphidden");
@@ -1614,6 +1876,12 @@ class FormatHelper {
     await hiddenPromise;
   }
 
+  /**
+   * Select a menu item from an open menu. This will also close the menu.
+   *
+   * @param {MozMenuItem} item - The item to select.
+   * @param {MozMenuPopup} menu - The open menu that the item belongs to.
+   */
   async _selectFromOpenMenu(item, menu) {
     menu = menu.parentNode;
     let hiddenPromise = BrowserTestUtils.waitForEvent(menu, "popuphidden");
@@ -1621,6 +1889,12 @@ class FormatHelper {
     await hiddenPromise;
   }
 
+  /**
+   * Open a menu, select one of its items and close the menu.
+   *
+   * @param {MozMenuItem} item - The item to select.
+   * @param {MozMenuPopup} menu - The menu to open, that item belongs to.
+   */
   async _selectFromClosedMenu(item, menu) {
     if (item.disabled) {
       await TestUtils.waitForCondition(
@@ -1677,8 +1951,26 @@ class FormatHelper {
    * @param {MozMenuPopup} menu - A closed menu below the Format menu to open.
    */
   async openFormatSubMenu(menu) {
-    await this._openMenu(this.formatMenu);
-    await this._openMenu(menu);
+    if (
+      !(await this._openMenuOnce(this.formatMenu)) ||
+      !(await this._openMenuOnce(menu))
+    ) {
+      // If opening failed, try one more time. See bug 1720174.
+      // NOTE: failing to open the sub-menu can cause the format menu to also
+      // close. But we still make sure the format menu is closed before trying
+      // again.
+      if (this.formatMenu.state == "open") {
+        await this._closeMenu(this.formatMenu);
+      }
+      Assert.ok(
+        await this._openMenuOnce(this.formatMenu),
+        "Opening format menu should succeed on a second attempt"
+      );
+      Assert.ok(
+        await this._openMenuOnce(menu),
+        `Opening format sub-menu ${menu.id} should succeed on a second attempt`
+      );
+    }
   }
 
   /**
@@ -1763,7 +2055,7 @@ class FormatHelper {
    *
    * @param {string} state - A state.
    *
-   * @return {MozMenuItem} - The menu item used for selecting the given state.
+   * @returns {MozMenuItem} - The menu item used for selecting the given state.
    */
   getParagraphStateMenuItem(state) {
     return this.paragraphStateMenu.querySelector(`menuitem[value="${state}"]`);
@@ -1823,7 +2115,7 @@ class FormatHelper {
    *
    * @param {string} font - A font family.
    *
-   * @return {MozMenuItem} - The menu item used for selecting the given font
+   * @returns {MozMenuItem} - The menu item used for selecting the given font
    *   family.
    */
   getFontMenuItem(font) {
@@ -1918,7 +2210,7 @@ class FormatHelper {
    *
    * @param {number} size - A font size.
    *
-   * @return {MozMenuItem} - The menu item used for selecting the given font
+   * @returns {MozMenuItem} - The menu item used for selecting the given font
    *   size.
    */
   getSizeMenuItem(size) {
@@ -1931,9 +2223,9 @@ class FormatHelper {
    * Note, the dialog will have to be opened separately to this method. Normally
    * after this method, but before awaiting on the promise.
    *
-   * @prop {string|null} - The color to choose, or null to choose the default.
+   * @property {string|null} - The color to choose, or null to choose the default.
    *
-   * @return {Promise} - The promise to await on once the dialog is triggered.
+   * @returns {Promise} - The promise to await on once the dialog is triggered.
    */
   async selectColorInDialog(color) {
     return BrowserTestUtils.promiseAlertDialog(
@@ -1946,10 +2238,7 @@ class FormatHelper {
           } else {
             win.document.getElementById("ColorInput").value = color;
           }
-          win.document
-            .querySelector("dialog")
-            .getButton("accept")
-            .click();
+          win.document.querySelector("dialog").getButton("accept").click();
         },
       }
     );
@@ -2027,7 +2316,7 @@ class FormatHelper {
    *
    * @param {string} style - A style.
    *
-   * @return {MozMenuItem} - The menu item used for selecting the given style.
+   * @returns {MozMenuItem} - The menu item used for selecting the given style.
    */
   getStyleMenuItem(style) {
     return this.styleMenu.querySelector(`menuitem[observes="cmd_${style}"]`);
@@ -2102,12 +2391,21 @@ class FormatHelper {
     }
     await this.assertWithFormatSubMenu(
       this.styleMenu,
-      () =>
-        this.styleMenuItems.every(
+      () => {
+        let checkedIds = this.styleMenuItems
+          .filter(i => i.getAttribute("checked") === "true")
+          .map(m => m.id);
+        if (expectItems.length != checkedIds.length) {
+          dump(
+            `Expected: ${expectItems.map(i => i.id)}, Actual: ${checkedIds}\n`
+          );
+        }
+        return this.styleMenuItems.every(
           item =>
             (item.getAttribute("checked") === "true") ===
             expectItems.includes(item)
-        ),
+        );
+      },
       `${message}: ${expectString} should be checked`,
       true
     );

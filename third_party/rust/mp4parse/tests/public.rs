@@ -2,14 +2,12 @@
 // This Source Code Form is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
-extern crate mp4parse as mp4;
+use mp4parse as mp4;
 
-use mp4::Error;
-use mp4::ParseStrictness;
+use crate::mp4::{ParseStrictness, Status};
 use std::convert::TryInto;
 use std::fs::File;
-use std::io::{Cursor, Read, Seek, SeekFrom};
-use std::path::Path;
+use std::io::{Cursor, Read, Seek};
 
 static MINI_MP4: &str = "tests/minimal.mp4";
 static MINI_MP4_WITH_METADATA: &str = "tests/metadata.mp4";
@@ -38,8 +36,8 @@ static IMAGE_AVIF_ALPHA: &str = "tests/valid-alpha.avif";
 static IMAGE_AVIF_ALPHA_PREMULTIPLIED: &str = "tests/1x1-black-alpha-50pct-premultiplied.avif";
 static IMAGE_AVIF_CORRUPT: &str = "tests/corrupt/bug-1655846.avif";
 static IMAGE_AVIF_CORRUPT_2: &str = "tests/corrupt/bug-1661347.avif";
-static IMAGE_AVIF_IPMA_BAD_VERSION: &str = "tests/corrupt/bad-ipma-version.avif";
-static IMAGE_AVIF_IPMA_BAD_FLAGS: &str = "tests/corrupt/bad-ipma-flags.avif";
+static IMAGE_AVIF_IPMA_BAD_VERSION: &str = "tests/bad-ipma-version.avif";
+static IMAGE_AVIF_IPMA_BAD_FLAGS: &str = "tests/bad-ipma-flags.avif";
 static IMAGE_AVIF_IPMA_DUPLICATE_VERSION_AND_FLAGS: &str =
     "tests/corrupt/ipma-duplicate-version-and-flags.avif";
 static IMAGE_AVIF_IPMA_DUPLICATE_ITEM_ID: &str = "tests/corrupt/ipma-duplicate-item_id.avif";
@@ -48,24 +46,170 @@ static IMAGE_AVIF_IPMA_INVALID_PROPERTY_INDEX: &str =
 static IMAGE_AVIF_NO_HDLR: &str = "tests/corrupt/hdlr-not-first.avif";
 static IMAGE_AVIF_HDLR_NOT_FIRST: &str = "tests/corrupt/no-hdlr.avif";
 static IMAGE_AVIF_HDLR_NOT_PICT: &str = "tests/corrupt/hdlr-not-pict.avif";
-static IMAGE_AVIF_NO_MIF1: &str = "tests/corrupt/no-mif1.avif";
+static IMAGE_AVIF_HDLR_NONZERO_RESERVED: &str = "tests/hdlr-nonzero-reserved.avif";
+static IMAGE_AVIF_HDLR_MULTIPLE_NUL: &str = "tests/invalid-avif-hdlr-name-multiple-nul.avif";
+static IMAGE_AVIF_NO_MIF1: &str = "tests/no-mif1.avif";
+static IMAGE_AVIF_NO_PITM: &str = "tests/corrupt/no-pitm.avif";
 static IMAGE_AVIF_NO_PIXI: &str = "tests/corrupt/no-pixi.avif";
 static IMAGE_AVIF_NO_AV1C: &str = "tests/corrupt/no-av1C.avif";
 static IMAGE_AVIF_NO_ISPE: &str = "tests/corrupt/no-ispe.avif";
+static IMAGE_AVIF_NO_ALPHA_ISPE: &str = "tests/corrupt/no-alpha-ispe.avif";
+static IMAGE_AVIF_TRANSFORM_ORDER: &str = "tests/corrupt/invalid-transformation-order.avif";
+static IMAGE_AVIF_TRANSFORM_BEFORE_ISPE: &str = "tests/corrupt/transformation-before-ispe.avif";
 static IMAGE_AVIF_NO_ALPHA_AV1C: &str = "tests/corrupt/no-alpha-av1C.avif";
 static IMAGE_AVIF_NO_ALPHA_PIXI: &str = "tests/corrupt/no-pixi-for-alpha.avif";
-static IMAGE_AVIF_AV1C_MISSING_ESSENTIAL: &str = "tests/corrupt/av1C-missing-essential.avif";
-static IMAGE_AVIF_IMIR_MISSING_ESSENTIAL: &str = "tests/corrupt/imir-missing-essential.avif";
-static IMAGE_AVIF_IROT_MISSING_ESSENTIAL: &str = "tests/corrupt/irot-missing-essential.avif";
-static IMAGE_AVIF_GRID: &str = "av1-avif/testFiles/Microsoft/Summer_in_Tomsk_720p_5x4_grid.avif";
-static AVIF_TEST_DIRS: &[&str] = &["tests", "av1-avif/testFiles"];
-// TODO: file bug on https://github.com/AOMediaCodec/av1-avif
-static AV1_AVIF_CORRUPT_IMAGES: &[&str] = &[
+static IMAGE_AVIF_AV1C_MISSING_ESSENTIAL: &str = "tests/av1C-missing-essential.avif";
+static IMAGE_AVIF_A1LX_MARKED_ESSENTIAL: &str = "tests/corrupt/a1lx-marked-essential.avif";
+static IMAGE_AVIF_A1OP_MISSING_ESSENTIAL: &str = "tests/corrupt/a1op-missing-essential.avif";
+static IMAGE_AVIF_IMIR_MISSING_ESSENTIAL: &str = "tests/imir-missing-essential.avif";
+static IMAGE_AVIF_IROT_MISSING_ESSENTIAL: &str = "tests/irot-missing-essential.avif";
+static IMAGE_AVIF_LSEL_MISSING_ESSENTIAL: &str = "tests/corrupt/lsel-missing-essential.avif";
+static IMAGE_AVIF_CLAP_MISSING_ESSENTIAL: &str = "tests/clap-missing-essential.avif";
+static IMAGE_AVIF_UNKNOWN_MDAT_SIZE: &str = "tests/unknown_mdat.avif";
+static IMAGE_AVIF_UNKNOWN_MDAT_SIZE_IN_OVERSIZED_META: &str =
+    "tests/unknown_mdat_in_oversized_meta.avif";
+static IMAGE_AVIF_VALID_WITH_GARBAGE_OVERREAD_AT_END: &str =
+    "tests/valid_with_garbage_overread.avif";
+static IMAGE_AVIF_VALID_WITH_GARBAGE_BYTE_AT_END: &str = "tests/valid_with_garbage_byte.avif";
+static IMAGE_AVIF_WIDE_BOX_SIZE_0: &str = "tests/wide_box_size_0.avif";
+static AVIF_TEST_DIRS: &[&str] = &["tests", "av1-avif/testFiles", "link-u-avif-sample-images"];
+
+// These files are
+//   av1-avif/testFiles/Apple/multilayer_examples/animals_00_multilayer_a1op.avif
+//   av1-avif/testFiles/Apple/multilayer_examples/animals_00_multilayer_a1lx.avif
+//   av1-avif/testFiles/Apple/multilayer_examples/animals_00_multilayer_lsel.avif
+// respectively, but with https://github.com/AOMediaCodec/av1-avif/issues/174 fixed
+static AVIF_A1OP: &str = "tests/a1op.avif";
+static AVIF_A1LX: &str = "tests/a1lx.avif";
+static AVIF_LSEL: &str = "tests/lsel.avif";
+
+static AVIF_CLAP: &str = "tests/clap-basic-1_3x3-to-1x1.avif";
+static AVIF_GRID: &str = "av1-avif/testFiles/Microsoft/Summer_in_Tomsk_720p_5x4_grid.avif";
+static AVIF_GRID_A1LX: &str =
+    "av1-avif/testFiles/Apple/multilayer_examples/animals_00_multilayer_grid_a1lx.avif";
+static AVIF_AVIS_MAJOR_NO_PITM: &str =
+    "av1-avif/testFiles/Netflix/avis/Chimera-AV1-10bit-480x270.avif";
+/// This is av1-avif/testFiles/Netflix/avis/alpha_video.avif
+/// but with https://github.com/AOMediaCodec/av1-avif/issues/177 fixed
+static AVIF_AVIS_MAJOR_WITH_PITM_AND_ALPHA: &str = "tests/alpha_video_fixed.avif";
+static AVIF_AVIS_WITH_NO_PITM_NO_ILOC: &str = "tests/avis_with_no_ptim_no_iloc.avif";
+static AVIF_AVIS_WITH_PITM_NO_ILOC: &str = "tests/avis_with_pitm_no_iloc.avif";
+static AVIF_AVIS_MAJOR_NO_MOOV: &str = "tests/corrupt/alpha_video_moov_is_moop.avif";
+static AVIF_AVIS_NO_LOOP: &str = "tests/loop_none.avif";
+static AVIF_AVIS_LOOP_FOREVER: &str = "tests/loop_forever.avif";
+static AVIF_NO_PIXI_IMAGES: &[&str] = &[IMAGE_AVIF_NO_PIXI, IMAGE_AVIF_NO_ALPHA_PIXI];
+static AVIF_UNSUPPORTED_IMAGES: &[&str] = &[
+    AVIF_A1LX,
+    AVIF_A1OP,
+    AVIF_CLAP,
+    IMAGE_AVIF_CLAP_MISSING_ESSENTIAL,
+    AVIF_GRID,
+    AVIF_GRID_A1LX,
+    AVIF_LSEL,
+    "av1-avif/testFiles/Apple/multilayer_examples/animals_00_multilayer_a1lx.avif",
+    "av1-avif/testFiles/Apple/multilayer_examples/animals_00_multilayer_a1op.avif",
+    "av1-avif/testFiles/Apple/multilayer_examples/animals_00_multilayer_a1op_lsel.avif",
+    "av1-avif/testFiles/Apple/multilayer_examples/animals_00_multilayer_lsel.avif",
+    "av1-avif/testFiles/Apple/multilayer_examples/animals_00_multilayer_grid_lsel.avif",
+    "av1-avif/testFiles/Link-U/kimono.crop.avif",
+    "av1-avif/testFiles/Link-U/kimono.mirror-vertical.rotate270.crop.avif",
     "av1-avif/testFiles/Microsoft/Chimera_10bit_cropped_to_1920x1008.avif",
     "av1-avif/testFiles/Microsoft/Chimera_10bit_cropped_to_1920x1008_with_HDR_metadata.avif",
     "av1-avif/testFiles/Microsoft/Chimera_8bit_cropped_480x256.avif",
+    "av1-avif/testFiles/Xiph/abandoned_filmgrain.avif",
+    "av1-avif/testFiles/Xiph/fruits_2layer_thumbsize.avif",
+    "av1-avif/testFiles/Xiph/quebec_3layer_op2.avif",
+    "av1-avif/testFiles/Xiph/tiger_3layer_1res.avif",
+    "av1-avif/testFiles/Xiph/tiger_3layer_3res.avif",
+    "link-u-avif-sample-images/kimono.crop.avif",
+    "link-u-avif-sample-images/kimono.mirror-vertical.rotate270.crop.avif",
+];
+/// See https://github.com/AOMediaCodec/av1-avif/issues/150
+///     https://github.com/AOMediaCodec/av1-avif/issues/174
+///     https://github.com/AOMediaCodec/av1-avif/issues/177
+/// and https://github.com/AOMediaCodec/av1-avif/issues/178
+// TODO: make this into a map of expected errors?
+static AV1_AVIF_CORRUPT_IMAGES: &[&str] = &[
+    IMAGE_AVIF_UNKNOWN_MDAT_SIZE_IN_OVERSIZED_META,
+    IMAGE_AVIF_WIDE_BOX_SIZE_0,
     "av1-avif/testFiles/Link-U/kimono.crop.avif",
+    "av1-avif/testFiles/Link-U/kimono.mirror-horizontal.avif",
+    "av1-avif/testFiles/Link-U/kimono.mirror-vertical.avif",
+    "av1-avif/testFiles/Link-U/kimono.mirror-vertical.rotate270.avif",
     "av1-avif/testFiles/Link-U/kimono.mirror-vertical.rotate270.crop.avif",
+    "av1-avif/testFiles/Link-U/kimono.rotate90.avif",
+    "av1-avif/testFiles/Link-U/kimono.rotate270.avif",
+    "link-u-avif-sample-images/kimono.crop.avif",
+    "link-u-avif-sample-images/kimono.mirror-horizontal.avif",
+    "link-u-avif-sample-images/kimono.mirror-vertical.avif",
+    "link-u-avif-sample-images/kimono.mirror-vertical.rotate270.avif",
+    "link-u-avif-sample-images/kimono.mirror-vertical.rotate270.crop.avif",
+    "link-u-avif-sample-images/kimono.rotate90.avif",
+    "link-u-avif-sample-images/kimono.rotate270.avif",
+    "link-u-avif-sample-images/plum-blossom-large.profile0.10bpc.yuv420.alpha-full.avif",
+    "link-u-avif-sample-images/plum-blossom-large.profile0.10bpc.yuv420.alpha-full.monochrome.avif",
+    "link-u-avif-sample-images/plum-blossom-large.profile0.10bpc.yuv420.alpha-limited.avif",
+    "link-u-avif-sample-images/plum-blossom-large.profile0.10bpc.yuv420.alpha-limited.monochrome.avif",
+    "link-u-avif-sample-images/plum-blossom-large.profile0.8bpc.yuv420.alpha-full.avif",
+    "link-u-avif-sample-images/plum-blossom-large.profile0.8bpc.yuv420.alpha-full.monochrome.avif",
+    "link-u-avif-sample-images/plum-blossom-large.profile0.8bpc.yuv420.alpha-limited.avif",
+    "link-u-avif-sample-images/plum-blossom-large.profile0.8bpc.yuv420.alpha-limited.monochrome.avif",
+    "link-u-avif-sample-images/plum-blossom-large.profile1.10bpc.yuv444.alpha-full.avif",
+    "link-u-avif-sample-images/plum-blossom-large.profile1.10bpc.yuv444.alpha-limited.avif",
+    "link-u-avif-sample-images/plum-blossom-large.profile1.8bpc.yuv444.alpha-full.avif",
+    "link-u-avif-sample-images/plum-blossom-large.profile1.8bpc.yuv444.alpha-limited.avif",
+    "link-u-avif-sample-images/plum-blossom-large.profile2.10bpc.yuv422.alpha-full.avif",
+    "link-u-avif-sample-images/plum-blossom-large.profile2.10bpc.yuv422.alpha-full.monochrome.avif",
+    "link-u-avif-sample-images/plum-blossom-large.profile2.10bpc.yuv422.alpha-limited.avif",
+    "link-u-avif-sample-images/plum-blossom-large.profile2.10bpc.yuv422.alpha-limited.monochrome.avif",
+    "link-u-avif-sample-images/plum-blossom-large.profile2.12bpc.yuv420.alpha-full.avif",
+    "link-u-avif-sample-images/plum-blossom-large.profile2.12bpc.yuv420.alpha-full.monochrome.avif",
+    "link-u-avif-sample-images/plum-blossom-large.profile2.12bpc.yuv420.alpha-limited.avif",
+    "link-u-avif-sample-images/plum-blossom-large.profile2.12bpc.yuv420.alpha-limited.monochrome.avif",
+    "link-u-avif-sample-images/plum-blossom-large.profile2.12bpc.yuv422.alpha-full.avif",
+    "link-u-avif-sample-images/plum-blossom-large.profile2.12bpc.yuv422.alpha-full.monochrome.avif",
+    "link-u-avif-sample-images/plum-blossom-large.profile2.12bpc.yuv422.alpha-limited.avif",
+    "link-u-avif-sample-images/plum-blossom-large.profile2.12bpc.yuv422.alpha-limited.monochrome.avif",
+    "link-u-avif-sample-images/plum-blossom-large.profile2.12bpc.yuv444.alpha-full.avif",
+    "link-u-avif-sample-images/plum-blossom-large.profile2.12bpc.yuv444.alpha-full.monochrome.avif",
+    "link-u-avif-sample-images/plum-blossom-large.profile2.12bpc.yuv444.alpha-limited.avif",
+    "link-u-avif-sample-images/plum-blossom-large.profile2.12bpc.yuv444.alpha-limited.monochrome.avif",
+    "link-u-avif-sample-images/plum-blossom-large.profile2.8bpc.yuv422.alpha-full.avif",
+    "link-u-avif-sample-images/plum-blossom-large.profile2.8bpc.yuv422.alpha-full.monochrome.avif",
+    "link-u-avif-sample-images/plum-blossom-large.profile2.8bpc.yuv422.alpha-limited.avif",
+    "link-u-avif-sample-images/plum-blossom-large.profile2.8bpc.yuv422.alpha-limited.monochrome.avif",
+    "link-u-avif-sample-images/plum-blossom-small.profile0.10bpc.yuv420.alpha-full.avif",
+    "link-u-avif-sample-images/plum-blossom-small.profile0.10bpc.yuv420.alpha-full.monochrome.avif",
+    "link-u-avif-sample-images/plum-blossom-small.profile0.10bpc.yuv420.alpha-limited.avif",
+    "link-u-avif-sample-images/plum-blossom-small.profile0.10bpc.yuv420.alpha-limited.monochrome.avif",
+    "link-u-avif-sample-images/plum-blossom-small.profile0.8bpc.yuv420.alpha-full.avif",
+    "link-u-avif-sample-images/plum-blossom-small.profile0.8bpc.yuv420.alpha-full.monochrome.avif",
+    "link-u-avif-sample-images/plum-blossom-small.profile0.8bpc.yuv420.alpha-limited.avif",
+    "link-u-avif-sample-images/plum-blossom-small.profile0.8bpc.yuv420.alpha-limited.monochrome.avif",
+    "link-u-avif-sample-images/plum-blossom-small.profile1.10bpc.yuv444.alpha-full.avif",
+    "link-u-avif-sample-images/plum-blossom-small.profile1.10bpc.yuv444.alpha-limited.avif",
+    "link-u-avif-sample-images/plum-blossom-small.profile1.8bpc.yuv444.alpha-full.avif",
+    "link-u-avif-sample-images/plum-blossom-small.profile1.8bpc.yuv444.alpha-limited.avif",
+    "link-u-avif-sample-images/plum-blossom-small.profile2.10bpc.yuv422.alpha-full.avif",
+    "link-u-avif-sample-images/plum-blossom-small.profile2.10bpc.yuv422.alpha-full.monochrome.avif",
+    "link-u-avif-sample-images/plum-blossom-small.profile2.10bpc.yuv422.alpha-limited.avif",
+    "link-u-avif-sample-images/plum-blossom-small.profile2.10bpc.yuv422.alpha-limited.monochrome.avif",
+    "link-u-avif-sample-images/plum-blossom-small.profile2.12bpc.yuv420.alpha-full.avif",
+    "link-u-avif-sample-images/plum-blossom-small.profile2.12bpc.yuv420.alpha-full.monochrome.avif",
+    "link-u-avif-sample-images/plum-blossom-small.profile2.12bpc.yuv420.alpha-limited.avif",
+    "link-u-avif-sample-images/plum-blossom-small.profile2.12bpc.yuv420.alpha-limited.monochrome.avif",
+    "link-u-avif-sample-images/plum-blossom-small.profile2.12bpc.yuv422.alpha-full.avif",
+    "link-u-avif-sample-images/plum-blossom-small.profile2.12bpc.yuv422.alpha-full.monochrome.avif",
+    "link-u-avif-sample-images/plum-blossom-small.profile2.12bpc.yuv422.alpha-limited.avif",
+    "link-u-avif-sample-images/plum-blossom-small.profile2.12bpc.yuv422.alpha-limited.monochrome.avif",
+    "link-u-avif-sample-images/plum-blossom-small.profile2.12bpc.yuv444.alpha-full.avif",
+    "link-u-avif-sample-images/plum-blossom-small.profile2.12bpc.yuv444.alpha-full.monochrome.avif",
+    "link-u-avif-sample-images/plum-blossom-small.profile2.12bpc.yuv444.alpha-limited.avif",
+    "link-u-avif-sample-images/plum-blossom-small.profile2.12bpc.yuv444.alpha-limited.monochrome.avif",
+    "link-u-avif-sample-images/plum-blossom-small.profile2.8bpc.yuv422.alpha-full.avif",
+    "link-u-avif-sample-images/plum-blossom-small.profile2.8bpc.yuv422.alpha-full.monochrome.avif",
+    "link-u-avif-sample-images/plum-blossom-small.profile2.8bpc.yuv422.alpha-limited.avif",
+    "link-u-avif-sample-images/plum-blossom-small.profile2.8bpc.yuv422.alpha-limited.monochrome.avif",
 ];
 static AVIF_CORRUPT_IMAGES_DIR: &str = "tests/corrupt";
 // The 1 frame h263 3gp file can be generated by ffmpeg with command
@@ -105,7 +249,7 @@ fn public_api() {
 
                 // track.tkhd part
                 let tkhd = track.tkhd.unwrap();
-                assert_eq!(tkhd.disabled, false);
+                assert!(!tkhd.disabled);
                 assert_eq!(tkhd.duration, 40);
                 assert_eq!(tkhd.width, 20_971_520);
                 assert_eq!(tkhd.height, 15_728_640);
@@ -155,7 +299,7 @@ fn public_api() {
 
                 // track.tkhd part
                 let tkhd = track.tkhd.unwrap();
-                assert_eq!(tkhd.disabled, false);
+                assert!(!tkhd.disabled);
                 assert_eq!(tkhd.duration, 62);
                 assert_eq!(tkhd.width, 0);
                 assert_eq!(tkhd.height, 0);
@@ -206,7 +350,7 @@ fn public_api() {
                 assert!(a.samplesize > 0);
                 assert!(a.samplerate > 0.0);
             }
-            mp4::TrackType::Metadata | mp4::TrackType::Unknown => {}
+            _ => {}
         }
     }
 }
@@ -242,9 +386,9 @@ fn public_metadata() {
     assert_eq!(meta.total_discs.unwrap(), 10);
     assert_eq!(meta.beats_per_minute.unwrap(), 128);
     assert_eq!(meta.composer.unwrap(), "Composer");
-    assert_eq!(meta.compilation.unwrap(), true);
-    assert_eq!(meta.gapless_playback.unwrap(), false);
-    assert_eq!(meta.podcast.unwrap(), false);
+    assert!(meta.compilation.unwrap());
+    assert!(!meta.gapless_playback.unwrap());
+    assert!(!meta.podcast.unwrap());
     assert_eq!(meta.advisory.unwrap(), mp4::AdvisoryRating::Clean);
     assert_eq!(meta.media_type.unwrap(), mp4::MediaType::Normal);
     assert_eq!(meta.rating.unwrap(), "50");
@@ -259,7 +403,7 @@ fn public_metadata() {
     assert_eq!(meta.tv_episode_number.unwrap(), 15);
     assert_eq!(meta.tv_season.unwrap(), 10);
     assert_eq!(meta.tv_show_name.unwrap(), "Show Name");
-    assert_eq!(meta.hd_video.unwrap(), true);
+    assert!(meta.hd_video.unwrap());
     assert_eq!(meta.owner.unwrap(), "Owner");
     assert_eq!(meta.sort_name.unwrap(), "Sort Name");
     assert_eq!(meta.sort_album.unwrap(), "Sort Album");
@@ -305,9 +449,9 @@ fn public_metadata_gnre() {
     assert_eq!(meta.total_discs.unwrap(), 10);
     assert_eq!(meta.beats_per_minute.unwrap(), 128);
     assert_eq!(meta.composer.unwrap(), "Composer");
-    assert_eq!(meta.compilation.unwrap(), true);
-    assert_eq!(meta.gapless_playback.unwrap(), false);
-    assert_eq!(meta.podcast.unwrap(), false);
+    assert!(meta.compilation.unwrap());
+    assert!(!meta.gapless_playback.unwrap());
+    assert!(!meta.podcast.unwrap());
     assert_eq!(meta.advisory.unwrap(), mp4::AdvisoryRating::Clean);
     assert_eq!(meta.media_type.unwrap(), mp4::MediaType::Normal);
     assert_eq!(meta.rating.unwrap(), "50");
@@ -322,7 +466,7 @@ fn public_metadata_gnre() {
     assert_eq!(meta.tv_episode_number.unwrap(), 15);
     assert_eq!(meta.tv_season.unwrap(), 10);
     assert_eq!(meta.tv_show_name.unwrap(), "Show Name");
-    assert_eq!(meta.hd_video.unwrap(), true);
+    assert!(meta.hd_video.unwrap());
     assert_eq!(meta.owner.unwrap(), "Owner");
     assert_eq!(meta.sort_name.unwrap(), "Sort Name");
     assert_eq!(meta.sort_album.unwrap(), "Sort Album");
@@ -362,7 +506,7 @@ fn public_invalid_metadata() {
             mp4::TrackType::Video => {
                 // Check some of the values in the video tkhd.
                 let tkhd = track.tkhd.unwrap();
-                assert_eq!(tkhd.disabled, false);
+                assert!(!tkhd.disabled);
                 assert_eq!(tkhd.duration, 231232);
                 assert_eq!(tkhd.width, 83_886_080);
                 assert_eq!(tkhd.height, 47_185_920);
@@ -370,7 +514,7 @@ fn public_invalid_metadata() {
             mp4::TrackType::Audio => {
                 // Check some of the values in the audio tkhd.
                 let tkhd = track.tkhd.unwrap();
-                assert_eq!(tkhd.disabled, false);
+                assert!(!tkhd.disabled);
                 assert_eq!(tkhd.duration, 231338);
                 assert_eq!(tkhd.width, 0);
                 assert_eq!(tkhd.height, 0);
@@ -401,7 +545,7 @@ fn public_audio_tenc() {
         };
         assert_eq!(a.codec_type, mp4::CodecType::EncryptedAudio);
         match a.protection_info.iter().find(|sinf| sinf.tenc.is_some()) {
-            Some(ref p) => {
+            Some(p) => {
                 assert_eq!(p.original_format, b"mp4a");
                 if let Some(ref schm) = p.scheme_type {
                     assert_eq!(schm.scheme_type, b"cenc");
@@ -459,7 +603,7 @@ fn public_video_cenc() {
         };
         assert_eq!(v.codec_type, mp4::CodecType::EncryptedVideo);
         match v.protection_info.iter().find(|sinf| sinf.tenc.is_some()) {
-            Some(ref p) => {
+            Some(p) => {
                 assert_eq!(p.original_format, b"avc1");
                 if let Some(ref schm) = p.scheme_type {
                     assert_eq!(schm.scheme_type, b"cenc");
@@ -671,7 +815,7 @@ fn public_video_av1() {
 
         // track.tkhd part
         let tkhd = track.tkhd.unwrap();
-        assert_eq!(tkhd.disabled, false);
+        assert!(!tkhd.disabled);
         assert_eq!(tkhd.duration, 42);
         assert_eq!(tkhd.width, 4_194_304);
         assert_eq!(tkhd.height, 4_194_304);
@@ -693,11 +837,11 @@ fn public_video_av1() {
                 assert_eq!(av1c.level, 0);
                 assert_eq!(av1c.tier, 0);
                 assert_eq!(av1c.bit_depth, 8);
-                assert_eq!(av1c.monochrome, false);
+                assert!(!av1c.monochrome);
                 assert_eq!(av1c.chroma_subsampling_x, 1);
                 assert_eq!(av1c.chroma_subsampling_y, 1);
                 assert_eq!(av1c.chroma_sample_position, 0);
-                assert_eq!(av1c.initial_presentation_delay_present, false);
+                assert!(!av1c.initial_presentation_delay_present);
                 assert_eq!(av1c.initial_presentation_delay_minus_one, 0);
             }
             _ => panic!("Invalid test condition"),
@@ -724,11 +868,18 @@ fn public_mp4_bug_1185230() {
 }
 
 #[test]
+fn public_mp4_ctts_overflow() {
+    let input = &mut File::open("tests/clusterfuzz-testcase-minimized-mp4-6093954524250112")
+        .expect("Unknown file");
+    assert_eq!(Status::from(mp4::read_mp4(input)), Status::CttsBadSize);
+}
+
+#[test]
 fn public_avif_primary_item() {
     let input = &mut File::open(IMAGE_AVIF).expect("Unknown file");
     let context = mp4::read_avif(input, ParseStrictness::Normal).expect("read_avif failed");
     assert_eq!(
-        context.primary_item(),
+        context.primary_item_coded_data().unwrap(),
         [
             0x12, 0x00, 0x0A, 0x07, 0x38, 0x00, 0x06, 0x90, 0x20, 0x20, 0x69, 0x32, 0x0C, 0x16,
             0x00, 0x00, 0x00, 0x48, 0x00, 0x00, 0x00, 0x79, 0x4C, 0xD2, 0x02
@@ -740,30 +891,57 @@ fn public_avif_primary_item() {
 fn public_avif_primary_item_split_extents() {
     let input = &mut File::open(IMAGE_AVIF_EXTENTS).expect("Unknown file");
     let context = mp4::read_avif(input, ParseStrictness::Normal).expect("read_avif failed");
-    assert_eq!(context.primary_item().len(), 52);
+    assert_eq!(context.primary_item_coded_data().unwrap().len(), 52);
 }
 
 #[test]
 fn public_avif_alpha_item() {
-    let input = &mut File::open(IMAGE_AVIF_ALPHA).expect("Unknown file");
-    assert_avif_valid(input);
+    for_strictness_result(IMAGE_AVIF_ALPHA, |_strictness, result| {
+        assert!(result.is_ok());
+    });
 }
 
 #[test]
 fn public_avif_alpha_non_premultiplied() {
-    let input = &mut File::open(IMAGE_AVIF_ALPHA).expect("Unknown file");
-    let context = mp4::read_avif(input, ParseStrictness::Normal).expect("read_avif failed");
-    assert!(context.alpha_item().is_some());
-    assert!(!context.premultiplied_alpha);
+    for_strictness_result(IMAGE_AVIF_ALPHA, |_strictness, result| {
+        let context = result.expect("read_avif failed");
+        assert!(context.primary_item_coded_data().is_some());
+        assert!(context.alpha_item_coded_data().is_some());
+        assert!(!context.premultiplied_alpha);
+    });
 }
 
 #[test]
 fn public_avif_alpha_premultiplied() {
-    let input = &mut File::open(IMAGE_AVIF_ALPHA_PREMULTIPLIED).expect("Unknown file");
+    for_strictness_result(IMAGE_AVIF_ALPHA_PREMULTIPLIED, |_strictness, result| {
+        let context = result.expect("read_avif failed");
+        assert!(context.primary_item_coded_data().is_some());
+        assert!(context.alpha_item_coded_data().is_some());
+        assert!(context.premultiplied_alpha);
+    });
+}
+
+#[test]
+fn public_avif_unknown_mdat() {
+    let input = &mut File::open(IMAGE_AVIF_UNKNOWN_MDAT_SIZE).expect("Unknown file");
     let context = mp4::read_avif(input, ParseStrictness::Normal).expect("read_avif failed");
-    assert!(context.alpha_item().is_some());
-    assert!(context.premultiplied_alpha);
-    assert_avif_valid(input);
+    assert_eq!(
+        context.primary_item_coded_data().unwrap(),
+        [
+            0x12, 0x00, 0x0A, 0x07, 0x38, 0x00, 0x06, 0x90, 0x20, 0x20, 0x69, 0x32, 0x0C, 0x16,
+            0x00, 0x00, 0x00, 0x48, 0x00, 0x00, 0x00, 0x79, 0x4C, 0xD2, 0x02
+        ]
+    );
+}
+
+#[test]
+fn public_avif_unknown_mdat_in_oversized_meta() {
+    let input =
+        &mut File::open(IMAGE_AVIF_UNKNOWN_MDAT_SIZE_IN_OVERSIZED_META).expect("Unknown file");
+    assert_eq!(
+        Status::from(mp4::read_avif(input, ParseStrictness::Normal)),
+        Status::Unsupported
+    );
 }
 
 #[test]
@@ -778,92 +956,90 @@ fn public_avif_bug_1661347() {
     assert!(mp4::read_avif(input, ParseStrictness::Normal).is_err());
 }
 
-fn assert_invalid_data<T: std::fmt::Debug>(result: mp4::Result<T>, expected_msg: &str) {
-    match result {
-        Err(Error::InvalidData(msg)) if msg == expected_msg => {}
-        Err(Error::InvalidData(msg)) if msg != expected_msg => {
-            panic!(
-                "Error message mismtatch\nExpected: {}\nFound:    {}",
-                expected_msg, msg
-            );
-        }
-        r => panic!(
-            "Expected Err(Error::InvalidData({:?}), found {:?}",
-            expected_msg, r
-        ),
-    }
-}
+fn for_strictness_result(
+    path: &str,
+    check: impl Fn(ParseStrictness, mp4::Result<mp4::AvifContext>),
+) {
+    let input = &mut File::open(path).expect("Unknown file");
 
-/// Check that input generates no errors in any parsing mode
-fn assert_avif_valid(input: &mut File) {
-    for strictness in &[
+    for strictness in [
         ParseStrictness::Permissive,
         ParseStrictness::Normal,
         ParseStrictness::Strict,
     ] {
-        input.seek(SeekFrom::Start(0)).expect("rewind failed");
-        assert!(
-            mp4::read_avif(input, *strictness).is_ok(),
-            "read_avif with {:?} failed",
-            strictness
-        );
-        println!("{:?} succeeded", strictness);
+        input.rewind().expect("rewind failed");
+        check(strictness, mp4::read_avif(input, strictness));
     }
 }
 
 /// Check that input generates the expected error only in strict parsing mode
-fn assert_avif_should(path: &str, expected_msg: &str) {
-    let input = &mut File::open(path).expect("Unknown file");
-    assert_invalid_data(mp4::read_avif(input, ParseStrictness::Strict), expected_msg);
-    input.seek(SeekFrom::Start(0)).expect("rewind failed");
-    mp4::read_avif(input, ParseStrictness::Normal).expect("ParseStrictness::Normal failed");
-    input.seek(SeekFrom::Start(0)).expect("rewind failed");
-    mp4::read_avif(input, ParseStrictness::Permissive).expect("ParseStrictness::Permissive failed");
+fn assert_avif_should(path: &str, expected: Status) {
+    for_strictness_result(path, |strictness, result| {
+        if strictness == ParseStrictness::Strict {
+            assert_eq!(expected, Status::from(result));
+        } else {
+            assert!(result.is_ok());
+        }
+    })
 }
 
 /// Check that input generates the expected error unless in permissive parsing mode
-fn assert_avif_shall(path: &str, expected_msg: &str) {
-    let input = &mut File::open(path).expect("Unknown file");
-    assert_invalid_data(mp4::read_avif(input, ParseStrictness::Strict), expected_msg);
-    input.seek(SeekFrom::Start(0)).expect("rewind failed");
-    assert_invalid_data(mp4::read_avif(input, ParseStrictness::Normal), expected_msg);
-    input.seek(SeekFrom::Start(0)).expect("rewind failed");
-    mp4::read_avif(input, ParseStrictness::Permissive).expect("ParseStrictness::Permissive failed");
+fn assert_avif_shall(path: &str, expected: Status) {
+    for_strictness_result(path, |strictness, result| {
+        if strictness == ParseStrictness::Permissive {
+            assert!(result.is_ok());
+        } else {
+            assert_eq!(expected, Status::from(result));
+        }
+    })
+}
+
+// Technically all transforms shall be essential, but this appears likely to change
+// so we only enforce it in strict parsing
+// See https://github.com/mozilla/mp4parse-rust/issues/284
+
+#[test]
+fn public_avif_av1c_missing_essential() {
+    assert_avif_should(IMAGE_AVIF_AV1C_MISSING_ESSENTIAL, Status::TxformNoEssential);
 }
 
 #[test]
-fn public_avif_ipma_missing_essential() {
-    let expected_msg = "All transformative properties associated with \
-                        coded and derived images required or conditionally \
-                        required by this document shall be marked as essential \
-                        per MIAF (ISO 23000-22:2019) § 7.3.9";
-    assert_avif_should(IMAGE_AVIF_AV1C_MISSING_ESSENTIAL, expected_msg);
-    assert_avif_should(IMAGE_AVIF_IMIR_MISSING_ESSENTIAL, expected_msg);
-    assert_avif_should(IMAGE_AVIF_IROT_MISSING_ESSENTIAL, expected_msg);
+fn public_avif_clap_missing_essential() {
+    for_strictness_result(IMAGE_AVIF_CLAP_MISSING_ESSENTIAL, |strictness, result| {
+        if strictness == ParseStrictness::Strict {
+            assert_eq!(Status::TxformNoEssential, Status::from(result));
+        } else {
+            assert_unsupported_nonfatal(&result, mp4::Feature::Clap);
+        }
+    })
+}
+
+#[test]
+fn public_avif_imir_missing_essential() {
+    assert_avif_should(IMAGE_AVIF_IMIR_MISSING_ESSENTIAL, Status::TxformNoEssential);
+}
+
+#[test]
+fn public_avif_irot_missing_essential() {
+    assert_avif_should(IMAGE_AVIF_IROT_MISSING_ESSENTIAL, Status::TxformNoEssential);
 }
 
 #[test]
 fn public_avif_ipma_bad_version() {
-    let expected_msg = "The ipma version 0 should be used unless 32-bit \
-                        item_ID values are needed \
-                        per ISOBMFF (ISO 14496-12:2020 § 8.11.14.1";
-    assert_avif_should(IMAGE_AVIF_IPMA_BAD_VERSION, expected_msg);
+    assert_avif_should(IMAGE_AVIF_IPMA_BAD_VERSION, Status::IpmaBadVersion);
 }
 
 #[test]
 fn public_avif_ipma_bad_flags() {
-    let expected_msg = "Unless there are more than 127 properties in the \
-                        ItemPropertyContainerBox, flags should be equal to 0 \
-                        per ISOBMFF (ISO 14496-12:2020 § 8.11.14.1";
-    assert_avif_should(IMAGE_AVIF_IPMA_BAD_FLAGS, expected_msg);
+    assert_avif_should(IMAGE_AVIF_IPMA_BAD_FLAGS, Status::IpmaFlagsNonzero);
 }
 
 #[test]
 fn public_avif_ipma_duplicate_version_and_flags() {
-    let expected_msg = "There shall be at most one ItemPropertyAssociationbox \
-                        with a given pair of values of version and flags \
-                        per ISOBMFF (ISO 14496-12:2020 § 8.11.14.1";
-    assert_avif_shall(IMAGE_AVIF_IPMA_DUPLICATE_VERSION_AND_FLAGS, expected_msg);
+    assert_avif_shall(
+        IMAGE_AVIF_IPMA_DUPLICATE_VERSION_AND_FLAGS,
+        Status::IpmaBadQuantity,
+    );
 }
 
 #[test]
@@ -872,76 +1048,292 @@ fn public_avif_ipma_duplicate_version_and_flags() {
 // which is kind of annoying to make pass the "should" requirements on flags and version
 // as well as the "shall" requirement on duplicate version and flags
 fn public_avif_ipma_duplicate_item_id() {
-    let expected_msg = "There shall be at most one occurrence of a given item_ID, \
-                        in the set of ItemPropertyAssociationBox boxes \
-                        per ISOBMFF (ISO 14496-12:2020) § 8.11.14.1";
     let input = &mut File::open(IMAGE_AVIF_IPMA_DUPLICATE_ITEM_ID).expect("Unknown file");
-    assert_invalid_data(
-        mp4::read_avif(input, ParseStrictness::Permissive),
-        expected_msg,
+    assert_eq!(
+        Status::from(mp4::read_avif(input, ParseStrictness::Permissive)),
+        Status::IpmaDuplicateItemId
     )
 }
 
 #[test]
 fn public_avif_ipma_invalid_property_index() {
-    let expected_msg = "Invalid property index in ipma";
-    assert_avif_shall(IMAGE_AVIF_IPMA_INVALID_PROPERTY_INDEX, expected_msg);
+    assert_avif_shall(IMAGE_AVIF_IPMA_INVALID_PROPERTY_INDEX, Status::IpmaBadIndex);
 }
 
 #[test]
 fn public_avif_hdlr_first_in_meta() {
-    let expected_msg = "The HandlerBox shall be the first contained box within \
-                        the MetaBox \
-                        per MIAF (ISO 23000-22:2019) § 7.2.1.5";
-    assert_avif_shall(IMAGE_AVIF_NO_HDLR, expected_msg);
-    assert_avif_shall(IMAGE_AVIF_HDLR_NOT_FIRST, expected_msg);
+    assert_avif_shall(IMAGE_AVIF_NO_HDLR, Status::HdlrNotFirst);
+    assert_avif_shall(IMAGE_AVIF_HDLR_NOT_FIRST, Status::HdlrNotFirst);
 }
 
 #[test]
 fn public_avif_hdlr_is_pict() {
-    let expected_msg = "The HandlerBox handler_type must be 'pict' \
-                        per MIAF (ISO 23000-22:2019) § 7.2.1.5";
-    assert_avif_shall(IMAGE_AVIF_HDLR_NOT_PICT, expected_msg);
+    assert_avif_shall(IMAGE_AVIF_HDLR_NOT_PICT, Status::HdlrTypeNotPict);
+}
+
+#[test]
+fn public_avif_hdlr_nonzero_reserved() {
+    // This is a "should" despite the spec indicating a (somewhat ambiguous)
+    // requirement that this field is set to zero.
+    // See comments in read_hdlr
+    assert_avif_should(
+        IMAGE_AVIF_HDLR_NONZERO_RESERVED,
+        Status::HdlrReservedNonzero,
+    );
+}
+
+#[test]
+fn public_avif_hdlr_multiple_nul() {
+    // This is a "should" despite the spec indicating a (somewhat ambiguous)
+    // requirement about extra data in boxes
+    // See comments in read_hdlr
+    assert_avif_should(IMAGE_AVIF_HDLR_MULTIPLE_NUL, Status::Ok);
 }
 
 #[test]
 fn public_avif_no_mif1() {
-    let expected_msg = "The FileTypeBox should contain 'mif1' in the compatible_brands list \
-                        per MIAF (ISO 23000-22:2019) § 7.2.1.2";
-    assert_avif_should(IMAGE_AVIF_NO_MIF1, expected_msg);
+    assert_avif_should(IMAGE_AVIF_NO_MIF1, Status::MissingMif1Brand);
+}
+
+#[test]
+fn public_avif_no_pitm() {
+    assert_avif_shall(IMAGE_AVIF_NO_PITM, Status::PitmMissing);
 }
 
 #[test]
 fn public_avif_pixi_present_for_displayable_images() {
-    let expected_msg = "The pixel information property shall be associated with every image \
-                        that is displayable (not hidden) \
-                        per MIAF (ISO/IEC 23000-22:2019) specification § 7.3.6.6";
-    assert_avif_shall(IMAGE_AVIF_NO_PIXI, expected_msg);
-    assert_avif_shall(IMAGE_AVIF_NO_ALPHA_PIXI, expected_msg);
+    let pixi_test = if cfg!(feature = "missing-pixi-permitted") {
+        assert_avif_should
+    } else {
+        assert_avif_shall
+    };
+
+    pixi_test(IMAGE_AVIF_NO_PIXI, Status::PixiMissing);
+    pixi_test(IMAGE_AVIF_NO_ALPHA_PIXI, Status::PixiMissing);
 }
 
 #[test]
 fn public_avif_av1c_present_for_av01() {
-    let expected_msg = "One AV1 Item Configuration Property (av1C) \
-                        is mandatory for an image item of type 'av01' \
-                        per AVIF specification § 2.2.1";
-    assert_avif_shall(IMAGE_AVIF_NO_AV1C, expected_msg);
-    assert_avif_shall(IMAGE_AVIF_NO_ALPHA_AV1C, expected_msg);
+    assert_avif_shall(IMAGE_AVIF_NO_AV1C, Status::Av1cMissing);
+    assert_avif_shall(IMAGE_AVIF_NO_ALPHA_AV1C, Status::Av1cMissing);
 }
 
 #[test]
 fn public_avif_ispe_present() {
-    let expected_msg = "Missing 'ispe' property for primary item, required \
-                        per HEIF (ISO/IEC 23008-12:2017) § 6.5.3.1";
-    assert_avif_shall(IMAGE_AVIF_NO_ISPE, expected_msg);
+    assert_avif_shall(IMAGE_AVIF_NO_ISPE, Status::IspeMissing);
+    assert_avif_shall(IMAGE_AVIF_NO_ALPHA_ISPE, Status::IspeMissing);
 }
 
 #[test]
-#[ignore] // Remove when we add support; see https://github.com/mozilla/mp4parse-rust/issues/198
-fn public_avif_primary_item_is_grid() {
-    let input = &mut File::open(IMAGE_AVIF_GRID).expect("Unknown file");
-    mp4::read_avif(input, ParseStrictness::Normal).expect("read_avif failed");
-    // Add some additional checks
+fn public_avif_transform_before_ispe() {
+    assert_avif_shall(IMAGE_AVIF_TRANSFORM_BEFORE_ISPE, Status::TxformBeforeIspe);
+}
+
+#[test]
+fn public_avif_transform_order() {
+    assert_avif_shall(IMAGE_AVIF_TRANSFORM_ORDER, Status::TxformOrder);
+}
+
+#[allow(clippy::uninlined_format_args)]
+fn assert_unsupported_nonfatal(result: &mp4::Result<mp4::AvifContext>, feature: mp4::Feature) {
+    match result {
+        Ok(context) => {
+            assert!(
+                context.unsupported_features.contains(feature),
+                "context.unsupported_features missing expected {:?}",
+                feature
+            );
+        }
+        r => panic!(
+            "Expected Ok with unsupported_features containing {:?}, found {:?}",
+            feature, r
+        ),
+    }
+}
+
+// Assert that across all strictness levels the given feature is tracked as
+// being used, but unsupported. Additionally, if the feature is essential,
+// assert that the primary item is not processed unless using permissive mode.
+// TODO: Add similar tests for alpha
+fn assert_unsupported(path: &str, feature: mp4::Feature, essential: bool) {
+    for_strictness_result(path, |strictness, result| {
+        assert_unsupported_nonfatal(&result, feature);
+        match result {
+            Ok(context) if essential => assert_eq!(
+                context.primary_item_coded_data().is_some(),
+                strictness == ParseStrictness::Permissive
+            ),
+            Ok(context) if !essential => assert!(context.primary_item_coded_data().is_some()),
+            _ => panic!("Expected Ok, got {:?}", result),
+        }
+    });
+}
+
+fn assert_unsupported_nonessential(path: &str, feature: mp4::Feature) {
+    assert_unsupported(path, feature, false);
+}
+
+fn assert_unsupported_essential(path: &str, feature: mp4::Feature) {
+    assert_unsupported(path, feature, true);
+}
+
+#[test]
+fn public_avif_a1lx() {
+    assert_unsupported_nonessential(AVIF_A1LX, mp4::Feature::A1lx);
+}
+
+#[test]
+fn public_avif_a1lx_marked_essential() {
+    assert_avif_shall(IMAGE_AVIF_A1LX_MARKED_ESSENTIAL, Status::A1lxEssential);
+}
+
+#[test]
+fn public_avif_a1op() {
+    assert_unsupported_essential(AVIF_A1OP, mp4::Feature::A1op);
+}
+
+#[test]
+fn public_avif_a1op_missing_essential() {
+    assert_avif_shall(IMAGE_AVIF_A1OP_MISSING_ESSENTIAL, Status::A1opNoEssential);
+}
+
+#[test]
+fn public_avif_lsel() {
+    assert_unsupported_essential(AVIF_LSEL, mp4::Feature::Lsel);
+}
+
+#[test]
+fn public_avif_lsel_missing_essential() {
+    assert_avif_shall(IMAGE_AVIF_LSEL_MISSING_ESSENTIAL, Status::LselNoEssential);
+}
+
+#[test]
+fn public_avif_clap() {
+    assert_unsupported_essential(AVIF_CLAP, mp4::Feature::Clap);
+}
+
+#[test]
+fn public_avif_grid() {
+    for file in &[AVIF_GRID, AVIF_GRID_A1LX] {
+        let input = &mut File::open(file).expect(file);
+        assert_unsupported_nonfatal(
+            &mp4::read_avif(input, ParseStrictness::Normal),
+            mp4::Feature::Grid,
+        );
+    }
+}
+
+#[test]
+fn public_avis_major_no_pitm() {
+    let input = &mut File::open(AVIF_AVIS_MAJOR_NO_PITM).expect("Unknown file");
+    match mp4::read_avif(input, ParseStrictness::Normal) {
+        Ok(context) => {
+            assert_eq!(context.major_brand, mp4::AVIS_BRAND);
+            assert!(context.primary_item_coded_data().is_none());
+            assert!(context.sequence.is_some());
+        }
+        Err(e) => panic!("Expected Ok(_), found {:?}", e),
+    }
+}
+
+#[test]
+fn public_avis_major_with_pitm_and_alpha() {
+    let input = &mut File::open(AVIF_AVIS_MAJOR_WITH_PITM_AND_ALPHA).expect("Unknown file");
+    match mp4::read_avif(input, ParseStrictness::Normal) {
+        Ok(context) => {
+            assert_eq!(context.major_brand, mp4::AVIS_BRAND);
+            assert!(context.primary_item_coded_data().is_some());
+            assert!(context.alpha_item_coded_data().is_some());
+            match context.sequence {
+                Some(sequence) => {
+                    assert!(!sequence.tracks.is_empty());
+                    assert_eq!(sequence.tracks[0].looped, None);
+                }
+                None => panic!("Expected sequence"),
+            }
+        }
+        Err(e) => panic!("Expected Ok(_), found {:?}", e),
+    }
+}
+
+#[test]
+fn public_avif_avis_major_no_moov() {
+    assert_avif_shall(AVIF_AVIS_MAJOR_NO_MOOV, Status::MoovMissing);
+}
+
+#[test]
+fn public_avif_avis_with_no_pitm_no_iloc() {
+    let input = &mut File::open(AVIF_AVIS_WITH_NO_PITM_NO_ILOC).expect("Unknown file");
+    match mp4::read_avif(input, ParseStrictness::Normal) {
+        Ok(context) => {
+            assert_eq!(context.major_brand, mp4::AVIS_BRAND);
+            match context.sequence {
+                Some(sequence) => {
+                    assert!(!sequence.tracks.is_empty());
+                    assert_eq!(sequence.tracks[0].looped, Some(false));
+                }
+                None => panic!("Expected sequence"),
+            }
+        }
+        Err(e) => panic!("Expected Ok(_), found {:?}", e),
+    }
+}
+
+#[test]
+fn public_avif_avis_with_pitm_no_iloc() {
+    assert_avif_should(AVIF_AVIS_WITH_PITM_NO_ILOC, Status::PitmNotFound);
+}
+
+#[test]
+fn public_avif_valid_with_garbage_overread_at_end() {
+    assert_avif_should(
+        IMAGE_AVIF_VALID_WITH_GARBAGE_OVERREAD_AT_END,
+        Status::CheckParserStateErr,
+    );
+}
+
+#[test]
+fn public_avif_valid_with_garbage_byte_at_end() {
+    assert_avif_should(IMAGE_AVIF_VALID_WITH_GARBAGE_BYTE_AT_END, Status::Ok);
+}
+
+#[test]
+fn public_avif_bad_video_sample_entry() {
+    let input = &mut File::open(IMAGE_AVIF_WIDE_BOX_SIZE_0).expect("Unknown file");
+    assert_eq!(
+        Status::from(mp4::read_avif(input, ParseStrictness::Normal)),
+        Status::BoxBadWideSize
+    );
+}
+
+fn public_avis_loop_impl(path: &str, looped: bool) {
+    let input = &mut File::open(path).expect("Unknown file");
+    match mp4::read_avif(input, ParseStrictness::Normal) {
+        Ok(context) => match context.sequence {
+            Some(sequence) => {
+                assert!(!sequence.tracks.is_empty());
+                assert_eq!(sequence.tracks[0].looped, Some(looped));
+                if looped {
+                    assert!(sequence.tracks[0].edited_duration.is_some());
+                }
+            }
+            None => panic!(
+                "Expected sequence in {}",
+                AVIF_AVIS_MAJOR_WITH_PITM_AND_ALPHA
+            ),
+        },
+        Err(e) => panic!("Expected Ok(_), found {:?}", e),
+    }
+}
+
+#[test]
+fn public_avif_avis_no_loop() {
+    public_avis_loop_impl(AVIF_AVIS_NO_LOOP, false);
+}
+
+#[test]
+fn public_avif_avis_loop_forever() {
+    public_avis_loop_impl(AVIF_AVIS_LOOP_FOREVER, true);
 }
 
 #[test]
@@ -955,30 +1347,64 @@ fn public_avif_read_samples_strict() {
     public_avif_read_samples_impl(ParseStrictness::Strict);
 }
 
+fn to_canonical_paths(strs: &[&str]) -> Vec<std::path::PathBuf> {
+    strs.iter()
+        .map(std::fs::canonicalize)
+        .map(Result::unwrap)
+        .collect()
+}
+
 fn public_avif_read_samples_impl(strictness: ParseStrictness) {
+    let corrupt_images = to_canonical_paths(AV1_AVIF_CORRUPT_IMAGES);
+    let unsupported_images = to_canonical_paths(AVIF_UNSUPPORTED_IMAGES);
+    let legal_no_pixi_images = if cfg!(feature = "missing-pixi-permitted") {
+        to_canonical_paths(AVIF_NO_PIXI_IMAGES)
+    } else {
+        vec![]
+    };
     for dir in AVIF_TEST_DIRS {
         for entry in walkdir::WalkDir::new(dir) {
             let entry = entry.expect("AVIF entry");
             let path = entry.path();
-            if !path.is_file() || path.extension().unwrap_or_default() != "avif" {
-                eprintln!("Skipping {:?}", path);
+            let extension = path.extension().unwrap_or_default();
+            if !path.is_file() || (extension != "avif" && extension != "avifs") {
+                eprintln!("Skipping {path:?}");
                 continue; // Skip directories, ReadMe.txt, etc.
             }
-            if path.parent().unwrap() == Path::new(AVIF_CORRUPT_IMAGES_DIR) {
-                eprintln!("Skipping {:?}", path);
-                continue;
-            }
-            if AV1_AVIF_CORRUPT_IMAGES.contains(&path.to_str().unwrap()) {
-                eprintln!("Skipping invalid image from av1-avif repo: {:?}", path);
-                continue;
-            }
-            if path == Path::new(IMAGE_AVIF_GRID) {
-                eprintln!("Skipping {:?}", path);
-                continue; // Remove when public_avif_primary_item_is_grid passes
-            }
-            println!("parsing {:?}", path);
+            let corrupt = (path.canonicalize().unwrap().parent().unwrap()
+                == std::fs::canonicalize(AVIF_CORRUPT_IMAGES_DIR).unwrap()
+                || corrupt_images.contains(&path.canonicalize().unwrap()))
+                && !legal_no_pixi_images.contains(&path.canonicalize().unwrap());
+
+            let unsupported = unsupported_images.contains(&path.canonicalize().unwrap());
+            println!(
+                "parsing {}{}{:?}",
+                if corrupt { "(corrupt) " } else { "" },
+                if unsupported { "(unsupported) " } else { "" },
+                path,
+            );
             let input = &mut File::open(path).expect("Unknow file");
-            mp4::read_avif(input, strictness).expect("read_avif failed");
+            match mp4::read_avif(input, strictness) {
+                Ok(c) if unsupported || corrupt => {
+                    if unsupported {
+                        assert!(!c.unsupported_features.is_empty());
+                    } else {
+                        panic!("Expected error parsing {:?}, found:\n{:?}", path, c)
+                    }
+                }
+                Ok(c) => {
+                    assert!(
+                        c.unsupported_features.is_empty(),
+                        "{:?}",
+                        c.unsupported_features
+                    );
+                    eprintln!("Successfully parsed {path:?}")
+                }
+                Err(e) if corrupt => {
+                    eprintln!("Expected error parsing corrupt input {path:?}: {e:?}")
+                }
+                Err(e) => panic!("Unexpected error parsing {:?}: {:?}", path, e),
+            }
         }
     }
 }

@@ -1,15 +1,15 @@
-/* -*- Mode: Java; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 var { MailServices } = ChromeUtils.import(
   "resource:///modules/MailServices.jsm"
 );
 
 var gServer;
 var gDialog;
+
+window.addEventListener("DOMContentLoaded", onLoad);
 
 document.addEventListener("dialogdisclosure", showInfo);
 document.addEventListener("dialogaccept", onAccept);
@@ -58,7 +58,6 @@ function onLoad(event) {
   }
 
   enableRemove();
-  window.sizeToContent();
 }
 
 function enableRemove() {
@@ -134,7 +133,7 @@ function removeAccount() {
     document.getElementById("success").hidden = false;
   } catch (ex) {
     document.getElementById("failure").hidden = false;
-    Cu.reportError("Failure to remove account: " + ex);
+    console.error("Failure to remove account: " + ex);
     window.arguments[0].result = false;
   }
   document.getElementById("progress").hidden = true;

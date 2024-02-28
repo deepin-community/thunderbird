@@ -1,3 +1,4 @@
+/* -*- indent-tabs-mode: nil; js-indent-level: 2 -*- */
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
@@ -180,9 +181,9 @@ function onSearch()
       switch (searchTerm.attrib) {
        case nsMsgSearchAttrib.Name:
          if (gSearchPhoneticName != "true")
-           attrs = ["DisplayName","FirstName","LastName","NickName","_AimScreenName"];
+           attrs = ["DisplayName","FirstName","LastName","NickName"];
          else
-           attrs = ["DisplayName","FirstName","LastName","NickName","_AimScreenName","PhoneticFirstName","PhoneticLastName"];
+           attrs = ["DisplayName","FirstName","LastName","NickName","PhoneticFirstName","PhoneticLastName"];
          break;
        case nsMsgSearchAttrib.DisplayName:
          attrs = ["DisplayName"];
@@ -228,9 +229,6 @@ function onSearch()
          break;
        case nsMsgSearchAttrib.AdditionalEmail:
          attrs = ["SecondEmail"];
-         break;
-       case nsMsgSearchAttrib.ScreenName:
-         attrs = ["_AimScreenName"];
          break;
        default:
          dump("XXX " + searchTerm.attrib + " not a supported search attr!\n");

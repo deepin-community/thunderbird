@@ -14,10 +14,10 @@ var { MimeParser } = ChromeUtils.import("resource:///modules/mimeParser.jsm");
 
 function HeaderHandler() {
   this.value = "";
-  this.deliverData = function(str) {
+  this.deliverData = function (str) {
     this.value += str;
   };
-  this.deliverEOF = function() {};
+  this.deliverEOF = function () {};
 }
 
 function StringEnumerator(iterator) {
@@ -440,6 +440,7 @@ MimeAddressParser.prototype = {
 
   /**
    * Construct a single email address from an |name <local@domain>| token.
+   *
    * @param {string} aInput - a string to be parsed to a mailbox object.
    * @returns {msgIAddressObject} the mailbox parsed from the input.
    */

@@ -5,11 +5,11 @@
 "use strict";
 
 const {
-  add_sets_to_folders,
+  add_message_sets_to_folders,
   be_in_folder,
   create_folder,
   create_thread,
-  delete_message_set,
+  delete_messages,
   inboxFolder,
   mc,
 } = ChromeUtils.import(
@@ -26,14 +26,17 @@ const { GlodaMsgIndexer } = ChromeUtils.import(
   "resource:///modules/gloda/IndexMsg.jsm"
 );
 
-let prefAutoRead = Services.prefs.getBoolPref(
-  "mailnews.mark_message_read.auto"
-);
-let prefStartPageEnabled = Services.prefs.getBoolPref(
-  "mailnews.start_page.enabled"
-);
-Services.prefs.setBoolPref("mailnews.mark_message_read.auto", false);
-Services.prefs.setBoolPref("mailnews.start_page.enabled", false);
+add_setup(async function () {
+  Services.prefs.setBoolPref("mailnews.mark_message_read.auto", false);
+  Services.prefs.setBoolPref("mailnews.start_page.enabled", false);
+  Services.prefs.setIntPref("mailnews.default_view_flags", 0);
+
+  registerCleanupFunction(() => {
+    Services.prefs.clearUserPref("mailnews.mark_message_read.auto");
+    Services.prefs.clearUserPref("mailnews.start_page.enabled");
+    Services.prefs.clearUserPref("mailnews.default_view_flags");
+  });
+});
 
 function createThreadWithTerm(msgCount, term) {
   let thread = create_thread(msgCount);
@@ -103,17 +106,14 @@ async function clickSubMenuItem(menuId, itemId) {
 async function openConversationView(row, col) {
   let menu = window.document.querySelector("#mailContext");
   let item = window.document.querySelector("#mailContext-openConversation");
-  let prevTab = window.tabmail.selectedTab;
+  let prevTab = window.document.getElementById("tabmail").selectedTab;
 
   let loadedPromise = BrowserTestUtils.waitForEvent(window, "MsgsLoaded");
   await openContextMenu(row, col);
   menu.activateItem(item);
   await loadedPromise;
-  mc.sleep(500);
-
-  Assert.notEqual(
-    window.tabmail.selectedTab,
-    prevTab,
+  await TestUtils.waitForCondition(
+    () => window.document.getElementById("tabmail").selectedTab != prevTab,
     "Conversation View tab did not open"
   );
 }
@@ -142,21 +142,21 @@ function closeTabs() {
  * search results.
  */
 add_task(async function testListViewMarkRead() {
-  let folder = create_folder("ListViewMarkReadFolder");
+  let folder = await create_folder("ListViewMarkReadFolder");
   let term = "listviewmarkread";
   let thread = createThreadWithTerm(2, term);
 
-  registerCleanupFunction(() => {
-    be_in_folder(inboxFolder);
-    delete_message_set(thread);
+  registerCleanupFunction(async () => {
+    await be_in_folder(inboxFolder);
+    await delete_messages(thread);
 
     let trash = folder.rootFolder.getFolderWithFlags(Ci.nsMsgFolderFlags.Trash);
     folder.deleteSelf(null);
-    trash.emptyTrash(null, null);
+    trash.emptyTrash(null);
   });
 
-  be_in_folder(folder);
-  add_sets_to_folders([folder], [thread]);
+  await be_in_folder(folder);
+  await add_message_sets_to_folders([folder], [thread]);
 
   await new Promise(callback => {
     GlodaMsgIndexer.indexFolder(folder, { callback, force: true });
@@ -183,21 +183,20 @@ add_task(async function testListViewMarkRead() {
  * search results.
  */
 add_task(async function testListViewMarkThreadAsRead() {
-  let folder = create_folder("ListViewMarkThreadAsReadFolder");
+  let folder = await create_folder("ListViewMarkThreadAsReadFolder");
   let term = "listviewmarkthreadasread ";
   let thread = createThreadWithTerm(3, term);
 
-  registerCleanupFunction(() => {
-    be_in_folder(inboxFolder);
-    delete_message_set(thread);
-
+  registerCleanupFunction(async () => {
+    await be_in_folder(inboxFolder);
+    await delete_messages(thread);
     let trash = folder.rootFolder.getFolderWithFlags(Ci.nsMsgFolderFlags.Trash);
     folder.deleteSelf(null);
-    trash.emptyTrash(null, null);
+    trash.emptyTrash(null);
   });
 
-  be_in_folder(folder);
-  add_sets_to_folders([folder], [thread]);
+  await be_in_folder(folder);
+  await add_message_sets_to_folders([folder], [thread]);
 
   await new Promise(callback => {
     GlodaMsgIndexer.indexFolder(folder, { callback, force: true });
@@ -224,20 +223,20 @@ add_task(async function testListViewMarkThreadAsRead() {
  * Test we can mark a message as read in a conversation view.
  */
 add_task(async function testConversationViewMarkRead() {
-  let folder = create_folder("ConversationViewMarkReadFolder");
+  let folder = await create_folder("ConversationViewMarkReadFolder");
   let thread = create_thread(2);
 
-  registerCleanupFunction(() => {
-    be_in_folder(inboxFolder);
-    delete_message_set(thread);
+  registerCleanupFunction(async () => {
+    await be_in_folder(inboxFolder);
+    await delete_messages(thread);
 
     let trash = folder.rootFolder.getFolderWithFlags(Ci.nsMsgFolderFlags.Trash);
     folder.deleteSelf(null);
-    trash.emptyTrash(null, null);
+    trash.emptyTrash(null);
   });
 
-  be_in_folder(folder);
-  add_sets_to_folders([folder], [thread]);
+  await be_in_folder(folder);
+  await add_message_sets_to_folders([folder], [thread]);
 
   await new Promise(callback => {
     GlodaMsgIndexer.indexFolder(folder, {
@@ -261,20 +260,20 @@ add_task(async function testConversationViewMarkRead() {
  * Test we can mark a thread as read in a conversation view.
  */
 add_task(async function testConversationViewMarkThreadAsRead() {
-  let folder = create_folder("ConversationViewMarkThreadAsReadFolder");
+  let folder = await create_folder("ConversationViewMarkThreadAsReadFolder");
   let thread = create_thread(3);
 
   registerCleanupFunction(async () => {
-    be_in_folder(inboxFolder);
-    delete_message_set(thread);
+    await be_in_folder(inboxFolder);
+    await delete_messages(thread);
 
     let trash = folder.rootFolder.getFolderWithFlags(Ci.nsMsgFolderFlags.Trash);
     folder.deleteSelf(null);
-    trash.emptyTrash(null, null);
+    trash.emptyTrash(null);
   });
 
-  be_in_folder(folder);
-  add_sets_to_folders([folder], [thread]);
+  await be_in_folder(folder);
+  await add_message_sets_to_folders([folder], [thread]);
 
   await new Promise(callback => {
     GlodaMsgIndexer.indexFolder(folder, { callback, force: true });
@@ -290,12 +289,4 @@ add_task(async function testConversationViewMarkThreadAsRead() {
   });
 
   closeTabs();
-});
-
-registerCleanupFunction(function teardownModule() {
-  Services.prefs.setBoolPref("mailnews.mark_message_read.auto", prefAutoRead);
-  Services.prefs.setBoolPref(
-    "mailnews.start_page.enabled",
-    prefStartPageEnabled
-  );
 });

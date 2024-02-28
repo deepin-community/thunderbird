@@ -3,7 +3,7 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 # Page title
-about-processes-title = Prosesshandterar
+about-processes-title = Prosesshandsamar
 
 # The Actions column
 about-processes-column-action =
@@ -16,17 +16,22 @@ about-processes-shutdown-process =
 about-processes-shutdown-tab =
     .title = Lat att fane
 
+# Profiler icons
+# Variables:
+#    $duration (Number) The time in seconds during which the profiler will be running.
+#                       The value will be an integer, typically less than 10.
+about-processes-profile-process =
+    .title =
+        { $duration ->
+            [one] Profilér alle trådane i denne prosessen i { $duration } sekund
+           *[other] Profilér alle trådane i denne prosessen i { $duration } sekund
+        }
+
 ## Column headers
 
 about-processes-column-name = Namn
 about-processes-column-memory-resident = Minne
 about-processes-column-cpu-total = Prosessor
-
-## Process names
-## Variables:
-##    $pid (String) The process id of this process, assigned by the OS.
-##    $origin (String) The domain name for this process.
-##    $type (String) The raw type for this process. Used for unknown processes.
 
 ## Process names
 ## Variables:
@@ -47,6 +52,7 @@ about-processes-socket-process = Nettverk ({ $pid })
 about-processes-remote-sandbox-broker-process = Remote Sandbox Broker ({ $pid })
 about-processes-fork-server-process = Forkserver ({ $pid })
 about-processes-preallocated-process = Førehandstildelt ({ $pid })
+about-processes-utility-process = Verktøy ({ $pid })
 
 # Unknown process names
 # Variables:
@@ -60,10 +66,9 @@ about-processes-unknown-process = Anna: { $type }({ $pid })
 ##    $origin (String) The domain name for this process.
 
 about-processes-web-isolated-process = { $origin } ({ $pid })
-about-processes-web-large-allocation-process = { $origin } ({ $pid }, stor)
+about-processes-web-serviceworker = { $origin } ({ $pid }, serviceworker)
 about-processes-with-coop-coep-process = { $origin } ({ $pid }, cross-origin isolert)
 about-processes-web-isolated-process-private = { $origin } — Privat ({ $pid })
-about-processes-web-large-allocation-process-private = { $origin } — Privat({ $pid }, stor)
 about-processes-with-coop-coep-process-private = { $origin } — Privat ({ $pid }, cross-origin isolert)
 
 ## Details within processes
@@ -120,6 +125,17 @@ about-processes-frame-name-one = Underramme: { $url }
 #   $shortUrl (String) The shared prefix for the subframes in the group.
 about-processes-frame-name-many = Underrammer ({ $number }): { $shortUrl }
 
+## Utility process actor names
+
+about-processes-utility-actor-unknown = Ukjent aktør
+about-processes-utility-actor-audio-decoder-generic = Generisk lyd-dekodar
+about-processes-utility-actor-audio-decoder-applemedia = Apple Media Audio-dekodar
+about-processes-utility-actor-audio-decoder-wmf = Windows Media Framework Audio-dekodar
+about-processes-utility-actor-mf-media-engine = Windows Media Foundation Media Engine CDM
+# "Oracle" refers to an internal Firefox process and should be kept in English
+about-processes-utility-actor-js-oracle = JavaScript Oracle
+about-processes-utility-actor-windows-utils = Windows-verktøy
+
 ## Displaying CPU (percentage and total)
 ## Variables:
 ##    $percent (Number) The percentage of CPU used by the process or thread.
@@ -136,9 +152,14 @@ about-processes-cpu = { NUMBER($percent, maximumSignificantDigits: 2, style: "pe
 # Special case: data is not available yet.
 about-processes-cpu-user-and-kernel-not-ready = (måling)
 
+# Special case: process or thread is almost idle (using less than 0.1% of a CPU core).
+# This case only occurs on Windows where the precision of the CPU times is low.
+about-processes-cpu-almost-idle = < 0.1%
+    .title = Total CPU-tid: { NUMBER($total, maximumFractionDigits: 0) }{ $unit }
+
 # Special case: process or thread is currently idle.
-about-processes-cpu-idle = inaktiv
-    .title = Total prosessortid: { NUMBER($total, maximumFractionDigits: 2) } { $unit }
+about-processes-cpu-fully-idle = inaktiv
+    .title = Total CPU-tid: { NUMBER($total, maximumFractionDigits: 0) }{ $unit }
 
 ## Displaying Memory (total and delta)
 ## Variables:

@@ -4,11 +4,13 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 /* import-globals-from ../../../../mailnews/extensions/smime/msgReadSMIMEOverlay.js */
-/* import-globals-from ../../../base/content/folderDisplay.js */
-/* import-globals-from ../../../base/content/mailWindow.js */
+/* import-globals-from ../../../base/content/aboutMessage.js */
 /* import-globals-from ../../../base/content/msgHdrView.js */
+/* import-globals-from ../../../base/content/msgSecurityPane.js */
 
-var gEncryptedURIService = null;
+// mailCommon.js
+/* globals gEncryptedURIService */
+
 var gMyLastEncryptedURI = null;
 
 var gSMIMEBundle = null;
@@ -18,11 +20,15 @@ var gEncryptionStatusForURI = null;
 
 // Get the necko URL for the message URI.
 function neckoURLForMessageURI(aMessageURI) {
-  let msgSvc = Cc["@mozilla.org/messenger;1"]
-    .createInstance(Ci.nsIMessenger)
-    .messageServiceFromURI(aMessageURI);
+  let msgSvc = MailServices.messageServiceFromURI(aMessageURI);
   let neckoURI = msgSvc.getUrlForUri(aMessageURI);
   return neckoURI.spec;
+}
+
+var gIgnoreStatusFromMimePart = null;
+
+function setIgnoreStatusFromMimePart(mimePart) {
+  gIgnoreStatusFromMimePart = mimePart;
 }
 
 /**
@@ -36,16 +42,33 @@ function neckoURLForMessageURI(aMessageURI) {
  *   message.
  * @param {"ok"|"notok"|"verified"|"unverified"|"unknown"|"mismatch"|null}
  *   signedState - The signed state of the message.
+ * @param {boolean} forceShow - Show the box if unsigned and unencrypted.
+ * @param {string} mimePartNumber - Should be set to the MIME part number
+ *   that triggers this status update. If the value matches a currently
+ *   ignored MIME part, then this function call will be ignored.
  */
-function setMessageEncryptionStateButton(tech, encryptedState, signedState) {
+function setMessageCryptoBox(
+  tech,
+  encryptedState,
+  signedState,
+  forceShow,
+  mimePartNumber
+) {
+  if (
+    !!gIgnoreStatusFromMimePart &&
+    mimePartNumber == gIgnoreStatusFromMimePart
+  ) {
+    return;
+  }
+
   let container = document.getElementById("cryptoBox");
   let encryptedIcon = document.getElementById("encryptedHdrIcon");
   let signedIcon = document.getElementById("signedHdrIcon");
   let button = document.getElementById("encryptionTechBtn");
   let buttonText = button.querySelector(".crypto-label");
 
-  let hidden = !tech || (!encryptedState && !signedState);
-  container.collapsed = hidden;
+  let hidden = !forceShow && (!tech || (!encryptedState && !signedState));
+  container.hidden = hidden;
   button.hidden = hidden;
   if (hidden) {
     container.removeAttribute("tech");
@@ -126,28 +149,27 @@ function smimeEncryptedStateToString(encryptedState) {
 /**
  * Refresh the cryptoBox content using the global gEncryptionStatus and
  * gSignatureStatus variables.
+ *
+ * @param {string} mimePartNumber - Should be set to the MIME part number
+ *   that triggers this status update.
  */
-function refreshSmimeMessageEncryptionStateButton() {
+function refreshSmimeMessageEncryptionStatus(mimePartNumber = undefined) {
   let signed = smimeSignedStateToString(gSignatureStatus);
   let encrypted = smimeEncryptedStateToString(gEncryptionStatus);
-  setMessageEncryptionStateButton("S/MIME", encrypted, signed);
+  setMessageCryptoBox("S/MIME", encrypted, signed, false, mimePartNumber);
 }
 
 var smimeHeaderSink = {
-  maxWantedNesting() {
-    return 1;
-  },
-
   /**
-   * @return the URI of the selected message, or null if the current
+   * @returns the URI of the selected message, or null if the current
    *         message displayed isn't in a folder, for example if the
    *         message is displayed in a separate window.
    */
   getSelectedMessageURI() {
-    if (!gFolderDisplay.selectedMessage) {
+    if (!gMessage) {
       return null;
     }
-    if (!gFolderDisplay.selectedMessage.folder) {
+    if (!gFolder) {
       // The folder should be absent only if the message gets opened
       // from an external file (.eml), which is opened in its own window.
       // That window won't get reused for other messages. We conclude
@@ -158,10 +180,23 @@ var smimeHeaderSink = {
       return null;
     }
 
-    return neckoURLForMessageURI(gFolderDisplay.selectedMessageUris[0]);
+    return neckoURLForMessageURI(gMessageURI);
   },
 
-  signedStatus(aNestingLevel, aSignatureStatus, aSignerCert, aMsgNeckoURL) {
+  signedStatus(
+    aNestingLevel,
+    aSignatureStatus,
+    aSignerCert,
+    aMsgNeckoURL,
+    aOriginMimePartNumber
+  ) {
+    if (
+      !!gIgnoreStatusFromMimePart &&
+      aOriginMimePartNumber == gIgnoreStatusFromMimePart
+    ) {
+      return;
+    }
+
     if (aNestingLevel > 1) {
       // we are not interested
       return;
@@ -181,10 +216,11 @@ var smimeHeaderSink = {
     }
 
     gSignatureStatusForURI = aMsgNeckoURL;
+    // eslint-disable-next-line no-global-assign
     gSignatureStatus = aSignatureStatus;
     gSignerCert = aSignerCert;
 
-    refreshSmimeMessageEncryptionStateButton();
+    refreshSmimeMessageEncryptionStatus(aOriginMimePartNumber);
 
     let signed = smimeSignedStateToString(aSignatureStatus);
     if (signed == "unknown" || signed == "mismatch") {
@@ -228,8 +264,8 @@ var smimeHeaderSink = {
       }
     }
 
-    let senderInfo = { name: "sender", outputFunction: OutputEmailAddresses };
-    let senderEntry = new createHeaderEntry("expanded", senderInfo);
+    let senderInfo = { name: "sender", outputFunction: outputEmailAddresses };
+    let senderEntry = new MsgHeaderEntry("expanded", senderInfo);
 
     gExpandedHeaderView[senderInfo.name] = senderEntry;
     UpdateExpandedMessageHeaders();
@@ -239,8 +275,16 @@ var smimeHeaderSink = {
     aNestingLevel,
     aEncryptionStatus,
     aRecipientCert,
-    aMsgNeckoURL
+    aMsgNeckoURL,
+    aOriginMimePartNumber
   ) {
+    if (
+      !!gIgnoreStatusFromMimePart &&
+      aOriginMimePartNumber == gIgnoreStatusFromMimePart
+    ) {
+      return;
+    }
+
     if (aNestingLevel > 1) {
       // we are not interested
       return;
@@ -260,14 +304,15 @@ var smimeHeaderSink = {
     }
 
     gEncryptionStatusForURI = aMsgNeckoURL;
+    // eslint-disable-next-line no-global-assign
     gEncryptionStatus = aEncryptionStatus;
     gEncryptionCert = aRecipientCert;
 
-    refreshSmimeMessageEncryptionStateButton();
+    refreshSmimeMessageEncryptionStatus(aOriginMimePartNumber);
 
     if (gEncryptedURIService) {
       // Remember the message URI and the corresponding necko URI.
-      gMyLastEncryptedURI = gFolderDisplay.selectedMessageUris[0];
+      gMyLastEncryptedURI = gMessageURI;
       gEncryptedURIService.rememberEncrypted(gMyLastEncryptedURI);
       gEncryptedURIService.rememberEncrypted(
         neckoURLForMessageURI(gMyLastEncryptedURI)
@@ -283,27 +328,28 @@ var smimeHeaderSink = {
           .getElementById("bundle_brand")
           .getString("brandShortName");
         var title = gSMIMEBundle
-          .getString("CantDecryptTitle")
+          .GetStringFromName("CantDecryptTitle")
           .replace(/%brand%/g, brand);
         var body = gSMIMEBundle
-          .getString("CantDecryptBody")
+          .GetStringFromName("CantDecryptBody")
           .replace(/%brand%/g, brand);
 
-        // insert our message
-        msgWindow.displayHTMLInMessagePane(
-          title,
-          "<html>\n" +
-            '<body bgcolor="#fafaee">\n' +
-            "<center><br><br><br>\n" +
-            "<table>\n" +
-            "<tr><td>\n" +
-            '<center><strong><font size="+3">\n' +
-            title +
-            "</font></center><br>\n" +
-            body +
-            "\n" +
-            "</td></tr></table></center></body></html>",
-          false
+        // TODO: This should be replaced with a real page, and made not ugly.
+        HideMessageHeaderPane();
+        MailE10SUtils.loadURI(
+          getMessagePaneBrowser(),
+          "data:text/html;base64," +
+            btoa(
+              `<html>
+              <head>
+                <title>${title}</title>
+              </head>
+              <body>
+                <h1>${title}</h1>
+                ${body}
+              </body>
+            </html>`
+            )
         );
         break;
     }
@@ -317,6 +363,10 @@ var smimeHeaderSink = {
         },
       })
     );
+  },
+
+  ignoreStatusFrom(aOriginMimePartNumber) {
+    setIgnoreStatusFromMimePart(aOriginMimePartNumber);
   },
 
   QueryInterface: ChromeUtils.generateQI(["nsIMsgSMIMEHeaderSink"]),
@@ -333,7 +383,9 @@ function forgetEncryptedURI() {
 }
 
 function onSMIMEStartHeaders() {
+  // eslint-disable-next-line no-global-assign
   gEncryptionStatus = -1;
+  // eslint-disable-next-line no-global-assign
   gSignatureStatus = -1;
 
   gSignatureStatusForURI = null;
@@ -342,7 +394,7 @@ function onSMIMEStartHeaders() {
   gSignerCert = null;
   gEncryptionCert = null;
 
-  setMessageEncryptionStateButton(null, null, null);
+  setMessageCryptoBox(null, null, null, false);
 
   forgetEncryptedURI();
   onMessageSecurityPopupHidden();
@@ -375,12 +427,10 @@ function msgHdrViewSMIMEOnLoad(event) {
   document.addEventListener("smartcard-insert", onSmartCardChange);
   document.addEventListener("smartcard-remove", onSmartCardChange);
   if (!gSMIMEBundle) {
-    gSMIMEBundle = document.getElementById("bundle_read_smime");
+    gSMIMEBundle = Services.strings.createBundle(
+      "chrome://messenger-smime/locale/msgReadSMIMEOverlay.properties"
+    );
   }
-
-  // we want to register our security header sink as an opaque nsISupports
-  // on the msgHdrSink used by mail.....
-  msgWindow.msgHeaderSink.securityInfo = smimeHeaderSink;
 
   // Add ourself to the list of message display listeners so we get notified
   // when we are about to display a message.
@@ -390,6 +440,7 @@ function msgHdrViewSMIMEOnLoad(event) {
   listener.onBeforeShowHeaderPane = onSMIMEBeforeShowHeaderPane;
   gMessageListeners.push(listener);
 
+  // eslint-disable-next-line no-global-assign
   gEncryptedURIService = Cc[
     "@mozilla.org/messenger-smime/smime-encrypted-uris-service;1"
   ].getService(Ci.nsIEncryptedSMIMEURIsService);
@@ -415,11 +466,11 @@ function msgHdrViewSMIMEOnUnload(event) {
 }
 
 function msgHdrViewSMIMEOnMessagePaneHide() {
-  setMessageEncryptionStateButton(null, null, null);
+  setMessageCryptoBox(null, null, null, false);
 }
 
 function msgHdrViewSMIMEOnMessagePaneUnhide() {
-  refreshSmimeMessageEncryptionStateButton();
+  refreshSmimeMessageEncryptionStatus();
 }
 
 addEventListener("messagepane-loaded", msgHdrViewSMIMEOnLoad, true);

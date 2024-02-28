@@ -12,7 +12,7 @@
 
 #include "nsTHashMap.h"
 
-struct RawServoStyleRule;
+struct StyleLockedStyleRule;
 
 namespace mozilla {
 class ServoCSSRuleList;
@@ -30,12 +30,13 @@ class ServoStyleRuleMap {
   void EnsureTable(ServoStyleSet&);
   void EnsureTable(dom::ShadowRoot&);
 
-  dom::CSSStyleRule* Lookup(const RawServoStyleRule* aRawRule) const {
+  dom::CSSStyleRule* Lookup(const StyleLockedStyleRule* aRawRule) const {
     return mTable.Get(aRawRule);
   }
 
   void SheetAdded(StyleSheet&);
   void SheetRemoved(StyleSheet&);
+  void SheetCloned(StyleSheet&);
 
   void RuleAdded(StyleSheet& aStyleSheet, css::Rule&);
   void RuleRemoved(StyleSheet& aStyleSheet, css::Rule&);
@@ -54,7 +55,7 @@ class ServoStyleRuleMap {
   void FillTableFromRuleList(ServoCSSRuleList&);
   void FillTableFromStyleSheet(StyleSheet&);
 
-  typedef nsTHashMap<nsPtrHashKey<const RawServoStyleRule>,
+  typedef nsTHashMap<nsPtrHashKey<const StyleLockedStyleRule>,
                      WeakPtr<dom::CSSStyleRule>>
       Hashtable;
   Hashtable mTable;

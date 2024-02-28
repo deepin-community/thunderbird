@@ -37,7 +37,7 @@ QuotaChild::QuotaChild(QuotaManagerService* aService)
     : mService(aService)
 #ifdef DEBUG
       ,
-      mOwningThread(GetCurrentEventTarget())
+      mOwningThread(GetCurrentSerialEventTarget())
 #endif
 {
   AssertIsOnOwningThread();
@@ -313,6 +313,27 @@ void QuotaRequestChild::HandleResponse(const nsTArray<nsCString>& aResponse) {
   mRequest->SetResult(variant);
 }
 
+void QuotaRequestChild::HandleResponse(
+    const GetFullOriginMetadataResponse& aResponse) {
+  AssertIsOnOwningThread();
+  MOZ_ASSERT(mRequest);
+
+  RefPtr<nsVariant> variant = new nsVariant();
+
+  if (aResponse.maybeFullOriginMetadata()) {
+    RefPtr<FullOriginMetadataResult> result =
+        new FullOriginMetadataResult(*aResponse.maybeFullOriginMetadata());
+
+    variant->SetAsInterface(NS_GET_IID(nsIQuotaFullOriginMetadataResult),
+                            result);
+
+  } else {
+    variant->SetAsVoid();
+  }
+
+  mRequest->SetResult(variant);
+}
+
 void QuotaRequestChild::ActorDestroy(ActorDestroyReason aWhy) {
   AssertIsOnOwningThread();
 }
@@ -345,6 +366,7 @@ mozilla::ipc::IPCResult QuotaRequestChild::Recv__delete__(
     case RequestResponse::TClearOriginResponse:
     case RequestResponse::TResetOriginResponse:
     case RequestResponse::TClearDataResponse:
+    case RequestResponse::TClearPrivateBrowsingResponse:
     case RequestResponse::TClearAllResponse:
     case RequestResponse::TResetAllResponse:
     case RequestResponse::TPersistResponse:
@@ -359,6 +381,10 @@ mozilla::ipc::IPCResult QuotaRequestChild::Recv__delete__(
     case RequestResponse::TInitializeTemporaryOriginResponse:
       HandleResponse(
           aResponse.get_InitializeTemporaryOriginResponse().created());
+      break;
+
+    case RequestResponse::TGetFullOriginMetadataResponse:
+      HandleResponse(aResponse.get_GetFullOriginMetadataResponse());
       break;
 
     case RequestResponse::TPersistedResponse:

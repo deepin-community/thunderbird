@@ -2,9 +2,15 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-var { Status } = ChromeUtils.import("resource:///modules/imStatusUtils.jsm");
-var { Services } = ChromeUtils.import("resource:///modules/imServices.jsm");
-var { ChatIcons } = ChromeUtils.import("resource:///modules/chatIcons.jsm");
+var { Status } = ChromeUtils.importESModule(
+  "resource:///modules/imStatusUtils.sys.mjs"
+);
+var { IMServices } = ChromeUtils.importESModule(
+  "resource:///modules/IMServices.sys.mjs"
+);
+var { ChatIcons } = ChromeUtils.importESModule(
+  "resource:///modules/chatIcons.sys.mjs"
+);
 
 var statusSelector = {
   observe(aSubject, aTopic, aMsg) {
@@ -18,7 +24,7 @@ var statusSelector = {
   },
 
   displayUserIcon() {
-    let icon = Services.core.globalUserStatus.getUserIcon();
+    let icon = IMServices.core.globalUserStatus.getUserIcon();
     ChatIcons.setUserIconSrc(
       document.getElementById("userIcon"),
       icon?.spec,
@@ -27,13 +33,15 @@ var statusSelector = {
   },
 
   displayUserDisplayName() {
-    let displayName = Services.core.globalUserStatus.displayName;
+    let displayName = IMServices.core.globalUserStatus.displayName;
     let elt = document.getElementById("displayName");
     if (displayName) {
       elt.removeAttribute("usingDefault");
     } else {
-      let bundle = document.getElementById("chatBundle");
-      displayName = bundle.getString("displayNameEmptyText");
+      let bundle = Services.strings.createBundle(
+        "chrome://messenger/locale/chat.properties"
+      );
+      displayName = bundle.GetStringFromName("displayNameEmptyText");
       elt.setAttribute("usingDefault", displayName);
     }
     elt.setAttribute("value", displayName);
@@ -51,7 +59,7 @@ var statusSelector = {
   },
 
   displayCurrentStatus() {
-    let us = Services.core.globalUserStatus;
+    let us = IMServices.core.globalUserStatus;
     let status = Status.toAttribute(us.statusType);
     let message = status == "offline" ? "" : us.statusText;
     let statusMessage = document.getElementById("statusMessageLabel");
@@ -73,7 +81,7 @@ var statusSelector = {
   editStatus(aEvent) {
     let status = aEvent.target.getAttribute("status");
     if (status == "offline") {
-      Services.core.globalUserStatus.setStatus(
+      IMServices.core.globalUserStatus.setStatus(
         Ci.imIStatusInfo.STATUS_OFFLINE,
         ""
       );
@@ -118,7 +126,7 @@ var statusSelector = {
         ) {
           statusMessageInput.setAttribute(
             "value",
-            Services.core.globalUserStatus.statusText
+            IMServices.core.globalUserStatus.statusText
           );
         } else {
           statusMessageInput.removeAttribute("value");
@@ -205,7 +213,7 @@ var statusSelector = {
         newStatus != Ci.imIStatusInfo.STATUS_UNKNOWN ||
         statusMessageInput.value != statusMessageInput.getAttribute("value")
       ) {
-        Services.core.globalUserStatus.setStatus(
+        IMServices.core.globalUserStatus.setStatus(
           newStatus,
           statusMessageInput.value
         );
@@ -239,10 +247,12 @@ var statusSelector = {
   userIconClick() {
     const nsIFilePicker = Ci.nsIFilePicker;
     let fp = Cc["@mozilla.org/filepicker;1"].createInstance(nsIFilePicker);
-    let bundle = document.getElementById("chatBundle");
+    let bundle = Services.strings.createBundle(
+      "chrome://messenger/locale/chat.properties"
+    );
     fp.init(
       window,
-      bundle.getString("userIconFilePickerTitle"),
+      bundle.GetStringFromName("userIconFilePickerTitle"),
       nsIFilePicker.modeOpen
     );
     fp.appendFilters(nsIFilePicker.filterImages);
@@ -250,7 +260,7 @@ var statusSelector = {
       if (rv != nsIFilePicker.returnOK || !fp.file) {
         return;
       }
-      Services.core.globalUserStatus.setUserIcon(fp.file);
+      IMServices.core.globalUserStatus.setUserIcon(fp.file);
     });
   },
 
@@ -318,7 +328,7 @@ var statusSelector = {
       aSave &&
       displayNameInput.value != displayNameInput.getAttribute("value")
     ) {
-      Services.core.globalUserStatus.displayName = displayNameInput.value;
+      IMServices.core.globalUserStatus.displayName = displayNameInput.value;
     } else if (displayName.hasAttribute("usingDefault")) {
       displayName.setAttribute(
         "value",

@@ -7,18 +7,19 @@
 #include "nsMsgIdentity.h"
 #include "nsIPrefService.h"
 #include "nsString.h"
-#include "nsMsgCompCID.h"
 #include "nsMsgFolderFlags.h"
 #include "nsIMsgFolder.h"
 #include "nsIMsgIncomingServer.h"
 #include "nsIMsgAccountManager.h"
 #include "mozilla/mailnews/MimeHeaderParser.h"
-#include "nsMsgBaseCID.h"
+#include "nsIMsgHeaderParser.h"
 #include "prprf.h"
 #include "nsISupportsPrimitives.h"
 #include "nsMsgUtils.h"
 #include "nsServiceManagerUtils.h"
 #include "nsComponentManagerUtils.h"
+#include "nsIUUIDGenerator.h"
+#include "mozilla/Components.h"
 
 #define REL_FILE_PREF_SUFFIX "-rel"
 
@@ -54,6 +55,41 @@ nsMsgIdentity::SetKey(const nsACString& identityKey) {
   return rv;
 }
 
+NS_IMETHODIMP
+nsMsgIdentity::GetUID(nsACString& uid) {
+  bool hasValue;
+  nsresult rv = mPrefBranch->PrefHasUserValue("uid", &hasValue);
+  NS_ENSURE_SUCCESS(rv, rv);
+  if (hasValue) {
+    return mPrefBranch->GetCharPref("uid", uid);
+  }
+
+  nsCOMPtr<nsIUUIDGenerator> uuidgen =
+      mozilla::components::UUIDGenerator::Service();
+  NS_ENSURE_TRUE(uuidgen, NS_ERROR_FAILURE);
+
+  nsID id;
+  rv = uuidgen->GenerateUUIDInPlace(&id);
+  NS_ENSURE_SUCCESS(rv, rv);
+
+  char idString[NSID_LENGTH];
+  id.ToProvidedString(idString);
+
+  uid.AppendASCII(idString + 1, NSID_LENGTH - 3);
+  return SetUID(uid);
+}
+
+NS_IMETHODIMP
+nsMsgIdentity::SetUID(const nsACString& uid) {
+  bool hasValue;
+  nsresult rv = mPrefBranch->PrefHasUserValue("uid", &hasValue);
+  NS_ENSURE_SUCCESS(rv, rv);
+  if (hasValue) {
+    return NS_ERROR_ABORT;
+  }
+  return SetCharAttribute("uid", uid);
+}
+
 nsresult nsMsgIdentity::GetIdentityName(nsAString& idName) {
   idName.AssignLiteral("");
   // Try to use "fullname <email>" as the name.
@@ -85,11 +121,17 @@ nsresult nsMsgIdentity::GetFullAddress(nsAString& fullAddress) {
   rv = GetEmail(email);
   NS_ENSURE_SUCCESS(rv, rv);
 
-  if (fullName.IsEmpty() && email.IsEmpty())
+  if (fullName.IsEmpty() && email.IsEmpty()) {
     fullAddress.Truncate();
-  else
-    mozilla::mailnews::MakeMimeAddress(fullName, NS_ConvertASCIItoUTF16(email),
-                                       fullAddress);
+  } else {
+    nsCOMPtr<msgIAddressObject> mailbox;
+    nsCOMPtr<nsIMsgHeaderParser> headerParser(
+        mozilla::components::HeaderParser::Service());
+    NS_ENSURE_TRUE(headerParser, NS_ERROR_UNEXPECTED);
+    headerParser->MakeMailboxObject(fullName, NS_ConvertUTF8toUTF16(email),
+                                    getter_AddRefs(mailbox));
+    mailbox->ToString(fullAddress);
+  }
 
   return NS_OK;
 }
@@ -167,7 +209,7 @@ NS_IMPL_IDPREF_INT(SignatureDate, "sig_date")
 
 NS_IMPL_IDPREF_BOOL(DoFcc, "fcc")
 
-NS_IMPL_FOLDERPREF_STR(FccFolder, "fcc_folder", "Sent",
+NS_IMPL_FOLDERPREF_STR(FccFolder, "fcc_folder", "Sent"_ns,
                        nsMsgFolderFlags::SentMail)
 NS_IMPL_IDPREF_STR(FccFolderPickerMode, "fcc_folder_picker_mode")
 NS_IMPL_IDPREF_BOOL(FccReplyFollowsParent, "fcc_reply_follows_parent")
@@ -183,6 +225,13 @@ NS_IMPL_IDPREF_BOOL(SuppressSigSep, "suppress_signature_separator")
 
 NS_IMPL_IDPREF_BOOL(DoCc, "doCc")
 NS_IMPL_IDPREF_STR(DoCcList, "doCcList")
+
+NS_IMPL_IDPREF_BOOL(AttachPgpKey, "attachPgpKey")
+NS_IMPL_IDPREF_BOOL(SendAutocryptHeaders, "sendAutocryptHeaders")
+NS_IMPL_IDPREF_BOOL(AutoEncryptDrafts, "autoEncryptDrafts")
+NS_IMPL_IDPREF_BOOL(ProtectSubject, "protectSubject")
+NS_IMPL_IDPREF_INT(EncryptionPolicy, "encryptionpolicy")
+NS_IMPL_IDPREF_BOOL(SignMail, "sign_mail")
 
 NS_IMETHODIMP
 nsMsgIdentity::GetDoBcc(bool* aValue) {
@@ -246,11 +295,11 @@ nsMsgIdentity::SetDoBccList(const nsACString& aValue) {
   return SetCharAttribute("doBccList", aValue);
 }
 
-NS_IMPL_FOLDERPREF_STR(DraftFolder, "draft_folder", "Drafts",
+NS_IMPL_FOLDERPREF_STR(DraftFolder, "draft_folder", "Drafts"_ns,
                        nsMsgFolderFlags::Drafts)
-NS_IMPL_FOLDERPREF_STR(ArchiveFolder, "archive_folder", "Archives",
+NS_IMPL_FOLDERPREF_STR(ArchiveFolder, "archive_folder", "Archives"_ns,
                        nsMsgFolderFlags::Archive)
-NS_IMPL_FOLDERPREF_STR(StationeryFolder, "stationery_folder", "Templates",
+NS_IMPL_FOLDERPREF_STR(StationeryFolder, "stationery_folder", "Templates"_ns,
                        nsMsgFolderFlags::Templates)
 
 NS_IMPL_IDPREF_BOOL(ArchiveEnabled, "archive_enabled")
@@ -264,12 +313,12 @@ NS_IMPL_IDPREF_BOOL(AutocompleteToMyDomain, "autocompleteToMyDomain")
 
 NS_IMPL_IDPREF_BOOL(Valid, "valid")
 
-nsresult nsMsgIdentity::getFolderPref(const char* prefname, nsCString& retval,
-                                      const char* folderName,
+nsresult nsMsgIdentity::getFolderPref(const char* prefname, nsACString& retval,
+                                      const nsACString& folderName,
                                       uint32_t folderflag) {
   if (!mPrefBranch) return NS_ERROR_NOT_INITIALIZED;
 
-  nsresult rv = mPrefBranch->GetCharPref(prefname, retval);
+  nsresult rv = mPrefBranch->GetStringPref(prefname, EmptyCString(), 0, retval);
   if (NS_SUCCEEDED(rv) && !retval.IsEmpty()) {
     nsCOMPtr<nsIMsgFolder> folder;
     rv = GetOrCreateFolder(retval, getter_AddRefs(folder));
@@ -295,14 +344,14 @@ nsresult nsMsgIdentity::getFolderPref(const char* prefname, nsCString& retval,
   }
 
   // if the server doesn't exist, fall back to the default pref.
-  rv = mDefPrefBranch->GetCharPref(prefname, retval);
+  rv = mDefPrefBranch->GetStringPref(prefname, EmptyCString(), 0, retval);
   if (NS_SUCCEEDED(rv) && !retval.IsEmpty())
     return setFolderPref(prefname, retval, folderflag);
 
   // here I think we need to create a uri for the folder on the
   // default server for this identity.
   nsCOMPtr<nsIMsgAccountManager> accountManager =
-      do_GetService(NS_MSGACCOUNTMANAGER_CONTRACTID, &rv);
+      do_GetService("@mozilla.org/messenger/account-manager;1", &rv);
   NS_ENSURE_SUCCESS(rv, rv);
 
   nsTArray<RefPtr<nsIMsgIncomingServer>> servers;
@@ -349,7 +398,7 @@ nsresult nsMsgIdentity::setFolderPref(const char* prefname,
     // Clear the temporary return receipt filter so that the new filter
     // rule can be recreated (by ConfigureTemporaryFilters()).
     nsCOMPtr<nsIMsgAccountManager> accountManager =
-        do_GetService(NS_MSGACCOUNTMANAGER_CONTRACTID, &rv);
+        do_GetService("@mozilla.org/messenger/account-manager;1", &rv);
     NS_ENSURE_SUCCESS(rv, rv);
 
     nsTArray<RefPtr<nsIMsgIncomingServer>> servers;
@@ -362,7 +411,7 @@ nsresult nsMsgIdentity::setFolderPref(const char* prefname,
   }
 
   // get the old folder, and clear the special folder flag on it
-  rv = mPrefBranch->GetCharPref(prefname, oldpref);
+  rv = mPrefBranch->GetStringPref(prefname, EmptyCString(), 0, oldpref);
   if (NS_SUCCEEDED(rv) && !oldpref.IsEmpty()) {
     rv = GetOrCreateFolder(oldpref, getter_AddRefs(folder));
     if (NS_SUCCEEDED(rv)) {
@@ -371,7 +420,7 @@ nsresult nsMsgIdentity::setFolderPref(const char* prefname,
   }
 
   // set the new folder, and set the special folder flags on it
-  rv = SetCharAttribute(prefname, value);
+  rv = SetUnicharAttribute(prefname, NS_ConvertUTF8toUTF16(value));
   if (NS_SUCCEEDED(rv) && !value.IsEmpty()) {
     rv = GetOrCreateFolder(value, getter_AddRefs(folder));
     if (NS_SUCCEEDED(rv)) rv = folder->SetFlag(folderflag);
@@ -540,6 +589,14 @@ nsMsgIdentity::Copy(nsIMsgIdentity* identity) {
   COPY_IDENTITY_STR_VALUE(identity, GetEscapedVCard, SetEscapedVCard)
   COPY_IDENTITY_STR_VALUE(identity, GetSmtpServerKey, SetSmtpServerKey)
   COPY_IDENTITY_BOOL_VALUE(identity, GetSuppressSigSep, SetSuppressSigSep)
+
+  COPY_IDENTITY_BOOL_VALUE(identity, GetAttachPgpKey, SetAttachPgpKey)
+  COPY_IDENTITY_BOOL_VALUE(identity, GetSendAutocryptHeaders,
+                           SetSendAutocryptHeaders)
+  COPY_IDENTITY_BOOL_VALUE(identity, GetAutoEncryptDrafts, SetAutoEncryptDrafts)
+  COPY_IDENTITY_BOOL_VALUE(identity, GetProtectSubject, SetProtectSubject)
+  COPY_IDENTITY_INT_VALUE(identity, GetEncryptionPolicy, SetEncryptionPolicy)
+  COPY_IDENTITY_BOOL_VALUE(identity, GetSignMail, SetSignMail)
   return NS_OK;
 }
 

@@ -3,7 +3,7 @@
 
 "use strict";
 
-const TEST_RELOAD_URL = `${URL_ROOT}/inspectedwindow-reload-target.sjs`;
+const TEST_RELOAD_URL = `${URL_ROOT_SSL}/inspectedwindow-reload-target.sjs`;
 
 async function setup(pageUrl) {
   // Disable bfcache for Fission for now.
@@ -31,7 +31,7 @@ async function setup(pageUrl) {
 
   const tab = await addTab(pageUrl);
 
-  const commands = await CommandsFactory.forTab(tab);
+  const commands = await CommandsFactory.forTab(tab, { isWebExtension: true });
   await commands.targetCommand.startListening();
 
   const webConsoleFront = await commands.targetCommand.targetFront.getFront(
@@ -69,7 +69,7 @@ function injectedScript() {
   if (!window.pageScriptExecutedFirst) {
     window.addEventListener(
       "DOMContentLoaded",
-      function() {
+      function () {
         if (document.querySelector("pre")) {
           document.querySelector("pre").textContent =
             "injected script executed first";
@@ -97,7 +97,7 @@ function collectEvalResults() {
 }
 
 add_task(async function test_successfull_inspectedWindowEval_result() {
-  const { commands, extension, fakeExtCallerInfo } = await setup(URL_ROOT);
+  const { commands, extension, fakeExtCallerInfo } = await setup(URL_ROOT_SSL);
 
   const result = await commands.inspectedWindowCommand.eval(
     fakeExtCallerInfo,
@@ -108,12 +108,12 @@ add_task(async function test_successfull_inspectedWindowEval_result() {
   ok(result.value, "Got a result from inspectedWindow eval");
   is(
     result.value.href,
-    URL_ROOT,
+    URL_ROOT_SSL,
     "Got the expected window.location.href property value"
   );
   is(
     result.value.protocol,
-    "http:",
+    "https:",
     "Got the expected window.location.protocol property value"
   );
 
@@ -121,12 +121,8 @@ add_task(async function test_successfull_inspectedWindowEval_result() {
 });
 
 add_task(async function test_successfull_inspectedWindowEval_resultAsGrip() {
-  const {
-    commands,
-    extension,
-    fakeExtCallerInfo,
-    webConsoleFront,
-  } = await setup(URL_ROOT);
+  const { commands, extension, fakeExtCallerInfo, webConsoleFront } =
+    await setup(URL_ROOT_SSL);
 
   let result = await commands.inspectedWindowCommand.eval(
     fakeExtCallerInfo,
@@ -197,7 +193,7 @@ add_task(async function test_successfull_inspectedWindowEval_resultAsGrip() {
 });
 
 add_task(async function test_error_inspectedWindowEval_result() {
-  const { commands, extension, fakeExtCallerInfo } = await setup(URL_ROOT);
+  const { commands, extension, fakeExtCallerInfo } = await setup(URL_ROOT_SSL);
 
   const result = await commands.inspectedWindowCommand.eval(
     fakeExtCallerInfo,
@@ -237,50 +233,8 @@ add_task(async function test_error_inspectedWindowEval_result() {
   await teardown({ commands, extension });
 });
 
-add_task(
-  async function test_system_principal_denied_error_inspectedWindowEval_result() {
-    const { commands, extension, fakeExtCallerInfo } = await setup(
-      "about:addons"
-    );
-
-    const result = await commands.inspectedWindowCommand.eval(
-      fakeExtCallerInfo,
-      "window",
-      {}
-    );
-
-    ok(!result.value, "Got a null result from inspectedWindow eval");
-    ok(
-      result.exceptionInfo.isError,
-      "Got an API Error result from inspectedWindow eval on a system principal page"
-    );
-    is(
-      result.exceptionInfo.code,
-      "E_PROTOCOLERROR",
-      "Got the expected 'code' property in the error result"
-    );
-    is(
-      result.exceptionInfo.description,
-      "Inspector protocol error: %s",
-      "Got the expected 'description' property in the error result"
-    );
-    is(
-      result.exceptionInfo.details.length,
-      1,
-      "The 'details' array property should contains 1 element"
-    );
-    is(
-      result.exceptionInfo.details[0],
-      "This target has a system principal. inspectedWindow.eval denied.",
-      "Got the expected content in the error results's details"
-    );
-
-    await teardown({ commands, extension });
-  }
-);
-
 add_task(async function test_exception_inspectedWindowEval_result() {
-  const { commands, extension, fakeExtCallerInfo } = await setup(URL_ROOT);
+  const { commands, extension, fakeExtCallerInfo } = await setup(URL_ROOT_SSL);
 
   const result = await commands.inspectedWindowCommand.eval(
     fakeExtCallerInfo,

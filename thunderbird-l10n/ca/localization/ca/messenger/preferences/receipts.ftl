@@ -4,48 +4,36 @@
 
 receipts-dialog-window =
     .title = Confirmacions de recepció
-
-return-receipt-checkbox =
-    .label = Quan s'enviïn missatges, sempre sol·licita una confirmació de recepció
-    .acceskey = Q
-
+receipts-dialog-title = Confirmacions de recepció
+return-receipt-checkbox-control =
+    .label = Quan s'enviïn missatges, sol·licita sempre una confirmació de recepció
+    .accesskey = Q
 receipt-arrive-label = Quan arribi una confirmació de recepció:
-
-receipt-leave-radio =
+receipt-leave-radio-control =
     .label = Deixa-la a la safata d'entrada
-    .acceskey = i
-
-receipt-move-radio =
+    .accesskey = D
+receipt-move-radio-control =
     .label = Mou-la a la carpeta «Enviats»
-    .acceskey = M
-
-receipt-request-label = Quan rebi una sol·licitud per a una confirmació de recepció:
-
-receipt-return-never-radio =
-    .label = No l'enviïs mai
-    .acceskey = N
-
-receipt-return-some-radio =
-    .label = Permet-la per a alguns missatges
-    .acceskey = r
-
-receipt-not-to-cc =
-    .value = Si no sóc a la part del missatge A o Cc:
-    .acceskey = C
-
+    .accesskey = M
+receipt-request-label = Quan rebi una sol·licitud de confirmació de recepció:
+receipt-return-never-radio-control =
+    .label = No enviïs mai cap confirmació de recepció
+    .accesskey = N
+receipt-return-some-radio-control =
+    .label = Permet les confirmacions de recepció per a alguns missatges
+    .accesskey = P
+receipt-not-to-cc-label =
+    .value = Si no sóc en els camps «A» ni «Cc» del missatge:
+    .accesskey = S
 receipt-send-never-label =
     .label = No l'enviïs mai
-
 receipt-send-always-label =
     .label = Envia-la sempre
-
 receipt-send-ask-label =
     .label = Demana-m'ho
-
-sender-outside-domain =
+sender-outside-domain-label =
     .value = Si el remitent és fora del meu domini:
-    .acceskey = t
-
-other-cases-label =
+    .accesskey = f
+other-cases-text-label =
     .value = En tots els altres casos:
-    .acceskey = a
+    .accesskey = E

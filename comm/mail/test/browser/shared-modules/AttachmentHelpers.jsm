@@ -18,8 +18,6 @@ var { MockObjectReplacer } = ChromeUtils.import(
   "resource://testing-common/mozmill/MockObjectHelpers.jsm"
 );
 
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-
 var gMockFilePickReg = new MockObjectReplacer(
   "@mozilla.org/filepicker;1",
   MockFilePickerConstructor
@@ -69,11 +67,11 @@ var gMockFilePicker = {
     };
   },
 
-  init: function gMFP_init(aParent, aTitle, aMode) {},
+  init(aParent, aTitle, aMode) {},
 
-  appendFilters: function gMFP_appendFilters(aFilterMask) {},
+  appendFilters(aFilterMask) {},
 
-  appendFilter: function gMFP_appendFilter(aTitle, aFilter) {},
+  appendFilter(aTitle, aFilter) {},
 
   open(aFilePickerShownCallback) {
     aFilePickerShownCallback.done(Ci.nsIFilePicker.returnOK);
@@ -88,7 +86,7 @@ var gMockFilePicker = {
  * @param body the text of the main body of the message
  * @param attachments an array of attachment objects (as strings)
  * @param boundary an optional string defining the boundary of the parts
- * @return an object suitable for passing as the |bodyPart| for create_message
+ * @returns an object suitable for passing as the |bodyPart| for create_message
  */
 function create_body_part(body, attachments, boundary) {
   if (!boundary) {
@@ -142,13 +140,13 @@ function help_create_detached_deleted_attachment(filename, type) {
  *
  * @param file an nsIFile for the external file for the attachment
  * @param type the content type
- * @return a string representing the attachment
+ * @returns a string representing the attachment
  */
 function create_detached_attachment(file, type) {
   let fileHandler = Services.io
     .getProtocolHandler("file")
     .QueryInterface(Ci.nsIFileProtocolHandler);
-  let url = fileHandler.getURLSpecFromFile(file);
+  let url = fileHandler.getURLSpecFromActualFile(file);
   let filename = file.leafName;
 
   let str =
@@ -173,7 +171,7 @@ function create_detached_attachment(file, type) {
  *
  * @param filename the "original" filename
  * @param type the content type
- * @return a string representing the attachment
+ * @returns a string representing the attachment
  */
 function create_deleted_attachment(filename, type) {
   let str =
@@ -197,7 +195,7 @@ function create_deleted_attachment(filename, type) {
  * @param type the content type
  * @param url the remote link url
  * @param size the optional size (use > 1 for real size)
- * @return a string representing the attachment
+ * @returns a string representing the attachment
  */
 function create_enclosure_attachment(filename, type, url, size) {
   return (
@@ -226,7 +224,7 @@ function create_enclosure_attachment(filename, type, url, size) {
  * @param aIndexEnd (optional) the index of the last item to select
  */
 function select_attachments(aController, aIndexStart, aIndexEnd) {
-  let bucket = aController.e("attachmentBucket");
+  let bucket = aController.window.document.getElementById("attachmentBucket");
   bucket.clearSelection();
 
   if (aIndexEnd !== undefined) {

@@ -36,10 +36,13 @@ DIRS += [
     "downloads",
     "enterprisepolicies",
     "extensions",
+    "firefoxview",
+    "ion",
+    "messagepreview",
     "migration",
     "newtab",
     "originattributes",
-    "ion",
+    "pagedata",
     "places",
     "pocket",
     "preferences",
@@ -48,21 +51,21 @@ DIRS += [
     "protections",
     "protocolhandler",
     "resistfingerprinting",
+    "screenshots",
     "search",
     "sessionstore",
     "shell",
     "syncedtabs",
+    "tabunloader",
+    "textrecognition",
+    "translation",
+    "translations",
     "uitour",
     "urlbar",
-    "translation",
 ]
 
 DIRS += ["build"]
 
-if CONFIG["NIGHTLY_BUILD"]:
-    DIRS += [
-        "payments",
-    ]
 
 if CONFIG["MOZ_WIDGET_TOOLKIT"] == "cocoa":
     DIRS += ["touchbar"]
@@ -81,15 +84,18 @@ XPCOM_MANIFESTS += [
 
 EXTRA_COMPONENTS += [
     "BrowserComponents.manifest",
-    "tests/startupRecorder.js",
-    "tests/testComponents.manifest",
 ]
 
 EXTRA_JS_MODULES += [
-    "BrowserContentHandler.jsm",
-    "BrowserGlue.jsm",
+    "BrowserContentHandler.sys.mjs",
+    "BrowserGlue.sys.mjs",
     "distribution.js",
 ]
+
+if CONFIG["MOZ_DEBUG"] or CONFIG["MOZ_DEV_EDITION"] or CONFIG["NIGHTLY_BUILD"]:
+    EXTRA_JS_MODULES += [
+        "StartupRecorder.sys.mjs",
+    ]
 
 BROWSER_CHROME_MANIFESTS += [
     "safebrowsing/content/test/browser.ini",

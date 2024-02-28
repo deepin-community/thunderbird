@@ -5,24 +5,19 @@
 
 const EXPORTED_SYMBOLS = ["FeedItem", "FeedEnclosure"];
 
+const { MailServices } = ChromeUtils.import(
+  "resource:///modules/MailServices.jsm"
+);
+
+const lazy = {};
 ChromeUtils.defineModuleGetter(
-  this,
+  lazy,
   "FeedUtils",
   "resource:///modules/FeedUtils.jsm"
 );
-ChromeUtils.defineModuleGetter(
-  this,
-  "MailServices",
-  "resource:///modules/MailServices.jsm"
-);
-ChromeUtils.defineModuleGetter(
-  this,
-  "Services",
-  "resource://gre/modules/Services.jsm"
-);
 
 function FeedItem() {
-  this.mDate = FeedUtils.getValidRFC5322Date();
+  this.mDate = lazy.FeedUtils.getValidRFC5322Date();
   this.mParserUtils = Cc["@mozilla.org/parserutils;1"].getService(
     Ci.nsIParserUtils
   );
@@ -50,6 +45,7 @@ FeedItem.prototype = {
   ENCLOSURE_HEADER_BOUNDARY_PREFIX: "------------", // 12 dashes
   MESSAGE_TEMPLATE:
     "\n" +
+    "<!DOCTYPE html>\n" +
     "<html>\n" +
     "  <head>\n" +
     "    <title>%TITLE%</title>\n" +
@@ -94,7 +90,7 @@ FeedItem.prototype = {
     messageID.replace(/@/g, "%40");
     messageID = "<" + messageID.trim() + "@localhost.localdomain>";
 
-    FeedUtils.log.trace(
+    lazy.FeedUtils.log.trace(
       "FeedItem.normalizeMessageID: messageID - " + messageID
     );
     return messageID;
@@ -118,7 +114,7 @@ FeedItem.prototype = {
     // this.mUrl and this.contentBase contain plain text.
 
     let stored = false;
-    let ds = FeedUtils.getItemsDS(this.feed.server);
+    let ds = lazy.FeedUtils.getItemsDS(this.feed.server);
     let resource = this.findStoredResource();
     if (!this.feed.folder) {
       return stored;
@@ -133,7 +129,7 @@ FeedItem.prototype = {
       };
       ds.data[this.id] = resource;
       if (!this.content) {
-        FeedUtils.log.trace(
+        lazy.FeedUtils.log.trace(
           "FeedItem.store: " +
             this.identity +
             " no content; storing description or title"
@@ -159,7 +155,7 @@ FeedItem.prototype = {
   findStoredResource() {
     // Checks to see if the item has already been stored in its feed's
     // message folder.
-    FeedUtils.log.trace(
+    lazy.FeedUtils.log.trace(
       "FeedItem.findStoredResource: checking if stored - " + this.identity
     );
 
@@ -167,7 +163,7 @@ FeedItem.prototype = {
     let folder = this.feed.folder;
 
     if (!folder) {
-      FeedUtils.log.debug(
+      lazy.FeedUtils.log.debug(
         "FeedItem.findStoredResource: folder '" +
           this.feed.folderName +
           "' doesn't exist; creating as child of " +
@@ -178,14 +174,14 @@ FeedItem.prototype = {
       return null;
     }
 
-    let ds = FeedUtils.getItemsDS(server);
+    let ds = lazy.FeedUtils.getItemsDS(server);
     let item = ds.data[this.id];
     if (!item || !item.stored) {
-      FeedUtils.log.trace("FeedItem.findStoredResource: not stored");
+      lazy.FeedUtils.log.trace("FeedItem.findStoredResource: not stored");
       return null;
     }
 
-    FeedUtils.log.trace("FeedItem.findStoredResource: already stored");
+    lazy.FeedUtils.log.trace("FeedItem.findStoredResource: already stored");
     return item;
   },
 
@@ -207,7 +203,7 @@ FeedItem.prototype = {
   },
 
   writeToFolder() {
-    FeedUtils.log.trace(
+    lazy.FeedUtils.log.trace(
       "FeedItem.writeToFolder: " +
         this.identity +
         " writing to message folder " +
@@ -259,23 +255,17 @@ FeedItem.prototype = {
     this.content = this.content.replace(/([\r\n]+)(>*From )/g, "$1>$2");
     this.content += "\n";
 
-    // The opening line of the message, mandated by standards to start
-    // with "From ".  It's useful to construct this separately because
-    // we not only need to write it into the message, we also need to
-    // use it to calculate the offset of the X-Mozilla-Status lines from
-    // the front of the message for the statusOffset property of the
-    // DB header object.
-    let openingLine = "From - " + this.mDate + "\n";
-
     let source =
-      openingLine +
+      "From - " +
+      this.mDate +
+      "\n" +
       "X-Mozilla-Status: 0000\n" +
       "X-Mozilla-Status2: 00000000\n" +
       "X-Mozilla-Keys: " +
       " ".repeat(80) +
       "\n" +
       "Received: by localhost; " +
-      FeedUtils.getValidRFC5322Date() +
+      lazy.FeedUtils.getValidRFC5322Date() +
       "\n" +
       "Date: " +
       this.mDate +
@@ -312,7 +302,7 @@ FeedItem.prototype = {
         "Content-Transfer-Encoding: 8bit\n" +
         this.content;
 
-      this.enclosures.forEach(function(enclosure) {
+      this.enclosures.forEach(function (enclosure) {
         source += enclosure.convertToAttachment(boundaryID);
       });
 
@@ -325,7 +315,7 @@ FeedItem.prototype = {
         this.content;
     }
 
-    FeedUtils.log.trace(
+    lazy.FeedUtils.log.trace(
       "FeedItem.writeToFolder: " +
         this.identity +
         " is " +
@@ -341,7 +331,7 @@ FeedItem.prototype = {
     // char * cpp |string| as UTF-8 bytes. The source xml doc encoding is utf8.
     source = unescape(encodeURIComponent(source));
     let msgDBHdr = folder.addMessage(source);
-    msgDBHdr.OrFlags(Ci.nsMsgMessageFlags.FeedMsg);
+    msgDBHdr.orFlags(Ci.nsMsgMessageFlags.FeedMsg);
     msgFolder.gettingNewMessages = false;
     this.tagItem(msgDBHdr, this.keywords);
   },
@@ -352,10 +342,10 @@ FeedItem.prototype = {
    * line length, create multiple folded lines (easier to parse than multiple
    * headers).
    *
-   * @param  {String} headerName          - Name of the header.
-   * @param  {String[]} headerItemsArray  - An Array of strings to concatenate.
+   * @param  {string} headerName          - Name of the header.
+   * @param  {string[]} headerItemsArray  - An Array of strings to concatenate.
    *
-   * @returns {String}                    - The header string.
+   * @returns {String} - The header string.
    */
   createHeaderStrFromArray(headerName, headerItemsArray) {
     let headerStr = "";
@@ -414,7 +404,7 @@ FeedItem.prototype = {
       let keyForTag = MailServices.tags.getKeyForTag(keyword);
       if (!keyForTag) {
         // Add the tag if it doesn't exist.
-        MailServices.tags.addTag(keyword, "", FeedUtils.AUTOTAG);
+        MailServices.tags.addTag(keyword, "", lazy.FeedUtils.AUTOTAG);
         keyForTag = MailServices.tags.getKeyForTag(keyword);
       }
 
@@ -493,7 +483,7 @@ FeedEnclosure.prototype = {
       'Content-Disposition: attachment; filename="' +
       this.mFileName +
       '"\n\n' +
-      FeedUtils.strings.GetStringFromName("externalAttachmentMsg") +
+      lazy.FeedUtils.strings.GetStringFromName("externalAttachmentMsg") +
       "\n"
     );
   },

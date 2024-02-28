@@ -1,9 +1,7 @@
-/* -*- Mode: C++; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
+/* -*- Mode: JavaScript; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
 /*
  * Test suite for nsLDAPURL functions.
  */
-
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 
 // If we are still using the wallet service, then default port numbers
 // are still visible in the password manager, and therefore we need to have
@@ -100,6 +98,46 @@ const ldapURLs = [
     filter: "(objectclass=*)",
     options: Ci.nsILDAPURL.OPT_SECURE,
   },
+  {
+    url: "ldaps://127.0.0.1/dc=test",
+    spec: "ldaps://127.0.0.1/dc=test",
+    asciiSpec: "ldaps://127.0.0.1/dc=test",
+    host: "127.0.0.1",
+    asciiHost: "127.0.0.1",
+    port: -1,
+    scheme: "ldaps",
+    path: "/dc=test",
+    prePath: "ldaps://127.0.0.1",
+    hostPort: "127.0.0.1",
+    displaySpec: "ldaps://127.0.0.1/dc=test",
+    displayPrePath: "ldaps://127.0.0.1",
+    displayHost: "127.0.0.1",
+    displayHostPort: "127.0.0.1",
+    dn: "dc=test",
+    scope: Ci.nsILDAPURL.SCOPE_BASE,
+    filter: "(objectclass=*)",
+    options: Ci.nsILDAPURL.OPT_SECURE,
+  },
+  {
+    url: "ldaps://[::1]/dc=test",
+    spec: "ldaps://[::1]/dc=test",
+    asciiSpec: "ldaps://[::1]/dc=test",
+    host: "::1",
+    asciiHost: "::1",
+    port: -1,
+    scheme: "ldaps",
+    path: "/dc=test",
+    prePath: "ldaps://[::1]",
+    hostPort: "[::1]",
+    displaySpec: "ldaps://[::1]/dc=test",
+    displayPrePath: "ldaps://[::1]",
+    displayHost: "::1",
+    displayHostPort: "[::1]",
+    dn: "dc=test",
+    scope: Ci.nsILDAPURL.SCOPE_BASE,
+    filter: "(objectclass=*)",
+    options: Ci.nsILDAPURL.OPT_SECURE,
+  },
 ];
 
 function run_test() {
@@ -170,12 +208,14 @@ function run_test() {
 
   // Test - filter
 
-  url.filter = "(oc=ygh)";
+  url.filter = "(&(oc=ygh)(l=Ереван))";
 
-  Assert.equal(url.filter, "(oc=ygh)");
+  Assert.equal(url.filter, "(&(oc=ygh)(l=Ереван))");
   Assert.equal(
     url.spec,
-    "ldap://localhost" + portAdpt + "/dc=short??one?(oc=ygh)"
+    "ldap://localhost" +
+      portAdpt +
+      "/dc=short??one?(&(oc=ygh)(l=%D0%95%D1%80%D0%B5%D0%B2%D0%B0%D0%BD))"
   );
 
   url.filter = "";
@@ -214,21 +254,13 @@ function run_test() {
   Assert.ok(url.schemeIs("ldaps"));
   Assert.ok(!url.schemeIs("ldap"));
 
-  url = url
-    .mutate()
-    .setScheme("ldap")
-    .finalize()
-    .QueryInterface(Ci.nsILDAPURL);
+  url = url.mutate().setScheme("ldap").finalize().QueryInterface(Ci.nsILDAPURL);
   Assert.equal(url.options, 0);
   Assert.equal(
     url.spec,
     "ldap://localhost" + portAdpt + "/dc=short??one?(objectclass=*)"
   );
-  url = url
-    .mutate()
-    .setScheme("ldap")
-    .finalize()
-    .QueryInterface(Ci.nsILDAPURL);
+  url = url.mutate().setScheme("ldap").finalize().QueryInterface(Ci.nsILDAPURL);
   Assert.equal(url.options, 0);
   Assert.equal(
     url.spec,

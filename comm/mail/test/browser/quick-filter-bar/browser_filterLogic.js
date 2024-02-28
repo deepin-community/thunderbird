@@ -14,8 +14,9 @@ var {
   assert_messages_not_in_view,
   be_in_folder,
   create_folder,
-  delete_message_set,
-  make_new_sets_in_folder,
+  delete_messages,
+  get_about_3pane,
+  make_message_sets_in_folders,
   mc,
 } = ChromeUtils.import(
   "resource://testing-common/mozmill/FolderDisplayHelpers.jsm"
@@ -31,6 +32,7 @@ var {
   toggle_tag_constraints,
   toggle_tag_mode,
   toggle_text_constraints,
+  cleanup_qfb_button,
 } = ChromeUtils.import(
   "resource://testing-common/mozmill/QuickFilterBarHelpers.jsm"
 );
@@ -39,60 +41,70 @@ var { MailServices } = ChromeUtils.import(
   "resource:///modules/MailServices.jsm"
 );
 
-add_task(function test_filter_unread() {
-  let folder = create_folder("QuickFilterBarFilterUnread");
-  let [unread, read] = make_new_sets_in_folder(folder, [
-    { count: 1 },
-    { count: 1 },
-  ]);
+add_setup(async function () {
+  // Quick filter bar is hidden by default, need to toggle it on. To toggle
+  // quick filter bar, need to be inside folder
+  const folder = await create_folder("QuickFilterBarFilterFilterLogicSetup");
+  await be_in_folder(folder);
+  await ensure_table_view();
+  await toggle_quick_filter_bar();
+
+  registerCleanupFunction(async function () {
+    await ensure_cards_view();
+    await cleanup_qfb_button();
+    // Quick filter bar is hidden by default, need to toggle it off.
+    await toggle_quick_filter_bar();
+  });
+});
+
+add_task(async function test_filter_unread() {
+  let folder = await create_folder("QuickFilterBarFilterUnread");
+  let [unread, read] = await make_message_sets_in_folders(
+    [folder],
+    [{ count: 1 }, { count: 1 }]
+  );
   read.setRead(true);
 
-  be_in_folder(folder);
+  await be_in_folder(folder);
   toggle_boolean_constraints("unread");
   assert_messages_in_view(unread);
   teardownTest();
 });
 
-add_task(function test_filter_starred() {
-  let folder = create_folder("QuickFilterBarFilterStarred");
-  let [, starred] = make_new_sets_in_folder(folder, [
-    { count: 1 },
-    { count: 1 },
-  ]);
+add_task(async function test_filter_starred() {
+  let folder = await create_folder("QuickFilterBarFilterStarred");
+  let [, starred] = await make_message_sets_in_folders(
+    [folder],
+    [{ count: 1 }, { count: 1 }]
+  );
   starred.setStarred(true);
 
-  be_in_folder(folder);
+  await be_in_folder(folder);
   toggle_boolean_constraints("starred");
   assert_messages_in_view(starred);
   teardownTest();
 });
 
-add_task(function test_filter_simple_intersection_unread_and_starred() {
-  let folder = create_folder("QuickFilterBarFilterUnreadAndStarred");
-  let [
-    ,
-    readUnstarred,
-    unreadStarred,
-    readStarred,
-  ] = make_new_sets_in_folder(folder, [
-    { count: 1 },
-    { count: 1 },
-    { count: 1 },
-    { count: 1 },
-  ]);
+add_task(async function test_filter_simple_intersection_unread_and_starred() {
+  let folder = await create_folder("QuickFilterBarFilterUnreadAndStarred");
+  let [, readUnstarred, unreadStarred, readStarred] =
+    await make_message_sets_in_folders(
+      [folder],
+      [{ count: 1 }, { count: 1 }, { count: 1 }, { count: 1 }]
+    );
   readUnstarred.setRead(true);
   unreadStarred.setStarred(true);
   readStarred.setRead(true);
   readStarred.setStarred(true);
 
-  be_in_folder(folder);
+  await be_in_folder(folder);
   toggle_boolean_constraints("unread", "starred");
 
   assert_messages_in_view(unreadStarred);
   teardownTest();
 });
 
-add_task(function test_filter_attachments() {
+add_task(async function test_filter_attachments() {
   let attachSetDef = {
     count: 1,
     attachments: [
@@ -110,13 +122,13 @@ add_task(function test_filter_attachments() {
     count: 1,
   };
 
-  let folder = create_folder("QuickFilterBarFilterAttachments");
-  let [, setAttach] = make_new_sets_in_folder(folder, [
-    noAttachSetDef,
-    attachSetDef,
-  ]);
+  let folder = await create_folder("QuickFilterBarFilterAttachments");
+  let [, setAttach] = await make_message_sets_in_folders(
+    [folder],
+    [noAttachSetDef, attachSetDef]
+  );
 
-  be_in_folder(folder);
+  await be_in_folder(folder);
   toggle_boolean_constraints("attachments");
 
   assert_messages_in_view(setAttach);
@@ -141,45 +153,40 @@ function add_email_to_address_book(aEmailAddr) {
   throw new Error("Unable to find any suitable address book.");
 }
 
-add_task(function test_filter_in_address_book() {
+add_task(async function test_filter_in_address_book() {
   let bookSetDef = {
     from: ["Qbert Q Qbington", "q@q.invalid"],
     count: 1,
   };
   add_email_to_address_book(bookSetDef.from[1]);
-  let folder = create_folder("MesssageFilterBarInAddressBook");
-  let [setBook] = make_new_sets_in_folder(folder, [bookSetDef, { count: 1 }]);
-  be_in_folder(folder);
+  let folder = await create_folder("MesssageFilterBarInAddressBook");
+  let [setBook] = await make_message_sets_in_folders(
+    [folder],
+    [bookSetDef, { count: 1 }]
+  );
+  await be_in_folder(folder);
   toggle_boolean_constraints("addrbook");
   assert_messages_in_view(setBook);
   teardownTest();
 });
 
-add_task(function test_filter_tags() {
-  let folder = create_folder("QuickFilterBarTags");
+add_task(async function test_filter_tags() {
+  let folder = await create_folder("QuickFilterBarTags");
   const tagA = "$label1",
     tagB = "$label2",
     tagC = "$label3";
-  let [
-    setNoTag,
-    setTagA,
-    setTagB,
-    setTagAB,
-    setTagC,
-  ] = make_new_sets_in_folder(folder, [
-    { count: 1 },
-    { count: 1 },
-    { count: 1 },
-    { count: 1 },
-    { count: 1 },
-  ]);
+  let [setNoTag, setTagA, setTagB, setTagAB, setTagC] =
+    await make_message_sets_in_folders(
+      [folder],
+      [{ count: 1 }, { count: 1 }, { count: 1 }, { count: 1 }, { count: 1 }]
+    );
   setTagA.addTag(tagA);
   setTagB.addTag(tagB);
   setTagAB.addTag(tagA);
   setTagAB.addTag(tagB);
   setTagC.addTag(tagC);
 
-  be_in_folder(folder);
+  await be_in_folder(folder);
   toggle_boolean_constraints("tags"); // must have a tag
   assert_messages_in_view([setTagA, setTagB, setTagAB, setTagC]);
 
@@ -216,23 +223,21 @@ add_task(function test_filter_tags() {
   teardownTest();
 });
 
-add_task(function test_filter_text_single_word_and_predicates() {
-  let folder = create_folder("QuickFilterBarTextSingleWord");
+add_task(async function test_filter_text_single_word_and_predicates() {
+  let folder = await create_folder("QuickFilterBarTextSingleWord");
   let whoFoo = ["zabba", "foo@madeup.invalid"];
-  let [
-    ,
-    setSenderFoo,
-    setRecipientsFoo,
-    setSubjectFoo,
-    setBodyFoo,
-  ] = make_new_sets_in_folder(folder, [
-    { count: 1 },
-    { count: 1, from: whoFoo },
-    { count: 1, to: [whoFoo] },
-    { count: 1, subject: "foo" },
-    { count: 1, body: { body: "foo" } },
-  ]);
-  be_in_folder(folder);
+  let [, setSenderFoo, setRecipientsFoo, setSubjectFoo, setBodyFoo] =
+    await make_message_sets_in_folders(
+      [folder],
+      [
+        { count: 1 },
+        { count: 1, from: whoFoo },
+        { count: 1, to: [whoFoo] },
+        { count: 1, subject: "foo" },
+        { count: 1, body: { body: "foo" } },
+      ]
+    );
+  await be_in_folder(folder);
 
   // by default, sender/recipients/subject are selected
   assert_text_constraints_checked("sender", "recipients", "subject");
@@ -284,18 +289,21 @@ add_task(function test_filter_text_single_word_and_predicates() {
  *  constitutes sufficient positive coverage, although we also want to make
  *  sure that just a single term match is insufficient.
  */
-add_task(function test_filter_text_multi_word() {
-  let folder = create_folder("QuickFilterBarTextMultiWord");
+add_task(async function test_filter_text_multi_word() {
+  let folder = await create_folder("QuickFilterBarTextMultiWord");
 
   let whoFoo = ["foo", "zabba@madeup.invalid"];
   let whoBar = ["zabba", "bar@madeup.invalid"];
-  let [, setPeepMatch, setSubjReverse] = make_new_sets_in_folder(folder, [
-    { count: 1 },
-    { count: 1, from: whoFoo, to: [whoBar] },
-    { count: 1, subject: "bar foo" },
-    { count: 1, from: whoFoo },
-  ]);
-  be_in_folder(folder);
+  let [, setPeepMatch, setSubjReverse] = await make_message_sets_in_folders(
+    [folder],
+    [
+      { count: 1 },
+      { count: 1, from: whoFoo, to: [whoBar] },
+      { count: 1, subject: "bar foo" },
+      { count: 1, from: whoFoo },
+    ]
+  );
+  await be_in_folder(folder);
 
   // (precondition)
   assert_text_constraints_checked("sender", "recipients", "subject");
@@ -309,31 +317,27 @@ add_task(function test_filter_text_multi_word() {
  * Verify that the quickfilter bar has OR functionality using
  * | (Pipe character) - Bug 586131
  */
-add_task(function test_filter_or_operator() {
-  let folder = create_folder("QuickFilterBarOrOperator");
+add_task(async function test_filter_or_operator() {
+  let folder = await create_folder("QuickFilterBarOrOperator");
 
   let whoFoo = ["foo", "zabba@madeup.invalid"];
   let whoBar = ["zabba", "bar@madeup.invalid"];
   let whoTest = ["test", "test@madeup.invalid"];
-  let [
-    setInert,
-    setSenderFoo,
-    setToBar,
-    ,
-    ,
-    setSubject3,
-    setMail1,
-  ] = make_new_sets_in_folder(folder, [
-    { count: 1 },
-    { count: 1, from: whoFoo },
-    { count: 1, to: [whoBar] },
-    { count: 1, subject: "foo bar" },
-    { count: 1, subject: "bar test" },
-    { count: 1, subject: "test" },
-    { count: 1, to: [whoTest], subject: "logic" },
-    { count: 1, from: whoFoo, to: [whoBar], subject: "test" },
-  ]);
-  be_in_folder(folder);
+  let [setInert, setSenderFoo, setToBar, , , setSubject3, setMail1] =
+    await make_message_sets_in_folders(
+      [folder],
+      [
+        { count: 1 },
+        { count: 1, from: whoFoo },
+        { count: 1, to: [whoBar] },
+        { count: 1, subject: "foo bar" },
+        { count: 1, subject: "bar test" },
+        { count: 1, subject: "test" },
+        { count: 1, to: [whoTest], subject: "logic" },
+        { count: 1, from: whoFoo, to: [whoBar], subject: "test" },
+      ]
+    );
+  await be_in_folder(folder);
 
   assert_text_constraints_checked("sender", "recipients", "subject");
   set_filter_text("foo | bar");
@@ -365,22 +369,28 @@ add_task(function test_filter_or_operator() {
  *  folders that we persist/propagate the state of the
  *  sender/recipients/subject/body toggle buttons.
  */
-add_task(function test_filter_text_constraints_propagate() {
+add_task(async function test_filter_text_constraints_propagate() {
   let whoFoo = ["foo", "zabba@madeup.invalid"];
   let whoBar = ["zabba", "bar@madeup.invalid"];
 
-  let folderOne = create_folder("QuickFilterBarTextPropagate1");
-  let [setSubjFoo, setWhoFoo] = make_new_sets_in_folder(folderOne, [
-    { count: 1, subject: "foo" },
-    { count: 1, from: whoFoo },
-  ]);
-  let folderTwo = create_folder("QuickFilterBarTextPropagate2");
-  let [, setWhoBar] = make_new_sets_in_folder(folderTwo, [
-    { count: 1, subject: "bar" },
-    { count: 1, from: whoBar },
-  ]);
+  let folderOne = await create_folder("QuickFilterBarTextPropagate1");
+  let [setSubjFoo, setWhoFoo] = await make_message_sets_in_folders(
+    [folderOne],
+    [
+      { count: 1, subject: "foo" },
+      { count: 1, from: whoFoo },
+    ]
+  );
+  let folderTwo = await create_folder("QuickFilterBarTextPropagate2");
+  let [, setWhoBar] = await make_message_sets_in_folders(
+    [folderTwo],
+    [
+      { count: 1, subject: "bar" },
+      { count: 1, from: whoBar },
+    ]
+  );
 
-  be_in_folder(folderOne);
+  await be_in_folder(folderOne);
   set_filter_text("foo");
   // (precondition)
   assert_text_constraints_checked("sender", "recipients", "subject");
@@ -390,15 +400,15 @@ add_task(function test_filter_text_constraints_propagate() {
   toggle_text_constraints("subject");
   assert_messages_in_view([setWhoFoo]);
 
-  toggle_quick_filter_bar();
-  toggle_quick_filter_bar();
+  await toggle_quick_filter_bar();
+  await toggle_quick_filter_bar();
 
   set_filter_text("foo");
   assert_messages_in_view([setWhoFoo]);
   assert_text_constraints_checked("sender", "recipients");
 
   // -- now change folders and make sure the settings stick
-  be_in_folder(folderTwo);
+  await be_in_folder(folderTwo);
   set_filter_text("bar");
   assert_messages_in_view([setWhoBar]);
   assert_text_constraints_checked("sender", "recipients");
@@ -414,47 +424,39 @@ add_task(function test_filter_text_constraints_propagate() {
  * Additional nuances:
  * - The count needs to update as the user deletes messages or what not.
  */
-add_task(function test_results_label() {
-  let folder = create_folder("QuickFilterBarResultsLabel");
-  let [setImmortal, setMortal, setGoldfish] = make_new_sets_in_folder(folder, [
-    { count: 1 },
-    { count: 1 },
-    { count: 1 },
-  ]);
+add_task(async function test_results_label() {
+  let folder = await create_folder("QuickFilterBarResultsLabel");
+  let [setImmortal, setMortal, setGoldfish] =
+    await make_message_sets_in_folders(
+      [folder],
+      [{ count: 1 }, { count: 1 }, { count: 1 }]
+    );
 
-  be_in_folder(folder);
+  await be_in_folder(folder);
 
   // no filter, the label should not be visible
-  if (mc.e("qfb-results-label").visible) {
-    throw new Error("results label should not be visible, yo! mad impropah!");
-  }
+  Assert.ok(
+    BrowserTestUtils.is_hidden(
+      get_about_3pane().document.getElementById("qfb-results-label")
+    ),
+    "results label should not be visible"
+  );
 
   toggle_boolean_constraints("unread");
   assert_messages_in_view([setImmortal, setMortal, setGoldfish]);
   assert_results_label_count(3);
 
-  delete_message_set(setGoldfish);
+  await delete_messages(setGoldfish);
   assert_results_label_count(2);
 
-  delete_message_set(setMortal);
+  await delete_messages(setMortal);
   assert_results_label_count(1);
 
-  delete_message_set(setImmortal);
+  await delete_messages(setImmortal);
   assert_results_label_count(0);
   teardownTest();
 });
 
 function teardownTest() {
   clear_constraints();
-  // make it visible if it's not
-  if (mc.e("quick-filter-bar").collapsed) {
-    toggle_quick_filter_bar();
-  }
-
-  Assert.report(
-    false,
-    undefined,
-    undefined,
-    "Test ran to completion successfully"
-  );
 }

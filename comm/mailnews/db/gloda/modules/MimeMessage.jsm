@@ -11,7 +11,9 @@ const EXPORTED_SYMBOLS = [
   "MimeMessageAttachment",
 ];
 
-const { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
+const { MailServices } = ChromeUtils.import(
+  "resource:///modules/MailServices.jsm"
+);
 
 /**
  * The URL listener is surplus because the CallbackStreamListener ends up
@@ -58,7 +60,12 @@ var shutdownCleanupObserver = {
 
 function CallbackStreamListener(aMsgHdr, aCallbackThis, aCallback) {
   this._msgHdr = aMsgHdr;
-  let hdrURI = aMsgHdr.folder.getUriForMsg(aMsgHdr);
+  // Messages opened from file or attachments do not have a folder property, but
+  // have their url stored as a string property.
+  let hdrURI = aMsgHdr.folder
+    ? aMsgHdr.folder.getUriForMsg(aMsgHdr)
+    : aMsgHdr.getStringProperty("dummyMsgUrl");
+
   this._request = null;
   this._stream = null;
   if (aCallback === undefined) {
@@ -71,6 +78,10 @@ function CallbackStreamListener(aMsgHdr, aCallbackThis, aCallback) {
   activeStreamListeners[hdrURI] = this;
 }
 
+/**
+ * @implements {nsIRequestObserver}
+ * @implements {nsIStreamListener}
+ */
 CallbackStreamListener.prototype = {
   QueryInterface: ChromeUtils.generateQI(["nsIStreamListener"]),
 
@@ -79,7 +90,11 @@ CallbackStreamListener.prototype = {
     this._request = aRequest;
   },
   onStopRequest(aRequest, aStatusCode) {
-    let msgURI = this._msgHdr.folder.getUriForMsg(this._msgHdr);
+    // Messages opened from file or attachments do not have a folder property,
+    // but have their url stored as a string property.
+    let msgURI = this._msgHdr.folder
+      ? this._msgHdr.folder.getUriForMsg(this._msgHdr)
+      : this._msgHdr.getStringProperty("dummyMsgUrl");
     delete activeStreamListeners[msgURI];
 
     aRequest.QueryInterface(Ci.nsIChannel);
@@ -112,26 +127,18 @@ CallbackStreamListener.prototype = {
     this._callbacks = null;
   },
 
-  /* okay, our onDataAvailable should actually never be called.  the stream
-     converter is actually eating everything except the start and stop
-     notification. */
   // nsIStreamListener part
+
+  /**
+   * Our onDataAvailable should actually never be called. The stream converter
+   * is actually eating everything except the start and stop notification.
+   */
   onDataAvailable(aRequest, aInputStream, aOffset, aCount) {
-    dump("this should not be happening! arrgggggh!\n");
-    console.error(
-      "Did you try to stream an nttp message? Doens't work. See bug 545365."
+    throw new Error(
+      `The stream converter should have grabbed the data for ${aRequest?.URI.spec}`
     );
-    if (this._stream === null) {
-      this._stream = Cc["@mozilla.org/scriptableinputstream;1"].createInstance(
-        Ci.nsIScriptableInputStream
-      );
-      this._stream.init(aInputStream);
-    }
-    this._stream.read(aCount);
   },
 };
-
-var gMessenger = Cc["@mozilla.org/messenger;1"].createInstance(Ci.nsIMessenger);
 
 function stripEncryptedParts(aPart) {
   if (aPart.parts && aPart.isEncrypted) {
@@ -164,10 +171,6 @@ function stripEncryptedParts(aPart) {
  *     situations where we have erroneously multi-megabyte messages.  This
  *     also likely reduces the impact of legitimately ridiculously large
  *     messages.
- * @param [aOptions.partsOnDemand] If this is a message stored on an IMAP
- *     server, and for whatever reason, it isn't available locally, then setting
- *     this option to true will make sure that attachments aren't downloaded.
- *     This makes sure the message is available quickly.
  * @param [aOptions.examineEncryptedParts] By default, we won't reveal the
  *     contents of multipart/encrypted parts to the consumers, unless explicitly
  *     requested. In the case of MIME/PGP messages, for instance, the message
@@ -184,13 +187,15 @@ function MsgHdrToMimeMessage(
   shutdownCleanupObserver.ensureInitialized();
 
   let requireOffline = !aAllowDownload;
+  // Messages opened from file or attachments do not have a folder property, but
+  // have their url stored as a string property.
+  let msgURI = aMsgHdr.folder
+    ? aMsgHdr.folder.getUriForMsg(aMsgHdr)
+    : aMsgHdr.getStringProperty("dummyMsgUrl");
 
-  let msgURI = aMsgHdr.folder.getUriForMsg(aMsgHdr);
-  let msgService = gMessenger.messageServiceFromURI(msgURI);
+  let msgService = MailServices.messageServiceFromURI(msgURI);
 
   MsgHdrToMimeMessage.OPTION_TUNNEL = aOptions;
-  let partsOnDemandStr =
-    aOptions && aOptions.partsOnDemand ? "&fetchCompleteMessage=false" : "";
   // By default, Enigmail only decrypts a message streamed via libmime if it's
   // the one currently on display in the message reader. With this option, we're
   // letting Enigmail know that it should decrypt the message since the client
@@ -205,7 +210,7 @@ function MsgHdrToMimeMessage(
   // Gloda), unless the client asked for encrypted data, we pass to the client
   // callback a stripped-down version of the MIME structure where encrypted
   // parts have been removed.
-  let wrapCallback = function(aCallback, aCallbackThis) {
+  let wrapCallback = function (aCallback, aCallbackThis) {
     if (aOptions && aOptions.examineEncryptedParts) {
       return aCallback;
     }
@@ -240,7 +245,7 @@ function MsgHdrToMimeMessage(
       dumbUrlListener, // nsIUrlListener
       true, // have them create the converter
       // additional uri payload, note that "header=" is prepended automatically
-      "filter&emitter=js" + partsOnDemandStr + encryptedStr,
+      "filter&emitter=js" + encryptedStr,
       requireOffline
     );
   } catch (ex) {
@@ -288,7 +293,7 @@ var HeaderHandlerBase = {
    * @param aHeaderName The header name to retrieve, case does not matter.
    * @param aDefaultValue The value to return if the header was not found, null
    *     if left unspecified.
-   * @return the value of the header if present, and the default value if not
+   * @returns the value of the header if present, and the default value if not
    *  (defaults to null).  If the header was present multiple times, the first
    *  instance of the header is returned.  Use getAll if you want all of the
    *  values for the multiply-defined header.
@@ -309,7 +314,7 @@ var HeaderHandlerBase = {
    *  that you only expect to be present at most once.
    *
    * @param aHeaderName The header name to retrieve, case does not matter.
-   * @return An array containing the values observed, which may mean a zero
+   * @returns An array containing the values observed, which may mean a zero
    *     length array.
    */
   getAll(aHeaderName) {
@@ -321,7 +326,7 @@ var HeaderHandlerBase = {
   },
   /**
    * @param aHeaderName Header name to test for its presence.
-   * @return true if the message has (at least one value for) the given header
+   * @returns true if the message has (at least one value for) the given header
    *     name.
    */
   has(aHeaderName) {
@@ -366,7 +371,7 @@ MimeMessage.prototype = {
   contentType: "message/rfc822",
 
   /**
-   * @return a list of all attachments contained in this message and all its
+   * @returns a list of all attachments contained in this message and all its
    *     sub-messages.  Only MimeMessageAttachment instances will be present in
    *     the list (no sub-messages).
    */
@@ -380,7 +385,21 @@ MimeMessage.prototype = {
   },
 
   /**
-   * @return a list of all attachments contained in this message, with
+   * @returns a list of all attachments contained in this message and all its
+   *     sub-messages, including the sub-messages.
+   */
+  get allInlineAttachments() {
+    // Do not include the top message, but only sub-messages.
+    let results = this.partName ? [this] : [];
+    for (let iChild = 0; iChild < this.parts.length; iChild++) {
+      let child = this.parts[iChild];
+      results = results.concat(child.allInlineAttachments);
+    }
+    return results;
+  },
+
+  /**
+   * @returns a list of all attachments contained in this message, with
    *    included/forwarded messages treated as real attachments. Attachments
    *    contained in inner messages won't be shown.
    */
@@ -395,7 +414,7 @@ MimeMessage.prototype = {
   },
 
   /**
-   * @return the total size of this message, that is, the size of all subparts
+   * @returns the total size of this message, that is, the size of all subparts
    */
   get size() {
     return this.parts
@@ -418,7 +437,7 @@ MimeMessage.prototype = {
   /**
    * @param aMsgFolder A message folder, any message folder.  Because this is
    *    a hack.
-   * @return The concatenation of all of the body parts where parts
+   * @returns The concatenation of all of the body parts where parts
    *    available as text/plain are pulled as-is, and parts only available
    *    as text/html are converted to plaintext form first.  In other words,
    *    if we see a multipart/alternative with a text/plain, we take the
@@ -504,6 +523,14 @@ MimeContainer.prototype = {
     for (let iChild = 0; iChild < this.parts.length; iChild++) {
       let child = this.parts[iChild];
       results = results.concat(child.allAttachments);
+    }
+    return results;
+  },
+  get allInlineAttachments() {
+    let results = [];
+    for (let iChild = 0; iChild < this.parts.length; iChild++) {
+      let child = this.parts[iChild];
+      results = results.concat(child.allInlineAttachments);
     }
     return results;
   },
@@ -597,6 +624,9 @@ MimeBody.prototype = {
   get allAttachments() {
     return []; // we are a leaf
   },
+  get allInlineAttachments() {
+    return []; // we are a leaf
+  },
   get allUserAttachments() {
     return []; // we are a leaf
   },
@@ -674,6 +704,11 @@ MimeUnknown.prototype = {
   get allAttachments() {
     return this.parts
       .map(child => child.allAttachments)
+      .reduce((a, b) => a.concat(b), []);
+  },
+  get allInlineAttachments() {
+    return this.parts
+      .map(child => child.allInlineAttachments)
       .reduce((a, b) => a.concat(b), []);
   },
   get allUserAttachments() {
@@ -756,11 +791,10 @@ function MimeMessageAttachment(
 
 MimeMessageAttachment.prototype = {
   __proto__: HeaderHandlerBase,
-  // This is a legacy property.
-  get isRealAttachment() {
-    return true;
-  },
   get allAttachments() {
+    return [this]; // we are a leaf, so just us.
+  },
+  get allInlineAttachments() {
     return [this]; // we are a leaf, so just us.
   },
   get allUserAttachments() {

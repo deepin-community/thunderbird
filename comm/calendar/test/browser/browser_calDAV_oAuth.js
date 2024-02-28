@@ -7,7 +7,6 @@
 
 var { CalDavCalendar } = ChromeUtils.import("resource:///modules/CalDavCalendar.jsm");
 var { CalDavGenericRequest } = ChromeUtils.import("resource:///modules/caldav/CalDavRequest.jsm");
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 
 var LoginInfo = Components.Constructor(
   "@mozilla.org/login-manager/loginInfo;1",
@@ -62,7 +61,7 @@ async function subtest(calendarId, newTokenUsername) {
     calendar,
     "GET",
     Services.io.newURI(
-      "http://mochi.test:8888/browser/comm/mailnews/addrbook/test/browser/data/auth_headers.sjs"
+      "http://mochi.test:8888/browser/comm/mail/components/addrbook/test/browser/data/auth_headers.sjs"
     )
   );
   let response = await request.commit();

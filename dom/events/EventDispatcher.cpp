@@ -24,7 +24,6 @@
 #include "DeviceMotionEvent.h"
 #include "DragEvent.h"
 #include "KeyboardEvent.h"
-#include "Layers.h"
 #include "mozilla/BasePrincipal.h"
 #include "mozilla/ContentEvents.h"
 #include "mozilla/dom/CloseEvent.h"
@@ -98,10 +97,10 @@ static bool IsEventTargetChrome(EventTarget* aEventTarget,
   }
 
   Document* doc = nullptr;
-  if (nsCOMPtr<nsINode> node = do_QueryInterface(aEventTarget)) {
+  if (nsINode* node = nsINode::FromEventTargetOrNull(aEventTarget)) {
     doc = node->OwnerDoc();
-  } else if (nsCOMPtr<nsPIDOMWindowInner> window =
-                 do_QueryInterface(aEventTarget)) {
+  } else if (nsPIDOMWindowInner* window =
+                 nsPIDOMWindowInner::FromEventTargetOrNull(aEventTarget)) {
     doc = window->GetExtantDoc();
   }
 
@@ -340,11 +339,6 @@ class EventTargetChainItem {
       NS_ASSERTION(aVisitor.mEvent->mCurrentTarget == nullptr,
                    "CurrentTarget should be null!");
 
-      if (aVisitor.mEvent->mMessage == eMouseClick) {
-        aVisitor.mEvent->mFlags.mHadNonPrivilegedClickListeners =
-            aVisitor.mEvent->mFlags.mHadNonPrivilegedClickListeners ||
-            mManager->HasNonPrivilegedClickListeners();
-      }
       mManager->HandleEvent(aVisitor.mPresContext, aVisitor.mEvent,
                             &aVisitor.mDOMEvent, CurrentTarget(),
                             &aVisitor.mEventStatus, IsItemInShadowTree());
@@ -383,7 +377,7 @@ class EventTargetChainItem {
     bool mIsChromeHandler : 1;
 
    private:
-    typedef uint32_t RawFlags;
+    using RawFlags = uint32_t;
     void SetRawFlags(RawFlags aRawFlags) {
       static_assert(
           sizeof(EventTargetChainFlags) <= sizeof(RawFlags),
@@ -463,6 +457,7 @@ void EventTargetChainItem::HandleEventTargetChain(
   }
 
   uint32_t chainLength = aChain.Length();
+  EventTargetChainItem* chain = aChain.Elements();
   uint32_t firstCanHandleEventTargetIdx =
       EventTargetChainItem::GetFirstCanHandleEventTargetIdx(aChain);
 
@@ -470,7 +465,7 @@ void EventTargetChainItem::HandleEventTargetChain(
   aVisitor.mEvent->mFlags.mInCapturePhase = true;
   aVisitor.mEvent->mFlags.mInBubblingPhase = false;
   for (uint32_t i = chainLength - 1; i > firstCanHandleEventTargetIdx; --i) {
-    EventTargetChainItem& item = aChain[i];
+    EventTargetChainItem& item = chain[i];
     if (item.PreHandleEventOnly()) {
       continue;
     }
@@ -484,7 +479,7 @@ void EventTargetChainItem::HandleEventTargetChain(
       // item is at anonymous boundary. Need to retarget for the child items.
       for (uint32_t j = i; j > 0; --j) {
         uint32_t childIndex = j - 1;
-        EventTarget* newTarget = aChain[childIndex].GetNewTarget();
+        EventTarget* newTarget = chain[childIndex].GetNewTarget();
         if (newTarget) {
           aVisitor.mEvent->mTarget = newTarget;
           break;
@@ -503,7 +498,7 @@ void EventTargetChainItem::HandleEventTargetChain(
       for (uint32_t j = i; j > 0; --j) {
         uint32_t childIndex = j - 1;
         EventTarget* relatedTarget =
-            aChain[childIndex].GetRetargetedRelatedTarget();
+            chain[childIndex].GetRetargetedRelatedTarget();
         if (relatedTarget) {
           found = true;
           aVisitor.mEvent->mRelatedTarget = relatedTarget;
@@ -520,10 +515,10 @@ void EventTargetChainItem::HandleEventTargetChain(
       bool found = false;
       for (uint32_t j = i; j > 0; --j) {
         uint32_t childIndex = j - 1;
-        if (aChain[childIndex].HasRetargetTouchTargets()) {
+        if (chain[childIndex].HasRetargetTouchTargets()) {
           found = true;
-          aChain[childIndex].RetargetTouchTargets(touchEvent,
-                                                  aVisitor.mDOMEvent);
+          chain[childIndex].RetargetTouchTargets(touchEvent,
+                                                 aVisitor.mDOMEvent);
           break;
         }
       }
@@ -538,7 +533,7 @@ void EventTargetChainItem::HandleEventTargetChain(
 
   // Target
   aVisitor.mEvent->mFlags.mInBubblingPhase = true;
-  EventTargetChainItem& targetItem = aChain[firstCanHandleEventTargetIdx];
+  EventTargetChainItem& targetItem = chain[firstCanHandleEventTargetIdx];
   // Need to explicitly retarget touch targets so that initial targets get set
   // properly in case nothing else retargeted touches.
   if (targetItem.HasRetargetTouchTargets()) {
@@ -556,7 +551,7 @@ void EventTargetChainItem::HandleEventTargetChain(
   // Bubble
   aVisitor.mEvent->mFlags.mInCapturePhase = false;
   for (uint32_t i = firstCanHandleEventTargetIdx + 1; i < chainLength; ++i) {
-    EventTargetChainItem& item = aChain[i];
+    EventTargetChainItem& item = chain[i];
     if (item.PreHandleEventOnly()) {
       continue;
     }
@@ -637,12 +632,19 @@ void EventTargetChainItem::HandleEventTargetChain(
   }
 }
 
-static nsTArray<EventTargetChainItem>* sCachedMainThreadChain = nullptr;
+// There are often 2 nested event dispatches ongoing at the same time, so
+// have 2 separate caches.
+static const uint32_t kCachedMainThreadChainSize = 128;
+struct CachedChains {
+  nsTArray<EventTargetChainItem> mChain1;
+  nsTArray<EventTargetChainItem> mChain2;
+};
+static CachedChains* sCachedMainThreadChains = nullptr;
 
 /* static */
 void EventDispatcher::Shutdown() {
-  delete sCachedMainThreadChain;
-  sCachedMainThreadChain = nullptr;
+  delete sCachedMainThreadChains;
+  sCachedMainThreadChains = nullptr;
 }
 
 EventTargetChainItem* EventTargetChainItemForChromeTarget(
@@ -690,20 +692,46 @@ EventTargetChainItem* EventTargetChainItemForChromeTarget(
 }
 
 static bool ShouldClearTargets(WidgetEvent* aEvent) {
-  nsCOMPtr<nsIContent> finalTarget;
-  nsCOMPtr<nsIContent> finalRelatedTarget;
-  if ((finalTarget = do_QueryInterface(aEvent->mTarget)) &&
-      finalTarget->SubtreeRoot()->IsShadowRoot()) {
-    return true;
+  if (nsIContent* finalTarget =
+          nsIContent::FromEventTargetOrNull(aEvent->mTarget)) {
+    if (finalTarget->SubtreeRoot()->IsShadowRoot()) {
+      return true;
+    }
   }
 
-  if ((finalRelatedTarget = do_QueryInterface(aEvent->mRelatedTarget)) &&
-      finalRelatedTarget->SubtreeRoot()->IsShadowRoot()) {
-    return true;
+  if (nsIContent* finalRelatedTarget =
+          nsIContent::FromEventTargetOrNull(aEvent->mRelatedTarget)) {
+    if (finalRelatedTarget->SubtreeRoot()->IsShadowRoot()) {
+      return true;
+    }
   }
   // XXXsmaug Check also all the touch objects.
 
   return false;
+}
+
+static void DescribeEventTargetForProfilerMarker(const EventTarget* aTarget,
+                                                 nsACString& aDescription) {
+  auto* node = aTarget->GetAsNode();
+  if (node) {
+    if (node->IsElement()) {
+      nsAutoString nodeDescription;
+      node->AsElement()->Describe(nodeDescription, true);
+      aDescription = NS_ConvertUTF16toUTF8(nodeDescription);
+    } else if (node->IsDocument()) {
+      aDescription.AssignLiteral("document");
+    } else if (node->IsText()) {
+      aDescription.AssignLiteral("text");
+    } else if (node->IsDocumentFragment()) {
+      aDescription.AssignLiteral("document fragment");
+    }
+  } else if (aTarget->IsInnerWindow() || aTarget->IsOuterWindow()) {
+    aDescription.AssignLiteral("window");
+  } else if (aTarget->IsRootWindow()) {
+    aDescription.AssignLiteral("root window");
+  } else {
+    // Probably something that inherits from DOMEventTargetHelper.
+  }
 }
 
 /* static */
@@ -745,7 +773,7 @@ nsresult EventDispatcher::Dispatch(nsISupports* aTarget,
   bool retargeted = false;
 
   if (aEvent->mFlags.mRetargetToNonNativeAnonymous) {
-    nsCOMPtr<nsIContent> content = do_QueryInterface(target);
+    nsIContent* content = nsIContent::FromEventTargetOrNull(target);
     if (content && content->IsInNativeAnonymousSubtree()) {
       nsCOMPtr<EventTarget> newTarget =
           content->FindFirstNonChromeOnlyAccessContent();
@@ -787,7 +815,7 @@ nsresult EventDispatcher::Dispatch(nsISupports* aTarget,
         MOZ_CRASH("This is unsafe! Fix the caller!");
       }
     };
-    if (nsCOMPtr<nsINode> node = do_QueryInterface(target)) {
+    if (nsINode* node = nsINode::FromEventTargetOrNull(target)) {
       // If this is a node, it's possible that this is some sort of DOM tree
       // that is never accessed by script (for example an SVG image or XBL
       // binding document or whatnot).  We really only want to warn/assert here
@@ -823,11 +851,19 @@ nsresult EventDispatcher::Dispatch(nsISupports* aTarget,
   ELMCreationDetector cd;
   nsTArray<EventTargetChainItem> chain;
   if (cd.IsMainThread()) {
-    if (!sCachedMainThreadChain) {
-      sCachedMainThreadChain = new nsTArray<EventTargetChainItem>();
+    if (!sCachedMainThreadChains) {
+      sCachedMainThreadChains = new CachedChains();
     }
-    chain = std::move(*sCachedMainThreadChain);
-    chain.SetCapacity(128);
+
+    if (sCachedMainThreadChains->mChain1.Capacity() ==
+        kCachedMainThreadChainSize) {
+      chain = std::move(sCachedMainThreadChains->mChain1);
+    } else if (sCachedMainThreadChains->mChain2.Capacity() ==
+               kCachedMainThreadChainSize) {
+      chain = std::move(sCachedMainThreadChains->mChain2);
+    } else {
+      chain.SetCapacity(kCachedMainThreadChainSize);
+    }
   }
 
   // Create the event target chain item for the event target.
@@ -867,7 +903,8 @@ nsresult EventDispatcher::Dispatch(nsISupports* aTarget,
 
   bool clearTargets = false;
 
-  nsCOMPtr<nsIContent> content = do_QueryInterface(aEvent->mOriginalTarget);
+  nsCOMPtr<nsIContent> content =
+      nsIContent::FromEventTargetOrNull(aEvent->mOriginalTarget);
   bool isInAnon = content && content->IsInNativeAnonymousSubtree();
 
   aEvent->mFlags.mIsBeingDispatched = true;
@@ -950,7 +987,8 @@ nsresult EventDispatcher::Dispatch(nsISupports* aTarget,
         topEtci = parentEtci;
       } else {
         bool ignoreBecauseOfShadowDOM = preVisitor.mIgnoreBecauseOfShadowDOM;
-        nsCOMPtr<nsINode> disabledTarget = do_QueryInterface(parentTarget);
+        nsCOMPtr<nsINode> disabledTarget =
+            nsINode::FromEventTargetOrNull(parentTarget);
         parentEtci = MayRetargetToChromeIfCanNotHandleEvent(
             chain, preVisitor, parentEtci, topEtci, disabledTarget);
         if (parentEtci && preVisitor.mCanHandle) {
@@ -984,10 +1022,10 @@ nsresult EventDispatcher::Dispatch(nsISupports* aTarget,
         }
 
         RefPtr<nsRefreshDriver> refreshDriver;
-        if (aPresContext && aPresContext->GetRootPresContext() &&
-            aEvent->IsTrusted() &&
+        if (aEvent->IsTrusted() &&
             (aEvent->mMessage == eKeyPress ||
-             aEvent->mMessage == eMouseClick)) {
+             aEvent->mMessage == eMouseClick) &&
+            aPresContext && aPresContext->GetRootPresContext()) {
           refreshDriver = aPresContext->GetRootPresContext()->RefreshDriver();
           if (refreshDriver) {
             refreshDriver->EnterUserInputProcessing();
@@ -1039,10 +1077,13 @@ nsresult EventDispatcher::Dispatch(nsISupports* aTarget,
             static void StreamJSONMarkerData(
                 baseprofiler::SpliceableJSONWriter& aWriter,
                 const ProfilerString16View& aEventType,
-                const TimeStamp& aStartTime, const TimeStamp& aEventTimeStamp) {
-              aWriter.StringProperty(
-                  "eventType", NS_ConvertUTF16toUTF8(aEventType.Data(),
-                                                     aEventType.Length()));
+                const nsCString& aTarget, const TimeStamp& aStartTime,
+                const TimeStamp& aEventTimeStamp) {
+              aWriter.StringProperty("eventType",
+                                     NS_ConvertUTF16toUTF8(aEventType));
+              if (!aTarget.IsEmpty()) {
+                aWriter.StringProperty("target", aTarget);
+              }
               // This is the event processing latency, which is the time from
               // when the event was created, to when it was started to be
               // processed. Note that the computation of this latency is
@@ -1053,22 +1094,32 @@ nsresult EventDispatcher::Dispatch(nsISupports* aTarget,
             }
             static MarkerSchema MarkerTypeDisplay() {
               using MS = MarkerSchema;
-              MS schema{MS::Location::markerChart, MS::Location::markerTable,
-                        MS::Location::timelineOverview};
+              MS schema{MS::Location::MarkerChart, MS::Location::MarkerTable,
+                        MS::Location::TimelineOverview};
               schema.SetChartLabel("{marker.data.eventType}");
               schema.SetTooltipLabel("{marker.data.eventType} - DOMEvent");
-              schema.SetTableLabel("{marker.data.eventType}");
+              schema.SetTableLabel(
+                  "{marker.data.eventType} - {marker.data.target}");
+              schema.AddKeyLabelFormatSearchable("target", "Event Target",
+                                                 MS::Format::String,
+                                                 MS::Searchable::Searchable);
               schema.AddKeyLabelFormat("latency", "Latency",
-                                       MS::Format::duration);
+                                       MS::Format::Duration);
+              schema.AddKeyLabelFormatSearchable("eventType", "Event Type",
+                                                 MS::Format::String,
+                                                 MS::Searchable::Searchable);
               return schema;
             }
           };
 
-          auto startTime = TimeStamp::NowUnfuzzed();
+          nsAutoCString target;
+          DescribeEventTargetForProfilerMarker(aEvent->mTarget, target);
+
+          auto startTime = TimeStamp::Now();
           profiler_add_marker("DOMEvent", geckoprofiler::category::DOM,
                               {MarkerTiming::IntervalStart(),
                                MarkerInnerWindowId(innerWindowId)},
-                              DOMEventMarker{}, typeStr, startTime,
+                              DOMEventMarker{}, typeStr, target, startTime,
                               aEvent->mTimeStamp);
 
           EventTargetChainItem::HandleEventTargetChain(chain, postVisitor,
@@ -1077,15 +1128,17 @@ nsresult EventDispatcher::Dispatch(nsISupports* aTarget,
           profiler_add_marker(
               "DOMEvent", geckoprofiler::category::DOM,
               {MarkerTiming::IntervalEnd(), std::move(innerWindowId)},
-              DOMEventMarker{}, typeStr, startTime, aEvent->mTimeStamp);
+              DOMEventMarker{}, typeStr, target, startTime, aEvent->mTimeStamp);
         } else {
           EventTargetChainItem::HandleEventTargetChain(chain, postVisitor,
                                                        aCallback, cd);
         }
         aEvent->mPath = nullptr;
 
-        if (aPresContext && aPresContext->GetRootPresContext() &&
-            aEvent->IsTrusted()) {
+        if (aEvent->IsTrusted() &&
+            (aEvent->mMessage == eKeyPress ||
+             aEvent->mMessage == eMouseClick) &&
+            aPresContext && aPresContext->GetRootPresContext()) {
           nsRefreshDriver* driver =
               aPresContext->GetRootPresContext()->RefreshDriver();
           if (driver && driver->HasPendingTick()) {
@@ -1157,9 +1210,17 @@ nsresult EventDispatcher::Dispatch(nsISupports* aTarget,
     *aEventStatus = preVisitor.mEventStatus;
   }
 
-  if (cd.IsMainThread() && chain.Capacity() == 128 && sCachedMainThreadChain) {
-    chain.ClearAndRetainStorage();
-    chain.SwapElements(*sCachedMainThreadChain);
+  if (cd.IsMainThread() && chain.Capacity() == kCachedMainThreadChainSize &&
+      sCachedMainThreadChains) {
+    if (sCachedMainThreadChains->mChain1.Capacity() !=
+        kCachedMainThreadChainSize) {
+      chain.ClearAndRetainStorage();
+      chain.SwapElements(sCachedMainThreadChains->mChain1);
+    } else if (sCachedMainThreadChains->mChain2.Capacity() !=
+               kCachedMainThreadChainSize) {
+      chain.ClearAndRetainStorage();
+      chain.SwapElements(sCachedMainThreadChains->mChain2);
+    }
   }
 
   return rv;

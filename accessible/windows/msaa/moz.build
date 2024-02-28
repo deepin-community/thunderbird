@@ -25,7 +25,6 @@ UNIFIED_SOURCES += [
     "CompatibilityUIA.cpp",
     "DocAccessibleWrap.cpp",
     "EnumVariant.cpp",
-    "GeckoCustom.cpp",
     "HyperTextAccessibleWrap.cpp",
     "IUnknownImpl.cpp",
     "MsaaAccessible.cpp",
@@ -48,11 +47,6 @@ SOURCES += [
 OS_LIBS += [
     "ntdll",
 ]
-
-if CONFIG["MOZ_XUL"]:
-    UNIFIED_SOURCES += [
-        "XULMenuAccessibleWrap.cpp",
-    ]
 
 LOCAL_INCLUDES += [
     "/accessible/base",

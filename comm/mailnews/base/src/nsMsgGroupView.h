@@ -42,7 +42,6 @@ class nsMsgGroupView : public nsMsgDBView {
                                uint32_t aNewFlags,
                                nsIDBChangeListener* aInstigator) override;
 
-  NS_IMETHOD LoadMessageByViewIndex(nsMsgViewIndex aViewIndex) override;
   NS_IMETHOD GetCellProperties(int32_t aRow, nsTreeColumn* aCol,
                                nsAString& aProperties) override;
   NS_IMETHOD GetRowProperties(int32_t aRow, nsAString& aProperties) override;
@@ -72,16 +71,8 @@ class nsMsgGroupView : public nsMsgDBView {
   virtual nsMsgGroupThread* CreateGroupThread(nsIMsgDatabase* db);
 
   nsInterfaceHashtable<nsStringHashKey, nsIMsgThread> m_groupsTable;
-  PRExplodedTime m_lastCurExplodedTime;
+  PRExplodedTime m_lastCurExplodedTime{0};
   bool m_dayChanged;
-
- private:
-  nsString m_kTodayString;
-  nsString m_kYesterdayString;
-  nsString m_kLastWeekString;
-  nsString m_kTwoWeeksAgoString;
-  nsString m_kOldMailString;
-  nsString m_kFutureDateString;
 };
 
 #endif

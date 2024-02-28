@@ -74,18 +74,20 @@
 
       gQueue.push(new setAttr("tst1", "aria-label", "hi",
                               new invokerChecker(EVENT_NAME_CHANGE, "tst1")));
-      gQueue.push(new setAttr("tst1", "aria-labelledby", "display",
-                              new unexpectedInvokerChecker(EVENT_NAME_CHANGE, "tst1")));
       gQueue.push(new setAttr("tst1", "alt", "alt",
                               new unexpectedInvokerChecker(EVENT_NAME_CHANGE, "tst1")));
       gQueue.push(new setAttr("tst1", "title", "title",
                               new unexpectedInvokerChecker(EVENT_NAME_CHANGE, "tst1")));
+      gQueue.push(new setAttr("tst1", "aria-labelledby", "display",
+                              new invokerChecker(EVENT_NAME_CHANGE, "tst1")));
 
       gQueue.push(new setAttr("tst2", "aria-labelledby", "display",
                               new invokerChecker(EVENT_NAME_CHANGE, "tst2")));
       gQueue.push(new setAttr("tst2", "alt", "alt",
                               new unexpectedInvokerChecker(EVENT_NAME_CHANGE, "tst2")));
       gQueue.push(new setAttr("tst2", "title", "title",
+                              new unexpectedInvokerChecker(EVENT_NAME_CHANGE, "tst2")));
+      gQueue.push(new setAttr("tst2", "aria-label", "hi",
                               new unexpectedInvokerChecker(EVENT_NAME_CHANGE, "tst2")));
 
       // When `alt` attribute is added or removed from a broken img,
@@ -129,6 +131,19 @@
       getNode("lateLabelChild").textContent = "l2";
       await nameChanged;
 
+      nameChanged = PromEvents.waitForEvent(EVENT_NAME_CHANGE, "listitem");
+      info("Changing textContent of listitem child");
+      // Changing textContent replaces the text leaf with a new one.
+      getNode("listitem").textContent = "world";
+      await nameChanged;
+
+      nameChanged = PromEvents.waitForEvent(EVENT_NAME_CHANGE, "button");
+      info("Changing text of button's text leaf");
+      // Changing the text node's data changes the text without replacing the
+      // leaf.
+      getNode("button").firstChild.data = "after";
+      await nameChanged;
+
       SimpleTest.finish();
     }
 
@@ -160,6 +175,10 @@
 
   <div id="lateLabelledBy"></div>
   <div id="lateLabel"><p id="lateLabelChild">l1</p></div>
+
+  <ul><li id="listitem">hello</li></ul>
+
+  <button id="button">before</button>
 
   <div id="eventdump"></div>
 </body>

@@ -2,18 +2,21 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 ---
-loader: taskgraph.loader.single_dep:loader
+loader: gecko_taskgraph.loader.single_dep:loader
 
 transforms:
-    - taskgraph.transforms.repackage_l10n:transforms
-    - taskgraph.transforms.name_sanity:transforms
-    - taskgraph.transforms.repackage:transforms
-    - taskgraph.transforms.job:transforms
-    - taskgraph.transforms.task:transforms
+    - gecko_taskgraph.transforms.repackage_set_upstream_mac_kind:transforms
+    - gecko_taskgraph.transforms.repackage_l10n:transforms
+    - gecko_taskgraph.transforms.name_sanity:transforms
+    - gecko_taskgraph.transforms.repackage:transforms
+    - gecko_taskgraph.transforms.job:transforms
+    - gecko_taskgraph.transforms.task:transforms
     - comm_taskgraph.transforms.signing:transforms
 
 kind-dependencies:
     - shippable-l10n-signing
+    - shippable-l10n-mac-signing
+    - shippable-l10n-mac-notarization
     - toolchain
 
 only-for-build-platforms:
@@ -24,9 +27,14 @@ only-for-build-platforms:
     - win64-shippable/opt
 
 job-template:
-    worker-type: 'b-linux'
-    worker:
-        docker-image: {"in-tree": "debian10-amd64-build"}
+    upstream-mac-kind:
+        by-build-type:
+            debug: shippable-l10n-mac-signing
+            default:
+                by-project:
+                    comm-(central|beta|esr.*): shippable-l10n-mac-notarization
+                    default: shippable-l10n-mac-signing
+    worker-type: 'b-linux-gcp'
     mozharness:
         comm-checkout: true
         config-paths:
@@ -44,18 +52,21 @@ job-template:
                     - repackage/osx_signed.py
                 win32.*:
                     - repackage/base.py
+                    - repackage/tb_win32_sfx_stub.py
                     - repackage/win32_signed.py
                 win64.*:
                     - repackage/base.py
+                    - repackage/tb_win32_sfx_stub.py
                     - repackage/win64_signed.py
     package-formats:
         by-build-platform:
             linux-.*: [mar]
             linux64.*: [mar]
-            macosx64.*: [mar, dmg]
+            macosx64.*: [mar, dmg, pkg]
             win32.*: [mar, installer]
             win64.*: [mar, installer]
     fetches:
         toolchain:
             - linux64-mar-tools
             - linux64-upx
+    treeherder-group: L10n-Rpk

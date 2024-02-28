@@ -7,25 +7,13 @@
 
 /* import-globals-from preferences.js */
 
-var { XPCOMUtils } = ChromeUtils.import(
-  "resource://gre/modules/XPCOMUtils.jsm"
+var { XPCOMUtils } = ChromeUtils.importESModule(
+  "resource://gre/modules/XPCOMUtils.sys.mjs"
 );
 
-ChromeUtils.defineModuleGetter(
-  this,
-  "LoginHelper",
-  "resource://gre/modules/LoginHelper.jsm"
-);
-ChromeUtils.defineModuleGetter(
-  this,
-  "OSKeyStore",
-  "resource://gre/modules/OSKeyStore.jsm"
-);
-XPCOMUtils.defineLazyGetter(this, "L10n", () => {
-  return new Localization([
-    "branding/brand.ftl",
-    "messenger/preferences/preferences.ftl",
-  ]);
+ChromeUtils.defineESModuleGetters(this, {
+  LoginHelper: "resource://gre/modules/LoginHelper.sys.mjs",
+  OSKeyStore: "resource://gre/modules/OSKeyStore.sys.mjs",
 });
 
 const PREF_UPLOAD_ENABLED = "datareporting.healthreport.uploadEnabled";
@@ -48,13 +36,15 @@ Preferences.addAll([
   },
   { id: "places.history.enabled", type: "bool" },
   { id: "network.cookie.cookieBehavior", type: "int" },
-  { id: "network.cookie.lifetimePolicy", type: "int" },
   { id: "network.cookie.blockFutureCookies", type: "bool" },
   { id: "privacy.donottrackheader.enabled", type: "bool" },
   { id: "security.default_personal_cert", type: "string" },
   { id: "security.disable_button.openCertManager", type: "bool" },
   { id: "security.disable_button.openDeviceManager", type: "bool" },
   { id: "security.OCSP.enabled", type: "int" },
+  { id: "mail.e2ee.auto_enable", type: "bool" },
+  { id: "mail.e2ee.auto_disable", type: "bool" },
+  { id: "mail.e2ee.notify_on_auto_disable", type: "bool" },
 ]);
 
 if (AppConstants.MOZ_DATA_REPORTING) {
@@ -123,18 +113,16 @@ var gPrivacyPane = {
     element = document.getElementById("enableOCSP");
     Preferences.addSyncFromPrefListener(element, () => this.readEnableOCSP());
     Preferences.addSyncToPrefListener(element, () => this.writeEnableOCSP());
+
+    this.initE2eeCheckboxes();
   },
 
   /**
    * Reload the current message after a preference affecting the view
-   * has been changed and we are in instantApply mode.
+   * has been changed.
    */
   reloadMessageInOpener() {
-    if (
-      Services.prefs.getBoolPref("browser.preferences.instantApply") &&
-      window.opener &&
-      typeof window.opener.ReloadMessage == "function"
-    ) {
+    if (window.opener && typeof window.opener.ReloadMessage == "function") {
       window.opener.ReloadMessage();
     }
   },
@@ -151,8 +139,6 @@ var gPrivacyPane = {
       "acceptThirdPartyLabel"
     );
     let acceptThirdPartyMenu = document.getElementById("acceptThirdPartyMenu");
-    let keepUntil = document.getElementById("keepUntil");
-    let menu = document.getElementById("keepCookiesUntil");
     let showCookiesButton = document.getElementById("showCookiesButton");
 
     // enable the rest of the UI for anything other than "disable all cookies"
@@ -160,15 +146,10 @@ var gPrivacyPane = {
     let cookieBehaviorLocked = Services.prefs.prefIsLocked(
       "network.cookie.cookieBehavior"
     );
-    let cookieExpirationLocked = Services.prefs.prefIsLocked(
-      "network.cookie.lifetimePolicy"
-    );
 
     exceptionsButton.disabled = cookieBehaviorLocked;
     acceptThirdPartyLabel.disabled = acceptThirdPartyMenu.disabled =
       !acceptCookies || cookieBehaviorLocked;
-    keepUntil.disabled = menu.disabled =
-      !acceptCookies || cookieBehaviorLocked || cookieExpirationLocked;
     showCookiesButton.disabled = cookieBehaviorLocked;
 
     return acceptCookies;
@@ -177,7 +158,8 @@ var gPrivacyPane = {
   /**
    * Enables/disables the "keep until" label and menulist in response to the
    * "accept cookies" checkbox being checked or unchecked.
-   * @return 0 if cookies are accepted, 2 if they are not;
+   *
+   * @returns 0 if cookies are accepted, 2 if they are not;
    *         the value network.cookie.cookieBehavior should get
    */
   writeAcceptCookies() {
@@ -307,13 +289,13 @@ var gPrivacyPane = {
   },
 
   /**
-   * Initializes master password UI: the "use primary password" checkbox, selects
-   * the master password button to show, and enables/disables it as necessary.
-   * The master password is controlled by various bits of NSS functionality,
+   * Initializes primary password UI: the "use primary password" checkbox, selects
+   * the primary password button to show, and enables/disables it as necessary.
+   * The primary password is controlled by various bits of NSS functionality,
    * so the UI for it can't be controlled by the normal preference bindings.
    */
   _initMasterPasswordUI() {
-    var noMP = !LoginHelper.isMasterPasswordSet();
+    var noMP = !LoginHelper.isPrimaryPasswordSet();
 
     var button = document.getElementById("changeMasterPassword");
     button.disabled = noMP;
@@ -326,8 +308,8 @@ var gPrivacyPane = {
   },
 
   /**
-   * Enables/disables the master password button depending on the state of the
-   * "use master password" checkbox, and prompts for master password removal
+   * Enables/disables the primary password button depending on the state of the
+   * "use primary password" checkbox, and prompts for primary password removal
    * if one is set.
    */
   async updateMasterPasswordButton() {
@@ -350,8 +332,8 @@ var gPrivacyPane = {
   },
 
   /**
-   * Displays the "remove master password" dialog to allow the user to remove
-   * the current master password.  When the dialog is dismissed, master password
+   * Displays the "remove primary password" dialog to allow the user to remove
+   * the current primary password.  When the dialog is dismissed, primary password
    * UI is automatically updated.
    */
   async _removeMasterPassword() {
@@ -372,18 +354,18 @@ var gPrivacyPane = {
   },
 
   /**
-   * Displays a dialog in which the master password may be changed.
+   * Displays a dialog in which the primary password may be changed.
    */
   async changeMasterPassword() {
     // OS reauthenticate functionality is not available on Linux yet (bug 1527745)
     if (
-      !LoginHelper.isMasterPasswordSet() &&
+      !LoginHelper.isPrimaryPasswordSet() &&
       Services.prefs.getBoolPref("signon.management.page.os-auth.enabled") &&
       AppConstants.platform != "linux"
     ) {
       let messageId =
         "primary-password-os-auth-dialog-message-" + AppConstants.platform;
-      let [messageText, captionText] = await L10n.formatMessages([
+      let [messageText, captionText] = await document.l10n.formatMessages([
         {
           id: messageId,
         },
@@ -419,9 +401,8 @@ var gPrivacyPane = {
   },
 
   updateDownloadedPhishingListState() {
-    document.getElementById(
-      "useDownloadedList"
-    ).disabled = !document.getElementById("enablePhishingDetector").checked;
+    document.getElementById("useDownloadedList").disabled =
+      !document.getElementById("enablePhishingDetector").checked;
   },
 
   /**
@@ -536,6 +517,38 @@ var gPrivacyPane = {
     // If allow telemetry is checked, hide the box saying you're no longer
     // allowing it.
     document.getElementById("telemetry-container").hidden = checkbox.checked;
+  },
+
+  initE2eeCheckboxes() {
+    let on = document.getElementById("emailE2eeAutoEnable");
+    let off = document.getElementById("emailE2eeAutoDisable");
+    let notify = document.getElementById("emailE2eeAutoDisableNotify");
+
+    on.checked = Preferences.get("mail.e2ee.auto_enable").value;
+    off.checked = Preferences.get("mail.e2ee.auto_disable").value;
+    notify.checked = Preferences.get("mail.e2ee.notify_on_auto_disable").value;
+
+    if (!on.checked) {
+      off.disabled = true;
+      notify.disabled = true;
+    } else {
+      off.disabled = false;
+      notify.disabled = !off.checked;
+    }
+  },
+
+  updateE2eeCheckboxes() {
+    let on = document.getElementById("emailE2eeAutoEnable");
+    let off = document.getElementById("emailE2eeAutoDisable");
+    let notify = document.getElementById("emailE2eeAutoDisableNotify");
+
+    if (!on.checked) {
+      off.disabled = true;
+      notify.disabled = true;
+    } else {
+      off.disabled = false;
+      notify.disabled = !off.checked;
+    }
   },
 };
 

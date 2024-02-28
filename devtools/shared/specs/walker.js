@@ -9,7 +9,7 @@ const {
   RetVal,
   generateActorSpec,
   types,
-} = require("devtools/shared/protocol");
+} = require("resource://devtools/shared/protocol.js");
 
 types.addDictType("dommutation", {});
 
@@ -28,7 +28,6 @@ var nodeArrayMethod = {
     maxNodes: Option(1),
     center: Option(1, "domnode"),
     start: Option(1, "domnode"),
-    whatToShow: Option(1),
   },
   response: RetVal(
     types.addDictType("domtraversalarray", {
@@ -40,7 +39,6 @@ var nodeArrayMethod = {
 var traversalMethod = {
   request: {
     node: Arg(0, "domnode"),
-    whatToShow: Option(1),
   },
   response: {
     node: RetVal("nullable:domnode"),
@@ -142,14 +140,6 @@ const walkerSpec = generateActorSpec({
       request: {
         node: Arg(0, "domnode"),
         selector: Arg(1),
-      },
-      response: {
-        list: RetVal("domnodelist"),
-      },
-    },
-    multiFrameQuerySelectorAll: {
-      request: {
-        selector: Arg(0),
       },
       response: {
         list: RetVal("domnodelist"),
@@ -362,11 +352,16 @@ const walkerSpec = generateActorSpec({
     pick: {
       request: {
         doFocus: Arg(0, "nullable:boolean"),
+        isLocalTab: Arg(1, "nullable:boolean"),
       },
     },
     cancelPick: {
       request: {},
       response: {},
+    },
+    clearPicker: {
+      request: {},
+      oneway: true,
     },
     watchRootNode: {
       request: {},

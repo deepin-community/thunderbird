@@ -79,7 +79,7 @@ error-enc = Der is in flater bard by it fersiferjen fan it berjocht.
 
 # Variables:
 #   $name (String) - the screen name of a chat contact person
-error-not-priv = Jo hawwe fersifere gegevens ferstjoerd nei { $name }, dy't it net ferwachte.
+error-not-priv = Jo hawwe fersifere gegevens ferstjoerd nei { $name }, dy’t it net ferwachte.
 
 error-unreadable = Jo hawwe in net lêsber fersifere berjocht ferstjoerd.
 error-malformed = Jo hawwe in ûnjildich gegevensberjocht ferstjoerd.

@@ -10,7 +10,6 @@ var { OAuth2 } = ChromeUtils.import("resource:///modules/OAuth2.jsm");
 var { OAuth2Providers } = ChromeUtils.import(
   "resource:///modules/OAuth2Providers.jsm"
 );
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 
 /**
  * OAuth2Module is the glue layer that gives XPCOM access to an OAuth2
@@ -21,7 +20,6 @@ var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
  */
 function OAuth2Module() {}
 OAuth2Module.prototype = {
-  // XPCOM registration stuff
   QueryInterface: ChromeUtils.generateQI(["msgIOAuth2Module"]),
 
   initFromSmtp(aServer) {
@@ -34,8 +32,8 @@ OAuth2Module.prototype = {
   initFromMail(aServer) {
     return this._initPrefs(
       "mail.server." + aServer.key + ".",
-      aServer.realUsername,
-      aServer.realHostName
+      aServer.username,
+      aServer.hostName
     );
   },
   initFromABDirectory(aDirectory, aHostname) {
@@ -44,42 +42,36 @@ OAuth2Module.prototype = {
       aDirectory.getStringValue("carddav.username", "") || aDirectory.UID,
       aHostname
     );
-    if (aHostname == "mochi.test") {
-      // I don't know why, but tests refuse to work with a plain HTTP endpoint
-      // (the request is redirected to HTTPS, which we're not listening to).
-      // Just use an HTTPS endpoint.
-      this._oauth.redirectionEndpoint = "https://localhost";
-    }
   },
   _initPrefs(root, aUsername, aHostname) {
-    // Load all of the parameters from preferences.
-    let issuer = Services.prefs.getStringPref(root + "oauth2.issuer", "");
-    let scope = Services.prefs.getStringPref(root + "oauth2.scope", "");
+    let issuer = Services.prefs.getStringPref(root + "oauth2.issuer", null);
+    let scope = Services.prefs.getStringPref(root + "oauth2.scope", null);
 
-    // These properties are absolutely essential to OAuth2 support. If we don't
-    // have them, we don't support OAuth2.
+    let details = OAuth2Providers.getHostnameDetails(aHostname);
+    if (
+      details &&
+      (details[0] != issuer ||
+        !scope?.split(" ").every(s => details[1].split(" ").includes(s)))
+    ) {
+      // Found in the list of hardcoded providers. Use the hardcoded values.
+      // But only if what we had wasn't a narrower scope of current
+      // defaults. Updating scope would cause re-authorization.
+      [issuer, scope] = details;
+      //  Store them for the future, can be useful once we support
+      // dynamic registration.
+      Services.prefs.setStringPref(root + "oauth2.issuer", issuer);
+      Services.prefs.setStringPref(root + "oauth2.scope", scope);
+    }
     if (!issuer || !scope) {
-      // Since we currently only support gmail, init values if server matches.
-      let details = OAuth2Providers.getHostnameDetails(aHostname);
-      if (details) {
-        [issuer, scope] = details;
-        Services.prefs.setStringPref(root + "oauth2.issuer", issuer);
-        Services.prefs.setStringPref(root + "oauth2.scope", scope);
-      } else {
-        return false;
-      }
+      // We need these properties for OAuth2 support.
+      return false;
     }
 
     // Find the app key we need for the OAuth2 string. Eventually, this should
     // be using dynamic client registration, but there are no current
     // implementations that we can test this with.
-    let [
-      clientId,
-      clientSecret,
-      authorizationEndpoint,
-      tokenEndpoint,
-    ] = OAuth2Providers.getIssuerDetails(issuer);
-    if (!clientId) {
+    const issuerDetails = OAuth2Providers.getIssuerDetails(issuer);
+    if (!issuerDetails.clientId) {
       return false;
     }
 
@@ -91,13 +83,7 @@ OAuth2Module.prototype = {
     this._scope = scope;
 
     // Define the OAuth property and store it.
-    this._oauth = new OAuth2(
-      authorizationEndpoint,
-      tokenEndpoint,
-      scope,
-      clientId,
-      clientSecret
-    );
+    this._oauth = new OAuth2(scope, issuerDetails);
 
     // Try hinting the username...
     this._oauth.extraAuthParams = [["login_hint", aUsername]];
@@ -141,11 +127,13 @@ OAuth2Module.prototype = {
     for (let login of logins) {
       if (login.username == this._username) {
         if (token) {
-          let propBag = Cc["@mozilla.org/hash-property-bag;1"].createInstance(
-            Ci.nsIWritablePropertyBag
-          );
-          propBag.setProperty("password", token);
-          Services.logins.modifyLogin(login, propBag);
+          if (token != login.password) {
+            let propBag = Cc["@mozilla.org/hash-property-bag;1"].createInstance(
+              Ci.nsIWritablePropertyBag
+            );
+            propBag.setProperty("password", token);
+            Services.logins.modifyLogin(login, propBag);
+          }
         } else {
           Services.logins.removeLogin(login);
         }

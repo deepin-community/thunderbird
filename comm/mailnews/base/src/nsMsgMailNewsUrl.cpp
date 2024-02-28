@@ -5,8 +5,6 @@
 
 #include "msgCore.h"
 #include "nsMsgMailNewsUrl.h"
-#include "nsMsgBaseCID.h"
-#include "nsMsgLocalCID.h"
 #include "nsIMsgAccountManager.h"
 #include "nsString.h"
 #include "nsILoadGroup.h"
@@ -25,7 +23,7 @@
 #include "prmem.h"
 #include <time.h>
 #include "nsMsgUtils.h"
-#include "mozilla/Services.h"
+#include "mozilla/Components.h"
 #include "nsProxyRelease.h"
 #include "mozilla/Encoding.h"
 #include "nsDocShellLoadState.h"
@@ -64,8 +62,6 @@ nsMsgMailNewsUrl::~nsMsgMailNewsUrl() {
                          mMimeHeaders.forget());
   NS_ReleaseOnMainThread("nsMsgMailNewsUrl::m_searchSession",
                          m_searchSession.forget());
-  NS_ReleaseOnMainThread("nsMsgMailNewsUrl::mMsgHeaderSink",
-                         mMsgHeaderSink.forget());
 
   nsTObserverArray<nsCOMPtr<nsIUrlListener>>::ForwardIterator iter(
       mUrlListeners);
@@ -114,7 +110,7 @@ NS_IMETHODIMP nsMsgMailNewsUrl::Read(nsIObjectInputStream* stream) {
   nsAutoCString urlstr;
   nsresult rv = NS_ReadOptionalCString(stream, urlstr);
   NS_ENSURE_SUCCESS(rv, rv);
-  nsCOMPtr<nsIIOService> ioService = mozilla::services::GetIOService();
+  nsCOMPtr<nsIIOService> ioService = mozilla::components::IO::Service();
   NS_ENSURE_TRUE(ioService, NS_ERROR_UNEXPECTED);
   nsCOMPtr<nsIURI> url;
   rv = ioService->NewURI(urlstr, nullptr, nullptr, getter_AddRefs(url));
@@ -161,10 +157,16 @@ NS_IMETHODIMP nsMsgMailNewsUrl::GetClassID(nsCID** aClassID) {
 }
 
 NS_IMETHODIMP nsMsgMailNewsUrl::GetFlags(uint32_t* aFlags) {
-  *aFlags = nsIClassInfo::MAIN_THREAD_ONLY;
+  *aFlags = 0;
   return NS_OK;
 }
 
+#define NS_MSGMAILNEWSURL_CID                        \
+  {                                                  \
+    0x3fdae3ab, 0x4ac1, 0x4ad4, {                    \
+      0xb2, 0x8a, 0x28, 0xd0, 0xfa, 0x36, 0x39, 0x29 \
+    }                                                \
+  }
 static NS_DEFINE_CID(kNS_MSGMAILNEWSURL_CID, NS_MSGMAILNEWSURL_CID);
 NS_IMETHODIMP nsMsgMailNewsUrl::GetClassIDNoAlloc(nsCID* aClassIDNoAlloc) {
   *aClassIDNoAlloc = kNS_MSGMAILNEWSURL_CID;
@@ -210,8 +212,9 @@ nsresult nsMsgMailNewsUrl::GetUrlState(bool* aRunningUrl) {
 
 nsresult nsMsgMailNewsUrl::SetUrlState(bool aRunningUrl, nsresult aExitCode) {
   // if we already knew this running state, return, unless the url was aborted
-  if (m_runningUrl == aRunningUrl && aExitCode != NS_MSG_ERROR_URL_ABORTED)
+  if (m_runningUrl == aRunningUrl && aExitCode != NS_MSG_ERROR_URL_ABORTED) {
     return NS_OK;
+  }
   m_runningUrl = aRunningUrl;
   nsCOMPtr<nsIMsgStatusFeedback> statusFeedback;
 
@@ -282,11 +285,11 @@ NS_IMETHODIMP nsMsgMailNewsUrl::GetServer(
     rv = NS_MutateURI(url).SetScheme(scheme).Finalize(url);
     NS_ENSURE_SUCCESS(rv, rv);
     nsCOMPtr<nsIMsgAccountManager> accountManager =
-        do_GetService(NS_MSGACCOUNTMANAGER_CONTRACTID, &rv);
+        do_GetService("@mozilla.org/messenger/account-manager;1", &rv);
     NS_ENSURE_SUCCESS(rv, rv);
 
     nsCOMPtr<nsIMsgIncomingServer> server;
-    rv = accountManager->FindServerByURI(url, false, aIncomingServer);
+    rv = accountManager->FindServerByURI(url, aIncomingServer);
     if (!*aIncomingServer && scheme.EqualsLiteral("imap")) {
       // look for any imap server with this host name so clicking on
       // other users folder urls will work. We could override this method
@@ -294,7 +297,7 @@ NS_IMETHODIMP nsMsgMailNewsUrl::GetServer(
       // just set the server in the imap code for this case.
       rv = NS_MutateURI(url).SetUserPass(EmptyCString()).Finalize(url);
       NS_ENSURE_SUCCESS(rv, rv);
-      rv = accountManager->FindServerByURI(url, false, aIncomingServer);
+      rv = accountManager->FindServerByURI(url, aIncomingServer);
     }
   }
 
@@ -422,6 +425,16 @@ NS_IMETHODIMP nsMsgMailNewsUrl::GetErrorMessage(nsAString& aErrorMessage) {
 NS_IMETHODIMP nsMsgMailNewsUrl::SetErrorMessage(
     const nsAString& aErrorMessage) {
   m_errorMessage.Assign(aErrorMessage);
+  return NS_OK;
+}
+
+NS_IMETHODIMP nsMsgMailNewsUrl::SetSeeOtherURI(const nsACString& aSeeOtherURI) {
+  m_seeOtherURI.Assign(aSeeOtherURI);
+  return NS_OK;
+}
+
+NS_IMETHODIMP nsMsgMailNewsUrl::GetSeeOtherURI(nsACString& aSeeOtherURI) {
+  aSeeOtherURI = m_seeOtherURI;
   return NS_OK;
 }
 
@@ -623,22 +636,22 @@ nsMsgMailNewsUrl::GetSpecIgnoringRef(nsACString& result) {
 
 NS_IMETHODIMP
 nsMsgMailNewsUrl::GetDisplaySpec(nsACString& aUnicodeSpec) {
-  return GetSpec(aUnicodeSpec);
+  return m_baseURL->GetDisplaySpec(aUnicodeSpec);
 }
 
 NS_IMETHODIMP
-nsMsgMailNewsUrl::GetDisplayHostPort(nsACString& aUnicodeHostPort) {
-  return GetHostPort(aUnicodeHostPort);
+nsMsgMailNewsUrl::GetDisplayHostPort(nsACString& aHostPort) {
+  return m_baseURL->GetDisplayHostPort(aHostPort);
 }
 
 NS_IMETHODIMP
-nsMsgMailNewsUrl::GetDisplayHost(nsACString& aUnicodeHost) {
-  return GetHost(aUnicodeHost);
+nsMsgMailNewsUrl::GetDisplayHost(nsACString& aHost) {
+  return m_baseURL->GetDisplayHost(aHost);
 }
 
 NS_IMETHODIMP
 nsMsgMailNewsUrl::GetDisplayPrePath(nsACString& aPrePath) {
-  return GetPrePath(aPrePath);
+  return m_baseURL->GetDisplayPrePath(aPrePath);
 }
 
 NS_IMETHODIMP
@@ -653,7 +666,7 @@ NS_IMETHODIMP nsMsgMailNewsUrl::SchemeIs(const char* aScheme, bool* _retval) {
 nsresult nsMsgMailNewsUrl::Clone(nsIURI** _retval) {
   nsresult rv;
   nsAutoCString urlSpec;
-  nsCOMPtr<nsIIOService> ioService = mozilla::services::GetIOService();
+  nsCOMPtr<nsIIOService> ioService = mozilla::components::IO::Service();
   NS_ENSURE_TRUE(ioService, NS_ERROR_UNEXPECTED);
   rv = GetSpec(urlSpec);
   NS_ENSURE_SUCCESS(rv, rv);
@@ -689,7 +702,7 @@ NS_IMETHODIMP nsMsgMailNewsUrl::Resolve(const nsACString& relativePath,
     rv = m_baseURL->Resolve(relativePath, result);
   } else {
     // if relativePath is a complete url with it's own scheme then allow it...
-    nsCOMPtr<nsIIOService> ioService = mozilla::services::GetIOService();
+    nsCOMPtr<nsIIOService> ioService = mozilla::components::IO::Service();
     NS_ENSURE_TRUE(ioService, NS_ERROR_UNEXPECTED);
     nsAutoCString scheme;
 
@@ -1033,19 +1046,6 @@ NS_IMETHODIMP nsMsgMailNewsUrl::SetFolder(nsIMsgFolder* /* aFolder */) {
 
 NS_IMETHODIMP nsMsgMailNewsUrl::GetFolder(nsIMsgFolder** /* aFolder */) {
   return NS_ERROR_NOT_IMPLEMENTED;
-}
-
-NS_IMETHODIMP nsMsgMailNewsUrl::GetMsgHeaderSink(
-    nsIMsgHeaderSink** aMsgHdrSink) {
-  NS_ENSURE_ARG_POINTER(aMsgHdrSink);
-  NS_IF_ADDREF(*aMsgHdrSink = mMsgHeaderSink);
-  return NS_OK;
-}
-
-NS_IMETHODIMP nsMsgMailNewsUrl::SetMsgHeaderSink(
-    nsIMsgHeaderSink* aMsgHdrSink) {
-  mMsgHeaderSink = aMsgHdrSink;
-  return NS_OK;
 }
 
 NS_IMETHODIMP nsMsgMailNewsUrl::GetIsMessageUri(bool* aIsMessageUri) {

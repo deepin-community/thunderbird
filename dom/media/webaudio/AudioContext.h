@@ -51,6 +51,7 @@ class AudioDestinationNode;
 class AudioListener;
 class AudioNode;
 class BiquadFilterNode;
+class BrowsingContext;
 class ChannelMergerNode;
 class ChannelSplitterNode;
 class ConstantSourceNode;
@@ -117,7 +118,9 @@ class StateChangeTask final : public Runnable {
   AudioContextState mNewState;
 };
 
-enum class AudioContextOperation { Suspend, Resume, Close };
+enum class AudioContextOperation : uint8_t { Suspend, Resume, Close };
+static const char* const kAudioContextOptionsStrings[] = {"Suspend", "Resume",
+                                                          "Close"};
 // When suspending or resuming an AudioContext, some operations have to notify
 // the main thread, so that the Promise is resolved, the state is modified, and
 // the statechanged event is sent. Some other operations don't go back to the
@@ -180,8 +183,9 @@ class AudioContext final : public DOMEventTargetHelper,
 
   float SampleRate() const { return mSampleRate; }
 
-  bool ShouldSuspendNewTrack() const { return mSuspendCalled || mCloseCalled; }
-
+  bool ShouldSuspendNewTrack() const {
+    return mTracksAreSuspended || mCloseCalled;
+  }
   double CurrentTime();
 
   AudioListener* Listener();
@@ -285,7 +289,7 @@ class AudioContext final : public DOMEventTargetHelper,
   already_AddRefed<OscillatorNode> CreateOscillator(ErrorResult& aRv);
 
   already_AddRefed<PeriodicWave> CreatePeriodicWave(
-      const Float32Array& aRealData, const Float32Array& aImagData,
+      const Sequence<float>& aRealData, const Sequence<float>& aImagData,
       const PeriodicWaveConstraints& aConstraints, ErrorResult& aRv);
 
   already_AddRefed<Promise> DecodeAudioData(
@@ -300,6 +304,10 @@ class AudioContext final : public DOMEventTargetHelper,
   unsigned long Length();
 
   bool IsOffline() const { return mIsOffline; }
+
+  bool ShouldResistFingerprinting() const {
+    return mShouldResistFingerprinting;
+  }
 
   MediaTrackGraph* Graph() const;
   AudioNodeTrack* DestinationTrack() const;
@@ -355,7 +363,7 @@ class AudioContext final : public DOMEventTargetHelper,
 
   nsTArray<RefPtr<mozilla::MediaTrack>> GetAllTracks() const;
 
-  void ResumeInternal(AudioContextOperationFlags aFlags);
+  void ResumeInternal();
   void SuspendInternal(void* aPromise, AudioContextOperationFlags aFlags);
   void CloseInternal(void* aPromise, AudioContextOperationFlags aFlags);
 
@@ -375,6 +383,15 @@ class AudioContext final : public DOMEventTargetHelper,
   //   and 'NeverAllowed', so we need to call it when shutdown AudioContext
   void MaybeUpdateAutoplayTelemetry();
   void MaybeUpdateAutoplayTelemetryWhenShutdown();
+
+  // If the pref `dom.suspend_inactive.enabled` is enabled, the dom window will
+  // be suspended when the window becomes inactive. In order to keep audio
+  // context running still, we will ask pages to keep awake in that situation.
+  void MaybeUpdatePageAwakeRequest();
+  void MaybeClearPageAwakeRequest();
+  void SetPageAwakeRequest(bool aShouldSet);
+
+  BrowsingContext* GetTopLevelBrowsingContext();
 
  private:
   // Each AudioContext has an id, that is passed down the MediaTracks that
@@ -407,19 +424,28 @@ class AudioContext final : public DOMEventTargetHelper,
   RefPtr<BasicWaveFormCache> mBasicWaveFormCache;
   // Number of channels passed in the OfflineAudioContext ctor.
   uint32_t mNumberOfChannels;
-  bool mIsOffline;
+  const RTPCallerType mRTPCallerType;
+  const bool mShouldResistFingerprinting;
+  const bool mIsOffline;
+  // true iff realtime or startRendering() has been called.
   bool mIsStarted;
   bool mIsShutDown;
-  // Close has been called, reject suspend and resume call.
-  bool mCloseCalled;
-  // Suspend has been called with no following resume.
-  bool mSuspendCalled;
   bool mIsDisconnecting;
+  // Close has been called; reject suspend and resume calls.
+  bool mCloseCalled;
+  // Whether the MediaTracks are suspended, due to one or more of
+  // !mWasAllowedToStart, mSuspendedByContent, or mSuspendedByChrome.
+  // false if offline.
+  bool mTracksAreSuspended;
   // This flag stores the value of previous status of `allowed-to-start`.
+  // true if offline.
   bool mWasAllowedToStart;
-
-  // True if this AudioContext has been suspended by the page.
+  // Whether this AudioContext is suspended because the page called suspend().
+  // Unused if offline.
   bool mSuspendedByContent;
+  // Whether this AudioContext is suspended because the Window is suspended.
+  // Unused if offline.
+  bool mSuspendedByChrome;
 
   // These variables are used for telemetry, they're not reflect the actual
   // status of AudioContext, they are based on the "assumption" of enabling
@@ -434,6 +460,11 @@ class AudioContext final : public DOMEventTargetHelper,
   bool mWasEverAllowedToStart;
   bool mWasEverBlockedToStart;
   bool mWouldBeAllowedToStart;
+
+  // Whether we have set the page awake reqeust when non-offline audio context
+  // is running. That will keep the audio context being able to continue running
+  // even if the window is inactive.
+  bool mSetPageAwakeRequest = false;
 };
 
 static const dom::AudioContext::AudioContextId NO_AUDIO_CONTEXT = 0;

@@ -1,29 +1,28 @@
 {
   "langpack_id": "th",
   "manifest_version": 2,
-  "applications": {
+  "browser_specific_settings": {
     "gecko": {
       "id": "langpack-th@thunderbird.mozilla.org",
-      "strict_min_version": "91.0",
-      "strict_max_version": "91.*"
+      "strict_min_version": "115.0",
+      "strict_max_version": "115.*"
     }
   },
-  "name": "ไทย Language Pack",
-  "description": "Language pack for Thunderbird for th",
-  "version": "91.0buildid20211101223011",
+  "name": "Language: ไทย (Thai)",
+  "description": "Thunderbird Language Pack for ไทย (th) – Thai",
+  "version": "115.8.20240216.174500",
   "languages": {
     "th": {
-      "version": "20211011132735",
+      "version": "20240216183743",
       "chrome_resources": {
         "alerts": "chrome/th/locale/th/alerts/",
         "autoconfig": "chrome/th/locale/th/autoconfig/",
-        "branding": "chrome/th/locale/th/branding/",
+        "branding": "chrome/th/locale/branding/",
         "calendar": "chrome/th/locale/th/calendar/",
         "chat": "chrome/th/locale/th/chat/",
         "communicator": "chrome/th/locale/th/communicator/",
         "devtools": "chrome/th/locale/th/devtools/client/",
         "devtools-shared": "chrome/th/locale/th/devtools/shared/",
-        "devtools-startup": "chrome/th/locale/th/devtools/startup/",
         "global": "chrome/th/locale/th/global/",
         "global-platform": {
           "macosx": "chrome/th/locale/th/global-platform/mac/",

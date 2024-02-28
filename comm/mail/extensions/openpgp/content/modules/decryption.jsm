@@ -8,28 +8,29 @@
 
 "use strict";
 
-var EXPORTED_SYMBOLS = ["EnigmailDecryption"];
+const EXPORTED_SYMBOLS = ["EnigmailDecryption"];
 
-const { XPCOMUtils } = ChromeUtils.import(
-  "resource://gre/modules/XPCOMUtils.jsm"
+const { XPCOMUtils } = ChromeUtils.importESModule(
+  "resource://gre/modules/XPCOMUtils.sys.mjs"
 );
 
-XPCOMUtils.defineLazyModuleGetters(this, {
+const lazy = {};
+
+XPCOMUtils.defineLazyModuleGetters(lazy, {
   EnigmailArmor: "chrome://openpgp/content/modules/armor.jsm",
   EnigmailConstants: "chrome://openpgp/content/modules/constants.jsm",
   EnigmailCryptoAPI: "chrome://openpgp/content/modules/cryptoAPI.jsm",
   EnigmailCore: "chrome://openpgp/content/modules/core.jsm",
   EnigmailData: "chrome://openpgp/content/modules/data.jsm",
   EnigmailDialog: "chrome://openpgp/content/modules/dialog.jsm",
-  EnigmailFiles: "chrome://openpgp/content/modules/files.jsm",
   EnigmailFuncs: "chrome://openpgp/content/modules/funcs.jsm",
   EnigmailKey: "chrome://openpgp/content/modules/key.jsm",
   EnigmailKeyRing: "chrome://openpgp/content/modules/keyRing.jsm",
   EnigmailLog: "chrome://openpgp/content/modules/log.jsm",
-  Services: "resource://gre/modules/Services.jsm",
+  MailStringUtils: "resource:///modules/MailStringUtils.jsm",
 });
 
-XPCOMUtils.defineLazyGetter(this, "l10n", () => {
+XPCOMUtils.defineLazyGetter(lazy, "l10n", () => {
   return new Localization(["messenger/openpgp/openpgp.ftl"], true);
 });
 
@@ -42,7 +43,7 @@ function statusObjectFrom(
   sigDetailsObj,
   errorMsgObj,
   blockSeparationObj,
-  encToDetailsObj
+  extraDetailsObj
 ) {
   return {
     signature: signatureObj,
@@ -53,7 +54,7 @@ function statusObjectFrom(
     sigDetails: sigDetailsObj,
     message: errorMsgObj,
     blockSeparation: blockSeparationObj,
-    encToDetails: encToDetailsObj,
+    extraDetails: extraDetailsObj,
   };
 }
 
@@ -76,29 +77,17 @@ function newStatusObject() {
 var EnigmailDecryption = {
   isReady(win) {
     // this used to return false while generating a key. still necessary?
-    return EnigmailCore.getService(win);
+    return lazy.EnigmailCore.getService(win);
   },
 
   getFromAddr(win) {
     var fromAddr;
-    if (
-      win &&
-      win.gFolderDisplay &&
-      win.gFolderDisplay.messageDisplay &&
-      win.gFolderDisplay.messageDisplay.displayedMessage
-    ) {
-      fromAddr = win.gFolderDisplay.messageDisplay.displayedMessage.author;
-    } else if (
-      win &&
-      win.gFolderDisplay &&
-      win.gFolderDisplay.selectedMessage
-    ) {
-      fromAddr =
-        win && win.gFolderDisplay && win.gFolderDisplay.selectedMessage.author;
+    if (win?.gMessage) {
+      fromAddr = win.gMessage.author;
     }
     if (fromAddr) {
       try {
-        fromAddr = EnigmailFuncs.stripEmail(fromAddr);
+        fromAddr = lazy.EnigmailFuncs.stripEmail(fromAddr);
         if (fromAddr.search(/[a-zA-Z0-9]@.*[\(\)]/) >= 0) {
           fromAddr = false;
         }
@@ -108,6 +97,17 @@ var EnigmailDecryption = {
     }
 
     return fromAddr;
+  },
+
+  getMsgDate(win) {
+    // Sometimes the "dateInSeconds" attribute is missing.
+    // "date" appears to be available more reliably, and it appears
+    // to be in microseconds (1/1000000 second). Convert
+    // to milliseconds (1/1000 of a second) for conversion to Date.
+    if (win?.gMessage) {
+      return new Date(win.gMessage.date / 1000);
+    }
+    return null;
   },
 
   /**
@@ -124,15 +124,16 @@ var EnigmailDecryption = {
    *out @sigDetailsObj
    *out @errorMsgObj  error string
    *out @blockSeparationObj
-   *out @encToDetailsObj  returns in details, which keys the mesage was encrypted for (ENC_TO entries)
+   *out @extraDetailsObj JSON with (optional) additional data: encryptedTo, packetDump
    *
-   * @return string plaintext ("" if error)
+   * @returns string plaintext ("" if error)
    *
    */
   decryptMessage(
     parent,
     uiFlags,
     cipherText,
+    msgDate,
     signatureObj,
     exitCodeObj,
     statusFlagsObj,
@@ -141,9 +142,9 @@ var EnigmailDecryption = {
     sigDetailsObj,
     errorMsgObj,
     blockSeparationObj,
-    encToDetailsObj
+    extraDetailsObj
   ) {
-    EnigmailLog.DEBUG(
+    lazy.EnigmailLog.DEBUG(
       "decryption.jsm: decryptMessage(" +
         cipherText.length +
         " bytes, " +
@@ -158,10 +159,10 @@ var EnigmailDecryption = {
     //var interactive = uiFlags & EnigmailConstants.UI_INTERACTIVE;
     var allowImport = false; // uiFlags & EnigmailConstants.UI_ALLOW_KEY_IMPORT;
     var unverifiedEncryptedOK =
-      uiFlags & EnigmailConstants.UI_UNVERIFIED_ENC_OK;
+      uiFlags & lazy.EnigmailConstants.UI_UNVERIFIED_ENC_OK;
     var oldSignature = signatureObj.value;
 
-    EnigmailLog.DEBUG(
+    lazy.EnigmailLog.DEBUG(
       "decryption.jsm: decryptMessage: oldSignature=" + oldSignature + "\n"
     );
 
@@ -176,7 +177,7 @@ var EnigmailDecryption = {
     var beginIndexObj = {};
     var endIndexObj = {};
     var indentStrObj = {};
-    var blockType = EnigmailArmor.locateArmoredBlock(
+    var blockType = lazy.EnigmailArmor.locateArmoredBlock(
       cipherText,
       0,
       "",
@@ -195,10 +196,10 @@ var EnigmailDecryption = {
     var isEncrypted = blockType == "MESSAGE";
 
     if (verifyOnly) {
-      statusFlagsObj.value |= EnigmailConstants.PGP_MIME_SIGNED;
+      statusFlagsObj.value |= lazy.EnigmailConstants.PGP_MIME_SIGNED;
     }
     if (isEncrypted) {
-      statusFlagsObj.value |= EnigmailConstants.PGP_MIME_ENCRYPTED;
+      statusFlagsObj.value |= lazy.EnigmailConstants.PGP_MIME_ENCRYPTED;
     }
 
     var pgpBlock = cipherText.substr(
@@ -223,7 +224,7 @@ var EnigmailDecryption = {
 
     // HACK to better support messages from Outlook: if there are empty lines, drop them
     if (pgpBlock.search(/MESSAGE-----\r?\n\r?\nVersion/) >= 0) {
-      EnigmailLog.DEBUG(
+      lazy.EnigmailLog.DEBUG(
         "decryption.jsm: decryptMessage: apply Outlook empty line workaround\n"
       );
       pgpBlock = pgpBlock.replace(/\r?\n\r?\n/g, "\n");
@@ -237,29 +238,28 @@ var EnigmailDecryption = {
     if (publicKey) {
       // TODO: import key into our scratch area for new, unknown keys
       if (!allowImport) {
-        errorMsgObj.value = l10n.formatValueSync("key-in-message-body");
-        statusFlagsObj.value |= EnigmailConstants.DISPLAY_MESSAGE;
-        statusFlagsObj.value |= EnigmailConstants.INLINE_KEY;
+        errorMsgObj.value = lazy.l10n.formatValueSync("key-in-message-body");
+        statusFlagsObj.value |= lazy.EnigmailConstants.DISPLAY_MESSAGE;
+        statusFlagsObj.value |= lazy.EnigmailConstants.INLINE_KEY;
 
         return "";
       }
 
       // Import public key
-      exitCodeObj.value = EnigmailKeyRing.importKey(
+      exitCodeObj.value = lazy.EnigmailKeyRing.importKey(
         parent,
         true,
         pgpBlock,
         false,
         "",
         errorMsgObj,
+        {}, // importedKeysObj
         false,
         [],
-        false,
-        false, // don't use prompt for permissive
-        null
+        false // don't use prompt for permissive
       );
       if (exitCodeObj.value === 0) {
-        statusFlagsObj.value |= EnigmailConstants.IMPORTED_KEY;
+        statusFlagsObj.value |= lazy.EnigmailConstants.IMPORTED_KEY;
       }
       return "";
     }
@@ -267,25 +267,25 @@ var EnigmailDecryption = {
     var newSignature = "";
 
     if (verifyOnly) {
-      newSignature = EnigmailArmor.extractSignaturePart(
+      newSignature = lazy.EnigmailArmor.extractSignaturePart(
         pgpBlock,
-        EnigmailConstants.SIGNATURE_ARMOR
+        lazy.EnigmailConstants.SIGNATURE_ARMOR
       );
       if (oldSignature && newSignature != oldSignature) {
-        EnigmailLog.ERROR(
+        lazy.EnigmailLog.ERROR(
           "enigmail.js: Enigmail.decryptMessage: Error - signature mismatch " +
             newSignature +
             "\n"
         );
-        errorMsgObj.value = l10n.formatValueSync("sig-mismatch");
-        statusFlagsObj.value |= EnigmailConstants.DISPLAY_MESSAGE;
+        errorMsgObj.value = lazy.l10n.formatValueSync("sig-mismatch");
+        statusFlagsObj.value |= lazy.EnigmailConstants.DISPLAY_MESSAGE;
 
         return "";
       }
     }
 
-    if (!EnigmailCore.getService(parent)) {
-      statusFlagsObj.value |= EnigmailConstants.DISPLAY_MESSAGE;
+    if (!lazy.EnigmailCore.getService(parent)) {
+      statusFlagsObj.value |= lazy.EnigmailConstants.DISPLAY_MESSAGE;
       throw new Error("decryption.jsm: decryptMessage: not yet initialized");
       //return "";
     }
@@ -306,10 +306,13 @@ var EnigmailDecryption = {
       noOutput: false,
       maxOutputLength: maxOutput,
       uiFlags,
+      msgDate,
     };
-    const cApi = EnigmailCryptoAPI();
+    const cApi = lazy.EnigmailCryptoAPI();
     let result = cApi.sync(cApi.decrypt(pgpBlock, options));
-    EnigmailLog.DEBUG("decryption.jsm: decryptMessage: decryption finished\n");
+    lazy.EnigmailLog.DEBUG(
+      "decryption.jsm: decryptMessage: decryption finished\n"
+    );
     if (!result) {
       console.debug("EnigmailCryptoAPI.decrypt() failed with empty result");
       return "";
@@ -323,13 +326,17 @@ var EnigmailDecryption = {
     userIdObj.value = result.userId;
     keyIdObj.value = result.keyId;
     sigDetailsObj.value = result.sigDetails;
-    if (encToDetailsObj) {
-      encToDetailsObj.value = result.encToDetails;
+
+    if (extraDetailsObj) {
+      extraDetailsObj.value = JSON.stringify({
+        encryptedTo: result.encToDetails,
+        packetDump: "packetDump" in result ? result.packetDump : "",
+      });
     }
     blockSeparationObj.value = result.blockSeparation;
 
     if (tail.search(/\S/) >= 0) {
-      statusFlagsObj.value |= EnigmailConstants.PARTIALLY_PGP;
+      statusFlagsObj.value |= lazy.EnigmailConstants.PARTIALLY_PGP;
     }
 
     if (exitCodeObj.value === 0) {
@@ -345,7 +352,7 @@ var EnigmailDecryption = {
         plainText = plainText.replace(/(\r|\n)--(\r|\n)/, "$1-- $2");
       }
 
-      statusFlagsObj.value |= EnigmailConstants.DISPLAY_MESSAGE;
+      statusFlagsObj.value |= lazy.EnigmailConstants.DISPLAY_MESSAGE;
 
       if (verifyOnly && indentStrObj.value) {
         plainText = plainText.replace(/^/gm, indentStrObj.value);
@@ -364,18 +371,20 @@ var EnigmailDecryption = {
           sigDetailsObj,
           errorMsgObj,
           blockSeparationObj,
-          encToDetailsObj
+          extraDetailsObj
         )
       );
     }
 
     var pubKeyId = keyIdObj.value;
 
-    if (statusFlagsObj.value & EnigmailConstants.BAD_SIGNATURE) {
+    if (statusFlagsObj.value & lazy.EnigmailConstants.BAD_SIGNATURE) {
       if (verifyOnly && indentStrObj.value) {
         // Probably replied message that could not be verified
         errorMsgObj.value =
-          l10n.formatValueSync("unverified-reply") + "\n\n" + errorMsgObj.value;
+          lazy.l10n.formatValueSync("unverified-reply") +
+          "\n\n" +
+          errorMsgObj.value;
         return "";
       }
 
@@ -383,7 +392,7 @@ var EnigmailDecryption = {
       signatureObj.value = newSignature;
     } else if (
       pubKeyId &&
-      statusFlagsObj.value & EnigmailConstants.UNCERTAIN_SIGNATURE
+      statusFlagsObj.value & lazy.EnigmailConstants.UNCERTAIN_SIGNATURE
     ) {
       // TODO: import into scratch area
       /*
@@ -447,6 +456,7 @@ var EnigmailDecryption = {
           parent,
           uiFlagsDeep,
           pgpBlock,
+          null, // date
           signatureObj,
           exitCodeObj,
           statusFlagsObj,
@@ -472,7 +482,7 @@ var EnigmailDecryption = {
   },
 
   inlineInnerVerification(parent, uiFlags, text, statusObject) {
-    EnigmailLog.DEBUG("decryption.jsm: inlineInnerVerification()\n");
+    lazy.EnigmailLog.DEBUG("decryption.jsm: inlineInnerVerification()\n");
 
     if (text && text.indexOf("-----BEGIN PGP SIGNED MESSAGE-----") === 0) {
       var status = newStatusObject();
@@ -480,6 +490,7 @@ var EnigmailDecryption = {
         parent,
         uiFlags,
         text,
+        null, // date
         status.signature,
         status.exitCode,
         status.statusFlags,
@@ -507,9 +518,9 @@ var EnigmailDecryption = {
   },
 
   isDecryptFailureResult(result) {
-    if (result.statusFlags & EnigmailConstants.MISSING_MDC) {
+    if (result.statusFlags & lazy.EnigmailConstants.MISSING_MDC) {
       console.log("bad message, missing MDC");
-    } else if (result.statusFlags & EnigmailConstants.DECRYPTION_FAILED) {
+    } else if (result.statusFlags & lazy.EnigmailConstants.DECRYPTION_FAILED) {
       console.log("cannot decrypt message");
     } else if (result.decryptedData) {
       return false;
@@ -521,10 +532,10 @@ var EnigmailDecryption = {
     if (this.isDecryptFailureResult(result)) {
       return "";
     }
-    return EnigmailData.getUnicodeData(result.decryptedData);
+    return lazy.EnigmailData.getUnicodeData(result.decryptedData);
   },
 
-  decryptAttachment(
+  async decryptAttachment(
     parent,
     outFile,
     displayName,
@@ -533,7 +544,7 @@ var EnigmailDecryption = {
     statusFlagsObj,
     errorMsgObj
   ) {
-    EnigmailLog.DEBUG(
+    lazy.EnigmailLog.DEBUG(
       "decryption.jsm: decryptAttachment(parent=" +
         parent +
         ", outFileName=" +
@@ -546,14 +557,16 @@ var EnigmailDecryption = {
       // attachment appears to be a PGP key file
 
       if (
-        EnigmailDialog.confirmDlg(
+        lazy.EnigmailDialog.confirmDlg(
           parent,
-          l10n.formatValueSync("attachment-pgp-key", { name: displayName }),
-          l10n.formatValueSync("key-man-button-import"),
-          l10n.formatValueSync("dlg-button-view")
+          lazy.l10n.formatValueSync("attachment-pgp-key", {
+            name: displayName,
+          }),
+          lazy.l10n.formatValueSync("key-man-button-import"),
+          lazy.l10n.formatValueSync("dlg-button-view")
         )
       ) {
-        let preview = EnigmailKey.getKeyListFromKeyBlock(
+        let preview = await lazy.EnigmailKey.getKeyListFromKeyBlock(
           byteData,
           errorMsgObj,
           true,
@@ -565,13 +578,13 @@ var EnigmailDecryption = {
           if (preview.length > 0) {
             let confirmImport = false;
             let outParam = {};
-            confirmImport = EnigmailDialog.confirmPubkeyImport(
+            confirmImport = lazy.EnigmailDialog.confirmPubkeyImport(
               parent,
               preview,
               outParam
             );
             if (confirmImport) {
-              exitCodeObj.value = EnigmailKeyRing.importKey(
+              exitCodeObj.value = lazy.EnigmailKeyRing.importKey(
                 parent,
                 false,
                 byteData,
@@ -581,15 +594,13 @@ var EnigmailDecryption = {
                 null,
                 false,
                 [],
-                false,
                 false, // don't use prompt for permissive
-                null,
                 outParam.acceptance
               );
-              statusFlagsObj.value = EnigmailConstants.IMPORTED_KEY;
+              statusFlagsObj.value = lazy.EnigmailConstants.IMPORTED_KEY;
             } else {
               exitCodeObj.value = 0;
-              statusFlagsObj.value = EnigmailConstants.DISPLAY_MESSAGE;
+              statusFlagsObj.value = lazy.EnigmailConstants.DISPLAY_MESSAGE;
             }
           }
         } else {
@@ -600,16 +611,14 @@ var EnigmailDecryption = {
         }
       } else {
         exitCodeObj.value = 0;
-        statusFlagsObj.value = EnigmailConstants.DISPLAY_MESSAGE;
+        statusFlagsObj.value = lazy.EnigmailConstants.DISPLAY_MESSAGE;
       }
       statusFlagsObj.ext = 0;
       return true;
     }
 
-    //var outFileName = EnigmailFiles.getEscapedFilename(EnigmailFiles.getFilePathReadonly(outFile.QueryInterface(Ci.nsIFile), NS_WRONLY));
-
-    const cApi = EnigmailCryptoAPI();
-    let result = cApi.sync(cApi.decryptAttachment(byteData));
+    const cApi = lazy.EnigmailCryptoAPI();
+    let result = await cApi.decryptAttachment(byteData);
     if (!result) {
       console.debug(
         "EnigmailCryptoAPI.decryptAttachment() failed with empty result"
@@ -622,7 +631,11 @@ var EnigmailDecryption = {
     errorMsgObj.value = result.errorMsg;
 
     if (!this.isDecryptFailureResult(result)) {
-      return EnigmailFiles.writeFileContents(outFile, result.decryptedData);
+      await IOUtils.write(
+        outFile.path,
+        lazy.MailStringUtils.byteStringToUint8Array(result.decryptedData)
+      );
+      return true;
     }
 
     return false;

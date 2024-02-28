@@ -2,16 +2,15 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-ChromeUtils.defineModuleGetter(
-  this,
-  "PromiseUtils",
-  "resource://gre/modules/PromiseUtils.jsm"
-);
+ChromeUtils.defineESModuleGetters(this, {
+  PromiseUtils: "resource://gre/modules/PromiseUtils.sys.mjs",
+});
 ChromeUtils.defineModuleGetter(
   this,
   "MailE10SUtils",
   "resource:///modules/MailE10SUtils.jsm"
 );
+
 var { ExtensionError } = ExtensionUtils;
 
 /**
@@ -36,16 +35,17 @@ let tabListener = {
   /**
    * Web Progress listener method for the location change.
    *
-   * @param {Element} browser               The browser element that caused the change
-   * @param {nsIWebProgress} webProgress    The web progress for the location change
-   * @param {nsIRequest} request            The xpcom request for this change
-   * @param {nsIURI} locationURI            The target uri
-   * @param {Integer} flags                 The web progress flags for this change
+   * @param {Element} browser - The browser element that caused the change
+   * @param {nsIWebProgress} webProgress - The web progress for the location change
+   * @param {nsIRequest} request - The xpcom request for this change
+   * @param {nsIURI} locationURI - The target uri
+   * @param {Integer} flags - The web progress flags for this change
    */
   onLocationChange(browser, webProgress, request, locationURI, flags) {
     if (webProgress && webProgress.isTopLevel) {
-      let tabmail = browser.ownerDocument.getElementById("tabmail");
-      let nativeTabInfo = tabmail.getTabForBrowser(browser);
+      let window = browser.ownerGlobal.top;
+      let tabmail = window.document.getElementById("tabmail");
+      let nativeTabInfo = tabmail ? tabmail.getTabForBrowser(browser) : window;
 
       // Now we are certain that the first page in the tab was loaded.
       this.initializingTabs.delete(nativeTabInfo);
@@ -62,8 +62,8 @@ let tabListener = {
   /**
    * Promise that the given tab completes loading.
    *
-   * @param {NativeTabInfo} nativeTabInfo       The tabInfo describing the tab
-   * @return {Promise<NativeTabInfo>}           Resolves when the tab completes loading
+   * @param {NativeTabInfo} nativeTabInfo - the tabInfo describing the tab
+   * @returns {Promise<NativeTabInfo>} - resolves when the tab completes loading
    */
   awaitTabReady(nativeTabInfo) {
     let deferred = this.tabReadyPromises.get(nativeTabInfo);
@@ -87,22 +87,173 @@ let tabListener = {
   },
 };
 
+let hasWebHandlerApp = protocol => {
+  let protoInfo = Cc["@mozilla.org/uriloader/external-protocol-service;1"]
+    .getService(Ci.nsIExternalProtocolService)
+    .getProtocolHandlerInfo(protocol);
+  let appHandlers = protoInfo.possibleApplicationHandlers;
+  for (let i = 0; i < appHandlers.length; i++) {
+    let handler = appHandlers.queryElementAt(i, Ci.nsISupports);
+    if (handler instanceof Ci.nsIWebHandlerApp) {
+      return true;
+    }
+  }
+  return false;
+};
+
 // Attributes and properties used in the TabsUpdateFilterManager.
 const allAttrs = new Set(["favIconUrl", "title"]);
 const allProperties = new Set(["favIconUrl", "status", "title"]);
 const restricted = new Set(["url", "favIconUrl", "title"]);
 
-/**
- * An EventManager for the tabs.onUpdated listener.
- */
-class TabsUpdateFilterEventManager extends EventManager {
-  constructor({ context }) {
-    let { extension } = context;
-    let { tabManager } = extension;
+this.tabs = class extends ExtensionAPIPersistent {
+  onShutdown(isAppShutdown) {
+    if (isAppShutdown) {
+      return;
+    }
+    for (let window of Services.wm.getEnumerator("mail:3pane")) {
+      let tabmail = window.document.getElementById("tabmail");
+      for (let i = tabmail.tabInfo.length; i > 0; i--) {
+        let nativeTabInfo = tabmail.tabInfo[i - 1];
+        let uri = nativeTabInfo.browser?.browsingContext.currentURI;
+        if (
+          uri &&
+          uri.scheme == "moz-extension" &&
+          uri.host == this.extension.uuid
+        ) {
+          tabmail.closeTab(nativeTabInfo);
+        }
+      }
+    }
+  }
 
-    let register = (fire, filterProps) => {
+  tabEventRegistrar({ tabEvent, listener }) {
+    let { extension } = this;
+    let { tabManager } = extension;
+    return ({ context, fire }) => {
+      let listener2 = async (eventName, event, ...args) => {
+        if (!tabManager.canAccessTab(event.nativeTab)) {
+          return;
+        }
+        if (fire.wakeup) {
+          await fire.wakeup();
+        }
+        listener({ context, fire, event }, ...args);
+      };
+      tabTracker.on(tabEvent, listener2);
+      return {
+        unregister() {
+          tabTracker.off(tabEvent, listener2);
+        },
+        convert(newFire, extContext) {
+          fire = newFire;
+          context = extContext;
+        },
+      };
+    };
+  }
+
+  PERSISTENT_EVENTS = {
+    // For primed persistent events (deactivated background), the context is only
+    // available after fire.wakeup() has fulfilled (ensuring the convert() function
+    // has been called) (handled by tabEventRegistrar).
+
+    onActivated: this.tabEventRegistrar({
+      tabEvent: "tab-activated",
+      listener: ({ context, fire, event }) => {
+        let { tabId, windowId, previousTabId } = event;
+        fire.async({ tabId, windowId, previousTabId });
+      },
+    }),
+
+    onCreated: this.tabEventRegistrar({
+      tabEvent: "tab-created",
+      listener: ({ context, fire, event }) => {
+        let { extension } = this;
+        let { tabManager } = extension;
+        fire.async(tabManager.convert(event.nativeTabInfo, event.currentTab));
+      },
+    }),
+
+    onAttached: this.tabEventRegistrar({
+      tabEvent: "tab-attached",
+      listener: ({ context, fire, event }) => {
+        fire.async(event.tabId, {
+          newWindowId: event.newWindowId,
+          newPosition: event.newPosition,
+        });
+      },
+    }),
+
+    onDetached: this.tabEventRegistrar({
+      tabEvent: "tab-detached",
+      listener: ({ context, fire, event }) => {
+        fire.async(event.tabId, {
+          oldWindowId: event.oldWindowId,
+          oldPosition: event.oldPosition,
+        });
+      },
+    }),
+
+    onRemoved: this.tabEventRegistrar({
+      tabEvent: "tab-removed",
+      listener: ({ context, fire, event }) => {
+        fire.async(event.tabId, {
+          windowId: event.windowId,
+          isWindowClosing: event.isWindowClosing,
+        });
+      },
+    }),
+
+    onMoved({ context, fire }) {
+      let { tabManager } = this.extension;
+      let moveListener = async event => {
+        let nativeTab = event.target;
+        let nativeTabInfo = event.detail.tabInfo;
+        let tabmail = nativeTab.ownerDocument.getElementById("tabmail");
+        if (tabManager.canAccessTab(nativeTab)) {
+          if (fire.wakeup) {
+            await fire.wakeup();
+          }
+          fire.async(tabTracker.getId(nativeTabInfo), {
+            windowId: windowTracker.getId(nativeTab.ownerGlobal),
+            fromIndex: event.detail.idx,
+            toIndex: tabmail.tabInfo.indexOf(nativeTabInfo),
+          });
+        }
+      };
+
+      windowTracker.addListener("TabMove", moveListener);
+      return {
+        unregister() {
+          windowTracker.removeListener("TabMove", moveListener);
+        },
+        convert(newFire, extContext) {
+          fire = newFire;
+          context = extContext;
+        },
+      };
+    },
+
+    onUpdated({ context, fire }, [filterProps]) {
       let filter = { ...filterProps };
+      let scheduledEvents = [];
+
+      if (
+        filter &&
+        filter.urls &&
+        !this.extension.hasPermission("tabs") &&
+        !this.extension.hasPermission("activeTab")
+      ) {
+        console.error(
+          'Url filtering in tabs.onUpdated requires "tabs" or "activeTab" permission.'
+        );
+        return false;
+      }
+
       if (filter.urls) {
+        // TODO: Consider following M-C
+        // Use additional parameter { restrictSchemes: false }.
         filter.urls = new MatchPatternSet(filter.urls);
       }
       let needsModified = true;
@@ -114,12 +265,16 @@ class TabsUpdateFilterEventManager extends EventManager {
         filter.properties = allProperties;
       }
 
-      function sanitize(changeInfo) {
+      function sanitize(tab, changeInfo) {
         let result = {};
         let nonempty = false;
-        let hasTabs = extension.hasPermission("tabs");
         for (let prop in changeInfo) {
-          if (hasTabs || !restricted.has(prop)) {
+          // In practice, changeInfo contains at most one property from
+          // restricted. Therefore it is not necessary to cache the value
+          // of tab.hasTabPermission outside the loop.
+          // Unnecessarily accessing tab.hasTabPermission can cause bugs, see
+          // https://bugzilla.mozilla.org/show_bug.cgi?id=1694699#c21
+          if (tab.hasTabPermission || !restricted.has(prop)) {
             nonempty = true;
             result[prop] = changeInfo[prop];
           }
@@ -129,6 +284,8 @@ class TabsUpdateFilterEventManager extends EventManager {
 
       function getWindowID(windowId) {
         if (windowId === WindowBase.WINDOW_ID_CURRENT) {
+          // TODO: Consider following M-C
+          // Use windowTracker.getTopWindow(context).
           return windowTracker.getId(windowTracker.topWindow);
         }
         return windowId;
@@ -154,52 +311,67 @@ class TabsUpdateFilterEventManager extends EventManager {
         return true;
       }
 
-      let fireForTab = (tab, changed) => {
+      let fireForTab = async (tab, changed) => {
         if (!matchFilters(tab, changed)) {
           return;
         }
 
-        let changeInfo = sanitize(changed);
+        let changeInfo = sanitize(tab, changed);
         if (changeInfo) {
-          fire.async(tab.id, changeInfo, tab.convert());
+          let tabInfo = tab.convert();
+          // TODO: Consider following M-C
+          // Use tabTracker.maybeWaitForTabOpen(nativeTab).then(() => {}).
+
+          // Using a FIFO to keep order of events, in case the last one
+          // gets through without being placed on the async callback stack.
+          scheduledEvents.push([tab.id, changeInfo, tabInfo]);
+          if (fire.wakeup) {
+            await fire.wakeup();
+          }
+          fire.async(...scheduledEvents.shift());
         }
       };
 
       let listener = event => {
-        let needed = [];
-        if (event.type == "TabAttrModified") {
-          let changed = event.detail.changed;
-          if (
-            changed.includes("image") &&
-            filter.properties.has("favIconUrl")
-          ) {
-            needed.push("favIconUrl");
-          }
-          if (changed.includes("label") && filter.properties.has("title")) {
-            needed.push("title");
-          }
+        /* TODO: Consider following M-C
+        // Ignore any events prior to TabOpen and events that are triggered while
+        // tabs are swapped between windows.
+        if (event.originalTarget.initializingTab) {
+          return;
         }
-
-        let tab = tabManager.getWrapper(event.detail.tabInfo);
+        if (!extension.canAccessWindow(event.originalTarget.ownerGlobal)) {
+          return;
+        }
+        */
 
         let changeInfo = {};
-        for (let prop of needed) {
-          changeInfo[prop] = tab[prop];
+        let { extension } = this;
+        let { tabManager } = extension;
+        let tab = tabManager.getWrapper(event.detail.tabInfo);
+        let changed = event.detail.changed;
+        if (
+          changed.includes("favIconUrl") &&
+          filter.properties.has("favIconUrl")
+        ) {
+          changeInfo.favIconUrl = tab.favIconUrl;
+        }
+        if (changed.includes("label") && filter.properties.has("title")) {
+          changeInfo.title = tab.title;
         }
 
         fireForTab(tab, changeInfo);
       };
 
       let statusListener = ({ browser, status, url }) => {
-        let tabmail = browser.ownerDocument.getElementById("tabmail");
-        let nativeTabInfo = tabmail.getTabForBrowser(browser);
-        if (nativeTabInfo) {
+        let { extension } = this;
+        let { tabManager } = extension;
+        let tabId = tabTracker.getBrowserTabId(browser);
+        if (tabId != -1) {
           let changed = { status };
           if (url) {
             changed.url = url;
           }
-
-          fireForTab(tabManager.getWrapper(nativeTabInfo), changed);
+          fireForTab(tabManager.get(tabId), changed);
         }
       };
 
@@ -211,41 +383,23 @@ class TabsUpdateFilterEventManager extends EventManager {
         windowTracker.addListener("status", statusListener);
       }
 
-      return () => {
-        if (needsModified) {
-          windowTracker.removeListener("TabAttrModified", listener);
-        }
-        if (filter.properties.has("status")) {
-          windowTracker.removeListener("status", statusListener);
-        }
+      return {
+        unregister() {
+          if (needsModified) {
+            windowTracker.removeListener("TabAttrModified", listener);
+          }
+          if (filter.properties.has("status")) {
+            windowTracker.removeListener("status", statusListener);
+          }
+        },
+        convert(newFire, extContext) {
+          fire = newFire;
+          context = extContext;
+        },
       };
-    };
+    },
+  };
 
-    super({
-      context,
-      name: "tabs.onUpdated",
-      register,
-    });
-  }
-
-  addListener(callback, filter) {
-    let { extension } = this.context;
-    if (
-      filter &&
-      filter.urls &&
-      !extension.hasPermission("tabs") &&
-      !extension.hasPermission("activeTab")
-    ) {
-      Cu.reportError(
-        'Url filtering in tabs.onUpdated requires "tabs" or "activeTab" permission.'
-      );
-      return false;
-    }
-    return super.addListener(callback, filter);
-  }
-}
-
-this.tabs = class extends ExtensionAPI {
   getAPI(context) {
     let { extension } = context;
     let { tabManager } = extension;
@@ -253,8 +407,8 @@ this.tabs = class extends ExtensionAPI {
     /**
      * Gets the tab for the given tab id, or the active tab if the id is null.
      *
-     * @param {?Integer} tabId          The tab id to get
-     * @return {Tab}                    The matching tab, or the active tab
+     * @param {?Integer} tabId - The tab id to get
+     * @returns {Tab} The matching tab, or the active tab
      */
     function getTabOrActive(tabId) {
       if (tabId) {
@@ -266,8 +420,8 @@ this.tabs = class extends ExtensionAPI {
     /**
      * Promise that the tab with the given tab id is ready.
      *
-     * @param {Integer} tabId       The tab id to check
-     * @return {Promise<NativeTabInfo>}     Resolved when the loading is complete
+     * @param {Integer} tabId - The tab id to check
+     * @returns {Promise<NativeTabInfo>} Resolved when the loading is complete
      */
     async function promiseTabWhenReady(tabId) {
       let tab;
@@ -286,140 +440,59 @@ this.tabs = class extends ExtensionAPI {
       tabs: {
         onActivated: new EventManager({
           context,
-          name: "tabs.onActivated",
-          register: fire => {
-            let listener = (eventName, event) => {
-              fire.async(event);
-            };
-
-            tabTracker.on("tab-activated", listener);
-            return () => {
-              tabTracker.off("tab-activated", listener);
-            };
-          },
+          module: "tabs",
+          event: "onActivated",
+          extensionApi: this,
         }).api(),
 
         onCreated: new EventManager({
           context,
-          name: "tabs.onCreated",
-          register: fire => {
-            let listener = (eventName, event) => {
-              fire.async(
-                tabManager.convert(event.nativeTabInfo, event.currentTab)
-              );
-            };
-
-            tabTracker.on("tab-created", listener);
-            return () => {
-              tabTracker.off("tab-created", listener);
-            };
-          },
+          module: "tabs",
+          event: "onCreated",
+          extensionApi: this,
         }).api(),
 
         onAttached: new EventManager({
           context,
-          name: "tabs.onAttached",
-          register: fire => {
-            let listener = (eventName, event) => {
-              fire.async(event.tabId, {
-                newWindowId: event.newWindowId,
-                newPosition: event.newPosition,
-              });
-            };
-
-            tabTracker.on("tab-attached", listener);
-            return () => {
-              tabTracker.off("tab-attached", listener);
-            };
-          },
+          module: "tabs",
+          event: "onAttached",
+          extensionApi: this,
         }).api(),
 
         onDetached: new EventManager({
           context,
-          name: "tabs.onDetached",
-          register: fire => {
-            let listener = (eventName, event) => {
-              fire.async(event.tabId, {
-                oldWindowId: event.oldWindowId,
-                oldPosition: event.oldPosition,
-              });
-            };
-
-            tabTracker.on("tab-detached", listener);
-            return () => {
-              tabTracker.off("tab-detached", listener);
-            };
-          },
+          module: "tabs",
+          event: "onDetached",
+          extensionApi: this,
         }).api(),
 
         onRemoved: new EventManager({
           context,
-          name: "tabs.onRemoved",
-          register: fire => {
-            let listener = (eventName, event) => {
-              fire.async(event.tabId, {
-                windowId: event.windowId,
-                isWindowClosing: event.isWindowClosing,
-              });
-            };
-
-            tabTracker.on("tab-removed", listener);
-            return () => {
-              tabTracker.off("tab-removed", listener);
-            };
-          },
+          module: "tabs",
+          event: "onRemoved",
+          extensionApi: this,
         }).api(),
 
         onMoved: new EventManager({
           context,
-          name: "tabs.onMoved",
-          register: fire => {
-            let moveListener = event => {
-              let nativeTab = event.target;
-              let nativeTabInfo = event.detail.tabInfo;
-              let tabmail = nativeTab.ownerDocument.getElementById("tabmail");
-
-              fire.async(tabTracker.getId(nativeTabInfo), {
-                windowId: windowTracker.getId(nativeTab.ownerGlobal),
-                fromIndex: event.detail.idx,
-                toIndex: tabmail.tabInfo.indexOf(nativeTabInfo),
-              });
-            };
-
-            windowTracker.addListener("TabMove", moveListener);
-            return () => {
-              windowTracker.removeListener("TabMove", moveListener);
-            };
-          },
+          module: "tabs",
+          event: "onMoved",
+          extensionApi: this,
         }).api(),
 
-        onUpdated: new TabsUpdateFilterEventManager({ context }).api(),
+        onUpdated: new EventManager({
+          context,
+          module: "tabs",
+          event: "onUpdated",
+          extensionApi: this,
+        }).api(),
 
         async create(createProperties) {
-          let window = await new Promise((resolve, reject) => {
-            let window =
-              createProperties.windowId === null
-                ? windowTracker.topNormalWindow
-                : windowTracker.getWindow(createProperties.windowId, context);
-            let { gMailInit } = window;
-            if (!gMailInit || !gMailInit.delayedStartupFinished) {
-              let obs = (finishedWindow, topic, data) => {
-                if (finishedWindow != window) {
-                  return;
-                }
-                Services.obs.removeObserver(
-                  obs,
-                  "mail-delayed-startup-finished"
-                );
-                resolve(window);
-              };
-              Services.obs.addObserver(obs, "mail-delayed-startup-finished");
-            } else {
-              resolve(window);
-            }
-          });
+          let window = await getNormalWindowReady(
+            context,
+            createProperties.windowId
+          );
           let tabmail = window.document.getElementById("tabmail");
-
           let url;
           if (createProperties.url) {
             url = context.uri.resolve(createProperties.url);
@@ -429,22 +502,28 @@ this.tabs = class extends ExtensionAPI {
             }
           }
 
-          let currentTab = tabmail.selectedTab;
-
-          let active = true;
-          if (createProperties.active) {
-            active = createProperties.active;
+          let userContextId =
+            Services.scriptSecurityManager.DEFAULT_USER_CONTEXT_ID;
+          if (createProperties.cookieStoreId) {
+            userContextId = getUserContextIdForCookieStoreId(
+              extension,
+              createProperties.cookieStoreId
+            );
           }
 
+          let currentTab = tabmail.selectedTab;
+          let active = createProperties.active ?? true;
           tabListener.initTabReady();
 
           let nativeTabInfo = tabmail.openTab("contentTab", {
             url: url || "about:blank",
-            linkHandler: null,
+            linkHandler: "single-site",
             background: !active,
             initialBrowsingContextGroupId:
               context.extension.policy.browsingContextGroupId,
             principal: context.extension.principal,
+            duplicate: true,
+            userContextId,
           });
 
           if (createProperties.index) {
@@ -457,7 +536,6 @@ this.tabs = class extends ExtensionAPI {
             // requested URL is loaded.
             tabListener.initializingTabs.add(nativeTabInfo);
           }
-
           return tabManager.convert(nativeTabInfo, currentTab);
         },
 
@@ -479,39 +557,74 @@ this.tabs = class extends ExtensionAPI {
 
         async update(tabId, updateProperties) {
           let nativeTabInfo = getTabOrActive(tabId);
-          if (nativeTabInfo instanceof Ci.nsIDOMWindow) {
-            throw new ExtensionError(
-              "tabs.update is not applicable to this tab."
-            );
-          }
+          let tab = tabManager.getWrapper(nativeTabInfo);
           let tabmail = getTabTabmail(nativeTabInfo);
 
           if (updateProperties.url) {
-            let browser = getTabBrowser(nativeTabInfo);
-            if (!browser) {
-              throw new ExtensionError("Cannot set a URL for this tab.");
-            }
             let url = context.uri.resolve(updateProperties.url);
-
             if (!context.checkLoadURL(url, { dontReportErrors: true })) {
               return Promise.reject({ message: `Illegal URL: ${url}` });
             }
 
-            let options = {
-              flags: updateProperties.loadReplace
-                ? Ci.nsIWebNavigation.LOAD_FLAGS_REPLACE_HISTORY
-                : Ci.nsIWebNavigation.LOAD_FLAGS_NONE,
-              triggeringPrincipal: context.principal,
-            };
-            MailE10SUtils.loadURI(browser, url, options);
+            let uri;
+            try {
+              uri = Services.io.newURI(url);
+            } catch (e) {
+              throw new ExtensionError(`Url "${url}" seems to be malformed.`);
+            }
+
+            // http(s): urls, moz-extension: urls and self-registered protocol
+            // handlers are actually loaded into the tab (and change its url).
+            // All other urls are forwarded to the external protocol handler and
+            // do not change the current tab.
+            let isContentUrl =
+              /((^blob:)|(^https:)|(^http:)|(^moz-extension:))/i.test(url);
+            let isWebExtProtocolUrl =
+              /((^ext\+[a-z]+:)|(^web\+[a-z]+:))/i.test(url) &&
+              hasWebHandlerApp(uri.scheme);
+
+            if (isContentUrl || isWebExtProtocolUrl) {
+              if (tab.type != "content" && tab.type != "mail") {
+                throw new ExtensionError(
+                  isContentUrl
+                    ? "Loading a content url is only supported for content tabs and mail tabs."
+                    : "Loading a registered WebExtension protocol handler url is only supported for content tabs and mail tabs."
+                );
+              }
+
+              let options = {
+                flags: updateProperties.loadReplace
+                  ? Ci.nsIWebNavigation.LOAD_FLAGS_REPLACE_HISTORY
+                  : Ci.nsIWebNavigation.LOAD_FLAGS_NONE,
+                triggeringPrincipal: context.principal,
+              };
+
+              if (tab.type == "mail") {
+                // The content browser in about:3pane.
+                nativeTabInfo.chromeBrowser.contentWindow.messagePane.displayWebPage(
+                  url,
+                  options
+                );
+              } else {
+                let browser = getTabBrowser(nativeTabInfo);
+                if (!browser) {
+                  throw new ExtensionError("Cannot set a URL for this tab.");
+                }
+                MailE10SUtils.loadURI(browser, url, options);
+              }
+            } else {
+              // Send unknown URLs schema to the external protocol handler.
+              // This does not change the current tab.
+              Cc["@mozilla.org/uriloader/external-protocol-service;1"]
+                .getService(Ci.nsIExternalProtocolService)
+                .loadURI(uri);
+            }
           }
 
-          if (updateProperties.active) {
-            if (updateProperties.active) {
-              tabmail.selectedTab = nativeTabInfo;
-            } else {
-              // Not sure what to do here? Which tab should we select?
-            }
+          // A tab can only be set to be active. To set it inactive, another tab
+          // has to be set as active.
+          if (tabmail && updateProperties.active) {
+            tabmail.selectedTab = nativeTabInfo;
           }
 
           return tabManager.convert(nativeTabInfo);
@@ -519,11 +632,17 @@ this.tabs = class extends ExtensionAPI {
 
         async reload(tabId, reloadProperties) {
           let nativeTabInfo = getTabOrActive(tabId);
-          if (nativeTabInfo instanceof Ci.nsIDOMWindow) {
+          let tab = tabManager.getWrapper(nativeTabInfo);
+
+          let isContentMailTab =
+            tab.type == "mail" &&
+            !nativeTabInfo.chromeBrowser.contentWindow.webBrowser.hidden;
+          if (tab.type != "content" && !isContentMailTab) {
             throw new ExtensionError(
-              "tabs.reload is not applicable to this tab."
+              "Reloading is only supported for tabs displaying a content page."
             );
           }
+
           let browser = getTabBrowser(nativeTabInfo);
 
           let flags = Ci.nsIWebNavigation.LOAD_FLAGS_NONE;
@@ -586,15 +705,10 @@ this.tabs = class extends ExtensionAPI {
 
           let destinationWindow = null;
           if (moveProperties.windowId !== null) {
-            destinationWindow = windowTracker.getWindow(
+            destinationWindow = await getNormalWindowReady(
+              context,
               moveProperties.windowId
             );
-            // Fail on an invalid window.
-            if (!destinationWindow) {
-              return Promise.reject({
-                message: `Invalid window ID: ${moveProperties.windowId}`,
-              });
-            }
           }
 
           /*
@@ -607,12 +721,15 @@ this.tabs = class extends ExtensionAPI {
           let indexMap = new Map();
           let lastInsertion = new Map();
 
-          let tabs = tabIds.map(tabId => tabTracker.getTab(tabId));
-          for (let nativeTabInfo of tabs) {
+          let tabs = tabIds.map(tabId => ({
+            nativeTabInfo: tabTracker.getTab(tabId),
+            tabId,
+          }));
+          for (let { nativeTabInfo, tabId } of tabs) {
             if (nativeTabInfo instanceof Ci.nsIDOMWindow) {
-              throw new ExtensionError(
-                "tabs.move is not applicable to this tab."
-              );
+              return Promise.reject({
+                message: `Tab with ID ${tabId} does not belong to a normal window`,
+              });
             }
 
             // If the window is not specified, use the window from the tab.
@@ -692,7 +809,7 @@ this.tabs = class extends ExtensionAPI {
 
           if (mode.tabs.length && mode.tabs.length == mode.maxTabs) {
             throw new ExtensionError(
-              `Maximum number of ${state.mode} tabs reached`
+              `Maximum number of ${state.mode} tabs reached.`
             );
           } else {
             tabmail.restoreTab(state);

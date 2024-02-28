@@ -15,8 +15,7 @@ use crate::values::specified::border::BorderRadius;
 use crate::values::specified::image::Image;
 use crate::values::specified::position::{HorizontalPosition, Position, VerticalPosition};
 use crate::values::specified::url::SpecifiedUrl;
-use crate::values::specified::SVGPathData;
-use crate::values::specified::{LengthPercentage, NonNegativeLengthPercentage};
+use crate::values::specified::{LengthPercentage, NonNegativeLengthPercentage, SVGPathData};
 use crate::Zero;
 use cssparser::Parser;
 use style_traits::{ParseError, StyleParseErrorKind};
@@ -54,15 +53,6 @@ pub type ShapeRadius = generic::ShapeRadius<NonNegativeLengthPercentage>;
 
 /// The specified value of `Polygon`
 pub type Polygon = generic::GenericPolygon<LengthPercentage>;
-
-#[cfg(feature = "gecko")]
-fn is_clip_path_path_enabled(context: &ParserContext) -> bool {
-    context.chrome_rules_enabled() || static_prefs::pref!("layout.css.clip-path-path.enabled")
-}
-#[cfg(feature = "servo")]
-fn is_clip_path_path_enabled(_: &ParserContext) -> bool {
-    false
-}
 
 /// A helper for both clip-path and shape-outside parsing of shapes.
 fn parse_shape_or_box<'i, 't, R, ReferenceBox>(
@@ -116,10 +106,8 @@ impl Parse for ClipPath {
             return Ok(ClipPath::None);
         }
 
-        if is_clip_path_path_enabled(context) {
-            if let Ok(p) = input.try_parse(|i| Path::parse(context, i)) {
-                return Ok(ClipPath::Path(p));
-            }
+        if let Ok(p) = input.try_parse(|i| Path::parse(context, i)) {
+            return Ok(ClipPath::Path(p));
         }
 
         if let Ok(url) = input.try_parse(|i| SpecifiedUrl::parse(context, i)) {
@@ -305,20 +293,21 @@ impl Polygon {
 
 impl Parse for Path {
     fn parse<'i, 't>(
-        context: &ParserContext,
+        _context: &ParserContext,
         input: &mut Parser<'i, 't>,
     ) -> Result<Self, ParseError<'i>> {
         input.expect_function_matching("path")?;
-        input.parse_nested_block(|i| Self::parse_function_arguments(context, i))
+        input.parse_nested_block(Self::parse_function_arguments)
     }
 }
 
 impl Path {
     /// Parse the inner arguments of a `path` function.
     fn parse_function_arguments<'i, 't>(
-        context: &ParserContext,
         input: &mut Parser<'i, 't>,
     ) -> Result<Self, ParseError<'i>> {
+        use crate::values::specified::svg_path::AllowEmpty;
+
         let fill = input
             .try_parse(|i| -> Result<_, ParseError> {
                 let fill = FillRule::parse(i)?;
@@ -326,7 +315,7 @@ impl Path {
                 Ok(fill)
             })
             .unwrap_or_default();
-        let path = SVGPathData::parse(context, input)?;
+        let path = SVGPathData::parse(input, AllowEmpty::No)?;
         Ok(Path { fill, path })
     }
 }

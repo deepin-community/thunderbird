@@ -2,8 +2,8 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, you can obtain one at http://mozilla.org/MPL/2.0/. */
 
-var { XPCOMUtils } = ChromeUtils.import(
-  "resource://gre/modules/XPCOMUtils.jsm"
+var { XPCOMUtils } = ChromeUtils.importESModule(
+  "resource://gre/modules/XPCOMUtils.sys.mjs"
 );
 
 XPCOMUtils.defineLazyModuleGetters(this, {
@@ -24,20 +24,27 @@ var userContextId;
 
 window.addEventListener(
   "DOMContentLoaded",
-  async () => {
+  () => {
     for (let id of [
       "username",
       "location",
       "statusArea",
+      "statusImage",
       "statusMessage",
       "resultsArea",
       "availableBooks",
     ]) {
       uiElements[id] = document.getElementById("carddav-" + id);
     }
-
-    await document.l10n.ready;
+  },
+  { once: true }
+);
+window.addEventListener(
+  "DOMContentLoaded",
+  async () => {
+    await document.l10n.translateRoots();
     fillLocationPlaceholder();
+    setStatus();
   },
   { once: true }
 );
@@ -66,8 +73,8 @@ function handleCardDAVURLInput(event) {
 }
 
 function changeCardDAVURL() {
-  setStatus();
   uiElements.resultsArea.hidden = true;
+  setStatus();
 }
 
 function handleCardDAVURLBlur(event) {
@@ -100,51 +107,59 @@ async function check() {
     uiElements.availableBooks.lastChild.remove();
   }
 
+  let foundBooks;
   try {
-    let foundBooks = await CardDAVUtils.detectAddressBooks(
+    foundBooks = await CardDAVUtils.detectAddressBooks(
       username,
       undefined,
       url,
       true
     );
-
-    let existing = MailServices.ab.directories.map(d =>
-      d.getStringValue("carddav.url", "")
-    );
-    let alreadyAdded = 0;
-    for (let book of foundBooks) {
-      if (existing.includes(book.url.href)) {
-        alreadyAdded++;
-        continue;
-      }
-      let checkbox = uiElements.availableBooks.appendChild(
-        document.createXULElement("checkbox")
-      );
-      checkbox.setAttribute("label", book.name);
-      checkbox.checked = true;
-      checkbox.value = book.url.href;
-      checkbox._book = book;
-    }
-
-    if (uiElements.availableBooks.childElementCount == 0) {
-      if (alreadyAdded > 0) {
-        setStatus("error", "carddav-already-added");
-      } else {
-        setStatus("error", "carddav-none-found");
-      }
-    } else {
-      uiElements.resultsArea.hidden = false;
-      setStatus();
-    }
   } catch (ex) {
-    log.error(ex);
     if (ex.result == Cr.NS_ERROR_NOT_AVAILABLE) {
       setStatus("error", "carddav-known-incompatible", {
         url: new URL(url).hostname,
       });
     } else {
+      log.error(ex);
       setStatus("error", "carddav-connection-error");
     }
+    return;
+  }
+
+  // Create a list of CardDAV directories that already exist.
+  let existing = [];
+  for (let d of MailServices.ab.directories) {
+    if (d.dirType == Ci.nsIAbManager.CARDDAV_DIRECTORY_TYPE) {
+      existing.push(d.getStringValue("carddav.url", ""));
+    }
+  }
+
+  // Display a checkbox for each directory that doesn't already exist.
+  let alreadyAdded = 0;
+  for (let book of foundBooks) {
+    if (existing.includes(book.url.href)) {
+      alreadyAdded++;
+      continue;
+    }
+    let checkbox = uiElements.availableBooks.appendChild(
+      document.createXULElement("checkbox")
+    );
+    checkbox.setAttribute("label", book.name);
+    checkbox.checked = true;
+    checkbox.value = book.url.href;
+    checkbox._book = book;
+  }
+
+  if (uiElements.availableBooks.childElementCount == 0) {
+    if (alreadyAdded > 0) {
+      setStatus("error", "carddav-already-added");
+    } else {
+      setStatus("error", "carddav-none-found");
+    }
+  } else {
+    uiElements.resultsArea.hidden = false;
+    setStatus();
   }
 }
 
@@ -152,15 +167,42 @@ function setStatus(status, message, args) {
   uiElements.username.disabled = status == "loading";
   uiElements.location.disabled = status == "loading";
 
+  switch (status) {
+    case "loading":
+      uiElements.statusImage.setAttribute(
+        "src",
+        "chrome://global/skin/icons/loading.png"
+      );
+      uiElements.statusImage.setAttribute(
+        "srcset",
+        "chrome://global/skin/icons/loading@2x.png 2x"
+      );
+      break;
+    case "error":
+      uiElements.statusImage.setAttribute(
+        "src",
+        "chrome://global/skin/icons/warning.svg"
+      );
+      uiElements.statusImage.removeAttribute("srcset");
+      break;
+    default:
+      uiElements.statusImage.removeAttribute("src");
+      uiElements.statusImage.removeAttribute("srcset");
+      break;
+  }
+
   if (status) {
     uiElements.statusArea.setAttribute("status", status);
     document.l10n.setAttributes(uiElements.statusMessage, message, args);
-    window.sizeToContent();
   } else {
     uiElements.statusArea.removeAttribute("status");
     uiElements.statusMessage.removeAttribute("data-l10n-id");
     uiElements.statusMessage.textContent = "";
   }
+
+  // Grow to fit the list of books. Uses `resizeBy` because it has special
+  // handling in SubDialog.jsm that the other resize functions don't have.
+  window.resizeBy(0, Math.min(250, uiElements.availableBooks.scrollHeight));
   window.dispatchEvent(new CustomEvent("status-changed"));
 }
 
@@ -178,9 +220,9 @@ window.addEventListener("dialogaccept", event => {
   for (let checkbox of uiElements.availableBooks.children) {
     if (checkbox.checked) {
       let book = checkbox._book.create();
-      window.arguments[0].newDirectoryUID = book.UID;
-      if ("onNewDirectory" in window.arguments[0]) {
-        window.arguments[0].onNewDirectory(book);
+      if (window.arguments[0]) {
+        // Pass the UID of the book back to the opening window.
+        window.arguments[0].newDirectoryUID = book.UID;
       }
     }
   }

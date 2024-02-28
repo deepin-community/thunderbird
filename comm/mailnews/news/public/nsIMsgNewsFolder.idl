@@ -13,8 +13,6 @@
 interface nsIMsgWindow;
 interface nsINntpIncomingServer;
 
-[ref] native nsMsgKeyArrayRef(nsTArray<nsMsgKey>);
-
 [scriptable, uuid(9a12c3a5-9de5-4c57-ace3-d51802b525a9)]
 interface nsIMsgNewsFolder : nsISupports {
   readonly attribute AString unicodeName;
@@ -28,7 +26,7 @@ interface nsIMsgNewsFolder : nsISupports {
    * string is stored in |nsINntpIncomingServer| because that's a server-wide
    * property.
    **/
-  [noscript] readonly attribute ACString rawName;
+  readonly attribute ACString rawName;
   readonly attribute nsINntpIncomingServer nntpServer;
   attribute boolean saveArticleOffline;
 
@@ -90,34 +88,55 @@ interface nsIMsgNewsFolder : nsISupports {
   void forgetAuthenticationCredentials();
   /// @}
 
-  void moveFolder(in nsIMsgFolder aNewsgroupToMove, in nsIMsgFolder aRefNewsgroup, in int32_t aOrientation);
+  void reorderGroup(in nsIMsgFolder aNewsgroupToMove, in nsIMsgFolder aRefNewsgroup);
 
   nsIMsgFolder addNewsgroup(in AUTF8String newsgroupName, in ACString setStr);
 
   void setReadSetFromStr(in ACString setStr);
 
-  readonly attribute ACString newsrcLine;
+  /// returns the server's default charset.
+  readonly attribute ACString charset;
+
+  readonly attribute AUTF8String newsrcLine;
   readonly attribute ACString optionLines;
   readonly attribute ACString unsubscribedNewsgroupLines;
   void SetNewsrcHasChanged(in boolean newsrcHasChanged);
   void updateSummaryFromNNTPInfo(in long oldest, in long youngest, in long total);
   void removeMessage(in nsMsgKey key);
-  [noscript] void removeMessages(in nsMsgKeyArrayRef aMsgKeys);
+  void removeMessages(in Array<nsMsgKey> keys);
   void cancelComplete();
   void cancelFailed();
 
   ACString getMessageIdForKey(in nsMsgKey key);
 
   void getNextNMessages(in nsIMsgWindow aMsgWindow);
-  void notifyDownloadedLine(in string line, in nsMsgKey key);
-  void notifyFinishedDownloadinghdrs();
 
   /**
-   * Retrieves the database, but does not cache it in mDatabase.
-   *
-   * This is useful for operations that shouldn't hold open the database.
+   * Begin loading a message into the folder's offline store.
+   * @param key - the key of the message being loaded (the folder must
+   *              already have the message in it's DB)
    */
-  nsIMsgDatabase getDatabaseWithoutCache();
+  void notifyDownloadBegin(in nsMsgKey key);
+
+  /**
+   * Feed the next line of a message into the folder, to be invoked multiple
+   * times between notifyDownloadBegin() and notifyDownloadEnd().
+   *
+   * @param line - a single line of data to append to the message, including
+   *               end-of-line terminator.
+   */
+  void notifyDownloadedLine(in ACString line);
+
+  /**
+   * Finish loading a message into the folder. If an error occurs, the
+   * folder hears about it via this function, and should abort the message.
+   *
+   * @param status - NS_OK if the operation was completed, an error code
+   *                 otherwise.
+   */
+  void notifyDownloadEnd(in nsresult status);
+
+  void notifyFinishedDownloadinghdrs();
 
   /**
    * Requests that a message be canceled.
