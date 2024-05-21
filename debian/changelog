@@ -1,3 +1,9 @@
+thunderbird (1:125.0~b3-1deepin1) unstable; urgency=medium
+
+  * Add support for LoongArch.
+
+ -- Mingcong Bai <baimingcong@uniontech.com>  Tue, 21 May 2024 12:17:25 +0200
+
 thunderbird (1:125.0~b3-1) experimental; urgency=medium
 
   [ William Desportes ]
